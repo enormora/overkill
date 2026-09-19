@@ -60,6 +60,8 @@ Configuration should mainly cover orchestration and package wiring:
 - resource usage policy and resource-budget thresholds (Node-first JavaScript
   engine heap, resident set, resident-set growth, and active-resource limits by
   profile)
+- timing collection policy (`summary` by default, `precise` for detailed
+  runner diagnostics)
 - optional global assertion budget policy
 - mutation integration
 - type-test integration
@@ -205,6 +207,7 @@ So, for example:
   measurement
 - `--resource-budget <name=value>` chooses per-run resource-budget overrides
   and enables resource usage measurement
+- `--timings` requests precise runner timing collection for this run
 - `run({ profile: 'unit-covered' })` should express coverage intent through
   profile selection
 - an optional global assertion budget policy lives in configuration because
@@ -214,6 +217,11 @@ So, for example:
   be visible in failure messages
 - microtest `coverage` policy lives on the selected profile because coverage
   is a microtest-only execution policy
+
+Timing policy follows the same split. `profiles.<name>.timings.collection`
+sets the project default for that profile. `--timings` and programmatic
+`RunRequest` values may upgrade one run to precise timing collection without
+changing project policy.
 
 ## Configuration Layering
 

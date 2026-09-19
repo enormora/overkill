@@ -338,6 +338,8 @@ renders the real-time event stream directly:
 - test-contract failures render the contract summary
 - captured stdout and stderr need a separate output concept and are not part
   of the first failure-rendering pass
+- the final summary includes compact run timing data from `RunResult.timings`
+  when available
 
 The failure header intentionally omits the first assertion summary:
 
@@ -381,6 +383,7 @@ summary and short detail lines for failed tests, inconclusive tests, and
 runner errors. Failed assertion detail lines include the primary source
 location when the failed check has one. If a `runner-error` arrives after
 finish, it prints `Runner error: <message>` below the summary.
+The finish summary also includes compact run timing data.
 
 ## Brief Reporter Rendering
 
@@ -396,11 +399,22 @@ It renders:
 - no per-test passing lines
 - one compact line per top-level failure cause
 - one final count line with discovered, planned, executed, passed, failed,
-  skipped, inconclusive, and elapsed milliseconds
+  skipped, inconclusive, and compact timing data
 
 Failure lines include source location when a structured failure has one.
 Located failure intents carry annotations so renderers can adapt them for CI
 systems without the reporter knowing platform-specific command syntax.
+
+## Timing Output
+
+First-party human reporters render the stable run timing summary. When precise
+timings were collected, timing-aware human reporters additionally render the
+slowest overhead offenders. Full timing detail remains structured data for
+machine-readable reporters.
+
+Timing presentation follows [Run Timings](./run-timings.md). Reporters should
+not invent their own timing categories or recompute runner overhead from raw
+events.
 
 ## Source Location Rendering
 
@@ -495,6 +509,7 @@ to render nonsense.
 - [Package Architecture § Reporters](./package-architecture.md#reporters) - the package-family stance
 - [Runtime Behavior § Console Output Capture](./runtime-behavior.md#console-output-capture) - how reporters
   interact with captured stdout/stderr
+- [Run Timings](./run-timings.md) - timing summary and precise timing output
 - [Failure Artifacts](../authoring/failure-artifacts.md) - the artifacts reporters consume
 - [Types Index](../reference/types-index.md) - `RunFacts`, `RunResult`, `TestOutcome`,
   `RunnerError`, `CaseId`, `TestDebugArtifact`

@@ -133,6 +133,11 @@ It should be a separate reporter package rather than part of
 `@overkill-dev/bench`, because the benchmark package owns benchmark execution and
 result semantics while reporter packages own presentation.
 
+Ordinary runner timings are not benchmark results. [Run Timings](../architecture/run-timings.md)
+can show that config loading, collection, worker startup, or resource teardown
+was expensive in a concrete run, but benchmark policy, warmup, sampling,
+calibration, and performance budgets remain owned by the benchmark family.
+
 ## Benchmark Definition Model
 
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”

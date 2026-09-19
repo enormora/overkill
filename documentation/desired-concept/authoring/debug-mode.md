@@ -253,6 +253,10 @@ linter) reads the pattern.
 - **Not a profiler.** For CPU or call-frame analysis use Node
   `--prof` or `--inspect`. Debug mode tells you what _the test_
   did, not what V8 did.
+- **Not runner timing diagnostics.** [Run Timings](../architecture/run-timings.md)
+  records config, collection, worker, process, resource, reporter, and cleanup
+  overhead for a whole run. Debug mode records selected test timelines and may
+  include per-module load detail.
 - **Not a benchmark.** A single-run debug artifact is not
   statistically meaningful; see [Benchmarking](./benchmarking.md) for
   measurement-quality timing.
