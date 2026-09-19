@@ -96,6 +96,7 @@ Standard subpaths:
 - `@overkill-dev/test/resources` re-exports typed resource and runtime
   descriptors from `@overkill-dev/resources`, including
   `createTemporaryDirectoryResource(...)`, `defineLocalServiceResource(...)`,
+  `createLocalHttpServiceResource(...)`, `createLocalProcessServiceResource(...)`,
   and `createSimulatedHttpServerResource(...)`. It also adds
   `withRuntime(...)`, `withResource(...)`, and `withResources(...)` for
   runner-aware binding.

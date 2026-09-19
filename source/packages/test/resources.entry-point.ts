@@ -24,6 +24,8 @@ import {
 export {
     composeRuntimeContext,
     composeRuntimes,
+    createLocalHttpServiceResource,
+    createLocalProcessServiceResource,
     createSimulatedHttpServerResource,
     createTemporaryDirectoryResource,
     defineLocalServiceResource,
@@ -70,13 +72,31 @@ export type {
     RuntimeSessionDisposalContext,
     StartRuntimeRequest,
     SimulatedHttpServerResource,
+    SimulatedHttpServerResourceHandle,
     SimulatedHttpServerResourceOptions,
     TemporaryDirectoryHandle
 } from '../resources/resources.entry-point.ts';
 export type {
     LocalServiceAddress,
+    LocalServiceAddressRequest,
     LocalServiceCreationContext,
-    LocalServiceResourceDefinitionInput
+    LocalServiceDisposalContext,
+    LocalServiceHostAddressRequest,
+    LocalServiceLoopbackAddressRequest,
+    LocalServiceResourceDefinitionInput,
+    LocalOnlyLocalServiceResourceDefinitionInput,
+    ProjectedLocalServiceResourceDefinitionInput
+} from '../resources/resources.entry-point.ts';
+export type {
+    LocalHttpServiceHandle,
+    LocalHttpServiceResourceInput,
+    LocalProcessCommand,
+    LocalProcessOutput,
+    LocalProcessOutputBuffer,
+    LocalProcessOwner,
+    LocalProcessServiceResourceInput,
+    LocalProcessShutdown,
+    LocalProcessSignal
 } from '../resources/resources.entry-point.ts';
 export type {
     TestBodyDirectResourceAttachmentSummary,

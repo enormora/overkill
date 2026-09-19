@@ -22,4 +22,6 @@ Every simulation has a `default` scenario. Scenario descriptors require a
 
 Use `@overkill-dev/simulation/http` to launch a simulated HTTP server manually.
 Use `createSimulatedHttpServerResource(...)` from `@overkill-dev/resources`
-when a test runtime should own the server lifecycle.
+when a test runtime should own the server lifecycle. The resource adapter
+requires an explicit local address request, for example
+`{ kind: 'loopback', port: 0 }`.

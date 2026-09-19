@@ -69,6 +69,13 @@ What matters is not only “server lifecycle”. It is:
 Overkill should therefore treat spawned local services as a normal first-party
 resource shape, not as a niche workaround.
 
+The shared resource layer owns the generic substrate: explicit local address
+requests, separate startup and readiness phases, object connection handles, and
+owner-only cleanup state. HTTP and process-backed service factories belong in
+`@overkill-dev/resources`; concrete browser adapters, registry presets, richer
+scenario catalogs, logs, transcripts, and artifacts are built on that substrate
+by their owning packages or later runner features.
+
 ### Transport-Aware Transcripts
 
 In higher layers, the interesting output is often not a function call. It is

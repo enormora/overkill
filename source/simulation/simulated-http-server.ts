@@ -51,7 +51,7 @@ type HandlerErrors = {
     readonly errors: readonly unknown[];
     readonly record: (error: unknown) => void;
 };
-type ListeningServer = {
+export type SimulatedHttpListeningServer = {
     readonly errors: readonly unknown[];
     readonly server: http.Server;
 };
@@ -342,10 +342,10 @@ function createServerDisposal(server: ServerLifecycle, handlerErrors: readonly u
     };
 }
 
-function createListeningServer<Scenarios extends SimulationScenarioCatalog>(
+export function createSimulatedHttpListeningServer<Scenarios extends SimulationScenarioCatalog>(
     simulation: SimulatedHttpServerDefinition<string, Scenarios>,
     host: string
-): ListeningServer {
+): SimulatedHttpListeningServer {
     const handlerErrors = createHandlerErrors();
     const server = createServer(simulation, host, handlerErrors.record);
 
@@ -353,6 +353,12 @@ function createListeningServer<Scenarios extends SimulationScenarioCatalog>(
         errors: handlerErrors.errors,
         server
     };
+}
+
+export function assertNoSimulatedHttpHandlerErrors(handlerErrors: readonly unknown[]): void {
+    if (handlerErrors[0] !== undefined) {
+        throw disposalError(handlerErrors[0]);
+    }
 }
 
 export async function startSimulatedHttpServer<
@@ -367,7 +373,7 @@ export async function startSimulatedHttpServer<
 
     const host = options.host ?? '127.0.0.1';
     const port = options.port ?? 0;
-    const listeningServer = createListeningServer(options.simulation, host);
+    const listeningServer = createSimulatedHttpListeningServer(options.simulation, host);
     const baseUrl = await listenBaseUrl(listeningServer.server, host, port);
     const disposeServer = createServerDisposal(listeningServer.server, listeningServer.errors);
 

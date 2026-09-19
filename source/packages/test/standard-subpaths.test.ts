@@ -126,6 +126,8 @@ function assertResourcesSubpathExports(scope: TestScope): void {
     scope.assert.deepEqual(sortedKeys(resourcesSubpath), [
         'composeRuntimeContext',
         'composeRuntimes',
+        'createLocalHttpServiceResource',
+        'createLocalProcessServiceResource',
         'createSimulatedHttpServerResource',
         'createTemporaryDirectoryResource',
         'defineLocalServiceResource',

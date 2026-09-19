@@ -1,8 +1,23 @@
+import { createServer } from 'node:http';
+import { setTimeout as wait } from 'node:timers/promises';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
-    defineResource
+    createLocalHttpServiceResource
+} from './local-http-service-resource.ts';
+import {
+    createLocalProcessServiceResource,
+    type LocalProcessOwner
+} from './local-process-service-resource.ts';
+import {
+    defineLocalServiceResource
+} from './local-service-resource.ts';
+import {
+    defineResource,
+    type EmptyResourceDependencies,
+    type ResourceDefinition
 } from './resources.ts';
-import { defineLocalServiceResource } from './local-service-resource.ts';
+import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
+import { startResources } from './resource-session.ts';
 
 type Database = {
     readonly query: (sql: string) => string;
@@ -11,8 +26,8 @@ type Database = {
 const testController = new AbortController();
 const testSignal = testController.signal;
 
-function assertLocalServiceDescriptor(scope: TestScope): void {
-    const database = defineResource({
+function testDatabase(): ResourceDefinition<'database', Database, EmptyResourceDependencies> {
+    return defineResource({
         name: 'database',
         scope: 'per-case',
         requirements: [],
@@ -25,21 +40,51 @@ function assertLocalServiceDescriptor(scope: TestScope): void {
         },
         dispose: null
     });
+}
+
+async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
+    try {
+        await promise;
+    } catch (error: unknown) {
+        return error;
+    }
+
+    throw new Error('Expected promise rejection.');
+}
+
+async function waitForOutput(owner: LocalProcessOwner, value: string): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+        if (owner.output.stdout.text().includes(value)) {
+            return;
+        }
+
+        await wait(10);
+    }
+
+    throw new Error(`Process output did not include "${value}".`);
+}
+
+function assertLocalServiceDescriptor(scope: TestScope): void {
+    const database = testDatabase();
     const service = defineLocalServiceResource({
         name: 'redis',
         scope: 'per-case',
         requirements: [ { kind: 'single-worker' } ],
         dependencies: { database },
-        host: '127.0.0.1',
-        port: 0,
+        address: { kind: 'loopback', port: 0 },
         start(context) {
             return {
-                password: context.dependencies.database.query('password'),
-                url: `redis://${context.address.host}:${context.address.port}`
+                password: context.dependencies.database.query('password')
             };
         },
-        dispose(handle, context) {
-            context.dependencies.database.query(handle.url);
+        ready(owner, context) {
+            return Object.freeze({
+                password: owner.password,
+                url: `redis://${context.address.host}:${context.address.port}`
+            });
+        },
+        dispose(owner, context) {
+            context.dependencies.database.query(owner.password);
         }
     });
 
@@ -49,21 +94,26 @@ function assertLocalServiceDescriptor(scope: TestScope): void {
     scope.assert.deepEqual(Object.keys(service.dependencies), [ 'database' ]);
 }
 
-async function assertLocalServiceCallbacks(scope: TestScope): Promise<void> {
+async function assertOwnerCleanup(scope: TestScope): Promise<void> {
     const events: string[] = [];
     const service = defineLocalServiceResource({
         name: 'service',
         scope: 'per-case',
         requirements: [],
-        host: '127.0.0.1',
-        port: 0,
+        dependencies: {},
+        address: { kind: 'host', host: '127.0.0.1', port: 0 },
         start(context) {
             events.push(`start:${context.address.host}:${context.address.port}`);
 
-            return { url: `http://${context.address.host}:${context.address.port}` };
+            return { id: 'owner' };
         },
-        dispose(handle) {
-            events.push(`dispose:${handle.url}`);
+        ready(owner, context) {
+            events.push(`ready:${owner.id}`);
+
+            return Object.freeze({ url: `http://${context.address.host}:${context.address.port}` });
+        },
+        dispose(owner) {
+            events.push(`dispose:${owner.id}`);
         }
     });
     const handle = await service.acquire({ dependencies: {}, signal: testSignal });
@@ -73,37 +123,61 @@ async function assertLocalServiceCallbacks(scope: TestScope): Promise<void> {
     }
 
     await service.dispose(handle, { dependencies: {}, signal: testSignal });
+    await service.dispose(handle, { dependencies: {}, signal: testSignal });
     scope.assert.deepEqual(events, [
         'start:127.0.0.1:0',
-        'dispose:http://127.0.0.1:0'
+        'ready:owner',
+        'dispose:owner'
     ]);
 }
 
-async function assertProjectedLocalService(scope: TestScope): Promise<void> {
-    const database = defineResource({
-        name: 'database',
+async function assertReadinessFailureCleanup(scope: TestScope): Promise<void> {
+    const events: string[] = [];
+    const readyError = new Error('not ready');
+    const service = defineLocalServiceResource({
+        name: 'service',
         scope: 'per-case',
         requirements: [],
-        acquire(): Database {
-            return {
-                query(sql) {
-                    return `result:${sql}`;
-                }
-            };
+        dependencies: {},
+        address: { kind: 'loopback', port: 0 },
+        start() {
+            events.push('start');
+
+            return { id: 'owner' };
         },
-        dispose: null
+        ready() {
+            events.push('ready');
+            throw readyError;
+        },
+        dispose(owner) {
+            events.push(`dispose:${owner.id}`);
+        }
     });
+    const error = await rejectedValue(service.acquire({ dependencies: {}, signal: testSignal }));
+
+    scope.assert.equal(error, readyError);
+    scope.assert.deepEqual(events, [ 'start', 'ready', 'dispose:owner' ]);
+}
+
+async function assertProjectedLocalService(scope: TestScope): Promise<void> {
+    const database = testDatabase();
     const service = defineLocalServiceResource({
         name: 'mongo',
         scope: 'per-run',
         requirements: [ { kind: 'single-worker' } ],
         dependencies: { database },
+        address: { kind: 'loopback', port: 0 },
         start(context) {
             return {
                 dependencyPassword: context.dependencies.database.query('password'),
-                connectionString: `mongodb://${context.address.host}:${context.address.port}`,
                 password: 'secret'
             };
+        },
+        ready(owner, context) {
+            return Object.freeze({
+                connectionString: `mongodb://${context.address.host}:${context.address.port}`,
+                dependencyPassword: owner.dependencyPassword
+            });
         },
         dispose() {
             return undefined;
@@ -154,6 +228,107 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
     );
 }
 
+async function assertLocalHttpService(scope: TestScope): Promise<void> {
+    const service = createLocalHttpServiceResource({
+        name: 'app',
+        scope: 'per-case',
+        requirements: [],
+        dependencies: {},
+        address: { kind: 'loopback', port: 0 },
+        createServer() {
+            return createServer(function respond(_request, response) {
+                response.end('ready');
+            });
+        },
+        handle(handle) {
+            return handle;
+        },
+        dispose() {
+            return undefined;
+        }
+    });
+    const session = await startResources({ resources: { app: service }, signal: testSignal });
+    const response = await fetch(session.context.app.baseUrl);
+
+    scope.assert.equal(session.context.app.endpoint.host, '127.0.0.1');
+    scope.assert.equal(session.context.app.endpoint.port > 0, true);
+    scope.assert.equal(await response.text(), 'ready');
+
+    await session.disposeOnce({ signal: testSignal });
+    scope.assert.equal(await rejectedValue(fetch(session.context.app.baseUrl)) instanceof Error, true);
+}
+
+async function assertLocalProcessService(scope: TestScope): Promise<void> {
+    const service = createLocalProcessServiceResource({
+        name: 'daemon',
+        scope: 'per-case',
+        requirements: [],
+        dependencies: {},
+        address: { kind: 'loopback', port: 0 },
+        outputBufferBytes: 64,
+        shutdown: {
+            gracefulSignal: 'SIGTERM',
+            forceSignal: 'SIGKILL',
+            graceMilliseconds: 100
+        },
+        command() {
+            return {
+                command: process.execPath,
+                arguments: [
+                    '-e',
+                    'process.stdout.write("ready"); setInterval(function keepAlive() {}, 1000);'
+                ],
+                environment: {},
+                workingDirectory: null
+            };
+        },
+        async ready(owner) {
+            await waitForOutput(owner, 'ready');
+
+            return Object.freeze({
+                output: owner.output.stdout.text()
+            });
+        }
+    });
+    const session = await startResources({ resources: { daemon: service }, signal: testSignal });
+
+    scope.assert.equal(session.context.daemon.output, 'ready');
+    await session.disposeOnce({ signal: testSignal });
+}
+
+async function assertProcessEarlyExit(scope: TestScope): Promise<void> {
+    const service = createLocalProcessServiceResource({
+        name: 'daemon',
+        scope: 'per-case',
+        requirements: [],
+        dependencies: {},
+        address: { kind: 'loopback', port: 0 },
+        outputBufferBytes: 64,
+        shutdown: {
+            gracefulSignal: 'SIGTERM',
+            forceSignal: 'SIGKILL',
+            graceMilliseconds: 100
+        },
+        command() {
+            return {
+                command: process.execPath,
+                arguments: [ '-e', 'process.stderr.write("startup failed"); process.exit(7);' ],
+                environment: {},
+                workingDirectory: null
+            };
+        },
+        async ready(owner) {
+            await waitForOutput(owner, 'never');
+
+            return Object.freeze({ output: owner.output.stderr.text() });
+        }
+    });
+    const error = await rejectedValue(startResources({ resources: { daemon: service }, signal: testSignal }));
+
+    scope.require.instanceOf(error, ResourceLifecycleError);
+    scope.assert.match(String(error.failures()[0]?.cause), /startup failed/u);
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/resources/local-service-resource.test.ts',
@@ -173,11 +348,22 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'local-service resources pass requested addresses to startup',
+            title: 'local-service resources hide owner handles and dispose once',
             annotations: {},
             controls: {},
             async body(scope: TestScope) {
-                await assertLocalServiceCallbacks(scope);
+                await assertOwnerCleanup(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'local-service resources clean up after readiness failures',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertReadinessFailureCleanup(scope);
 
                 return scope.assert.collect();
             }
@@ -189,6 +375,39 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 await assertProjectedLocalService(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'local HTTP service resources expose ready loopback endpoints',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertLocalHttpService(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'local process service resources expose readiness handles',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertLocalProcessService(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'local process service resources fail when processes exit before readiness',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertProcessEarlyExit(scope);
 
                 return scope.assert.collect();
             }

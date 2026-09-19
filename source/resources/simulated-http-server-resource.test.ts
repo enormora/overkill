@@ -3,9 +3,14 @@ import { defineSimulatedHttpServer } from '../simulation/simulation.ts';
 import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
 import { startResources } from './resource-session.ts';
 import {
-    createSimulatedHttpServerResource,
-    type SimulatedHttpServerResource
+    createSimulatedHttpServerResource
 } from './simulated-http-server-resource.ts';
+
+type SimulatedHttpResourceDescriptor = {
+    readonly name: string;
+    readonly requirements: readonly unknown[];
+    readonly scope: string;
+};
 
 function testSignal(): AbortSignal {
     const controller = new AbortController();
@@ -23,21 +28,9 @@ async function rejectedValue(promise: Promise<unknown>): Promise<unknown> {
     throw new Error('Expected promise rejection.');
 }
 
-type SimulatedApiScenario = {
-    readonly status: number;
-    readonly title: string;
-};
-type SimulatedApiResource = SimulatedHttpServerResource<{
-    readonly name: 'api';
-    readonly scenarios: {
-        readonly default: SimulatedApiScenario;
-        readonly outage: SimulatedApiScenario;
-    };
-}>;
-
 function assertSimulatedHttpResourceDescriptor(
     scope: TestScope,
-    resource: SimulatedApiResource
+    resource: SimulatedHttpResourceDescriptor
 ): void {
     scope.assert.equal(resource.name, 'api');
     scope.assert.equal(resource.scope, 'per-case');
@@ -66,7 +59,10 @@ async function assertSimulatedHttpResource(scope: TestScope): Promise<void> {
             return Response.json({ key: scenario.key }, { status: scenario.descriptor.status });
         }
     });
-    const resource = createSimulatedHttpServerResource({ simulation });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'loopback', port: 0 }
+    });
     const session = await startResources({ resources: { api: resource }, signal: testSignal() });
     const defaultResponse = await fetch(session.context.api.baseUrl);
     const outageResponse = await fetch(session.context.api.scenarioUrl('outage', '/orders'));
@@ -86,7 +82,10 @@ async function assertHandlerErrorsFailResourceDisposal(scope: TestScope): Promis
             throw handlerError;
         }
     });
-    const resource = createSimulatedHttpServerResource({ simulation });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'loopback', port: 0 }
+    });
     const session = await startResources({ resources: { api: resource }, signal: testSignal() });
     const response = await fetch(session.context.api.baseUrl);
     const disposalError = await rejectedValue(session.disposeOnce({ signal: testSignal() }));
@@ -112,8 +111,7 @@ async function assertExplicitResourceAddress(scope: TestScope): Promise<void> {
     });
     const resource = createSimulatedHttpServerResource({
         simulation,
-        host: '127.0.0.1',
-        port: 0
+        address: { kind: 'host', host: '127.0.0.1', port: 0 }
     });
     const session = await startResources({ resources: { api: resource }, signal: testSignal() });
 
