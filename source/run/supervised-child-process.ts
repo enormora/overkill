@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
-import type { RunRequest } from './run-types.ts';
+import type { RunRequest, RunTestFamily } from './run-types.ts';
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
 
 type SupervisedChildEventListener = {
@@ -38,6 +38,7 @@ type SupervisedChildStartOptions = {
     };
     readonly cwd: string;
     readonly environmentVariables: RuntimeCapabilityPolicyEnvironment;
+    readonly testFamily: RunTestFamily;
 };
 
 type SupervisedChildForkOptions = {
@@ -90,24 +91,40 @@ export type SupervisedChildOutputRuntime = {
     readonly terminalFailure: StoredRunValue<boolean>;
 };
 
-export function sanitizedChildEnvironment(
+function definedEnvironmentVariables(
     environmentVariables: RuntimeCapabilityPolicyEnvironment
 ): Record<string, string> {
-    const environment = Object.fromEntries(
+    return Object.fromEntries(
         Object.entries(environmentVariables).filter(function hasEnvironmentValue(
             entry
         ): entry is [string, string] {
             return entry[1] !== undefined;
         })
     );
+}
+
+function sanitizedMicrotestEnvironment(
+    environmentVariables: RuntimeCapabilityPolicyEnvironment
+): Record<string, string> {
+    const environment = definedEnvironmentVariables(environmentVariables);
 
     delete environment.NODE_OPTIONS;
-    delete environment.NODE_V8_COVERAGE;
     delete environment.NODE_CONFIG;
     delete environment.NODE_CHANNEL_FD;
     delete environment.NODE_UNIQUE_ID;
 
     return environment;
+}
+
+export function sanitizedChildEnvironment(
+    environmentVariables: RuntimeCapabilityPolicyEnvironment,
+    testFamily: RunTestFamily
+): Record<string, string> {
+    if (testFamily === 'integration') {
+        return definedEnvironmentVariables(environmentVariables);
+    }
+
+    return sanitizedMicrotestEnvironment(environmentVariables);
 }
 
 function nodeModulesCandidates(startPath: string): readonly string[] {
@@ -197,7 +214,7 @@ export function createSupervisedChildProcessStarter(
             [ childRoleArgument(supervisedChildRole) ],
             {
                 cwd: options.cwd,
-                env: sanitizedChildEnvironment(options.environmentVariables),
+                env: sanitizedChildEnvironment(options.environmentVariables, options.testFamily),
                 execArgv: await supervisedChildExecArgv(options, dependencies),
                 stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
             }
@@ -289,12 +306,10 @@ function traceEnvMutation(line: string): TraceEnvMutation | null {
         };
     }
 
-    return line.startsWith('[--trace-env] delete ')
-        ? {
-            capability: 'process-env',
-            message: `Runtime policy violation: process.env value was deleted: ${variable}.`
-        }
-        : null;
+    return {
+        capability: 'process-env',
+        message: `Runtime policy violation: process.env value was deleted: ${variable}.`
+    };
 }
 
 function traceEnvStackLine(line: string): boolean {
@@ -362,7 +377,7 @@ function observeChildStderr(runtime: SupervisedChildOutputRuntime): void {
 
         pending += Buffer.from(chunk).toString('utf8');
         const lines = pending.split('\n');
-        pending = lines.pop() ?? '';
+        pending = lines.splice(-1).join('');
 
         for (const line of lines) {
             readingTraceEnvStack = recordStderrLine(line, readingTraceEnvStack, runtime);

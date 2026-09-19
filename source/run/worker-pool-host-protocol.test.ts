@@ -186,9 +186,11 @@ export const testNode = createOverkillSuite({
                         environmentVariables: {
                             KEEP: '1',
                             NODE_OPTIONS: '--inspect',
+                            NODE_V8_COVERAGE: '/coverage',
                             OMIT: undefined
                         },
-                        nodeArguments: [ '--expose-gc' ]
+                        nodeArguments: [ '--expose-gc' ],
+                        testFamily: 'integration'
                     }),
                     child
                 );
@@ -197,7 +199,11 @@ export const testNode = createOverkillSuite({
                     modulePath: '/package/source/run/child-process.entry-point.ts',
                     options: {
                         cwd: '/project',
-                        env: { KEEP: '1' },
+                        env: {
+                            KEEP: '1',
+                            NODE_OPTIONS: '--inspect',
+                            NODE_V8_COVERAGE: '/coverage'
+                        },
                         execArgv: [ '--expose-gc' ],
                         stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
                     }

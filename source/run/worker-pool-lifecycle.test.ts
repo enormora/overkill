@@ -45,6 +45,7 @@ async function realTinypoolWorkerLifecycle(
         cwd: process.cwd(),
         filename: workerLifecycleProbeEntryPoint,
         hostProcess: { kind: 'direct' },
+        testFamily: 'integration',
         workerCount: 1,
         workerLifecycle
     });

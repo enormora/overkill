@@ -351,7 +351,8 @@ function createRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPoolStat
     const child = input.startWorkerPoolHost({
         cwd: input.options.cwd,
         environmentVariables: input.environmentVariables,
-        nodeArguments: hostNodeArguments(input.options)
+        nodeArguments: hostNodeArguments(input.options),
+        testFamily: input.options.testFamily
     });
     const configured = createCompletionSignal();
     const finished = createCompletionSignal();
@@ -517,7 +518,7 @@ export function createWorkerPoolHostProcessStarter(
             [ childRoleArgument(workerPoolHostRole) ],
             {
                 cwd: options.cwd,
-                env: sanitizedChildEnvironment(options.environmentVariables),
+                env: sanitizedChildEnvironment(options.environmentVariables, options.testFamily),
                 execArgv: Array.from(options.nodeArguments),
                 stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
             }

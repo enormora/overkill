@@ -397,10 +397,17 @@ export const testNode = createOverkillSuite({
 
                 await assertRoutedLifecycleRuns(scope, runtime, routedLifecycles, routedHostOutputSinks);
                 scope.assert.deepEqual(createdWorkerPools, [
-                    { cwd: process.cwd(), hostProcess: { kind: 'direct' }, workerCount: 1, workerLifecycle: 'reuse' },
                     {
                         cwd: process.cwd(),
                         hostProcess: { kind: 'direct' },
+                        testFamily: 'integration',
+                        workerCount: 1,
+                        workerLifecycle: 'reuse'
+                    },
+                    {
+                        cwd: process.cwd(),
+                        hostProcess: { kind: 'direct' },
+                        testFamily: 'integration',
                         workerCount: 1,
                         workerLifecycle: 'fresh-worker-per-unit'
                     }

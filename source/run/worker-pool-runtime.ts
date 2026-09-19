@@ -234,6 +234,7 @@ function workerPoolOptions(
     return {
         cwd: resolvedRun.cwd,
         hostProcess: copiedHostProcess(execution),
+        testFamily: execution.testFamily,
         workerCount,
         workerLifecycle
     };

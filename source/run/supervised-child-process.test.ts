@@ -155,8 +155,11 @@ function emitRestrictedOutput(stdout: OutputRecord, stderr: OutputRecord): void 
         [
             '[--trace-env] set "API_KEY"',
             '----- JavaScript stack trace -----',
+            '',
             '1: frame',
             '[--trace-env] delete "TOKEN"',
+            '[--trace-env] set "NODE_V8_COVERAGE"',
+            '[--trace-env] get "API_KEY"',
             'raw stderr',
             ''
         ]
@@ -172,7 +175,7 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'startSupervisedChild() sanitizes the child environment when restrictions are disabled',
+            title: 'startSupervisedChild() sanitizes the microtest child environment',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -188,7 +191,8 @@ export const testNode = createOverkillSuite({
                         NODE_UNIQUE_ID: '2',
                         NODE_V8_COVERAGE: '/coverage',
                         OMIT: undefined
-                    }
+                    },
+                    testFamily: 'microtest'
                 });
                 const [ forkCall ] = fixture.forkCalls();
 
@@ -201,9 +205,49 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(forkCall.childArguments, [ childRoleArgument(supervisedChildRole) ]);
                 scope.assert.deepEqual(forkCall.options, {
                     cwd: '/project/sub',
-                    env: { KEEP: 'yes' },
+                    env: {
+                        KEEP: 'yes',
+                        NODE_V8_COVERAGE: '/coverage'
+                    },
                     execArgv: [],
                     stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'startSupervisedChild() preserves the integration child environment',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const fixture = createStarterFixture();
+
+                await fixture.startSupervisedChild({
+                    capabilityRestrictions: { mode: 'disabled' },
+                    cwd: '/project/sub',
+                    environmentVariables: {
+                        KEEP: 'yes',
+                        NODE_CHANNEL_FD: '1',
+                        NODE_CONFIG: 'config',
+                        NODE_OPTIONS: '--inspect',
+                        NODE_UNIQUE_ID: '2',
+                        NODE_V8_COVERAGE: '/coverage',
+                        OMIT: undefined
+                    },
+                    testFamily: 'integration'
+                });
+
+                const [ forkCall ] = fixture.forkCalls();
+                scope.require.defined(forkCall);
+                scope.assert.deepEqual(forkCall.options.env, {
+                    KEEP: 'yes',
+                    NODE_CHANNEL_FD: '1',
+                    NODE_CONFIG: 'config',
+                    NODE_OPTIONS: '--inspect',
+                    NODE_UNIQUE_ID: '2',
+                    NODE_V8_COVERAGE: '/coverage'
                 });
 
                 return scope.assert.collect();
@@ -220,7 +264,8 @@ export const testNode = createOverkillSuite({
                 await fixture.startSupervisedChild({
                     capabilityRestrictions: { mode: 'enabled' },
                     cwd: '/project/sub',
-                    environmentVariables: {}
+                    environmentVariables: {},
+                    testFamily: 'microtest'
                 });
 
                 const [ forkCall ] = fixture.forkCalls();
