@@ -205,11 +205,12 @@ adapter plus `dispose()` and `Symbol.asyncDispose`.
 `@overkill-dev/resources` should expose
 `createSimulatedHttpServerResource(...)`. That adapter turns the simulated
 HTTP server definition into a resource descriptor. It owns `listen`, teardown,
-host, port, and the exposed `baseUrl`. By default it binds to `127.0.0.1` with
-`port: 0`, so the operating system assigns an unused port atomically. The first
-HTTP adapter uses URL-based request-routed scenarios only. `baseUrl` routes to
-`default`; `scenarioUrl(...)` adds an internal query parameter and the adapter
-removes that parameter before invoking the handler.
+host, port, and the exposed `baseUrl`. The adapter receives an explicit local
+address request such as `{ kind: 'loopback', port: 0 }`; with port `0`, the
+operating system assigns an unused port atomically. The first HTTP adapter uses
+URL-based request-routed scenarios only. `baseUrl` routes to `default`;
+`scenarioUrl(...)` adds an internal query parameter and the adapter removes
+that parameter before invoking the handler.
 
 ## Scenario Timing
 
@@ -265,7 +266,10 @@ const apiSimulation = defineSimulatedHttpServer({
     }
 });
 
-const apiServer = createSimulatedHttpServerResource({ simulation: apiSimulation });
+const apiServer = createSimulatedHttpServerResource({
+    simulation: apiSimulation,
+    address: { kind: 'loopback', port: 0 }
+});
 
 const apiRuntime = defineRuntime({
     name: 'api',

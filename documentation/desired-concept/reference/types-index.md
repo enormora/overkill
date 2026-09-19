@@ -1995,9 +1995,21 @@ declare function defineSimulatedHttpServer<const Scenario extends string>(
     definition: SimulatedHttpServerDefinition<Scenario>
 ): SimulatedHttpServerDefinition<Scenario>;
 
+type LocalServiceAddressRequest =
+    | { readonly kind: 'loopback'; readonly port: number; }
+    | { readonly host: string; readonly kind: 'host'; readonly port: number; };
+
+type SimulatedHttpServerResourceHandle<Scenario extends string> = {
+    readonly baseUrl: string;
+    readonly scenarioUrl: (scenario: Scenario, path: string) => string;
+};
+
 declare function createSimulatedHttpServerResource<const Scenario extends string>(
-    options: { readonly simulation: SimulatedHttpServerDefinition<Scenario>; }
-): ResourceDefinition<SimulatedHttpServerHandle<Scenario>>;
+    options: {
+        readonly address: LocalServiceAddressRequest;
+        readonly simulation: SimulatedHttpServerDefinition<Scenario>;
+    }
+): ResourceDefinition<SimulatedHttpServerResourceHandle<Scenario>>;
 ```
 
 Resource sessions acquire dependency branches when prerequisites are ready,

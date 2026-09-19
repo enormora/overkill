@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'tstyche';
-import type { SimulatedHttpServerHandle } from '../simulation/http.entry-point.ts';
 import { defineSimulatedHttpServer } from '../simulation/simulation.entry-point.ts';
 import {
     type assertPerCaseResourceGraph,
     composeRuntimeContext,
     composeRuntimes,
+    createLocalHttpServiceResource,
+    createLocalProcessServiceResource,
     createSimulatedHttpServerResource,
     createTemporaryDirectoryResource,
     defineLocalServiceResource,
@@ -29,6 +30,7 @@ import {
     type RuntimeId,
     type RuntimeScopeContext,
     type RuntimeSession,
+    type SimulatedHttpServerResourceHandle,
     type TemporaryDirectoryHandle
 } from './resources.entry-point.ts';
 
@@ -162,16 +164,66 @@ const simulatedApi = defineSimulatedHttpServer({
         return Response.json({ status: scenario.descriptor.status });
     }
 });
-const simulatedApiResource = createSimulatedHttpServerResource({ simulation: simulatedApi });
+const simulatedApiResource = createSimulatedHttpServerResource({
+    simulation: simulatedApi,
+    address: { kind: 'loopback', port: 0 }
+});
 const localService = defineLocalServiceResource({
     name: 'local-service',
     scope: 'per-case',
     requirements: [],
+    dependencies: {},
+    address: { kind: 'loopback', port: 0 },
     start(context) {
-        return Object.freeze({ url: `http://${context.address.host}:${context.address.port}` });
+        return Object.freeze({ host: context.address.host, port: context.address.port });
+    },
+    ready(owner) {
+        return Object.freeze({ url: `http://${owner.host}:${owner.port}` });
     },
     dispose() {
         return undefined;
+    }
+});
+const localHttpService = createLocalHttpServiceResource({
+    name: 'http-service',
+    scope: 'per-case',
+    requirements: [],
+    dependencies: {},
+    address: { kind: 'loopback', port: 0 },
+    createServer() {
+        throw new Error('type only');
+    },
+    handle(handle) {
+        return handle;
+    },
+    dispose() {
+        return undefined;
+    }
+});
+const localProcessService = createLocalProcessServiceResource({
+    name: 'process-service',
+    scope: 'per-case',
+    requirements: [],
+    dependencies: {},
+    address: { kind: 'loopback', port: 0 },
+    outputBufferBytes: 1024,
+    shutdown: {
+        gracefulSignal: 'SIGTERM',
+        forceSignal: 'SIGKILL',
+        graceMilliseconds: 100
+    },
+    command() {
+        return {
+            command: 'node',
+            arguments: [],
+            environment: {},
+            workingDirectory: null
+        };
+    },
+    ready(owner) {
+        return Object.freeze({
+            output: owner.output.stdout.text()
+        });
     }
 });
 
@@ -263,9 +315,16 @@ describe('@overkill-dev/resources', function () {
 
     test('infers local-service and simulated HTTP resource handles', function () {
         expect<ResourceHandle<typeof localService>>().type.toBe<{ readonly url: `http://${string}:${number}`; }>();
+        expect<ResourceHandle<typeof localHttpService>>().type.toBe<{
+            readonly baseUrl: string;
+            readonly endpoint: { readonly host: string; readonly port: number; };
+        }>();
+        expect<ResourceHandle<typeof localProcessService>>().type.toBe<{ readonly output: string; }>();
         expect(localService.name).type.toBe<'local-service'>();
+        expect(localHttpService.name).type.toBe<'http-service'>();
+        expect(localProcessService.name).type.toBe<'process-service'>();
         expect<ResourceHandle<typeof simulatedApiResource>>().type.toBe<
-            SimulatedHttpServerHandle<typeof simulatedApi>
+            SimulatedHttpServerResourceHandle<typeof simulatedApi>
         >();
         expect<ResourceHandle<typeof simulatedApiResource>['scenarioUrl']>().type.toBe<
             (scenario: 'default' | 'outage', path: string) => string

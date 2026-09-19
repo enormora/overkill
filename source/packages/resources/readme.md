@@ -11,6 +11,7 @@ callback.
 import {
     composeRuntimeContext,
     composeRuntimes,
+    createLocalHttpServiceResource,
     createTemporaryDirectoryResource,
     defineResource,
     defineRuntime,
@@ -48,6 +49,23 @@ const server = defineResource({
     }
 });
 
+const app = createLocalHttpServiceResource({
+    name: 'app',
+    scope: 'per-case',
+    requirements: [],
+    dependencies: { database },
+    address: { kind: 'loopback', port: 0 },
+    createServer(context) {
+        return createAppServer({ database: context.dependencies.database });
+    },
+    handle(service) {
+        return { baseUrl: service.baseUrl };
+    },
+    dispose() {
+        return undefined;
+    }
+});
+
 const scratch = createTemporaryDirectoryResource('scratch');
 const sharedDatabase = defineResource({
     name: 'shared-database',
@@ -71,7 +89,7 @@ const sharedDatabase = defineResource({
 const runtime = defineRuntime({
     name: 'api',
     dimensions: {},
-    resources: { database, server, scratch },
+    resources: { app, database, server, scratch },
     requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ]
 });
 
@@ -104,17 +122,27 @@ Omitting `dependencies` is accepted for compatibility and produces
 whose handle is `{ readonly path: string }`. Each acquisition creates a unique
 directory with an Overkill prefix. Disposal removes that directory recursively.
 
-`defineLocalServiceResource(...)` wraps `defineResource(...)` for owned local
-services. Callers declare scope, requirements, startup, and disposal. Startup
-receives an address request with default `host: '127.0.0.1'` and `port: 0`.
-Credentials, connection strings, and protocol-specific data stay in the typed
-service handle. Projected scopes use the same serialize and deserialize rules
-as ordinary resources.
+`defineLocalServiceResource(...)` models owned local services with explicit
+`start`, `ready`, and `dispose` phases. Callers declare scope, requirements,
+dependencies, and an explicit address request such as
+`{ kind: 'loopback', port: 0 }`. `start` owns the service internals, `ready`
+returns the object handle exposed to tests, and `dispose` receives only the
+owner state. If readiness fails, the owner is disposed before acquisition
+fails. Projected scopes use the same serialize and deserialize rules as
+ordinary resources.
 
-`createSimulatedHttpServerResource({ simulation })` starts a simulated HTTP
-server from `@overkill-dev/simulation` as a per-case resource. The acquired
-handle exposes `baseUrl` for the `default` scenario and `scenarioUrl(...)` for
-URL-selected scenarios.
+`createLocalHttpServiceResource(...)` owns HTTP `listen` and `close`, exposes
+the actual loopback endpoint and `baseUrl`, and lets callers map that into a
+typed object handle. `createLocalProcessServiceResource(...)` starts a child
+process, drains bounded stdout/stderr lifecycle buffers, waits for explicit
+readiness, and terminates then force-kills during disposal according to the
+declared shutdown contract. Output buffers are lifecycle diagnostics, not
+artifacts.
+
+`createSimulatedHttpServerResource({ simulation, address })` starts a simulated
+HTTP server from `@overkill-dev/simulation` as a per-case resource. The
+acquired handle exposes `baseUrl` for the `default` scenario and
+`scenarioUrl(...)` for URL-selected scenarios.
 
 `startRuntime(...)` acquires dependencies before dependents, shares one handle
 per descriptor inside the session, and disposes acquired resources once in

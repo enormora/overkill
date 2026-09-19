@@ -3,7 +3,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createResourcesModule, type ResourcesModule } from '../../resources/resources.ts';
 
-export { defineLocalServiceResource } from '../../resources/local-service-resource.ts';
+export {
+    defineLocalServiceResource
+} from '../../resources/local-service-resource.ts';
+export {
+    createLocalHttpServiceResource
+} from '../../resources/local-http-service-resource.ts';
+export {
+    createLocalProcessServiceResource
+} from '../../resources/local-process-service-resource.ts';
 
 const resourcesModule = createResourcesModule({
     temporaryDirectoryPathPrefix: join(tmpdir(), 'overkill-temporary-directory-'),
@@ -80,11 +88,31 @@ export type {
 } from '../../resources/resources.ts';
 export type {
     LocalServiceAddress,
+    LocalServiceAddressRequest,
     LocalServiceCreationContext,
-    LocalServiceResourceDefinitionInput
+    LocalServiceDisposalContext,
+    LocalServiceHostAddressRequest,
+    LocalServiceLoopbackAddressRequest,
+    LocalServiceResourceDefinitionInput,
+    LocalOnlyLocalServiceResourceDefinitionInput,
+    ProjectedLocalServiceResourceDefinitionInput
 } from '../../resources/local-service-resource.ts';
 export type {
+    LocalHttpServiceHandle,
+    LocalHttpServiceResourceInput
+} from '../../resources/local-http-service-resource.ts';
+export type {
+    LocalProcessCommand,
+    LocalProcessOutput,
+    LocalProcessOutputBuffer,
+    LocalProcessOwner,
+    LocalProcessServiceResourceInput,
+    LocalProcessShutdown,
+    LocalProcessSignal
+} from '../../resources/local-process-service-resource.ts';
+export type {
     SimulatedHttpServerResource,
+    SimulatedHttpServerResourceHandle,
     SimulatedHttpServerResourceOptions
 } from '../../resources/simulated-http-server-resource.ts';
 export type {
