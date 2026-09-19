@@ -319,5 +319,9 @@ export function formatFailure(failure: TestFailure, context: ReportingContext): 
         return formatTimeoutFailure(failure);
     }
 
+    if (failure.kind === 'hedged-duplicate-conflict') {
+        return [ failure.summary ];
+    }
+
     return formatTestContractFailure(failure);
 }

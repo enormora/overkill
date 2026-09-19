@@ -1,7 +1,9 @@
 const captureModeValues = [ 'buffered', 'live' ] as const;
+const duplicateExecutionControlValues = [ 'forbidden', 'idempotent' ] as const;
 
 export type TestFamily = 'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test';
 export type CaptureMode = typeof captureModeValues[number];
+export type DuplicateExecutionControl = typeof duplicateExecutionControlValues[number];
 
 export type TestAnnotationsInput = {
     readonly ownership?: readonly string[];
@@ -15,17 +17,20 @@ export type TestAnnotations = {
 
 export type TestControlsInput = {
     readonly capture?: CaptureMode;
+    readonly duplicateExecution?: DuplicateExecutionControl;
     readonly timeoutMilliseconds?: number;
 };
 
 export type TestControls = {
     readonly capture: CaptureMode | null;
+    readonly duplicateExecution: DuplicateExecutionControl | null;
     readonly timeoutMilliseconds: number | null;
 };
 
 const annotationFields: ReadonlySet<string> = new Set([ 'ownership', 'tags' ]);
-const controlFields: ReadonlySet<string> = new Set([ 'capture', 'timeoutMilliseconds' ]);
+const controlFields: ReadonlySet<string> = new Set([ 'capture', 'duplicateExecution', 'timeoutMilliseconds' ]);
 const captureModes: ReadonlySet<string> = new Set(captureModeValues);
+const duplicateExecutionControls: ReadonlySet<string> = new Set(duplicateExecutionControlValues);
 
 const defaultTestAnnotations: TestAnnotations = {
     ownership: [],
@@ -34,6 +39,7 @@ const defaultTestAnnotations: TestAnnotations = {
 
 const defaultTestControls: TestControls = {
     capture: null,
+    duplicateExecution: null,
     timeoutMilliseconds: null
 };
 
@@ -60,6 +66,12 @@ function assertStringArray(value: unknown, field: keyof TestAnnotations): assert
 function assertCaptureMode(value: unknown): asserts value is CaptureMode {
     if (typeof value !== 'string' || !captureModes.has(value)) {
         throw new TypeError('Control field "capture" contains an unknown value.');
+    }
+}
+
+function assertDuplicateExecutionControl(value: unknown): asserts value is DuplicateExecutionControl {
+    if (typeof value !== 'string' || !duplicateExecutionControls.has(value)) {
+        throw new TypeError('Control field "duplicateExecution" contains an unknown value.');
     }
 }
 
@@ -108,6 +120,10 @@ function ensureTestControlsInput(value: unknown): asserts value is TestControlsI
         assertCaptureMode(value.capture);
     }
 
+    if (Object.hasOwn(value, 'duplicateExecution')) {
+        assertDuplicateExecutionControl(value.duplicateExecution);
+    }
+
     if (Object.hasOwn(value, 'timeoutMilliseconds')) {
         assertTimeoutMilliseconds(value.timeoutMilliseconds);
     }
@@ -145,6 +161,7 @@ export function normalizeTestControls(input: TestControlsInput): TestControls {
 
     return {
         capture: controlField(input, 'capture') ?? null,
+        duplicateExecution: controlField(input, 'duplicateExecution') ?? null,
         timeoutMilliseconds: controlField(input, 'timeoutMilliseconds') ?? null
     };
 }
@@ -170,6 +187,7 @@ export function resolveTestControls(parent: TestControls, child: TestControlsInp
 
     return {
         capture: controls.capture ?? parent.capture,
+        duplicateExecution: controls.duplicateExecution ?? parent.duplicateExecution,
         timeoutMilliseconds: controls.timeoutMilliseconds ?? parent.timeoutMilliseconds
     };
 }

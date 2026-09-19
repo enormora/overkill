@@ -17,6 +17,11 @@ export type PlacementTraceEntry = {
     readonly kind: 'worker-crashed';
     readonly workerId: string;
 } | {
+    readonly authoritativeWorkerId: string;
+    readonly conflictingWorkerId: string;
+    readonly kind: 'hedged-duplicate-conflict';
+    readonly unit: TraceWorkUnitId;
+} | {
     readonly children: NonEmptyReadonlyArray<DynamicWorkUnitId>;
     readonly kind: 'unit-split';
     readonly parent: WorkUnitId;

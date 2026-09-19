@@ -1,3 +1,6 @@
+import type { PlacementLane, WorkUnit } from './run-types.ts';
+import type { TraceWorkUnitId } from './placement-trace.ts';
+
 export type WorkUnitQueue<T> = {
     readonly all: () => readonly T[];
     readonly clear: () => void;
@@ -16,6 +19,33 @@ export type LeaseCounter = {
 export type ChangeWaiters = {
     readonly notify: () => void;
     readonly wait: () => Promise<void>;
+};
+
+export type LeaseReservation = {
+    readonly faultDomains: readonly string[];
+    readonly hardKeys: readonly string[];
+};
+
+export type WorkerPoolUnitLease = {
+    readonly kind: 'hedged-duplicate' | 'primary';
+    readonly lane: PlacementLane;
+    readonly reservation: LeaseReservation;
+    readonly traceUnit: TraceWorkUnitId;
+    readonly unit: WorkUnit;
+};
+
+type WorkerPoolRequeuedUnit = {
+    readonly traceUnit: TraceWorkUnitId;
+    readonly unit: WorkUnit;
+};
+
+export type WorkerPoolWorkDispatcher = {
+    readonly blocked: (lane: PlacementLane) => boolean;
+    readonly clear: () => void;
+    readonly finish: (lease: WorkerPoolUnitLease, keepReservation: boolean) => void;
+    readonly pull: (lane: PlacementLane) => WorkerPoolUnitLease | null;
+    readonly requeue: (unit: WorkerPoolRequeuedUnit) => void;
+    readonly waitForChange: () => Promise<void>;
 };
 
 export function createWorkUnitQueue<T>(initialUnits: readonly T[]): WorkUnitQueue<T> {

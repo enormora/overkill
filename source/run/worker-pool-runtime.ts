@@ -1,4 +1,5 @@
 import type {
+    ReporterEvent,
     ResourceUsageSnapshot,
     RunResourceUsage,
     RunResult,
@@ -63,9 +64,20 @@ type WorkerPoolStartedCaseSet = {
     readonly size: number;
 };
 
+type WorkerPoolReporterEventBuffer = {
+    readonly [Symbol.iterator]: () => IterableIterator<ReporterEvent>;
+    readonly clear: () => void;
+    readonly push: (...events: readonly ReporterEvent[]) => number;
+};
+
 export type WorkerPoolTaskRun = {
+    readonly bufferedReporterEvents: WorkerPoolReporterEventBuffer;
     readonly controller: AbortController;
     readonly endedByParent: StoredRunValue<boolean>;
+    readonly includeArtifacts: StoredRunValue<boolean>;
+    readonly leaseKind: 'hedged-duplicate' | 'primary';
+    readonly lane: string;
+    readonly reporterEventsBuffered: boolean;
     readonly requeuePendingCases: StoredRunValue<boolean>;
     readonly state: SupervisedRunState;
     readonly startedCases: WorkerPoolStartedCaseSet;

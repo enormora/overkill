@@ -1,4 +1,8 @@
-import { workIdentityKey } from '../engine/identity.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import {
+    createStoredRunValue,
+    type StoredRunValue
+} from './supervised-run-state.ts';
 import type {
     PlacementLane,
     PlacementPlan,
@@ -11,7 +15,10 @@ import {
     createLeaseCounter,
     createWorkUnitQueue,
     type ChangeWaiters,
+    type LeaseReservation,
     type LeaseCounter,
+    type WorkerPoolUnitLease,
+    type WorkerPoolWorkDispatcher,
     type WorkUnitQueue
 } from './worker-pool-dispatch-state.ts';
 import {
@@ -24,34 +31,16 @@ import {
     type QueuedWorkUnit,
     type SplitEligibility
 } from './worker-pool-pending-splitting.ts';
-
-export type WorkerPoolUnitLease = {
-    readonly lane: PlacementLane;
-    readonly reservation: LeaseReservation;
-    readonly traceUnit: TraceWorkUnitId;
-    readonly unit: WorkUnit;
-};
-
-type WorkerPoolRequeuedUnit = {
-    readonly traceUnit: TraceWorkUnitId;
-    readonly unit: WorkUnit;
-};
-
-export type WorkerPoolWorkDispatcher = {
-    readonly blocked: (lane: PlacementLane) => boolean;
-    readonly clear: () => void;
-    readonly finish: (lease: WorkerPoolUnitLease, keepReservation: boolean) => void;
-    readonly pull: (lane: PlacementLane) => WorkerPoolUnitLease | null;
-    readonly requeue: (unit: WorkerPoolRequeuedUnit) => void;
-    readonly waitForChange: () => Promise<void>;
-};
-
-type LeaseReservation = {
-    readonly faultDomains: readonly string[];
-    readonly hardKeys: readonly string[];
-};
-
-type UnitLoad = (unit: WorkUnit) => number;
+import { runtimeUnitLoad, type UnitLoad } from './worker-pool-work-load.ts';
+import {
+    hedgeWakeDelay,
+    laneHasPotentialHedge,
+    selectHedgeCandidate,
+    type HedgeActiveUnitLease,
+    type HedgeDispatchState,
+    unitHedgeWorkKey
+} from './worker-pool-hedge-dispatch.ts';
+import { createStaticDispatcher } from './worker-pool-static-dispatcher.ts';
 
 type DynamicReservations = {
     readonly bindHardLane: (key: string, lane: PlacementLane) => void;
@@ -70,8 +59,13 @@ type FaultQuotaLedger = {
     readonly record: (unit: WorkUnit, laneId: string) => void;
 };
 
-type DynamicDispatchState = {
+type DynamicDispatchState = HedgeDispatchState & {
     readonly activeLeases: LeaseCounter;
+    readonly activeUnits: ActiveUnitLeases;
+    readonly duplicateWork: DuplicateWorkLedger;
+    readonly hedgeWakeTimeout: StoredRunValue<
+        ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null
+    >;
     readonly lanes: readonly PlacementLane[];
     readonly lifecycleByLane: ReadonlyMap<string, WorkUnit['workerLifecycle']>;
     readonly pendingUnits: WorkUnitQueue<QueuedWorkUnit>;
@@ -81,15 +75,19 @@ type DynamicDispatchState = {
     readonly unitLoad: UnitLoad;
     readonly waiters: ChangeWaiters;
 };
+type HedgeWakeTimeout = DynamicDispatchState['hedgeWakeTimeout'] extends StoredRunValue<infer Value> ? Value : never;
 
-const medianDivisor = 2;
-function workUnitIdKey(unit: WorkUnit['id']): string {
-    return JSON.stringify(unit);
-}
-
-function unitKey(unit: WorkUnit): string {
-    return workUnitIdKey(unit.id);
-}
+type ActiveUnitLease = HedgeActiveUnitLease;
+type ActiveUnitLeases = {
+    readonly delete: (key: string) => boolean;
+    readonly set: (key: string, value: ActiveUnitLease) => unknown;
+    readonly values: () => IterableIterator<ActiveUnitLease>;
+};
+type DuplicateWorkLedger = {
+    readonly add: (key: string) => unknown;
+    readonly delete: (key: string) => boolean;
+    readonly has: (key: string) => boolean;
+};
 
 function unitByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
     return new Map(units.map(function toEntry(unit) {
@@ -122,18 +120,6 @@ function knownUnit(units: ReadonlyMap<string, WorkUnit>, unitId: WorkUnit['id'])
     }
 
     return unit;
-}
-
-function unitsAssignedToLane(plan: PlacementPlan, lane: PlacementLane): readonly WorkUnit[] {
-    const units = unitByKey(plan.units);
-
-    return plan.assignments.flatMap(function toUnit(assignment) {
-        if (assignment.lane !== lane.id) {
-            return [];
-        }
-
-        return [ knownUnit(units, assignment.unit) ];
-    });
 }
 
 function createDynamicReservations(): DynamicReservations {
@@ -183,103 +169,6 @@ function createDynamicReservations(): DynamicReservations {
             retainedLaneByTraceUnit.set(traceUnitKey(traceUnit), lane.id);
         }
     };
-}
-
-function createStaticDispatcher(plan: PlacementPlan): WorkerPoolWorkDispatcher {
-    const queues = new Map(plan.lanes.map(function toLaneQueue(lane) {
-        return [ lane.id, createWorkUnitQueue(unitsAssignedToLane(plan, lane)) ];
-    }));
-    const assignedLaneByUnit = new Map(plan.assignments.map(function toAssignmentEntry(assignment) {
-        return [ JSON.stringify(assignment.unit), assignment.lane ];
-    }));
-
-    return {
-        blocked() {
-            return false;
-        },
-        clear() {
-            for (const queue of queues.values()) {
-                queue.clear();
-            }
-        },
-        finish() {
-            return undefined;
-        },
-        pull(lane) {
-            const unit = queues.get(lane.id)?.takeFirst() ?? null;
-
-            return unit === null
-                ? null
-                : { lane, reservation: { faultDomains: [], hardKeys: [] }, traceUnit: unit.id, unit };
-        },
-        requeue(requeuedUnit) {
-            const lane = assignedLaneByUnit.get(unitKey(requeuedUnit.unit));
-
-            if (lane === undefined) {
-                throw new Error('Static worker-pool dispatch cannot requeue an unassigned work unit.');
-            }
-
-            queues.get(lane)?.push(requeuedUnit.unit);
-        },
-        async waitForChange() {
-            return undefined;
-        }
-    };
-}
-
-function median(values: readonly number[]): number {
-    const sorted = values.toSorted(function compareNumber(left, right) {
-        return left - right;
-    });
-    const middle = Math.floor(sorted.length / medianDivisor);
-    const value = sorted[middle];
-
-    if (value === undefined) {
-        return 0;
-    }
-
-    return sorted.length % medianDivisor === 1
-        ? value
-        : ((sorted[middle - 1] ?? value) + value) / medianDivisor;
-}
-
-function caseCountLoad(unit: WorkUnit): number {
-    return unit.work.length + unit.resourceConstraints.capacityWeight - 1;
-}
-
-function durationHistoryUnitLoad(
-    samples: NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['durationHistory']>['samples']
-): UnitLoad {
-    const fallbackDuration = median(samples.map(function toDuration(sample) {
-        return sample.durationMilliseconds;
-    }));
-    const durationByWorkKey = new Map(samples.map(function toEntry(sample) {
-        return [ workIdentityKey(sample.work), sample.durationMilliseconds ];
-    }));
-
-    return function unitDuration(unit) {
-        return unit.work.reduce(function sumDuration(total, work) {
-            return total + (durationByWorkKey.get(workIdentityKey(work)) ?? fallbackDuration);
-        }, 0) * unit.resourceConstraints.capacityWeight;
-    };
-}
-
-function durationHistoryLoad(runtime: WorkerPoolRunRuntime): UnitLoad | null {
-    const { durationHistory, execution } = runtime.resolvedRun.facts;
-
-    if (execution.processModel !== 'worker-pool' || execution.assignmentPolicy !== 'duration-history-balanced') {
-        return null;
-    }
-
-    if (durationHistory === null || durationHistory.samples.length === 0) {
-        return null;
-    }
-
-    return durationHistoryUnitLoad(durationHistory.samples);
-}
-
-function runtimeUnitLoad(runtime: WorkerPoolRunRuntime): UnitLoad {
-    return durationHistoryLoad(runtime) ?? caseCountLoad;
 }
 
 function laneLifecycles(plan: PlacementPlan): ReadonlyMap<string, WorkUnit['workerLifecycle']> {
@@ -345,14 +234,19 @@ function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: Placeme
 
     return {
         activeLeases: createLeaseCounter(),
+        activeUnits: new Map(),
+        duplicateWork: new Set(),
+        hedgeWakeTimeout: createStoredRunValue<HedgeWakeTimeout>(null),
         lanes: plan.lanes,
         lifecycleByLane: laneLifecycles(plan),
         pendingUnits: createWorkUnitQueue(pendingUnits),
         quotas: faultQuotas(plan),
         reservations: createDynamicReservations(),
         runtime,
+        resolvedRun: runtime.resolvedRun,
         unitLoad: runtimeUnitLoad(runtime),
-        waiters: createChangeWaiters()
+        waiters: createChangeWaiters(),
+        wallClock: runtime.dependencies.wallClock
     };
 }
 
@@ -444,10 +338,61 @@ function release(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void 
     }
 }
 
-function blocked(state: DynamicDispatchState, lane: PlacementLane): boolean {
-    return state.activeLeases.active() > 0 && state.pendingUnits.all().some(function hasBlockedUnit(item) {
-        return laneMatchesRetainedReservation(state, item, lane) && laneMatchesLifecycle(state, item, lane);
+function activeLeaseKey(lease: WorkerPoolUnitLease): string {
+    return JSON.stringify([ lease.kind, traceUnitKey(lease.traceUnit), lease.lane.id ]);
+}
+
+function recordActiveLease(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void {
+    state.activeLeases.increment();
+    state.activeUnits.set(activeLeaseKey(lease), {
+        lane: lease.lane,
+        lease,
+        startedAtMilliseconds: state.runtime.dependencies.wallClock.currentTimestampInMilliseconds
     });
+
+    if (lease.kind === 'hedged-duplicate') {
+        state.duplicateWork.add(unitHedgeWorkKey(lease.unit));
+    }
+}
+
+function clearHedgeWakeTimeout(state: DynamicDispatchState): void {
+    const timeout = state.hedgeWakeTimeout.read();
+
+    if (timeout !== null) {
+        state.runtime.dependencies.wallClock.clearTimeout(timeout);
+        state.hedgeWakeTimeout.write(null);
+    }
+}
+
+function scheduleHedgeWake(state: DynamicDispatchState, lane: PlacementLane): void {
+    if (state.hedgeWakeTimeout.read() !== null) {
+        return;
+    }
+
+    const delay = hedgeWakeDelay(state, lane);
+
+    if (delay !== null) {
+        const timeout = state.runtime.dependencies.wallClock.setTimeout(function notifyHedgeWaiter() {
+            state.hedgeWakeTimeout.write(null);
+            state.waiters.notify();
+        }, delay);
+
+        state.hedgeWakeTimeout.write(timeout);
+    }
+}
+
+function hasPotentialHedge(state: DynamicDispatchState, lane: PlacementLane): boolean {
+    scheduleHedgeWake(state, lane);
+
+    return laneHasPotentialHedge(state, lane);
+}
+
+function blocked(state: DynamicDispatchState, lane: PlacementLane): boolean {
+    return state.activeLeases.active() > 0 && (
+        state.pendingUnits.all().some(function hasBlockedUnit(item) {
+            return laneMatchesRetainedReservation(state, item, lane) && laneMatchesLifecycle(state, item, lane);
+        }) || hasPotentialHedge(state, lane)
+    );
 }
 
 function compatibleLaneCount(state: DynamicDispatchState, item: QueuedWorkUnit): number {
@@ -488,14 +433,40 @@ function selectPendingUnit(state: DynamicDispatchState, lane: PlacementLane): Qu
 
 function leasePendingUnit(state: DynamicDispatchState, lane: PlacementLane, item: QueuedWorkUnit): WorkerPoolUnitLease {
     state.pendingUnits.remove(item);
-    state.activeLeases.increment();
-
-    return {
+    const lease: WorkerPoolUnitLease = {
+        kind: 'primary',
         lane,
         reservation: reserve(state, item, lane),
         traceUnit: item.traceUnit,
         unit: item.unit
     };
+
+    recordActiveLease(state, lease);
+
+    return lease;
+}
+
+function leaseHedgedDuplicate(
+    state: DynamicDispatchState,
+    lane: PlacementLane,
+    active: ActiveUnitLease
+): WorkerPoolUnitLease {
+    const lease: WorkerPoolUnitLease = {
+        kind: 'hedged-duplicate',
+        lane,
+        reservation: freshReservation(state, active.lease.unit, lane),
+        traceUnit: active.lease.traceUnit,
+        unit: active.lease.unit
+    };
+
+    recordActiveLease(state, lease);
+    state.runtime.recordPlacementTraceEntry({
+        kind: 'hedged-duplicate-started',
+        unit: lease.traceUnit,
+        workerId: lane.id
+    });
+
+    return lease;
 }
 
 function pull(state: DynamicDispatchState, lane: PlacementLane): WorkerPoolUnitLease | null {
@@ -506,7 +477,13 @@ function pull(state: DynamicDispatchState, lane: PlacementLane): WorkerPoolUnitL
         item = selectPendingUnit(state, lane);
     }
 
-    return item === undefined ? null : leasePendingUnit(state, lane, item);
+    if (item !== undefined) {
+        return leasePendingUnit(state, lane, item);
+    }
+
+    const hedgeCandidate = selectHedgeCandidate(state, lane);
+
+    return hedgeCandidate === null ? null : leaseHedgedDuplicate(state, lane, hedgeCandidate);
 }
 
 function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): WorkerPoolWorkDispatcher {
@@ -517,11 +494,17 @@ function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementP
             return blocked(state, lane);
         },
         clear() {
+            clearHedgeWakeTimeout(state);
             state.pendingUnits.clear();
             state.waiters.notify();
         },
         finish(lease, keepReservation) {
             state.activeLeases.decrement();
+            state.activeUnits.delete(activeLeaseKey(lease));
+
+            if (lease.kind === 'hedged-duplicate') {
+                state.duplicateWork.delete(unitHedgeWorkKey(lease.unit));
+            }
 
             if (keepReservation) {
                 state.reservations.retainUnit(lease.traceUnit, lease.lane);

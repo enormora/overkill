@@ -2,6 +2,7 @@ import type {
     CaptureMode,
     DefinedOutputRenderer,
     DefinedReporter,
+    DuplicateExecutionControl,
     TestAnnotationsInput,
     TestControlsInput,
     TestNode,
@@ -25,6 +26,7 @@ export type AuthoringAnnotations = {
 
 export type AuthoringControls = {
     readonly capture?: CaptureMode;
+    readonly duplicateExecution?: DuplicateExecutionControl;
     readonly timeoutMilliseconds?: number;
 };
 
@@ -184,6 +186,14 @@ function readCapture(value: unknown): CaptureMode {
     return value;
 }
 
+function readDuplicateExecution(value: unknown): DuplicateExecutionControl {
+    if (value !== 'forbidden' && value !== 'idempotent') {
+        throw new TypeError('Control field "duplicateExecution" contains an unknown value.');
+    }
+
+    return value;
+}
+
 function readTimeoutMilliseconds(value: unknown): number {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
         throw new TypeError('Control field "timeoutMilliseconds" must be a finite number.');
@@ -242,6 +252,9 @@ export function readAuthoringControls(value: unknown): TestControlsInput {
 
     return {
         ...Object.hasOwn(controls, 'capture') ? { capture: readCapture(controls.capture) } : {},
+        ...Object.hasOwn(controls, 'duplicateExecution')
+            ? { duplicateExecution: readDuplicateExecution(controls.duplicateExecution) }
+            : {},
         ...Object.hasOwn(controls, 'timeoutMilliseconds')
             ? { timeoutMilliseconds: readTimeoutMilliseconds(controls.timeoutMilliseconds) }
             : {}
@@ -277,6 +290,13 @@ function mergedCapture(
     return dataField(nodeControls, 'capture') ?? dataField(facadeControls, 'capture');
 }
 
+function mergedDuplicateExecution(
+    facadeControls: TestControlsInput,
+    nodeControls: TestControlsInput
+): TestControlsInput['duplicateExecution'] | undefined {
+    return dataField(nodeControls, 'duplicateExecution') ?? dataField(facadeControls, 'duplicateExecution');
+}
+
 function mergedTimeoutMilliseconds(
     facadeControls: TestControlsInput,
     nodeControls: TestControlsInput
@@ -302,10 +322,12 @@ export function createAuthoringControls(
     nodeControls: TestControlsInput
 ): TestControlsInput {
     const capture = mergedCapture(facadeControls, nodeControls);
+    const duplicateExecution = mergedDuplicateExecution(facadeControls, nodeControls);
     const timeoutMilliseconds = mergedTimeoutMilliseconds(facadeControls, nodeControls);
 
     return {
         ...capture === undefined ? {} : { capture },
+        ...duplicateExecution === undefined ? {} : { duplicateExecution },
         ...timeoutMilliseconds === undefined ? {} : { timeoutMilliseconds }
     };
 }

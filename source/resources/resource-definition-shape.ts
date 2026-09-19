@@ -20,8 +20,12 @@ type FaultDomain = {
     readonly key: string;
     readonly kind: 'fault-domain';
 };
+type DuplicateExecution = {
+    readonly kind: 'duplicate-execution';
+    readonly safety: 'disposable-isolated' | 'idempotent';
+};
 
-type PlacementRequirement = AffinityKey | CapacityWeight | ExclusiveResource | FaultDomain;
+type PlacementRequirement = AffinityKey | CapacityWeight | DuplicateExecution | ExclusiveResource | FaultDomain;
 type SchedulingRequirement = SerialExecution | SingleWorkerExecution | StartupBudget;
 
 export type ExecutionRequirement = PlacementRequirement | SchedulingRequirement;

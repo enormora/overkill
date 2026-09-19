@@ -40,6 +40,7 @@ const policyAnnotations: PolicyTestCase['annotations'] = {
 };
 const policyControls: PolicyTestCase['controls'] = {
     capture: null,
+    duplicateExecution: null,
     timeoutMilliseconds: null
 };
 const policyTestCase: PolicyTestCase = {

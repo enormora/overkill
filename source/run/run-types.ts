@@ -146,6 +146,13 @@ export type RunScheduling = 'concurrent' | 'serial';
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 export type RunWorkerPoolAssignmentPolicy = 'case-count-balanced' | 'duration-history-balanced' | 'stable';
 export type RunWorkerPoolDispatchPolicy = 'dynamic-lease' | 'static-assignment';
+export type RunWorkerPoolHedgingPolicy = {
+    readonly durationMultiplier: number;
+    readonly minimumDelayMilliseconds: number;
+    readonly mode: 'on';
+} | {
+    readonly mode: 'off';
+};
 export type RunWorkGroupGranularity = 'case' | 'file' | 'group';
 export type RunWorkGroupOrder = RunOrder | 'profile-default';
 export type RunWorkGroupScheduling = RunScheduling | 'profile-default';
@@ -201,14 +208,18 @@ export type WorkUnitId = {
 export type WorkUnitResourceConstraints = {
     readonly affinityKeys: readonly string[];
     readonly capacityWeight: number;
+    readonly duplicateExecution: readonly DuplicateExecutionSafety[];
     readonly faultDomains: readonly string[];
     readonly serialKeys: readonly string[];
     readonly singleWorkerKeys: readonly string[];
 };
 
+export type DuplicateExecutionSafety = 'disposable-isolated' | 'idempotent';
+
 export const emptyWorkUnitResourceConstraints: WorkUnitResourceConstraints = Object.freeze({
     affinityKeys: Object.freeze([]),
     capacityWeight: 1,
+    duplicateExecution: Object.freeze([]),
     faultDomains: Object.freeze([]),
     serialKeys: Object.freeze([]),
     singleWorkerKeys: Object.freeze([])
@@ -260,6 +271,7 @@ type RunSupervisedIntegrationExecution = {
 type RunWorkerPoolExecution = {
     readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly dispatchPolicy: RunWorkerPoolDispatchPolicy;
+    readonly hedging: RunWorkerPoolHedgingPolicy;
     readonly hostProcess: RunHostProcess;
     readonly processModel: 'worker-pool';
     readonly scheduling: RunScheduling;
@@ -422,6 +434,7 @@ type RunExecutionBaseFacts = {
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
     readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly dispatchPolicy: RunWorkerPoolDispatchPolicy;
+    readonly hedging: RunWorkerPoolHedgingPolicy;
     readonly hostProcess: RunHostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workDistribution: RunWorkDistribution;

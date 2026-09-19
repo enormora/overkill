@@ -149,6 +149,10 @@ function logOrphans(
 }
 
 function outputArtifactLines(artifact: RunArtifact): readonly string[] {
+    if (artifact.payload.kind !== 'captured-output') {
+        return [];
+    }
+
     const suffix = artifact.payload.truncated ? ' truncated' : '';
     const header = `${artifact.payload.stream}${suffix}:`;
     const textLines = artifact.payload.text.length === 0 ? [] : artifact.payload.text.replace(/\n$/u, '').split('\n');

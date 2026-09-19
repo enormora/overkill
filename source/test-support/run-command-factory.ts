@@ -18,6 +18,7 @@ import type {
     RunWorkDistribution,
     RunWorkerPoolAssignmentPolicy,
     RunWorkerPoolDispatchPolicy,
+    RunWorkerPoolHedgingPolicy,
     RunWorkerLifecycle
 } from '../run/run-types.ts';
 import { hostProcessFacts } from '../run/run-host-process.ts';
@@ -117,6 +118,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
             ...facts,
             assignmentPolicy: profile.execution.assignmentPolicy,
             dispatchPolicy: profile.execution.dispatchPolicy,
+            hedging: profile.execution.hedging,
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,
@@ -194,6 +196,12 @@ function defaultHostProcess(overrides: Partial<RunIntegrationExecution>): RunHos
     return hostProcess ?? { kind: 'direct' };
 }
 
+function defaultHedging(overrides: Partial<RunIntegrationExecution>): RunWorkerPoolHedgingPolicy {
+    return overrides.processModel === 'worker-pool' && overrides.hedging !== undefined
+        ? overrides.hedging
+        : { mode: 'off' };
+}
+
 function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
     const processModel = overrides.processModel ?? 'worker-pool';
     const scheduling = overrides.scheduling ?? 'concurrent';
@@ -202,6 +210,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
         return {
             assignmentPolicy: defaultAssignmentPolicy(overrides),
             dispatchPolicy: defaultDispatchPolicy(overrides),
+            hedging: defaultHedging(overrides),
             processModel,
             scheduling,
             workDistribution: defaultWorkDistribution(overrides),

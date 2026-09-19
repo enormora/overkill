@@ -25,7 +25,7 @@ const firstPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const thirdPath = 'source/integration-tests/run/fixtures/generated-fast.test.ts';
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const fileSets = new Map([
     [ firstPath, 'fast' ],
     [ secondPath, 'slow' ],
@@ -494,6 +494,7 @@ export const testNode = createOverkillSuite({
                         {
                             assignmentPolicy: 'case-count-balanced',
                             dispatchPolicy: 'dynamic-lease',
+                            hedging: { mode: 'off' },
                             hostProcess: { kind: 'direct' },
                             processModel: 'worker-pool',
                             scheduling: 'concurrent',

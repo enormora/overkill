@@ -31,7 +31,7 @@ type RoutedLifecycles = {
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 
 function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'][number] {
     return {
@@ -88,6 +88,7 @@ function baseResolvedRun(): ResolvedRun {
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({

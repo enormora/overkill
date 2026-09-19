@@ -151,7 +151,11 @@ function assertRootAuthoredCase(scope: OverkillScope, plannedCase: RootAuthoring
         suite: [ 'runtime' ]
     });
     scope.assert.deepEqual(plannedCase.annotations.tags, [ 'suite', 'case' ]);
-    scope.assert.deepEqual(plannedCase.controls, { capture: null, timeoutMilliseconds: null });
+    scope.assert.deepEqual(plannedCase.controls, {
+        capture: null,
+        duplicateExecution: null,
+        timeoutMilliseconds: null
+    });
     scope.assert.equal(plannedCase.testFamily, null);
 }
 

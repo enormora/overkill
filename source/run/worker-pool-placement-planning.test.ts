@@ -28,7 +28,7 @@ import {
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const defaultUnitPolicy = {
     order: 'plan',
     scheduling: 'concurrent',
@@ -135,6 +135,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: null,
