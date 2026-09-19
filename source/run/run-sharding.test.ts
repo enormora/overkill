@@ -21,7 +21,7 @@ const unit: WorkUnitId = {
     workload: null
 };
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const definitionLocations = [ { kind: 'unknown' as const } ] as const;
 const resourceAttachments = {
     directResources: [],

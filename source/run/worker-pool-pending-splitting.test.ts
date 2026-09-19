@@ -58,6 +58,7 @@ function defaultResourceConstraints(): WorkUnit['resourceConstraints'] {
     return {
         affinityKeys: [],
         capacityWeight: 1,
+        duplicateExecution: [],
         faultDomains: [],
         serialKeys: [],
         singleWorkerKeys: []

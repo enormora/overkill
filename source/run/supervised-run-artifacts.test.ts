@@ -144,6 +144,10 @@ function createRunConfig(profileName: string, profile: RunConfig['profiles'][str
 }
 
 function capturedOutputText(artifact: RunArtifact): string {
+    if (artifact.payload.kind !== 'captured-output') {
+        throw new Error('Expected captured output artifact.');
+    }
+
     return artifact.payload.text;
 }
 

@@ -33,6 +33,7 @@ Examples:
 - temp files
 - trace or event timelines
 - current-vs-baseline diffs
+- hedged duplicate conflicts
 - benchmark sample data
 - property-test witnesses
 - deterministic-simulation witnesses
@@ -274,6 +275,15 @@ Default policy (covered in [Runtime Behavior](../architecture/runtime-behavior.m
   preserve exact bytes for richer artifact files
 - captured data is preserved in machine-readable reporting regardless of
   terminal rendering
+
+## Hedged Duplicate Conflicts
+
+When hedged duplicate execution observes conflicting outcomes for the same
+case, the case fails with a native `hedged-conflict` artifact. The payload
+records the authoritative evidence, the conflicting evidence, and the `WorkId`
+that was duplicated. This is a test failure, not a runner crash or retry.
+Cancelled or semantically matching slower duplicates are trace or debug data,
+not normal case artifacts.
 
 ## Diff Artifacts
 

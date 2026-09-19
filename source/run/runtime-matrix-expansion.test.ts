@@ -9,7 +9,7 @@ const caseId = createCaseId('matrix.test.ts', [], 'runs on every variant', null)
 function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachments']['runtimeGraphs']): TestPlanCase {
     return {
         annotations: { ownership: [], tags: [] },
-        controls: { capture: null, timeoutMilliseconds: null },
+        controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
         definitionLocations: [ definitionLocation ],
         execution: { kind: 'skip', reason: 'planning only' },
         id: caseId,
@@ -41,7 +41,7 @@ function testPlan(testCase: TestPlanCase): TestPlan {
         orphans: [],
         root: {
             annotations: { ownership: [], tags: [] },
-            controls: { capture: null, timeoutMilliseconds: null },
+            controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
             title: 'matrix'
         }
     };

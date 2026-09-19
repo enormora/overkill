@@ -166,4 +166,8 @@ local to their execution owner and do not use projection hooks.
 
 Execution requirements describe placement pressure for the runner:
 `serial`, `single-worker`, `exclusive-resource`, `capacity-weight`,
-`affinity-key`, `fault-domain`, and `startup-budget-milliseconds`.
+`affinity-key`, `fault-domain`, `duplicate-execution`, and
+`startup-budget-milliseconds`. `duplicate-execution` declares that a resource
+or runtime makes work safe to duplicate as `idempotent` or
+`disposable-isolated`; the runner still decides whether the active execution
+envelope is strong enough to hedge.

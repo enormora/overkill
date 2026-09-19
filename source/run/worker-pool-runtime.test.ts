@@ -28,7 +28,7 @@ type RecordedPoolDependencies = {
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 
 export function createCollectedPlan(): CollectedRunPlan {
     return {
@@ -83,6 +83,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 dispatchPolicy: 'dynamic-lease',
+                hedging: { mode: 'off' },
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({

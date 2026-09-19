@@ -168,11 +168,13 @@ type TestAnnotations = {
 
 type TestControlsInput = {
     readonly capture?: CaptureMode;
+    readonly duplicateExecution?: 'forbidden' | 'idempotent';
     readonly timeoutMilliseconds?: number;
 };
 
 type TestControls = {
     readonly capture: CaptureMode | null;
+    readonly duplicateExecution: 'forbidden' | 'idempotent' | null;
     readonly timeoutMilliseconds: number | null;
 };
 
@@ -567,15 +569,21 @@ type ThrowingTestBody = (scope: ThrowingTestScope) => void | Promise<void>;
 
 type TestBody = BuilderTestBody;
 
-type RunIfMainOptions = {
-    readonly outputRenderer?: DefinedOutputRenderer;
-    readonly reporters?: ReadonlyArray<DefinedReporter>;
-    readonly root?: {
-        readonly annotations: AuthoringAnnotations;
-        readonly controls: AuthoringControls;
-        readonly name: string;
+type RunIfMainOptions =
+    | {
+        readonly outputRenderer?: DefinedOutputRenderer;
+        readonly reporters?: ReadonlyArray<DefinedReporter>;
+        readonly root?: {
+            readonly annotations: AuthoringAnnotations;
+            readonly controls: AuthoringControls;
+            readonly name: string;
+        };
+    }
+    | {
+        readonly artifact: RunArtifactId;
+        readonly kind: 'hedged-duplicate-conflict';
+        readonly summary: string;
     };
-};
 
 type ThrowingTestDefinition = {
     readonly title: string;
@@ -877,7 +885,16 @@ type WorkerPoolIntegrationExecutionConfig = {
     readonly workDistribution: WorkDistribution;
     readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly dispatchPolicy: WorkerPoolDispatchPolicy;
+    readonly hedging: WorkerPoolHedgingPolicy;
 };
+
+type WorkerPoolHedgingPolicy =
+    | { readonly mode: 'off'; }
+    | {
+        readonly durationMultiplier: number;
+        readonly minimumDelayMilliseconds: number;
+        readonly mode: 'on';
+    };
 
 type WorkerPoolAssignmentPolicy =
     | 'stable'
@@ -1079,6 +1096,7 @@ type RunRecordPersistenceFacts = {
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
     readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly dispatchPolicy: WorkerPoolDispatchPolicy;
+    readonly hedging: WorkerPoolHedgingPolicy;
     readonly hostProcess: HostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
@@ -1771,6 +1789,7 @@ type ExecutionRequirement =
     | { kind: 'exclusive-resource'; name: string; }
     | { kind: 'capacity-weight'; weight: number; }
     | { kind: 'affinity-key'; key: string; }
+    | { kind: 'duplicate-execution'; safety: 'idempotent' | 'disposable-isolated'; }
     | { kind: 'fault-domain'; key: string; }
     | { kind: 'startup-budget-milliseconds'; minimumMilliseconds: number; };
 ```

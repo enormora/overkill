@@ -10,6 +10,10 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
+type RunArtifact = ReturnType<SupervisedRunState['artifacts']>[number];
+type CapturedOutputPayload = Extract<RunArtifact['payload'], { readonly kind: 'captured-output'; }>;
+type CapturedOutputArtifact = RunArtifact & { readonly payload: CapturedOutputPayload; };
+
 function caseId(title: string): CaseId {
     return {
         file: 'source/example.test.ts',
@@ -23,12 +27,19 @@ function addActiveCase(state: SupervisedRunState, testCase: CaseId): void {
     state.addActiveCase(caseIdentityKey(testCase), { capture: null, id: testCase }, 0);
 }
 
+function isCapturedOutputArtifact(artifact: RunArtifact): artifact is CapturedOutputArtifact {
+    return artifact.payload.kind === 'captured-output';
+}
+
 function assertConcurrentArtifactScope(
     scope: OverkillScope,
     artifacts: ReturnType<SupervisedRunState['artifacts']>,
     activeCases: readonly CaseId[]
 ): void {
-    for (const artifact of artifacts) {
+    const capturedArtifacts = artifacts.filter(isCapturedOutputArtifact);
+
+    for (const artifact of capturedArtifacts) {
+        scope.assert.equal(artifact.payload.kind, 'captured-output');
         scope.assert.equal(artifact.id.scope.kind, 'case');
         if (artifact.id.scope.kind === 'case') {
             scope.assert.equal(artifact.id.scope.confidence, 'concurrent-active');
@@ -38,17 +49,50 @@ function assertConcurrentArtifactScope(
     }
 }
 
+function capturedOutputArtifact(
+    scope: OverkillScope,
+    artifacts: ReturnType<SupervisedRunState['artifacts']>,
+    index: number
+): CapturedOutputArtifact | null {
+    const artifact = artifacts[index];
+
+    scope.require.defined(artifact);
+    scope.assert.equal(artifact.payload.kind, 'captured-output');
+
+    return isCapturedOutputArtifact(artifact) ? artifact : null;
+}
+
 function assertCapturedOutputCap(
     scope: OverkillScope,
     artifacts: ReturnType<SupervisedRunState['artifacts']>
 ): void {
-    const overflow = artifacts[1];
+    const capped = capturedOutputArtifact(scope, artifacts, 0);
+    const overflow = capturedOutputArtifact(scope, artifacts, 1);
 
-    scope.assert.equal(artifacts[0]?.payload.byteLength, capturedOutputLimitBytes);
-    scope.require.defined(overflow);
+    if (capped === null || overflow === null) {
+        return;
+    }
+
+    scope.assert.equal(capped.payload.byteLength, capturedOutputLimitBytes);
     scope.assert.equal(overflow.payload.byteLength, 0);
     scope.assert.equal(overflow.payload.stream, 'stderr');
     scope.assert.equal(overflow.payload.truncated, true);
+}
+
+function assertRunCapturedOutput(
+    scope: OverkillScope,
+    state: SupervisedRunState,
+    testCase: CaseId
+): void {
+    const artifact = capturedOutputArtifact(scope, state.artifacts(), 0);
+
+    if (artifact === null) {
+        return;
+    }
+
+    scope.assert.equal(artifact.id.scope.kind, 'run');
+    scope.assert.equal(artifact.payload.text, 'setup output');
+    scope.assert.deepEqual(state.caseArtifacts(testCase), []);
 }
 
 export const testNode = createOverkillSuite({
@@ -90,12 +134,7 @@ export const testNode = createOverkillSuite({
 
                 state.recordCapturedOutput('stderr', Buffer.from('setup output'), 1);
 
-                const artifact = state.artifacts()[0];
-
-                scope.require.defined(artifact);
-                scope.assert.equal(artifact.id.scope.kind, 'run');
-                scope.assert.equal(artifact.payload.text, 'setup output');
-                scope.assert.deepEqual(state.caseArtifacts(testCase), []);
+                assertRunCapturedOutput(scope, state, testCase);
 
                 return scope.assert.collect();
             }

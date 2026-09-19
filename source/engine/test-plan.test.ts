@@ -103,14 +103,14 @@ export const testNode = createOverkillSuite({
                     [
                         {
                             annotations: { ownership: [], tags: [ 'inherited', 'local' ] },
-                            controls: { capture: null, timeoutMilliseconds: null },
+                            controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
                             definitionLocations: [ sourceLocationShape({}) ],
                             id: { file: null, title: 'first', params: null, suite: [] },
                             suitePath: []
                         },
                         {
                             annotations: { ownership: [], tags: [ 'inherited', 'table' ] },
-                            controls: { capture: null, timeoutMilliseconds: null },
+                            controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
                             definitionLocations: [ sourceLocationShape({}) ],
                             id: {
                                 file: null,
@@ -124,7 +124,7 @@ export const testNode = createOverkillSuite({
                         },
                         {
                             annotations: { ownership: [], tags: [ 'inherited', 'table' ] },
-                            controls: { capture: null, timeoutMilliseconds: null },
+                            controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
                             definitionLocations: [ sourceLocationShape({}) ],
                             id: {
                                 file: null,
@@ -198,7 +198,7 @@ export const testNode = createOverkillSuite({
                             ownership: [ 'root-team', 'suite-team', 'case-team' ],
                             tags: [ 'root', 'suite', 'case' ]
                         },
-                        controls: { capture: 'live', timeoutMilliseconds: 20 },
+                        controls: { capture: 'live', duplicateExecution: null, timeoutMilliseconds: 20 },
                         id: { file: 'source/users.test.ts', title: 'login', params: null, suite: [ 'users' ] },
                         suitePath: [
                             { definitionLocations: [ { kind: 'unknown' as const } ], title: 'users' }

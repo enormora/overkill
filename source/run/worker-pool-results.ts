@@ -30,9 +30,13 @@ function taskArtifacts(runtime: WorkerPoolRunRuntime): readonly RunArtifact[] {
 }
 
 function allTaskArtifacts(completedTaskRuns: readonly WorkerPoolTaskRun[]): readonly RunArtifact[] {
-    return completedTaskRuns.flatMap(function toArtifacts(taskRun) {
-        return taskRun.state.artifacts();
-    });
+    return completedTaskRuns
+        .filter(function includesArtifacts(taskRun) {
+            return taskRun.includeArtifacts.read();
+        })
+        .flatMap(function toArtifacts(taskRun) {
+            return taskRun.state.artifacts();
+        });
 }
 
 function allTaskErrors(
@@ -132,9 +136,13 @@ export async function finishWorkerPoolRun(
     const perTest = orderedPerTest(
         runtime.collectedPlan,
         [
-            ...completedTaskRuns.flatMap(function toPerTest(taskRun) {
-                return taskRun.state.perTestResults();
-            }),
+            ...completedTaskRuns
+                .filter(function includesPerTest(taskRun) {
+                    return taskRun.includeArtifacts.read();
+                })
+                .flatMap(function toPerTest(taskRun) {
+                    return taskRun.state.perTestResults();
+                }),
             ...runtime.taskResults.flatMap(function toPerTest(result) {
                 return result.perTest;
             })

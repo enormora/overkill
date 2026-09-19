@@ -5,17 +5,17 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import type { DynamicWorkUnitId, PlacementTraceEntry } from './placement-trace.ts';
-import type { PlacementPlan } from './run-types.ts';
+import { emptyWorkUnitResourceConstraints, type PlacementPlan } from './run-types.ts';
 import {
     fakeWorkerRuntime,
     placementPlan,
     testCaseMetadata
 } from './worker-pool-placement-validation.test.ts';
-import {
-    createWorkDispatcher,
-    type WorkerPoolUnitLease,
-    type WorkerPoolWorkDispatcher
-} from './worker-pool-work-dispatcher.ts';
+import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
+import type {
+    WorkerPoolUnitLease,
+    WorkerPoolWorkDispatcher
+} from './worker-pool-dispatch-state.ts';
 import {
     originalQueueItem,
     splitQueuedWorkUnit
@@ -33,6 +33,13 @@ type SplitLeaseExpectation = {
     readonly secondLease: WorkerPoolUnitLease;
     readonly traceEntry: Extract<PlacementTraceEntry, { readonly kind: 'unit-split'; }>;
     readonly unit: WorkUnit;
+};
+type HedgedStragglerRun = {
+    readonly duplicate: WorkerPoolUnitLease;
+    readonly filler: WorkerPoolUnitLease;
+    readonly plan: PlacementPlan;
+    readonly primary: WorkerPoolUnitLease;
+    readonly runtime: WorkerPoolRunRuntime;
 };
 
 function firstLane(plan: PlacementPlan): PlacementLane {
@@ -228,6 +235,48 @@ function runtimeWithEmptyDurationHistory(plan: PlacementPlan): WorkerPoolRunRunt
     };
 }
 
+function runtimeWithHedging(plan: PlacementPlan): WorkerPoolRunRuntime {
+    const runtime = fakeWorkerRuntime(plan);
+    const { execution } = runtime.resolvedRun.facts;
+
+    if (execution.processModel !== 'worker-pool') {
+        throw new Error('Worker-pool dispatcher fixture requires worker-pool execution facts.');
+    }
+
+    return {
+        ...runtime,
+        resolvedRun: {
+            ...runtime.resolvedRun,
+            facts: {
+                ...runtime.resolvedRun.facts,
+                execution: {
+                    ...execution,
+                    hedging: {
+                        durationMultiplier: 1,
+                        minimumDelayMilliseconds: 0,
+                        mode: 'on'
+                    },
+                    placementPlan: plan
+                }
+            }
+        }
+    };
+}
+
+function hedgeSafeUnit(): WorkUnit {
+    const unit = firstUnit(placementPlan());
+
+    return {
+        ...unit,
+        resourceConstraints: {
+            ...unit.resourceConstraints,
+            duplicateExecution: [ 'idempotent' ]
+        },
+        scheduling: 'concurrent',
+        work: [ firstWork(unit) ]
+    };
+}
+
 function dynamicWorkUnitId(value: unknown): DynamicWorkUnitId {
     if (
         value !== null &&
@@ -355,6 +404,36 @@ function assertSplitLeases(
     scope.assert.deepEqual(expectation.traceEntry.parent, expectation.unit.id);
 }
 
+function runHedgedStraggler(): HedgedStragglerRun {
+    const plan = splitCandidatePlan(hedgeSafeUnit());
+    const runtime = runtimeWithHedging(plan);
+    const dispatcher = createWorkDispatcher(runtime, plan);
+    const primary = pullRequiredLease(dispatcher, firstLane(plan));
+    const filler = pullRequiredLease(dispatcher, secondLane(plan));
+
+    dispatcher.finish(filler, false);
+    const duplicate = pullRequiredLease(dispatcher, secondLane(plan));
+
+    return { duplicate, filler, plan, primary, runtime };
+}
+
+function assertHedgedStraggler(scope: OverkillScope): void {
+    const { duplicate, filler, plan, primary, runtime } = runHedgedStraggler();
+
+    scope.assert.equal(primary.kind, 'primary');
+    scope.assert.equal(filler.kind, 'primary');
+    scope.assert.equal(duplicate.kind, 'hedged-duplicate');
+    scope.assert.deepEqual(duplicate.unit.work, primary.unit.work);
+    const traceEntry = runtime.placementTraceEntries[0];
+
+    scope.require.defined(traceEntry);
+    scope.assert.deepEqual(traceEntry, {
+        kind: 'hedged-duplicate-started',
+        unit: primary.traceUnit,
+        workerId: secondLane(plan).id
+    });
+}
+
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-work-dispatcher.test.ts',
@@ -418,6 +497,28 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(lease.unit.work.length, 2);
                 scope.assert.deepEqual(lease.traceUnit, unit.id);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatcher hedges explicit idempotent stragglers',
+            body(scope: OverkillScope) {
+                assertHedgedStraggler(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatcher does not hedge unsafe stragglers',
+            body(scope: OverkillScope) {
+                const plan = twoLanePlan({ ...hedgeSafeUnit(), resourceConstraints: emptyWorkUnitResourceConstraints });
+                const dispatcher = createWorkDispatcher(runtimeWithHedging(plan), plan);
+
+                pullRequiredLease(dispatcher, firstLane(plan));
+                scope.assert.equal(dispatcher.pull(secondLane(plan)), null);
 
                 return scope.assert.collect();
             }
