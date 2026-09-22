@@ -383,7 +383,15 @@ function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRun
 }
 
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
-    runtime.completedResult.write(result);
+    const supervisorErrors = deduplicatedRuntimePolicyErrors(runtime.state.runnerErrors());
+
+    runtime.completedResult.write({
+        ...result,
+        runnerErrors: [
+            ...supervisorErrors,
+            ...deduplicatedChildRuntimePolicyErrors(result.runnerErrors, supervisorErrors)
+        ]
+    });
 }
 
 export function handleChildMessage(message: SupervisedChildMessage, runtime: SupervisedRunRuntime): void {

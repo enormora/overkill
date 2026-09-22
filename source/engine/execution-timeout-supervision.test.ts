@@ -7,8 +7,10 @@ import {
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import {
     createExecutionSupervision,
-    executeCaseBody
+    executeCaseBody,
+    type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
+import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 import type { Engine } from './engine.ts';
 import type { RunnerError } from './run-result.ts';
 
@@ -23,6 +25,15 @@ const softTimeoutPolicy = {
     hardTimeoutMilliseconds: 100,
     timeoutMilliseconds: 10
 };
+
+function executionDependencies(
+    wallClock: ReturnType<typeof createDeterministicWallClock>
+): ExecutionSupervisionDependencies {
+    return {
+        globalErrorObserver: createDisabledExecutionGlobalErrorObserver(),
+        wallClock
+    };
+}
 
 function createPlannedCase(title: string, body: TestCaseBody): TestPlanCase {
     const engine = createEngine();
@@ -62,7 +73,7 @@ async function executeTimedCase(
     wallClock: DeterministicOverkillClock,
     supervision = createExecutionSupervision()
 ): ReturnType<typeof executeCaseBody> {
-    return executeCaseBody(testCase, softTimeoutPolicy, supervision, { wallClock });
+    return executeCaseBody(testCase, softTimeoutPolicy, supervision, executionDependencies(wallClock));
 }
 
 async function finishSoftTimedCase(
@@ -94,7 +105,7 @@ async function executeHardTimedCase(
             timeoutMilliseconds: 100
         },
         supervision,
-        { wallClock }
+        executionDependencies(wallClock)
     );
 }
 

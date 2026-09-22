@@ -26,6 +26,8 @@ import {
 } from './run-support.ts';
 import {
     createSupervisedChildTestPlan,
+    runnerErrorFromSupervisedChildFailure,
+    runObservedSupervisedChildCommand,
     type SupervisedChildTestPlanDependencies
 } from './supervised-child-test-plan.ts';
 import {
@@ -363,13 +365,7 @@ async function run(
 function sendFailure(error: unknown, host: SupervisedChildHost): void {
     host.send({
         event: {
-            error: {
-                attributedTo: null,
-                attributedToWork: null,
-                cause: error,
-                message: error instanceof Error ? error.message : String(error),
-                subtype: 'loader'
-            },
+            error: runnerErrorFromSupervisedChildFailure(error),
             kind: 'runner-error'
         },
         kind: 'event'
@@ -396,7 +392,9 @@ async function runReceivedCommand(
     dependencies: SupervisedChildDependencies
 ): Promise<void> {
     try {
-        await completeReceivedCommand(command, host, dependencies);
+        await runObservedSupervisedChildCommand(async function completeObservedCommand() {
+            await completeReceivedCommand(command, host, dependencies);
+        });
     } catch (error: unknown) {
         sendFailure(error, host);
         host.setExitCode(1);

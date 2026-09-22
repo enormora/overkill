@@ -1,5 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as executionConcurrentReportingTestNode } from './execution-concurrent-reporting.test.ts';
+import { testNode as executionGlobalErrorObserverTestNode } from './execution-global-error-observer.test.ts';
 import { testNode as executionReportingTestNode } from './execution-reporting.test.ts';
 import { testNode as executionResourceUsageTestNode } from './execution-resource-usage.test.ts';
 import { testNode as executionTestNode } from './execution.test.ts';
@@ -14,6 +15,7 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         executionConcurrentReportingTestNode,
+        executionGlobalErrorObserverTestNode,
         executionReportingTestNode,
         executionResourceUsageTestNode,
         skippedTestExecutionTestNode,

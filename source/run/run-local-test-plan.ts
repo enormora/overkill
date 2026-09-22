@@ -1,5 +1,9 @@
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import {
+    createExecutionGlobalErrorObserver,
+    type ExecutionGlobalErrorObserver
+} from '../engine/execution-global-error-observer.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { resolveRunEngine } from './run-engine-selection.ts';
@@ -29,10 +33,26 @@ async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     });
 }
 
+function firstObservedCollectionError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
+    const [ error ] = observer.takeErrors();
+
+    return new RunCollectionError(
+        error?.message ?? 'Collection failed after a process-level runtime error.',
+        { cause: error ?? null },
+        error?.subtype ?? 'crash'
+    );
+}
+
+async function waitForObservedCollectionError(observer: ExecutionGlobalErrorObserver): Promise<never> {
+    await observer.fatalSignal();
+    throw firstObservedCollectionError(observer);
+}
+
 export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     let rejectCollection: (error: RunCollectionError) => void = function ignoreReject() {
         return undefined;
     };
+    const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
     const collectionTimeout = new Promise<never>(function rejectOnCollectionTimeout(_resolve, reject) {
         rejectCollection = reject;
     });
@@ -47,8 +67,17 @@ export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<Te
     }, input.profile.timeouts.collectionMilliseconds);
 
     try {
-        return await Promise.race([ createTestPlan(input), collectionTimeout ]);
+        return await globalErrorObserver.runBoundary(async function runObservedCollection() {
+            return await globalErrorObserver.runPhase('collection', async function collectObservedTestPlan() {
+                return await Promise.race([
+                    createTestPlan(input),
+                    collectionTimeout,
+                    waitForObservedCollectionError(globalErrorObserver)
+                ]);
+            });
+        });
     } finally {
         input.dependencies.wallClock.clearTimeout(timeout);
+        globalErrorObserver.stop();
     }
 }

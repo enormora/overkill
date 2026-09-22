@@ -1,4 +1,4 @@
-import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot, RunResourceUsage, RunnerError } from '../engine/run-result.ts';
 import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
 import type {
     WorkerPoolMessage,
@@ -55,6 +55,9 @@ export type WorkerPoolHostCommand = {
 };
 
 export type WorkerPoolHostMessage = {
+    readonly error: RunnerError;
+    readonly kind: 'runner-error';
+} | {
     readonly kind: 'configured';
 } | {
     readonly kind: 'destroyed';

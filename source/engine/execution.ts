@@ -5,13 +5,16 @@ import {
     type AsyncLeakDiagnostics
 } from './execution-async-leak-policy.ts';
 import {
+    createExecutionGlobalErrorObserver,
+    type ExecutionGlobalErrorObserver
+} from './execution-global-error-observer.ts';
+import {
     executeOptionsWithDefaults,
     type ExecuteExecution as ExecuteExecutionDefinition,
     type ExecuteOptions as ExecuteOptionsDefinition,
     type NormalizedExecuteOptions
 } from './execution-options.ts';
 import { appendRunnerErrors, createRunResult, throwWithCleanupErrors } from './execution-result.ts';
-import type { ExecutionSupervisionDependencies } from './execution-supervision.ts';
 import { executeTestPlanCasesAndMeasureResourceUsage } from './execution-test-plan-resource-usage.ts';
 import {
     createReporterDisposal,
@@ -41,16 +44,22 @@ type ExecuteRunInput = {
 };
 
 type ExecutionDependencies = AsyncLeakDependencies & {
-    readonly runtimePolicy: RuntimePolicy | null;
+    readonly globalErrorObserver: ExecutionGlobalErrorObserver;
+    readonly runtimePolicy: NormalizedExecuteOptions['runtimePolicy'];
     readonly reporterDispatcher: ReporterDispatcher;
     readonly wallClock: OverkillClock;
 };
 
-type RuntimePolicy = NonNullable<ExecutionSupervisionDependencies['runtimePolicy']>;
-
 type ExecutionReportingContext = {
     readonly dependencies: ExecutionDependencies;
     readonly reporterDelivery: ReporterDelivery;
+};
+
+type PreparedExecution = {
+    readonly asyncLeakMonitor: AsyncLeakDependencies['asyncLeakMonitor'];
+    readonly dependencies: ExecutionDependencies;
+    readonly globalErrorObserver: ExecutionGlobalErrorObserver;
+    readonly options: NormalizedExecuteOptions;
 };
 
 async function createRunResultBeforeRunEnd(
@@ -80,11 +89,16 @@ async function createRunResultBeforeRunEnd(
         reporterDelivery,
         options.runtimePolicy?.takeRunErrors() ?? []
     );
+    const finalGlobalErrorObserverErrors = await reportRunnerErrors(
+        reporterDelivery,
+        dependencies.globalErrorObserver.takeErrors()
+    );
     const reporterErrors = [
         ...startErrors,
         ...loadRuntimePolicyErrors,
         ...executedTestPlan.reporterErrors,
-        ...finalRuntimePolicyErrors
+        ...finalRuntimePolicyErrors,
+        ...finalGlobalErrorObserverErrors
     ];
 
     return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
@@ -103,6 +117,9 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
         input.context.dependencies,
         input.context.reporterDelivery
     );
+
+    input.context.dependencies.globalErrorObserver.stop();
+
     const finalizedResult = await input.options.finalizeResult(result);
     const runEndErrors = await input.context.reporterDelivery.reportEvent({
         kind: 'run-end',
@@ -117,35 +134,53 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
 
 export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
 
-export function createExecute(dependencies: ExecuteDependencies): Execute {
-    return async function execute(testPlan, options) {
-        const executeOptions = executeOptionsWithDefaults(options);
-        const asyncLeakMonitor = createExecutionAsyncLeakMonitor(dependencies.asyncLeakDiagnostics);
-        const executionDependencies: ExecutionDependencies = {
+function prepareExecution(
+    dependencies: ExecuteDependencies,
+    options: ExecuteOptions | undefined
+): PreparedExecution {
+    const executeOptions = executeOptionsWithDefaults(options);
+    const asyncLeakMonitor = createExecutionAsyncLeakMonitor(dependencies.asyncLeakDiagnostics);
+    const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
+
+    return {
+        asyncLeakMonitor,
+        dependencies: {
             asyncLeakMonitor,
+            globalErrorObserver,
             ...dependencies,
             runtimePolicy: executeOptions.runtimePolicy
-        };
+        },
+        globalErrorObserver,
+        options: executeOptions
+    };
+}
+
+export function createExecute(dependencies: ExecuteDependencies): Execute {
+    return async function execute(testPlan, options) {
+        const prepared = prepareExecution(dependencies, options);
         const reporterDelivery = await dependencies.reporterDispatcher.createDelivery(
-            executeOptions.reporters,
-            executeOptions.outputRenderer
+            prepared.options.reporters,
+            prepared.options.outputRenderer
         );
         const reporterDisposal = createReporterDisposal(reporterDelivery.disposeReporters);
 
         try {
-            return await executeRun({
-                context: {
-                    dependencies: executionDependencies,
-                    reporterDelivery
-                },
-                options: executeOptions,
-                reporterDisposal,
-                testPlan
+            return await prepared.globalErrorObserver.runBoundary(async function runObservedExecution() {
+                return await executeRun({
+                    context: {
+                        dependencies: prepared.dependencies,
+                        reporterDelivery
+                    },
+                    options: prepared.options,
+                    reporterDisposal,
+                    testPlan
+                });
             });
         } catch (error: unknown) {
             return await throwWithCleanupErrors(error, reporterDisposal.disposeOnce);
         } finally {
-            asyncLeakMonitor.stop();
+            prepared.asyncLeakMonitor.stop();
+            prepared.globalErrorObserver.stop();
         }
     };
 }

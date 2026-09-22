@@ -1519,6 +1519,7 @@ type RunnerError = {
         | 'fixture'
         | 'crash'
         | 'unhandled-rejection'
+        | 'uncaught-exception'
         | 'permission'
         | 'runtime-policy'
         | 'loader'

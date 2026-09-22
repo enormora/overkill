@@ -93,18 +93,21 @@ Async errors and out-of-band events need a clear owner. The default
 attribution policy:
 
 - an unhandled rejection or uncaught exception emitted **during** a
-  test's `run` (including its async tail until the next test starts) is
-  attributed to that test as a runner error
+  test's `run` is attributed to that test as a runner error and aborts
+  the current execution boundary
 - an error emitted between tests but during run-level setup/teardown is
   attributed to the run
+- async work that fires after its originating test ended is reported as
+  `attribution-drift`; the original case may appear in the structured
+  cause, but `attributedTo` stays `null`
 - an error from the runner's own machinery is a runner crash, surfaced
   as a top-level diagnostic
 
 Attribution is best-effort and uses `AsyncLocalStorage` to correlate async
 work with the originating test. `AsyncLocalStorage` is for attribution, not
 for observing arbitrary side effects by itself. If the runner detects
-attribution drift (an async chain escaped its test window), it warns rather
-than silently mis-blaming a sibling test.
+attribution drift (an async chain escaped its test window), it records the
+drift rather than silently mis-blaming a sibling test.
 
 Tests that intend to test rejection paths use the assertion library's
 explicit support (`scope.assert.rejects(() => promiseReturningCall(), { message: /expected/ })`)

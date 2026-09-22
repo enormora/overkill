@@ -416,6 +416,11 @@ function createRoutedPool(routes: readonly WorkerPoolRoute[]): CreatedWorkerPool
             for (const route of routes) {
                 route.pool.setHostOutputSink?.(sink);
             }
+        },
+        takeHostRunnerErrors() {
+            return routes.flatMap(function takeRouteErrors(route) {
+                return route.pool.takeHostRunnerErrors?.() ?? [];
+            });
         }
     };
 

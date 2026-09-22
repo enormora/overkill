@@ -13,8 +13,10 @@ import { createTestEngine as createEngine } from '../test-support/create-test-en
 import { executeResourceTrackedCases } from './execution-resource-tracked-cases.ts';
 import {
     createExecutionSupervision,
-    recordResourceUsageSample
+    recordResourceUsageSample,
+    type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
+import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { ResourceUsageSnapshot, RunResourceUsageTracker, RunResult } from './run-result.ts';
 
@@ -70,6 +72,15 @@ function createSilentReporterDelivery(): ReporterDelivery {
         async reportResult() {
             return [];
         }
+    };
+}
+
+function executionDependencies(
+    wallClock: ReturnType<typeof createDeterministicOverkillClock>
+): ExecutionSupervisionDependencies {
+    return {
+        globalErrorObserver: createDisabledExecutionGlobalErrorObserver(),
+        wallClock
     };
 }
 
@@ -397,7 +408,7 @@ export const testNode = createOverkillSuite({
                         residentSetBytes: 1,
                         residentSetGrowthBytesPerSecond: null
                     },
-                    dependencies: { wallClock: createDeterministicOverkillClock() },
+                    dependencies: executionDependencies(createDeterministicOverkillClock()),
                     previousSample,
                     sample,
                     supervision
@@ -428,7 +439,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
-                const dependencies = { wallClock: createDeterministicOverkillClock() };
+                const dependencies = executionDependencies(createDeterministicOverkillClock());
                 const nullBudgetBreach = recordResourceUsageSample({
                     budgets: null,
                     dependencies,
@@ -462,7 +473,7 @@ export const testNode = createOverkillSuite({
                 await scope.assert.rejects(async function executeThrowingCases() {
                     await executeResourceTrackedCases({
                         context: {
-                            dependencies: { wallClock: createDeterministicOverkillClock() },
+                            dependencies: executionDependencies(createDeterministicOverkillClock()),
                             reporterDelivery: createSilentReporterDelivery()
                         },
                         options: {
