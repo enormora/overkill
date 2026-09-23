@@ -54,9 +54,12 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(resolveTimingCollection(request, defaultMicrotestProfile()), 'summary');
                 scope.assert.equal(
-                    resolveTimingCollection(request, defaultMicrotestProfile({
-                        timings: { collection: 'precise' }
-                    })),
+                    resolveTimingCollection(
+                        request,
+                        defaultMicrotestProfile({
+                            timings: { collection: 'precise' }
+                        })
+                    ),
                     'precise'
                 );
                 scope.assert.equal(
@@ -79,28 +82,37 @@ export const testNode = createOverkillSuite({
                 const request = defaultRunRequest();
 
                 scope.assert.equal(
-                    resolveTimingCollection(request, defaultIntegrationProfile({
-                        execution: { assignmentPolicy: 'duration-history-balanced' }
-                    })),
+                    resolveTimingCollection(
+                        request,
+                        defaultIntegrationProfile({
+                            execution: { assignmentPolicy: 'duration-history-balanced' }
+                        })
+                    ),
                     'precise'
                 );
                 scope.assert.equal(
-                    resolveTimingCollection(request, defaultIntegrationProfile({
-                        execution: {
-                            hedging: {
-                                durationMultiplier: 2,
-                                minimumDelayMilliseconds: 100,
-                                mode: 'on'
-                            },
-                            processModel: 'worker-pool'
-                        }
-                    })),
+                    resolveTimingCollection(
+                        request,
+                        defaultIntegrationProfile({
+                            execution: {
+                                hedging: {
+                                    durationMultiplier: 2,
+                                    minimumDelayMilliseconds: 100,
+                                    mode: 'on'
+                                },
+                                processModel: 'worker-pool'
+                            }
+                        })
+                    ),
                     'precise'
                 );
                 scope.assert.equal(
-                    resolveTimingCollection(request, defaultIntegrationProfile({
-                        execution: { dispatchPolicy: 'dynamic-lease' }
-                    })),
+                    resolveTimingCollection(
+                        request,
+                        defaultIntegrationProfile({
+                            execution: { dispatchPolicy: 'dynamic-lease' }
+                        })
+                    ),
                     'summary'
                 );
 

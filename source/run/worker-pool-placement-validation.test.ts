@@ -74,9 +74,7 @@ function createCollectedPlan(): CollectedRunPlan {
                             resourceGraph: [],
                             runtimeGraphs: []
                         },
-                        suitePath: [
-                            { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' }
-                        ],
+                        suitePath: [ { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' } ],
                         testFamily: 'integration',
                         title: 'first'
                     }

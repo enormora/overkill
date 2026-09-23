@@ -1,6 +1,9 @@
 import { safeParse } from '@schema-hub/zod-error-formatter';
-import { createSuite as createOverkillSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-import type { TestScope as OverkillScope } from '../packages/engine/engine.entry-point.ts';
+import {
+    createSuite as createOverkillSuite,
+    createTestCase,
+    type TestScope as OverkillScope
+} from '../packages/engine/engine.entry-point.ts';
 import { timingProfilePolicySchema } from './run-config-schema.ts';
 
 function assertValidationSuccess(scope: OverkillScope, data: unknown): void {
