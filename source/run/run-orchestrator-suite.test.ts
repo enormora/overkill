@@ -1,4 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as permissionDenialRuntimePolicyTestNode } from './permission-denial-runtime-policy.test.ts';
 import { testNode as runCapabilityPolicyTestNode } from './run-capability-policy.test.ts';
 import { testNode as runCustomEngineTestNode } from './run-custom-engine.test.ts';
 import { testNode as runOrchestratorCoreTestNode } from './run-orchestrator-core-suite.test.ts';
@@ -13,6 +14,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        permissionDenialRuntimePolicyTestNode,
         runCapabilityPolicyTestNode,
         runCustomEngineTestNode,
         runOrchestratorCoreTestNode,

@@ -2,9 +2,9 @@ import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     defineReporter,
+    type RunnerError,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { RunnerError } from '../engine/run-result.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
     defaultMicrotestProfile,
@@ -13,6 +13,7 @@ import {
 } from '../test-support/run-command-factory.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import {
+    createPermissionDenialRuntimePolicy,
     createRuntimeCapabilityPolicy,
     type RuntimeCapabilityPolicy
 } from './capability-policy.ts';
@@ -31,6 +32,13 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 type PolicyTestCase = Parameters<RuntimeCapabilityPolicy['runCase']>[0];
+type ExpectedPermissionDiagnosticError = {
+    readonly capability: string;
+    readonly message: string | null;
+    readonly permission: string;
+    readonly resource: string;
+};
+type PermissionDiagnosticChannel = { readonly publish: (message: unknown) => void; };
 
 const loadEnvPolicyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -86,6 +94,16 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
+function firstRunnerError(errors: readonly RunnerError[]): RunnerError {
+    const [ error ] = errors;
+
+    if (error === undefined) {
+        throw new Error('Expected a runner error.');
+    }
+
+    return error;
+}
+
 function runnerErrorPhase(runnerError: RunnerError | undefined): unknown {
     const cause = runnerError?.cause;
 
@@ -103,6 +121,19 @@ function errorCapability(error: RunnerError): string | null {
 
     if (typeof cause === 'object' && cause !== null && Object.hasOwn(cause, 'capability')) {
         return String(Reflect.get(cause, 'capability'));
+    }
+
+    return null;
+}
+
+function errorStringField(error: RunnerError, field: string): string | null {
+    const { cause } = error;
+
+    if (typeof cause === 'object' && cause !== null && Object.hasOwn(cause, field)) {
+        const causeFields = cause as Readonly<Record<string, unknown>>;
+        const value = causeFields[field];
+
+        return typeof value === 'string' ? value : null;
     }
 
     return null;
@@ -126,6 +157,21 @@ function errorCapabilityAndStrictness(error: RunnerError): readonly [string | nu
     return [ errorCapability(error), errorStrictness(error) ];
 }
 
+function assertPermissionDiagnosticError(
+    scope: OverkillScope,
+    error: RunnerError,
+    expected: ExpectedPermissionDiagnosticError
+): void {
+    scope.assert.equal(error.subtype, 'permission');
+    scope.assert.equal(errorCapability(error), expected.capability);
+    scope.assert.equal(errorStringField(error, 'permission'), expected.permission);
+    scope.assert.equal(errorStringField(error, 'resource'), expected.resource);
+    scope.assert.equal(errorStringField(error, 'source'), 'diagnostic-channel');
+    if (expected.message !== null) {
+        scope.assert.equal(error.message, expected.message);
+    }
+}
+
 function createStorage(values: ReadonlyMap<string, string>): WebStorageLike {
     return {
         get length() {
@@ -144,6 +190,20 @@ function installNoPolicyRestriction(): () => void {
     return function restoreNoPolicyRestriction(): void {
         return undefined;
     };
+}
+
+async function readPermissionDiagnosticChannel(): Promise<PermissionDiagnosticChannel> {
+    const diagnosticsChannel = await import('node:diagnostics_channel');
+
+    return diagnosticsChannel.default.channel('node:permission-model:fs');
+}
+
+function publishPermissionDiagnostic(
+    channel: PermissionDiagnosticChannel,
+    permission: string,
+    resource: string
+): void {
+    channel.publish({ permission, resource });
 }
 
 function createSparseStorage(): WebStorageLike {
@@ -309,6 +369,73 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'permission denial runtime policy attributes Node permission diagnostics',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const policy = createPermissionDenialRuntimePolicy();
+                const channel = await readPermissionDiagnosticChannel();
+
+                await policy.runCase(policyTestCase, async function publishCasePermissionDiagnostic() {
+                    publishPermissionDiagnostic(channel, 'FileSystemWrite', '/project/output.txt');
+                });
+                const error = firstRunnerError(policy.takeCaseErrors(policyTestCase));
+                const runErrors = policy.takeRunErrors();
+
+                assertPermissionDiagnosticError(scope, error, {
+                    capability: 'fs-write',
+                    message: 'Permission denied: FileSystemWrite for /project/output.txt.',
+                    permission: 'FileSystemWrite',
+                    resource: '/project/output.txt'
+                });
+                scope.assert.equal(error.attributedTo, policyTestCase.id);
+                scope.assert.deepEqual(runErrors, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runtime capability policy reports Node permission diagnostics as permission errors',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const environment: RuntimeCapabilityPolicyEnvironment = {};
+                const channel = await readPermissionDiagnosticChannel();
+                const policy = createRuntimeCapabilityPolicy({
+                    dependencies: {
+                        installIpcRestriction: installNoPolicyRestriction,
+                        installProcessExecutionRestriction: installNoPolicyRestriction,
+                        readEnvironment() {
+                            return environment;
+                        },
+                        readStorage() {
+                            return null;
+                        }
+                    },
+                    observedStderr: false,
+                    observedStdout: false
+                });
+
+                await policy.runCase(policyTestCase, async function publishStrictPermissionDiagnostic() {
+                    publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/input.txt');
+                });
+                const error = firstRunnerError(policy.takeCaseErrors(policyTestCase));
+                const runErrors = policy.takeRunErrors();
+
+                assertPermissionDiagnosticError(scope, error, {
+                    capability: 'fs-read',
+                    message: null,
+                    permission: 'FileSystemRead',
+                    resource: '/project/input.txt'
+                });
+                scope.assert.deepEqual(runErrors, []);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy accepts sparse unchanged storage snapshots',
             annotations: {},
             controls: {},
@@ -424,5 +551,4 @@ export const testNode = createOverkillSuite({
 });
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
 await runTestFileIfMain(import.meta, testNode);

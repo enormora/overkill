@@ -131,6 +131,13 @@ must include:
 - a source location or stack when the runtime can provide it
 - attribution confidence: `direct`, `active-case`, or `unknown`
 
+Node permission denials use the `permission` runner-error subtype, not the
+generic `runtime-policy` subtype. The cause preserves Node's raw permission
+kind, the denied resource path or host when present, the normalized Overkill
+capability, and whether the signal came from a thrown `ERR_ACCESS_DENIED` or a
+permission diagnostics channel. In strict microtest execution, an attributed
+permission runner error still gives the case verdict `runtime-policy`.
+
 Owned-boundary profiles have the strongest attribution rule. Before evaluating
 a test body, the worker must emit the active `CaseId`; any denied capability,
 process-exit attempt, strict console event, crash, or hard-kill condition in

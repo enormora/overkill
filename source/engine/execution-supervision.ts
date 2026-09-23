@@ -7,6 +7,7 @@ import {
 } from './case-execution.ts';
 import { workIdentityKey, type WorkId } from './identity.ts';
 import {
+    isPermissionDeniedRunnerError,
     verdictFromOutcome,
     type PerTestResult,
     type ResourceUsageSnapshot,
@@ -237,8 +238,9 @@ function policyCheckedCase(
     dependencies: ExecutionSupervisionDependencies
 ): ConcurrentCase {
     const errors = dependencies.runtimePolicy?.takeCaseErrors(testCase) ?? [];
+    const hasCasePermissionError = executedCase.runnerErrors.some(isPermissionDeniedRunnerError);
 
-    if (errors.length === 0) {
+    if (errors.length === 0 && !hasCasePermissionError) {
         return executedCase;
     }
 

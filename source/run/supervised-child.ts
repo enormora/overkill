@@ -17,9 +17,9 @@ import {
     createRunResultFromCollectedPlan
 } from './collected-run-plan.ts';
 import {
+    createPermissionDenialRuntimePolicy,
     createRuntimeCapabilityPolicy,
-    type CapabilityPolicyOptions,
-    type RuntimeCapabilityPolicy
+    type CapabilityPolicyOptions
 } from './capability-policy.ts';
 import {
     createRunResourceRuntimePolicy
@@ -41,6 +41,7 @@ import {
 type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
 
 type RuntimeCapabilityPolicyDependencies = CapabilityPolicyOptions['dependencies'];
+type SupervisedRuntimePolicy = NonNullable<Parameters<typeof createRunResourceRuntimePolicy>[1]>;
 
 type CollectedTestPlan = {
     readonly runnerErrors: readonly RunnerError[];
@@ -191,7 +192,7 @@ function createEmptyAssignmentResult(
 function createRuntimePolicy(
     command: SupervisedChildCommand,
     host: SupervisedChildHost
-): RuntimeCapabilityPolicy | null {
+): SupervisedRuntimePolicy {
     return command.capabilityRestrictions.mode === 'enabled'
         ? createRuntimeCapabilityPolicy({
             dependencies: {
@@ -203,13 +204,13 @@ function createRuntimePolicy(
             observedStderr: false,
             observedStdout: false
         })
-        : null;
+        : createPermissionDenialRuntimePolicy();
 }
 
 async function createPolicyCheckedTestPlan(
     command: SupervisedChildCommand,
     host: SupervisedChildHost,
-    runtimePolicy: RuntimeCapabilityPolicy | null
+    runtimePolicy: SupervisedRuntimePolicy | null
 ): Promise<TestPlan> {
     const createPlan = async function createTestPlanInsidePolicy(): Promise<TestPlan> {
         return await createSupervisedChildTestPlan(command, {
@@ -224,7 +225,7 @@ async function createPolicyCheckedTestPlan(
 
 function sendRuntimePolicyErrors(
     host: SupervisedChildHost,
-    runtimePolicy: RuntimeCapabilityPolicy | null
+    runtimePolicy: SupervisedRuntimePolicy | null
 ): void {
     const errors = runtimePolicy?.takeRunErrors() ?? [];
 
@@ -242,7 +243,7 @@ function sendRuntimePolicyErrors(
 async function readCollectedTestPlan(
     command: SupervisedChildCommand,
     host: SupervisedChildHost,
-    runtimePolicy: RuntimeCapabilityPolicy | null
+    runtimePolicy: SupervisedRuntimePolicy | null
 ): Promise<CollectedTestPlan> {
     const testPlan = await createPolicyCheckedTestPlan(command, host, runtimePolicy);
     const runnerErrors = runtimePolicy?.takeRunErrors() ?? [];
@@ -253,7 +254,7 @@ async function readCollectedTestPlan(
 async function createCollectedTestPlan(
     command: SupervisedChildCommand,
     host: SupervisedChildHost,
-    runtimePolicy: RuntimeCapabilityPolicy | null
+    runtimePolicy: SupervisedRuntimePolicy | null
 ): Promise<CollectedTestPlan> {
     try {
         return await readCollectedTestPlan(command, host, runtimePolicy);

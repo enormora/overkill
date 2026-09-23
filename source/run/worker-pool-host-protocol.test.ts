@@ -92,12 +92,24 @@ function createProtocolFixture(): ProtocolFixture {
         stream: 'stdout'
     } as const;
 
-    Object.defineProperty(error, 'stack', { value: undefined });
+    Object.defineProperties(error, {
+        code: { value: 'ERR_ACCESS_DENIED' },
+        permission: { value: 'FileSystemWrite' },
+        resource: { value: '/project/output.txt' },
+        stack: { value: undefined }
+    });
 
     return {
         decodedEnvelope: envelopeMessage<{ readonly kind: 'event'; }>(eventEnvelope, 'event-message'),
         deserializedError: deserializeError(serializeError(error)),
-        deserializedWithoutStack: deserializeError({ message: 'no stack', name: 'Error', stack: null }),
+        deserializedWithoutStack: deserializeError({
+            code: null,
+            message: 'no stack',
+            name: 'Error',
+            permission: null,
+            resource: null,
+            stack: null
+        }),
         outputMessage,
         serializedError: serializeError(error),
         workerEventMessage
@@ -105,11 +117,23 @@ function createProtocolFixture(): ProtocolFixture {
 }
 
 function assertErrorProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {
+    const deserializedFields = fixture.deserializedError as Error & Readonly<Record<string, unknown>>;
+
     scope.assert.equal(fixture.serializedError.stack, null);
+    scope.assert.equal(fixture.serializedError.code, 'ERR_ACCESS_DENIED');
+    scope.assert.equal(fixture.serializedError.permission, 'FileSystemWrite');
+    scope.assert.equal(fixture.serializedError.resource, '/project/output.txt');
     scope.assert.equal(fixture.deserializedError.name, 'TypeError');
     scope.assert.equal(fixture.deserializedError.message, 'boom');
+    scope.assert.equal(deserializedFields.code, 'ERR_ACCESS_DENIED');
+    scope.assert.equal(deserializedFields.permission, 'FileSystemWrite');
+    scope.assert.equal(deserializedFields.resource, '/project/output.txt');
+}
+
+function assertFallbackErrorProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {
     scope.assert.equal(fixture.deserializedWithoutStack.message, 'no stack');
     scope.assert.equal(serializeError('plain').message, 'plain');
+    scope.assert.equal(serializeError('plain').code, null);
 }
 
 function assertWorkerMessageProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {
@@ -221,6 +245,7 @@ export const testNode = createOverkillSuite({
                 const fixture = createProtocolFixture();
 
                 assertErrorProtocol(scope, fixture);
+                assertFallbackErrorProtocol(scope, fixture);
                 assertWorkerMessageProtocol(scope, fixture);
 
                 return scope.assert.collect();

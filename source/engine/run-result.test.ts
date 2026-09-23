@@ -5,7 +5,16 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { CaseRunnerError, isCaseRunnerError, verdictFromOutcome, type TestOutcome } from './run-result.ts';
+import {
+    CaseRunnerError,
+    isCaseRunnerError,
+    isPermissionDeniedRunnerError,
+    permissionDeniedRunnerErrorFromDiagnostic,
+    permissionDeniedRunnerErrorFromThrown,
+    verdictFromOutcome,
+    type PermissionDeniedRunnerErrorContext,
+    type TestOutcome
+} from './run-result.ts';
 import {
     defaultRunTimingSlowestSpanLimit,
     defaultRunTimingSpanLimit,
@@ -91,6 +100,27 @@ function assertDefaultTimingModelValues(scope: OverkillScope): void {
     scope.assert.equal(runTimingSpanKinds.includes('config.load'), true);
 }
 
+const permissionRunnerErrorContext: PermissionDeniedRunnerErrorContext = {
+    attributedTo: null,
+    attributedToWork: null,
+    boundary: 'in-process',
+    diagnosticChannel: null,
+    hook: null,
+    phase: 'body'
+};
+
+function stacklessPermissionDeniedError(): Error {
+    const denied = new Error('denied');
+    Object.assign(denied, {
+        code: 'ERR_ACCESS_DENIED',
+        permission: 'CustomPermission',
+        resource: '/private'
+    });
+    Reflect.set(denied, 'stack', undefined);
+
+    return denied;
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/run-result.test.ts',
@@ -120,6 +150,108 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 assertCaseRunnerErrorPredicates(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'permissionDeniedRunnerErrorFromThrown() preserves non-Error denied fields',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const denied = {
+                    code: 'ERR_ACCESS_DENIED',
+                    permission: 'FileSystemRead'
+                };
+                const runnerError = permissionDeniedRunnerErrorFromThrown(denied, permissionRunnerErrorContext);
+
+                if (runnerError === null) {
+                    throw new Error('Expected permission runner error.');
+                }
+
+                scope.assert.equal(isPermissionDeniedRunnerError(runnerError), true);
+                scope.assert.equal(runnerError.message, 'Permission denied: FileSystemRead.');
+                scope.assert.deepEqual(runnerError.cause, {
+                    boundary: 'in-process',
+                    capability: 'fs-read',
+                    diagnosticChannel: null,
+                    error: {
+                        code: 'ERR_ACCESS_DENIED',
+                        message: '[object Object]',
+                        name: 'Error',
+                        permission: 'FileSystemRead',
+                        resource: null,
+                        stack: null
+                    },
+                    hook: null,
+                    kind: 'node-permission-denial',
+                    permission: 'FileSystemRead',
+                    phase: 'body',
+                    resource: null,
+                    source: 'throw'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'permissionDeniedRunnerErrorFromDiagnostic() falls back without denied fields',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const runnerError = permissionDeniedRunnerErrorFromDiagnostic({
+                    channel: 'node:permission-model:fs',
+                    fallbackCapability: 'fs-read',
+                    message: {}
+                }, permissionRunnerErrorContext);
+
+                scope.assert.equal(isPermissionDeniedRunnerError(runnerError), true);
+                scope.assert.equal(runnerError.message, 'Permission denied: unknown permission.');
+                scope.assert.deepEqual(runnerError.cause, {
+                    boundary: 'in-process',
+                    capability: 'fs-read',
+                    diagnosticChannel: 'node:permission-model:fs',
+                    error: null,
+                    hook: null,
+                    kind: 'node-permission-denial',
+                    permission: null,
+                    phase: 'body',
+                    resource: null,
+                    source: 'diagnostic-channel'
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'permissionDeniedRunnerErrorFromThrown() serializes Error denials without stacks',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const runnerError = permissionDeniedRunnerErrorFromThrown(
+                    stacklessPermissionDeniedError(),
+                    permissionRunnerErrorContext
+                );
+
+                if (runnerError === null) {
+                    throw new Error('Expected permission runner error.');
+                }
+                if (runnerError.cause.error === null) {
+                    throw new Error('Expected serialized denied error.');
+                }
+
+                scope.assert.equal(runnerError.message, 'Permission denied: CustomPermission for /private.');
+                scope.assert.deepEqual(runnerError.cause.error, {
+                    code: 'ERR_ACCESS_DENIED',
+                    message: 'denied',
+                    name: 'Error',
+                    permission: 'CustomPermission',
+                    resource: '/private',
+                    stack: null
+                });
 
                 return scope.assert.collect();
             }

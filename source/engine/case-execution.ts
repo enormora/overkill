@@ -16,6 +16,7 @@ import {
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
     isCaseRunnerError,
+    permissionDeniedRunnerErrorFromThrown,
     type PerTestResult,
     type RunnerError,
     type TestContractFailure,
@@ -121,7 +122,18 @@ function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | n
 }
 
 function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
-    return isCaseRunnerError(error) ? error.runnerError(testCase.id, testCase.workId) : null;
+    if (isCaseRunnerError(error)) {
+        return error.runnerError(testCase.id, testCase.workId);
+    }
+
+    return permissionDeniedRunnerErrorFromThrown(error, {
+        attributedTo: testCase.id,
+        attributedToWork: testCase.workId,
+        boundary: null,
+        diagnosticChannel: null,
+        hook: null,
+        phase: 'body'
+    });
 }
 
 function requireFailedBody(context: BodyResultContext): ExecutedBody {

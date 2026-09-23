@@ -1,4 +1,5 @@
-import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
+import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
+import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { applyEvent } from './supervised-run-runtime.ts';
 import type { SupervisedCase } from './supervised-run-state.ts';
@@ -6,8 +7,14 @@ import { crashError } from './supervised-run-resource-policy.ts';
 import type { WorkUnit } from './run-types.ts';
 import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
+import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 
 type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
+type WorkerPoolPermissionFailureContext = {
+    readonly dispatcher: WorkerPoolWorkDispatcher;
+    readonly runtime: WorkerPoolRunRuntime;
+    readonly stopActiveTasks: (excludedTask: WorkerPoolTaskRun | null) => void;
+};
 
 function memberUnits(taskRun: WorkerPoolTaskRun): readonly WorkUnit[] {
     return taskRun.members.map(function toUnit(member) {
@@ -23,6 +30,58 @@ function casesByKey(taskRun: WorkerPoolTaskRun): ReadonlyMap<string, SupervisedC
             });
         })
     );
+}
+
+function singleActiveCase(taskRun: WorkerPoolTaskRun): SupervisedCase | null {
+    const activeCases = Array.from(taskRun.state.activeCases.values());
+    const [ activeCase ] = activeCases;
+
+    return activeCases.length === 1 && activeCase !== undefined ? activeCase : null;
+}
+
+function attributedWork(activeCase: SupervisedCase | null): WorkId | null {
+    return activeCase === null ? null : activeCase.workId ?? createDefaultWorkId(activeCase.id);
+}
+
+function recordPermissionFailure(
+    runnerError: RunnerError,
+    taskRun: WorkerPoolTaskRun,
+    context: WorkerPoolPermissionFailureContext
+): void {
+    taskRun.endedByParent.write(true);
+    taskRun.requeuePendingCases.write(false);
+    taskRun.state.recordRunnerError(runnerError);
+    taskRun.state.recordTerminalActiveCases(
+        'runtime-policy',
+        context.runtime.dependencies.wallClock.currentMonotonicMicroseconds
+    );
+    context.runtime.terminalFailure.write(true);
+    context.dispatcher.clear();
+    context.stopActiveTasks(taskRun);
+}
+
+export function recordTaskPermissionFailure(
+    error: unknown,
+    taskRun: WorkerPoolTaskRun,
+    context: WorkerPoolPermissionFailureContext
+): boolean {
+    const activeCase = singleActiveCase(taskRun);
+    const runnerError = permissionDeniedRunnerErrorFromThrown(error, {
+        attributedTo: activeCase?.id ?? null,
+        attributedToWork: attributedWork(activeCase),
+        boundary: 'worker-pool-worker',
+        diagnosticChannel: null,
+        hook: null,
+        phase: activeCase === null ? 'run' : 'body'
+    });
+
+    if (runnerError === null) {
+        return false;
+    }
+
+    recordPermissionFailure(runnerError, taskRun, context);
+
+    return true;
 }
 
 async function recordReporterEventErrors(

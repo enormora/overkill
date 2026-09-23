@@ -8,7 +8,7 @@ import { createTestEngine as createEngine } from '../test-support/create-test-en
 import { unknownSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { KnownSourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from './engine.ts';
-import type { FailOutcome, RunResult, TestOutcome } from './run-result.ts';
+import type { FailOutcome, RunResult, RunnerError, TestOutcome } from './run-result.ts';
 import type { TestBody, TestScope } from './test-node.ts';
 
 type SourceLocation = KnownSourceLocation;
@@ -22,6 +22,28 @@ const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, 
 
 function firstOutcome(result: RunResult): TestOutcome | undefined {
     return result.perTest.at(0)?.outcome ?? undefined;
+}
+
+function firstRunnerError(errors: readonly RunnerError[]): RunnerError {
+    const [ error ] = errors;
+
+    if (error === undefined) {
+        throw new Error('Expected a runner error.');
+    }
+
+    return error;
+}
+
+function createPermissionError(permission: string, resource: string): Error {
+    const error = new Error('Access to this API has been restricted');
+
+    Object.defineProperties(error, {
+        code: { value: 'ERR_ACCESS_DENIED' },
+        permission: { value: permission },
+        resource: { value: resource }
+    });
+
+    return error;
 }
 
 async function executeSingleBody(body: TestBody): Promise<RunResult> {
@@ -225,6 +247,35 @@ export const testNode = createOverkillSuite({
                     ],
                     kind: 'fail'
                 });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'execute() reports thrown permission denials as runner errors',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const result = await executeSingleBody(function throwPermissionDenial() {
+                    throw createPermissionError('FileSystemWrite', '/project/output.txt');
+                });
+                const error = firstRunnerError(result.runnerErrors);
+
+                scope.assert.deepEqual(
+                    {
+                        message: error.message,
+                        runnerSubtype: error.subtype,
+                        runtimePolicy: result.summary.runtimePolicy,
+                        verdict: result.perTest[0]?.verdict
+                    },
+                    {
+                        message: 'Permission denied: FileSystemWrite for /project/output.txt.',
+                        runnerSubtype: 'permission',
+                        runtimePolicy: 1,
+                        verdict: 'runtime-policy'
+                    }
+                );
 
                 return scope.assert.collect();
             }

@@ -6,8 +6,9 @@ import {
     type RunResourceUsageTracker
 } from '../packages/engine/engine.entry-point.ts';
 import {
-    createResourceLifecycleRuntimePolicy
-} from './resource-lifecycle.ts';
+    createRunPermissionRuntimePolicy,
+    createRunResourceRuntimePolicy
+} from './run-support.ts';
 import { resolvedTestPlanDefinitionLocations } from './collected-run-plan.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import {
@@ -103,7 +104,7 @@ async function runAssignment(
         reporters: [ createWorkerPoolReporter(task) ],
         resourceBudgets: workerResourceBudgets(task.command),
         resourceUsageTracker: createResourceUsageTracker(task.command),
-        runtimePolicy: createResourceLifecycleRuntimePolicy(testPlan.cases),
+        runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, createRunPermissionRuntimePolicy()),
         runFacts: {},
         startedAt: startedAtIso(task.startedAtMilliseconds),
         timeoutPolicy: {

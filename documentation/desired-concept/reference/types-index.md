@@ -216,7 +216,7 @@ type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
-type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted';
+type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
 
 type Pass = { kind: 'pass'; };
 
@@ -1532,6 +1532,31 @@ type RunnerError = {
     readonly attributedTo: CaseId | null; // null when run-level
     readonly message: string;
     readonly cause?: unknown;
+};
+
+type PermissionDeniedRunnerErrorCause = {
+    readonly boundary:
+        | 'in-process'
+        | 'supervised-child'
+        | 'worker-pool-host'
+        | 'worker-pool-worker'
+        | null;
+    readonly capability: string | null; // normalized Overkill capability such as `fs-read`
+    readonly diagnosticChannel: string | null; // Node diagnostics channel when source is `diagnostic-channel`
+    readonly error: {
+        readonly code: string | null;
+        readonly message: string;
+        readonly name: string;
+        readonly permission: string | null; // raw Node permission such as `FileSystemRead`
+        readonly resource: string | null; // raw Node resource, usually a path or host
+        readonly stack: string | null;
+    } | null;
+    readonly hook: 'uncaughtException' | 'unhandledRejection' | null;
+    readonly kind: 'node-permission-denial';
+    readonly permission: string | null;
+    readonly phase: 'body' | 'collection' | 'load' | 'out-of-test' | 'run' | null;
+    readonly resource: string | null;
+    readonly source: 'diagnostic-channel' | 'throw';
 };
 
 type AsyncLeakRunnerErrorCause =

@@ -24,8 +24,11 @@ type WorkerPoolRunTaskWithoutPort = {
 export type WorkerPoolTaskWithoutPort = WorkerPoolCollectTaskWithoutPort | WorkerPoolRunTaskWithoutPort;
 
 export type SerializedError = {
+    readonly code: string | null;
     readonly message: string;
     readonly name: string;
+    readonly permission: string | null;
+    readonly resource: string | null;
     readonly stack: string | null;
 };
 
@@ -90,19 +93,24 @@ export type WorkerPoolHostMessage = {
     readonly taskId: string;
 };
 
-export function serializeError(error: unknown): SerializedError {
-    if (error instanceof Error) {
-        return {
-            message: error.message,
-            name: error.name,
-            stack: error.stack ?? null
-        };
+function readStringProperty(value: unknown, property: string): string | null {
+    if (value === null || typeof value !== 'object') {
+        return null;
     }
 
+    const propertyValue: unknown = Reflect.get(value, property);
+
+    return typeof propertyValue === 'string' ? propertyValue : null;
+}
+
+export function serializeError(error: unknown): SerializedError {
     return {
-        message: String(error),
-        name: 'Error',
-        stack: null
+        code: readStringProperty(error, 'code'),
+        message: error instanceof Error ? error.message : String(error),
+        name: error instanceof Error ? error.name : 'Error',
+        permission: readStringProperty(error, 'permission'),
+        resource: readStringProperty(error, 'resource'),
+        stack: error instanceof Error ? error.stack ?? null : null
     };
 }
 
@@ -112,6 +120,15 @@ export function deserializeError(error: SerializedError): Error {
     Object.defineProperties(deserializedError, {
         name: {
             value: error.name
+        },
+        code: {
+            value: error.code
+        },
+        permission: {
+            value: error.permission
+        },
+        resource: {
+            value: error.resource
         },
         stack: {
             value: error.stack ?? deserializedError.stack

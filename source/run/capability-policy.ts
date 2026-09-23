@@ -5,6 +5,10 @@ import { recordReporterConsoleDiagnostic } from '../engine/reporter-output-scope
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 import {
+    createPermissionDenialRuntimePolicy as createPermissionDenialRuntimePolicyCore,
+    createPermissionDiagnosticsSubscriptions
+} from './permission-denial-runtime-policy.ts';
+import {
     environmentChanged,
     localStorageChanged,
     sessionStorageChanged,
@@ -124,14 +128,6 @@ const diagnosticsCapabilities: Readonly<Record<string, RuntimePolicyCapability>>
     'locks.request.miss': runtimePolicyCapabilities.webLocks,
     'locks.request.start': runtimePolicyCapabilities.webLocks,
     'net.client.socket': runtimePolicyCapabilities.network,
-    'node:permission-model:child': runtimePolicyCapabilities.childProcess,
-    'node:permission-model:ffi': runtimePolicyCapabilities.worker,
-    'node:permission-model:fs': runtimePolicyCapabilities.fileRead,
-    'node:permission-model:inspector': runtimePolicyCapabilities.inspector,
-    'node:permission-model:net': runtimePolicyCapabilities.network,
-    'node:permission-model:openssl-store': runtimePolicyCapabilities.openSslStore,
-    'node:permission-model:wasi': runtimePolicyCapabilities.wasi,
-    'node:permission-model:worker': runtimePolicyCapabilities.worker,
     [processExecuteChannel]: runtimePolicyCapabilities.processExecute,
     'tracing:module.import:asyncStart': runtimePolicyCapabilities.dynamicModuleLoad,
     'tracing:module.import:start': runtimePolicyCapabilities.dynamicModuleLoad,
@@ -139,24 +135,6 @@ const diagnosticsCapabilities: Readonly<Record<string, RuntimePolicyCapability>>
     'udp.socket': runtimePolicyCapabilities.network,
     worker_threads: runtimePolicyCapabilities.worker
 };
-
-function permissionCapability(message: unknown, fallback: RuntimePolicyCapability): RuntimePolicyCapability {
-    if (typeof message !== 'object' || message === null) {
-        return fallback;
-    }
-
-    const permission = String(Reflect.get(message, 'permission'));
-
-    if (permission === 'FileSystemWrite') {
-        return runtimePolicyCapabilities.fileWrite;
-    }
-
-    if (permission === 'FileSystemRead') {
-        return runtimePolicyCapabilities.fileRead;
-    }
-
-    return fallback;
-}
 
 function asyncResourceReport(
     type: string,
@@ -239,19 +217,15 @@ function createDiagnosticsSubscriptions(
 ): readonly Subscription[] {
     return Object.entries(diagnosticsCapabilities).map(function subscribeToChannel([ name, capability ]) {
         const channel = diagnosticsChannel.channel(name);
-        const listener = function recordDiagnostic(message: unknown): void {
+        const listener = function recordDiagnostic(): void {
             if (recordReporterConsoleDiagnostic(name)) {
                 return;
             }
 
-            const resolvedCapability = name.startsWith('node:permission-model:')
-                ? permissionCapability(message, capability)
-                : capability;
-
             recordViolation({
-                capability: resolvedCapability,
-                message: `Runtime policy violation: ${resolvedCapability}.`,
-                strictness: name.startsWith('node:permission-model:') ? 'blocked' : 'observed'
+                capability,
+                message: `Runtime policy violation: ${capability}.`,
+                strictness: 'observed'
             });
         };
         channel.subscribe(listener);
@@ -381,6 +355,12 @@ function completedRuntimePolicyViolation(
     };
 }
 
+function permissionDiagnosticsPhase(loadComplete: boolean): RuntimePolicyPhase {
+    return loadComplete ? 'out-of-test' : 'load';
+}
+
+export const createPermissionDenialRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicyCore;
+
 export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions): RuntimeCapabilityPolicy {
     const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
     const caseErrors = new Map<string, RunnerError[]>();
@@ -405,6 +385,17 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         caseErrors.set(activeCase.key, [ ...caseErrors.get(activeCase.key) ?? [], error ]);
     }
 
+    function recordPermissionError(error: RunnerError): void {
+        const activeCase = activeCaseStorage.getStore();
+
+        if (activeCase === undefined) {
+            runErrors.push(error);
+            return;
+        }
+
+        caseErrors.set(activeCase.key, [ ...caseErrors.get(activeCase.key) ?? [], error ]);
+    }
+
     function tryRecord(violation: RuntimePolicyReport): void {
         try {
             record(violation);
@@ -413,6 +404,18 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
     }
 
     const monitoring = startRuntimePolicyMonitoring(activeCaseStorage, tryRecord, options.dependencies);
+    const permissionDiagnosticsSubscriptions = createPermissionDiagnosticsSubscriptions(
+        activeCaseStorage,
+        function currentPermissionDiagnosticsPhase() {
+            return permissionDiagnosticsPhase(loadComplete);
+        },
+        function recordPermissionErrorWithoutThrowing(error) {
+            try {
+                recordPermissionError(error);
+            } catch {
+            }
+        }
+    );
 
     return {
         recordViolation(capability, message, strictness) {
@@ -460,6 +463,9 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         },
         takeRunErrors() {
             stopRuntimePolicyMonitoring(monitoring);
+            for (const subscription of permissionDiagnosticsSubscriptions) {
+                subscription.unsubscribe();
+            }
             runErrors.push(...rawOutputPolicyErrors(options));
 
             const errors = Array.from(runErrors);
