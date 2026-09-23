@@ -83,7 +83,7 @@ async function reportTestEnd(
         outcome,
         suitePath: suitePathFromTitles(id.suite),
         verdict: outcome?.kind ?? 'crashed',
-        wallTimeMs: 1
+        durationMicroseconds: 1
     });
 }
 
@@ -296,7 +296,7 @@ export const testNode = createOverkillSuite({
                         planned: 3,
                         skipped: 0
                     },
-                    wallTimeMs: 12
+                    totalWallTimeMicroseconds: 12_000
                 });
                 const { onFinish } = reporter;
 
@@ -387,7 +387,7 @@ export const testNode = createOverkillSuite({
                         failed: 2,
                         planned: 2
                     },
-                    wallTimeMs: 7
+                    totalWallTimeMicroseconds: 7000
                 });
                 const { onFinish } = reporter;
 

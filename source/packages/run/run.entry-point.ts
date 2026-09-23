@@ -1,6 +1,6 @@
 import { glob, realpath, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { createWallClock } from '@enormora/wall-clock';
+import { createOverkillClock } from '../../clock/overkill-clock.ts';
 import { createDirectRuntimePolicy } from '../../run/direct-runtime-policy.ts';
 import { defaultRunEngine } from '../../run/default-run-engine.ts';
 import { createRunIfMain } from '../../run/run-if-main.ts';
@@ -19,7 +19,7 @@ const resolveDirectProfile = createDirectProfileResolver({
 export const runIfMain = createRunIfMain({
     createResourceUsageTracker: createNodeResourceUsageTracker,
     createRuntimePolicy: createDirectRuntimePolicy,
-    createWallClock,
+    createOverkillClock,
     currentWorkingDirectory() {
         return process.cwd();
     },

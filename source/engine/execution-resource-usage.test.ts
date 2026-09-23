@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -21,7 +21,7 @@ import type { ResourceUsageSnapshot, RunResourceUsageTracker, RunResult } from '
 const sample = {
     activeResourceCount: 1,
     activeResourceTypes: [ 'Timeout' ],
-    capturedAtMilliseconds: 2,
+    capturedAtMicroseconds: 2,
     javaScriptEngineHeapBytes: 30,
     residentSetBytes: 40
 };
@@ -29,7 +29,7 @@ const sample = {
 const previousSample = {
     ...sample,
     activeResourceCount: 0,
-    capturedAtMilliseconds: 1,
+    capturedAtMicroseconds: 1,
     javaScriptEngineHeapBytes: 20,
     residentSetBytes: 30
 };
@@ -81,7 +81,7 @@ function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
                 end: {
                     activeResourceCount: 1,
                     activeResourceTypes: [ 'Timeout' ],
-                    capturedAtMilliseconds: 2,
+                    capturedAtMicroseconds: 2,
                     javaScriptEngineHeapBytes: 30,
                     residentSetBytes: 40
                 },
@@ -93,7 +93,7 @@ function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
                 start: {
                     activeResourceCount: 0,
                     activeResourceTypes: [],
-                    capturedAtMilliseconds: 1,
+                    capturedAtMicroseconds: 1,
                     javaScriptEngineHeapBytes: 20,
                     residentSetBytes: 30
                 }
@@ -120,7 +120,7 @@ function createBreachingResourceUsageTracker(): BreachingResourceUsageTracker {
                     end: {
                         activeResourceCount: 1,
                         activeResourceTypes: [ 'Timeout' ],
-                        capturedAtMilliseconds: 2,
+                        capturedAtMicroseconds: 2,
                         javaScriptEngineHeapBytes: 30,
                         residentSetBytes: 40
                     },
@@ -132,7 +132,7 @@ function createBreachingResourceUsageTracker(): BreachingResourceUsageTracker {
                     start: {
                         activeResourceCount: 1,
                         activeResourceTypes: [ 'Timeout' ],
-                        capturedAtMilliseconds: 2,
+                        capturedAtMicroseconds: 2,
                         javaScriptEngineHeapBytes: 30,
                         residentSetBytes: 40
                     }
@@ -233,7 +233,7 @@ export const testNode = createOverkillSuite({
                     end: {
                         activeResourceCount: 1,
                         activeResourceTypes: [ 'Timeout' ],
-                        capturedAtMilliseconds: 2,
+                        capturedAtMicroseconds: 2,
                         javaScriptEngineHeapBytes: 30,
                         residentSetBytes: 40
                     },
@@ -245,7 +245,7 @@ export const testNode = createOverkillSuite({
                     start: {
                         activeResourceCount: 0,
                         activeResourceTypes: [],
-                        capturedAtMilliseconds: 1,
+                        capturedAtMicroseconds: 1,
                         javaScriptEngineHeapBytes: 20,
                         residentSetBytes: 30
                     }
@@ -397,7 +397,7 @@ export const testNode = createOverkillSuite({
                         residentSetBytes: 1,
                         residentSetGrowthBytesPerSecond: null
                     },
-                    dependencies: { wallClock: createDeterministicWallClock() },
+                    dependencies: { wallClock: createDeterministicOverkillClock() },
                     previousSample,
                     sample,
                     supervision
@@ -428,7 +428,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
-                const dependencies = { wallClock: createDeterministicWallClock() };
+                const dependencies = { wallClock: createDeterministicOverkillClock() };
                 const nullBudgetBreach = recordResourceUsageSample({
                     budgets: null,
                     dependencies,
@@ -462,7 +462,7 @@ export const testNode = createOverkillSuite({
                 await scope.assert.rejects(async function executeThrowingCases() {
                     await executeResourceTrackedCases({
                         context: {
-                            dependencies: { wallClock: createDeterministicWallClock() },
+                            dependencies: { wallClock: createDeterministicOverkillClock() },
                             reporterDelivery: createSilentReporterDelivery()
                         },
                         options: {

@@ -35,7 +35,7 @@ type RunResultKeys = readonly [
     'runnerErrors',
     'status',
     'summary',
-    'wallTimeMs'
+    'timings'
 ];
 type ExpectedRunResultKey = RunResultKeys[number];
 type RunSummaryKeys = readonly [

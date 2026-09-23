@@ -1,4 +1,4 @@
-import { createWallClock, type WallClock } from '@enormora/wall-clock';
+import { createOverkillClock } from '../clock/overkill-clock.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/run-result.ts';
 import {
@@ -53,13 +53,13 @@ function createMissingWorkerPool(): never {
 
 function resourceUsageSample(
     activeResourceCount: number,
-    capturedAtMilliseconds: number,
+    capturedAtMicroseconds: number,
     residentSetBytes: number
 ): ResourceUsageSnapshot {
     return {
         activeResourceCount,
         activeResourceTypes: [],
-        capturedAtMilliseconds,
+        capturedAtMicroseconds,
         javaScriptEngineHeapBytes: 1,
         residentSetBytes
     };
@@ -78,15 +78,7 @@ function deterministicResourceUsage(): RunResourceUsage {
     };
 }
 
-function emitTestStart(context: FakeSupervisedChildRunContext): void {
-    const [ work ] = supervisedAssignedWork(context.assignment);
-
-    if (work === undefined) {
-        context.emitExit();
-
-        return;
-    }
-
+function emitTestStart(context: FakeSupervisedChildRunContext, work: WorkId): void {
     context.emitMessage({
         event: {
             attempt: 1,
@@ -100,13 +92,11 @@ function emitTestStart(context: FakeSupervisedChildRunContext): void {
     });
 }
 
-function emitTestEnd(context: FakeSupervisedChildRunContext, verdict: 'pass' | 'runtime-policy'): void {
-    const [ work ] = supervisedAssignedWork(context.assignment);
-
-    if (work === undefined) {
-        return;
-    }
-
+function emitTestEnd(
+    context: FakeSupervisedChildRunContext,
+    work: WorkId,
+    verdict: 'pass' | 'runtime-policy'
+): void {
     context.emitMessage({
         event: {
             attempt: 1,
@@ -117,7 +107,7 @@ function emitTestEnd(context: FakeSupervisedChildRunContext, verdict: 'pass' | '
             outcome: verdict === 'pass' ? { kind: 'pass' } : null,
             suitePath: [],
             verdict,
-            wallTimeMs: 0,
+            durationMicroseconds: 0,
             workId: work
         },
         kind: 'event'
@@ -146,13 +136,13 @@ function emitProcessEnvironmentPolicyError(context: FakeSupervisedChildRunContex
     });
 }
 
-function emitProcessEnvironmentPolicyRun(context: FakeSupervisedChildRunContext): boolean {
+function emitProcessEnvironmentPolicyRun(context: FakeSupervisedChildRunContext, work: WorkId): boolean {
     if (!context.testFile.includes('env-policy')) {
         return false;
     }
 
     emitProcessEnvironmentPolicyError(context);
-    emitTestEnd(context, 'runtime-policy');
+    emitTestEnd(context, work, 'runtime-policy');
     context.emitExit();
 
     return true;
@@ -191,11 +181,17 @@ function collectedPlanForAssignedCases(
     };
 }
 
-function completeDeterministicSupervisedChild(context: FakeSupervisedChildRunContext, wallClock: WallClock): void {
+function completeDeterministicSupervisedChild(
+    context: FakeSupervisedChildRunContext,
+    alreadyReportedWorkCount: number
+): void {
     const collectedPlan = deterministicCollectedRunPlan(context.testFile);
     const assignedWork = supervisedAssignedWork(context.assignment);
 
-    emitTestEnd(context, 'pass');
+    for (const work of assignedWork.slice(alreadyReportedWorkCount)) {
+        emitTestStart(context, work);
+        emitTestEnd(context, work, 'pass');
+    }
     context.emitMessage({
         kind: 'result',
         result: createRunResultFromCollectedPlan(
@@ -206,44 +202,68 @@ function completeDeterministicSupervisedChild(context: FakeSupervisedChildRunCon
                     outcome: { kind: 'pass' as const },
                     verdict: 'pass' as const,
                     workId: work,
-                    wallTimeMs: 0
+                    durationMicroseconds: 0
                 };
             }),
             [],
             {
+                completedAtMicroseconds: 0,
                 planStatus: 'planned',
                 resourceUsage: deterministicResourceUsage(),
-                startedAtMs: 0,
-                wallClock
+                startedAtMicroseconds: 0,
+                testExecutionWallTimeMicroseconds: 0
             }
         )
     });
     context.emitExit();
 }
 
-function runDeterministicSupervisedChild(context: FakeSupervisedChildRunContext, wallClock: WallClock): void {
-    emitTestStart(context);
+function assignedFirstWork(context: FakeSupervisedChildRunContext): WorkId | null {
+    const [ firstWork ] = supervisedAssignedWork(context.assignment);
 
-    if (context.testFile.includes('endless-loop')) {
-        return;
+    if (firstWork === undefined) {
+        return null;
     }
 
-    if (emitProcessEnvironmentPolicyRun(context)) {
-        return;
-    }
+    return firstWork;
+}
 
+function completeStartedDeterministicRun(context: FakeSupervisedChildRunContext, firstWork: WorkId): void {
     emitResourceUsageSamples(context);
 
     if (context.isKilled()) {
         return;
     }
 
-    completeDeterministicSupervisedChild(context, wallClock);
+    emitTestEnd(context, firstWork, 'pass');
+    completeDeterministicSupervisedChild(context, 1);
+}
+
+function runDeterministicSupervisedChild(context: FakeSupervisedChildRunContext): void {
+    const firstWork = assignedFirstWork(context);
+
+    if (firstWork === null) {
+        context.emitExit();
+
+        return;
+    }
+
+    emitTestStart(context, firstWork);
+
+    if (context.testFile.includes('endless-loop')) {
+        return;
+    }
+
+    if (emitProcessEnvironmentPolicyRun(context, firstWork)) {
+        return;
+    }
+
+    completeStartedDeterministicRun(context, firstWork);
 }
 
 export function createDeterministicRunOrchestratorWithSeed(createSeed: () => bigint): RunOrchestrator {
     const engine = createTestEngine();
-    const wallClock = createWallClock();
+    const wallClock = createOverkillClock();
     const environment: Record<string, string | undefined> = {};
     const reporterDispatcher = createReporterDispatcher({
         stderr: {
@@ -269,7 +289,7 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
                         end: {
                             activeResourceCount: 0,
                             activeResourceTypes: [],
-                            capturedAtMilliseconds: 1,
+                            capturedAtMicroseconds: 1,
                             javaScriptEngineHeapBytes: 2,
                             residentSetBytes: 3
                         },
@@ -281,7 +301,7 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
                         start: {
                             activeResourceCount: 0,
                             activeResourceTypes: [],
-                            capturedAtMilliseconds: 0,
+                            capturedAtMicroseconds: 0,
                             javaScriptEngineHeapBytes: 1,
                             residentSetBytes: 2
                         }
@@ -363,7 +383,7 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
             return createFakeSupervisedChildProcess({
                 collect: deterministicRunCollection,
                 run(context) {
-                    runDeterministicSupervisedChild(context, wallClock);
+                    runDeterministicSupervisedChild(context);
                 }
             });
         },

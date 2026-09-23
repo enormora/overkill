@@ -1,12 +1,12 @@
 import { getHeapStatistics } from 'node:v8';
-import type { WallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import type {
     ResourceUsageSnapshot,
     RunResourceUsage,
     RunResourceUsageTracker
 } from '../engine/run-result.ts';
 
-const millisecondsPerSecond = 1000;
+const microsecondsPerSecond = 1_000_000;
 
 type ResourceUsageSample = ResourceUsageSnapshot;
 
@@ -14,7 +14,7 @@ type ResourceUsageTrackerDependencies = {
     readonly readActiveResourceTypes: () => readonly string[];
     readonly readJavaScriptEngineHeapBytes: () => number;
     readonly readResidentSetBytes: () => number;
-    readonly wallClock: WallClock;
+    readonly wallClock: OverkillClock;
 };
 
 export type ResourceUsageTrackerOptions = {
@@ -33,7 +33,7 @@ function readResourceUsageSample(dependencies: ResourceUsageTrackerDependencies)
     return {
         activeResourceCount: activeResourceTypes.length,
         activeResourceTypes: sortedUnique(activeResourceTypes),
-        capturedAtMilliseconds: dependencies.wallClock.currentTimestampInMilliseconds,
+        capturedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
         javaScriptEngineHeapBytes: dependencies.readJavaScriptEngineHeapBytes(),
         residentSetBytes: dependencies.readResidentSetBytes()
     };
@@ -50,15 +50,15 @@ function residentSetGrowthBytesPerSecond(
     previousSample: ResourceUsageSample,
     nextSample: ResourceUsageSample
 ): number {
-    const elapsedMilliseconds = nextSample.capturedAtMilliseconds - previousSample.capturedAtMilliseconds;
+    const elapsedMicroseconds = nextSample.capturedAtMicroseconds - previousSample.capturedAtMicroseconds;
 
-    if (elapsedMilliseconds <= 0) {
+    if (elapsedMicroseconds <= 0) {
         return 0;
     }
 
     const residentSetGrowthBytes = nextSample.residentSetBytes - previousSample.residentSetBytes;
 
-    return Math.max(0, residentSetGrowthBytes * millisecondsPerSecond / elapsedMilliseconds);
+    return Math.max(0, residentSetGrowthBytes * microsecondsPerSecond / elapsedMicroseconds);
 }
 
 function peakResidentSetGrowthBytesPerSecond(samples: readonly ResourceUsageSample[]): number {
@@ -117,7 +117,7 @@ export function createResourceUsageTracker(
     dependencies: ResourceUsageTrackerDependencies,
     options: ResourceUsageTrackerOptions
 ): RunResourceUsageTracker {
-    let intervalIdentifier: ReturnType<WallClock['setInterval']> | null = null;
+    let intervalIdentifier: ReturnType<OverkillClock['setInterval']> | null = null;
     let samples: readonly ResourceUsageSample[] = [];
     let startSnapshot: ResourceUsageSnapshot | null = null;
 
@@ -155,7 +155,7 @@ export function createResourceUsageTracker(
 }
 
 export function createNodeResourceUsageTracker(
-    wallClock: WallClock,
+    wallClock: OverkillClock,
     options: ResourceUsageTrackerOptions
 ): RunResourceUsageTracker {
     return createResourceUsageTracker({

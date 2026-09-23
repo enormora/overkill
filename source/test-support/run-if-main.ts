@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import {
@@ -110,7 +110,7 @@ export function createTestSupportRunIfMain(dependencies: TestSupportRunIfMainDep
             return;
         }
 
-        const wallClock = createDeterministicWallClock();
+        const wallClock = createDeterministicOverkillClock();
         const execute = createExecute({
             asyncLeakDiagnostics: 'disabled',
             readActiveResourceTypes: readNoActiveResourceTypes,

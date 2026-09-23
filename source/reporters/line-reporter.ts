@@ -22,6 +22,7 @@ import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts
 const successSymbol = colors.green(figures.tick);
 const errorSymbol = colors.red(figures.cross);
 const infoSymbol = colors.cyan(figures.info);
+const microsecondsPerMillisecond = 1000;
 
 export type LineReporterDependencies = {
     readonly stdoutConsole: Pick<typeof console, 'log'>;
@@ -48,14 +49,14 @@ function outcomeReason(outcome: TestOutcome): string | null {
     return null;
 }
 
-function formatDuration(wallTimeMs: number): string {
-    return `${wallTimeMs} ms`;
+function formatDuration(durationMicroseconds: number): string {
+    return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
 }
 
-function formatTestResult(id: CaseId, outcome: TestOutcome, wallTimeMs: number): readonly [string, string] {
+function formatTestResult(id: CaseId, outcome: TestOutcome, durationMicroseconds: number): readonly [string, string] {
     const reason = outcomeReason(outcome);
     const detail = reason === null ? '' : `: ${reason}`;
-    const message = `${formatCaseTitle(id)}${detail} (${formatDuration(wallTimeMs)})`;
+    const message = `${formatCaseTitle(id)}${detail} (${formatDuration(durationMicroseconds)})`;
 
     if (outcome.kind === 'fail') {
         return [ errorSymbol, message ];
@@ -68,8 +69,12 @@ function formatTestResult(id: CaseId, outcome: TestOutcome, wallTimeMs: number):
     return [ infoSymbol, message ];
 }
 
-function formatTerminalTestResult(id: CaseId, verdict: TestVerdict, wallTimeMs: number): readonly [string, string] {
-    const message = `${formatCaseTitle(id)} (${formatDuration(wallTimeMs)})`;
+function formatTerminalTestResult(
+    id: CaseId,
+    verdict: TestVerdict,
+    durationMicroseconds: number
+): readonly [string, string] {
+    const message = `${formatCaseTitle(id)} (${formatDuration(durationMicroseconds)})`;
 
     if (verdict === 'resource-exhausted') {
         return [ errorSymbol, `${message}: resource exhausted` ];
@@ -126,7 +131,9 @@ function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
 
     terminal.line(
         symbol,
-        `${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`
+        `${countSummary} (${outcomes})${orphanSummary} in ${
+            formatDuration(result.timings.summary.totalWallTimeMicroseconds)
+        }`
     );
 }
 
@@ -234,8 +241,8 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
 
         function logTestEnd(event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>): void {
             const [ symbol, message ] = event.outcome === null
-                ? formatTerminalTestResult(event.case, event.verdict, event.wallTimeMs)
-                : formatTestResult(event.case, event.outcome, event.wallTimeMs);
+                ? formatTerminalTestResult(event.case, event.verdict, event.durationMicroseconds)
+                : formatTestResult(event.case, event.outcome, event.durationMicroseconds);
             const definitionLocations = formatDefinitionLocations(event.definitionLocations, context);
 
             terminal.line(symbol, `${indent(suiteDepth)}${message}${failureLocation(event, definitionLocations)}`);

@@ -55,7 +55,7 @@ report can tell that the data was collected.
 type TestDebugArtifact = {
     readonly case: CaseId;
     readonly outcome: TestOutcome['kind']; // included so debug artifacts read standalone
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
     readonly cpuTimeMs: number;
     readonly timeline: ReadonlyArray<TimelineEntry>;
     readonly handleEvents?: ReadonlyArray<RecordedEvent>;
@@ -214,7 +214,7 @@ into action; the runner stays neutral.
 - `stats.handleCallCount === 0` in a profile that expects effects:
   the test exercised no recorded effects. Often intentional for
   pure-logic tests; suspicious when the test title implies I/O.
-- `stats.unaccountedGapMs / wallTimeMs > 0.5` - more than half of
+- `stats.unaccountedGapMs / durationMicroseconds > 0.5` - more than half of
   the wall time was not captured by handle calls or assertion
   activity. Suggests external I/O bypassing the handle layer, or
   a slow synchronous block worth profiling.

@@ -6,6 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { workIdentityKey } from '../engine/identity.ts';
+import { summaryRunTimings } from '../engine/run-timings.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createCollectedPlan,
@@ -43,7 +44,7 @@ function passResult(): PerTestResult {
         id,
         outcome: { kind: 'pass' },
         verdict: 'pass',
-        wallTimeMs: 0,
+        durationMicroseconds: 0,
         workId: { case: id, runtimes: [], workload: null }
     };
 }
@@ -91,7 +92,10 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
             runtimePolicy: 0,
             skipped: 0
         },
-        wallTimeMs: 0
+        timings: summaryRunTimings({
+            testExecutionWallTimeMicroseconds: 0,
+            totalWallTimeMicroseconds: 0
+        })
     };
 }
 

@@ -23,6 +23,7 @@ import {
 } from './supervised-run-resource-policy.ts';
 import {
     deduplicatedChildRuntimePolicyErrors,
+    deduplicatedRuntimePolicyErrors,
     type StoredRunValue,
     type SupervisedCase,
     type SupervisedRunState
@@ -67,7 +68,7 @@ type PartialRunResultInput = {
     readonly collectedPlan: CollectedRunPlan;
     readonly dependencies: RunOrchestratorDependencies;
     readonly resolvedRun: ResolvedRun;
-    readonly startedAtMs: number;
+    readonly startedAtMicroseconds: number;
     readonly state: SupervisedRunState;
 };
 
@@ -143,44 +144,45 @@ function applyTestStartEvent(
     event: Extract<ReporterEvent, { readonly kind: 'test-start'; }>,
     state: SupervisedRunState,
     cases: ReadonlyMap<string, SupervisedCase>,
-    observedAtMilliseconds: number
+    observedAtMicroseconds: number
 ): void {
     const workId = event.workId ?? createDefaultWorkId(event.case);
     const key = workIdentityKey(workId);
     const testCase = cases.get(key);
 
     if (testCase !== undefined) {
-        state.addActiveCase(key, testCase, observedAtMilliseconds);
+        state.addActiveCase(key, testCase, observedAtMicroseconds);
     }
 }
 
 function applyTestEndEvent(
     event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    state: SupervisedRunState
+    state: SupervisedRunState,
+    observedAtMicroseconds: number
 ): void {
     const workId = event.workId ?? createDefaultWorkId(event.case);
     const key = workIdentityKey(workId);
 
-    state.removeActiveCase(key);
     state.recordPerTestResult(key, {
         id: event.case,
         outcome: event.outcome,
         verdict: event.verdict,
         workId,
-        wallTimeMs: event.wallTimeMs
-    });
+        durationMicroseconds: event.durationMicroseconds
+    }, observedAtMicroseconds);
+    state.removeActiveCase(key);
 }
 
 export function applyEvent(
     event: ReporterEvent,
     state: SupervisedRunState,
     cases: ReadonlyMap<string, SupervisedCase>,
-    observedAtMilliseconds: number
+    observedAtMicroseconds: number
 ): void {
     if (event.kind === 'test-start') {
-        applyTestStartEvent(event, state, cases, observedAtMilliseconds);
+        applyTestStartEvent(event, state, cases, observedAtMicroseconds);
     } else if (event.kind === 'test-end') {
-        applyTestEndEvent(event, state);
+        applyTestEndEvent(event, state, observedAtMicroseconds);
     } else if (event.kind === 'runner-error') {
         state.recordRunnerError(event.error);
     }
@@ -192,12 +194,13 @@ function createPartialRunResult(input: PartialRunResultInput): RunResult {
         input.state.perTestResults(),
         input.state.runnerErrors(),
         {
+            completedAtMicroseconds: input.dependencies.wallClock.currentMonotonicMicroseconds,
             planStatus: input.resolvedRun.facts.cases.length === 0 && input.resolvedRun.request.shard.total > 1
                 ? 'empty-shard'
                 : 'planned',
             resourceUsage: null,
-            startedAtMs: input.startedAtMs,
-            wallClock: input.dependencies.wallClock
+            startedAtMicroseconds: input.startedAtMicroseconds,
+            testExecutionWallTimeMicroseconds: input.state.testExecutionWallTimeMicroseconds()
         }
     );
 }
@@ -246,7 +249,7 @@ export function createHardTimeout(runtime: SupervisedRunRuntimeSeed): Supervised
                 runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
                 runtime.state.recordTerminalActiveCases(
                     'crashed',
-                    runtime.dependencies.wallClock.currentTimestampInMilliseconds
+                    runtime.dependencies.wallClock.currentMonotonicMicroseconds
                 );
                 kill(runtime.child);
             }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds);
@@ -325,7 +328,7 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
             reportedEvent,
             runtime.state,
             caseByKey(collectedPlan),
-            runtime.dependencies.wallClock.currentTimestampInMilliseconds
+            runtime.dependencies.wallClock.currentMonotonicMicroseconds
         );
     }
 
@@ -356,7 +359,7 @@ function handleResourceBudgetBreach(
     ));
     runtime.state.recordTerminalActiveCases(
         'resource-exhausted',
-        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        runtime.dependencies.wallClock.currentMonotonicMicroseconds
     );
     runtime.timeout.clear();
     kill(runtime.child);
@@ -380,15 +383,7 @@ function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRun
 }
 
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
-    const supervisorErrors = runtime.state.runnerErrors();
-
-    runtime.completedResult.write({
-        ...result,
-        runnerErrors: [
-            ...supervisorErrors,
-            ...deduplicatedChildRuntimePolicyErrors(result.runnerErrors, supervisorErrors)
-        ]
-    });
+    runtime.completedResult.write(result);
 }
 
 export function handleChildMessage(message: SupervisedChildMessage, runtime: SupervisedRunRuntime): void {
@@ -450,7 +445,7 @@ export async function observeChild(runtime: SupervisedRunRuntime): Promise<void>
                 runtime.state.recordRunnerError(crashError(runtime.state, error.message));
                 runtime.state.recordTerminalActiveCases(
                     'crashed',
-                    runtime.dependencies.wallClock.currentTimestampInMilliseconds
+                    runtime.dependencies.wallClock.currentMonotonicMicroseconds
                 );
             }
         });
@@ -505,25 +500,41 @@ function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunResult[
     };
 }
 
-function selectRunResult(runtime: SupervisedRunRuntime, startedAtMs: number): RunResult {
+function parentTimedResult(runtime: SupervisedRunRuntime, startedAtMicroseconds: number): RunResult {
+    const collectedPlan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
+
+    return resultWithSupervisedArtifacts(
+        createPartialRunResult({
+            collectedPlan,
+            dependencies: runtime.dependencies,
+            resolvedRun: runtime.resolvedRun,
+            startedAtMicroseconds,
+            state: runtime.state
+        }),
+        runtime
+    );
+}
+
+function selectRunResult(runtime: SupervisedRunRuntime, startedAtMicroseconds: number): RunResult {
     const completedResult = runtime.completedResult.read();
+    const parentResult = parentTimedResult(runtime, startedAtMicroseconds);
 
     if (completedResult === null) {
-        const collectedPlan = runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun);
-
-        return resultWithSupervisedArtifacts(
-            createPartialRunResult({
-                collectedPlan,
-                dependencies: runtime.dependencies,
-                resolvedRun: runtime.resolvedRun,
-                startedAtMs,
-                state: runtime.state
-            }),
-            runtime
-        );
+        return parentResult;
     }
 
-    return resultWithSupervisedArtifacts(completedResult, runtime);
+    const supervisorErrors = runtime.state.runnerErrors();
+    const runnerErrors = deduplicatedRuntimePolicyErrors([
+        ...supervisorErrors,
+        ...deduplicatedChildRuntimePolicyErrors(completedResult.runnerErrors, supervisorErrors)
+    ]);
+
+    return {
+        ...parentResult,
+        resourceUsage: completedResult.resourceUsage,
+        runnerErrors,
+        status: runnerErrors.length === 0 ? parentResult.status : 'failed'
+    };
 }
 
 async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntime): Promise<RunResult> {
@@ -535,11 +546,14 @@ async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntim
     return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
 }
 
-export async function finishSupervisedRuntime(runtime: SupervisedRunRuntime, startedAtMs: number): Promise<RunResult> {
+export async function finishSupervisedRuntime(
+    runtime: SupervisedRunRuntime,
+    startedAtMicroseconds: number
+): Promise<RunResult> {
     runtime.timeout.clear();
     await runtime.reporterEvents.wait();
 
-    const result = await runtime.finalizeResult(selectRunResult(runtime, startedAtMs));
+    const result = await runtime.finalizeResult(selectRunResult(runtime, startedAtMicroseconds));
 
     return await reportFinalResult(result, runtime);
 }

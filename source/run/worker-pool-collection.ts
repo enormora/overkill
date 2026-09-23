@@ -28,7 +28,7 @@ function recordCollectionOutput(message: WorkerPoolMessage, runState: Supervised
         runState.recordCapturedOutput(
             message.stream,
             Buffer.from(message.chunk),
-            message.capturedAtMilliseconds
+            message.capturedAtMicroseconds
         );
     }
 }
@@ -133,7 +133,7 @@ function createCollectionRuntime(
         workerLifecycle: 'fresh-worker-per-unit'
     });
     pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
-        runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentTimestampInMilliseconds);
+        runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentMonotonicMicroseconds);
     });
 
     return {

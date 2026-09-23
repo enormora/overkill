@@ -1,4 +1,4 @@
-import { createWallClock } from '@enormora/wall-clock';
+import { createOverkillClock, type OverkillClock } from '../clock/overkill-clock.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import {
@@ -47,7 +47,7 @@ function workerResourceBudgets(command: WorkerPoolCommand): WorkerPoolCommand['r
 }
 
 function createResourceUsageTracker(command: WorkerPoolCommand): RunResourceUsageTracker {
-    return createNodeResourceUsageTracker(createWallClock(), {
+    return createNodeResourceUsageTracker(createOverkillClock(), {
         samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
     });
 }
@@ -74,12 +74,12 @@ async function collectAssignmentTestPlan(task: WorkerPoolRunTask): Promise<Colle
 
 async function runAssignment(
     task: WorkerPoolRunTask,
-    wallClock: ReturnType<typeof createWallClock>
+    wallClock: OverkillClock
 ): Promise<WorkerPoolRunOutput> {
     const collectedPlan = await collectAssignmentTestPlan(task);
 
     if (task.assignedWork.length === 0) {
-        return createEmptyAssignmentResult(collectedPlan.testPlan, wallClock, task.startedAtMilliseconds);
+        return createEmptyAssignmentResult(collectedPlan.testPlan, wallClock);
     }
 
     const outputCapture = captureOutput(task, wallClock);
@@ -119,7 +119,7 @@ async function runAssignment(
 }
 
 export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolCollection | WorkerPoolRunOutput> {
-    const wallClock = createWallClock();
+    const wallClock = createOverkillClock();
 
     if (task.kind === 'collect') {
         const outputCapture = captureOutput(task, wallClock);

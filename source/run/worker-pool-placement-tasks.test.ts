@@ -264,14 +264,14 @@ function runtimeWithDurationHistory(
                     generatedAt: '2026-01-01T00:00:00.000Z',
                     samples: [
                         {
-                            durationMilliseconds: 1,
+                            durationMicroseconds: 1,
                             observedAt: '2026-01-01T00:00:00.000Z',
                             observations: [],
                             sampleCount: 1,
                             work: fastUnit.work[0]
                         },
                         {
-                            durationMilliseconds: 100,
+                            durationMicroseconds: 100,
                             observedAt: '2026-01-01T00:00:00.000Z',
                             observations: [],
                             sampleCount: 1,

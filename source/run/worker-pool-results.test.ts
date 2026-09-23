@@ -5,6 +5,7 @@ import {
     type RunResult,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { summaryRunTimings } from '../engine/run-timings.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import {
     createStoredRunValue,
@@ -100,7 +101,10 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
             runtimePolicy: 0,
             skipped: 0
         },
-        wallTimeMs: 0
+        timings: summaryRunTimings({
+            testExecutionWallTimeMicroseconds: 0,
+            totalWallTimeMicroseconds: 0
+        })
     };
 }
 
@@ -111,7 +115,7 @@ function passResult(): PerTestResult {
         id,
         outcome: { kind: 'pass' },
         verdict: 'pass',
-        wallTimeMs: 0,
+        durationMicroseconds: 0,
         workId: { case: id, runtimes: [], workload: null }
     };
 }
@@ -152,7 +156,7 @@ function measuredResultRuntime(): WorkerPoolRunRuntime {
                     end: {
                         activeResourceCount: 0,
                         activeResourceTypes: [],
-                        capturedAtMilliseconds: 1,
+                        capturedAtMicroseconds: 1,
                         javaScriptEngineHeapBytes: 2,
                         residentSetBytes: 3
                     },
@@ -164,7 +168,7 @@ function measuredResultRuntime(): WorkerPoolRunRuntime {
                     start: {
                         activeResourceCount: 0,
                         activeResourceTypes: [],
-                        capturedAtMilliseconds: 0,
+                        capturedAtMicroseconds: 0,
                         javaScriptEngineHeapBytes: 1,
                         residentSetBytes: 2
                     }

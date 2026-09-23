@@ -14,6 +14,7 @@ import { formatFailureSummary } from './failure-summary.ts';
 import { formatRunFactSummary } from './run-fact-summary.ts';
 
 const progressInterval = 100;
+const microsecondsPerMillisecond = 1000;
 
 type BriefReporterState = {
     readonly completed: number;
@@ -87,8 +88,10 @@ function finishIntent(result: RunResult): OutputLineIntent {
     const { summary } = result;
     const discoveryCounts = `done status=${result.status} discovered=${summary.discovered} planned=${summary.planned}`;
     const executionCounts = `executed=${executedCount(result)} passed=${summary.passed} failed=${summary.failed}`;
+    const totalMicroseconds = result.timings.summary.totalWallTimeMicroseconds;
     const remainingCounts = `skipped=${summary.skipped} inconclusive=${summary.inconclusive} ` +
-        `resourceExhausted=${summary.resourceExhausted} crashed=${summary.crashed} ms=${result.wallTimeMs}`;
+        `resourceExhausted=${summary.resourceExhausted} crashed=${summary.crashed} ` +
+        `ms=${totalMicroseconds / microsecondsPerMillisecond}`;
 
     return stdout(
         `${discoveryCounts} ${executionCounts} ${remainingCounts}`,

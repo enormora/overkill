@@ -52,7 +52,7 @@ const caseId: CaseId = {
 const resourceSample: ResourceUsageSnapshot = {
     activeResourceCount: 0,
     activeResourceTypes: [],
-    capturedAtMilliseconds: 1000,
+    capturedAtMicroseconds: 1000,
     javaScriptEngineHeapBytes: 100,
     residentSetBytes: 200
 };
@@ -101,7 +101,7 @@ function timeoutRuntime(child: SupervisedChildProcess): TimeoutRuntimeRecord {
                     clearTimeout(timeout: unknown) {
                         clears += timeout === null ? 0 : 1;
                     },
-                    currentTimestampInMilliseconds: 0,
+                    currentEpochMilliseconds: 0,
                     setTimeout(callback: () => void) {
                         callbacks.push(callback);
                         return callbacks.length;

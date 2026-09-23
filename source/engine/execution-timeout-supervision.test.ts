@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock, type DeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -59,7 +59,7 @@ function failedOutcomeFrom(executedCase: Awaited<ReturnType<typeof executeCaseBo
 
 async function executeTimedCase(
     testCase: TestPlanCase,
-    wallClock: ReturnType<typeof createDeterministicWallClock>,
+    wallClock: DeterministicOverkillClock,
     supervision = createExecutionSupervision()
 ): ReturnType<typeof executeCaseBody> {
     return executeCaseBody(testCase, softTimeoutPolicy, supervision, { wallClock });
@@ -67,7 +67,7 @@ async function executeTimedCase(
 
 async function finishSoftTimedCase(
     execution: ReturnType<typeof executeCaseBody>,
-    wallClock: ReturnType<typeof createDeterministicWallClock>,
+    wallClock: DeterministicOverkillClock,
     bodyGate: PromiseWithResolvers<undefined>
 ): Promise<FailedOutcome> {
     wallClock.advanceByMilliseconds(softTimeoutPolicy.timeoutMilliseconds);
@@ -77,7 +77,7 @@ async function finishSoftTimedCase(
 }
 
 async function executeHardTimedCase(
-    wallClock: ReturnType<typeof createDeterministicWallClock>,
+    wallClock: DeterministicOverkillClock,
     supervision = createExecutionSupervision()
 ): ReturnType<typeof executeCaseBody> {
     const bodyGate = Promise.withResolvers<never>();
@@ -123,7 +123,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const wallClock = createDeterministicWallClock();
+                const wallClock = createDeterministicOverkillClock();
                 const supervision = createExecutionSupervision();
                 const execution = executeHardTimedCase(wallClock, supervision);
 
@@ -152,7 +152,7 @@ export const testNode = createOverkillSuite({
                         return testScope.assert.collect();
                     }
                 );
-                const wallClock = createDeterministicWallClock();
+                const wallClock = createDeterministicOverkillClock();
                 const failedOutcome = await finishSoftTimedCase(
                     executeTimedCase(testCase, wallClock),
                     wallClock,
@@ -181,7 +181,7 @@ export const testNode = createOverkillSuite({
                         return testScope.assert.collect();
                     }
                 );
-                const wallClock = createDeterministicWallClock();
+                const wallClock = createDeterministicOverkillClock();
                 const failedOutcome = await finishSoftTimedCase(
                     executeTimedCase(testCase, wallClock),
                     wallClock,

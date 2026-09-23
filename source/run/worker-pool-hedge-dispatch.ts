@@ -4,10 +4,12 @@ import type { PlacementLane, WorkUnit } from './run-types.ts';
 import type { WorkerPoolUnitLease } from './worker-pool-dispatch-state.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
+const microsecondsPerMillisecond = 1000;
+
 export type HedgeActiveUnitLease = {
     readonly lane: PlacementLane;
     readonly lease: WorkerPoolUnitLease;
-    readonly startedAtMilliseconds: number;
+    readonly startedAtMicroseconds: number;
 };
 
 export type HedgeDispatchState = {
@@ -34,10 +36,10 @@ function workDurationEstimate(state: HedgeDispatchState, workKey: string): numbe
         return workIdentityKey(candidate.work) === workKey;
     });
 
-    return sample?.durationMilliseconds ?? null;
+    return sample?.durationMicroseconds ?? null;
 }
 
-function hedgeThresholdMilliseconds(state: HedgeDispatchState, entry: HedgeActiveUnitLease): number | null {
+function hedgeThresholdMicroseconds(state: HedgeDispatchState, entry: HedgeActiveUnitLease): number | null {
     const { execution } = state.resolvedRun.facts;
 
     if (execution.processModel !== 'worker-pool' || execution.hedging.mode === 'off') {
@@ -45,15 +47,16 @@ function hedgeThresholdMilliseconds(state: HedgeDispatchState, entry: HedgeActiv
     }
 
     const estimate = workDurationEstimate(state, activeHedgeWorkKey(entry));
+    const minimumDelayMicroseconds = execution.hedging.minimumDelayMilliseconds * microsecondsPerMillisecond;
 
     return Math.max(
-        execution.hedging.minimumDelayMilliseconds,
-        estimate === null ? execution.hedging.minimumDelayMilliseconds : estimate * execution.hedging.durationMultiplier
+        minimumDelayMicroseconds,
+        estimate === null ? minimumDelayMicroseconds : estimate * execution.hedging.durationMultiplier
     );
 }
 
-function elapsedMilliseconds(state: HedgeDispatchState, entry: HedgeActiveUnitLease): number {
-    return state.wallClock.currentTimestampInMilliseconds - entry.startedAtMilliseconds;
+function elapsedMicroseconds(state: HedgeDispatchState, entry: HedgeActiveUnitLease): number {
+    return state.wallClock.currentMonotonicMicroseconds - entry.startedAtMicroseconds;
 }
 
 function unitIsHedgeSafe(unit: WorkUnit): boolean {
@@ -96,9 +99,9 @@ function hedgeCandidateIsCompatible(
 }
 
 function hedgeCandidateReady(state: HedgeDispatchState, entry: HedgeActiveUnitLease): boolean {
-    const threshold = hedgeThresholdMilliseconds(state, entry);
+    const threshold = hedgeThresholdMicroseconds(state, entry);
 
-    return threshold !== null && elapsedMilliseconds(state, entry) >= threshold;
+    return threshold !== null && elapsedMicroseconds(state, entry) >= threshold;
 }
 
 function compatibleHedgeDelays(state: HedgeDispatchState, lane: PlacementLane): readonly number[] {
@@ -107,9 +110,11 @@ function compatibleHedgeDelays(state: HedgeDispatchState, lane: PlacementLane): 
             return [];
         }
 
-        const threshold = hedgeThresholdMilliseconds(state, entry);
+        const threshold = hedgeThresholdMicroseconds(state, entry);
 
-        return threshold === null ? [] : [ Math.max(0, threshold - elapsedMilliseconds(state, entry)) ];
+        return threshold === null
+            ? []
+            : [ Math.max(0, (threshold - elapsedMicroseconds(state, entry)) / microsecondsPerMillisecond) ];
     });
 }
 
@@ -130,6 +135,6 @@ export function selectHedgeCandidate(
 
 export function laneHasPotentialHedge(state: HedgeDispatchState, lane: PlacementLane): boolean {
     return Array.from(state.activeUnits.values()).some(function canEventuallyHedge(entry) {
-        return hedgeCandidateIsCompatible(state, entry, lane) && hedgeThresholdMilliseconds(state, entry) !== null;
+        return hedgeCandidateIsCompatible(state, entry, lane) && hedgeThresholdMicroseconds(state, entry) !== null;
     });
 }

@@ -42,11 +42,11 @@ function measuredMixedLifecycleResolvedRun(): WorkerPoolRunRuntime['resolvedRun'
     };
 }
 
-function resourceSnapshot(workerLifecycle: RunWorkerLifecycle, capturedAtMilliseconds: number): ResourceUsageSnapshot {
+function resourceSnapshot(workerLifecycle: RunWorkerLifecycle, capturedAtMicroseconds: number): ResourceUsageSnapshot {
     return {
         activeResourceCount: workerLifecycle === 'reuse' ? 1 : 2,
         activeResourceTypes: [ workerLifecycle ],
-        capturedAtMilliseconds,
+        capturedAtMicroseconds,
         javaScriptEngineHeapBytes: workerLifecycle === 'reuse' ? 10 : 20,
         residentSetBytes: workerLifecycle === 'reuse' ? 100 : 200
     };

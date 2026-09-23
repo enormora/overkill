@@ -99,7 +99,7 @@ type RunResult = {
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId>;
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
 };
 ```
 

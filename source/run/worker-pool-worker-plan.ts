@@ -1,4 +1,4 @@
-import type { createWallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import type { Engine } from '../engine/engine.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
@@ -85,19 +85,21 @@ export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonl
 
 export function createEmptyAssignmentResult(
     testPlan: TestPlan,
-    wallClock: ReturnType<typeof createWallClock>,
-    startedAtMilliseconds: number
+    wallClock: OverkillClock
 ): WorkerPoolRunOutput {
+    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+
     return {
         result: createRunResultFromCollectedPlan(
             collectedRunPlanFromTestPlanCases(testPlan, []),
             [],
             [],
             {
+                completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
                 planStatus: 'empty-selection',
                 resourceUsage: null,
-                startedAtMs: startedAtMilliseconds,
-                wallClock
+                startedAtMicroseconds,
+                testExecutionWallTimeMicroseconds: 0
             }
         )
     };

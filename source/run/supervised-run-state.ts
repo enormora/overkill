@@ -9,7 +9,12 @@ export type SupervisedCase = {
 };
 
 type ActiveSupervisedCase = SupervisedCase & {
-    readonly startedAtMilliseconds: number;
+    readonly startedAtMicroseconds: number;
+};
+
+type TimingWindow = {
+    readonly endedAtMicroseconds: number;
+    readonly startedAtMicroseconds: number;
 };
 
 export type StoredRunValue<Value> = {
@@ -19,23 +24,28 @@ export type StoredRunValue<Value> = {
 
 export type SupervisedRunState = {
     readonly activeCases: ReadonlyMap<string, ActiveSupervisedCase>;
-    readonly addActiveCase: (key: string, testCase: SupervisedCase, startedAtMilliseconds: number) => void;
+    readonly addActiveCase: (key: string, testCase: SupervisedCase, startedAtMicroseconds: number) => void;
     readonly artifacts: () => readonly RunArtifact[];
     readonly caseArtifacts: (testCase: CaseId) => readonly RunArtifact[];
     readonly perTestResults: () => readonly PerTestResult[];
     readonly recordCapturedOutput: (
         stream: 'stderr' | 'stdout',
         chunk: Uint8Array,
-        capturedAtMilliseconds: number
+        capturedAtMicroseconds: number
+    ) => void;
+    readonly recordPerTestResult: (
+        key: string,
+        result: PerTestResult,
+        completedAtMicroseconds: number
     ) => void;
     readonly recordArtifact: (artifact: RunArtifact) => void;
-    readonly recordPerTestResult: (key: string, result: PerTestResult) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
     readonly recordRunnerErrors: (errors: readonly RunnerError[]) => void;
     readonly recordRuntimePolicyViolation: (capability: string, message: string) => void;
-    readonly recordTerminalActiveCases: (verdict: PerTestResult['verdict'], completedAtMilliseconds: number) => void;
+    readonly recordTerminalActiveCases: (verdict: PerTestResult['verdict'], completedAtMicroseconds: number) => void;
     readonly removeActiveCase: (key: string) => void;
     readonly runnerErrors: () => readonly RunnerError[];
+    readonly testExecutionWallTimeMicroseconds: () => number;
 };
 
 type CapturedOutputByteSpan = {
@@ -50,14 +60,14 @@ const runArtifactScopeKey = 'run';
 function terminalResult(
     testCase: ActiveSupervisedCase,
     verdict: PerTestResult['verdict'],
-    completedAtMilliseconds: number
+    completedAtMicroseconds: number
 ): PerTestResult {
     return {
         id: testCase.id,
         outcome: null,
         verdict,
         workId: testCase.workId ?? createDefaultWorkId(testCase.id),
-        wallTimeMs: Math.max(0, completedAtMilliseconds - testCase.startedAtMilliseconds)
+        durationMicroseconds: Math.max(0, completedAtMicroseconds - testCase.startedAtMicroseconds)
     };
 }
 
@@ -184,6 +194,26 @@ export function deduplicatedChildRuntimePolicyErrors(
     });
 }
 
+export function deduplicatedRuntimePolicyErrors(errors: readonly RunnerError[]): readonly RunnerError[] {
+    const seenProcessEnvironmentKeys = new Set<string>();
+
+    return errors.filter(function keepFirstProcessEnvironmentError(error) {
+        const key = processEnvironmentPolicyKey(error);
+
+        if (key === null) {
+            return true;
+        }
+
+        if (seenProcessEnvironmentKeys.has(key)) {
+            return false;
+        }
+
+        seenProcessEnvironmentKeys.add(key);
+
+        return true;
+    });
+}
+
 export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue<Value> {
     let currentValue = initialValue;
 
@@ -203,13 +233,18 @@ export function createSupervisedRunState(): SupervisedRunState {
     const capturedOutputByteCounts = new Map<string, number>();
     const perTest = new Map<string, PerTestResult>();
     const runnerErrors: RunnerError[] = [];
+    const timingWindows: TimingWindow[] = [];
     let artifactSequence = 0;
     const recordTerminalActiveCases = function recordTerminalActiveCases(
         verdict: PerTestResult['verdict'],
-        completedAtMilliseconds: number
+        completedAtMicroseconds: number
     ): void {
         for (const [ key, testCase ] of activeCases) {
-            perTest.set(key, terminalResult(testCase, verdict, completedAtMilliseconds));
+            perTest.set(key, terminalResult(testCase, verdict, completedAtMicroseconds));
+            timingWindows.push({
+                endedAtMicroseconds: completedAtMicroseconds,
+                startedAtMicroseconds: testCase.startedAtMicroseconds
+            });
         }
 
         activeCases.clear();
@@ -217,8 +252,8 @@ export function createSupervisedRunState(): SupervisedRunState {
 
     return {
         activeCases,
-        addActiveCase(key, testCase, startedAtMilliseconds) {
-            activeCases.set(key, { ...testCase, startedAtMilliseconds });
+        addActiveCase(key, testCase, startedAtMicroseconds) {
+            activeCases.set(key, { ...testCase, startedAtMicroseconds });
         },
         artifacts() {
             return artifacts;
@@ -229,7 +264,7 @@ export function createSupervisedRunState(): SupervisedRunState {
         perTestResults() {
             return Array.from(perTest.values());
         },
-        recordCapturedOutput(stream, chunk, capturedAtMilliseconds) {
+        recordCapturedOutput(stream, chunk, capturedAtMicroseconds) {
             const activeCaseIds = Array.from(activeCases.values(), function toCaseId(testCase) {
                 return testCase.id;
             });
@@ -248,7 +283,7 @@ export function createSupervisedRunState(): SupervisedRunState {
                     },
                     payload: {
                         byteLength: captured.byteLength,
-                        capturedAtMilliseconds,
+                        capturedAtMicroseconds,
                         kind: 'captured-output',
                         stream,
                         text: Buffer.from(chunk.subarray(0, captured.byteLength)).toString('utf8'),
@@ -262,7 +297,16 @@ export function createSupervisedRunState(): SupervisedRunState {
         recordArtifact(artifact) {
             artifacts.push(artifact);
         },
-        recordPerTestResult(key, result) {
+        recordPerTestResult(key, result, completedAtMicroseconds) {
+            const activeCase = activeCases.get(key);
+
+            if (activeCase !== undefined) {
+                timingWindows.push({
+                    endedAtMicroseconds: completedAtMicroseconds,
+                    startedAtMicroseconds: activeCase.startedAtMicroseconds
+                });
+            }
+
             perTest.set(key, result);
         },
         recordRunnerError(error) {
@@ -281,6 +325,20 @@ export function createSupervisedRunState(): SupervisedRunState {
         },
         runnerErrors() {
             return runnerErrors;
+        },
+        testExecutionWallTimeMicroseconds() {
+            if (timingWindows.length === 0) {
+                return 0;
+            }
+
+            const latestEnd = Math.max(...timingWindows.map(function toEnd(window) {
+                return window.endedAtMicroseconds;
+            }));
+            const earliestStart = Math.min(...timingWindows.map(function toStart(window) {
+                return window.startedAtMicroseconds;
+            }));
+
+            return Math.max(0, latestEnd - earliestStart);
         }
     };
 }

@@ -54,7 +54,7 @@ export function recordTaskCrash(
     taskRun.state.recordRunnerError(crashError(taskRun.state, message));
     taskRun.state.recordTerminalActiveCases(
         'crashed',
-        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        runtime.dependencies.wallClock.currentMonotonicMicroseconds
     );
 }
 
@@ -102,7 +102,7 @@ function handleWorkerEvent(
         reportedEvent,
         taskRun.state,
         casesByKey(taskRun.unit),
-        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        runtime.dependencies.wallClock.currentMonotonicMicroseconds
     );
 
     if (reportedEvent.kind === 'test-end' && taskRun.state.activeCases.size === 0) {
@@ -125,7 +125,7 @@ export function handleWorkerMessage(
         taskRun.state.recordCapturedOutput(
             message.stream,
             Buffer.from(message.chunk),
-            message.capturedAtMilliseconds
+            message.capturedAtMicroseconds
         );
     } else {
         handleWorkerEvent(message.event, taskRun, runtime);

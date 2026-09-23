@@ -1,6 +1,6 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
@@ -49,7 +49,7 @@ function createResourceUsageTracker(): RunResourceUsageTracker {
                 end: {
                     activeResourceCount: 0,
                     activeResourceTypes: [],
-                    capturedAtMilliseconds: 0,
+                    capturedAtMicroseconds: 0,
                     javaScriptEngineHeapBytes: 0,
                     residentSetBytes: 0
                 },
@@ -61,7 +61,7 @@ function createResourceUsageTracker(): RunResourceUsageTracker {
                 start: {
                     activeResourceCount: 0,
                     activeResourceTypes: [],
-                    capturedAtMilliseconds: 0,
+                    capturedAtMicroseconds: 0,
                     javaScriptEngineHeapBytes: 0,
                     residentSetBytes: 0
                 }
@@ -193,7 +193,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
             createRuntimePolicy() {
                 return null;
             },
-            createWallClock: createDeterministicWallClock,
+            createOverkillClock: createDeterministicOverkillClock,
             currentWorkingDirectory() {
                 return cwd;
             },

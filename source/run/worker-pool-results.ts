@@ -1,5 +1,6 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import { appendRunnerErrors } from '../engine/execution-result.ts';
+import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import type {
     PerTestResult,
     RunArtifact,
@@ -118,19 +119,26 @@ async function reportEmptyShardRunStart(
     });
 }
 
-async function reportFinalResult(result: RunResult, runtime: WorkerPoolRunRuntime): Promise<RunResult> {
-    const runEndErrors = await runtime.reporterDelivery.reportEvent({ kind: 'run-end', result });
+async function reportResultWithDelivery(
+    result: RunResult,
+    reporterDelivery: ReporterDelivery
+): Promise<RunResult> {
+    const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result });
     const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
-    const finalReporterErrors = await runtime.reporterDelivery.reportResult(resultForFinalReporting);
-    const disposeErrors = await runtime.reporterDelivery.disposeReporters();
+    const finalReporterErrors = await reporterDelivery.reportResult(resultForFinalReporting);
+    const disposeErrors = await reporterDelivery.disposeReporters();
 
     return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
+}
+
+async function reportFinalResult(result: RunResult, runtime: WorkerPoolRunRuntime): Promise<RunResult> {
+    return await reportResultWithDelivery(result, runtime.reporterDelivery);
 }
 
 export async function finishWorkerPoolRun(
     runtime: WorkerPoolRunRuntime,
     completedTaskRuns: readonly WorkerPoolTaskRun[],
-    startedAtMilliseconds: number
+    startedAtMicroseconds: number
 ): Promise<RunResult> {
     await runtime.reporterEvents.wait();
     const perTest = orderedPerTest(
@@ -154,10 +162,16 @@ export async function finishWorkerPoolRun(
             perTest,
             allTaskErrors(runtime, completedTaskRuns),
             {
+                completedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds,
                 planStatus: 'planned',
                 resourceUsage: finishPoolResourceUsage(runtime),
-                startedAtMs: startedAtMilliseconds,
-                wallClock: runtime.dependencies.wallClock
+                startedAtMicroseconds,
+                testExecutionWallTimeMicroseconds: Math.max(
+                    runtime.runState.testExecutionWallTimeMicroseconds(),
+                    ...completedTaskRuns.map(function toExecutionTime(taskRun) {
+                        return taskRun.state.testExecutionWallTimeMicroseconds();
+                    })
+                )
             }
         ),
         [ ...runtime.runState.artifacts(), ...allTaskArtifacts(completedTaskRuns), ...taskArtifacts(runtime) ]
@@ -172,7 +186,8 @@ export async function createEmptyWorkerPoolResult(
     collectionRunState: SupervisedRunState
 ): Promise<RunResult> {
     const reporterDelivery = await createReporterDelivery(resolvedRun, dependencies);
-    const startedAtMilliseconds = dependencies.wallClock.currentTimestampInMilliseconds;
+    const startedAtMilliseconds = dependencies.wallClock.currentEpochMilliseconds;
+    const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
     const collectedPlan = workerPoolCollectedPlan(resolvedRun);
     const runStartErrors = await reportEmptyShardRunStart(
         reporterDelivery,
@@ -186,18 +201,14 @@ export async function createEmptyWorkerPoolResult(
             [],
             [ ...resolvedRun.collectionRunnerErrors, ...collectionRunState.runnerErrors(), ...runStartErrors ],
             {
+                completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
                 planStatus: emptyWorkerPoolPlanStatus(resolvedRun),
                 resourceUsage: null,
-                startedAtMs: startedAtMilliseconds,
-                wallClock: dependencies.wallClock
+                startedAtMicroseconds,
+                testExecutionWallTimeMicroseconds: collectionRunState.testExecutionWallTimeMicroseconds()
             }
         ),
         collectionRunState.artifacts()
     );
-    const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result });
-    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
-    const finalReporterErrors = await reporterDelivery.reportResult(resultForFinalReporting);
-    const disposeErrors = await reporterDelivery.disposeReporters();
-
-    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
+    return await reportResultWithDelivery(result, reporterDelivery);
 }

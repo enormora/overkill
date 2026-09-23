@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import { doubleUsage, rule, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
@@ -23,13 +23,13 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const expectedResult = runResultFactory.build({ wallTimeMs: 42 });
+                const expectedResult = runResultFactory.build({ totalWallTimeMicroseconds: 42 });
                 const execute = testDouble<Execute>({
                     fallback: rule.calls(async function executeInjectedPlan(): Promise<RunResult> {
                         return expectedResult;
                     })
                 });
-                const wallClock = createDeterministicWallClock();
+                const wallClock = createDeterministicOverkillClock();
                 const engine = createEngine({
                     execute,
                     wallClock

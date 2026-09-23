@@ -331,8 +331,8 @@ function combinedSnapshot(samples: readonly ResourceUsageSnapshot[]): ResourceUs
         activeResourceTypes: uniqueSorted(samples.flatMap(function toActiveTypes(sample) {
             return sample.activeResourceTypes;
         })),
-        capturedAtMilliseconds: Math.max(...samples.map(function toCapturedAt(sample) {
-            return sample.capturedAtMilliseconds;
+        capturedAtMicroseconds: Math.max(...samples.map(function toCapturedAt(sample) {
+            return sample.capturedAtMicroseconds;
         })),
         javaScriptEngineHeapBytes: samples.reduce(function sumHeap(total, sample) {
             return total + sample.javaScriptEngineHeapBytes;
@@ -560,7 +560,7 @@ export async function createWorkerPoolRuntime(
             return;
         }
 
-        runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentTimestampInMilliseconds);
+        runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentMonotonicMicroseconds);
     });
 
     return {

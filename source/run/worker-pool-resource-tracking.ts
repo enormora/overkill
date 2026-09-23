@@ -52,7 +52,7 @@ function createActiveCaseState(runtime: WorkerPoolRunRuntime): SupervisedRunStat
 
     for (const taskRun of runtime.activeTasks) {
         for (const [ key, activeCase ] of taskRun.state.activeCases) {
-            activeState.addActiveCase(key, activeCase, activeCase.startedAtMilliseconds);
+            activeState.addActiveCase(key, activeCase, activeCase.startedAtMicroseconds);
         }
     }
 
@@ -64,7 +64,7 @@ function stopTaskForResourceExhaustion(taskRun: WorkerPoolTaskRun, runtime: Work
     taskRun.requeuePendingCases.write(false);
     taskRun.state.recordTerminalActiveCases(
         'resource-exhausted',
-        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        runtime.dependencies.wallClock.currentMonotonicMicroseconds
     );
     clearTaskTimeout(taskRun, runtime);
     taskRun.controller.abort();

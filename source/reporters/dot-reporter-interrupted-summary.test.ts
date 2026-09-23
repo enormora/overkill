@@ -74,7 +74,7 @@ export const testNode = createOverkillSuite({
                         }
                     ],
                     summary: { discovered: 1, passed: 1, planned: 1 },
-                    wallTimeMs: 5
+                    totalWallTimeMicroseconds: 5000
                 }));
                 await onFinish(runResultFactory.build({
                     perTest: [
@@ -90,7 +90,7 @@ export const testNode = createOverkillSuite({
                         }
                     ],
                     summary: { crashed: 1, discovered: 2, planned: 2, resourceExhausted: 1 },
-                    wallTimeMs: 9
+                    totalWallTimeMicroseconds: 9000
                 }));
 
                 scope.assert.equal(

@@ -86,7 +86,7 @@ function createProtocolFixture(): ProtocolFixture {
     });
     const workerEventMessage = { event: { kind: 'synthetic' }, kind: 'event' } as unknown as WorkerPoolMessage;
     const outputMessage = {
-        capturedAtMilliseconds: 123,
+        capturedAtMicroseconds: 123,
         chunk: Buffer.from('hello'),
         kind: 'output',
         stream: 'stdout'

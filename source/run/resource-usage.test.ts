@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock, type DeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -29,14 +29,14 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
         readResidentSetBytes() {
             return 0;
         },
-        wallClock: createDeterministicWallClock()
+        wallClock: createDeterministicOverkillClock()
     }, {
         samplingIntervalMilliseconds: 100
     });
 }
 
 function createChangingResourceUsageTracker(
-    wallClock: ReturnType<typeof createDeterministicWallClock>
+    wallClock: DeterministicOverkillClock
 ): RunResourceUsageTracker {
     let activeResourceReadCount = 0;
 
@@ -70,7 +70,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const wallClock = createDeterministicWallClock();
+                const wallClock = createDeterministicOverkillClock();
                 const tracker = createChangingResourceUsageTracker(wallClock);
                 const observedActiveResourceCounts: number[] = [];
 
@@ -87,7 +87,7 @@ export const testNode = createOverkillSuite({
                     end: {
                         activeResourceCount: 3,
                         activeResourceTypes: [ 'Timeout', 'TTYWrap' ],
-                        capturedAtMilliseconds: 200,
+                        capturedAtMicroseconds: 200_000,
                         javaScriptEngineHeapBytes: 16,
                         residentSetBytes: 205
                     },
@@ -99,7 +99,7 @@ export const testNode = createOverkillSuite({
                     start: {
                         activeResourceCount: 1,
                         activeResourceTypes: [ 'TCPServerWrap' ],
-                        capturedAtMilliseconds: 0,
+                        capturedAtMicroseconds: 0,
                         javaScriptEngineHeapBytes: 10,
                         residentSetBytes: 100
                     }

@@ -1,4 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import {
     createExecutionAsyncLeakMonitor,
     type AsyncLeakDependencies,
@@ -30,7 +30,7 @@ export type ExecuteDependencies = {
     readonly asyncLeakDiagnostics: AsyncLeakDiagnostics;
     readonly readActiveResourceTypes: () => readonly string[];
     readonly reporterDispatcher: ReporterDispatcher;
-    readonly wallClock: WallClock;
+    readonly wallClock: OverkillClock;
 };
 
 type ExecuteRunInput = {
@@ -43,7 +43,7 @@ type ExecuteRunInput = {
 type ExecutionDependencies = AsyncLeakDependencies & {
     readonly runtimePolicy: RuntimePolicy | null;
     readonly reporterDispatcher: ReporterDispatcher;
-    readonly wallClock: WallClock;
+    readonly wallClock: OverkillClock;
 };
 
 type RuntimePolicy = NonNullable<ExecutionSupervisionDependencies['runtimePolicy']>;
@@ -59,7 +59,7 @@ async function createRunResultBeforeRunEnd(
     dependencies: ExecutionDependencies,
     reporterDelivery: ReporterDelivery
 ): Promise<RunResult> {
-    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+    const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
     const startErrors = await reporterDelivery.reportEvent({
         facts: options.runFacts,
         kind: 'run-start',
@@ -88,10 +88,11 @@ async function createRunResultBeforeRunEnd(
     ];
 
     return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
+        completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
         planStatus: 'planned',
         resourceUsage,
-        startedAtMs,
-        wallClock: dependencies.wallClock
+        startedAtMicroseconds,
+        testExecutionWallTimeMicroseconds: executedTestPlan.testExecutionWallTimeMicroseconds
     });
 }
 

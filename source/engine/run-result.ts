@@ -5,6 +5,7 @@ import type {
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type { CaseId, WorkId } from './identity.ts';
+import type { RunTimings } from './run-timings.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly attributionDrift: 'attribution-drift';
@@ -240,7 +241,7 @@ export type PerTestResult = {
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;
     readonly workId: WorkId;
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
 };
 
 export type RunArtifactScope = {
@@ -260,7 +261,7 @@ export type RunArtifactId = {
 
 export type CapturedOutputArtifactPayload = {
     readonly byteLength: number;
-    readonly capturedAtMilliseconds: number;
+    readonly capturedAtMicroseconds: number;
     readonly kind: 'captured-output';
     readonly stream: 'stderr' | 'stdout';
     readonly text: string;
@@ -302,7 +303,7 @@ export type SuiteRunCounts = {
 export type ResourceUsageSnapshot = {
     readonly activeResourceCount: number;
     readonly activeResourceTypes: readonly string[];
-    readonly capturedAtMilliseconds: number;
+    readonly capturedAtMicroseconds: number;
     readonly javaScriptEngineHeapBytes: number;
     readonly residentSetBytes: number;
 };
@@ -340,7 +341,7 @@ export type RunResult = {
     readonly runnerErrors: readonly RunnerError[];
     readonly status: RunStatus;
     readonly summary: RunSummary;
-    readonly wallTimeMs: number;
+    readonly timings: RunTimings;
 };
 
 export function verdictFromOutcome(outcome: TestOutcome): TestVerdict {

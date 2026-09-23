@@ -1,4 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -52,7 +52,7 @@ type SupervisedAssignmentExecution = {
     readonly dependencies: SupervisedChildDependencies;
     readonly host: SupervisedChildHost;
     readonly startedAtMs: number;
-    readonly wallClock: WallClock;
+    readonly wallClock: OverkillClock;
 };
 
 export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
@@ -74,10 +74,10 @@ type SupervisedChildResourceUsageOptions = {
 
 export type SupervisedChildDependencies = {
     readonly createResourceUsageTracker: (
-        wallClock: WallClock,
+        wallClock: OverkillClock,
         options: SupervisedChildResourceUsageOptions
     ) => RunResourceUsageTracker;
-    readonly createWallClock: () => WallClock;
+    readonly createOverkillClock: () => OverkillClock;
 };
 
 function ignoreLine(): void {
@@ -145,7 +145,7 @@ function createForwardingResourceUsageTracker(
     command: SupervisedRunCommand,
     host: SupervisedChildHost,
     dependencies: SupervisedChildDependencies,
-    wallClock: WallClock
+    wallClock: OverkillClock
 ): RunResourceUsageTracker {
     const tracker = dependencies.createResourceUsageTracker(wallClock, {
         samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
@@ -168,18 +168,20 @@ function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
 
 function createEmptyAssignmentResult(
     testPlan: TestPlan,
-    wallClock: WallClock,
-    startedAtMs: number
+    wallClock: OverkillClock
 ): RunResult {
+    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+
     return createRunResultFromCollectedPlan(
         collectedRunPlanFromTestPlanCases(testPlan, []),
         [],
         [],
         {
+            completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
             planStatus: 'empty-selection',
             resourceUsage: null,
-            startedAtMs,
-            wallClock
+            startedAtMicroseconds,
+            testExecutionWallTimeMicroseconds: 0
         }
     );
 }
@@ -334,13 +336,13 @@ async function run(
     host: SupervisedChildHost,
     dependencies: SupervisedChildDependencies
 ): Promise<void> {
-    const wallClock = dependencies.createWallClock();
-    const startedAtMs = wallClock.currentTimestampInMilliseconds;
+    const wallClock = dependencies.createOverkillClock();
+    const startedAtMs = wallClock.currentEpochMilliseconds;
     const collectedPlan = await collect(command, host);
     const assignment = await host.receiveAssignment();
 
     if (supervisedAssignedWork(assignment).length === 0) {
-        sendRunResult(host, createEmptyAssignmentResult(collectedPlan.testPlan, wallClock, startedAtMs));
+        sendRunResult(host, createEmptyAssignmentResult(collectedPlan.testPlan, wallClock));
         return;
     }
 

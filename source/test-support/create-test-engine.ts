@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import { createEngine, type Engine } from '../engine/engine.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -12,7 +12,7 @@ function readNoActiveResourceTypes(): readonly string[] {
 }
 
 export function createTestEngine(): Engine {
-    const wallClock = createDeterministicWallClock();
+    const wallClock = createDeterministicOverkillClock();
 
     return createEngine({
         execute: createExecute({

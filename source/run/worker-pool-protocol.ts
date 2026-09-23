@@ -49,7 +49,7 @@ export type WorkerPoolRunTask = {
 export type WorkerPoolTask = WorkerPoolCollectTask | WorkerPoolRunTask;
 
 type WorkerPoolOutputMessage = {
-    readonly capturedAtMilliseconds: number;
+    readonly capturedAtMicroseconds: number;
     readonly chunk: Uint8Array;
     readonly kind: 'output';
     readonly stream: 'stderr' | 'stdout';

@@ -1,4 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import type {
     Engine,
     Execute,
@@ -96,5 +96,5 @@ export type RunOrchestratorDependencies = {
     readonly reporterDispatcher: ReporterDispatcher;
     readonly startSupervisedChild: SupervisedChildProcessStarter;
     readonly startWorkerPoolHost: WorkerPoolHostProcessStarter;
-    readonly wallClock: WallClock;
+    readonly wallClock: OverkillClock;
 };

@@ -1,6 +1,7 @@
 import {
     caseWithAsyncLeakPolicy,
     concurrentRunActiveResourceLeak,
+    type AsyncLeakCheckedCase,
     type AsyncLeakDependencies
 } from './execution-async-leak-policy.ts';
 import type { NormalizedExecuteOptions } from './execution-options.ts';
@@ -28,9 +29,11 @@ export type ExecutionCaseDependencies = AsyncLeakDependencies & ExecutionSupervi
 export type ExecutedTestPlan = {
     readonly perTest: readonly PerTestResult[];
     readonly reporterErrors: readonly RunnerError[];
+    readonly testExecutionWallTimeMicroseconds: number;
 };
 
 type ReportedCase = {
+    readonly executionWindow: TimingWindow;
     readonly reporterErrors: readonly RunnerError[];
     readonly runnerErrors: readonly RunnerError[];
     readonly result: PerTestResult;
@@ -41,13 +44,19 @@ type ConcurrentCaseExecution = {
     readonly perTest: readonly PerTestResult[];
     readonly reportedRunnerErrors: readonly RunnerError[];
     readonly runnerErrors: readonly RunnerError[];
+    readonly testExecutionWallTimeMicroseconds: number;
+};
+
+type TimingWindow = {
+    readonly endedAtMicroseconds: number;
+    readonly startedAtMicroseconds: number;
 };
 
 type ReportTestEndInput = {
     readonly attempt: number;
     readonly result: PerTestResult;
     readonly testCase: TestPlanCase;
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
 };
 
 type ExecutionReportingContext = {
@@ -63,6 +72,12 @@ type ExecuteCaseInput = {
     readonly testCase: TestPlanCase;
 };
 
+type TimedLeakCheckedCase = {
+    readonly endedAtMicroseconds: number;
+    readonly leakCheckedCase: AsyncLeakCheckedCase;
+    readonly startedAtMicroseconds: number;
+};
+
 export type ExecuteTestPlanCasesInput = {
     readonly context: ExecutionReportingContext;
     readonly options: NormalizedExecuteOptions;
@@ -75,6 +90,7 @@ type SerialCaseExecutionState = {
     readonly perTest: readonly PerTestResult[];
     readonly reportedRunnerErrors: readonly RunnerError[];
     readonly reporterErrors: readonly RunnerError[];
+    readonly timingWindows: readonly TimingWindow[];
 };
 
 type ExecuteConcurrentCasesInput = {
@@ -113,14 +129,14 @@ async function reportTestEnd(
         outcome: input.result.outcome,
         suitePath: input.testCase.suitePath,
         verdict: input.result.verdict,
-        wallTimeMs: input.wallTimeMs,
+        durationMicroseconds: input.durationMicroseconds,
         workId: input.testCase.workId
     });
 }
 
-async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
-    const startErrors = await reportTestStart(input.testCase, input.attempt, input.context);
+async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<TimedLeakCheckedCase> {
     const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
+    const startedAtMicroseconds = input.context.dependencies.wallClock.currentMonotonicMicroseconds;
     const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
         input.testCase,
         async function runCase() {
@@ -139,6 +155,17 @@ async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
         includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
         testCase: input.testCase
     });
+
+    return {
+        endedAtMicroseconds: input.context.dependencies.wallClock.currentMonotonicMicroseconds,
+        leakCheckedCase,
+        startedAtMicroseconds
+    };
+}
+
+async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
+    const startErrors = await reportTestStart(input.testCase, input.attempt, input.context);
+    const { endedAtMicroseconds, leakCheckedCase, startedAtMicroseconds } = await executeTimedLeakCheckedCase(input);
     const caseRunnerErrors = [
         ...leakCheckedCase.executedCase.runnerErrors,
         ...leakCheckedCase.runnerErrors
@@ -157,12 +184,13 @@ async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
             attempt: input.attempt,
             result: leakCheckedCase.executedCase.result,
             testCase: input.testCase,
-            wallTimeMs: leakCheckedCase.executedCase.wallTimeMs
+            durationMicroseconds: leakCheckedCase.executedCase.durationMicroseconds
         },
         input.context
     );
 
     return {
+        executionWindow: { endedAtMicroseconds, startedAtMicroseconds },
         reporterErrors: [ ...startErrors, ...runnerErrorNotificationErrors, ...endErrors ],
         runnerErrors: caseRunnerErrors,
         result: leakCheckedCase.executedCase.result
@@ -174,8 +202,22 @@ function initialSerialCaseExecutionState(): SerialCaseExecutionState {
         currentSuitePath: [],
         perTest: [],
         reportedRunnerErrors: [],
-        reporterErrors: []
+        reporterErrors: [],
+        timingWindows: []
     };
+}
+
+function testExecutionWallTimeMicroseconds(timingWindows: readonly TimingWindow[]): number {
+    const starts = timingWindows.map(function toStart(window) {
+        return window.startedAtMicroseconds;
+    });
+    const ends = timingWindows.map(function toEnd(window) {
+        return window.endedAtMicroseconds;
+    });
+
+    return starts.length === 0 || ends.length === 0
+        ? 0
+        : Math.max(0, Math.max(...ends) - Math.min(...starts));
 }
 
 async function executeSerialTestPlanCase(
@@ -200,7 +242,8 @@ async function executeSerialTestPlanCase(
         currentSuitePath: testCase.suitePath,
         perTest: [ ...state.perTest, testRun.result ],
         reportedRunnerErrors: [ ...state.reportedRunnerErrors, ...testRun.runnerErrors ],
-        reporterErrors: [ ...state.reporterErrors, ...suiteErrors, ...testRun.reporterErrors ]
+        reporterErrors: [ ...state.reporterErrors, ...suiteErrors, ...testRun.reporterErrors ],
+        timingWindows: [ ...state.timingWindows, testRun.executionWindow ]
     };
 }
 
@@ -235,7 +278,8 @@ async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<E
 
     return {
         perTest: state.perTest,
-        reporterErrors: await serialTestPlanReporterErrors(input, state)
+        reporterErrors: await serialTestPlanReporterErrors(input, state),
+        testExecutionWallTimeMicroseconds: testExecutionWallTimeMicroseconds(state.timingWindows)
     };
 }
 
@@ -274,7 +318,7 @@ async function reportConcurrentCaseEnd(
         outcome: executedCase.result.outcome,
         suitePath: testCase.suitePath,
         verdict: executedCase.result.verdict,
-        wallTimeMs: executedCase.wallTimeMs,
+        durationMicroseconds: executedCase.durationMicroseconds,
         workId: testCase.workId
     });
 }
@@ -302,6 +346,7 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
     const endReporterErrors: RunnerError[] = [];
     const reportedRunnerErrors: RunnerError[] = [];
     const caseExecutions = input.testPlan.cases.map(async function executeCaseConcurrently(testCase) {
+        const startedAtMicroseconds = input.context.dependencies.wallClock.currentMonotonicMicroseconds;
         const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
             testCase,
             async function runCase() {
@@ -320,6 +365,7 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
             includeActiveResourceLeaks: false,
             testCase
         });
+        const endedAtMicroseconds = input.context.dependencies.wallClock.currentMonotonicMicroseconds;
         const caseRunnerErrors = [
             ...leakCheckedCase.executedCase.runnerErrors,
             ...leakCheckedCase.runnerErrors
@@ -338,17 +384,25 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
         );
         reportedRunnerErrors.push(...caseRunnerErrors);
 
-        return leakCheckedCase.executedCase;
+        return {
+            executedCase: leakCheckedCase.executedCase,
+            executionWindow: { endedAtMicroseconds, startedAtMicroseconds }
+        };
     });
     const executedCases = await Promise.all(caseExecutions);
 
     return {
         endReporterErrors,
         perTest: executedCases.map(function toPerTest(executedCase) {
-            return executedCase.result;
+            return executedCase.executedCase.result;
         }),
         reportedRunnerErrors,
-        runnerErrors: input.supervision.runnerErrors
+        runnerErrors: input.supervision.runnerErrors,
+        testExecutionWallTimeMicroseconds: testExecutionWallTimeMicroseconds(
+            executedCases.map(function toWindow(executedCase) {
+                return executedCase.executionWindow;
+            })
+        )
     };
 }
 
@@ -382,7 +436,8 @@ async function executeConcurrentTestPlanCases(input: ExecuteTestPlanCasesInput):
             ...runnerErrors,
             ...pendingRunnerErrorNotifications,
             ...concurrentCaseExecution.endReporterErrors
-        ]
+        ],
+        testExecutionWallTimeMicroseconds: concurrentCaseExecution.testExecutionWallTimeMicroseconds
     };
 }
 

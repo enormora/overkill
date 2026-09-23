@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -227,11 +227,11 @@ function requiredSecondCase(testPlan: TestPlan): TestPlan['cases'][number] {
 }
 
 function assertPlanningHelpers(scope: OverkillScope, testPlan: TestPlan): void {
-    const wallClock = createDeterministicWallClock();
+    const wallClock = createDeterministicOverkillClock();
     const selected = selectedAssignedCases(testPlan, [ requiredSecondCase(testPlan).id ]);
     wallClock.advanceByMilliseconds(150);
 
-    const emptyResult = createEmptyAssignmentResult(testPlan, wallClock, 100);
+    const emptyResult = createEmptyAssignmentResult(testPlan, wallClock);
     const collection = sendCollectedPlan({ runnerErrors: [], testPlan });
 
     scope.assert.equal(selected.cases[0].id.title, 'second');

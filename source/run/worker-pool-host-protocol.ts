@@ -29,7 +29,7 @@ export type SerializedError = {
 };
 
 export type SerializedWorkerPoolMessage = Extract<WorkerPoolMessage, { readonly kind: 'event'; }> | {
-    readonly capturedAtMilliseconds: number;
+    readonly capturedAtMicroseconds: number;
     readonly chunkBase64: string;
     readonly kind: 'output';
     readonly stream: 'stderr' | 'stdout';
@@ -115,7 +115,7 @@ export function serializeWorkerPoolMessage(message: WorkerPoolMessage): Serializ
     }
 
     return {
-        capturedAtMilliseconds: message.capturedAtMilliseconds,
+        capturedAtMicroseconds: message.capturedAtMicroseconds,
         chunkBase64: Buffer.from(message.chunk).toString('base64'),
         kind: 'output',
         stream: message.stream
@@ -128,7 +128,7 @@ export function deserializeWorkerPoolMessage(message: SerializedWorkerPoolMessag
     }
 
     return {
-        capturedAtMilliseconds: message.capturedAtMilliseconds,
+        capturedAtMicroseconds: message.capturedAtMicroseconds,
         chunk: Buffer.from(message.chunkBase64, 'base64'),
         kind: 'output',
         stream: message.stream

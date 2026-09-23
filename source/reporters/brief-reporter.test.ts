@@ -49,7 +49,7 @@ function passEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
         outcome: { kind: 'pass' },
         suitePath,
         verdict: 'pass',
-        wallTimeMs: 1
+        durationMicroseconds: 1
     };
 }
 
@@ -97,7 +97,7 @@ function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
         },
         suitePath,
         verdict: 'fail',
-        wallTimeMs: 1
+        durationMicroseconds: 1
     };
 }
 
@@ -432,7 +432,7 @@ export const testNode = createOverkillSuite({
                         planned: 5,
                         skipped: 1
                     },
-                    wallTimeMs: 42
+                    totalWallTimeMicroseconds: 42_000
                 })));
 
                 scope.assert.deepEqual(

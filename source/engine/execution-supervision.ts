@@ -1,4 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import {
     invalidTimeoutControlFailure,
     runTestCase,
@@ -27,11 +27,11 @@ export type ExecuteTimeoutPolicy = {
 export type ConcurrentCase = {
     readonly result: PerTestResult;
     readonly runnerErrors: readonly RunnerError[];
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
 };
 export type ExecutionSupervisionDependencies = {
     readonly runtimePolicy?: TestRuntimePolicy | null;
-    readonly wallClock: WallClock;
+    readonly wallClock: OverkillClock;
 };
 type CaseCompletion = {
     readonly complete: (executedCase: ConcurrentCase) => void;
@@ -40,8 +40,8 @@ type CaseCompletion = {
 type ActiveCase = {
     readonly abort: () => void;
     readonly completion: CaseCompletion;
-    readonly hardTimeout: ReturnType<WallClock['setTimeout']> | null;
-    readonly startedAtMilliseconds: number;
+    readonly hardTimeout: ReturnType<OverkillClock['setTimeout']> | null;
+    readonly startedAtMicroseconds: number;
     readonly testCase: TestPlanCase;
 };
 type TestFailures = readonly [TestFailure, ...TestFailure[]];
@@ -127,7 +127,7 @@ function createCaseCompletion(): CaseCompletion {
 function createTerminalCase(
     testCase: TestPlanCase,
     verdict: PerTestResult['verdict'],
-    wallTimeMs: number
+    durationMicroseconds: number
 ): ConcurrentCase {
     return {
         result: {
@@ -135,16 +135,16 @@ function createTerminalCase(
             outcome: null,
             verdict,
             workId: testCase.workId,
-            wallTimeMs
+            durationMicroseconds
         },
         runnerErrors: [],
-        wallTimeMs
+        durationMicroseconds
     };
 }
 function failCase(
     testCase: Pick<TestPlanCase, 'id' | 'workId'>,
     failures: TestFailures,
-    wallTimeMs: number
+    durationMicroseconds: number
 ): PerTestResult {
     const outcome = {
         failures,
@@ -156,7 +156,7 @@ function failCase(
         outcome,
         verdict: verdictFromOutcome(outcome),
         workId: testCase.workId,
-        wallTimeMs
+        durationMicroseconds
     };
 }
 function timeoutControlValue(testCase: TestPlanCase): unknown {
@@ -218,11 +218,11 @@ function resultWithTimeoutFailure(
 
     return {
         ...executedCase,
-        result: failCase(executedCase.result, [ failure ], executedCase.wallTimeMs)
+        result: failCase(executedCase.result, [ failure ], executedCase.durationMicroseconds)
     };
 }
 
-function clearTimer(wallClock: WallClock, timer: ReturnType<WallClock['setTimeout']> | null): void {
+function clearTimer(wallClock: OverkillClock, timer: ReturnType<OverkillClock['setTimeout']> | null): void {
     if (timer !== null) {
         wallClock.clearTimeout(timer);
     }
@@ -245,7 +245,7 @@ function policyCheckedCase(
     }
 
     return {
-        ...createTerminalCase(testCase, 'runtime-policy', executedCase.wallTimeMs),
+        ...createTerminalCase(testCase, 'runtime-policy', executedCase.durationMicroseconds),
         runnerErrors: executedCase.runnerErrors
     };
 }
@@ -314,7 +314,7 @@ function completeActiveCasesAs(
         activeCase.completion.complete(createTerminalCase(
             activeCase.testCase,
             verdict,
-            dependencies.wallClock.currentTimestampInMilliseconds - activeCase.startedAtMilliseconds
+            dependencies.wallClock.currentMonotonicMicroseconds - activeCase.startedAtMicroseconds
         ));
     }
 }
@@ -381,7 +381,7 @@ async function runCaseWithSoftTimeout(
     clearTimer(input.dependencies.wallClock, softTimeout);
 
     if (timing.timedOut) {
-        return resultWithTimeoutFailure(executedCase, input.timeoutMilliseconds, executedCase.wallTimeMs);
+        return resultWithTimeoutFailure(executedCase, input.timeoutMilliseconds, executedCase.durationMicroseconds);
     }
 
     return executedCase;
@@ -391,13 +391,13 @@ function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): Concu
     return {
         result: failCase(testCase, [ failure ], 0),
         runnerErrors: [],
-        wallTimeMs: 0
+        durationMicroseconds: 0
     };
 }
 
 function registerActiveCase(input: ActiveCaseInput): ActiveCase {
     const key = workIdentityKey(input.testCase.workId);
-    const startedAtMilliseconds = input.dependencies.wallClock.currentTimestampInMilliseconds;
+    const startedAtMicroseconds = input.dependencies.wallClock.currentMonotonicMicroseconds;
     const hardTimeout = input.timeoutPolicy === null || input.timeoutPolicy === undefined
         ? null
         : input.dependencies.wallClock.setTimeout(function hardTimeoutActiveCases() {
@@ -409,7 +409,7 @@ function registerActiveCase(input: ActiveCaseInput): ActiveCase {
         },
         completion: input.completion,
         hardTimeout,
-        startedAtMilliseconds,
+        startedAtMicroseconds,
         testCase: input.testCase
     };
 
@@ -428,7 +428,11 @@ function completeFinishedActiveCase(input: CaseBodyInput, executedCase: Concurre
     }
 }
 
-function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown, wallTimeMs: number): PerTestResult {
+function createInconclusiveCaseResult(
+    testCase: TestPlanCase,
+    error: unknown,
+    durationMicroseconds: number
+): PerTestResult {
     const reason = error instanceof Error ? error.message : 'Unknown test execution error.';
     const outcome = {
         kind: 'inconclusive',
@@ -440,17 +444,17 @@ function createInconclusiveCaseResult(testCase: TestPlanCase, error: unknown, wa
         outcome,
         verdict: verdictFromOutcome(outcome),
         workId: testCase.workId,
-        wallTimeMs
+        durationMicroseconds
     };
 }
 function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void {
-    const wallTimeMs = input.dependencies.wallClock.currentTimestampInMilliseconds -
-        input.activeCase.startedAtMilliseconds;
+    const durationMicroseconds = input.dependencies.wallClock.currentMonotonicMicroseconds -
+        input.activeCase.startedAtMicroseconds;
 
     completeFinishedActiveCase(input, {
-        result: createInconclusiveCaseResult(input.testCase, error, wallTimeMs),
+        result: createInconclusiveCaseResult(input.testCase, error, durationMicroseconds),
         runnerErrors: [],
-        wallTimeMs
+        durationMicroseconds
     });
 }
 async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<ConcurrentCase> {
@@ -462,12 +466,12 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
         completeFinishedActiveCase(input, executedCase);
         return executedCase;
     } catch (error: unknown) {
-        const wallTimeMs = input.dependencies.wallClock.currentTimestampInMilliseconds -
-            input.activeCase.startedAtMilliseconds;
+        const durationMicroseconds = input.dependencies.wallClock.currentMonotonicMicroseconds -
+            input.activeCase.startedAtMicroseconds;
         const fallbackCase = {
-            result: createInconclusiveCaseResult(input.testCase, error, wallTimeMs),
+            result: createInconclusiveCaseResult(input.testCase, error, durationMicroseconds),
             runnerErrors: [],
-            wallTimeMs
+            durationMicroseconds
         };
 
         completeUnexpectedBodyError(input, error);

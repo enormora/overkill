@@ -222,13 +222,13 @@ function newRangeError(message: string): RangeError {
 }
 
 function resourceUsageSample(
-    capturedAtMilliseconds: number,
+    capturedAtMicroseconds: number,
     residentSetBytes: number
 ): ResourceUsageSnapshot {
     return {
-        activeResourceCount: capturedAtMilliseconds / 10,
+        activeResourceCount: capturedAtMicroseconds / 10,
         activeResourceTypes: [ 'temporary-directory' ],
-        capturedAtMilliseconds,
+        capturedAtMicroseconds,
         javaScriptEngineHeapBytes: residentSetBytes / 2,
         residentSetBytes
     };
@@ -346,7 +346,7 @@ function emitTaskOutput(
     child.emitMessage({
         kind: 'task-message',
         message: serializeWorkerPoolMessage({
-            capturedAtMilliseconds: 50,
+            capturedAtMicroseconds: 50,
             chunk: Buffer.from('task stdout'),
             kind: 'output',
             stream: 'stdout'
@@ -370,7 +370,7 @@ async function assertForwardingResult(scope: OverkillScope, fixture: ForwardingF
     scope.assert.deepEqual(await fixture.result, { ok: true });
     scope.assert.deepEqual(fixture.output, [ 'stdout:host stdout', 'stderr:host stderr' ]);
     scope.assert.deepEqual(fixture.port.messages(), [ {
-        capturedAtMilliseconds: 50,
+        capturedAtMicroseconds: 50,
         chunk: Buffer.from('task stdout'),
         kind: 'output',
         stream: 'stdout'
@@ -392,7 +392,7 @@ function createTrackingFixture(): ResourceTrackingFixture {
     }
 
     tracker.start(function observeSample(sample) {
-        observedSamples.push(sample.capturedAtMilliseconds);
+        observedSamples.push(sample.capturedAtMicroseconds);
     });
 
     return { ...fixture, observedSamples, tracker };
