@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicOverkillClock, type DeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -76,7 +76,7 @@ function createSilentReporterDelivery(): ReporterDelivery {
 }
 
 function executionDependencies(
-    wallClock: ReturnType<typeof createDeterministicOverkillClock>
+    wallClock: DeterministicOverkillClock
 ): ExecutionSupervisionDependencies {
     return {
         globalErrorObserver: createDisabledExecutionGlobalErrorObserver(),

@@ -27,7 +27,7 @@ const softTimeoutPolicy = {
 };
 
 function executionDependencies(
-    wallClock: ReturnType<typeof createDeterministicWallClock>
+    wallClock: DeterministicOverkillClock
 ): ExecutionSupervisionDependencies {
     return {
         globalErrorObserver: createDisabledExecutionGlobalErrorObserver(),

@@ -73,7 +73,6 @@ type WorkerTaskRunRequest = {
     readonly taskRun: WorkerPoolTaskRun;
 };
 
-type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
 type HostRunnerErrors = ReturnType<NonNullable<WorkerPoolRunRuntime['pool']['takeHostRunnerErrors']>>;
 
 const maximumCrashCount = 3;

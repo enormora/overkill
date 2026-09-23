@@ -123,7 +123,7 @@ async function runAssignment(
 
 async function runCollectionTask(
     task: Extract<WorkerPoolTask, { readonly kind: 'collect'; }>,
-    wallClock: ReturnType<typeof createWallClock>
+    wallClock: OverkillClock
 ): Promise<WorkerPoolCollection> {
     const outputCapture = captureOutput(task, wallClock);
 

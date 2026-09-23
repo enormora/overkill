@@ -10,10 +10,8 @@ function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown
     return typeof value === 'object' && value !== null;
 }
 
-function ignoreTypeWitness(typeWitnessLength: number): void {
-    if (typeWitnessLength < 0) {
-        throw new Error('Invalid type witness length.');
-    }
+function ignoreTypeWitness(typeWitness: readonly unknown[]): void {
+    String(typeWitness.length);
 }
 
 export function childProcessEnvelope<Message>(
@@ -42,7 +40,7 @@ export function envelopeMessage<Message>(
     correlationId: string,
     ...typeWitness: readonly [Message?]
 ): Message | null {
-    ignoreTypeWitness(typeWitness.length);
+    ignoreTypeWitness(typeWitness);
 
     if (!isChildProcessEnvelope<Message>(value, correlationId)) {
         return null;

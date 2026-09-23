@@ -104,14 +104,14 @@ function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
     const errors: RunnerError[] = [];
     const fatal = createStoredValue(false);
     const fatalHandlers = new Set<FatalErrorHandler>();
-    const fatalSignal = Promise.withResolvers<undefined>();
+    const fatalSignal = createStoredValue<PromiseWithResolvers<undefined> | null>(null);
     const phase = createStoredValue<ExecutionPhase>('run');
     const stopped = createStoredValue(false);
 
     function notifyFatal(error: RunnerError): void {
         if (!fatal.read()) {
             fatal.write(true);
-            fatalSignal.resolve(undefined);
+            fatalSignal.read()?.resolve(undefined);
         }
 
         for (const handler of fatalHandlers) {
@@ -128,7 +128,14 @@ function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
         },
         boundary,
         async fatalSignal() {
-            await fatalSignal.promise;
+            if (fatal.read()) {
+                return;
+            }
+
+            const currentFatalSignal = fatalSignal.read() ?? Promise.withResolvers<undefined>();
+
+            fatalSignal.write(currentFatalSignal);
+            await currentFatalSignal.promise;
         },
         hasActiveCase(key) {
             return activeCaseKeys.has(key);
@@ -333,7 +340,10 @@ function attributionDriftError(
     };
 }
 
-function scopeIncludesCase(scope: RunErrorScope, activeCase: ActiveCaseContext | null): boolean {
+function scopeIncludesCase(
+    scope: RunErrorScope,
+    activeCase: ActiveCaseContext | null
+): activeCase is ActiveCaseContext {
     return activeCase !== null && activeCase.scope === scope;
 }
 
@@ -351,17 +361,11 @@ function errorForScope(input: HookFailureInput): RunnerError {
         return runLevelHookError(input.scope, input.hook, input.reason);
     }
 
-    const scopedActiveCase = input.activeCase;
-
-    if (scopedActiveCase === null) {
-        return runLevelHookError(input.scope, input.hook, input.reason);
+    if (input.scope.hasActiveCase(input.activeCase.key)) {
+        return attributedError(input.scope, input.hook, input.reason, input.activeCase);
     }
 
-    if (input.scope.hasActiveCase(scopedActiveCase.key)) {
-        return attributedError(input.scope, input.hook, input.reason, scopedActiveCase);
-    }
-
-    return attributionDriftError(input.scope, input.hook, input.reason, scopedActiveCase);
+    return attributionDriftError(input.scope, input.hook, input.reason, input.activeCase);
 }
 
 function currentTargetScopes(): readonly RunErrorScope[] {

@@ -1,5 +1,4 @@
 import type { OverkillClock } from '../clock/overkill-clock.ts';
-import type { Engine } from '../engine/engine.ts';
 import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
@@ -31,18 +30,26 @@ export type CollectedWorkerPoolTestPlan = {
 };
 
 type AssignedWork = readonly WorkId[];
+type SelectedWorkerPoolEngine = Awaited<ReturnType<typeof loadRunEngineModule>>;
+const missingObservedWorkerError: RunnerError = {
+    attributedTo: null,
+    attributedToWork: null,
+    cause: null,
+    message: 'Worker-pool worker failed after a process-level runtime error.',
+    subtype: 'crash'
+};
 
-async function selectedEngine(command: WorkerPoolCommand): Promise<Engine> {
+async function selectedEngine(command: WorkerPoolCommand): Promise<SelectedWorkerPoolEngine> {
     return command.engine.kind === 'module' ? await loadRunEngineModule(command.engine) : defaultRunEngine;
 }
 
 function firstObservedWorkerError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
-    const [ error ] = observer.takeErrors();
+    const [ error ] = [ ...observer.takeErrors(), missingObservedWorkerError ];
 
     return new RunCollectionError(
-        error?.message ?? 'Worker-pool worker failed after a process-level runtime error.',
-        { cause: error ?? null },
-        error?.subtype ?? 'crash'
+        error.message,
+        { cause: error },
+        error.subtype
     );
 }
 

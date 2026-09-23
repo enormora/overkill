@@ -19,6 +19,13 @@ export type SupervisedChildTestPlanDependencies = {
 };
 
 type SelectedSupervisedEngine = Awaited<ReturnType<SupervisedChildTestPlanDependencies['loadRunEngineModule']>>;
+const missingObservedChildError: RunnerError = {
+    attributedTo: null,
+    attributedToWork: null,
+    cause: null,
+    message: 'Supervised child failed after a process-level runtime error.',
+    subtype: 'crash'
+};
 
 async function selectedEngine(
     command: SupervisedChildCommand,
@@ -28,12 +35,12 @@ async function selectedEngine(
 }
 
 function firstObservedChildError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
-    const [ error ] = observer.takeErrors();
+    const [ error ] = [ ...observer.takeErrors(), missingObservedChildError ];
 
     return new RunCollectionError(
-        error?.message ?? 'Supervised child failed after a process-level runtime error.',
-        { cause: error ?? null },
-        error?.subtype ?? 'crash'
+        error.message,
+        { cause: error },
+        error.subtype
     );
 }
 

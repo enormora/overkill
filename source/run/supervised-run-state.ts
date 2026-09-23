@@ -214,26 +214,6 @@ export function deduplicatedChildRuntimePolicyErrors(
     });
 }
 
-export function deduplicatedRuntimePolicyErrors(errors: readonly RunnerError[]): readonly RunnerError[] {
-    const seenProcessEnvironmentKeys = new Set<string>();
-
-    return errors.filter(function keepFirstProcessEnvironmentError(error) {
-        const key = processEnvironmentPolicyKey(error);
-
-        if (key === null) {
-            return true;
-        }
-
-        if (seenProcessEnvironmentKeys.has(key)) {
-            return false;
-        }
-
-        seenProcessEnvironmentKeys.add(key);
-
-        return true;
-    });
-}
-
 export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue<Value> {
     let currentValue = initialValue;
 

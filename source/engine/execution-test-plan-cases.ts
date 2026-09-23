@@ -438,7 +438,8 @@ async function fatalConcurrentStartResult(
             ...reporterErrors,
             ...pendingRunnerErrors,
             ...pendingRunnerErrorNotifications
-        ]
+        ],
+        testExecutionWallTimeMicroseconds: 0
     };
 }
 
