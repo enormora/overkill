@@ -450,7 +450,11 @@ async function recordCompletedTaskRun(
     recordBatchStarted(taskRun, context.runtime);
     const output = await runFileUnit(taskRun, context.runtime, lease.lane, context.startedAtMilliseconds);
     recordBatchCompleted(taskRun, context.runtime);
-    context.dispatcher.finish(lease, lease.kind === 'primary');
+    context.dispatcher.finish(lease, {
+        learnWarmth: lease.kind === 'primary',
+        retainReservation: lease.kind === 'primary',
+        workerCrashed: false
+    });
 
     if (!taskRun.reporterEventsBuffered) {
         context.runtime.taskResults.push(...output.results.map(function toResult(result) {
@@ -476,7 +480,11 @@ function finishFailedTaskRun(
     lease: WorkerPoolUnitLease,
     context: TaskExecutionContext
 ): void {
-    context.dispatcher.finish(lease, taskRunKeepsLeaseReservation(taskRun, lease));
+    context.dispatcher.finish(lease, {
+        learnWarmth: false,
+        retainReservation: taskRunKeepsLeaseReservation(taskRun, lease),
+        workerCrashed: true
+    });
 }
 
 function finishAfterHostRunnerErrors(

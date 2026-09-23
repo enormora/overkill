@@ -315,6 +315,14 @@ function assertRetainedReservation(scope: OverkillScope, lease: WorkerPoolUnitLe
     scope.assert.deepEqual(lease.reservation.hardKeys, []);
 }
 
+function finishSuccessfulPrimary(dispatcher: WorkerPoolWorkDispatcher, lease: WorkerPoolUnitLease): void {
+    dispatcher.finish(lease, {
+        learnWarmth: true,
+        retainReservation: true,
+        workerCrashed: false
+    });
+}
+
 function splitLeaseMembers(expectation: SplitLeaseExpectation): readonly [
     WorkerPoolUnitLease['members'][number],
     WorkerPoolUnitLease['members'][number]
@@ -380,7 +388,7 @@ export const testNode = createOverkillSuite({
                 const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
 
                 assertFreshReservation(scope, firstLease);
-                dispatcher.finish(firstLease, true);
+                finishSuccessfulPrimary(dispatcher, firstLease);
                 dispatcher.requeue({ traceUnit: firstLease.traceUnit, unit: firstLease.unit });
                 scope.assert.equal(dispatcher.pull(secondLane(plan)), null);
                 assertRetainedReservation(scope, pullRequiredLease(dispatcher, firstLane(plan)));

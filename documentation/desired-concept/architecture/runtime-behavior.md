@@ -574,7 +574,8 @@ Execution requirements add scheduling pressure:
 - `single-worker` pins matching work to one logical lane without implying
   serial in-case execution
 - `capacity-weight` contributes to lane load balancing
-- `affinity-key` prefers the lane that first ran the same key
+- `affinity-key` is a soft placement preference after required spreading and
+  load balancing
 - `fault-domain` spreads matching work across lanes where possible
 - `startup-budget-milliseconds` is budget metadata for acquisition policy
 
@@ -987,6 +988,15 @@ It never pins work by itself and must run after hard constraints,
 fault-domain spread, capacity pressure, and fairness. A warm lane that would
 violate a constraint, overload a lane, or defeat required spreading is not
 eligible.
+
+The dynamic worker-pool applies warm-lane affinity only within the exact
+highest-load pending candidate group for a lane. It looks ahead at no more
+than twice the current lane count, scores only reusable-worker candidates, and
+falls back to queue priority when no warm score wins. Scores are intentionally
+weighted toward specific locality: exact file, immediate non-root directory,
+affinity key, then runtime/workload shape. A worker crash clears that lane's
+warm state because the replacement worker has no imported modules or local
+worker-scoped handles from the crashed worker.
 
 ### Trace And Replay
 

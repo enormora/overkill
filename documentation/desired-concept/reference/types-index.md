@@ -1225,6 +1225,8 @@ type PlacementTrace = {
     readonly entries: ReadonlyArray<PlacementTraceEntry>;
 };
 
+type WarmLaneAffinityKeyKind = 'file' | 'directory' | 'affinity' | 'runtime-workload';
+
 type PlacementTraceEntry =
     | {
         readonly kind: 'unit-started';
@@ -1263,6 +1265,15 @@ type PlacementTraceEntry =
         readonly lane: string;
         readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
         readonly workerId: string;
+    }
+    | {
+        readonly kind: 'warm-lane-affinity-selected';
+        readonly lane: string;
+        readonly selectedUnit: TraceWorkUnitId;
+        readonly baselineUnit: TraceWorkUnitId;
+        readonly candidateUnits: NonEmptyReadonlyArray<TraceWorkUnitId>;
+        readonly matchedWarmKeys: NonEmptyReadonlyArray<WarmLaneAffinityKeyKind>;
+        readonly score: number;
     }
     | { readonly kind: 'hedged-duplicate-started'; readonly unit: TraceWorkUnitId; readonly workerId: string; }
     | { readonly kind: 'hedged-duplicate-discarded'; readonly unit: TraceWorkUnitId; readonly workerId: string; }

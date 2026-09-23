@@ -7,12 +7,12 @@ import type {
     WorkUnitQueue
 } from './worker-pool-dispatch-state.ts';
 
-type CompatibleBatchingState = {
+export type CompatibleBatchingState = {
     readonly batchId: StoredRunValue<number>;
     readonly pendingUnits: WorkUnitQueue<QueuedWorkUnit>;
 };
 
-type CompatibleBatchingDependencies = {
+export type CompatibleBatchingDependencies = {
     readonly comparePriority: (left: QueuedWorkUnit, right: QueuedWorkUnit) => number;
     readonly compatibleLaneCount: (item: QueuedWorkUnit) => number;
     readonly laneCanLease: (item: QueuedWorkUnit) => boolean;
