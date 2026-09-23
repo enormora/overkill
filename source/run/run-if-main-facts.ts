@@ -1,10 +1,13 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
+import type { RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import {
     resolveResourceUsagePolicy,
+    resolveTimingCollection,
     runCaseFactsFromTestPlan
 } from './run-facts.ts';
+import { resultWithTimingCollection } from './run-timing-collection.ts';
 import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import type {
     RunConfig,
@@ -48,6 +51,7 @@ function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunReque
             index: 0,
             total: 1
         },
+        timingCollection: 'profile-default',
         verbose: false
     };
 }
@@ -112,6 +116,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             resourceUsagePolicy: resolveResourceUsagePolicy(request, profile),
             scheduling: profile.execution.scheduling,
             testFamily: profile.testFamily,
+            timingCollection: resolveTimingCollection(request, profile),
             timeoutPolicy: profile.timeouts,
             verbose: request.verbose
         },
@@ -123,4 +128,8 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
         }
     };
+}
+
+export function finalizeDirectRunResult(runFacts: RunFacts, result: RunResult): RunResult {
+    return resultWithTimingCollection(runFacts.execution.timingCollection, result);
 }

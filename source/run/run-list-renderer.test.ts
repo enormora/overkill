@@ -145,6 +145,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                 resourceUsagePolicy: profile.resourceUsage,
                 scheduling: profile.execution.scheduling,
                 testFamily: profile.testFamily,
+                timingCollection: 'summary',
                 timeoutPolicy: profile.timeouts,
                 verbose: request.verbose
             },

@@ -113,6 +113,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 },
                 scheduling: 'serial',
                 testFamily: 'integration',
+                timingCollection: 'summary',
                 timeoutPolicy: {
                     collectionMilliseconds: 1000,
                     hardMilliseconds: 1000,
@@ -236,6 +237,7 @@ function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
         },
         scheduling: 'serial',
         testFamily: 'integration',
+        timingCollection: 'summary',
         timeoutPolicy: {
             collectionMilliseconds: 1000,
             hardMilliseconds: 1000,

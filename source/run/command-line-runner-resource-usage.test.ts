@@ -210,6 +210,7 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
             samplingIntervalMilliseconds: 25
         },
         testFamily: 'microtest',
+        timings: { collection: 'summary' },
         timeouts: {
             collectionMilliseconds: 1000,
             hardMilliseconds: 1000,

@@ -95,6 +95,18 @@ function validateRunSelection(request: RunRequest): void {
     }
 }
 
+function requestTimingCollection(request: RunRequest): unknown {
+    return request.timingCollection;
+}
+
+function validateTimingCollection(request: RunRequest): void {
+    const timingCollection = requestTimingCollection(request);
+
+    if (timingCollection !== 'profile-default' && timingCollection !== 'precise') {
+        invalidRequest('Timing collection must be "profile-default" or "precise".');
+    }
+}
+
 function assertValidRunProfileName(profileName: string): void {
     const message = invalidRunProfileNameMessage(profileName);
 
@@ -109,6 +121,7 @@ function validateRunRequest(request: RunRequest): void {
     validateRunShard(request);
     validateRunSeed(request);
     validateRunSelection(request);
+    validateTimingCollection(request);
     validateRunResourceUsageRequest(request);
 }
 

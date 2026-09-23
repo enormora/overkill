@@ -65,6 +65,7 @@ type RunCommandArguments = {
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly seed: RunSeed;
     readonly shard: RunShard;
+    readonly timings: boolean;
     readonly title: string | null;
 };
 
@@ -358,6 +359,7 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             seed: args.seed,
             selection: createSelection(args),
             shard: args.shard,
+            timingCollection: args.timings ? 'precise' : 'profile-default',
             verbose: false
         }
     };
@@ -456,7 +458,8 @@ function createOverkillCommand(
                 defaultValue() {
                     return null;
                 }
-            })
+            }),
+            timings: flag({ long: 'timings' })
         },
         async handler(args: RunCommandArguments) {
             const runner = await loadRunner();

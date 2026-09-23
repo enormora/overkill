@@ -1,6 +1,5 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import { appendRunnerErrors } from '../engine/execution-result.ts';
-import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import type {
     PerTestResult,
     RunArtifact,
@@ -13,6 +12,7 @@ import {
     createRunResultFromCollectedPlan
 } from './collected-run-plan.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import { resultWithResolvedTimingCollection } from './run-timing-collection.ts';
 import type { CollectedRunPlan } from './run-types.ts';
 import { createReporterDelivery } from './supervised-run-runtime.ts';
 import type {
@@ -124,7 +124,7 @@ async function reportEmptyShardRunStart(
 
 async function reportResultWithDelivery(
     result: RunResult,
-    reporterDelivery: ReporterDelivery
+    reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>
 ): Promise<RunResult> {
     const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result });
     const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
@@ -213,5 +213,5 @@ export async function createEmptyWorkerPoolResult(
         ),
         collectionRunState.artifacts()
     );
-    return await reportResultWithDelivery(result, reporterDelivery);
+    return await reportResultWithDelivery(resultWithResolvedTimingCollection(resolvedRun, result), reporterDelivery);
 }

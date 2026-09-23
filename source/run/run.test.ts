@@ -195,6 +195,7 @@ export const testNode = createOverkillSuite({
                         },
                         scheduling: 'concurrent',
                         testFamily: 'microtest',
+                        timingCollection: 'summary',
                         timeoutPolicy: {
                             collectionMilliseconds: 5000,
                             hardMilliseconds: 1000,
@@ -405,6 +406,7 @@ export const testNode = createOverkillSuite({
                         },
                         scheduling: 'concurrent',
                         testFamily: 'microtest',
+                        timingCollection: 'summary',
                         timeoutPolicy: {
                             collectionMilliseconds: 1000,
                             hardMilliseconds: 1000,

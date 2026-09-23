@@ -1,6 +1,7 @@
 import type {
     RunMicrotestExecution,
     RunResourceUsagePolicy,
+    TimingProfilePolicy,
     RunTimeoutPolicy,
     RunWorkerPoolAssignmentPolicy,
     RunWorkerPoolDispatchPolicy,
@@ -31,6 +32,10 @@ export const defaultResourceUsagePolicy: RunResourceUsagePolicy = {
     },
     measure: false,
     samplingIntervalMilliseconds: defaultResourceUsageSamplingIntervalMilliseconds
+};
+
+export const defaultTimingProfilePolicy: TimingProfilePolicy = {
+    collection: 'summary'
 };
 
 export const defaultTimeoutPolicy: RunTimeoutPolicy = {

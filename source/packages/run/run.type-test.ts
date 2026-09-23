@@ -48,6 +48,10 @@ import {
     type RunRequest,
     type RunScheduling,
     type RunTestFamily,
+    type RunProjectTimingProfilePolicy,
+    type TimingCollectionMode,
+    type TimingCollectionOverride,
+    type TimingProfilePolicy,
     type RunWorkDistribution,
     type RunWorkGroup,
     type RunWorkGroupGranularity,
@@ -86,6 +90,7 @@ type RunRequestKeys = readonly [
     'seed',
     'selection',
     'shard',
+    'timingCollection',
     'verbose'
 ];
 
@@ -196,6 +201,7 @@ describe('@overkill-dev/run', function () {
         expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
         expect<RunRequest['profile']>().type.toBe<string>();
         expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
+        expect<RunRequest['timingCollection']>().type.toBe<TimingCollectionOverride>();
         expect<Pick<RunRequest, 'capture' | 'order'>>().type.toBe<{
             readonly capture: 'buffered' | 'live';
             readonly order: RunOrder;
@@ -221,6 +227,7 @@ describe('@overkill-dev/run', function () {
         expect<RunExecutionFacts['placementPlan']>().type.toBe<PlacementPlan | null>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
         expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
+        expect<RunExecutionFacts['timingCollection']>().type.toBe<TimingCollectionMode>();
     });
 
     test('exposes case file set facts', function () {
@@ -307,6 +314,11 @@ describe('@overkill-dev/run', function () {
     });
 });
 
+test('exposes timing collection request types', function () {
+    expect<TimingCollectionOverride>().type.toBe<'precise' | 'profile-default'>();
+    expect<TimingCollectionMode>().type.toBe<'precise' | 'summary'>();
+});
+
 describe('@overkill-dev/run worker-pool placement', function () {
     test('exposes worker-pool assignment policy facts', function () {
         expect<
@@ -339,6 +351,9 @@ describe('@overkill-dev/run config', function () {
         expect<RunProfileConfig>().type.toBe<RunIntegrationProfileConfig | RunMicrotestProfileConfig>();
         expect<RunConfig['profiles']['backend-http']>().type.toBe<RunProfileConfig>();
         expect<RunConfig['reporters']>().type.toBe<readonly DefinedReporter[]>();
+        expect<RunProfileConfig['timings']>().type.toBe<TimingProfilePolicy>();
+        expect<TimingProfilePolicy>().type.toBe<{ readonly collection: TimingCollectionMode; }>();
+        expect<RunProjectTimingProfilePolicy>().type.toBe<{ readonly collection: TimingCollectionMode; }>();
     });
 
     test('exposes run resource budget and resolution error types', function () {
@@ -397,6 +412,7 @@ describe('@overkill-dev/run config', function () {
             readonly reporters: null;
             readonly resourceUsage: RunResourceUsagePolicy;
             readonly testFamily: 'integration';
+            readonly timings: TimingProfilePolicy;
             readonly timeouts: RunExecutionFacts['timeoutPolicy'];
         }>();
         expect<RunProjectIntegrationProfileConfig>().type.not.toBeAssignableFrom<{

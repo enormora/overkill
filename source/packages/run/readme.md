@@ -116,6 +116,14 @@ individual thresholds for one run. The `@overkill-dev/test` binary parses
 `--measure-resource-usage` and `--resource-budget <name=value>` into those
 typed request fields.
 
+Runner timing collection is explicit beyond the always-present summary.
+Project config can set `profiles.<name>.timings.collection` to `summary` or
+`precise`; omitted timing policy defaults to `summary`. `RunRequest` uses
+`timingCollection: 'profile-default'` by default and can upgrade one run with
+`timingCollection: 'precise'`. The `@overkill-dev/test` binary parses
+`--timings` into that precise request. Strategies that consume timing-derived
+duration facts also require precise collection.
+
 Output capture is run-level intent by default. `RunRequest.capture` is
 `buffered` by default; `live` passes capture-capable stdout and stderr through
 without creating `log-capture` artifacts. Non-microtest test controls may

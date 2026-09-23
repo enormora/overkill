@@ -2,7 +2,8 @@ import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { runStatusFromSummary, type RunResult } from '../engine/run-result.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import { RunCollectionError } from './run-errors.ts';
-import { selectedProfile } from './run-facts.ts';
+import { resolveTimingCollection, selectedProfile } from './run-facts.ts';
+import { resultWithTimingCollection } from './run-timing-collection.ts';
 import { resolveRunReporters, type RunRuntimePolicy } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunCommand } from './run-types.ts';
@@ -131,6 +132,10 @@ export async function reportCollectionErrorResult(
         reporters,
         command.config.outputRenderer
     );
+    const timedResult = resultWithTimingCollection(
+        resolveTimingCollection(command.request, profile),
+        result
+    );
 
-    return await reportCollectionResultWithDelivery(reporterDelivery, result);
+    return await reportCollectionResultWithDelivery(reporterDelivery, timedResult);
 }

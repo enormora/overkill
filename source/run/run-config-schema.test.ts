@@ -177,6 +177,7 @@ export const testNode = createOverkillSuite({
                         samplingIntervalMilliseconds: 4
                     },
                     testFamily: 'microtest',
+                    timings: { collection: 'precise' },
                     timeouts: {
                         hardMilliseconds: 6,
                         softMilliseconds: 5
@@ -245,6 +246,7 @@ export const testNode = createOverkillSuite({
                     reporters: [ reporter ],
                     resourceUsage: { measure: false },
                     testFamily: 'integration',
+                    timings: { collection: 'summary' },
                     timeouts: {
                         collectionMilliseconds: 5,
                         hardMilliseconds: 7,
