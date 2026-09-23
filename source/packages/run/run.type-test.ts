@@ -116,6 +116,7 @@ type ProjectProfileFileSets = {
     >;
 };
 type ExpectedPlacementTraceKinds = {
+    readonly 'hedged-duplicate-conflict': true;
     readonly 'hedged-duplicate-discarded': true;
     readonly 'hedged-duplicate-started': true;
     readonly 'unit-completed': true;
@@ -386,6 +387,7 @@ describe('@overkill-dev/run config', function () {
                 readonly scheduling: 'concurrent';
                 readonly assignmentPolicy: 'case-count-balanced';
                 readonly dispatchPolicy: 'dynamic-lease';
+                readonly hedging: { readonly mode: 'off'; };
                 readonly workDistribution: { readonly mode: 'file'; };
                 readonly workerLifecycle: 'reuse';
             };

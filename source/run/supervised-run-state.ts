@@ -28,6 +28,7 @@ export type SupervisedRunState = {
         chunk: Uint8Array,
         capturedAtMilliseconds: number
     ) => void;
+    readonly recordArtifact: (artifact: RunArtifact) => void;
     readonly recordPerTestResult: (key: string, result: PerTestResult) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
     readonly recordRunnerErrors: (errors: readonly RunnerError[]) => void;
@@ -257,6 +258,9 @@ export function createSupervisedRunState(): SupervisedRunState {
                 });
                 artifactSequence += 1;
             }
+        },
+        recordArtifact(artifact) {
+            artifacts.push(artifact);
         },
         recordPerTestResult(key, result) {
             perTest.set(key, result);

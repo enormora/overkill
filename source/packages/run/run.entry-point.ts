@@ -134,8 +134,10 @@ export type {
     RunWorkGroupWorkerLifecycle,
     RunWorkerPoolAssignmentPolicy,
     RunWorkerPoolDispatchPolicy,
+    RunWorkerPoolHedgingPolicy,
     RunWorkerLifecycle,
     SerializedValue,
+    DuplicateExecutionSafety,
     WorkUnitId,
     WorkUnit,
     WorkUnitMode

@@ -45,6 +45,7 @@ export const testNode = createOverkillSuite({
                     execution: {
                         assignmentPolicy: 'case-count-balanced',
                         dispatchPolicy: 'dynamic-lease',
+                        hedging: { mode: 'off' },
                         hostProcess: { kind: 'direct' },
                         processModel: 'worker-pool',
                         scheduling: 'concurrent',
@@ -116,6 +117,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(defaultedProfile.execution, {
                     assignmentPolicy: 'case-count-balanced',
                     dispatchPolicy: 'dynamic-lease',
+                    hedging: { mode: 'off' },
                     hostProcess: { kind: 'direct' },
                     processModel: 'worker-pool',
                     scheduling: 'serial',
@@ -125,6 +127,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(profile.execution, {
                     assignmentPolicy: 'stable',
                     dispatchPolicy: 'static-assignment',
+                    hedging: { mode: 'off' },
                     hostProcess: { kind: 'direct' },
                     processModel: 'worker-pool',
                     scheduling: 'serial',
@@ -144,6 +147,68 @@ export const testNode = createOverkillSuite({
                     },
                     workerLifecycle: 'fresh-worker-per-unit'
                 });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'loadRunConfig() normalizes and validates worker-pool hedging',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const config = await loadConfigValue({
+                    profiles: {
+                        service: {
+                            testFamily: 'integration',
+                            files: { include: [ 'source/**/*.integration.test.ts' ] },
+                            execution: {
+                                hedging: {
+                                    durationMultiplier: 2,
+                                    minimumDelayMilliseconds: 100,
+                                    mode: 'on'
+                                },
+                                processModel: 'worker-pool'
+                            }
+                        }
+                    }
+                });
+                const profile = config.profiles.service;
+
+                scope.require.defined(profile);
+                scope.assert.deepEqual(profile.execution, {
+                    assignmentPolicy: 'case-count-balanced',
+                    dispatchPolicy: 'dynamic-lease',
+                    hedging: {
+                        durationMultiplier: 2,
+                        minimumDelayMilliseconds: 100,
+                        mode: 'on'
+                    },
+                    hostProcess: { kind: 'direct' },
+                    processModel: 'worker-pool',
+                    scheduling: 'concurrent',
+                    workDistribution: { mode: 'file' },
+                    workerLifecycle: 'reuse'
+                });
+                await scope.assert.rejects(async function loadStaticHedging() {
+                    await loadConfigValue({
+                        profiles: {
+                            service: {
+                                testFamily: 'integration',
+                                files: { include: [ 'source/**/*.integration.test.ts' ] },
+                                execution: {
+                                    dispatchPolicy: 'static-assignment',
+                                    hedging: {
+                                        durationMultiplier: 2,
+                                        minimumDelayMilliseconds: 100,
+                                        mode: 'on'
+                                    },
+                                    processModel: 'worker-pool'
+                                }
+                            }
+                        }
+                    });
+                }, { message: 'Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.' });
 
                 return scope.assert.collect();
             }

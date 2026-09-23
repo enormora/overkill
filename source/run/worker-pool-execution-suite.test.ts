@@ -1,5 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as workerPoolExecutionStateTestNode } from './worker-pool-execution-state.test.ts';
+import { testNode as workerPoolHedgingSuiteTestNode } from './worker-pool-hedging-suite.test.ts';
 import { testNode as workerPoolPendingSplittingTestNode } from './worker-pool-pending-splitting.test.ts';
 import { testNode as workerPoolResourceTrackingTestNode } from './worker-pool-resource-tracking.test.ts';
 import { testNode as workerPoolResultsTestNode } from './worker-pool-results.test.ts';
@@ -12,6 +13,7 @@ export const testNode = createOverkillSuite({
     title: 'source/run/worker-pool-execution-suite.test.ts',
     children: [
         workerPoolExecutionStateTestNode,
+        workerPoolHedgingSuiteTestNode,
         workerPoolPendingSplittingTestNode,
         workerPoolResourceTrackingTestNode,
         workerPoolResultsTestNode,

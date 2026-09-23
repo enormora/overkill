@@ -295,6 +295,7 @@ describe('Test Data', function () {
         }>();
         expect<TestControlsInput>().type.toBeAssignableFrom<{
             readonly capture: 'buffered';
+            readonly duplicateExecution: 'idempotent';
             readonly timeoutMilliseconds: number;
         }>();
         expect<TestAnnotations>().type.toBe<{
@@ -303,6 +304,7 @@ describe('Test Data', function () {
         }>();
         expect<TestControls>().type.toBe<{
             readonly capture: 'buffered' | 'live' | null;
+            readonly duplicateExecution: 'forbidden' | 'idempotent' | null;
             readonly timeoutMilliseconds: number | null;
         }>();
         expect<TestFamily>().type.toBe<'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test'>();

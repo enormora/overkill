@@ -921,6 +921,26 @@ reprioritization or batching: the work must be explicitly idempotent or have
 disposable isolation strong enough that duplicate execution cannot corrupt
 external state or artifacts.
 
+Worker-pool hedging is an explicit dynamic-lease policy. `mode: 'on'` requires
+both `minimumDelayMilliseconds` and `durationMultiplier`; `static-assignment`
+rejects hedging because frozen lane assignment owns execution order. A unit is
+a straggler when elapsed time reaches the larger of the minimum delay and the
+duration-history estimate multiplied by the configured multiplier. With no
+duration estimate, the minimum delay is the threshold.
+
+Duplicate safety can come from test controls or resource/runtime requirements.
+`idempotent` work may run on reusable workers. `disposable-isolated` work may
+hedge only when the execution envelope provides disposable isolation, currently
+fresh worker per unit. An explicit `forbidden` test control clears duplicate
+safety for that case.
+
+The current dynamic worker-pool hedges only active single-case units. Pending
+eligible work has priority over hedging, and hard constraints still win:
+serial keys, single-worker keys, exclusive resources, lifecycle mismatch, and
+incompatible lanes prevent a hedge. Reporter events for hedge-eligible cases
+are buffered until arbitration chooses an authoritative result or records a
+conflict.
+
 The first completed valid execution may become authoritative only if no other
 duplicate has produced conflicting evidence. If a duplicate completes with a
 conflicting outcome before cancellation fully takes effect, the case fails with

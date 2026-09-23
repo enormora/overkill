@@ -469,6 +469,7 @@ describe('@overkill-dev/test authoring', function () {
         expect<AuthoringAnnotations>().type.toBeAssignableTo<TestAnnotationsInput>();
         expect<AuthoringControls>().type.toBe<{
             readonly capture?: 'buffered' | 'live';
+            readonly duplicateExecution?: 'forbidden' | 'idempotent';
             readonly timeoutMilliseconds?: number;
         }>();
         expect<AuthoringControls>().type.toBeAssignableTo<TestControlsInput>();

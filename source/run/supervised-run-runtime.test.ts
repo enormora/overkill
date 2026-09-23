@@ -39,7 +39,7 @@ type TimeoutRuntimeRecord = {
 const collectedPlan = {
     root: {
         annotations: resolveRootTestAnnotations({}),
-        controls: { capture: null, timeoutMilliseconds: null },
+        controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
         title: 'root'
     }
 } as unknown as CollectedRunPlan;

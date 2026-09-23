@@ -231,6 +231,7 @@ function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegr
         return {
             assignmentPolicy: execution.assignmentPolicy,
             dispatchPolicy: execution.dispatchPolicy,
+            hedging: execution.hedging,
             hostProcess: copyHostProcess(execution.hostProcess),
             processModel: execution.processModel,
             scheduling: execution.scheduling,

@@ -144,6 +144,9 @@ validation.
 
 Use the object form when attaching annotations or controls. Annotations on the
 exported top-level `testNode` apply to the whole module's test tree.
+`controls.duplicateExecution: 'idempotent'` declares that a case may be safely
+duplicated by an opted-in runner policy. Use `forbidden` to clear inherited
+duplicate safety for a specific case.
 
 `skippedTest(title, reason)` creates a visible leaf test with a mandatory
 reason. It is discovered, listed, reported as skipped, and never runs user
@@ -455,8 +458,9 @@ runtime before the mapped scope is composed.
 
 The returned facade contains authoring helpers only. Assertions and doubles
 are imported alongside it instead of being registered into the facade.
-Facades and root helpers accept `controls.capture` as authored data. The
-selected profile decides whether that control is valid for a run.
+Facades and root helpers accept `controls.capture` and
+`controls.duplicateExecution` as authored data. The selected profile decides
+whether those controls are valid for a run.
 
 Default tests should keep importing from `@overkill-dev/test`. When a project
 has a custom facade, it can re-export that facade through a stable local alias:

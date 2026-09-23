@@ -13,16 +13,17 @@ import {
 import { workResourceConstraints } from './work-unit-resource-constraints.ts';
 
 const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, timeoutMilliseconds: null };
+const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const filePath = 'source/api.test.ts';
 
-function collectedCase(
+function collectedCaseWithControls(
     title: string,
-    resources: CollectedRunCase['resourceAttachments']['resourceGraph']
+    resources: CollectedRunCase['resourceAttachments']['resourceGraph'],
+    caseControls: CollectedRunCase['controls']
 ): CollectedRunCase {
     return {
         annotations,
-        controls,
+        controls: caseControls,
         definitionLocations: [ { kind: 'unknown' as const } ],
         params: null,
         resourceAttachments: {
@@ -34,6 +35,13 @@ function collectedCase(
         testFamily: 'integration',
         title
     };
+}
+
+function collectedCase(
+    title: string,
+    resources: CollectedRunCase['resourceAttachments']['resourceGraph']
+): CollectedRunCase {
+    return collectedCaseWithControls(title, resources, controls);
 }
 
 function resource(
@@ -96,6 +104,9 @@ export const testNode = createOverkillSuite({
                     resource('affinityBound', 'per-case', [ { kind: 'affinity-key', key: 'tenant-a' } ]),
                     resource('faultBound', 'per-case', [ { kind: 'fault-domain', key: 'postgres-primary' } ]),
                     resource('weighted', 'per-case', [ { kind: 'capacity-weight', weight: 5 } ]),
+                    resource('duplicateSafe', 'per-case', [
+                        { kind: 'duplicate-execution', safety: 'disposable-isolated' }
+                    ]),
                     resource('ignoredRequirements', 'unknown', [
                         { kind: 'exclusive-resource' },
                         { kind: 'affinity-key' },
@@ -125,6 +136,7 @@ export const testNode = createOverkillSuite({
                     {
                         affinityKeys: [ 'tenant-a', 'tenant-b' ],
                         capacityWeight: 8,
+                        duplicateExecution: [ 'disposable-isolated' ],
                         faultDomains: [ 'postgres-primary', 'redis-primary' ],
                         serialKeys: [ 'serial:serialBound', 'database' ],
                         singleWorkerKeys: [
@@ -134,6 +146,41 @@ export const testNode = createOverkillSuite({
                             'single-worker:singleWorkerBound'
                         ]
                     }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'workResourceConstraints() lowers duplicate execution controls and forbidden override',
+            body(scope: OverkillScope) {
+                const idempotentCase = collectedCaseWithControls(
+                    'idempotent',
+                    [],
+                    { ...controls, duplicateExecution: 'idempotent' }
+                );
+                const forbiddenCase = collectedCaseWithControls(
+                    'forbidden',
+                    [
+                        resource('duplicateSafe', 'per-case', [
+                            { kind: 'duplicate-execution', safety: 'idempotent' }
+                        ])
+                    ],
+                    { ...controls, duplicateExecution: 'forbidden' }
+                );
+
+                scope.assert.deepEqual(
+                    workResourceConstraints([ workId('idempotent') ], collectedPlan([ idempotentCase ]))
+                        .duplicateExecution,
+                    [ 'idempotent' ]
+                );
+                scope.assert.deepEqual(
+                    workResourceConstraints([ workId('forbidden') ], collectedPlan([ forbiddenCase ]))
+                        .duplicateExecution,
+                    []
                 );
 
                 return scope.assert.collect();

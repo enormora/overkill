@@ -3,6 +3,7 @@ import {
     emptyWorkUnitResourceConstraints,
     type CollectedRunCase,
     type CollectedRunPlan,
+    type DuplicateExecutionSafety,
     type WorkUnitResourceConstraints
 } from './run-types.ts';
 
@@ -14,6 +15,7 @@ type RequirementSource = {
 };
 type ConstraintSets = {
     readonly affinityKeys: ReadonlySet<string>;
+    readonly duplicateExecution: ReadonlySet<DuplicateExecutionSafety>;
     readonly faultDomains: ReadonlySet<string>;
     readonly serialKeys: ReadonlySet<string>;
     readonly singleWorkerKeys: ReadonlySet<string>;
@@ -55,7 +57,7 @@ function numberRequirementValue(requirement: ResourceRequirementSummary, key: st
     return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function withOptionalValue(values: ReadonlySet<string>, value: string | null): ReadonlySet<string> {
+function withOptionalValue<Value extends string>(values: ReadonlySet<Value>, value: Value | null): ReadonlySet<Value> {
     return value === null ? values : new Set([ ...values, value ]);
 }
 
@@ -92,6 +94,7 @@ function resourceScopePlacementKey(
 function emptyConstraintSets(): ConstraintSets {
     return {
         affinityKeys: new Set(),
+        duplicateExecution: new Set(),
         faultDomains: new Set(),
         serialKeys: new Set(),
         singleWorkerKeys: new Set()
@@ -136,8 +139,26 @@ function applyFaultDomainRequirement(
     };
 }
 
+function duplicateExecutionSafety(requirement: ResourceRequirementSummary): DuplicateExecutionSafety | null {
+    const value = stringRequirementValue(requirement, 'safety');
+
+    return value === 'disposable-isolated' || value === 'idempotent' ? value : null;
+}
+
+function applyDuplicateExecutionRequirement(
+    sets: ConstraintSets,
+    _source: RequirementSource,
+    requirement: ResourceRequirementSummary
+): ConstraintSets {
+    return {
+        ...sets,
+        duplicateExecution: withOptionalValue(sets.duplicateExecution, duplicateExecutionSafety(requirement))
+    };
+}
+
 const requirementApplicators: Readonly<Record<string, RequirementApplicator>> = {
     'affinity-key': applyAffinityRequirement,
+    'duplicate-execution': applyDuplicateExecutionRequirement,
     'exclusive-resource': applyExclusiveResourceRequirement,
     'fault-domain': applyFaultDomainRequirement,
     serial: applySerialRequirement,
@@ -227,6 +248,14 @@ function caseResourceConstraints(testCase: CollectedRunCase, file: string): Work
     return {
         affinityKeys: Array.from(sets.affinityKeys),
         capacityWeight,
+        duplicateExecution: testCase.controls.duplicateExecution === 'forbidden'
+            ? []
+            : Array.from(
+                new Set([
+                    ...sets.duplicateExecution,
+                    ...testCase.controls.duplicateExecution === 'idempotent' ? [ 'idempotent' as const ] : []
+                ])
+            ),
         faultDomains: Array.from(sets.faultDomains),
         serialKeys: Array.from(sets.serialKeys),
         singleWorkerKeys: Array.from(sets.singleWorkerKeys)
@@ -236,6 +265,7 @@ function caseResourceConstraints(testCase: CollectedRunCase, file: string): Work
 function resourceConstraintsAreEmpty(constraints: WorkUnitResourceConstraints): boolean {
     return constraints.affinityKeys.length === 0 &&
         constraints.capacityWeight === emptyWorkUnitResourceConstraints.capacityWeight &&
+        constraints.duplicateExecution.length === 0 &&
         constraints.faultDomains.length === 0 &&
         constraints.serialKeys.length === 0 &&
         constraints.singleWorkerKeys.length === 0;
@@ -254,6 +284,7 @@ function mergeResourceConstraints(
     return normalizeResourceConstraints({
         affinityKeys: Array.from(new Set([ ...left.affinityKeys, ...right.affinityKeys ])),
         capacityWeight: left.capacityWeight + right.capacityWeight - emptyWorkUnitResourceConstraints.capacityWeight,
+        duplicateExecution: Array.from(new Set([ ...left.duplicateExecution, ...right.duplicateExecution ])),
         faultDomains: Array.from(new Set([ ...left.faultDomains, ...right.faultDomains ])),
         serialKeys: Array.from(new Set([ ...left.serialKeys, ...right.serialKeys ])),
         singleWorkerKeys: Array.from(new Set([ ...left.singleWorkerKeys, ...right.singleWorkerKeys ]))

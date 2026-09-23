@@ -2,20 +2,12 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import {
-    applyEvent
-} from './supervised-run-runtime.ts';
+import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
-    type StoredRunValue,
-    type SupervisedCase
+    type StoredRunValue
 } from './supervised-run-state.ts';
-import {
-    crashError
-} from './supervised-run-resource-policy.ts';
 import type {
     WorkerPoolCommand,
     WorkerPoolMessage,
@@ -31,11 +23,22 @@ import type {
     PlacementLane,
     WorkUnit
 } from './run-types.ts';
+import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
+import type {
+    WorkerPoolUnitLease,
+    WorkerPoolWorkDispatcher
+} from './worker-pool-dispatch-state.ts';
 import {
-    createWorkDispatcher,
-    type WorkerPoolUnitLease,
-    type WorkerPoolWorkDispatcher
-} from './worker-pool-work-dispatcher.ts';
+    recordCancelledHedgedTaskRun,
+    recordCompletedHedgedTaskRun,
+    unitCanUseBufferedHedging,
+    type HedgedAuthorities
+} from './worker-pool-hedged-arbitration.ts';
+import {
+    clearTaskTimeout,
+    handleWorkerMessage,
+    recordTaskCrash
+} from './worker-pool-task-events.ts';
 
 type WorkerPoolTaskChannel = {
     readonly close: () => void;
@@ -53,6 +56,7 @@ type TaskFailureContext = {
 };
 
 type TaskExecutionContext = TaskFailureContext & {
+    readonly authorities: HedgedAuthorities;
     readonly startedAtMilliseconds: number;
 };
 
@@ -69,110 +73,32 @@ type WorkerTaskRunRequest = {
     readonly taskRun: WorkerPoolTaskRun;
 };
 
-type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
-
 const maximumCrashCount = 3;
+
+type BufferedReporterEvent = ReturnType<
+    WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
+> extends IterableIterator<infer Event> ? Event : never;
+
+function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'] {
+    const events: BufferedReporterEvent[] = [];
+
+    return {
+        [Symbol.iterator]() {
+            return events[Symbol.iterator]();
+        },
+        clear() {
+            events.length = 0;
+        },
+        push(...nextEvents) {
+            events.push(...nextEvents);
+
+            return events.length;
+        }
+    };
+}
 
 function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
     return [ port ];
-}
-
-function casesByKey(unit: WorkUnit): ReadonlyMap<string, SupervisedCase> {
-    return new Map(
-        unit.work.map(function toCaseEntry(work) {
-            return [ workIdentityKey(work), { capture: null, id: work.case, workId: work } ];
-        })
-    );
-}
-
-async function recordReporterEventErrors(
-    event: RuntimeReporterEvent,
-    runtime: WorkerPoolRunRuntime
-): Promise<void> {
-    const errors = await runtime.reporterDelivery.reportEvent(event);
-
-    if (errors.length > 0) {
-        runtime.runState.recordRunnerErrors(errors);
-    }
-}
-
-function clearTaskTimeout(
-    taskRun: WorkerPoolTaskRun,
-    dependencies: RunOrchestratorDependencies
-): void {
-    const timeout = taskRun.timeout.read();
-
-    if (timeout !== null) {
-        dependencies.wallClock.clearTimeout(timeout);
-        taskRun.timeout.write(null);
-    }
-}
-
-function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
-    if (taskRun.timeout.read() !== null) {
-        return;
-    }
-
-    taskRun.timeout.write(runtime.dependencies.wallClock.setTimeout(function abortTimedOutWorker() {
-        taskRun.endedByParent.write(true);
-        taskRun.requeuePendingCases.write(true);
-        taskRun.state.recordRunnerError(crashError(taskRun.state, 'Worker-pool work unit exceeded hard timeout.'));
-        taskRun.state.recordTerminalActiveCases(
-            'crashed',
-            runtime.dependencies.wallClock.currentTimestampInMilliseconds
-        );
-        taskRun.controller.abort();
-    }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds));
-}
-
-function handleWorkerEvent(
-    event: RuntimeReporterEvent,
-    taskRun: WorkerPoolTaskRun,
-    runtime: WorkerPoolRunRuntime
-): void {
-    if (event.kind === 'test-start') {
-        taskRun.startedCases.add(workIdentityKey(event.workId ?? createDefaultWorkId(event.case)));
-        startTaskTimeout(taskRun, runtime);
-    }
-
-    const reportedEvent: RuntimeReporterEvent = event.kind === 'test-end'
-        ? {
-            ...event,
-            artifacts: [
-                ...event.artifacts,
-                ...taskRun.state.caseArtifacts(event.case)
-            ]
-        }
-        : event;
-
-    applyEvent(
-        reportedEvent,
-        taskRun.state,
-        casesByKey(taskRun.unit),
-        runtime.dependencies.wallClock.currentTimestampInMilliseconds
-    );
-
-    if (reportedEvent.kind === 'test-end' && taskRun.state.activeCases.size === 0) {
-        clearTaskTimeout(taskRun, runtime.dependencies);
-    }
-
-    runtime.reporterEvents.add(recordReporterEventErrors(reportedEvent, runtime));
-}
-
-function handleWorkerMessage(
-    message: WorkerPoolMessage,
-    taskRun: WorkerPoolTaskRun,
-    runtime: WorkerPoolRunRuntime
-): void {
-    if (message.kind === 'output') {
-        taskRun.state.recordCapturedOutput(
-            message.stream,
-            Buffer.from(message.chunk),
-            message.capturedAtMilliseconds
-        );
-    } else {
-        handleWorkerEvent(message.event, taskRun, runtime);
-    }
 }
 
 function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): WorkerPoolTaskChannel {
@@ -282,14 +208,21 @@ async function runFileUnit(
     }
 }
 
-function createTaskRun(lease: WorkerPoolUnitLease): WorkerPoolTaskRun {
+function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
     return {
+        bufferedReporterEvents: createReporterEventBuffer(),
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
+        includeArtifacts: createStoredRunValue(true),
+        lane: lease.lane.id,
+        leaseKind: lease.kind,
+        reporterEventsBuffered: unitCanUseBufferedHedging(runtime, lease.unit),
         requeuePendingCases: createStoredRunValue(false),
         state: createSupervisedRunState(),
         startedCases: new Set(),
-        timeout: createStoredRunValue<ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null>(null),
+        timeout: createStoredRunValue<
+            ReturnType<WorkerPoolRunRuntime['dependencies']['wallClock']['setTimeout']> | null
+        >(null),
         traceUnit: lease.traceUnit,
         unit: lease.unit
     };
@@ -331,11 +264,7 @@ function markActiveTasksCrashed(runtime: WorkerPoolRunRuntime): void {
     for (const activeTask of runtime.activeTasks) {
         activeTask.endedByParent.write(true);
         activeTask.requeuePendingCases.write(false);
-        activeTask.state.recordRunnerError(crashError(activeTask.state, 'Worker-pool execution stopped.'));
-        activeTask.state.recordTerminalActiveCases(
-            'crashed',
-            runtime.dependencies.wallClock.currentTimestampInMilliseconds
-        );
+        recordTaskCrash(activeTask, runtime, 'Worker-pool execution stopped.');
         clearTaskTimeout(activeTask, runtime.dependencies);
         activeTask.controller.abort();
     }
@@ -388,11 +317,7 @@ function handleTaskFailure(
         return handleParentEndedFailure(taskRun, context);
     }
 
-    taskRun.state.recordRunnerError(crashError(taskRun.state, crashReason(error)));
-    taskRun.state.recordTerminalActiveCases(
-        'crashed',
-        context.runtime.dependencies.wallClock.currentTimestampInMilliseconds
-    );
+    recordTaskCrash(taskRun, context.runtime, crashReason(error));
 
     return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? null : pendingWorkUnit(taskRun);
 }
@@ -403,8 +328,15 @@ async function recordCompletedTaskRun(
     context: TaskExecutionContext
 ): Promise<void> {
     const output = await runFileUnit(taskRun, context.runtime, lease.lane, context.startedAtMilliseconds);
-    context.dispatcher.finish(lease, true);
-    context.runtime.taskResults.push(output.result);
+    context.dispatcher.finish(lease, lease.kind === 'primary');
+
+    if (!taskRun.reporterEventsBuffered) {
+        context.runtime.taskResults.push(output.result);
+
+        return;
+    }
+
+    await recordCompletedHedgedTaskRun(context.authorities, output.result, taskRun, context.runtime);
 }
 
 function recordFailedTaskRun(
@@ -415,7 +347,11 @@ function recordFailedTaskRun(
 ): void {
     const unit = handleTaskFailure(error, taskRun, context);
 
-    context.dispatcher.finish(lease, taskRun.startedCases.size > 0);
+    context.dispatcher.finish(lease, lease.kind === 'primary' && taskRun.startedCases.size > 0);
+
+    if (taskRun.reporterEventsBuffered && taskRun.endedByParent.read()) {
+        recordCancelledHedgedTaskRun(context.authorities, taskRun, context.runtime);
+    }
 
     if (unit !== null) {
         context.dispatcher.requeue({ traceUnit: taskRun.traceUnit, unit });
@@ -450,7 +386,7 @@ async function runWorkerLoop(context: WorkerLoopContext): Promise<void> {
         if (lease === null) {
             await context.dispatcher.waitForChange();
         } else {
-            const taskRun = createTaskRun(lease);
+            const taskRun = createTaskRun(lease, context.runtime);
             await executeTaskRun(taskRun, lease, context);
             context.completedTaskRuns.push(taskRun);
         }
@@ -463,6 +399,7 @@ export async function executeWorkerPoolUnits(
     startedAtMilliseconds: number
 ): Promise<readonly WorkerPoolTaskRun[]> {
     const completedTaskRuns: WorkerPoolTaskRun[] = [];
+    const authorities: HedgedAuthorities = new Map();
     const crashCount = createStoredRunValue(0);
     const dispatcher = createWorkDispatcher(runtime, placementPlan);
 
@@ -470,6 +407,7 @@ export async function executeWorkerPoolUnits(
         placementPlan.lanes.map(async function runLoop(lane) {
             await runWorkerLoop({
                 completedTaskRuns,
+                authorities,
                 crashCount,
                 dispatcher,
                 lane,
