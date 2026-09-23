@@ -242,6 +242,7 @@ function taskWithoutPort(task: WorkerPoolTask): WorkerPoolTaskWithoutPort {
     }
 
     return {
+        assignedUnits: task.assignedUnits,
         assignedWork: task.assignedWork,
         command: task.command,
         kind: 'run',

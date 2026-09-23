@@ -28,6 +28,8 @@ type WorkUnit = PlacementPlan['units'][number];
 type BufferedReporterEvent = ReturnType<
     WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
 > extends IterableIterator<infer Event> ? Event : never;
+type ActiveTraceUnit = ReturnType<WorkerPoolTaskRun['activeTraceUnit']['read']>;
+type BatchEnvelopeId = ReturnType<WorkerPoolTaskRun['envelopeId']['read']>;
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
@@ -403,12 +405,15 @@ export function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
     );
 
     return {
+        activeTraceUnit: createStoredRunValue<ActiveTraceUnit>(null),
         bufferedReporterEvents: createReporterEventBuffer(),
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
+        envelopeId: createStoredRunValue<BatchEnvelopeId>(null),
         includeArtifacts: createStoredRunValue(true),
         lane: 'worker-1',
         leaseKind: 'primary',
+        members: [ { traceUnit: firstWorkUnit().id, unit: firstWorkUnit() } ],
         reporterEventsBuffered: false,
         requeuePendingCases: createStoredRunValue(false),
         state,

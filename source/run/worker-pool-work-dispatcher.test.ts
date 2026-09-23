@@ -165,14 +165,54 @@ function oneLanePlan(unit: WorkUnit): PlacementPlan {
     };
 }
 
-function dynamicWorkUnitId(value: unknown): DynamicWorkUnitId {
-    if (
-        value !== null &&
+function singleWorkUnit(key: string, title: string, workerLifecycle: WorkUnit['workerLifecycle']): WorkUnit {
+    const unit = firstUnit(placementPlan());
+
+    return {
+        ...unit,
+        id: {
+            ...unit.id,
+            key
+        },
+        scheduling: 'concurrent',
+        workerLifecycle,
+        work: [
+            {
+                ...firstWork(unit),
+                case: {
+                    ...firstWork(unit).case,
+                    title
+                }
+            }
+        ]
+    };
+}
+
+function batchingPlan(workerLifecycle: WorkUnit['workerLifecycle']): PlacementPlan {
+    const first = workerLane('worker-1');
+    const firstUnitCandidate = singleWorkUnit('first', 'first', workerLifecycle);
+    const secondUnitCandidate = singleWorkUnit('second', 'second', workerLifecycle);
+
+    return {
+        assignments: [
+            { lane: first.id, unit: firstUnitCandidate.id },
+            { lane: first.id, unit: secondUnitCandidate.id }
+        ],
+        lanes: [ first ],
+        units: [ firstUnitCandidate, secondUnitCandidate ]
+    };
+}
+
+function isDynamicWorkUnitId(value: unknown): value is DynamicWorkUnitId {
+    return value !== null &&
         typeof value === 'object' &&
         Object.hasOwn(value, 'child') &&
-        Object.hasOwn(value, 'parent')
-    ) {
-        return value as DynamicWorkUnitId;
+        Object.hasOwn(value, 'parent');
+}
+
+function dynamicWorkUnitId(value: unknown): DynamicWorkUnitId {
+    if (isDynamicWorkUnitId(value)) {
+        return value;
     }
 
     throw new Error('Expected a dynamic work-unit id.');
@@ -275,20 +315,55 @@ function assertRetainedReservation(scope: OverkillScope, lease: WorkerPoolUnitLe
     scope.assert.deepEqual(lease.reservation.hardKeys, []);
 }
 
+function splitLeaseMembers(expectation: SplitLeaseExpectation): readonly [
+    WorkerPoolUnitLease['members'][number],
+    WorkerPoolUnitLease['members'][number]
+] {
+    const splitMembers = [
+        ...expectation.firstLease.members,
+        ...expectation.secondLease.members
+    ]
+        .filter(function isSplitMember(member) {
+            return isDynamicWorkUnitId(member.traceUnit);
+        });
+    const firstMember = splitMembers[0];
+    const secondMember = splitMembers[1];
+
+    if (firstMember === undefined || secondMember === undefined) {
+        throw new Error('Expected two split work-unit members.');
+    }
+
+    return [ firstMember, secondMember ];
+}
+
 function assertSplitLeases(
     scope: OverkillScope,
     expectation: SplitLeaseExpectation
 ): void {
-    const firstTrace = dynamicWorkUnitId(expectation.firstLease.traceUnit);
-    const secondTrace = dynamicWorkUnitId(expectation.secondLease.traceUnit);
+    const [ firstMember, secondMember ] = splitLeaseMembers(expectation);
+    const traces = [
+        dynamicWorkUnitId(firstMember.traceUnit),
+        dynamicWorkUnitId(secondMember.traceUnit)
+    ];
 
-    scope.assert.equal(expectation.firstLease.unit.work.length, 1);
-    scope.assert.equal(expectation.secondLease.unit.work.length, 1);
-    scope.assert.deepEqual(firstTrace.parent, expectation.unit.id);
-    scope.assert.deepEqual(secondTrace.parent, expectation.unit.id);
-    scope.assert.equal(firstTrace.child, workIdentityKey(firstWork(expectation.unit)));
-    scope.assert.equal(secondTrace.child, workIdentityKey(secondWork(expectation.unit)));
-    scope.assert.deepEqual(expectation.traceEntry.children, [ firstTrace, secondTrace ]);
+    scope.assert.equal(firstMember.unit.work.length, 1);
+    scope.assert.equal(secondMember.unit.work.length, 1);
+    scope.assert.deepEqual(
+        traces.map(function toParent(trace) {
+            return trace.parent;
+        }),
+        [ expectation.unit.id, expectation.unit.id ]
+    );
+    scope.assert.deepEqual(
+        traces.map(function toChild(trace) {
+            return trace.child;
+        }),
+        [
+            workIdentityKey(firstWork(expectation.unit)),
+            workIdentityKey(secondWork(expectation.unit))
+        ]
+    );
+    scope.assert.deepEqual(expectation.traceEntry.children, traces);
     scope.assert.deepEqual(expectation.traceEntry.parent, expectation.unit.id);
 }
 
@@ -326,6 +401,52 @@ export const testNode = createOverkillSuite({
                 const traceEntry = unitSplitEntry(runtime.placementTraceEntries[0]);
 
                 assertSplitLeases(scope, { firstLease, secondLease, traceEntry, unit });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatcher batches compatible reusable units',
+            body(scope: OverkillScope) {
+                const plan = batchingPlan('reuse');
+                const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
+                const lease = pullRequiredLease(dispatcher, firstLane(plan));
+
+                scope.assert.equal(lease.envelopeId, 'batch-1');
+                scope.assert.equal(lease.members.length, 2);
+                scope.assert.deepEqual(
+                    lease.members.map(function toTraceUnit(member) {
+                        return member.traceUnit;
+                    }),
+                    plan.units.map(function toUnitId(unit) {
+                        return unit.id;
+                    })
+                );
+                scope.assert.deepEqual(
+                    lease.members.map(function toWorkLength(member) {
+                        return member.unit.work.length;
+                    }),
+                    [ 1, 1 ]
+                );
+                scope.assert.equal(dispatcher.pull(firstLane(plan)), null);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatcher keeps fresh-worker units unbatched',
+            body(scope: OverkillScope) {
+                const plan = batchingPlan('fresh-worker-per-unit');
+                const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
+                const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
+                const secondLease = pullRequiredLease(dispatcher, firstLane(plan));
+
+                scope.assert.equal(firstLease.envelopeId, null);
+                scope.assert.equal(secondLease.envelopeId, null);
+                scope.assert.equal(firstLease.members.length, 1);
+                scope.assert.equal(secondLease.members.length, 1);
 
                 return scope.assert.collect();
             }

@@ -1,15 +1,10 @@
-import type { OverkillClock } from '../clock/overkill-clock.ts';
 import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { RunnerError, TestPlan } from '../packages/engine/engine.entry-point.ts';
-import {
-    collectedRunPlanFromTestPlan,
-    collectedRunPlanFromTestPlanCases,
-    createRunResultFromCollectedPlan
-} from './collected-run-plan.ts';
+import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {
     loadRunEngineModule,
@@ -126,24 +121,8 @@ export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonl
     return selectedAssignedWork(testPlan, assignedCases.map(createDefaultWorkId));
 }
 
-export function createEmptyAssignmentResult(
-    testPlan: TestPlan,
-    wallClock: OverkillClock
-): WorkerPoolRunOutput {
-    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
-
+export function createEmptyAssignmentResult(): WorkerPoolRunOutput {
     return {
-        result: createRunResultFromCollectedPlan(
-            collectedRunPlanFromTestPlanCases(testPlan, []),
-            [],
-            [],
-            {
-                completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
-                planStatus: 'empty-selection',
-                resourceUsage: null,
-                startedAtMicroseconds,
-                testExecutionWallTimeMicroseconds: 0
-            }
-        )
+        results: []
     };
 }

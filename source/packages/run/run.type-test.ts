@@ -116,6 +116,8 @@ type ProjectProfileFileSets = {
     >;
 };
 type ExpectedPlacementTraceKinds = {
+    readonly 'batch-completed': true;
+    readonly 'batch-started': true;
     readonly 'hedged-duplicate-conflict': true;
     readonly 'hedged-duplicate-discarded': true;
     readonly 'hedged-duplicate-started': true;

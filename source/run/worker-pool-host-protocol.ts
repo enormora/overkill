@@ -14,6 +14,7 @@ type WorkerPoolCollectTaskWithoutPort = {
     readonly kind: 'collect';
 };
 type WorkerPoolRunTaskWithoutPort = {
+    readonly assignedUnits: WorkerPoolRunTask['assignedUnits'];
     readonly assignedWork: WorkerPoolRunTask['assignedWork'];
     readonly command: WorkerPoolRunTask['command'];
     readonly kind: 'run';
@@ -28,7 +29,15 @@ export type SerializedError = {
     readonly stack: string | null;
 };
 
-export type SerializedWorkerPoolMessage = Extract<WorkerPoolMessage, { readonly kind: 'event'; }> | {
+type SerializedWorkerPoolEventMessagesByKind = {
+    readonly event: Extract<WorkerPoolMessage, { readonly kind: 'event'; }>;
+    readonly unitCompleted: Extract<WorkerPoolMessage, { readonly kind: 'unit-completed'; }>;
+    readonly unitStarted: Extract<WorkerPoolMessage, { readonly kind: 'unit-started'; }>;
+};
+type SerializedWorkerPoolEventMessage =
+    SerializedWorkerPoolEventMessagesByKind[keyof SerializedWorkerPoolEventMessagesByKind];
+
+export type SerializedWorkerPoolMessage = SerializedWorkerPoolEventMessage | {
     readonly capturedAtMicroseconds: number;
     readonly chunkBase64: string;
     readonly kind: 'output';
@@ -113,7 +122,7 @@ export function deserializeError(error: SerializedError): Error {
 }
 
 export function serializeWorkerPoolMessage(message: WorkerPoolMessage): SerializedWorkerPoolMessage {
-    if (message.kind === 'event') {
+    if (message.kind !== 'output') {
         return message;
     }
 
@@ -126,7 +135,7 @@ export function serializeWorkerPoolMessage(message: WorkerPoolMessage): Serializ
 }
 
 export function deserializeWorkerPoolMessage(message: SerializedWorkerPoolMessage): WorkerPoolMessage {
-    if (message.kind === 'event') {
+    if (message.kind !== 'output') {
         return message;
     }
 

@@ -2,7 +2,7 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import { workIdentityKey, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
@@ -26,6 +26,7 @@ import type {
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
 import type {
     WorkerPoolUnitLease,
+    WorkerPoolLeaseMember,
     WorkerPoolWorkDispatcher
 } from './worker-pool-dispatch-state.ts';
 import {
@@ -48,6 +49,7 @@ type WorkerPoolTaskChannel = {
 type CompletedTaskRuns = {
     readonly push: (taskRun: WorkerPoolTaskRun) => number;
 };
+type TaskTraceUnit = WorkerPoolTaskRun['members'][number]['traceUnit'];
 
 type TaskFailureContext = {
     readonly crashCount: StoredRunValue<number>;
@@ -138,6 +140,14 @@ function unitPaths(unit: WorkUnit): readonly string[] {
     );
 }
 
+function memberPaths(members: readonly WorkerPoolLeaseMember[]): readonly string[] {
+    return Array.from(
+        new Set(members.flatMap(function toPaths(member) {
+            return unitPaths(member.unit);
+        }))
+    );
+}
+
 function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): WorkerPoolCommand {
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
@@ -168,16 +178,34 @@ function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): Worker
     };
 }
 
+function createBatchRunCommand(
+    runtime: WorkerPoolRunRuntime,
+    members: readonly [WorkerPoolLeaseMember, ...readonly WorkerPoolLeaseMember[]]
+): WorkerPoolCommand {
+    const [ first ] = members;
+
+    return {
+        ...createRunCommand(runtime, first.unit),
+        paths: memberPaths(members)
+    };
+}
+
 function isWorkerPoolRunOutput(value: unknown): value is WorkerPoolRunOutput {
     return value !== null &&
         typeof value === 'object' &&
-        Object.hasOwn(value, 'result');
+        Object.hasOwn(value, 'results');
 }
 
 async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolRunOutput> {
+    const assignedWork = request.taskRun.members.flatMap(function toWork(member) {
+        return member.unit.work;
+    });
     const output: unknown = await request.runtime.pool.run({
-        assignedWork: request.taskRun.unit.work,
-        command: createRunCommand(request.runtime, request.taskRun.unit),
+        assignedUnits: request.taskRun.members.map(function toAssignedUnit(member) {
+            return { traceUnit: member.traceUnit, work: member.unit.work };
+        }),
+        assignedWork,
+        command: createBatchRunCommand(request.runtime, request.taskRun.members),
         kind: 'run',
         lane: request.lane.id,
         port: request.channel.port,
@@ -212,13 +240,16 @@ async function runFileUnit(
 
 function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
     return {
+        activeTraceUnit: createStoredRunValue<TaskTraceUnit | null>(null),
         bufferedReporterEvents: createReporterEventBuffer(),
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
+        envelopeId: createStoredRunValue(lease.envelopeId),
         includeArtifacts: createStoredRunValue(true),
         lane: lease.lane.id,
         leaseKind: lease.kind,
-        reporterEventsBuffered: unitCanUseBufferedHedging(runtime, lease.unit),
+        members: lease.members,
+        reporterEventsBuffered: lease.members.length === 1 && unitCanUseBufferedHedging(runtime, lease.unit),
         requeuePendingCases: createStoredRunValue(false),
         state: createSupervisedRunState(),
         startedCases: new Set(),
@@ -230,22 +261,29 @@ function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime
     };
 }
 
-function pendingWork(taskRun: WorkerPoolTaskRun): readonly WorkId[] {
-    return taskRun.unit.work.filter(function caseHasNotStarted(work) {
-        return !taskRun.startedCases.has(workIdentityKey(work));
+function pendingMember(member: WorkerPoolLeaseMember, taskRun: WorkerPoolTaskRun): WorkerPoolLeaseMember | null {
+    const work = member.unit.work.filter(function caseHasNotStarted(item) {
+        return !taskRun.startedCases.has(workIdentityKey(item));
     });
-}
-
-function pendingWorkUnit(taskRun: WorkerPoolTaskRun): WorkUnit | null {
-    const work = pendingWork(taskRun);
     const firstWork = work[0];
 
     return firstWork === undefined
         ? null
         : {
-            ...taskRun.unit,
-            work: [ firstWork, ...work.slice(1) ]
+            traceUnit: member.traceUnit,
+            unit: {
+                ...member.unit,
+                work: [ firstWork, ...work.slice(1) ]
+            }
         };
+}
+
+function pendingMembers(taskRun: WorkerPoolTaskRun): readonly WorkerPoolLeaseMember[] {
+    return taskRun.members.flatMap(function toPendingMember(member) {
+        const pending = pendingMember(member, taskRun);
+
+        return pending === null ? [] : [ pending ];
+    });
 }
 
 function crashReason(error: unknown): string {
@@ -322,21 +360,21 @@ function handleHostRunnerErrors(
 function handleParentEndedFailure(
     taskRun: WorkerPoolTaskRun,
     context: TaskFailureContext
-): WorkUnit | null {
+): readonly WorkerPoolLeaseMember[] {
     if (!taskRun.requeuePendingCases.read()) {
-        return null;
+        return [];
     }
 
-    return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? null : pendingWorkUnit(taskRun);
+    return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? [] : pendingMembers(taskRun);
 }
 
 function handleTaskFailure(
     error: unknown,
     taskRun: WorkerPoolTaskRun,
     context: TaskFailureContext
-): WorkUnit | null {
+): readonly WorkerPoolLeaseMember[] {
     if (context.runtime.terminalFailure.read()) {
-        return null;
+        return [];
     }
 
     if (taskRun.endedByParent.read()) {
@@ -345,7 +383,46 @@ function handleTaskFailure(
 
     recordTaskCrash(taskRun, context.runtime, crashReason(error));
 
-    return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? null : pendingWorkUnit(taskRun);
+    return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? [] : pendingMembers(taskRun);
+}
+
+function batchTraceUnits(taskRun: WorkerPoolTaskRun): readonly [TaskTraceUnit, ...TaskTraceUnit[]] {
+    const [ first, ...rest ] = taskRun.members;
+
+    return [
+        first.traceUnit,
+        ...rest.map(function toTraceUnit(member) {
+            return member.traceUnit;
+        })
+    ];
+}
+
+function recordBatchStarted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
+    const envelopeId = taskRun.envelopeId.read();
+
+    if (envelopeId !== null) {
+        runtime.recordPlacementTraceEntry({
+            envelopeId,
+            kind: 'batch-started',
+            lane: taskRun.lane,
+            units: batchTraceUnits(taskRun),
+            workerId: taskRun.lane
+        });
+    }
+}
+
+function recordBatchCompleted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
+    const envelopeId = taskRun.envelopeId.read();
+
+    if (envelopeId !== null) {
+        runtime.recordPlacementTraceEntry({
+            envelopeId,
+            kind: 'batch-completed',
+            lane: taskRun.lane,
+            units: batchTraceUnits(taskRun),
+            workerId: taskRun.lane
+        });
+    }
 }
 
 async function recordCompletedTaskRun(
@@ -353,16 +430,56 @@ async function recordCompletedTaskRun(
     lease: WorkerPoolUnitLease,
     context: TaskExecutionContext
 ): Promise<void> {
+    recordBatchStarted(taskRun, context.runtime);
     const output = await runFileUnit(taskRun, context.runtime, lease.lane, context.startedAtMilliseconds);
+    recordBatchCompleted(taskRun, context.runtime);
     context.dispatcher.finish(lease, lease.kind === 'primary');
 
     if (!taskRun.reporterEventsBuffered) {
-        context.runtime.taskResults.push(output.result);
+        context.runtime.taskResults.push(...output.results.map(function toResult(result) {
+            return result.result;
+        }));
 
         return;
     }
 
-    await recordCompletedHedgedTaskRun(context.authorities, output.result, taskRun, context.runtime);
+    const firstResult = output.results[0]?.result;
+
+    if (firstResult !== undefined) {
+        await recordCompletedHedgedTaskRun(context.authorities, firstResult, taskRun, context.runtime);
+    }
+}
+
+function taskRunKeepsLeaseReservation(taskRun: WorkerPoolTaskRun, lease: WorkerPoolUnitLease): boolean {
+    return lease.kind === 'primary' && taskRun.startedCases.size > 0;
+}
+
+function finishFailedTaskRun(
+    taskRun: WorkerPoolTaskRun,
+    lease: WorkerPoolUnitLease,
+    context: TaskExecutionContext
+): void {
+    context.dispatcher.finish(lease, taskRunKeepsLeaseReservation(taskRun, lease));
+}
+
+function finishAfterHostRunnerErrors(
+    taskRun: WorkerPoolTaskRun,
+    lease: WorkerPoolUnitLease,
+    context: TaskExecutionContext
+): boolean {
+    if (!handleHostRunnerErrors(takeHostRunnerErrors(context.runtime), context)) {
+        return false;
+    }
+
+    finishFailedTaskRun(taskRun, lease, context);
+
+    return true;
+}
+
+function recordCancelledTaskRun(taskRun: WorkerPoolTaskRun, context: TaskExecutionContext): void {
+    if (taskRun.reporterEventsBuffered && taskRun.endedByParent.read()) {
+        recordCancelledHedgedTaskRun(context.authorities, taskRun, context.runtime);
+    }
 }
 
 function recordFailedTaskRun(
@@ -371,21 +488,17 @@ function recordFailedTaskRun(
     lease: WorkerPoolUnitLease,
     context: TaskExecutionContext
 ): void {
-    if (handleHostRunnerErrors(takeHostRunnerErrors(context.runtime), context)) {
-        context.dispatcher.finish(lease, taskRun.startedCases.size > 0);
+    if (finishAfterHostRunnerErrors(taskRun, lease, context)) {
         return;
     }
 
-    const unit = handleTaskFailure(error, taskRun, context);
+    const pending = handleTaskFailure(error, taskRun, context);
 
-    context.dispatcher.finish(lease, lease.kind === 'primary' && taskRun.startedCases.size > 0);
+    finishFailedTaskRun(taskRun, lease, context);
+    recordCancelledTaskRun(taskRun, context);
 
-    if (taskRun.reporterEventsBuffered && taskRun.endedByParent.read()) {
-        recordCancelledHedgedTaskRun(context.authorities, taskRun, context.runtime);
-    }
-
-    if (unit !== null) {
-        context.dispatcher.requeue({ traceUnit: taskRun.traceUnit, unit });
+    for (const member of pending) {
+        context.dispatcher.requeue({ traceUnit: member.traceUnit, unit: member.unit });
     }
 }
 

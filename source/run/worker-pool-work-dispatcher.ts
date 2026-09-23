@@ -1,4 +1,3 @@
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     createStoredRunValue,
     type StoredRunValue
@@ -41,6 +40,7 @@ import {
     unitHedgeWorkKey
 } from './worker-pool-hedge-dispatch.ts';
 import { createStaticDispatcher } from './worker-pool-static-dispatcher.ts';
+import { compatibleBatchLeaseParts } from './worker-pool-compatible-batching.ts';
 
 type DynamicReservations = {
     readonly bindHardLane: (key: string, lane: PlacementLane) => void;
@@ -62,9 +62,10 @@ type FaultQuotaLedger = {
 type DynamicDispatchState = HedgeDispatchState & {
     readonly activeLeases: LeaseCounter;
     readonly activeUnits: ActiveUnitLeases;
+    readonly batchId: StoredRunValue<number>;
     readonly duplicateWork: DuplicateWorkLedger;
     readonly hedgeWakeTimeout: StoredRunValue<
-        ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null
+        ReturnType<WorkerPoolRunRuntime['dependencies']['wallClock']['setTimeout']> | null
     >;
     readonly lanes: readonly PlacementLane[];
     readonly lifecycleByLane: ReadonlyMap<string, WorkUnit['workerLifecycle']>;
@@ -235,6 +236,7 @@ function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: Placeme
     return {
         activeLeases: createLeaseCounter(),
         activeUnits: new Map(),
+        batchId: createStoredRunValue(0),
         duplicateWork: new Set(),
         hedgeWakeTimeout: createStoredRunValue<HedgeWakeTimeout>(null),
         lanes: plan.lanes,
@@ -339,7 +341,7 @@ function release(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void 
 }
 
 function activeLeaseKey(lease: WorkerPoolUnitLease): string {
-    return JSON.stringify([ lease.kind, traceUnitKey(lease.traceUnit), lease.lane.id ]);
+    return JSON.stringify([ lease.kind, lease.envelopeId, traceUnitKey(lease.traceUnit), lease.lane.id ]);
 }
 
 function recordActiveLease(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void {
@@ -432,11 +434,31 @@ function selectPendingUnit(state: DynamicDispatchState, lane: PlacementLane): Qu
 }
 
 function leasePendingUnit(state: DynamicDispatchState, lane: PlacementLane, item: QueuedWorkUnit): WorkerPoolUnitLease {
-    state.pendingUnits.remove(item);
+    const batch = compatibleBatchLeaseParts(state, item, {
+        comparePriority(left, right) {
+            return comparePriority(state, left, right);
+        },
+        compatibleLaneCount(candidate) {
+            return compatibleLaneCount(state, candidate);
+        },
+        laneCanLease(candidate) {
+            return laneCanLease(state, candidate, lane);
+        },
+        reserve(member) {
+            return reserve(state, member, lane);
+        }
+    });
+
+    for (const member of batch.members) {
+        state.pendingUnits.remove(member);
+    }
+
     const lease: WorkerPoolUnitLease = {
+        envelopeId: batch.envelopeId,
         kind: 'primary',
         lane,
-        reservation: reserve(state, item, lane),
+        members: batch.leaseMembers,
+        reservation: batch.reservation,
         traceUnit: item.traceUnit,
         unit: item.unit
     };
@@ -452,8 +474,10 @@ function leaseHedgedDuplicate(
     active: ActiveUnitLease
 ): WorkerPoolUnitLease {
     const lease: WorkerPoolUnitLease = {
+        envelopeId: null,
         kind: 'hedged-duplicate',
         lane,
+        members: [ { traceUnit: active.lease.traceUnit, unit: active.lease.unit } ],
         reservation: freshReservation(state, active.lease.unit, lane),
         traceUnit: active.lease.traceUnit,
         unit: active.lease.unit

@@ -62,7 +62,15 @@ export function createStaticDispatcher(plan: PlacementPlan): WorkerPoolWorkDispa
 
             return unit === null
                 ? null
-                : { kind: 'primary', lane, reservation: { faultDomains: [], hardKeys: [] }, traceUnit: unit.id, unit };
+                : {
+                    envelopeId: null,
+                    kind: 'primary',
+                    lane,
+                    members: [ { traceUnit: unit.id, unit } ],
+                    reservation: { faultDomains: [], hardKeys: [] },
+                    traceUnit: unit.id,
+                    unit
+                };
         },
         requeue(requeuedUnit) {
             const lane = assignedLaneByUnit.get(unitKey(requeuedUnit.unit));

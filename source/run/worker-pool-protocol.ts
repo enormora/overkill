@@ -6,6 +6,7 @@ import type {
     RunResult
 } from '../engine/run-result.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
+import type { TraceWorkUnitId } from './placement-trace.ts';
 import type {
     CollectedRunPlan,
     RunEngineSelection,
@@ -31,6 +32,11 @@ export type WorkerPoolCommand = {
     readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
 };
 
+export type WorkerPoolAssignedUnit = {
+    readonly traceUnit: TraceWorkUnitId;
+    readonly work: readonly WorkId[];
+};
+
 type WorkerPoolCollectTask = {
     readonly command: WorkerPoolCommand;
     readonly kind: 'collect';
@@ -38,6 +44,7 @@ type WorkerPoolCollectTask = {
 };
 
 export type WorkerPoolRunTask = {
+    readonly assignedUnits: readonly WorkerPoolAssignedUnit[];
     readonly assignedWork: readonly WorkId[];
     readonly command: WorkerPoolCommand;
     readonly kind: 'run';
@@ -60,7 +67,25 @@ type WorkerPoolReporterMessage = {
     readonly kind: 'event';
 };
 
-export type WorkerPoolMessage = WorkerPoolOutputMessage | WorkerPoolReporterMessage;
+type WorkerPoolUnitCompletedMessage = {
+    readonly durationMicroseconds: number;
+    readonly kind: 'unit-completed';
+    readonly traceUnit: TraceWorkUnitId;
+};
+
+type WorkerPoolUnitStartedMessage = {
+    readonly kind: 'unit-started';
+    readonly traceUnit: TraceWorkUnitId;
+};
+
+type WorkerPoolMessagesByKind = {
+    readonly event: WorkerPoolReporterMessage;
+    readonly output: WorkerPoolOutputMessage;
+    readonly unitCompleted: WorkerPoolUnitCompletedMessage;
+    readonly unitStarted: WorkerPoolUnitStartedMessage;
+};
+
+export type WorkerPoolMessage = WorkerPoolMessagesByKind[keyof WorkerPoolMessagesByKind];
 
 export type WorkerPoolCollection = {
     readonly collectedPlan: CollectedRunPlan;
@@ -68,5 +93,8 @@ export type WorkerPoolCollection = {
 };
 
 export type WorkerPoolRunOutput = {
-    readonly result: RunResult;
+    readonly results: readonly {
+        readonly result: RunResult;
+        readonly traceUnit: TraceWorkUnitId;
+    }[];
 };

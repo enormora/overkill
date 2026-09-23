@@ -1,5 +1,4 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -229,17 +228,13 @@ function requiredSecondCase(testPlan: TestPlan): TestPlan['cases'][number] {
 }
 
 function assertPlanningHelpers(scope: OverkillScope, testPlan: TestPlan): void {
-    const wallClock = createDeterministicOverkillClock();
     const selected = selectedAssignedCases(testPlan, [ requiredSecondCase(testPlan).id ]);
-    wallClock.advanceByMilliseconds(150);
 
-    const emptyResult = createEmptyAssignmentResult(testPlan, wallClock);
+    const emptyResult = createEmptyAssignmentResult();
     const collection = sendCollectedPlan({ runnerErrors: [], testPlan });
 
     scope.assert.equal(selected.cases[0].id.title, 'second');
-    scope.assert.equal(emptyResult.result.planStatus, 'empty-selection');
-    scope.assert.equal(emptyResult.result.summary.planned, 0);
-    scope.assert.deepEqual(emptyResult.result.perTest, []);
+    scope.assert.deepEqual(emptyResult.results, []);
     scope.assert.equal(collection.collectedPlan.files[0]?.file, integrationPath);
 }
 

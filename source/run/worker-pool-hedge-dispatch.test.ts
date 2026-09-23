@@ -220,8 +220,10 @@ function pullRequiredLease(
 
 function primaryLease(unit: WorkUnit, lane: PlacementLane): WorkerPoolUnitLease {
     return {
+        envelopeId: null,
         kind: 'primary',
         lane,
+        members: [ { traceUnit: unit.id, unit } ],
         reservation: {
             faultDomains: [],
             hardKeys: []

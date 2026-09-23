@@ -19,6 +19,7 @@ import {
 import type {
     WorkerPoolCollection,
     WorkerPoolCommand,
+    WorkerPoolAssignedUnit,
     WorkerPoolRunOutput,
     WorkerPoolRunTask,
     WorkerPoolTask
@@ -77,15 +78,10 @@ async function collectAssignmentTestPlan(task: WorkerPoolRunTask): Promise<Colle
 
 async function runAssignment(
     task: WorkerPoolRunTask,
-    wallClock: OverkillClock
-): Promise<WorkerPoolRunOutput> {
-    const collectedPlan = await collectAssignmentTestPlan(task);
-
-    if (task.assignedWork.length === 0) {
-        return createEmptyAssignmentResult(collectedPlan.testPlan, wallClock);
-    }
-
-    const outputCapture = captureOutput(task, wallClock);
+    wallClock: OverkillClock,
+    collectedPlan: CollectedWorkerPoolTestPlan,
+    assignedUnit: WorkerPoolAssignedUnit
+): Promise<WorkerPoolRunOutput['results'][number]> {
     const execute = createExecute({
         asyncLeakDiagnostics: 'enabled',
         readActiveResourceTypes,
@@ -96,26 +92,64 @@ async function runAssignment(
         wallClock
     });
 
-    try {
-        const testPlan = resolvedTestPlanDefinitionLocations(
-            selectedAssignedWork(collectedPlan.testPlan, task.assignedWork)
-        );
-        const result = await execute(testPlan, {
-            execution: { mode: executionMode(task.command) },
-            outputRenderer: createPlainOutputRenderer(),
-            reporters: [ createWorkerPoolReporter(task) ],
-            resourceBudgets: workerResourceBudgets(task.command),
-            resourceUsageTracker: createResourceUsageTracker(task.command),
-            runtimePolicy: createResourceLifecycleRuntimePolicy(testPlan.cases),
-            runFacts: {},
-            startedAt: startedAtIso(task.startedAtMilliseconds),
-            timeoutPolicy: {
-                hardTimeoutMilliseconds: task.command.hardTimeoutMilliseconds,
-                timeoutMilliseconds: task.command.timeoutMilliseconds
-            }
-        });
+    task.port.postMessage({ kind: 'unit-started', traceUnit: assignedUnit.traceUnit }, []);
+    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    const testPlan = resolvedTestPlanDefinitionLocations(
+        selectedAssignedWork(collectedPlan.testPlan, assignedUnit.work)
+    );
+    const result = await execute(testPlan, {
+        execution: { mode: executionMode(task.command) },
+        outputRenderer: createPlainOutputRenderer(),
+        reporters: [ createWorkerPoolReporter(task) ],
+        resourceBudgets: workerResourceBudgets(task.command),
+        resourceUsageTracker: createResourceUsageTracker(task.command),
+        runtimePolicy: createResourceLifecycleRuntimePolicy(testPlan.cases),
+        runFacts: {},
+        startedAt: startedAtIso(task.startedAtMilliseconds),
+        timeoutPolicy: {
+            hardTimeoutMilliseconds: task.command.hardTimeoutMilliseconds,
+            timeoutMilliseconds: task.command.timeoutMilliseconds
+        }
+    });
+    const completedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
 
-        return { result };
+    task.port.postMessage(
+        {
+            durationMicroseconds: Math.max(0, completedAtMicroseconds - startedAtMicroseconds),
+            kind: 'unit-completed',
+            traceUnit: assignedUnit.traceUnit
+        },
+        []
+    );
+
+    return { result, traceUnit: assignedUnit.traceUnit };
+}
+
+async function runAssignedUnits(
+    task: WorkerPoolRunTask,
+    wallClock: OverkillClock,
+    collectedPlan: CollectedWorkerPoolTestPlan
+): Promise<WorkerPoolRunOutput['results']> {
+    const results: WorkerPoolRunOutput['results'][number][] = [];
+
+    for (const assignedUnit of task.assignedUnits) {
+        results.push(await runAssignment(task, wallClock, collectedPlan, assignedUnit));
+    }
+
+    return results;
+}
+
+async function runAssignments(task: WorkerPoolRunTask, wallClock: OverkillClock): Promise<WorkerPoolRunOutput> {
+    const collectedPlan = await collectAssignmentTestPlan(task);
+
+    if (task.assignedUnits.length === 0) {
+        return createEmptyAssignmentResult();
+    }
+
+    const outputCapture = captureOutput(task, wallClock);
+
+    try {
+        return { results: await runAssignedUnits(task, wallClock, collectedPlan) };
     } finally {
         outputCapture.restore();
     }
@@ -145,7 +179,7 @@ export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolCollectio
     }
 
     try {
-        return await runAssignment(task, wallClock);
+        return await runAssignments(task, wallClock);
     } finally {
         task.port.close();
     }
