@@ -18,6 +18,7 @@ const hoursPerDay = 24;
 const minutesPerHour = 60;
 const secondsPerMinute = 60;
 const millisecondsPerSecond = 1000;
+const microsecondsPerMillisecond = 1000;
 const freshnessMilliseconds = freshnessDays *
     hoursPerDay *
     minutesPerHour *
@@ -102,13 +103,30 @@ const metadataSchema = z
     })
     .readonly();
 
-const observationSchema = z
+const currentObservationSchema = z
+    .strictObject({
+        durationMicroseconds: z.number().check(z.nonnegative()),
+        metadata: metadataSchema,
+        observedAt: z.iso.datetime({ offset: true })
+    })
+    .readonly();
+
+const legacyObservationSchema = z
     .strictObject({
         durationMilliseconds: z.number().check(z.nonnegative()),
         metadata: metadataSchema,
         observedAt: z.iso.datetime({ offset: true })
     })
-    .readonly();
+    .readonly()
+    .transform(function toMicrosecondObservation(observation) {
+        return {
+            durationMicroseconds: observation.durationMilliseconds * microsecondsPerMillisecond,
+            metadata: observation.metadata,
+            observedAt: observation.observedAt
+        };
+    });
+
+const observationSchema = z.union([ currentObservationSchema, legacyObservationSchema ]);
 
 const entrySchema = z
     .strictObject({
@@ -213,8 +231,8 @@ function stableJson(value: unknown): string {
 
 const workIdentityKey: (work: WorkId) => string = stableJson;
 
-function finiteDuration(durationMilliseconds: number): boolean {
-    return Number.isFinite(durationMilliseconds) && durationMilliseconds >= 0;
+function finiteDuration(durationMicroseconds: number): boolean {
+    return Number.isFinite(durationMicroseconds) && durationMicroseconds >= 0;
 }
 
 function observedAtMilliseconds(observation: DurationHistoryObservation): number {
@@ -236,7 +254,7 @@ function freshObservation(nowMilliseconds: number): (observation: DurationHistor
         return Number.isFinite(observedAt) &&
             observedAt <= nowMilliseconds &&
             nowMilliseconds - observedAt <= freshnessMilliseconds &&
-            finiteDuration(observation.durationMilliseconds);
+            finiteDuration(observation.durationMicroseconds);
     };
 }
 
@@ -248,7 +266,7 @@ function sortedRecentObservations(
             const difference = observedAtMilliseconds(right) - observedAtMilliseconds(left);
 
             return difference === 0
-                ? left.durationMilliseconds - right.durationMilliseconds
+                ? left.durationMicroseconds - right.durationMicroseconds
                 : difference;
         })
         .slice(0, maximumObservationCount);
@@ -281,8 +299,8 @@ function sampleFromEntry(entry: DurationHistoryEntry, nowMilliseconds: number): 
     }
 
     return {
-        durationMilliseconds: median(observations.map(function toDuration(observation) {
-            return observation.durationMilliseconds;
+        durationMicroseconds: median(observations.map(function toDuration(observation) {
+            return observation.durationMicroseconds;
         })),
         observedAt: latest.observedAt,
         observations,
@@ -361,10 +379,10 @@ export function selectDurationHistoryPlacement(
     }
 
     const fallbackDuration = median(matchedSamples.map(function toDuration(sample) {
-        return sample.durationMilliseconds;
+        return sample.durationMicroseconds;
     }));
     const durationByWorkKey = new Map(matchedSamples.map(function toEntry(sample) {
-        return [ workIdentityKey(sample.work), sample.durationMilliseconds ];
+        return [ workIdentityKey(sample.work), sample.durationMicroseconds ];
     }));
 
     return {
@@ -401,13 +419,13 @@ function durationHistoryObservationsFromResult(
     const metadata = executionMetadata(resolvedRun);
 
     return result.perTest.flatMap(function toObservation(testResult) {
-        if (!finiteDuration(testResult.wallTimeMs)) {
+        if (!finiteDuration(testResult.durationMicroseconds)) {
             return [];
         }
 
         return [ {
             observations: [ {
-                durationMilliseconds: testResult.wallTimeMs,
+                durationMicroseconds: testResult.durationMicroseconds,
                 metadata,
                 observedAt
             } ],

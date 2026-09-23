@@ -1,4 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import {
     evaluateAssertion,
     invalidDeepAssertionOperand
@@ -42,7 +42,7 @@ type ExecutedBody = {
 type ExecutedCase = {
     readonly result: PerTestResult;
     readonly runnerErrors: readonly RunnerError[];
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
 };
 
 type FailedBodyInput = {
@@ -510,7 +510,7 @@ export function invalidTimeoutControlFailure(actual: unknown, expected: string):
 function skippedCase(
     testCase: TestPlanCase,
     reason: Extract<TestOutcome, { readonly kind: 'skip'; }>['reason'],
-    wallTimeMs: number
+    durationMicroseconds: number
 ): ExecutedCase {
     const outcome: TestOutcome = { kind: 'skip', reason };
 
@@ -520,22 +520,26 @@ function skippedCase(
             outcome,
             verdict: verdictFromOutcome(outcome),
             workId: testCase.workId,
-            wallTimeMs
+            durationMicroseconds
         },
         runnerErrors: [],
-        wallTimeMs
+        durationMicroseconds
     };
 }
 
 export async function runTestCase(
     testCase: TestPlanCase,
-    wallClock: WallClock,
+    wallClock: OverkillClock,
     options: RunTestCaseOptions = defaultRunTestCaseOptions()
 ): Promise<ExecutedCase> {
-    const startedAt = wallClock.currentTimestampInMilliseconds;
+    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
 
     if (testCase.execution.kind === 'skip') {
-        return skippedCase(testCase, testCase.execution.reason, wallClock.currentTimestampInMilliseconds - startedAt);
+        return skippedCase(
+            testCase,
+            testCase.execution.reason,
+            wallClock.currentMonotonicMicroseconds - startedAtMicroseconds
+        );
     }
 
     const recorder = createAssertionRecorder();
@@ -543,7 +547,7 @@ export async function runTestCase(
     const executedBody = await runCaseBody(testCase, recorder, options);
     const outcome = createOutcome(recorder, executedBody);
     const verdict = verdictFromOutcome(outcome);
-    const wallTimeMs = wallClock.currentTimestampInMilliseconds - startedAt;
+    const durationMicroseconds = wallClock.currentMonotonicMicroseconds - startedAtMicroseconds;
 
     return {
         result: {
@@ -551,9 +555,9 @@ export async function runTestCase(
             outcome,
             verdict,
             workId: testCase.workId,
-            wallTimeMs
+            durationMicroseconds
         },
         runnerErrors: executedBody.runnerErrors,
-        wallTimeMs
+        durationMicroseconds
     };
 }

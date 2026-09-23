@@ -26,7 +26,7 @@ export type PlacementTraceEntry = {
     readonly kind: 'unit-split';
     readonly parent: WorkUnitId;
 } | {
-    readonly durationMilliseconds: number;
+    readonly durationMicroseconds: number;
     readonly kind: 'unit-completed';
     readonly unit: TraceWorkUnitId;
     readonly workerId: string;

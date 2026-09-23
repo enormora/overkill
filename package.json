@@ -20,7 +20,6 @@
     },
     "homepage": "https://github.com/enormora/overkill#readme",
     "dependencies": {
-        "@enormora/wall-clock": "0.0.3",
         "@overkill-dev/reporter-line": "0.0.32",
         "@schema-hub/zod-error-formatter": "0.0.16",
         "ansi-escapes": "7.3.0",

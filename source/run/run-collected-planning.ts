@@ -79,7 +79,7 @@ function createPlacementResolution(
         availableParallelism: input.dependencies.availableParallelism,
         durationHistoryIndex: input.durationHistoryIndex,
         fileSetForFile: fileSetForDiscoveredFiles(input.files),
-        nowMilliseconds: input.dependencies.wallClock.currentTimestampInMilliseconds,
+        nowMilliseconds: input.dependencies.wallClock.currentEpochMilliseconds,
         order: input.request.order,
         seed: input.request.seed,
         selectedPlan: input.collectedPlan,

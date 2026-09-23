@@ -6,6 +6,17 @@ import {
 import type { FailedCheck, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import { CaseRunnerError, isCaseRunnerError, verdictFromOutcome, type TestOutcome } from './run-result.ts';
+import {
+    defaultRunTimingSlowestSpanLimit,
+    defaultRunTimingSpanLimit,
+    preciseTimingReport,
+    resourceScopes,
+    runTimingSpanKinds,
+    runTimingSummary,
+    zeroTimingCollectionOverhead,
+    type PreciseTimingReportInput,
+    type RunTimingSpan
+} from './run-timings.ts';
 
 type FailedCheckFixture = {
     readonly actual: FailedCheck['actual'];
@@ -50,6 +61,36 @@ function assertCaseRunnerErrorPredicates(scope: OverkillScope): void {
     scope.assert.equal(isCaseRunnerError(branded), true);
 }
 
+const timingSpan = function timingSpan(
+    kind: RunTimingSpan['kind'],
+    durationMicroseconds: number,
+    startOffsetMicroseconds: number
+): RunTimingSpan {
+    return {
+        durationMicroseconds,
+        kind,
+        label: null,
+        processId: null,
+        resource: null,
+        startOffsetMicroseconds,
+        status: 'success',
+        workerId: null
+    };
+};
+
+function assertDefaultTimingModelValues(scope: OverkillScope): void {
+    scope.assert.equal(defaultRunTimingSpanLimit, 5000);
+    scope.assert.equal(defaultRunTimingSlowestSpanLimit, 50);
+    scope.assert.deepEqual(zeroTimingCollectionOverhead, {
+        aggregationMicroseconds: 0,
+        recordingMicroseconds: 0,
+        renderingMicroseconds: 0,
+        serializationMicroseconds: 0
+    });
+    scope.assert.equal(resourceScopes.includes('per-case'), true);
+    scope.assert.equal(runTimingSpanKinds.includes('config.load'), true);
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/run-result.test.ts',
@@ -79,6 +120,68 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 assertCaseRunnerErrorPredicates(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runTimingSummary() clamps execution time to total wall time',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    runTimingSummary({
+                        testExecutionWallTimeMicroseconds: 15,
+                        totalWallTimeMicroseconds: 10
+                    }),
+                    {
+                        runnerOverheadWallTimeMicroseconds: 0,
+                        testExecutionWallTimeMicroseconds: 10,
+                        totalWallTimeMicroseconds: 10
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'preciseTimingReport() bounds spans, aggregates totals, and records slowest spans',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const configLoadStart = timingSpan('config.load', 3, 0);
+                const reporterDelivery = timingSpan('reporter.deliver', 20, 3);
+                const configLoadEnd = timingSpan('config.load', 10, 23);
+                const input: PreciseTimingReportInput = {
+                    aggregationMicroseconds: 3,
+                    recordingMicroseconds: 2,
+                    slowestSpanLimit: 2,
+                    spanLimit: 2,
+                    spans: [ configLoadStart, reporterDelivery, configLoadEnd ]
+                };
+
+                scope.assert.deepEqual(preciseTimingReport(input), {
+                    aggregates: [
+                        { count: 2, durationMicroseconds: 13, kind: 'config.load' },
+                        { count: 1, durationMicroseconds: 20, kind: 'reporter.deliver' }
+                    ],
+                    ambientNoise: 'unknown',
+                    droppedSpanCount: 1,
+                    overhead: {
+                        aggregationMicroseconds: 3,
+                        recordingMicroseconds: 2,
+                        renderingMicroseconds: 0,
+                        serializationMicroseconds: 0
+                    },
+                    slowestSpanLimit: 2,
+                    slowestSpans: [ reporterDelivery, configLoadEnd ],
+                    spanLimit: 2,
+                    spans: [ configLoadStart, reporterDelivery ],
+                    truncated: true
+                });
+                assertDefaultTimingModelValues(scope);
 
                 return scope.assert.collect();
             }

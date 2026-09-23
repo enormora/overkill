@@ -125,7 +125,7 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
                 runtimes: [],
                 workload: null
             },
-            wallTimeMs: 0
+            durationMicroseconds: 0
         }
     ]);
     scope.assert.deepEqual(result.summary, {

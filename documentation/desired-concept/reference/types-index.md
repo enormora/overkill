@@ -89,7 +89,7 @@ type CapturedOutputArtifact = {
         readonly stream: 'stdout' | 'stderr';
         readonly text: string;
         readonly byteLength: number;
-        readonly capturedAtMilliseconds: number;
+        readonly capturedAtMicroseconds: number;
         readonly truncated: boolean;
     };
     readonly attribution:
@@ -1145,7 +1145,7 @@ type DurationHistoryInput = {
 };
 
 type DurationHistorySample = {
-    readonly durationMilliseconds: number;
+    readonly durationMicroseconds: number;
     readonly observations: ReadonlyArray<DurationHistoryObservation>;
     readonly observedAt: string;
     readonly sampleCount: number;
@@ -1153,7 +1153,7 @@ type DurationHistorySample = {
 };
 
 type DurationHistoryObservation = {
-    readonly durationMilliseconds: number;
+    readonly durationMicroseconds: number;
     readonly metadata: DurationHistoryObservationMetadata;
     readonly observedAt: string;
 };
@@ -1236,7 +1236,7 @@ type PlacementTraceEntry =
         readonly kind: 'unit-completed';
         readonly unit: TraceWorkUnitId;
         readonly workerId: string;
-        readonly durationMilliseconds: number;
+        readonly durationMicroseconds: number;
     }
     | { readonly kind: 'worker-crashed'; readonly workerId: string; readonly activeUnit: TraceWorkUnitId | null; }
     | {
@@ -1371,7 +1371,7 @@ type HistoryRunSummary = {
     readonly profile: ProfileName;
     readonly testFamily: TestFamily;
     readonly status: HistoryRunStatus;
-    readonly durationMilliseconds: number | null;
+    readonly durationMicroseconds: number | null;
     readonly replay: HistoryReplayAvailability;
 };
 
@@ -1387,7 +1387,7 @@ type CompactCaseHistory = {
 type CompactWorkHistory = {
     readonly id: WorkId;
     readonly lastRunId: string;
-    readonly durationMilliseconds: ReadonlyArray<number>;
+    readonly durationMicroseconds: ReadonlyArray<number>;
     readonly counters: CompactOutcomeCounters;
 };
 
@@ -1424,7 +1424,6 @@ type RunResult = {
     readonly artifacts: ReadonlyArray<ArtifactId | CapturedOutputArtifact>;
     readonly resourceUsage: RunResourceUsage | null;
     readonly timings: RunTimings;
-    readonly wallTimeMs: number;
 };
 
 type RunTimings = {
@@ -1444,7 +1443,10 @@ type RunPreciseTimingReport = {
     readonly overhead: TimingCollectionOverhead;
     readonly ambientNoise: AmbientNoiseEstimate;
     readonly truncated: boolean;
+    readonly droppedSpanCount: number;
     readonly spanLimit: number;
+    readonly slowestSpans: ReadonlyArray<RunTimingSpan>;
+    readonly slowestSpanLimit: number;
 };
 
 type RunTimingSpan = {
@@ -1573,7 +1575,7 @@ type ResourceBudgets = {
 type ResourceBudgetOverrides = ResourceBudgets;
 
 type ResourceUsageSnapshot = {
-    readonly capturedAtMilliseconds: number;
+    readonly capturedAtMicroseconds: number;
     readonly javaScriptEngineHeapBytes: number;
     readonly residentSetBytes: number;
     readonly activeResourceCount: number;
@@ -1692,7 +1694,7 @@ type ResourceExhaustion = {
 type TestDebugArtifact = {
     readonly case: CaseId;
     readonly outcome: TestOutcome['kind'];
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
     readonly cpuTimeMs: number;
     readonly timeline: ReadonlyArray<TimelineEntry>;
     readonly handleEvents?: ReadonlyArray<RecordedEvent>;

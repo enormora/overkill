@@ -1,4 +1,3 @@
-import type { WallClock } from '@enormora/wall-clock';
 import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation,
@@ -15,6 +14,7 @@ import {
     type RunResult,
     type RunnerError
 } from '../engine/run-result.ts';
+import { summaryRunTimings } from '../engine/run-timings.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type {
     CollectedRunCase,
@@ -52,10 +52,11 @@ function resolvedSuitePath(suitePath: TestPlan['cases'][number]['suitePath']): C
 }
 
 type RunResultTiming = {
+    readonly completedAtMicroseconds: number;
     readonly planStatus: RunPlanStatus;
     readonly resourceUsage: RunResourceUsage | null;
-    readonly startedAtMs: number;
-    readonly wallClock: WallClock;
+    readonly startedAtMicroseconds: number;
+    readonly testExecutionWallTimeMicroseconds: number;
 };
 
 export type CollectedRunCaseEntry = {
@@ -345,6 +346,9 @@ export function createRunResultFromCollectedPlan(
         runnerErrors,
         status: runStatusFromPlan(summary, runnerErrors, timing.planStatus),
         summary,
-        wallTimeMs: timing.wallClock.currentTimestampInMilliseconds - timing.startedAtMs
+        timings: summaryRunTimings({
+            testExecutionWallTimeMicroseconds: timing.testExecutionWallTimeMicroseconds,
+            totalWallTimeMicroseconds: timing.completedAtMicroseconds - timing.startedAtMicroseconds
+        })
     };
 }

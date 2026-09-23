@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -58,7 +58,7 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
 function supervisedChildDependencies(): SupervisedChildDependencies {
     return {
         createResourceUsageTracker: createEmptyResourceUsageTracker,
-        createWallClock: createDeterministicWallClock
+        createOverkillClock: createDeterministicOverkillClock
     };
 }
 

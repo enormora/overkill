@@ -55,7 +55,7 @@ function caseOutputArtifact(text: string): RunArtifact {
         },
         payload: {
             byteLength: Buffer.byteLength(text),
-            capturedAtMilliseconds: 1,
+            capturedAtMicroseconds: 1,
             kind: 'captured-output',
             stream: 'stdout',
             text,
@@ -70,7 +70,7 @@ function truncatedEmptyCaseOutputArtifact(): RunArtifact {
         ...caseOutputArtifact(''),
         payload: {
             byteLength: 0,
-            capturedAtMilliseconds: 1,
+            capturedAtMicroseconds: 1,
             kind: 'captured-output',
             stream: 'stdout',
             text: '',
@@ -88,7 +88,7 @@ function runOutputArtifact(text: string): RunArtifact {
         },
         payload: {
             byteLength: Buffer.byteLength(text),
-            capturedAtMilliseconds: 1,
+            capturedAtMicroseconds: 1,
             kind: 'captured-output',
             stream: 'stderr',
             text,
@@ -122,7 +122,7 @@ export const testNode = createOverkillSuite({
                     outcome: { kind: 'pass' },
                     suitePath: suitePathFromTitles(passingCaseId.suite),
                     verdict: 'pass',
-                    wallTimeMs: 3
+                    durationMicroseconds: 3000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 1);
@@ -149,7 +149,7 @@ export const testNode = createOverkillSuite({
                     outcome: { kind: 'pass' },
                     suitePath: suitePathFromTitles(passingCaseId.suite),
                     verdict: 'pass',
-                    wallTimeMs: 3
+                    durationMicroseconds: 3000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 3);
@@ -177,7 +177,7 @@ export const testNode = createOverkillSuite({
                     outcome: { kind: 'pass' },
                     suitePath: suitePathFromTitles(passingCaseId.suite),
                     verdict: 'pass',
-                    wallTimeMs: 3
+                    durationMicroseconds: 3000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 2);
@@ -204,7 +204,7 @@ export const testNode = createOverkillSuite({
                     outcome: { kind: 'skip', reason: 'not supported' },
                     suitePath: suitePathFromTitles(skippedCaseId.suite),
                     verdict: 'skip',
-                    wallTimeMs: 4
+                    durationMicroseconds: 4000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 3);

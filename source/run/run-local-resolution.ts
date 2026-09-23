@@ -82,17 +82,18 @@ function createEmptySelectionResult(
     testPlan: TestPlan,
     dependencies: RunOrchestratorDependencies
 ): RunResult {
-    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+    const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
 
     return freezeValue(createRunResultFromCollectedPlan(
         collectedRunPlanFromTestPlanCases(testPlan, []),
         [],
         [],
         {
+            completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
             planStatus: 'empty-selection',
             resourceUsage: null,
-            startedAtMs,
-            wallClock: dependencies.wallClock
+            startedAtMicroseconds,
+            testExecutionWallTimeMicroseconds: 0
         }
     ));
 }

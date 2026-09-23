@@ -352,7 +352,7 @@ export const testNode = createOverkillSuite({
                             outcome: { kind: 'pass' },
                             suitePath: [],
                             verdict: 'pass',
-                            wallTimeMs: 0,
+                            durationMicroseconds: 0,
                             workId: {
                                 case: { file: null, title: 'passes', params: null, suite: [] },
                                 runtimes: [],

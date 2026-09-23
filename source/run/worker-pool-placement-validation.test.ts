@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -309,10 +309,11 @@ export function completedWorkerPoolOutput(): WorkerPoolOutput {
             [],
             [],
             {
+                completedAtMicroseconds: 0,
                 planStatus: 'planned',
                 resourceUsage: null,
-                startedAtMs: 0,
-                wallClock: createDeterministicWallClock()
+                startedAtMicroseconds: 0,
+                testExecutionWallTimeMicroseconds: 0
             }
         )
     };
@@ -415,7 +416,7 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         },
         startSupervisedChild: testOnlyDependency,
         startWorkerPoolHost: testOnlyDependency,
-        wallClock: createDeterministicWallClock()
+        wallClock: createDeterministicOverkillClock()
     };
 }
 

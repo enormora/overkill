@@ -41,6 +41,11 @@ The summary uses microsecond integer durations. Human reporters may render
 milliseconds, but the structured model should not use floating point values
 for core timing facts.
 
+Overkill owns its timing clock abstraction. Durations and diagnostic offsets
+come from a monotonic microsecond clock. Wall-clock metadata, such as the ISO
+run-start timestamp shown to users, remains available through the same
+platform boundary but is not used for duration math.
+
 ## Precise Timings
 
 Precise timing collection adds bounded spans and aggregate buckets to the run
@@ -158,11 +163,15 @@ Precise timings are bounded. The timing report records:
 
 - the maximum span count
 - whether spans were truncated
+- how many spans were dropped
 - aggregate totals per timing kind
 - top overhead offenders retained for human output
 
 Truncation never removes the default timing summary and never removes aggregate
 totals.
+When detailed spans exceed the retention limit, `spans` keeps the chronological
+prefix and `slowestSpans` keeps full copies of the slowest observed offenders
+so human reporters do not depend on the chronological retention policy.
 
 Timing collection overhead is reported only for observable work:
 

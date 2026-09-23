@@ -30,10 +30,10 @@ function durationHistoryUnitLoad(
     samples: NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['durationHistory']>['samples']
 ): UnitLoad {
     const fallbackDuration = median(samples.map(function toDuration(sample) {
-        return sample.durationMilliseconds;
+        return sample.durationMicroseconds;
     }));
     const durationByWorkKey = new Map(samples.map(function toEntry(sample) {
-        return [ workIdentityKey(sample.work), sample.durationMilliseconds ];
+        return [ workIdentityKey(sample.work), sample.durationMicroseconds ];
     }));
 
     return function unitDuration(unit) {

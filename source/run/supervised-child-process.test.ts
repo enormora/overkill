@@ -140,7 +140,7 @@ function observeRestrictedOutput(
                     }
                 }
             },
-            wallClock: { currentTimestampInMilliseconds: 123 }
+            wallClock: { currentMonotonicMicroseconds: 123_000 }
         },
         state,
         terminalFailure

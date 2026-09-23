@@ -340,7 +340,7 @@ export type RunConfig = {
     readonly runtimeStateDir: string;
 };
 export type DurationHistoryObservation = {
-    readonly durationMilliseconds: number;
+    readonly durationMicroseconds: number;
     readonly metadata: {
         readonly processModel: RunProcessModel;
         readonly profile: string;
@@ -351,7 +351,7 @@ export type DurationHistoryObservation = {
     readonly observedAt: string;
 };
 export type DurationHistorySample = {
-    readonly durationMilliseconds: number;
+    readonly durationMicroseconds: number;
     readonly observedAt: string;
     readonly observations: readonly DurationHistoryObservation[];
     readonly sampleCount: number;

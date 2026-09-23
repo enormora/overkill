@@ -86,9 +86,9 @@ function observedAt(milliseconds: number): string {
     return date.toISOString();
 }
 
-function observation(durationMilliseconds: number, observedAtMilliseconds: number): DurationHistoryObservation {
+function observation(durationMicroseconds: number, observedAtMilliseconds: number): DurationHistoryObservation {
     return {
-        durationMilliseconds,
+        durationMicroseconds,
         metadata: {
             processModel: 'supervised-process' as const,
             profile: 'integration',
@@ -220,12 +220,12 @@ function fallbackPlacements(): FallbackPlacements {
     };
 }
 
-function runResultForWork(sampleWork: WorkId, wallTimeMs: number): RunResult {
+function runResultForWork(sampleWork: WorkId, durationMicroseconds: number): RunResult {
     return runResultFactory.build({
         perTest: [
             {
                 id: sampleWork.case,
-                wallTimeMs,
+                durationMicroseconds,
                 workId: sampleWork
             }
         ]
@@ -399,7 +399,7 @@ export const testNode = createOverkillSuite({
                 ], observedAt(now));
                 const placement = selectDurationHistoryPlacement([ selectedUnit ], index, now);
 
-                scope.assert.equal(placement.facts?.samples[0]?.durationMilliseconds, 50);
+                scope.assert.equal(placement.facts?.samples[0]?.durationMicroseconds, 50);
                 scope.assert.equal(placement.unitDuration?.(selectedUnit), 50);
 
                 return scope.assert.collect();

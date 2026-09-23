@@ -63,6 +63,11 @@ type SupervisedExecutionOptions = {
     readonly finalizeResult: RunResultFinalizer;
 };
 
+type SupervisedRunStartTimes = {
+    readonly epochMilliseconds: number;
+    readonly monotonicMicroseconds: number;
+};
+
 type Signal = {
     readonly promise: Promise<void>;
     readonly resolve: () => void;
@@ -97,6 +102,13 @@ const keepRunResult: RunResultFinalizer = async function keepRunResult(_resolved
     return result;
 };
 
+function supervisedRunStartTimes(dependencies: RunOrchestratorDependencies): SupervisedRunStartTimes {
+    return {
+        epochMilliseconds: dependencies.wallClock.currentEpochMilliseconds,
+        monotonicMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds
+    };
+}
+
 function handleCollectionMessage(
     message: SupervisedChildMessage,
     runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
@@ -111,7 +123,7 @@ function handleCollectionMessage(
             message.event,
             runtime.state,
             new Map(),
-            runtime.dependencies.wallClock.currentTimestampInMilliseconds
+            runtime.dependencies.wallClock.currentMonotonicMicroseconds
         );
     } else if (message.kind === 'sample') {
         handleCollectionSample(message.sample, runtime);
@@ -297,7 +309,7 @@ function handleLiveCollectionMessage(
             message.event,
             liveRun.state,
             new Map(),
-            liveRun.dependencies.wallClock.currentTimestampInMilliseconds
+            liveRun.dependencies.wallClock.currentMonotonicMicroseconds
         );
     }
 }
@@ -419,16 +431,16 @@ async function continueLiveRun(
     createResolvedRun: CreateResolvedRunFromCollection
 ): Promise<RunResult> {
     const resolvedRun = await createResolvedRun(collection);
-    const startedAtMs = liveRun.dependencies.wallClock.currentTimestampInMilliseconds;
+    const startedAt = supervisedRunStartTimes(liveRun.dependencies);
     const runtime = await createLiveRunRuntime(liveRun, resolvedRun);
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     liveRun.runtime.write(runtime);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
-    await reportRunStartForPlannedCases(runtime, collectedPlan, startedAtMs);
+    await reportRunStartForPlannedCases(runtime, collectedPlan, startedAt.epochMilliseconds);
     sendAssignmentForPlan(runtime);
     await liveRun.finishedSignal.promise;
 
-    return await finishSupervisedRuntime(runtime, startedAtMs);
+    return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);
 }
 
 export async function collectSupervisedRun(
@@ -496,14 +508,14 @@ export async function executeSupervisedRun(
     options: SupervisedExecutionOptions = { finalizeResult: keepRunResult }
 ): Promise<RunResult> {
     const runtime = await createRuntime(resolvedRun, dependencies, options);
-    const startedAtMs = dependencies.wallClock.currentTimestampInMilliseconds;
+    const startedAt = supervisedRunStartTimes(dependencies);
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
-    await reportRunStart(runtime, collectedPlan, startedAtMs);
+    await reportRunStart(runtime, collectedPlan, startedAt.epochMilliseconds);
     const childFinished = observeChild(runtime);
     sendRunCommand(runtime);
     sendAssignment(runtime);
     await childFinished;
 
-    return await finishSupervisedRuntime(runtime, startedAtMs);
+    return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);
 }

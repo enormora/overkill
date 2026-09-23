@@ -49,7 +49,7 @@ export const testNode = createOverkillSuite({
                     outcome: null,
                     suitePath: [],
                     verdict: 'resource-exhausted',
-                    wallTimeMs: 12
+                    durationMicroseconds: 12_000
                 });
                 await reporter.onEvent({
                     attempt: 0,
@@ -60,7 +60,7 @@ export const testNode = createOverkillSuite({
                     outcome: null,
                     suitePath: [],
                     verdict: 'crashed',
-                    wallTimeMs: 13
+                    durationMicroseconds: 13_000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 3);

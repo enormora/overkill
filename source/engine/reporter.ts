@@ -158,7 +158,7 @@ type TestEndReporterEvent = {
     readonly outcome: TestOutcome | null;
     readonly suitePath: TestPlanCase['suitePath'];
     readonly verdict: TestVerdict;
-    readonly wallTimeMs: number;
+    readonly durationMicroseconds: number;
     readonly workId?: WorkId;
 };
 

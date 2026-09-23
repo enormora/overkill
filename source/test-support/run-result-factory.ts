@@ -20,6 +20,7 @@ import {
     type TestOutcome,
     type TestVerdict
 } from '../engine/run-result.ts';
+import { summaryRunTimings, type RunTimings } from '../engine/run-timings.ts';
 
 type FailedCheckOverrides = {
     readonly actual?: unknown;
@@ -92,7 +93,7 @@ type PerTestResultOverrides = {
     readonly outcome?: TestOutcomeOverrides | null;
     readonly verdict?: TestVerdict;
     readonly workId?: WorkId;
-    readonly wallTimeMs?: number;
+    readonly durationMicroseconds?: number;
 };
 
 type OrphanedNodeOverrides = Partial<OrphanedNode>;
@@ -109,10 +110,11 @@ type RunResultOverrides = {
     readonly runnerErrors?: readonly RunnerErrorOverrides[];
     readonly status?: RunResult['status'];
     readonly summary?: Partial<RunSummary>;
-    readonly wallTimeMs?: number;
+    readonly timings?: RunTimings;
+    readonly totalWallTimeMicroseconds?: number;
 };
 
-type RunResultDefaultValues = Pick<RunResult, 'artifacts' | 'bySuite' | 'planStatus' | 'resourceUsage' | 'wallTimeMs'>;
+type RunResultDefaultValues = Pick<RunResult, 'artifacts' | 'bySuite' | 'planStatus' | 'resourceUsage' | 'timings'>;
 
 const defaultLocation: KnownSourceLocation = {
     column: null,
@@ -139,7 +141,10 @@ const defaultRunResultValues: RunResultDefaultValues = {
     bySuite: {},
     planStatus: 'planned',
     resourceUsage: null,
-    wallTimeMs: 0
+    timings: summaryRunTimings({
+        testExecutionWallTimeMicroseconds: 0,
+        totalWallTimeMicroseconds: 0
+    })
 };
 
 const defaultCaseId: CaseId = {
@@ -336,7 +341,7 @@ function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['
         outcome,
         verdict: buildPerTestVerdict(overrides, outcome),
         workId: overrides.workId ?? createDefaultWorkId(id),
-        wallTimeMs: overrides.wallTimeMs ?? 0
+        durationMicroseconds: overrides.durationMicroseconds ?? 0
     };
 }
 
@@ -402,9 +407,14 @@ function buildRunStatus(
 function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
     const runnerErrors = buildRunnerErrors(overrides.runnerErrors);
     const summary = buildSummary(overrides.summary);
+    const timings = overrides.timings ?? summaryRunTimings({
+        testExecutionWallTimeMicroseconds: 0,
+        totalWallTimeMicroseconds: overrides.totalWallTimeMicroseconds ?? 0
+    });
     const values = {
         ...defaultRunResultValues,
-        ...overrides
+        ...overrides,
+        timings
     };
 
     return {
@@ -417,7 +427,7 @@ function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
         runnerErrors,
         status: buildRunStatus(overrides, summary, runnerErrors),
         summary,
-        wallTimeMs: values.wallTimeMs
+        timings: values.timings
     };
 }
 

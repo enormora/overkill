@@ -29,14 +29,14 @@ const secondCaseId: CaseId = {
 const previousSample: ResourceUsageSnapshot = {
     activeResourceCount: 1,
     activeResourceTypes: [],
-    capturedAtMilliseconds: 1000,
+    capturedAtMicroseconds: 1_000_000,
     javaScriptEngineHeapBytes: 100,
     residentSetBytes: 100
 };
 const sample: ResourceUsageSnapshot = {
     activeResourceCount: 2,
     activeResourceTypes: [ 'Timeout' ],
-    capturedAtMilliseconds: 2000,
+    capturedAtMicroseconds: 2_000_000,
     javaScriptEngineHeapBytes: 200,
     residentSetBytes: 300
 };

@@ -1,4 +1,4 @@
-import { createWallClock } from '@enormora/wall-clock';
+import { createOverkillClock } from '../../clock/overkill-clock.ts';
 import {
     createEngineWithOwner,
     type Engine,
@@ -32,7 +32,7 @@ function readActiveResourceTypes(): readonly string[] {
 }
 
 function createEngineDependencies(): EngineDependencies {
-    const wallClock = createWallClock();
+    const wallClock = createOverkillClock();
 
     return {
         execute: createExecute({
@@ -278,6 +278,18 @@ export type {
     TestFailure,
     TestOutcome
 } from '../../engine/run-result.ts';
+export type {
+    AmbientNoiseEstimate,
+    ResourceScope,
+    RunPreciseTimingReport,
+    RunTimingAggregate,
+    RunTimings,
+    RunTimingSpan,
+    RunTimingSpanKind,
+    RunTimingSummary,
+    TimingCollectionOverhead,
+    TimingSpanStatus
+} from '../../engine/run-timings.ts';
 export type {
     AssertAssertionNode,
     AssertionNode,

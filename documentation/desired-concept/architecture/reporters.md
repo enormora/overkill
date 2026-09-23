@@ -131,7 +131,7 @@ type ReporterEvent =
         attempt: number;
         outcome: TestOutcome;
         verdict: TestOutcome['kind'];
-        wallTimeMs: number;
+        durationMicroseconds: number;
     }
     | { kind: 'suite-end'; suitePath: ReadonlyArray<string>; }
     | { kind: 'runner-error'; error: RunnerError; }

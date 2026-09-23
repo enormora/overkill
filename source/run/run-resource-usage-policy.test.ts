@@ -126,7 +126,7 @@ export const testNode = createOverkillSuite({
                     end: {
                         activeResourceCount: 0,
                         activeResourceTypes: [],
-                        capturedAtMilliseconds: 1,
+                        capturedAtMicroseconds: 1,
                         javaScriptEngineHeapBytes: 2,
                         residentSetBytes: 3
                     },
@@ -138,7 +138,7 @@ export const testNode = createOverkillSuite({
                     start: {
                         activeResourceCount: 0,
                         activeResourceTypes: [],
-                        capturedAtMilliseconds: 0,
+                        capturedAtMicroseconds: 0,
                         javaScriptEngineHeapBytes: 1,
                         residentSetBytes: 2
                     }
@@ -222,7 +222,7 @@ export const testNode = createOverkillSuite({
                     sample: {
                         activeResourceCount: 0,
                         activeResourceTypes: [],
-                        capturedAtMilliseconds: 1,
+                        capturedAtMicroseconds: 1,
                         javaScriptEngineHeapBytes: 2,
                         residentSetBytes: 3
                     }

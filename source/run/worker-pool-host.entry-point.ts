@@ -2,7 +2,7 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import { createWallClock } from '@enormora/wall-clock';
+import { createOverkillClock } from '../clock/overkill-clock.ts';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import {
     childProcessEnvelope,
@@ -181,7 +181,7 @@ function abortTask(command: Extract<WorkerPoolHostCommand, { readonly kind: 'abo
 function startResourceTracking(
     command: Extract<WorkerPoolHostCommand, { readonly kind: 'start-resource-tracking'; }>
 ): void {
-    state.resourceUsageTracker.write(createNodeResourceUsageTracker(createWallClock(), {
+    state.resourceUsageTracker.write(createNodeResourceUsageTracker(createOverkillClock(), {
         samplingIntervalMilliseconds: command.samplingIntervalMilliseconds
     }));
     state.resourceUsageTracker.read()?.start(function sendSample(sample) {

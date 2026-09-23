@@ -48,10 +48,10 @@ function runtimePolicyCase(testCase: TestPlanCase, executedCase: ConcurrentCase)
             outcome: null,
             verdict: 'runtime-policy',
             workId: testCase.workId,
-            wallTimeMs: executedCase.wallTimeMs
+            durationMicroseconds: executedCase.durationMicroseconds
         },
         runnerErrors: executedCase.runnerErrors,
-        wallTimeMs: executedCase.wallTimeMs
+        durationMicroseconds: executedCase.durationMicroseconds
     };
 }
 

@@ -55,7 +55,7 @@ export async function finalizeResultWithDurationHistory(
         dependencies.durationHistoryStore,
         resolvedRun,
         result,
-        dependencies.wallClock.currentTimestampInMilliseconds
+        dependencies.wallClock.currentEpochMilliseconds
     );
 }
 

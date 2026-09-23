@@ -70,7 +70,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         outcome: { kind: 'pass' },
         suitePath: suitePathFromTitles(passingCaseId.suite),
         verdict: 'pass',
-        wallTimeMs: 1
+        durationMicroseconds: 1
     });
     await reporter.onEvent({
         attempt: 0,
@@ -101,7 +101,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         },
         suitePath: suitePathFromTitles(failingCaseId.suite),
         verdict: 'fail',
-        wallTimeMs: 1
+        durationMicroseconds: 1
     });
     await reporter.onEvent({ kind: 'run-end', result: runResultFactory.build({ summary: { planned: 2 } }) });
 }

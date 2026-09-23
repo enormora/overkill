@@ -1,5 +1,6 @@
 import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { runStatusFromSummary, type RunResult } from '../engine/run-result.ts';
+import { summaryRunTimings } from '../engine/run-timings.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { selectedProfile } from './run-facts.ts';
 import { resolveRunReporters, type RunRuntimePolicy } from './run-support.ts';
@@ -34,7 +35,10 @@ function createCollectionErrorRunResult(
         runnerErrors,
         status: runStatusFromSummary(summary, runnerErrors),
         summary,
-        wallTimeMs: 0
+        timings: summaryRunTimings({
+            testExecutionWallTimeMicroseconds: 0,
+            totalWallTimeMicroseconds: 0
+        })
     };
 }
 

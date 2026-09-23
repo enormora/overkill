@@ -1,4 +1,4 @@
-import { createDeterministicWallClock } from '@enormora/wall-clock';
+import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -357,7 +357,7 @@ export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         },
         startSupervisedChild: testOnlyDependency,
         startWorkerPoolHost: testOnlyDependency,
-        wallClock: createDeterministicWallClock()
+        wallClock: createDeterministicOverkillClock()
     };
 }
 
@@ -443,7 +443,7 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
                 recordSample?.({
                     activeResourceCount: 0,
                     activeResourceTypes: [],
-                    capturedAtMilliseconds: 1,
+                    capturedAtMicroseconds: 1,
                     javaScriptEngineHeapBytes: 1,
                     residentSetBytes: 20
                 });

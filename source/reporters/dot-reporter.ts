@@ -19,9 +19,10 @@ const failMark = colors.red(figures.cross);
 const skipMark = colors.cyan('°');
 const inconclusiveMark = colors.cyan('?');
 const runnerErrorMark = colors.red(figures.warning);
+const microsecondsPerMillisecond = 1000;
 
-function formatDuration(wallTimeMs: number): string {
-    return `${wallTimeMs} ms`;
+function formatDuration(durationMicroseconds: number): string {
+    return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
 }
 
 function executedCount(result: RunResult): number {
@@ -51,7 +52,9 @@ function formatSummary(result: RunResult): string {
 
     const statusMark = result.status === 'failed' ? failMark : passMark;
 
-    return `${statusMark} ${countSummary} (${outcomes})${orphanSummary} in ${formatDuration(result.wallTimeMs)}`;
+    return `${statusMark} ${countSummary} (${outcomes})${orphanSummary} in ${
+        formatDuration(result.timings.summary.totalWallTimeMicroseconds)
+    }`;
 }
 
 type FailOutcome = Extract<TestOutcome, { readonly kind: 'fail'; }>;

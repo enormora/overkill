@@ -117,9 +117,9 @@ function runtimeWithEmptyDurationHistory(plan: PlacementPlan): WorkerPoolRunRunt
     };
 }
 
-function durationSample(work: WorkUnit['work'][number], durationMilliseconds: number): DurationHistorySample {
+function durationSample(work: WorkUnit['work'][number], durationMicroseconds: number): DurationHistorySample {
     return {
-        durationMilliseconds,
+        durationMicroseconds,
         observedAt: '2026-01-01T00:00:00.000Z',
         observations: [],
         sampleCount: 1,
@@ -149,8 +149,8 @@ function runtimeWithDurationHistorySamples(plan: PlacementPlan, unit: WorkUnit):
                 durationHistory: {
                     generatedAt: '2026-01-01T00:00:00.000Z',
                     samples: [
-                        durationSample(firstWork(unit), 100),
-                        durationSample(sampleOnlyWork(unit), 300)
+                        durationSample(firstWork(unit), 100_000),
+                        durationSample(sampleOnlyWork(unit), 300_000)
                     ],
                     source: 'runtime-state-index'
                 }
@@ -170,7 +170,7 @@ function runtimeWithSingleDurationHistorySample(plan: PlacementPlan, unit: WorkU
                 ...runtime.resolvedRun.facts,
                 durationHistory: {
                     generatedAt: '2026-01-01T00:00:00.000Z',
-                    samples: [ durationSample(firstWork(unit), 100) ],
+                    samples: [ durationSample(firstWork(unit), 100_000) ],
                     source: 'runtime-state-index'
                 }
             }
@@ -183,8 +183,8 @@ function assertDurationHistoryLoadUsesMedianFallback(scope: OverkillScope): void
     const plan = twoLanePlan(unit);
     const runtime = runtimeWithDurationHistorySamples(plan, unit);
 
-    scope.assert.equal(runtimeUnitLoad(runtime)(unit), 300);
-    scope.assert.equal(runtimeUnitLoad(runtimeWithSingleDurationHistorySample(plan, unit))(unit), 200);
+    scope.assert.equal(runtimeUnitLoad(runtime)(unit), 300_000);
+    scope.assert.equal(runtimeUnitLoad(runtimeWithSingleDurationHistorySample(plan, unit))(unit), 200_000);
 }
 
 export const testNode = createOverkillSuite({

@@ -61,7 +61,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
         outcome: { kind: 'pass' },
         suitePath: suitePathFromTitles(rowCaseId.suite),
         verdict: 'pass',
-        wallTimeMs: 7
+        durationMicroseconds: 7000
     });
     await reporter.onEvent({ kind: 'suite-end', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
@@ -73,7 +73,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
         outcome: { kind: 'pass' },
         suitePath: suitePathFromTitles(passingCaseId.suite),
         verdict: 'pass',
-        wallTimeMs: 2
+        durationMicroseconds: 2000
     });
 }
 
@@ -183,7 +183,7 @@ export const testNode = createOverkillSuite({
                     },
                     suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
-                    wallTimeMs: 12
+                    durationMicroseconds: 12_000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 4);
@@ -254,7 +254,7 @@ export const testNode = createOverkillSuite({
                     },
                     suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
-                    wallTimeMs: 12
+                    durationMicroseconds: 12_000
                 });
 
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
@@ -297,7 +297,7 @@ export const testNode = createOverkillSuite({
                     },
                     suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
-                    wallTimeMs: 12
+                    durationMicroseconds: 12_000
                 });
 
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
@@ -336,7 +336,7 @@ export const testNode = createOverkillSuite({
                     },
                     suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
-                    wallTimeMs: 12
+                    durationMicroseconds: 12_000
                 });
 
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
@@ -410,7 +410,7 @@ export const testNode = createOverkillSuite({
                     },
                     suitePath: suitePathFromTitles(failingCaseId.suite),
                     verdict: 'fail',
-                    wallTimeMs: 12
+                    durationMicroseconds: 12_000
                 });
 
                 scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
@@ -438,7 +438,7 @@ export const testNode = createOverkillSuite({
                     outcome: { kind: 'pass' },
                     suitePath: suitePathFromTitles(passingCaseId.suite),
                     verdict: 'pass',
-                    wallTimeMs: 3
+                    durationMicroseconds: 3000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 1);
@@ -465,7 +465,7 @@ export const testNode = createOverkillSuite({
                     outcome: { kind: 'skip', reason: 'not supported' },
                     suitePath: suitePathFromTitles(skippedCaseId.suite),
                     verdict: 'skip',
-                    wallTimeMs: 4
+                    durationMicroseconds: 4000
                 });
                 await reporter.onEvent({
                     attempt: 1,
@@ -476,7 +476,7 @@ export const testNode = createOverkillSuite({
                     outcome: { kind: 'inconclusive', reason: 'missing signal' },
                     suitePath: suitePathFromTitles(inconclusiveCaseId.suite),
                     verdict: 'inconclusive',
-                    wallTimeMs: 5
+                    durationMicroseconds: 5000
                 });
 
                 scope.assert(doubleUsage.callCount, log, 2);

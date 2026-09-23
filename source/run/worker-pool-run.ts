@@ -60,7 +60,8 @@ async function releaseRuntimePool(
 async function finishExecution(
     runtime: Awaited<ReturnType<typeof createWorkerPoolRuntime>>,
     resolvedRun: ResolvedRun,
-    startedAtMilliseconds: number
+    startedAtMilliseconds: number,
+    startedAtMicroseconds: number
 ): Promise<RunResult> {
     await reportRunStart(runtime, startedAtMilliseconds);
     await startPoolResourceTracking(runtime);
@@ -68,7 +69,7 @@ async function finishExecution(
     return await finishWorkerPoolRun(
         runtime,
         await executeWorkerPoolUnits(runtime, workerPoolPlacementPlan(resolvedRun), startedAtMilliseconds),
-        startedAtMilliseconds
+        startedAtMicroseconds
     );
 }
 
@@ -91,10 +92,11 @@ async function executeWorkerPoolRunWithState(
         resolvedRun,
         runState: state.collectionRunState
     });
-    const startedAtMilliseconds = dependencies.wallClock.currentTimestampInMilliseconds;
+    const startedAtMilliseconds = dependencies.wallClock.currentEpochMilliseconds;
+    const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
 
     try {
-        return await finishExecution(runtime, resolvedRun, startedAtMilliseconds);
+        return await finishExecution(runtime, resolvedRun, startedAtMilliseconds, startedAtMicroseconds);
     } finally {
         await releaseRuntimePool(runtime);
     }

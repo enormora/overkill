@@ -60,7 +60,7 @@ export const testNode = createOverkillSuite({
                         planned: 3,
                         skipped: 0
                     },
-                    wallTimeMs: 10
+                    totalWallTimeMicroseconds: 10_000
                 });
 
                 await requireFinish(reporter)(runResult);
@@ -93,7 +93,7 @@ export const testNode = createOverkillSuite({
                         resourceExhausted: 1,
                         skipped: 1
                     },
-                    wallTimeMs: 15
+                    totalWallTimeMicroseconds: 15_000
                 });
 
                 await requireFinish(reporter)(runResult);

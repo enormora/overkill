@@ -1,4 +1,4 @@
-import type { WallClock } from '@enormora/wall-clock';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import type { ExecuteOptions } from '../engine/execution.ts';
 import type { TestNode } from '../engine/test-node.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
@@ -37,11 +37,11 @@ type DirectResourceUsageTracker = Exclude<ExecuteOptions['resourceUsageTracker']
 
 export type RunIfMainDependencies = {
     readonly createResourceUsageTracker: (
-        wallClock: WallClock,
+        wallClock: OverkillClock,
         options: ResourceUsageTrackerOptions
     ) => DirectResourceUsageTracker;
     readonly createRuntimePolicy: () => DirectRuntimePolicy;
-    readonly createWallClock: () => WallClock;
+    readonly createOverkillClock: () => OverkillClock;
     readonly currentWorkingDirectory: () => string;
     readonly readExitCode: () => RunIfMainExitCode;
     readonly resolveDirectProfile: (meta: Readonly<ImportMeta>, cwd: string) => Promise<DirectProfileContext>;
@@ -93,7 +93,7 @@ async function executeDirectTestPlan(
     testPlan: TestPlan,
     dependencies: RunIfMainDependencies
 ): Promise<DirectRunResult> {
-    const wallClock = dependencies.createWallClock();
+    const wallClock = dependencies.createOverkillClock();
     const reporters = await selectedReporters(context.profile, context.config, context.options);
     const config = runConfig(context.config, reporters);
     const ordered = createSeededTestPlan(testPlan);
@@ -107,7 +107,7 @@ async function executeDirectTestPlan(
     });
     const runtimePolicy = dependencies.createRuntimePolicy();
     const { resourceUsagePolicy } = runFacts.execution;
-    const startedAt = new Date(wallClock.currentTimestampInMilliseconds);
+    const startedAt = new Date(wallClock.currentEpochMilliseconds);
 
     warnOnSupervisedDowngrade(context.profile, dependencies.stderr);
 

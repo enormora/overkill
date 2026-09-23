@@ -5,7 +5,10 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
-import { deduplicatedChildRuntimePolicyErrors } from './supervised-run-state.ts';
+import {
+    deduplicatedChildRuntimePolicyErrors,
+    deduplicatedRuntimePolicyErrors
+} from './supervised-run-state.ts';
 
 const caseId: CaseId = {
     file: 'source/example.test.ts',
@@ -101,6 +104,32 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(
                     deduplicatedChildRuntimePolicyErrors([ childError, childReporterError ], []),
                     [ childError, childReporterError ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'deduplicatedRuntimePolicyErrors() keeps one process.env error per boundary',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const traceError = runtimePolicyError(
+                    'Runtime policy violation: process.env value was set: EXAMPLE.',
+                    caseId,
+                    'process-env'
+                );
+                const childError = runtimePolicyError(
+                    'Runtime policy violation: process.env changed.',
+                    caseId,
+                    'process-env'
+                );
+                const reporter = reporterError();
+
+                scope.assert.deepEqual(
+                    deduplicatedRuntimePolicyErrors([ traceError, childError, reporter ]),
+                    [ traceError, reporter ]
                 );
 
                 return scope.assert.collect();

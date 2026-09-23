@@ -98,7 +98,7 @@ function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): 
             outcome: null,
             suitePath: [],
             verdict: 'pass',
-            wallTimeMs: 0,
+            durationMicroseconds: 0,
             workId: work
         },
         kind: 'event'

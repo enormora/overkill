@@ -121,9 +121,9 @@ function splitCandidatePlan(unit: WorkUnit): PlacementPlan {
     };
 }
 
-function durationSample(work: WorkUnit['work'][number], durationMilliseconds: number): DurationHistorySample {
+function durationSample(work: WorkUnit['work'][number], durationMicroseconds: number): DurationHistorySample {
     return {
-        durationMilliseconds,
+        durationMicroseconds,
         observedAt: '2026-01-01T00:00:00.000Z',
         observations: [],
         sampleCount: 1,
@@ -170,7 +170,7 @@ function runtimeWithSampledHedging(plan: PlacementPlan, unit: WorkUnit): WorkerP
                 ...runtime.resolvedRun.facts,
                 durationHistory: {
                     generatedAt: '2026-01-01T00:00:00.000Z',
-                    samples: [ durationSample(firstWork(unit), 100) ],
+                    samples: [ durationSample(firstWork(unit), 100_000) ],
                     source: 'runtime-state-index'
                 }
             }
@@ -256,14 +256,14 @@ function activeHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): H
     return {
         lane: firstLane(plan),
         lease: primaryLease(firstUnit(plan), firstLane(plan)),
-        startedAtMilliseconds: runtime.dependencies.wallClock.currentTimestampInMilliseconds - 50
+        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 50_000
     };
 }
 
 function readyHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): HedgeActiveUnitLease {
     return {
         ...activeHedgeLease(runtime, plan),
-        startedAtMilliseconds: runtime.dependencies.wallClock.currentTimestampInMilliseconds - 100
+        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 100_000
     };
 }
 

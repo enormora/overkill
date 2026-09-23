@@ -182,7 +182,7 @@ export const testNode = suite('cli benchmarks', [
             });
 
             return {
-                durationMilliseconds: run.durationMilliseconds,
+                durationMicroseconds: run.durationMicroseconds,
                 startupMilliseconds: run.startupMilliseconds,
                 percentile95EventLoopBlockMilliseconds: run.eventLoop.percentile95Milliseconds,
                 maximumEventLoopBlockMilliseconds: run.eventLoop.maximumMilliseconds,
@@ -192,19 +192,19 @@ export const testNode = suite('cli benchmarks', [
         diagnosticMetrics: [ 'outputBytes' ],
         budgets: {
             small: {
-                durationMilliseconds: { maximum: 500 },
+                durationMicroseconds: { maximum: 500 },
                 startupMilliseconds: { maximum: 120 },
                 percentile95EventLoopBlockMilliseconds: { maximum: 8 },
                 maximumEventLoopBlockMilliseconds: { maximum: 20 }
             },
             medium: {
-                durationMilliseconds: { maximum: 900 },
+                durationMicroseconds: { maximum: 900 },
                 startupMilliseconds: { maximum: 150 },
                 percentile95EventLoopBlockMilliseconds: { maximum: 16 },
                 maximumEventLoopBlockMilliseconds: { maximum: 30 }
             },
             large: {
-                durationMilliseconds: { maximum: 3200 },
+                durationMicroseconds: { maximum: 3200 },
                 startupMilliseconds: { maximum: 220 },
                 percentile95EventLoopBlockMilliseconds: { maximum: 24 },
                 maximumEventLoopBlockMilliseconds: { maximum: 40 }

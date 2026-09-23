@@ -1,4 +1,5 @@
 import { dirname, join } from 'node:path';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import type { RunRequest, RunTestFamily } from './run-types.ts';
@@ -83,9 +84,7 @@ export type SupervisedChildOutputRuntime = {
                 readonly write: (chunk: Uint8Array) => void;
             };
         };
-        readonly wallClock: {
-            readonly currentTimestampInMilliseconds: number;
-        };
+        readonly wallClock: Pick<OverkillClock, 'currentMonotonicMicroseconds'>;
     };
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
@@ -255,7 +254,7 @@ function recordOrWriteCapturedOutput(
     runtime.state.recordCapturedOutput(
         stream,
         chunk,
-        runtime.dependencies.wallClock.currentTimestampInMilliseconds
+        runtime.dependencies.wallClock.currentMonotonicMicroseconds
     );
 }
 

@@ -39,7 +39,7 @@ function passResult(): PerTestResult {
         id,
         outcome: { kind: 'pass' },
         verdict: 'pass',
-        wallTimeMs: 0,
+        durationMicroseconds: 0,
         workId: { case: id, runtimes: [], workload: null }
     };
 }
@@ -72,7 +72,7 @@ function endEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'test-
         kind: 'test-end',
         outcome: { kind: 'pass' },
         verdict: 'pass',
-        wallTimeMs: 0
+        durationMicroseconds: 0
     };
 }
 
