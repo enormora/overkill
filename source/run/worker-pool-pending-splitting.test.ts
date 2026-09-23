@@ -10,11 +10,12 @@ import {
     type AcceptingPool,
     type CapturedWorkerTask,
     completedWorkerPoolOutput,
+    createAcceptingPool,
     fakeWorkerRuntime,
     placementPlan,
     testCaseMetadata
 } from './worker-pool-placement-validation.test.ts';
-import type { WorkerPoolTaskRun } from './worker-pool-runtime.ts';
+import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 
 type PlacementAssignment = PlacementPlan['assignments'][number];
 type WorkUnit = PlacementPlan['units'][number];
@@ -26,6 +27,9 @@ type ControlledExecution = {
     readonly completed: Promise<readonly WorkerPoolTaskRun[]>;
     readonly controlledPool: ControlledPool;
 };
+type BatchStartedTraceEntry = Extract<WorkerPoolRunRuntime['placementTraceEntries'][number], {
+    readonly kind: 'batch-started';
+}>;
 
 function firstUnit(): WorkUnit {
     const unit = placementPlan().units[0];
@@ -125,6 +129,21 @@ function splitCandidatePlacement(unit: WorkUnit): PlacementPlan {
     ], [ unit, filler ]);
 }
 
+function batchingPlacement(): PlacementPlan {
+    const first = workUnit('first-batched');
+    const second = workUnit('second-batched');
+    const lane = workerLane('worker-1');
+
+    return {
+        assignments: [
+            { lane: lane.id, unit: first.id },
+            { lane: lane.id, unit: second.id }
+        ],
+        lanes: [ lane ],
+        units: [ first, second ]
+    };
+}
+
 async function letWorkerLoopsRun(): Promise<void> {
     await Promise.resolve();
     await sleep(0);
@@ -186,7 +205,7 @@ function startControlledExecution(placement: PlacementPlan): ControlledExecution
     };
 }
 
-function capturedTask(pool: ControlledPool, index: number): CapturedWorkerTask {
+function capturedTask(pool: AcceptingPool, index: number): CapturedWorkerTask {
     const task = pool.capturedTasks[index];
 
     if (task === undefined) {
@@ -199,10 +218,6 @@ function capturedTask(pool: ControlledPool, index: number): CapturedWorkerTask {
 function assertSingleWorkTask(scope: OverkillScope, task: CapturedWorkerTask, title: string): void {
     const work = task.assignedWork[0];
 
-    if (work === undefined) {
-        throw new Error('Expected a captured worker task with assigned work.');
-    }
-
     scope.assert.equal(task.assignedWork.length, 1);
     scope.assert.equal(work.case.title, title);
 }
@@ -211,6 +226,32 @@ function assertSplitTasks(scope: OverkillScope, pool: ControlledPool): void {
     scope.assert.equal(pool.capturedTasks.length, 2);
     assertSingleWorkTask(scope, capturedTask(pool, 0), 'split-parent');
     assertSingleWorkTask(scope, capturedTask(pool, 1), 'split-parent-extra');
+}
+
+function batchStartedTraceEntry(
+    entry: WorkerPoolRunRuntime['placementTraceEntries'][number] | undefined
+): BatchStartedTraceEntry {
+    if (entry?.kind === 'batch-started') {
+        return entry;
+    }
+
+    throw new Error('Expected a batch-started trace entry.');
+}
+
+function assertBatchTraceStarted(
+    scope: OverkillScope,
+    placement: PlacementPlan,
+    runtime: WorkerPoolRunRuntime
+): void {
+    scope.assert.deepEqual(batchStartedTraceEntry(runtime.placementTraceEntries[0]), {
+        envelopeId: 'batch-1',
+        kind: 'batch-started',
+        lane: 'worker-1',
+        units: placement.units.map(function toUnitId(unit) {
+            return unit.id;
+        }),
+        workerId: 'worker-1'
+    });
 }
 
 async function completeSplitExecution(execution: ControlledExecution): Promise<readonly WorkerPoolTaskRun[]> {
@@ -238,6 +279,38 @@ export const testNode = createOverkillSuite({
                 const completedRuns = await completeSplitExecution(execution);
 
                 scope.assert.equal(completedRuns.length, 3);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool dynamic dispatch executes compatible batches as one task',
+            async body(scope: OverkillScope) {
+                const placement = batchingPlacement();
+                const acceptingPool = createAcceptingPool();
+                const runtime = {
+                    ...fakeWorkerRuntime(placement),
+                    pool: acceptingPool.pool
+                };
+
+                const completed = await executeWorkerPoolUnits(runtime, placement, 0);
+
+                scope.assert.equal(completed.length, 1);
+                scope.assert.equal(acceptingPool.capturedTasks.length, 1);
+                scope.assert.deepEqual(
+                    capturedTask(acceptingPool, 0).assignedWork.map(function toTitle(work) {
+                        return work.case.title;
+                    }),
+                    [ 'first-batched', 'second-batched' ]
+                );
+                scope.assert.deepEqual(
+                    runtime.placementTraceEntries.map(function toKind(entry) {
+                        return entry.kind;
+                    }),
+                    [ 'batch-started', 'batch-completed' ]
+                );
+                assertBatchTraceStarted(scope, placement, runtime);
 
                 return scope.assert.collect();
             }

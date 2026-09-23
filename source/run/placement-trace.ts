@@ -31,6 +31,18 @@ export type PlacementTraceEntry = {
     readonly unit: TraceWorkUnitId;
     readonly workerId: string;
 } | {
+    readonly envelopeId: string;
+    readonly kind: 'batch-completed';
+    readonly lane: PlacementLane['id'];
+    readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
+    readonly workerId: string;
+} | {
+    readonly envelopeId: string;
+    readonly kind: 'batch-started';
+    readonly lane: PlacementLane['id'];
+    readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
+    readonly workerId: string;
+} | {
     readonly fromLane: PlacementLane['id'];
     readonly kind: 'unit-reassigned';
     readonly toLane: PlacementLane['id'];

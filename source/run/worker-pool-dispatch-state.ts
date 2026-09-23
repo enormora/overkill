@@ -26,9 +26,16 @@ export type LeaseReservation = {
     readonly hardKeys: readonly string[];
 };
 
+export type WorkerPoolLeaseMember = {
+    readonly traceUnit: TraceWorkUnitId;
+    readonly unit: WorkUnit;
+};
+
 export type WorkerPoolUnitLease = {
+    readonly envelopeId: string | null;
     readonly kind: 'hedged-duplicate' | 'primary';
     readonly lane: PlacementLane;
+    readonly members: readonly [WorkerPoolLeaseMember, ...(readonly WorkerPoolLeaseMember[])];
     readonly reservation: LeaseReservation;
     readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;

@@ -1,24 +1,26 @@
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import {
-    applyEvent
-} from './supervised-run-runtime.ts';
+import { applyEvent } from './supervised-run-runtime.ts';
 import type { SupervisedCase } from './supervised-run-state.ts';
-import {
-    crashError
-} from './supervised-run-resource-policy.ts';
+import { crashError } from './supervised-run-resource-policy.ts';
 import type { WorkUnit } from './run-types.ts';
-import type {
-    WorkerPoolMessage
-} from './worker-pool-protocol.ts';
+import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
 
 type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
 
-function casesByKey(unit: WorkUnit): ReadonlyMap<string, SupervisedCase> {
+function memberUnits(taskRun: WorkerPoolTaskRun): readonly WorkUnit[] {
+    return taskRun.members.map(function toUnit(member) {
+        return member.unit;
+    });
+}
+
+function casesByKey(taskRun: WorkerPoolTaskRun): ReadonlyMap<string, SupervisedCase> {
     return new Map(
-        unit.work.map(function toCaseEntry(work) {
-            return [ workIdentityKey(work), { capture: null, id: work.case, workId: work } ];
+        memberUnits(taskRun).flatMap(function toUnitCases(unit) {
+            return unit.work.map(function toCaseEntry(work) {
+                return [ workIdentityKey(work), { capture: null, id: work.case, workId: work } ] as const;
+            });
         })
     );
 }
@@ -46,11 +48,20 @@ export function clearTaskTimeout(
     }
 }
 
+function recordWorkerCrashTrace(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
+    runtime.recordPlacementTraceEntry({
+        activeUnit: taskRun.activeTraceUnit.read(),
+        kind: 'worker-crashed',
+        workerId: taskRun.lane
+    });
+}
+
 export function recordTaskCrash(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime,
     message: string
 ): void {
+    recordWorkerCrashTrace(taskRun, runtime);
     taskRun.state.recordRunnerError(crashError(taskRun.state, message));
     taskRun.state.recordTerminalActiveCases(
         'crashed',
@@ -101,7 +112,7 @@ function handleWorkerEvent(
     applyEvent(
         reportedEvent,
         taskRun.state,
-        casesByKey(taskRun.unit),
+        casesByKey(taskRun),
         runtime.dependencies.wallClock.currentMonotonicMicroseconds
     );
 
@@ -116,6 +127,37 @@ function handleWorkerEvent(
     }
 }
 
+function handleUnitStarted(
+    message: Extract<WorkerPoolMessage, { readonly kind: 'unit-started'; }>,
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): void {
+    taskRun.activeTraceUnit.write(message.traceUnit);
+    runtime.recordPlacementTraceEntry({
+        kind: 'unit-started',
+        lane: taskRun.lane,
+        unit: message.traceUnit,
+        workerId: taskRun.lane
+    });
+}
+
+function handleUnitCompleted(
+    message: Extract<WorkerPoolMessage, { readonly kind: 'unit-completed'; }>,
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): void {
+    runtime.recordPlacementTraceEntry({
+        durationMicroseconds: message.durationMicroseconds,
+        kind: 'unit-completed',
+        unit: message.traceUnit,
+        workerId: taskRun.lane
+    });
+
+    if (taskRun.activeTraceUnit.read() === message.traceUnit) {
+        taskRun.activeTraceUnit.write(null);
+    }
+}
+
 export function handleWorkerMessage(
     message: WorkerPoolMessage,
     taskRun: WorkerPoolTaskRun,
@@ -127,6 +169,10 @@ export function handleWorkerMessage(
             Buffer.from(message.chunk),
             message.capturedAtMicroseconds
         );
+    } else if (message.kind === 'unit-started') {
+        handleUnitStarted(message, taskRun, runtime);
+    } else if (message.kind === 'unit-completed') {
+        handleUnitCompleted(message, taskRun, runtime);
     } else {
         handleWorkerEvent(message.event, taskRun, runtime);
     }

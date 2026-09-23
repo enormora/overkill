@@ -20,20 +20,9 @@ import type {
     WorkerPoolResourceUsageTracker,
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
-import {
-    createReporterDelivery,
-    createReporterEventQueue,
-    type ReporterEventQueue
-} from './supervised-run-runtime.ts';
-import {
-    createStoredRunValue,
-    type StoredRunValue,
-    type SupervisedRunState
-} from './supervised-run-state.ts';
-import {
-    loadTinypoolConstructor,
-    type TinypoolInstance
-} from './tinypool-node-compatibility.ts';
+import { createReporterDelivery, createReporterEventQueue, type ReporterEventQueue } from './supervised-run-runtime.ts';
+import { createStoredRunValue, type StoredRunValue, type SupervisedRunState } from './supervised-run-state.ts';
+import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { runTask as workerPoolWorkerEntryPoint } from './worker-pool-worker.ts';
 import { createRoutedPool } from './worker-pool-routing.ts';
 
@@ -68,13 +57,21 @@ type WorkerPoolReporterEventBuffer = {
     readonly push: (...events: readonly ReporterEvent[]) => number;
 };
 
+type WorkerPoolTaskRunMember = {
+    readonly traceUnit: TraceWorkUnitId;
+    readonly unit: WorkUnit;
+};
+
 export type WorkerPoolTaskRun = {
+    readonly activeTraceUnit: StoredRunValue<TraceWorkUnitId | null>;
     readonly bufferedReporterEvents: WorkerPoolReporterEventBuffer;
     readonly controller: AbortController;
     readonly endedByParent: StoredRunValue<boolean>;
+    readonly envelopeId: StoredRunValue<string | null>;
     readonly includeArtifacts: StoredRunValue<boolean>;
     readonly leaseKind: 'hedged-duplicate' | 'primary';
     readonly lane: string;
+    readonly members: readonly [WorkerPoolTaskRunMember, ...(readonly WorkerPoolTaskRunMember[])];
     readonly reporterEventsBuffered: boolean;
     readonly requeuePendingCases: StoredRunValue<boolean>;
     readonly state: SupervisedRunState;

@@ -966,6 +966,17 @@ constraints, timeout policy, host-process needs, and artifact routing. A subset
 relationship is not enough for the baseline concept because it creates hidden
 precedence and validation rules.
 
+The dynamic worker-pool may batch pending reusable-worker units as an internal
+lease optimization. Batching is not a CLI or config mode. A batch shares only
+the worker task boundary and selected import work: every member still executes
+as a separate unit with its own start, completion, timeout window, result, and
+artifact flow. Fresh-worker-per-unit work is not batchable.
+
+A dynamic batch is capped by fair share: one idle compatible lane should not
+consume the whole compatible pending set while other compatible lanes can also
+pull work. Trace data records the batch envelope separately from member unit
+lifecycle events.
+
 ### Warm-Lane Affinity
 
 Warm-lane affinity is a soft tie-breaker for reused workers. It may prefer a

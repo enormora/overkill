@@ -1253,12 +1253,14 @@ type PlacementTraceEntry =
     | {
         readonly envelopeId: string;
         readonly kind: 'batch-started';
+        readonly lane: string;
         readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
         readonly workerId: string;
     }
     | {
         readonly envelopeId: string;
         readonly kind: 'batch-completed';
+        readonly lane: string;
         readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
         readonly workerId: string;
     }

@@ -4,8 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type CaseId,
     type RunResult,
-    type TestScope as OverkillScope,
-    type WorkId
+    type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
@@ -13,9 +12,7 @@ import { defaultRunEngine } from './default-run-engine.ts';
 import type { CreatedWorkerPool } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
-import type {
-    WorkerPoolRunRuntime
-} from './worker-pool-runtime.ts';
+import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
@@ -23,9 +20,11 @@ type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPla
 type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
 type WorkUnit = PlacementPlan['units'][number];
 type WorkerPoolOutput = {
-    readonly result: RunResult;
+    readonly results: readonly {
+        readonly result: RunResult;
+        readonly traceUnit: WorkUnit['id'];
+    }[];
 };
-
 export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
@@ -288,7 +287,11 @@ function createFakePool(): CreatedWorkerPool {
 }
 
 export type CapturedWorkerTask = {
-    readonly assignedWork: readonly WorkId[];
+    readonly assignedUnits: readonly {
+        readonly traceUnit: WorkUnit['id'];
+        readonly work: WorkUnit['work'];
+    }[];
+    readonly assignedWork: WorkUnit['work'];
     readonly command: {
         readonly paths: readonly string[];
         readonly scheduling: 'concurrent' | 'serial';
@@ -304,18 +307,23 @@ export type AcceptingPool = {
 
 export function completedWorkerPoolOutput(): WorkerPoolOutput {
     return {
-        result: createRunResultFromCollectedPlan(
-            createCollectedPlan(),
-            [],
-            [],
+        results: [
             {
-                completedAtMicroseconds: 0,
-                planStatus: 'planned',
-                resourceUsage: null,
-                startedAtMicroseconds: 0,
-                testExecutionWallTimeMicroseconds: 0
+                result: createRunResultFromCollectedPlan(
+                    createCollectedPlan(),
+                    [],
+                    [],
+                    {
+                        completedAtMicroseconds: 0,
+                        planStatus: 'planned',
+                        resourceUsage: null,
+                        startedAtMicroseconds: 0,
+                        testExecutionWallTimeMicroseconds: 0
+                    }
+                ),
+                traceUnit: firstWorkUnit().id
             }
-        )
+        ]
     };
 }
 

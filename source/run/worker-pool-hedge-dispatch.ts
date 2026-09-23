@@ -84,6 +84,7 @@ function hedgeCandidateCanRunOnLane(
 
 function hedgeCandidateIsEligible(state: HedgeDispatchState, entry: HedgeActiveUnitLease): boolean {
     return entry.lease.kind === 'primary' &&
+        entry.lease.members.length === 1 &&
         entry.lease.unit.work.length === 1 &&
         unitHasNoHardConstraints(entry.lease.unit) &&
         unitIsHedgeSafe(entry.lease.unit) &&
