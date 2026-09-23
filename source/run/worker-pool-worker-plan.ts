@@ -1,8 +1,10 @@
 import type { OverkillClock } from '../clock/overkill-clock.ts';
-import type { Engine } from '../engine/engine.ts';
+import {
+    createExecutionGlobalErrorObserver,
+    type ExecutionGlobalErrorObserver
+} from '../engine/execution-global-error-observer.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { RunnerError } from '../engine/run-result.ts';
-import type { TestPlan } from '../packages/engine/engine.entry-point.ts';
+import type { RunnerError, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import {
     collectedRunPlanFromTestPlan,
     collectedRunPlanFromTestPlanCases,
@@ -15,6 +17,7 @@ import {
     runDiscovery
 } from './node-run-dependencies.entry-point.ts';
 import { createRunTestPlan } from './run-test-plan.ts';
+import { RunCollectionError } from './run-errors.ts';
 import type {
     WorkerPoolCollection,
     WorkerPoolCommand,
@@ -27,9 +30,49 @@ export type CollectedWorkerPoolTestPlan = {
 };
 
 type AssignedWork = readonly WorkId[];
+type SelectedWorkerPoolEngine = Awaited<ReturnType<typeof loadRunEngineModule>>;
+const missingObservedWorkerError: RunnerError = {
+    attributedTo: null,
+    attributedToWork: null,
+    cause: null,
+    message: 'Worker-pool worker failed after a process-level runtime error.',
+    subtype: 'crash'
+};
 
-async function selectedEngine(command: WorkerPoolCommand): Promise<Engine> {
+async function selectedEngine(command: WorkerPoolCommand): Promise<SelectedWorkerPoolEngine> {
     return command.engine.kind === 'module' ? await loadRunEngineModule(command.engine) : defaultRunEngine;
+}
+
+function firstObservedWorkerError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
+    const [ error ] = [ ...observer.takeErrors(), missingObservedWorkerError ];
+
+    return new RunCollectionError(
+        error.message,
+        { cause: error },
+        error.subtype
+    );
+}
+
+async function waitForObservedWorkerError(observer: ExecutionGlobalErrorObserver): Promise<never> {
+    await observer.fatalSignal();
+    throw firstObservedWorkerError(observer);
+}
+
+export async function runObservedWorkerCollection<Value>(collect: () => Promise<Value>): Promise<Value> {
+    const globalErrorObserver = createExecutionGlobalErrorObserver('worker-pool-worker');
+
+    try {
+        return await globalErrorObserver.runBoundary(async function collectObservedWorkerPlan() {
+            return await globalErrorObserver.runPhase('collection', async function collectObservedPlan() {
+                return await Promise.race([
+                    collect(),
+                    waitForObservedWorkerError(globalErrorObserver)
+                ]);
+            });
+        });
+    } finally {
+        globalErrorObserver.stop();
+    }
 }
 
 async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<TestPlan> {

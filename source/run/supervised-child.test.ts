@@ -1,10 +1,13 @@
+import { setImmediate as scheduleImmediate } from 'node:timers';
 import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    type RunnerError,
+    type RunResourceUsageTracker,
+    type TestPlan,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { RunnerError, RunResourceUsageTracker } from '../engine/run-result.ts';
 import {
     loadDeterministicRunTestModules
 } from '../test-support/deterministic-run-fixtures.ts';
@@ -14,6 +17,11 @@ import {
     type SupervisedChildDependencies,
     type SupervisedChildHost
 } from './supervised-child.ts';
+import {
+    createSupervisedChildTestPlan,
+    runnerErrorFromSupervisedChildFailure,
+    runObservedSupervisedChildCommand
+} from './supervised-child-test-plan.ts';
 import type {
     SupervisedAssignmentCommand,
     SupervisedChildCommand,
@@ -192,6 +200,52 @@ function firstRunnerErrorMessage(messages: readonly SupervisedChildMessage[]): s
         : null;
 }
 
+async function yieldToImmediate(): Promise<void> {
+    await new Promise<void>(function resolveOnImmediate(resolve) {
+        scheduleImmediate(resolve);
+    });
+}
+
+function emitUnhandledRejection(message: string): void {
+    process.emit('unhandledRejection', new Error(message), Promise.resolve());
+}
+
+async function collectObservedSupervisedFailure(): Promise<unknown> {
+    try {
+        await runObservedSupervisedChildCommand(async function collectChildPlan() {
+            emitUnhandledRejection('supervised collection failed');
+            await yieldToImmediate();
+        });
+    } catch (error: unknown) {
+        return error;
+    }
+
+    throw new Error('Expected supervised child command to reject.');
+}
+
+async function createModuleEngineSupervisedPlan(): Promise<TestPlan> {
+    return await createSupervisedChildTestPlan(
+        {
+            ...command('collect', passingFixturePath),
+            engine: {
+                exportKind: 'value',
+                exportName: 'engine',
+                kind: 'module',
+                moduleUrl: 'file:///engine.ts'
+            }
+        },
+        {
+            discoverRunFiles: createDiscovery([ passingFixturePath ]),
+            async loadRunEngineModule() {
+                const { defaultRunEngine } = await import('./default-run-engine.ts');
+
+                return defaultRunEngine;
+            },
+            loadRunTestModules: loadDeterministicRunTestModules
+        }
+    );
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-child.test.ts',
@@ -314,6 +368,38 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(childRun.exitCode(), 1);
                 scope.assert.equal(firstRunnerErrorMessage(childRun.messages()), 'plain failure');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runObservedSupervisedChildCommand() surfaces global hook failures',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const observedError = await collectObservedSupervisedFailure();
+                const runnerError = runnerErrorFromSupervisedChildFailure(observedError);
+
+                scope.assert.equal(runnerError.subtype, 'unhandled-rejection');
+                scope.assert.equal(runnerError.message, 'Unhandled rejection: supervised collection failed');
+                scope.assert.equal(runnerErrorFromSupervisedChildFailure('plain').message, 'plain');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'createSupervisedChildTestPlan() loads module engines',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const testPlan = await createModuleEngineSupervisedPlan();
+                const [ firstCase ] = testPlan.cases;
+
+                scope.require.defined(firstCase);
+                scope.assert.equal(testPlan.cases.length, 1);
+                scope.assert.equal(firstCase.id.title, 'passes');
 
                 return scope.assert.collect();
             }

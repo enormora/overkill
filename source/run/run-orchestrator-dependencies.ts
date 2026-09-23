@@ -3,6 +3,7 @@ import type {
     Engine,
     Execute,
     ReporterDispatcher,
+    RunnerError,
     RunResourceUsageTracker
 } from '../packages/engine/engine.entry-point.ts';
 import type {
@@ -66,7 +67,30 @@ export type CreatedWorkerPool = {
     };
     run: (task: unknown, options: WorkerPoolRunOptions) => Promise<unknown>;
     readonly setHostOutputSink?: (sink: WorkerPoolHostOutputSink | null) => void;
+    readonly takeHostRunnerErrors?: () => readonly RunnerError[];
 };
+
+export type HostRunnerErrors = {
+    readonly push: (error: RunnerError) => unknown;
+    readonly take: () => readonly RunnerError[];
+};
+
+export function createHostRunnerErrors(): HostRunnerErrors {
+    const errors: RunnerError[] = [];
+
+    return {
+        push(error) {
+            errors.push(error);
+        },
+        take() {
+            const currentErrors = Array.from(errors);
+
+            errors.length = 0;
+
+            return currentErrors;
+        }
+    };
+}
 
 export type RunOrchestratorDependencies = {
     readonly availableParallelism: number;

@@ -181,6 +181,26 @@ function processEnvironmentPolicyKeys(errors: readonly RunnerError[]): ReadonlyS
     }));
 }
 
+export function deduplicatedRuntimePolicyErrors(errors: readonly RunnerError[]): readonly RunnerError[] {
+    const processEnvironmentKeys = new Set<string>();
+
+    return errors.filter(function notDuplicatedProcessEnvironmentError(error) {
+        const key = processEnvironmentPolicyKey(error);
+
+        if (key === null) {
+            return true;
+        }
+
+        if (processEnvironmentKeys.has(key)) {
+            return false;
+        }
+
+        processEnvironmentKeys.add(key);
+
+        return true;
+    });
+}
+
 export function deduplicatedChildRuntimePolicyErrors(
     childErrors: readonly RunnerError[],
     supervisorErrors: readonly RunnerError[]
@@ -191,26 +211,6 @@ export function deduplicatedChildRuntimePolicyErrors(
         const key = processEnvironmentPolicyKey(error);
 
         return key === null || !supervisorKeys.has(key);
-    });
-}
-
-export function deduplicatedRuntimePolicyErrors(errors: readonly RunnerError[]): readonly RunnerError[] {
-    const seenProcessEnvironmentKeys = new Set<string>();
-
-    return errors.filter(function keepFirstProcessEnvironmentError(error) {
-        const key = processEnvironmentPolicyKey(error);
-
-        if (key === null) {
-            return true;
-        }
-
-        if (seenProcessEnvironmentKeys.has(key)) {
-            return false;
-        }
-
-        seenProcessEnvironmentKeys.add(key);
-
-        return true;
     });
 }
 

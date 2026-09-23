@@ -22,6 +22,7 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly resourceExhaustion: 'resource-exhaustion';
     readonly runtimePolicy: 'runtime-policy';
     readonly runtimeState: 'runtime-state';
+    readonly uncaughtException: 'uncaught-exception';
     readonly unhandledRejection: 'unhandled-rejection';
 };
 type ExpectedRunnerErrorSubtype = ExpectedRunnerErrorSubtypeByName[keyof ExpectedRunnerErrorSubtypeByName];

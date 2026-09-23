@@ -13,12 +13,14 @@ import {
     childRoleArgument,
     workerPoolHostRole
 } from './child-process-roles.ts';
-import type {
-    CreatedWorkerPool,
-    WorkerPoolCreationOptions,
-    WorkerPoolHostOutputSink,
-    WorkerPoolHostProcessStartOptions,
-    WorkerPoolHostProcessStarter
+import {
+    createHostRunnerErrors,
+    type CreatedWorkerPool,
+    type HostRunnerErrors,
+    type WorkerPoolCreationOptions,
+    type WorkerPoolHostOutputSink,
+    type WorkerPoolHostProcessStartOptions,
+    type WorkerPoolHostProcessStarter
 } from './run-orchestrator-dependencies.ts';
 import { createResourceUsageFromSamples } from './resource-usage.ts';
 import {
@@ -107,6 +109,7 @@ type HostResourceTrackingState = {
 };
 
 type HostedWorkerPoolState = {
+    readonly hostRunnerErrors: HostRunnerErrors;
     readonly outputSink: StoredValue<WorkerPoolHostOutputSink | null>;
     readonly pendingTasks: PendingHostTasks;
     readonly resourceUsage: HostResourceTrackingState;
@@ -213,6 +216,7 @@ function createResourceUsageSamples(): ResourceUsageSamples {
 
 function createHostedWorkerPoolState(): HostedWorkerPoolState {
     return {
+        hostRunnerErrors: createHostRunnerErrors(),
         outputSink: createStoredValue<WorkerPoolHostOutputSink | null>(null),
         pendingTasks: createPendingHostTasks(),
         resourceUsage: {
@@ -318,9 +322,18 @@ function handleResourceSample(
     state.resourceUsage.resolveFirstSample.write(null);
 }
 
+function handleHostRunnerError(
+    state: HostedWorkerPoolState,
+    message: Extract<WorkerPoolHostMessage, { readonly kind: 'runner-error'; }>
+): void {
+    state.hostRunnerErrors.push(message.error);
+}
+
 function handleHostMessage(state: HostedWorkerPoolState, message: WorkerPoolHostMessage): void {
     if (message.kind === 'resource-sample') {
         handleResourceSample(state, message);
+    } else if (message.kind === 'runner-error') {
+        handleHostRunnerError(state, message);
     } else if (message.kind === 'task-error') {
         handleTaskError(state, message);
     } else if (message.kind === 'task-message') {
@@ -545,6 +558,9 @@ export function createHostedWorkerPool(input: HostedWorkerPoolInput): CreatedWor
         },
         setHostOutputSink(sink) {
             state.outputSink.write(sink);
+        },
+        takeHostRunnerErrors() {
+            return state.hostRunnerErrors.take();
         }
     };
 }

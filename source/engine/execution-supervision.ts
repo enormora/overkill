@@ -19,6 +19,7 @@ import {
     type ExecuteResourceBudgets,
     type ResourceBudgetBreach
 } from './execution-resource-budget-breach.ts';
+import type { ExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 
 export type ExecuteTimeoutPolicy = {
     readonly hardTimeoutMilliseconds: number;
@@ -30,6 +31,7 @@ export type ConcurrentCase = {
     readonly durationMicroseconds: number;
 };
 export type ExecutionSupervisionDependencies = {
+    readonly globalErrorObserver: ExecutionGlobalErrorObserver;
     readonly runtimePolicy?: TestRuntimePolicy | null;
     readonly wallClock: OverkillClock;
 };
@@ -335,6 +337,15 @@ function completeActiveCasesWithCrash(
     }
 }
 
+function completeActiveCasesAfterGlobalError(
+    supervision: ExecutionSupervision,
+    dependencies: ExecutionSupervisionDependencies
+): void {
+    if (supervision.activeCases.size > 0) {
+        completeActiveCasesAs(supervision, 'crashed', dependencies);
+    }
+}
+
 function completeActiveCasesWithResourceExhaustion(
     breach: ResourceBudgetBreach,
     supervision: ExecutionSupervision,
@@ -458,6 +469,10 @@ function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void
     });
 }
 async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<ConcurrentCase> {
+    const removeFatalHandler = input.dependencies.globalErrorObserver.onFatalError(function completeCrashedCases() {
+        completeActiveCasesAfterGlobalError(input.supervision, input.dependencies);
+    });
+
     try {
         const executedCase = await Promise.race([
             runCaseWithSoftTimeout(input),
@@ -476,6 +491,8 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
 
         completeUnexpectedBodyError(input, error);
         return fallbackCase;
+    } finally {
+        removeFatalHandler();
     }
 }
 

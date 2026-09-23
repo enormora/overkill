@@ -187,19 +187,25 @@ selection as success.
 Async failures are messy. The runner's policy:
 
 - any unhandled rejection or uncaught exception emitted **during** a
-  test's `run` (including its async tail until the next test starts) is
-  attributed to that test as a **runner error** (see
-  [Failure Artifacts](../authoring/failure-artifacts.md))
+  test's `run` is attributed to that test as a **runner error** (see
+  [Failure Artifacts](../authoring/failure-artifacts.md)) and aborts the
+  current execution boundary
 - any such error after the last test has finished but before the run
   completes is attributed to the run itself
+- async work that was created by a finished test but fires after that test
+  ended is reported as `attribution-drift`, with the original test identity
+  preserved in the cause rather than blamed as an active failure
 - any such error from the runner's own machinery is a runner crash
 
 Detection uses `process.on('unhandledRejection')` and
 `process.on('uncaughtException')` plus a per-test correlation via
 `AsyncLocalStorage` (see [Platform-First Implementation Notes](./platform-first-implementation-notes.md)). The
-correlation is best-effort: an async leak that escapes the test's logical
-window may be attributed to a sibling test. The runner should warn on
-detected attribution drift rather than silently mis-blaming a test.
+hooks are installed for every owned execution boundary: local collection,
+in-process execution, supervised children, worker-pool host processes, and
+worker-pool workers. The runner records the hook failure first, marks active
+cases in that boundary as `crashed`, and then emits the usual terminal
+events/results without relying on raw process output. A late
+`rejectionHandled` event does not retract a recorded hook failure.
 
 Tests that intend to test rejection paths use the assertion library's
 explicit support (`scope.assert.rejects(() => promiseReturningCall(), { message: /expected/ })`)

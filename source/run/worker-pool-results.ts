@@ -44,9 +44,12 @@ function allTaskErrors(
     runtime: WorkerPoolRunRuntime,
     completedTaskRuns: readonly WorkerPoolTaskRun[]
 ): readonly RunnerError[] {
+    const hostRunnerErrors = runtime.pool.takeHostRunnerErrors?.() ?? [];
+
     return [
         ...runtime.collectionRunnerErrors,
         ...runtime.runState.runnerErrors(),
+        ...hostRunnerErrors,
         ...completedTaskRuns.flatMap(function toErrors(taskRun) {
             return taskRun.state.runnerErrors();
         }),

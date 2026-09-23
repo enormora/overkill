@@ -1,3 +1,4 @@
+import { setImmediate as scheduleImmediate } from 'node:timers';
 import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import {
     createSuite as createOverkillSuite,
@@ -18,6 +19,7 @@ import {
 } from './work-unit-planning.ts';
 import {
     createEmptyAssignmentResult,
+    runObservedWorkerCollection,
     selectedAssignedCases,
     sendCollectedPlan
 } from './worker-pool-worker-plan.ts';
@@ -311,6 +313,16 @@ function assertUnknownWorkReferences(scope: OverkillScope): void {
     }, { message: 'Placement plan referenced an unknown collected case.' });
 }
 
+async function yieldToImmediate(): Promise<void> {
+    await new Promise<void>(function resolveOnImmediate(resolve) {
+        scheduleImmediate(resolve);
+    });
+}
+
+function emitUnhandledRejection(message: string): void {
+    process.emit('unhandledRejection', new Error(message), Promise.resolve());
+}
+
 export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
@@ -344,6 +356,22 @@ export const testNode = createOverkillSuite({
                 assertEmptyCollectedFiles(scope);
                 assertWorkerCountBounds(scope);
                 assertUnknownWorkReferences(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool worker collection surfaces global hook failures',
+            async body(scope: OverkillScope) {
+                await scope.assert.rejects(async function collectWithGlobalFailure() {
+                    await runObservedWorkerCollection(async function collectWorkerPlan() {
+                        emitUnhandledRejection('worker collection failed');
+                        await yieldToImmediate();
+                    });
+                }, { message: 'Unhandled rejection: worker collection failed' });
 
                 return scope.assert.collect();
             }

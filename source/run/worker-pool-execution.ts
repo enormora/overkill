@@ -73,6 +73,8 @@ type WorkerTaskRunRequest = {
     readonly taskRun: WorkerPoolTaskRun;
 };
 
+type HostRunnerErrors = ReturnType<NonNullable<WorkerPoolRunRuntime['pool']['takeHostRunnerErrors']>>;
+
 const maximumCrashCount = 3;
 
 type BufferedReporterEvent = ReturnType<
@@ -297,6 +299,26 @@ function recordWorkerCrash(
     return false;
 }
 
+function takeHostRunnerErrors(runtime: WorkerPoolRunRuntime): HostRunnerErrors {
+    return runtime.pool.takeHostRunnerErrors?.() ?? [];
+}
+
+function handleHostRunnerErrors(
+    hostRunnerErrors: HostRunnerErrors,
+    context: TaskFailureContext
+): boolean {
+    if (hostRunnerErrors.length === 0) {
+        return false;
+    }
+
+    context.runtime.terminalFailure.write(true);
+    context.runtime.runState.recordRunnerErrors(hostRunnerErrors);
+    context.dispatcher.clear();
+    markActiveTasksCrashed(context.runtime);
+
+    return true;
+}
+
 function handleParentEndedFailure(
     taskRun: WorkerPoolTaskRun,
     context: TaskFailureContext
@@ -313,6 +335,10 @@ function handleTaskFailure(
     taskRun: WorkerPoolTaskRun,
     context: TaskFailureContext
 ): WorkUnit | null {
+    if (context.runtime.terminalFailure.read()) {
+        return null;
+    }
+
     if (taskRun.endedByParent.read()) {
         return handleParentEndedFailure(taskRun, context);
     }
@@ -345,6 +371,11 @@ function recordFailedTaskRun(
     lease: WorkerPoolUnitLease,
     context: TaskExecutionContext
 ): void {
+    if (handleHostRunnerErrors(takeHostRunnerErrors(context.runtime), context)) {
+        context.dispatcher.finish(lease, taskRun.startedCases.size > 0);
+        return;
+    }
+
     const unit = handleTaskFailure(error, taskRun, context);
 
     context.dispatcher.finish(lease, lease.kind === 'primary' && taskRun.startedCases.size > 0);

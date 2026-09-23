@@ -3,7 +3,8 @@ import {
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
 import { createOverkillClock } from '../clock/overkill-clock.ts';
-import type { RunResourceUsageTracker } from '../engine/run-result.ts';
+import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
+import type { RunResourceUsageTracker, RunnerError } from '../engine/run-result.ts';
 import {
     childProcessEnvelope,
     envelopeMessage
@@ -39,6 +40,7 @@ type ActiveHostTasks = {
     readonly delete: (taskId: string) => boolean;
     readonly get: (taskId: string) => ActiveHostTask | undefined;
     readonly set: (taskId: string, task: ActiveHostTask) => void;
+    readonly values: () => IterableIterator<ActiveHostTask>;
 };
 
 type WorkerPoolHostState = {
@@ -55,6 +57,8 @@ type TaskWithHostPort = {
 };
 
 const sendMessage = process.send?.bind(process);
+const globalErrorObserver = createExecutionGlobalErrorObserver('worker-pool-host');
+
 function createStoredValue<Value>(initialValue: Value): StoredValue<Value> {
     let currentValue = initialValue;
 
@@ -80,6 +84,9 @@ function createActiveHostTasks(): ActiveHostTasks {
         },
         set(taskId, task) {
             tasks.set(taskId, task);
+        },
+        values() {
+            return tasks.values();
         }
     };
 }
@@ -90,6 +97,7 @@ const state: WorkerPoolHostState = {
     pool: createStoredValue<TinypoolInstance | null>(null),
     resourceUsageTracker: createStoredValue<RunResourceUsageTracker | null>(null)
 };
+const fatalShutdownStarted = createStoredValue(false);
 
 function send(message: WorkerPoolHostMessage): void {
     sendMessage?.(childProcessEnvelope(workerPoolHostCorrelationId, message));
@@ -210,7 +218,25 @@ async function destroy(): Promise<void> {
     finishResourceTracking();
     await poolToDestroy?.destroy();
     send({ kind: 'destroyed' });
+    globalErrorObserver.stop();
     process.disconnect?.();
+}
+
+function abortActiveTasks(): void {
+    for (const task of state.activeTasks.values()) {
+        task.controller.abort();
+    }
+}
+
+function handleFatalHostError(error: RunnerError): void {
+    if (fatalShutdownStarted.read()) {
+        return;
+    }
+
+    fatalShutdownStarted.write(true);
+    send({ error, kind: 'runner-error' });
+    abortActiveTasks();
+    state.commandHandling.write(destroy());
 }
 
 function handleCommand(command: WorkerPoolHostCommand): void {
@@ -229,10 +255,18 @@ function handleCommand(command: WorkerPoolHostCommand): void {
     }
 }
 
-process.on('message', function receiveHostCommand(message: unknown) {
-    const command = envelopeMessage<WorkerPoolHostCommand>(message, workerPoolHostCorrelationId);
+globalErrorObserver.onFatalError(handleFatalHostError);
 
-    if (command !== null) {
-        handleCommand(command);
-    }
-});
+state.commandHandling.write(globalErrorObserver.runBoundary(async function runObservedHostProcess() {
+    process.on('message', function receiveHostCommand(message: unknown) {
+        const command = envelopeMessage<WorkerPoolHostCommand>(message, workerPoolHostCorrelationId);
+
+        if (command !== null) {
+            handleCommand(command);
+        }
+    });
+
+    await new Promise<void>(function keepHostBoundaryOpen(resolve) {
+        process.once('disconnect', resolve);
+    });
+}));

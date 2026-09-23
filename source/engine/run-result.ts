@@ -17,6 +17,7 @@ type RunnerErrorSubtypeByName = {
     readonly resourceExhaustion: 'resource-exhaustion';
     readonly runtimeState: 'runtime-state';
     readonly runtimePolicy: 'runtime-policy';
+    readonly uncaughtException: 'uncaught-exception';
     readonly unhandledRejection: 'unhandled-rejection';
 };
 

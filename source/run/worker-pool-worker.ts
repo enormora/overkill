@@ -26,6 +26,7 @@ import type {
 import {
     collectTestPlan,
     createEmptyAssignmentResult,
+    runObservedWorkerCollection,
     selectedAssignedWork,
     sendCollectedPlan,
     type CollectedWorkerPoolTestPlan
@@ -66,7 +67,9 @@ async function collectAssignmentTestPlan(task: WorkerPoolRunTask): Promise<Colle
     const bootstrapOutput = suppressOutput();
 
     try {
-        return await collectTestPlan(task.command);
+        return await runObservedWorkerCollection(async function collectObservedAssignmentPlan() {
+            return await collectTestPlan(task.command);
+        });
     } finally {
         bootstrapOutput.restore();
     }
@@ -118,18 +121,27 @@ async function runAssignment(
     }
 }
 
+async function runCollectionTask(
+    task: Extract<WorkerPoolTask, { readonly kind: 'collect'; }>,
+    wallClock: OverkillClock
+): Promise<WorkerPoolCollection> {
+    const outputCapture = captureOutput(task, wallClock);
+
+    try {
+        return await runObservedWorkerCollection(async function collectObservedWorkerPlan() {
+            return sendCollectedPlan(await collectTestPlan(task.command));
+        });
+    } finally {
+        outputCapture.restore();
+        task.port.close();
+    }
+}
+
 export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolCollection | WorkerPoolRunOutput> {
     const wallClock = createOverkillClock();
 
     if (task.kind === 'collect') {
-        const outputCapture = captureOutput(task, wallClock);
-
-        try {
-            return sendCollectedPlan(await collectTestPlan(task.command));
-        } finally {
-            outputCapture.restore();
-            task.port.close();
-        }
+        return await runCollectionTask(task, wallClock);
     }
 
     try {

@@ -140,11 +140,16 @@ async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<Tim
     const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
         input.testCase,
         async function runCase() {
-            return await executeCaseBody(
+            return await input.context.dependencies.globalErrorObserver.runCase(
                 input.testCase,
-                input.options.timeoutPolicy,
-                input.supervision,
-                input.context.dependencies
+                async function runObservedCase() {
+                    return await executeCaseBody(
+                        input.testCase,
+                        input.options.timeoutPolicy,
+                        input.supervision,
+                        input.context.dependencies
+                    );
+                }
             );
         }
     );
@@ -167,6 +172,7 @@ async function executeCase(input: ExecuteCaseInput): Promise<ReportedCase> {
     const startErrors = await reportTestStart(input.testCase, input.attempt, input.context);
     const { endedAtMicroseconds, leakCheckedCase, startedAtMicroseconds } = await executeTimedLeakCheckedCase(input);
     const caseRunnerErrors = [
+        ...input.context.dependencies.globalErrorObserver.takeErrors(),
         ...leakCheckedCase.executedCase.runnerErrors,
         ...leakCheckedCase.runnerErrors
     ];
@@ -273,6 +279,10 @@ async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<E
     let state = initialSerialCaseExecutionState();
 
     for (const testCase of input.testPlan.cases) {
+        if (input.context.dependencies.globalErrorObserver.hasFatalError()) {
+            break;
+        }
+
         state = await executeSerialTestPlanCase(input, state, testCase);
     }
 
@@ -350,11 +360,16 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
         const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
             testCase,
             async function runCase() {
-                return await executeCaseBody(
+                return await input.context.dependencies.globalErrorObserver.runCase(
                     testCase,
-                    input.options.timeoutPolicy,
-                    input.supervision,
-                    input.context.dependencies
+                    async function runObservedCase() {
+                        return await executeCaseBody(
+                            testCase,
+                            input.options.timeoutPolicy,
+                            input.supervision,
+                            input.context.dependencies
+                        );
+                    }
                 );
             }
         );
@@ -367,6 +382,7 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
         });
         const endedAtMicroseconds = input.context.dependencies.wallClock.currentMonotonicMicroseconds;
         const caseRunnerErrors = [
+            ...input.context.dependencies.globalErrorObserver.takeErrors(),
             ...leakCheckedCase.executedCase.runnerErrors,
             ...leakCheckedCase.runnerErrors
         ];
@@ -406,8 +422,33 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
     };
 }
 
+async function fatalConcurrentStartResult(
+    input: ExecuteTestPlanCasesInput,
+    reporterErrors: readonly RunnerError[]
+): Promise<ExecutedTestPlan> {
+    const pendingRunnerErrors = input.context.dependencies.globalErrorObserver.takeErrors();
+    const pendingRunnerErrorNotifications = await reportRunnerErrorEvents(
+        input.context.reporterDelivery,
+        pendingRunnerErrors
+    );
+
+    return {
+        perTest: [],
+        reporterErrors: [
+            ...reporterErrors,
+            ...pendingRunnerErrors,
+            ...pendingRunnerErrorNotifications
+        ],
+        testExecutionWallTimeMicroseconds: 0
+    };
+}
+
 async function executeConcurrentTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<ExecutedTestPlan> {
     const reporterErrors = await reportConcurrentCaseStarts(input);
+    if (input.context.dependencies.globalErrorObserver.hasFatalError()) {
+        return await fatalConcurrentStartResult(input, reporterErrors);
+    }
+
     const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
     const concurrentCaseExecution = await executeConcurrentCases({
         context: input.context,
