@@ -18,7 +18,7 @@ function lane(): PlacementLane {
     };
 }
 
-function workUnit(key: string, file: string, runtimeName: string): WorkUnit {
+function workUnit(key: string, file: string | null, runtimeName: string): WorkUnit {
     const runtime = {
         dimensions: {},
         name: runtimeName,
@@ -39,6 +39,41 @@ function workUnit(key: string, file: string, runtimeName: string): WorkUnit {
             }
         ],
         workerLifecycle: 'reuse'
+    };
+}
+
+function freshWorkerUnit(key: string, file: string): WorkUnit {
+    return {
+        ...workUnit(key, file, 'fresh-runtime'),
+        workerLifecycle: 'fresh-worker-per-unit'
+    };
+}
+
+function unitWithAffinityKey(key: string, affinityKey: string): WorkUnit {
+    return {
+        ...workUnit(key, `source/${key}/case.test.ts`, 'affinity-runtime'),
+        resourceConstraints: {
+            ...emptyWorkUnitResourceConstraints,
+            affinityKeys: [ affinityKey ]
+        }
+    };
+}
+
+function unitWithWorkload(key: string): WorkUnit {
+    const unit = workUnit(key, `source/${key}/case.test.ts`, 'workload-runtime');
+
+    return {
+        ...unit,
+        id: {
+            ...unit.id,
+            workload: {
+                name: 'database',
+                params: {
+                    shard: 'one',
+                    zone: 'eu'
+                }
+            }
+        }
     };
 }
 
@@ -66,6 +101,98 @@ export const testNode = createOverkillSuite({
                 }
 
                 scope.assert.equal(affinity.match(workerLane, expired).score, 0);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool warm-lane affinity scores key specificity',
+            body(scope: OverkillScope) {
+                const affinity = createWarmLaneAffinity();
+                const workerLane = lane();
+
+                affinity.learn(workerLane, [
+                    workUnit('file', 'case.test.ts', 'file-runtime'),
+                    unitWithAffinityKey('affinity', 'database'),
+                    unitWithWorkload('workload')
+                ]);
+
+                scope.assert.deepEqual(
+                    affinity.match(workerLane, workUnit('file-match', 'case.test.ts', 'file-runtime')),
+                    {
+                        kinds: [ 'file', 'runtime-workload' ],
+                        score: 17
+                    }
+                );
+                scope.assert.deepEqual(affinity.match(workerLane, unitWithAffinityKey('affinity-match', 'database')), {
+                    kinds: [ 'affinity', 'runtime-workload' ],
+                    score: 3
+                });
+                scope.assert.deepEqual(affinity.match(workerLane, unitWithWorkload('workload-match')), {
+                    kinds: [ 'runtime-workload' ],
+                    score: 1
+                });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool warm-lane affinity ignores non-reusable and fileless units',
+            body(scope: OverkillScope) {
+                const affinity = createWarmLaneAffinity();
+                const workerLane = lane();
+
+                affinity.learn(workerLane, [
+                    freshWorkerUnit('fresh', 'source/fresh/case.test.ts'),
+                    workUnit('fileless', null, 'fileless-runtime')
+                ]);
+
+                scope.assert.equal(
+                    affinity.match(workerLane, freshWorkerUnit('fresh-match', 'source/fresh/case.test.ts')).score,
+                    0
+                );
+                scope.assert.deepEqual(
+                    affinity.match(workerLane, workUnit('fileless-match', null, 'fileless-runtime')),
+                    {
+                        kinds: [ 'runtime-workload' ],
+                        score: 1
+                    }
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool warm-lane affinity decrements retained duplicate keys',
+            body(scope: OverkillScope) {
+                const affinity = createWarmLaneAffinity();
+                const workerLane = lane();
+                const shared = workUnit('shared', 'source/shared/case.test.ts', 'shared-runtime');
+
+                affinity.learn(workerLane, [ shared ]);
+                affinity.learn(workerLane, [
+                    workUnit('shared-second', 'source/shared/case.test.ts', 'shared-runtime')
+                ]);
+                for (let index = 0; index < 31; index += 1) {
+                    affinity.learn(workerLane, [
+                        workUnit(
+                            `replacement-${index}`,
+                            `source/replacement-${index}/case.test.ts`,
+                            'replacement-runtime'
+                        )
+                    ]);
+                }
+
+                scope.assert.equal(affinity.match(workerLane, shared).score, 21);
 
                 return scope.assert.collect();
             }

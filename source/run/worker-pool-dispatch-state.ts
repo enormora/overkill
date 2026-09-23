@@ -53,7 +53,7 @@ export type WorkerPoolUnitLease = {
     readonly unit: WorkUnit;
 };
 
-export type WorkerPoolFinishOutcome = {
+type WorkerPoolFinishOutcome = {
     readonly learnWarmth: boolean;
     readonly retainReservation: boolean;
     readonly workerCrashed: boolean;

@@ -44,26 +44,27 @@ function compareWarmSelection(left: WarmSelectedUnit, right: WarmSelectedUnit): 
 }
 
 function topLoadWindow(input: WarmPendingSelectionInput): readonly [QueuedWorkUnit, ...readonly QueuedWorkUnit[]] {
-    const topLoad = input.unitLoad(input.candidates[0].unit);
-    const candidates = input
-        .candidates
+    const [ firstCandidate, ...remainingCandidates ] = input.candidates;
+    const topLoad = input.unitLoad(firstCandidate.unit);
+    const candidates = remainingCandidates
         .filter(function hasTopLoad(candidate) {
             return input.unitLoad(candidate.unit) === topLoad;
         })
-        .slice(0, input.laneCount * warmLookaheadLaneMultiplier);
-    const [ firstCandidate, ...remainingCandidates ] = candidates;
+        .slice(0, input.laneCount * warmLookaheadLaneMultiplier - 1);
 
-    if (firstCandidate === undefined) {
-        throw new Error('Warm-lane selection requires a non-empty candidate window.');
-    }
-
-    return [ firstCandidate, ...remainingCandidates ];
+    return [ firstCandidate, ...candidates ];
 }
 
 function warmSelection(input: WarmPendingSelectionInput): WarmSelectedUnit {
     const window = topLoadWindow(input);
-    const baseline = window[0];
-    const selected = window
+    const [ baseline, ...candidates ] = window;
+    const baselineSelection: WarmSelectedUnit = {
+        baseline,
+        item: baseline,
+        match: input.warmLaneAffinity.match(input.lane, baseline.unit),
+        window
+    };
+    const selected = candidates
         .map(function toSelection(item): WarmSelectedUnit {
             return {
                 baseline,
@@ -72,11 +73,9 @@ function warmSelection(input: WarmPendingSelectionInput): WarmSelectedUnit {
                 window
             };
         })
-        .toSorted(compareWarmSelection)[0];
-
-    if (selected === undefined) {
-        throw new Error('Warm-lane selection requires a non-empty candidate window.');
-    }
+        .reduce(function chooseWarmer(left, right) {
+            return compareWarmSelection(left, right) <= 0 ? left : right;
+        }, baselineSelection);
 
     return selected.match.score === 0
         ? { baseline, item: baseline, match: selected.match, window }
@@ -107,7 +106,7 @@ function traceUnits(
 }
 
 function traceEntry(selection: WarmSelectedUnit, lane: PlacementLane): PlacementTraceEntry | null {
-    if (selection.item === selection.baseline || selection.match.score === 0) {
+    if (selection.item === selection.baseline) {
         return null;
     }
 
