@@ -65,6 +65,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         seed: { value: 42n },
         selection: { kind: 'all' },
         shard: { index: 1, total: 1 },
+        timingCollection: 'profile-default',
         verbose: false
     };
 }
@@ -106,6 +107,7 @@ function createRunConfig(
                     samplingIntervalMilliseconds: 100
                 },
                 testFamily: 'microtest',
+                timings: { collection: 'summary' },
                 timeouts: {
                     collectionMilliseconds: 5000,
                     hardMilliseconds: 1000,
@@ -150,6 +152,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): RunConfig {
                     samplingIntervalMilliseconds: 100
                 },
                 testFamily: 'integration',
+                timings: { collection: 'summary' },
                 timeouts: {
                     collectionMilliseconds: 5000,
                     hardMilliseconds: 7000,

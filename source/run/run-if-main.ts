@@ -7,6 +7,7 @@ import type { ResourceUsageTrackerOptions } from './resource-usage.ts';
 import {
     assertDirectTestPlanMatchesTestFamily,
     directRunFacts,
+    finalizeDirectRunResult,
     runConfig
 } from './run-if-main-facts.ts';
 import {
@@ -113,6 +114,9 @@ async function executeDirectTestPlan(
 
     return await dependencies.runEngine.execute(ordered.testPlan, {
         execution: { mode: executionMode(context.profile) },
+        async finalizeResult(result) {
+            return finalizeDirectRunResult(runFacts, result);
+        },
         outputRenderer: selectedOutputRenderer(context.config, context.options),
         reporters,
         resourceBudgets: resourceUsagePolicy.budgets,

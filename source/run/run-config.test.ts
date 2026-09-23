@@ -40,6 +40,18 @@ function assertDefaultMicrotestResourceUsage(scope: OverkillScope, config: Loade
     scope.assert.deepEqual(profile.resourceUsage, defaultMicrotestProfile().resourceUsage);
 }
 
+function assertProfileTiming(
+    scope: OverkillScope,
+    config: LoadedConfig,
+    profileName: string,
+    collection: 'precise' | 'summary'
+): void {
+    const profile = config.profiles[profileName];
+
+    scope.require.defined(profile);
+    scope.assert.deepEqual(profile.timings, { collection });
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-config.test.ts',
@@ -78,6 +90,31 @@ export const testNode = createOverkillSuite({
                 });
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, '.overkill');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'loadRunConfig() normalizes timing policies',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const config = await loadConfigValue({
+                    profiles: {
+                        precise: {
+                            testFamily: 'microtest',
+                            timings: { collection: 'precise' }
+                        },
+                        summary: {
+                            testFamily: 'microtest',
+                            timings: { collection: 'summary' }
+                        }
+                    }
+                });
+                assertProfileTiming(scope, config, 'microtest', 'summary');
+                assertProfileTiming(scope, config, 'precise', 'precise');
+                assertProfileTiming(scope, config, 'summary', 'summary');
 
                 return scope.assert.collect();
             }

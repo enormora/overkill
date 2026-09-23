@@ -136,6 +136,12 @@ export type RunResourceBudgets = {
     readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
+export type TimingCollectionMode = 'precise' | 'summary';
+export type TimingCollectionOverride = 'precise' | 'profile-default';
+export type TimingProfilePolicy = {
+    readonly collection: TimingCollectionMode;
+};
+
 const runProfileNamePattern = /^[A-Za-z0-9._-]+$/u;
 const reservedBenchmarkProfileName = 'benchmark';
 
@@ -316,6 +322,7 @@ export type RunMicrotestProfileConfig = {
     readonly reporters: RunReporters | null;
     readonly resourceUsage: RunResourceUsagePolicy;
     readonly testFamily: 'microtest';
+    readonly timings: TimingProfilePolicy;
     readonly timeouts: RunTimeoutPolicy;
 };
 
@@ -325,6 +332,7 @@ export type RunIntegrationProfileConfig = {
     readonly reporters: RunReporters | null;
     readonly resourceUsage: RunResourceUsagePolicy;
     readonly testFamily: 'integration';
+    readonly timings: TimingProfilePolicy;
     readonly timeouts: RunTimeoutPolicy;
 };
 
@@ -379,6 +387,7 @@ export type RunRequest = {
     readonly seed: RunSeed;
     readonly selection: RunSelection;
     readonly shard: RunShard;
+    readonly timingCollection: TimingCollectionOverride;
     readonly verbose: false;
 };
 
@@ -427,6 +436,7 @@ type RunExecutionBaseFacts = {
     readonly resourceUsagePolicy: RunResourceUsagePolicy;
     readonly scheduling: RunScheduling;
     readonly testFamily: RunTestFamily;
+    readonly timingCollection: TimingCollectionMode;
     readonly timeoutPolicy: RunTimeoutPolicy;
     readonly verbose: false;
 };

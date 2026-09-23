@@ -4,6 +4,7 @@ import {
 import {
     createReporterDelivery
 } from './supervised-run-runtime.ts';
+import { resultWithResolvedTimingCollection } from './run-timing-collection.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun,
@@ -45,22 +46,25 @@ export async function executeEmptyShardRun(
         },
         startedAt: currentRunStartTime(dependencies)
     });
-    const result = createRunResultFromCollectedPlan(
-        collectedPlan,
-        [],
-        [ ...resolvedRun.collectionRunnerErrors, ...runStartErrors, ...runtimePolicy?.takeRunErrors() ?? [] ],
-        {
-            completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
-            planStatus: 'empty-shard',
-            resourceUsage: null,
-            startedAtMicroseconds,
-            testExecutionWallTimeMicroseconds: 0
-        }
+    const timedResult = resultWithResolvedTimingCollection(
+        resolvedRun,
+        createRunResultFromCollectedPlan(
+            collectedPlan,
+            [],
+            [ ...resolvedRun.collectionRunnerErrors, ...runStartErrors, ...runtimePolicy?.takeRunErrors() ?? [] ],
+            {
+                completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+                planStatus: 'empty-shard',
+                resourceUsage: null,
+                startedAtMicroseconds,
+                testExecutionWallTimeMicroseconds: 0
+            }
+        )
     );
-    const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result });
+    const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result: timedResult });
     const resultForFinalReporting = {
-        ...result,
-        runnerErrors: [ ...result.runnerErrors, ...runEndErrors ]
+        ...timedResult,
+        runnerErrors: [ ...timedResult.runnerErrors, ...runEndErrors ]
     };
     const finalReporterErrors = await reporterDelivery.reportResult(resultForFinalReporting);
     const disposeErrors = await reporterDelivery.disposeReporters();

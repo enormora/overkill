@@ -4,6 +4,7 @@ import { testNode as runCustomEngineTestNode } from './run-custom-engine.test.ts
 import { testNode as runOrchestratorCoreTestNode } from './run-orchestrator-core-suite.test.ts';
 import { testNode as runRuntimePolicyTestNode } from './run-runtime-policy.test.ts';
 import { testNode as runReporterResolutionTestNode } from './run-reporter-resolution.test.ts';
+import { testNode as runTimingCollectionTestNode } from './run-timing-collection.test.ts';
 import { testNode as supervisedRuntimeSuiteTestNode } from './supervised-runtime-suite.test.ts';
 
 export const testNode = createOverkillSuite({
@@ -17,6 +18,7 @@ export const testNode = createOverkillSuite({
         runOrchestratorCoreTestNode,
         runReporterResolutionTestNode,
         runRuntimePolicyTestNode,
+        runTimingCollectionTestNode,
         supervisedRuntimeSuiteTestNode
     ]
 });

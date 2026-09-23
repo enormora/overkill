@@ -194,6 +194,7 @@ export const testNode = createSuite({
                             seed: { value: null },
                             selection: { kind: 'all' },
                             shard: { index: 1, total: 1 },
+                            timingCollection: 'profile-default',
                             verbose: false
                         }
                     }

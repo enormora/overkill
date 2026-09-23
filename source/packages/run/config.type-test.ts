@@ -6,7 +6,8 @@ import {
     type loadRunConfig,
     type LoadedRunConfig,
     type RunConfigLoadRequest,
-    type RunProjectConfig
+    type RunProjectConfig,
+    type RunProjectTimingProfilePolicy
 } from './config.entry-point.ts';
 
 describe('@overkill-dev/run/config', function () {
@@ -18,6 +19,9 @@ describe('@overkill-dev/run/config', function () {
         expect<RunProjectConfig['reporters']>().type.toBe<
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
         >();
+        expect<RunProjectTimingProfilePolicy>().type.toBe<{
+            readonly collection: 'precise' | 'summary';
+        }>();
         expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
     });
 });

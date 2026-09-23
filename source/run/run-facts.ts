@@ -16,7 +16,8 @@ import type {
     RunProfileConfig,
     RunRequest,
     RunResourceBudgets,
-    RunResourceUsagePolicy
+    RunResourceUsagePolicy,
+    TimingCollectionMode
 } from './run-types.ts';
 
 export type RunFactsInput = {
@@ -121,6 +122,25 @@ function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependen
     return request.seed.value ?? dependencies.createSeed();
 }
 
+function strategyRequiresPreciseTiming(profile: RunProfileConfig): boolean {
+    return profile.execution.processModel === 'worker-pool' &&
+        (
+            profile.execution.assignmentPolicy === 'duration-history-balanced' ||
+            profile.execution.hedging.mode === 'on'
+        );
+}
+
+export function resolveTimingCollection(
+    request: RunRequest,
+    profile: RunProfileConfig
+): TimingCollectionMode {
+    if (request.timingCollection === 'precise' || strategyRequiresPreciseTiming(profile)) {
+        return 'precise';
+    }
+
+    return profile.timings.collection;
+}
+
 function createRunExecutionFacts(
     input: RunFactsInput,
     profile: RunProfileConfig
@@ -136,6 +156,7 @@ function createRunExecutionFacts(
         resourceUsagePolicy: resolveResourceUsagePolicy(input.request, profile),
         scheduling: profile.execution.scheduling,
         testFamily: profile.testFamily,
+        timingCollection: resolveTimingCollection(input.request, profile),
         timeoutPolicy: profile.timeouts,
         verbose: input.request.verbose
     };

@@ -23,6 +23,7 @@ import type {
     RunResourceUsagePolicy,
     ResolvedRun,
     RunShard,
+    TimingProfilePolicy,
     RunTimeoutPolicy,
     RunWorkDistribution,
     RunWorkGroup
@@ -32,7 +33,7 @@ import { copyRunSelection } from './run-selection-filters.ts';
 import { validateRunResourceUsagePolicy } from './run-validation.ts';
 import {
     readDurationHistoryIndex,
-    resultWithUpdatedDurationHistory,
+    resultWithUpdatedDurationHistoryAndTiming,
     type DurationHistoryIndex
 } from './duration-history.ts';
 
@@ -51,7 +52,7 @@ export async function finalizeResultWithDurationHistory(
     resolvedRun: ResolvedRun,
     result: RunResult
 ): Promise<RunResult> {
-    return await resultWithUpdatedDurationHistory(
+    return await resultWithUpdatedDurationHistoryAndTiming(
         dependencies.durationHistoryStore,
         resolvedRun,
         result,
@@ -174,6 +175,12 @@ function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsa
     };
 }
 
+function copyTimingProfilePolicy(policy: TimingProfilePolicy): TimingProfilePolicy {
+    return {
+        collection: policy.collection
+    };
+}
+
 function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
     return {
         collectionMilliseconds: policy.collectionMilliseconds,
@@ -291,6 +298,7 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
             reporters: profile.reporters === null ? null : Array.from(profile.reporters),
             resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
             testFamily: profile.testFamily,
+            timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
         };
     }
@@ -301,6 +309,7 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
         reporters: profile.reporters === null ? null : Array.from(profile.reporters),
         resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
         testFamily: profile.testFamily,
+        timings: copyTimingProfilePolicy(profile.timings),
         timeouts: copyTimeoutPolicy(profile.timeouts)
     };
 }
@@ -332,6 +341,7 @@ export function copyRunRequest(request: RunRequest): RunRequest {
         seed: { value: request.seed.value },
         selection: copyRunSelection(request.selection),
         shard: copyRunShard(request.shard),
+        timingCollection: request.timingCollection,
         verbose: request.verbose
     };
 }

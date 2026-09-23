@@ -14,6 +14,7 @@ import {
     type RunProjectProfileFiles as ParsedRunProjectProfileFiles,
     type RunProjectResourceBudgets as ParsedRunProjectResourceBudgets,
     type RunProjectResourceUsageConfig as ParsedRunProjectResourceUsageConfig,
+    type RunProjectTimingProfilePolicy as ParsedRunProjectTimingProfilePolicy,
     type RunProjectTimeoutConfig as ParsedRunProjectTimeoutConfig,
     type RunProjectUnmeasuredResourceUsage as ParsedRunProjectUnmeasuredResourceUsage
 } from './run-config-schema.ts';
@@ -31,6 +32,7 @@ import {
     type RunProfilesConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
+    type TimingProfilePolicy,
     type RunTimeoutPolicy,
     type RunWorkerPoolAssignmentPolicy,
     type RunWorkerPoolHedgingPolicy,
@@ -52,6 +54,7 @@ import {
     defaultMicrotestExecution,
     defaultResourceUsagePolicy,
     defaultResourceUsageSamplingIntervalMilliseconds,
+    defaultTimingProfilePolicy,
     defaultTimeoutPolicy,
     defaultWorkerLifecycle,
     defaultWorkerPoolAssignmentPolicy,
@@ -78,6 +81,7 @@ export type RunProjectIntegrationProfileConfig = {
     readonly reporters?: ParsedRunProjectIntegrationProfileConfig['reporters'];
     readonly resourceUsage?: ParsedRunProjectIntegrationProfileConfig['resourceUsage'];
     readonly testFamily: ParsedRunProjectIntegrationProfileConfig['testFamily'];
+    readonly timings?: ParsedRunProjectIntegrationProfileConfig['timings'];
     readonly timeouts?: ParsedRunProjectIntegrationProfileConfig['timeouts'];
 };
 export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
@@ -89,6 +93,7 @@ export type RunProjectResourceBudgets = ParsedRunProjectResourceBudgets;
 export type RunProjectMeasuredResourceUsage = ParsedRunProjectMeasuredResourceUsage;
 export type RunProjectUnmeasuredResourceUsage = ParsedRunProjectUnmeasuredResourceUsage;
 export type RunProjectResourceUsageConfig = ParsedRunProjectResourceUsageConfig;
+export type RunProjectTimingProfilePolicy = ParsedRunProjectTimingProfilePolicy;
 export type RunProjectTimeoutConfig = ParsedRunProjectTimeoutConfig;
 export type RunProjectConfig = {
     readonly loader?: ParsedRunProjectConfig['loader'];
@@ -281,6 +286,10 @@ function normalizeResourceUsage(
     }
 
     return normalizeMeasuredResourceUsage(profile);
+}
+
+function normalizeTimings(timings: RunProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
+    return timings ?? defaultTimingProfilePolicy;
 }
 
 function timeoutValue(value: number | undefined, fallback: number): number {
@@ -489,6 +498,7 @@ function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): R
         reporters: normalizeReporters(profile.reporters),
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
         testFamily: 'microtest',
+        timings: normalizeTimings(profile.timings),
         timeouts
     };
 }
@@ -508,6 +518,7 @@ function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig
         reporters: normalizeReporters(profile.reporters),
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
         testFamily: 'integration',
+        timings: normalizeTimings(profile.timings),
         timeouts
     };
 }

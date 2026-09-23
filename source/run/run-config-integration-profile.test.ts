@@ -59,6 +59,7 @@ export const testNode = createOverkillSuite({
                     reporters: null,
                     resourceUsage: defaultMicrotestProfile().resourceUsage,
                     testFamily: 'integration',
+                    timings: { collection: 'summary' },
                     timeouts: {
                         collectionMilliseconds: 5000,
                         hardMilliseconds: 7000,

@@ -84,6 +84,7 @@ function directProfile(
             samplingIntervalMilliseconds: 100
         },
         testFamily: 'microtest',
+        timings: { collection: 'summary' },
         timeouts: {
             collectionMilliseconds: 1000,
             hardMilliseconds: 1000,

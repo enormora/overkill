@@ -152,6 +152,7 @@ function createCommandFromListRequest(
             seed: request.listRequest.seed,
             selection: request.listRequest.selection,
             shard: request.listRequest.shard,
+            timingCollection: 'profile-default',
             verbose: false
         }
     };

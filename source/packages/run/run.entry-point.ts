@@ -57,6 +57,7 @@ export type {
     RunProjectProfilesConfig,
     RunProjectResourceBudgets,
     RunProjectResourceUsageConfig,
+    RunProjectTimingProfilePolicy,
     RunProjectTimeoutConfig,
     RunProjectUnmeasuredResourceUsage
 } from '../../run/run-config.ts';
@@ -126,6 +127,9 @@ export type {
     RunStringFilterField,
     RunTestFamily,
     RunTimeoutPolicy,
+    TimingCollectionMode,
+    TimingCollectionOverride,
+    TimingProfilePolicy,
     RunWorkDistribution,
     RunWorkGroup,
     RunWorkGroupGranularity,

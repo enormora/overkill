@@ -153,6 +153,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 },
                 scheduling: 'serial',
                 testFamily: 'integration',
+                timingCollection: 'summary',
                 timeoutPolicy: {
                     collectionMilliseconds: 1000,
                     hardMilliseconds: 1000,

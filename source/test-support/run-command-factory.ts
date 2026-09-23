@@ -14,6 +14,7 @@ import type {
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
+    TimingProfilePolicy,
     RunTimeoutPolicy,
     RunWorkDistribution,
     RunWorkerPoolAssignmentPolicy,
@@ -22,6 +23,7 @@ import type {
     RunWorkerLifecycle
 } from '../run/run-types.ts';
 import { hostProcessFacts } from '../run/run-host-process.ts';
+import { resolveTimingCollection } from '../run/run-facts.ts';
 
 type WorkerPoolExecutionOverrides = Partial<
     Extract<RunIntegrationExecution, { readonly processModel: 'worker-pool'; }>
@@ -38,6 +40,7 @@ type MicrotestProfileOverrides = {
     readonly files?: RunProfileFiles | null;
     readonly reporters?: readonly DefinedReporter[] | null;
     readonly resourceUsage?: ResourceUsageOverrides;
+    readonly timings?: Partial<TimingProfilePolicy>;
     readonly timeouts?: Partial<RunTimeoutPolicy>;
 };
 
@@ -46,6 +49,7 @@ type IntegrationProfileOverrides = {
     readonly files?: RunProfileFiles;
     readonly reporters?: readonly DefinedReporter[] | null;
     readonly resourceUsage?: ResourceUsageOverrides;
+    readonly timings?: Partial<TimingProfilePolicy>;
     readonly timeouts?: Partial<RunTimeoutPolicy>;
 };
 
@@ -82,6 +86,12 @@ function defaultRunResourceUsagePolicy(
     };
 }
 
+function defaultTimingProfilePolicy(overrides: Partial<TimingProfilePolicy> = {}): TimingProfilePolicy {
+    return {
+        collection: overrides.collection ?? 'summary'
+    };
+}
+
 function defaultRunTimeoutPolicy(overrides: Partial<RunTimeoutPolicy> = {}): RunTimeoutPolicy {
     return {
         collectionMilliseconds: overrides.collectionMilliseconds ?? defaultCollectionTimeoutMilliseconds,
@@ -109,6 +119,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
         resourceUsagePolicy: profile.resourceUsage,
         scheduling: profile.execution.scheduling,
         testFamily: profile.testFamily,
+        timingCollection: resolveTimingCollection(command.request, profile),
         timeoutPolicy: profile.timeouts,
         verbose: command.request.verbose
     };
@@ -231,6 +242,7 @@ export function defaultMicrotestProfile(
         reporters: overrides.reporters ?? null,
         resourceUsage: defaultRunResourceUsagePolicy(overrides.resourceUsage),
         testFamily: 'microtest',
+        timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy(overrides.timeouts)
     };
 }
@@ -247,6 +259,7 @@ export function defaultIntegrationProfile(
         reporters: overrides.reporters ?? null,
         resourceUsage: defaultRunResourceUsagePolicy(overrides.resourceUsage),
         testFamily: 'integration',
+        timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy({
             collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,
             hardMilliseconds: defaultIntegrationHardTimeoutMilliseconds,
@@ -295,6 +308,7 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         seed: { value: 42n },
         selection: { kind: 'all' },
         shard: { index: 1, total: 1 },
+        timingCollection: 'profile-default',
         verbose: false
     };
 

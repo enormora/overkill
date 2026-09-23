@@ -74,9 +74,7 @@ function createCollectedPlan(): CollectedRunPlan {
                             resourceGraph: [],
                             runtimeGraphs: []
                         },
-                        suitePath: [
-                            { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' }
-                        ],
+                        suitePath: [ { definitionLocations: [ { kind: 'unknown' as const } ], title: 'integration' } ],
                         testFamily: 'integration',
                         title: 'first'
                     }
@@ -247,6 +245,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
                 },
                 scheduling: 'serial',
                 testFamily: 'integration',
+                timingCollection: 'summary',
                 timeoutPolicy: {
                     collectionMilliseconds: 1000,
                     hardMilliseconds: 1000,

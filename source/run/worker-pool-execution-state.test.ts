@@ -238,6 +238,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 },
                 scheduling: 'serial',
                 testFamily: 'integration',
+                timingCollection: 'summary',
                 timeoutPolicy: {
                     collectionMilliseconds: 1000,
                     hardMilliseconds: 1000,

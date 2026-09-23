@@ -151,6 +151,7 @@ export type {
     RunProjectProfilesConfig,
     RunProjectResourceBudgets,
     RunProjectResourceUsageConfig,
+    RunProjectTimingProfilePolicy,
     RunProjectTimeoutConfig,
     RunProjectUnmeasuredResourceUsage
 } from '../../run/run-config.ts';

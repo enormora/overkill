@@ -80,6 +80,17 @@ export const timeoutSchema = z
     })
     .readonly();
 
+const timingCollectionModeSchema = z.union([
+    z.literal('precise'),
+    z.literal('summary')
+]);
+
+export const timingProfilePolicySchema = z
+    .strictObject({
+        collection: timingCollectionModeSchema
+    })
+    .readonly();
+
 export const microtestExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
@@ -209,6 +220,7 @@ export const microtestProfileSchema = z
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
         resourceUsage: z.optional(resourceUsageSchema),
         testFamily: z.literal('microtest'),
+        timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
     .readonly();
@@ -220,6 +232,7 @@ export const integrationProfileSchema = z
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
         resourceUsage: z.optional(resourceUsageSchema),
         testFamily: z.literal('integration'),
+        timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
     .readonly();
@@ -246,6 +259,7 @@ export type RunProjectProfileFiles = z.infer<typeof profileFilesSchema>;
 export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
 export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
 export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
+export type RunProjectTimingProfilePolicy = z.infer<typeof timingProfilePolicySchema>;
 export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
 export type RunProjectIntegrationExecution = z.infer<typeof integrationExecutionSchema>;
 export type RunProjectIntegrationProfileConfig = z.infer<typeof integrationProfileSchema>;
