@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { caseIdentityKey, type CaseId, type WorkId } from './identity.ts';
-import type { RunnerError } from './run-result.ts';
+import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type HookKind = 'uncaughtException' | 'unhandledRejection';
@@ -347,7 +347,34 @@ function scopeIncludesCase(
     return activeCase !== null && activeCase.scope === scope;
 }
 
+function activePermissionCase(input: HookFailureInput): ActiveCaseContext | null {
+    if (!scopeIncludesCase(input.scope, input.activeCase)) {
+        return null;
+    }
+
+    return input.scope.hasActiveCase(input.activeCase.key) ? input.activeCase : null;
+}
+
+function permissionErrorForScope(input: HookFailureInput): RunnerError | null {
+    const activeCase = activePermissionCase(input);
+
+    return permissionDeniedRunnerErrorFromThrown(input.reason, {
+        attributedTo: activeCase?.id ?? null,
+        attributedToWork: activeCase?.workId ?? null,
+        boundary: input.scope.boundary,
+        diagnosticChannel: null,
+        hook: input.hook,
+        phase: activeCase === null ? input.scope.phase() : 'body'
+    });
+}
+
 function errorForScope(input: HookFailureInput): RunnerError {
+    const permissionError = permissionErrorForScope(input);
+
+    if (permissionError !== null) {
+        return permissionError;
+    }
+
     if (input.ambiguousScope) {
         return attributionDriftError(
             input.scope,

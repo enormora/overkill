@@ -60,6 +60,18 @@ function createStacklessError(message: string): Error {
     return error;
 }
 
+function createPermissionError(permission: string, resource: string): Error {
+    const error = new Error('Access to this API has been restricted');
+
+    Object.defineProperties(error, {
+        code: { value: 'ERR_ACCESS_DENIED' },
+        permission: { value: permission },
+        resource: { value: resource }
+    });
+
+    return error;
+}
+
 function emitUncaughtException(message: string): void {
     process.emit('uncaughtException', new Error(message));
 }
@@ -320,6 +332,36 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(error.attributedTo, null);
                 scope.assert.equal(error.attributedToWork, null);
                 assertPlainRejectionCause(scope, error);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'observer classifies permission hook failures as permission errors',
+            async body(scope: OverkillScope) {
+                const observer = createExecutionGlobalErrorObserver('in-process');
+                const testCase = createPlanCase('denies fs access');
+
+                await observer.runBoundary(async function runObservedBoundary() {
+                    await observer.runCase(testCase, async function runObservedCase() {
+                        emitUnhandledRejectionReason(createPermissionError('FileSystemRead', '/project/input.txt'));
+                    });
+                });
+
+                const error = firstError(observer.takeErrors());
+
+                scope.assert.equal(error.subtype, 'permission');
+                scope.assert.equal(error.attributedTo?.title, 'denies fs access');
+                scope.assert.equal(error.message, 'Permission denied: FileSystemRead for /project/input.txt.');
+                scope.assert.partialDeepEqual(error.cause, {
+                    hook: 'unhandledRejection',
+                    permission: 'FileSystemRead',
+                    resource: '/project/input.txt',
+                    source: 'throw'
+                });
 
                 return scope.assert.collect();
             }

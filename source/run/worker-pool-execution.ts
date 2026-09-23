@@ -38,7 +38,8 @@ import {
 import {
     clearTaskTimeout,
     handleWorkerMessage,
-    recordTaskCrash
+    recordTaskCrash,
+    recordTaskPermissionFailure
 } from './worker-pool-task-events.ts';
 
 type WorkerPoolTaskChannel = {
@@ -300,8 +301,12 @@ function recordRunCrash(runtime: WorkerPoolRunRuntime, message: string, cause: u
     });
 }
 
-function markActiveTasksCrashed(runtime: WorkerPoolRunRuntime): void {
-    for (const activeTask of runtime.activeTasks) {
+function markActiveTasksCrashed(runtime: WorkerPoolRunRuntime, excludedTask: WorkerPoolTaskRun | null): void {
+    const crashedTasks = Array.from(runtime.activeTasks).filter(function isIncludedTask(activeTask) {
+        return activeTask !== excludedTask;
+    });
+
+    for (const activeTask of crashedTasks) {
         activeTask.endedByParent.write(true);
         activeTask.requeuePendingCases.write(false);
         recordTaskCrash(activeTask, runtime, 'Worker-pool execution stopped.');
@@ -318,7 +323,7 @@ function stopAfterCrashLimit(
     runtime.terminalFailure.write(true);
     recordRunCrash(runtime, 'Worker-pool stopped after 3 worker crashes.', { crashCount });
     dispatcher.clear();
-    markActiveTasksCrashed(runtime);
+    markActiveTasksCrashed(runtime, null);
 }
 
 function recordWorkerCrash(
@@ -352,7 +357,7 @@ function handleHostRunnerErrors(
     context.runtime.terminalFailure.write(true);
     context.runtime.runState.recordRunnerErrors(hostRunnerErrors);
     context.dispatcher.clear();
-    markActiveTasksCrashed(context.runtime);
+    markActiveTasksCrashed(context.runtime, null);
 
     return true;
 }
@@ -379,6 +384,18 @@ function handleTaskFailure(
 
     if (taskRun.endedByParent.read()) {
         return handleParentEndedFailure(taskRun, context);
+    }
+
+    if (
+        recordTaskPermissionFailure(error, taskRun, {
+            dispatcher: context.dispatcher,
+            runtime: context.runtime,
+            stopActiveTasks(excludedTask) {
+                markActiveTasksCrashed(context.runtime, excludedTask);
+            }
+        })
+    ) {
+        return [];
     }
 
     recordTaskCrash(taskRun, context.runtime, crashReason(error));

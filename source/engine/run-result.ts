@@ -141,6 +141,217 @@ export type RunnerError = {
     readonly subtype: RunnerErrorSubtype;
 };
 
+type PermissionDeniedRunnerErrorBoundaryByName = {
+    readonly inProcess: 'in-process';
+    readonly none: null;
+    readonly supervisedChild: 'supervised-child';
+    readonly workerPoolHost: 'worker-pool-host';
+    readonly workerPoolWorker: 'worker-pool-worker';
+};
+
+type PermissionDeniedRunnerErrorBoundary =
+    PermissionDeniedRunnerErrorBoundaryByName[keyof PermissionDeniedRunnerErrorBoundaryByName];
+
+export type PermissionDeniedRunnerErrorPhase = 'body' | 'collection' | 'load' | 'out-of-test' | 'run' | null;
+type PermissionDeniedRunnerErrorHook = 'uncaughtException' | 'unhandledRejection' | null;
+type PermissionDeniedRunnerErrorSource = 'diagnostic-channel' | 'throw';
+
+type SerializedPermissionDeniedError = {
+    readonly code: string | null;
+    readonly message: string;
+    readonly name: string;
+    readonly permission: string | null;
+    readonly resource: string | null;
+    readonly stack: string | null;
+};
+
+export type PermissionDeniedRunnerErrorCause = {
+    readonly boundary: PermissionDeniedRunnerErrorBoundary;
+    readonly capability: string | null;
+    readonly diagnosticChannel: string | null;
+    readonly error: SerializedPermissionDeniedError | null;
+    readonly hook: PermissionDeniedRunnerErrorHook;
+    readonly kind: 'node-permission-denial';
+    readonly permission: string | null;
+    readonly phase: PermissionDeniedRunnerErrorPhase;
+    readonly resource: string | null;
+    readonly source: PermissionDeniedRunnerErrorSource;
+};
+
+export type PermissionDeniedRunnerError = RunnerError & {
+    readonly cause: PermissionDeniedRunnerErrorCause;
+    readonly subtype: 'permission';
+};
+
+export type PermissionDeniedRunnerErrorContext = {
+    readonly attributedTo: CaseId | null;
+    readonly attributedToWork: WorkId | null;
+    readonly boundary: PermissionDeniedRunnerErrorBoundary;
+    readonly diagnosticChannel: string | null;
+    readonly hook: PermissionDeniedRunnerErrorHook;
+    readonly phase: PermissionDeniedRunnerErrorPhase;
+};
+
+export type PermissionDeniedDiagnostic = {
+    readonly channel: string;
+    readonly fallbackCapability: string | null;
+    readonly message: unknown;
+};
+
+type PermissionDeniedCauseInput = {
+    readonly capabilityFallback: string | null;
+    readonly context: PermissionDeniedRunnerErrorContext;
+    readonly diagnosticMessage: unknown;
+    readonly error: unknown;
+    readonly source: PermissionDeniedRunnerErrorSource;
+};
+
+const permissionCapabilities: Readonly<Record<string, string>> = {
+    ChildProcess: 'child-process',
+    FileSystemRead: 'fs-read',
+    FileSystemWrite: 'fs-write',
+    Inspector: 'inspector',
+    Network: 'net',
+    OpenSSLStore: 'openssl-store',
+    WASI: 'wasi',
+    WorkerThreads: 'worker'
+};
+
+function readStringProperty(value: unknown, property: string): string | null {
+    if (value === null || typeof value !== 'object') {
+        return null;
+    }
+
+    const propertyValue: unknown = Reflect.get(value, property);
+
+    return typeof propertyValue === 'string' ? propertyValue : null;
+}
+
+function accessDeniedErrorCode(error: unknown): string | null {
+    return readStringProperty(error, 'code');
+}
+
+function permissionCapability(permission: string | null, fallback: string | null): string | null {
+    if (permission === null) {
+        return fallback;
+    }
+
+    return permissionCapabilities[permission] ?? fallback;
+}
+
+function serializedDeniedError(error: unknown): SerializedPermissionDeniedError {
+    if (error instanceof Error) {
+        return {
+            code: accessDeniedErrorCode(error),
+            message: error.message,
+            name: error.name,
+            permission: readStringProperty(error, 'permission'),
+            resource: readStringProperty(error, 'resource'),
+            stack: error.stack ?? null
+        };
+    }
+
+    return {
+        code: accessDeniedErrorCode(error),
+        message: String(error),
+        name: 'Error',
+        permission: readStringProperty(error, 'permission'),
+        resource: readStringProperty(error, 'resource'),
+        stack: null
+    };
+}
+
+function permissionDeniedMessage(permission: string | null, resource: string | null): string {
+    const permissionLabel = permission ?? 'unknown permission';
+
+    return resource === null
+        ? `Permission denied: ${permissionLabel}.`
+        : `Permission denied: ${permissionLabel} for ${resource}.`;
+}
+
+function permissionDeniedCause(input: PermissionDeniedCauseInput): PermissionDeniedRunnerErrorCause {
+    const permission = readStringProperty(input.error, 'permission') ??
+        readStringProperty(input.diagnosticMessage, 'permission');
+    const resource = readStringProperty(input.error, 'resource') ??
+        readStringProperty(input.diagnosticMessage, 'resource');
+
+    return {
+        boundary: input.context.boundary,
+        capability: permissionCapability(permission, input.capabilityFallback),
+        diagnosticChannel: input.context.diagnosticChannel,
+        error: input.error === null ? null : serializedDeniedError(input.error),
+        hook: input.context.hook,
+        kind: 'node-permission-denial',
+        permission,
+        phase: input.context.phase,
+        resource,
+        source: input.source
+    };
+}
+
+function permissionDeniedRunnerError(
+    context: PermissionDeniedRunnerErrorContext,
+    cause: PermissionDeniedRunnerErrorCause
+): PermissionDeniedRunnerError {
+    return {
+        attributedTo: context.attributedTo,
+        attributedToWork: context.attributedToWork,
+        cause,
+        message: permissionDeniedMessage(cause.permission, cause.resource),
+        subtype: 'permission'
+    };
+}
+
+function isAccessDeniedError(error: unknown): boolean {
+    return accessDeniedErrorCode(error) === 'ERR_ACCESS_DENIED';
+}
+
+export function permissionDeniedRunnerErrorFromThrown(
+    error: unknown,
+    context: PermissionDeniedRunnerErrorContext
+): PermissionDeniedRunnerError | null {
+    if (!isAccessDeniedError(error)) {
+        return null;
+    }
+
+    return permissionDeniedRunnerError(
+        context,
+        permissionDeniedCause({
+            capabilityFallback: null,
+            context,
+            diagnosticMessage: null,
+            error,
+            source: 'throw'
+        })
+    );
+}
+
+export function permissionDeniedRunnerErrorFromDiagnostic(
+    diagnostic: PermissionDeniedDiagnostic,
+    context: PermissionDeniedRunnerErrorContext
+): PermissionDeniedRunnerError {
+    return permissionDeniedRunnerError(
+        context,
+        permissionDeniedCause({
+            capabilityFallback: diagnostic.fallbackCapability,
+            context: {
+                ...context,
+                diagnosticChannel: diagnostic.channel
+            },
+            diagnosticMessage: diagnostic.message,
+            error: null,
+            source: 'diagnostic-channel'
+        })
+    );
+}
+
+export function isPermissionDeniedRunnerError(error: RunnerError): error is PermissionDeniedRunnerError {
+    return error.subtype === 'permission' &&
+        typeof error.cause === 'object' &&
+        error.cause !== null &&
+        Reflect.get(error.cause, 'kind') === 'node-permission-denial';
+}
+
 const caseRunnerErrorBrand = Symbol.for('@overkill-dev/engine/CaseRunnerError');
 
 export type CaseRunnerErrorOptions = {

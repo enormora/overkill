@@ -5,6 +5,7 @@ import {
     createResourceLifecycleRuntimePolicy
 } from './resource-lifecycle.ts';
 import {
+    createPermissionDenialRuntimePolicy,
     createRuntimeCapabilityPolicy
 } from './capability-policy.ts';
 import type {
@@ -38,6 +39,8 @@ import {
 } from './duration-history.ts';
 
 export type RunRuntimePolicy = TestRuntimePolicy;
+
+export const createRunPermissionRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicy;
 
 export async function readRunDurationHistory(
     dependencies: RunOrchestratorDependencies,
@@ -403,7 +406,7 @@ export function createRunRuntimePolicy(
             observedStderr: false,
             observedStdout: false
         })
-        : null;
+        : createPermissionDenialRuntimePolicy();
 }
 
 export function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void {

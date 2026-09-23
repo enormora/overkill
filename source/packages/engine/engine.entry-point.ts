@@ -335,7 +335,12 @@ export {
 } from '../../engine/test-body-resource-attachment.ts';
 export {
     CaseRunnerError,
-    isCaseRunnerError
+    isCaseRunnerError,
+    isPermissionDeniedRunnerError
+} from '../../engine/run-result.ts';
+export type {
+    PermissionDeniedRunnerError,
+    PermissionDeniedRunnerErrorCause
 } from '../../engine/run-result.ts';
 export type {
     ResourceAttachedTestBody,

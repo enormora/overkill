@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'tstyche';
 import type {
+    isPermissionDeniedRunnerError,
+    PermissionDeniedRunnerError,
+    PermissionDeniedRunnerErrorCause,
     PerTestResult,
     ReporterEvent,
     ResourceUsageSnapshot,
@@ -85,5 +88,13 @@ describe('RunResult', function () {
 describe('RunnerError', function () {
     test('subtype is the documented union', function () {
         expect<RunnerError['subtype']>().type.toBe<ExpectedRunnerErrorSubtype>();
+    });
+
+    test('permission denial runner error cause is public', function () {
+        expect<PermissionDeniedRunnerError['subtype']>().type.toBe<'permission'>();
+        expect<PermissionDeniedRunnerError['cause']>().type.toBe<PermissionDeniedRunnerErrorCause>();
+        expect<typeof isPermissionDeniedRunnerError>().type.toBe<
+            (error: RunnerError) => error is PermissionDeniedRunnerError
+        >();
     });
 });

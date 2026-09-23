@@ -168,11 +168,23 @@ Strict microtest diagnostics use three classifications:
   `process.on('message', ...)` registration, and user `process.send()`.
 - **Observed.** Node exposed a signal but the effect may already have happened.
   Examples include `console.*`, process env mutation, timers, Web Locks,
-  process execve, permission-audit events in in-process mode, and async fs
-  resource creation during load.
+  process execve, and async fs resource creation during load.
 - **Native gap.** Node exposes no stable non-mutating signal. Current examples
   include sync bootstrap reads inside the cwd grant, `Date`, `Math.random()`,
   sync crypto randomness, and SQLite execution.
+
+Node permission denials have their own runner-error subtype, `permission`.
+Thrown `ERR_ACCESS_DENIED` errors and `node:permission-model:*` diagnostics
+preserve Node's raw `permission` and `resource` fields, plus the normalized
+Overkill capability. In strict microtest execution, a case-attributed
+permission runner error gives the case verdict `runtime-policy`; the reporter
+event still carries the `permission` subtype so consumers can distinguish Node
+permission failures from other runtime policy diagnostics.
+
+When Node runs with `--permission-audit`, permission diagnostics describe
+effects that would have been denied in enforce mode. Overkill records those as
+`permission` runner errors as well, but audit mode does not by itself prevent
+the effect.
 
 Imports are not violations by themselves. Executing imported code may perform a
 restricted effect, and body-time dynamic import in supervised strict mode is

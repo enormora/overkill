@@ -1,4 +1,4 @@
-import type { RunnerError } from '../engine/run-result.ts';
+import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
 
 export type RunResolutionErrorCode = 'invalid-request' | 'no-tests-collected' | 'unsupported-request';
 
@@ -26,6 +26,19 @@ export class RunCollectionError extends Error {
     }
 
     public runnerError(): RunnerError {
+        const permissionError = permissionDeniedRunnerErrorFromThrown(this.cause, {
+            attributedTo: null,
+            attributedToWork: null,
+            boundary: null,
+            diagnosticChannel: null,
+            hook: null,
+            phase: 'collection'
+        });
+
+        if (permissionError !== null) {
+            return permissionError;
+        }
+
         return {
             attributedTo: null,
             attributedToWork: null,
