@@ -289,6 +289,7 @@ export const testNode = createOverkillSuite({
                                 {
                                     attributedTo: null,
                                     cause: null,
+                                    diagnostics: [],
                                     message: 'dispose failed',
                                     subtype: 'reporter'
                                 }
@@ -300,6 +301,7 @@ export const testNode = createOverkillSuite({
                                     {
                                         attributedTo: null,
                                         cause: null,
+                                        diagnostics: [],
                                         message: 'runner error notification failed',
                                         subtype: 'reporter'
                                     }
@@ -311,6 +313,7 @@ export const testNode = createOverkillSuite({
                                 {
                                     attributedTo: null,
                                     cause: null,
+                                    diagnostics: [],
                                     message: 'final reporter failed',
                                     subtype: 'reporter'
                                 }
@@ -352,6 +355,7 @@ export const testNode = createOverkillSuite({
                                     {
                                         attributedTo: null,
                                         cause: null,
+                                        diagnostics: [],
                                         message: 'cleanup failed',
                                         subtype: 'reporter'
                                     }

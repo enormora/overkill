@@ -1,13 +1,14 @@
 import figures from 'figures';
 import colors from 'yoctocolors';
-import { formatCaseId, type CaseId } from '../engine/identity.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
-import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
-import type { RunResult, RunnerError, TestOutcome, TestVerdict } from '../engine/run-result.ts';
-import { primaryFailureSourceLocation } from './failure-location.ts';
-import { formatFailureSummary } from './failure-summary.ts';
+import type { RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
 import { formatRunFactSummary } from './run-fact-summary.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
+import {
+    formatCountSummary,
+    formatTimingSummary,
+    problemLines
+} from './human-reporter-rendering.ts';
 
 export type DotReporterDependencies = {
     readonly interactive: boolean;
@@ -25,58 +26,12 @@ function formatDuration(durationMicroseconds: number): string {
     return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
 }
 
-function executedCount(result: RunResult): number {
-    const { summary } = result;
-    return summary.passed + summary.failed + summary.skipped + summary.inconclusive +
-        summary.resourceExhausted + summary.crashed;
-}
-
 function formatSummary(result: RunResult): string {
-    const { summary } = result;
-    const outcomes = [
-        `${summary.passed} pass`,
-        `${summary.failed} fail`,
-        `${summary.skipped} skip`,
-        ...summary.inconclusive === 0 ? [] : [ `${summary.inconclusive} inconclusive` ],
-        ...summary.resourceExhausted === 0 ? [] : [ `${summary.resourceExhausted} resource-exhausted` ],
-        ...summary.crashed === 0 ? [] : [ `${summary.crashed} crash` ]
-    ]
-        .join(', ');
-    const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
-    const countSummary = [
-        `${summary.discovered} discovered`,
-        `${summary.planned} planned`,
-        `${executedCount(result)} executed`
-    ]
-        .join(', ');
-
     const statusMark = result.status === 'failed' ? failMark : passMark;
 
-    return `${statusMark} ${countSummary} (${outcomes})${orphanSummary} in ${
+    return `${statusMark} ${formatCountSummary(result)} in ${
         formatDuration(result.timings.summary.totalWallTimeMicroseconds)
-    }`;
-}
-
-type FailOutcome = Extract<TestOutcome, { readonly kind: 'fail'; }>;
-
-function failureOrigin(
-    caseId: CaseId,
-    outcome: FailOutcome,
-    context: ReportingContext
-): string {
-    const failure = outcome.failures[0];
-    const location = primaryFailureSourceLocation(failure);
-    const locationText = location === null ? null : formatSourceLocation(location, context);
-
-    return locationText === null ? formatCaseId(caseId) : `${locationText} ${formatCaseId(caseId)}`;
-}
-
-function outcomeDetail(outcome: TestOutcome): string | null {
-    if (outcome.kind === 'inconclusive') {
-        return outcome.reason;
-    }
-
-    return null;
+    } (${formatTimingSummary(result)})`;
 }
 
 function markForVerdict(verdict: TestVerdict): string {
@@ -101,43 +56,6 @@ function markForVerdict(verdict: TestVerdict): string {
 
 function formatRunnerError(error: RunnerError): string {
     return `Runner error: ${error.message}`;
-}
-
-function interruptedTestDetailLine(testResult: RunResult['perTest'][number]): string {
-    const prefix = testResult.verdict === 'resource-exhausted' ? 'Resource exhausted' : 'Crashed';
-
-    return `${prefix}: ${formatCaseId(testResult.id)}`;
-}
-
-function failedTestDetailLine(
-    caseId: CaseId,
-    outcome: FailOutcome,
-    context: ReportingContext
-): string {
-    const origin = failureOrigin(caseId, outcome, context);
-    const summary = formatFailureSummary(outcome.failures[0]);
-
-    return `Failed: ${origin}: ${summary}`;
-}
-
-function detailLines(result: RunResult, context: ReportingContext): readonly string[] {
-    return result.perTest.flatMap(function testDetail(testResult) {
-        if (testResult.outcome === null) {
-            return [ interruptedTestDetailLine(testResult) ];
-        }
-
-        if (testResult.outcome.kind === 'fail') {
-            return [ failedTestDetailLine(testResult.id, testResult.outcome, context) ];
-        }
-
-        const detail = outcomeDetail(testResult.outcome);
-
-        if (detail === null || testResult.outcome.kind === 'skip') {
-            return [];
-        }
-
-        return [ `Inconclusive: ${formatCaseId(testResult.id)}: ${detail}` ];
-    });
 }
 
 export function createDotReporter(dependencies: DotReporterDependencies): DefinedReporter<RealTimeReporter> {
@@ -190,7 +108,9 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
             async onFinish(result: RunResult) {
                 finishProgress();
                 writeLine(formatSummary(result));
-                for (const detailLine of detailLines(result, context)) {
+                const detailLines = problemLines(result, context, { verbose: false });
+
+                for (const detailLine of detailLines) {
                     writeLine(detailLine);
                 }
             }

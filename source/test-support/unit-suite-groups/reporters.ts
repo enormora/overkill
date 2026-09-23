@@ -1,13 +1,13 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testNode as briefReporterTestNode } from '../../reporters/brief-reporter.test.ts';
 import { testNode as dotReporterTestNode } from '../../reporters/dot-reporter-suite.test.ts';
+import { testNode as humanReporterRenderingTestNode } from '../../reporters/human-reporter-rendering.test.ts';
 import { testNode as inMemoryReporterTestNode } from '../../reporters/in-memory-reporter.test.ts';
 import { testNode as lineFailureRenderingEdgeTestNode } from '../../reporters/line-failure-rendering-edge.test.ts';
 import { testNode as lineFailureRenderingTestNode } from '../../reporters/line-failure-rendering.test.ts';
 import { testNode as lineReporterTestNode } from '../../reporters/line-reporter-suite.test.ts';
-import { testNode as nullReporterTestNode } from '../../reporters/null-reporter.test.ts';
-import { testNode as tapConsoleReporterTestNode } from '../../reporters/tap-console-reporter.test.ts';
-import { testNode as terminalTestNode } from '../../reporters/terminal.test.ts';
+import { testNode as miscReporterSuiteTestNode } from '../../reporters/misc-reporter-suite.test.ts';
+import { testNode as treeProgressReporterSuiteTestNode } from '../../reporters/tree-progress-reporter-suite.test.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
@@ -17,12 +17,12 @@ export const testNode = createSuite({
     children: [
         briefReporterTestNode,
         dotReporterTestNode,
+        humanReporterRenderingTestNode,
         inMemoryReporterTestNode,
         lineFailureRenderingEdgeTestNode,
         lineFailureRenderingTestNode,
         lineReporterTestNode,
-        nullReporterTestNode,
-        tapConsoleReporterTestNode,
-        terminalTestNode
+        miscReporterSuiteTestNode,
+        treeProgressReporterSuiteTestNode
     ]
 });

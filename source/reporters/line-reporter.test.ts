@@ -14,7 +14,12 @@ type LogFunction = (...values: readonly unknown[]) => void;
 type Log = TestDouble<LogFunction>;
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
-    const fakeDependencies: LineReporterDependencies = { stdoutConsole: { log }, verbose: false };
+    const fakeDependencies: LineReporterDependencies = {
+        columns: 80,
+        formatOptions: { color: false, wrap: true },
+        stdoutConsole: { log },
+        verbose: false
+    };
 
     return createLineReporter(fakeDependencies)({
         relativizeLocationPath(location) {
@@ -143,7 +148,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints assertion failure details for a failed test-end event',
+            title: 'line reporter prints concise assertion failure progress for a failed test-end event',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -186,21 +191,18 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 12_000
                 });
 
-                scope.assert(doubleUsage.callCount, log, 4);
+                scope.assert(doubleUsage.callCount, log, 1);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                     errorSymbol,
-                    'fails (12 ms) (source/fails.test.ts:8:4)'
+                    'fails: numbers differ (12 ms) (source/fails.test.ts:8:4)'
                 ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  numbers differ' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  expected: 2' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  actual: 1' ]);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints unicode string mismatch hints',
+            title: 'line reporter prints unicode string mismatch summaries',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -257,18 +259,14 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 12_000
                 });
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  names differ' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  path: .name' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  source: source/users.test.ts:10:5' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 4, [ '  string hunk expected 1, actual 1' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: names differ (12 ms)' ]);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints body error failures with a dimmed stack',
+            title: 'line reporter prints body error summaries',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -300,16 +298,14 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 12_000
                 });
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  Error: boom' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ `  ${colors.dim('Error: boom')}` ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: boom (12 ms)' ]);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints test-contract failures',
+            title: 'line reporter prints test-contract summaries',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -339,19 +335,17 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 12_000
                 });
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails (12 ms)' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
-                    '  Expected at least one assertion. (no-assertions)'
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+                    errorSymbol,
+                    'fails: Expected at least one assertion. (12 ms)'
                 ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  expected: at least one assertion' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  actual: 0' ]);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints object identity hints',
+            title: 'line reporter prints object identity summaries',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -413,9 +407,7 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 12_000
                 });
 
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
-                    '  replace .name: expected "Ada", actual "Grace"'
-                ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ errorSymbol, 'fails: objects differ (12 ms)' ]);
 
                 return scope.assert.collect();
             }
@@ -491,7 +483,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints nested suites and indents test results',
+            title: 'line reporter prints nested suite prefixes',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -500,38 +492,12 @@ export const testNode = createOverkillSuite({
 
                 await reportNestedSuiteRun(reporter);
 
-                scope.assert(doubleUsage.callCount, log, 3);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, 'rows' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ successSymbol, '  row 1 [value=1] (7 ms)' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ successSymbol, 'passes (2 ms)' ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints runner errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const log = testDouble<LogFunction>();
-                const reporter = lineReporterWithLog(log);
-
-                await reporter.onEvent({
-                    error: {
-                        attributedTo: null,
-                        cause: new Error('cannot render'),
-                        message: 'line: cannot render',
-                        subtype: 'reporter'
-                    },
-                    kind: 'runner-error'
-                });
-
-                scope.assert(doubleUsage.callCount, log, 1);
+                scope.assert(doubleUsage.callCount, log, 2);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
-                    errorSymbol,
-                    'Runner error: line: cannot render'
+                    successSymbol,
+                    '[rows] row 1 [value=1] (7 ms)'
                 ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ successSymbol, 'passes (2 ms)' ]);
 
                 return scope.assert.collect();
             }

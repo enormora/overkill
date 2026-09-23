@@ -137,8 +137,14 @@ export type RunnerError = {
     readonly attributedTo: CaseId | null;
     readonly attributedToWork?: WorkId | null;
     readonly cause: unknown;
+    readonly diagnostics: readonly RunnerErrorDiagnostic[];
     readonly message: string;
     readonly subtype: RunnerErrorSubtype;
+};
+
+type RunnerErrorDiagnostic = {
+    readonly label: string;
+    readonly value: string;
 };
 
 type PermissionDeniedRunnerErrorBoundaryByName = {
@@ -297,6 +303,7 @@ function permissionDeniedRunnerError(
         attributedTo: context.attributedTo,
         attributedToWork: context.attributedToWork,
         cause,
+        diagnostics: [],
         message: permissionDeniedMessage(cause.permission, cause.resource),
         subtype: 'permission'
     };
@@ -379,6 +386,7 @@ export class CaseRunnerError extends Error {
             attributedTo,
             attributedToWork,
             cause: this.runnerErrorCause,
+            diagnostics: [],
             message: this.message,
             subtype: this.runnerErrorSubtype
         };
@@ -449,6 +457,7 @@ export function runStatusFromPlan(
 }
 
 export type PerTestResult = {
+    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
     readonly id: CaseId;
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;

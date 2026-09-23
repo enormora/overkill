@@ -84,34 +84,40 @@ function assertConfigSubpath(scope: TestScope): void {
     scope.assert.equal(Object.hasOwn(configSubpath, 'loadRunConfig'), false);
 }
 
-async function assertReporterSubpath(scope: TestScope): Promise<void> {
+function reporterSubpathOutputs(): readonly string[] {
     const context = createReportingContext({ projectRoot: null });
     const line = reportersSubpath.createLineReporter()(context);
     const brief = reportersSubpath.createBriefReporter()(context);
     const dot = reportersSubpath.createDotReporter()(context);
+    const progress = reportersSubpath.createProgressReporter()(context);
+    const tree = reportersSubpath.createTreeReporter()(context);
     const githubActions = reportersSubpath.createGithubActionsOutputRenderer()(context);
 
-    scope.assert.deepEqual(sortedKeys(reportersSubpath), [
-        'createBriefReporter',
-        'createDotReporter',
-        'createGithubActionsOutputRenderer',
-        'createLineReporter'
-    ]);
-    scope.assert.deepEqual([
+    return [
         line.name,
         brief.name,
         dot.name,
+        progress.name,
+        tree.name,
         githubActions.render({
             annotation: null,
             kind: 'stdout-line',
             role: 'primary',
             text: 'hello'
         })
-    ], [ 'line', 'brief', 'dot', 'hello' ]);
+    ];
+}
 
-    if (dot.dispose !== null) {
-        await dot.dispose();
-    }
+async function assertReporterSubpath(scope: TestScope): Promise<void> {
+    scope.assert.deepEqual(sortedKeys(reportersSubpath), [
+        'createBriefReporter',
+        'createDotReporter',
+        'createGithubActionsOutputRenderer',
+        'createLineReporter',
+        'createProgressReporter',
+        'createTreeReporter'
+    ]);
+    scope.assert.deepEqual(reporterSubpathOutputs(), [ 'line', 'brief', 'dot', 'progress', 'tree', 'hello' ]);
 }
 
 function assertAssertSubpath(scope: TestScope): void {

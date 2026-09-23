@@ -44,6 +44,7 @@ export function createExecutionAsyncLeakMonitor(diagnostics: AsyncLeakDiagnostic
 function runtimePolicyCase(testCase: TestPlanCase, executedCase: ConcurrentCase): ConcurrentCase {
     return {
         result: {
+            definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome: null,
             verdict: 'runtime-policy',

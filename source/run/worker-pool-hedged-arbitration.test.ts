@@ -41,6 +41,7 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
+        definitionLocations: [ { kind: 'unknown' as const } ],
         id,
         outcome: { kind: 'pass' },
         verdict: 'pass',

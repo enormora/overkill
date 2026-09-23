@@ -182,6 +182,11 @@ function runtimePolicyError(violation: RuntimePolicyViolation): RunnerError {
         attributedTo: violation.caseId,
         attributedToWork: violation.workId,
         cause: violation,
+        diagnostics: [
+            { label: 'capability', value: violation.capability },
+            { label: 'phase', value: violation.phase },
+            { label: 'strictness', value: violation.strictness }
+        ],
         message: violation.message,
         subtype: 'runtime-policy'
     };

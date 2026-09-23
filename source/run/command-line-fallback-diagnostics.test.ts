@@ -103,6 +103,7 @@ function runnerError(
     return {
         attributedTo: null,
         cause: null,
+        diagnostics: [],
         message,
         subtype
     };

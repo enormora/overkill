@@ -117,6 +117,7 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
 
     scope.assert.deepEqual(result.perTest, [
         {
+            definitionLocations: [ { kind: 'unknown' as const } ],
             id: skippedCaseId,
             outcome: { kind: 'skip', reason: 'unsupported platform' },
             verdict: 'skip',

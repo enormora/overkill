@@ -1,6 +1,7 @@
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as lineReporterArtifactsTestNode } from './line-reporter-artifacts.test.ts';
 import { testNode as lineReporterOrphanTestNode } from './line-reporter-orphan.test.ts';
+import { testNode as lineReporterProgressTestNode } from './line-reporter-progress.test.ts';
 import { testNode as lineReporterSummaryTestNode } from './line-reporter-summary.test.ts';
 import { testNode as lineReporterTerminalTestNode } from './line-reporter-terminal.test.ts';
 import { testNode as lineReporterTestNode } from './line-reporter.test.ts';
@@ -12,6 +13,7 @@ export const testNode = createSuite({
     controls: {},
     children: [
         lineReporterTestNode,
+        lineReporterProgressTestNode,
         lineReporterArtifactsTestNode,
         lineReporterSummaryTestNode,
         lineReporterTerminalTestNode,

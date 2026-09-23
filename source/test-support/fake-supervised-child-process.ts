@@ -132,6 +132,7 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
                 error: {
                     attributedTo: null,
                     cause: error,
+                    diagnostics: [],
                     message: error instanceof Error ? error.message : String(error),
                     subtype: 'loader'
                 },

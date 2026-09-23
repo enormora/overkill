@@ -127,6 +127,7 @@ function emitProcessEnvironmentPolicyError(context: FakeSupervisedChildRunContex
                 attributedTo: work.case,
                 attributedToWork: work,
                 cause: { capability: 'process-env' },
+                diagnostics: [],
                 message: 'Runtime policy violation: process.env value was set: OVERKILL_CASE_POLICY_FIXTURE.',
                 subtype: 'runtime-policy'
             },
@@ -198,6 +199,7 @@ function completeDeterministicSupervisedChild(
             collectedPlanForAssignedCases(collectedPlan, assignedWork),
             assignedWork.map(function toPassingResult(work) {
                 return {
+                    definitionLocations: [ { kind: 'unknown' as const } ],
                     id: work.case,
                     outcome: { kind: 'pass' as const },
                     verdict: 'pass' as const,

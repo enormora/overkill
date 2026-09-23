@@ -24,6 +24,7 @@ const reporterDeliveryError: RunnerError = {
     attributedTo: null,
     attributedToWork: null,
     cause: null,
+    diagnostics: [],
     message: 'Reporter delivery failed.',
     subtype: 'reporter'
 };

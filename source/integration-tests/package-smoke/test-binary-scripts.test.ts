@@ -449,7 +449,7 @@ export const expectedRootImportOutput = [
 
 export const expectedStandardSubpathImportOutput = [
     '["defineConfig"]',
-    '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineReporter"]',
+    '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineReporter","createProgressReporter","createTreeReporter"]',
     '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
     '["throwingTest"]',
     '["ResourceLifecycleError","composeRuntimeContext","composeRuntimes","createLocalHttpServiceResource","createLocalProcessServiceResource","createSimulatedHttpServerResource","createTemporaryDirectoryResource","defineLocalServiceResource","defineResource","defineRuntime","defineRuntimeMatrix","startRuntime","withResource","withResources","withRuntime"]',

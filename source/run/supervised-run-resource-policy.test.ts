@@ -146,6 +146,11 @@ export const testNode = createOverkillSuite({
                         activeWork: [],
                         enforcement: 'post-test-diagnostic'
                     },
+                    diagnostics: [
+                        { label: 'metric', value: 'activeResourceCount' },
+                        { label: 'observed', value: '2' },
+                        { label: 'budget', value: '1' }
+                    ],
                     message: 'Resource budget exceeded: activeResourceCount observed 2, budget 1.',
                     subtype: 'resource-exhaustion'
                 });

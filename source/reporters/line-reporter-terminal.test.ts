@@ -14,14 +14,32 @@ type LogFunction = (...values: readonly unknown[]) => void;
 type Log = TestDouble<LogFunction>;
 
 const errorSymbol = colors.red(figures.cross);
-const infoSymbol = colors.cyan(figures.info);
 const failingCaseId = { file: null, title: 'fails', params: null, suite: [] };
+const nestedFailingCaseId = { file: null, title: 'nested fails', params: null, suite: [ 'root' ] };
 const definitionLocation = { kind: 'unknown' as const };
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
-    const fakeDependencies: LineReporterDependencies = { stdoutConsole: { log }, verbose: false };
+    const fakeDependencies: LineReporterDependencies = {
+        columns: 80,
+        formatOptions: { color: false, wrap: true },
+        stdoutConsole: { log },
+        verbose: false
+    };
 
     return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
+}
+
+function assertTerminalOutput(scope: OverkillScope, log: Log): void {
+    scope.assert(doubleUsage.callCount, log, 3);
+    scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
+        errorSymbol,
+        'fails (12 ms): resource exhausted'
+    ]);
+    scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ errorSymbol, 'fails (13 ms): crashed' ]);
+    scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
+        errorSymbol,
+        '[root] nested fails (14 ms): crashed'
+    ]);
 }
 
 export const testNode = createOverkillSuite({
@@ -62,14 +80,19 @@ export const testNode = createOverkillSuite({
                     verdict: 'crashed',
                     durationMicroseconds: 13_000
                 });
+                await reporter.onEvent({
+                    attempt: 0,
+                    case: nestedFailingCaseId,
+                    definitionLocations: [ definitionLocation ],
+                    artifacts: [],
+                    kind: 'test-end',
+                    outcome: null,
+                    suitePath: [],
+                    verdict: 'crashed',
+                    durationMicroseconds: 14_000
+                });
 
-                scope.assert(doubleUsage.callCount, log, 3);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, '' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
-                    errorSymbol,
-                    '  fails (12 ms): resource exhausted'
-                ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ errorSymbol, '  fails (13 ms): crashed' ]);
+                assertTerminalOutput(scope, log);
 
                 return scope.assert.collect();
             }

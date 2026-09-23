@@ -164,6 +164,7 @@ function applyTestEndEvent(
     const key = workIdentityKey(workId);
 
     state.recordPerTestResult(key, {
+        definitionLocations: event.definitionLocations,
         id: event.case,
         outcome: event.outcome,
         verdict: event.verdict,

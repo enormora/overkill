@@ -23,6 +23,7 @@ const missingObservedChildError: RunnerError = {
     attributedTo: null,
     attributedToWork: null,
     cause: null,
+    diagnostics: [],
     message: 'Supervised child failed after a process-level runtime error.',
     subtype: 'crash'
 };
@@ -58,6 +59,7 @@ export function runnerErrorFromSupervisedChildFailure(error: unknown): RunnerErr
         attributedTo: null,
         attributedToWork: null,
         cause: error,
+        diagnostics: [],
         message: error instanceof Error ? error.message : String(error),
         subtype: 'loader'
     };

@@ -528,6 +528,7 @@ function skippedCase(
 
     return {
         result: {
+            definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome,
             verdict: verdictFromOutcome(outcome),
@@ -563,6 +564,7 @@ export async function runTestCase(
 
     return {
         result: {
+            definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome,
             verdict,

@@ -49,6 +49,7 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
+        definitionLocations: [ { kind: 'unknown' as const } ],
         id,
         outcome: { kind: 'pass' },
         verdict: 'pass',
@@ -109,6 +110,7 @@ function reporterError(): RunnerError {
     return {
         attributedTo: null,
         cause: new Error('reporter failed'),
+        diagnostics: [],
         message: 'Reporter failed.',
         subtype: 'reporter'
     };

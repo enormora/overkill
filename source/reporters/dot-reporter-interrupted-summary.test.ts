@@ -97,11 +97,15 @@ export const testNode = createOverkillSuite({
                     terminal.text(),
                     [
                         `${colors.green(figures.tick)} 1 discovered, 1 planned, 1 executed ` +
-                        '(1 pass, 0 fail, 0 skip) in 5 ms',
+                        '(1 pass, 0 fail, 0 skip) in 5 ms (total 5 ms, execution 0 ms, overhead 5 ms)',
                         `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
-                        '(0 pass, 0 fail, 0 skip, 1 resource-exhausted, 1 crash) in 9 ms',
-                        'Resource exhausted: root > heap ceiling',
-                        'Crashed: root > worker death',
+                        '(0 pass, 0 fail, 0 skip, 1 resource-exhausted, 1 crash) in 9 ms ' +
+                        '(total 9 ms, execution 0 ms, overhead 9 ms)',
+                        'Problems',
+                        '  root > heap ceiling (source/example.test.ts)',
+                        '    resource-exhausted',
+                        '  root > worker death (source/example.test.ts)',
+                        '    crashed',
                         ''
                     ]
                         .join('\n')

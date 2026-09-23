@@ -4,27 +4,43 @@ import type { CaseId } from '../engine/identity.ts';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import {
     formatDefinitionLocations,
-    type RenderedSourceLocations,
     type ReportingContext
 } from '../engine/reporting-context.ts';
 import type {
-    FailOutcome,
     OrphanedNode,
-    RunArtifact,
     RunResult,
     TestOutcome,
     TestVerdict
 } from '../engine/run-result.ts';
-import { formatFailure } from './line-failure-rendering.ts';
+import { formatFailureSummary } from './failure-summary.ts';
 import { formatRunFactSummary } from './run-fact-summary.ts';
-import { createTerminalLineLogger, type TerminalLineLogger } from './terminal.ts';
+import { createTerminalLineLogger, type TerminalLineLogger, visibleTerminalWidth } from './terminal.ts';
+import {
+    contextPrefix,
+    formatCountSummary,
+    formatTimingSummary,
+    problemLines,
+    type HumanReporterFormatOptions
+} from './human-reporter-rendering.ts';
 
 const successSymbol = colors.green(figures.tick);
 const errorSymbol = colors.red(figures.cross);
 const infoSymbol = colors.cyan(figures.info);
 const microsecondsPerMillisecond = 1000;
+const minimumColumnWidth = 1;
+
+type DefinitionLocationSummary = {
+    readonly primary: string | null;
+};
+
+type WrapTextState = {
+    readonly lines: readonly string[];
+    readonly line: string;
+};
 
 export type LineReporterDependencies = {
+    readonly columns: number;
+    readonly formatOptions: HumanReporterFormatOptions;
     readonly stdoutConsole: Pick<typeof console, 'log'>;
     readonly verbose: boolean;
 };
@@ -53,10 +69,99 @@ function formatDuration(durationMicroseconds: number): string {
     return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
 }
 
-function formatTestResult(id: CaseId, outcome: TestOutcome, durationMicroseconds: number): readonly [string, string] {
+function nextWrapTextState(state: WrapTextState, word: string, textColumns: number): WrapTextState {
+    const candidate = state.line.length === 0 ? word : `${state.line} ${word}`;
+
+    if (state.line.length > 0 && visibleTerminalWidth(candidate) > textColumns) {
+        return { line: word, lines: [ ...state.lines, state.line ] };
+    }
+
+    return { ...state, line: candidate };
+}
+
+function wrapTextParts(value: string, columns: number): readonly string[] {
+    const leadingWhitespace = /^\s*/u.exec(value)?.[0] ?? '';
+    const text = value.slice(leadingWhitespace.length);
+    const textColumns = Math.max(minimumColumnWidth, columns - visibleTerminalWidth(leadingWhitespace));
+    const initialState: WrapTextState = { line: '', lines: [] };
+    const state = text
+        .split(' ')
+        .reduce(function wrapWord(currentState, word) {
+            return nextWrapTextState(currentState, word, textColumns);
+        }, initialState);
+
+    return [ ...state.lines, state.line ].map(function indentWrappedLine(wrappedLine) {
+        return `${leadingWhitespace}${wrappedLine}`;
+    });
+}
+
+function wrapText(value: string, columns: number): readonly string[] {
+    if (visibleTerminalWidth(value) <= columns) {
+        return [ value ];
+    }
+
+    return wrapTextParts(value, columns);
+}
+
+function logSingleValueLine(terminal: TerminalLineLogger, columns: number, value: string): void {
+    const lines = wrapText(value, Math.max(minimumColumnWidth, columns));
+
+    for (const line of lines) {
+        terminal.line(line);
+    }
+}
+
+function logMultiValueLine(terminal: TerminalLineLogger, columns: number, values: readonly string[]): void {
+    const [ symbol = '', ...messageValues ] = values;
+    const message = messageValues.join(' ');
+    const continuationIndent = ' '.repeat(visibleTerminalWidth(symbol) + 1);
+    const firstLineColumns = Math.max(minimumColumnWidth, columns - visibleTerminalWidth(continuationIndent));
+    const [ firstLine = '', ...continuationLines ] = wrapText(message, firstLineColumns);
+
+    terminal.line(symbol, firstLine);
+    for (const continuationLine of continuationLines) {
+        terminal.line(`${continuationIndent}${continuationLine}`);
+    }
+}
+
+function logWrappedLine(
+    terminal: TerminalLineLogger,
+    columns: number,
+    formatOptions: HumanReporterFormatOptions,
+    ...values: readonly string[]
+): void {
+    if (!formatOptions.wrap || values.length === 0) {
+        terminal.line(...values);
+    } else if (values.length === 1) {
+        logSingleValueLine(terminal, columns, values[0] ?? '');
+    } else {
+        logMultiValueLine(terminal, columns, values);
+    }
+}
+
+function outcomeDetail(outcome: TestOutcome): string {
     const reason = outcomeReason(outcome);
-    const detail = reason === null ? '' : `: ${reason}`;
-    const message = `${formatCaseTitle(id)}${detail} (${formatDuration(durationMicroseconds)})`;
+
+    if (reason !== null) {
+        return `: ${reason}`;
+    }
+
+    if (outcome.kind !== 'fail') {
+        return '';
+    }
+
+    return `: ${formatFailureSummary(outcome.failures[0])}`;
+}
+
+function formatTestResult(
+    id: CaseId,
+    outcome: TestOutcome,
+    durationMicroseconds: number,
+    prefix: string
+): readonly [string, string] {
+    const context = prefix.length === 0 ? '' : `${prefix} `;
+    const message = `${context}${formatCaseTitle(id)}${outcomeDetail(outcome)} ` +
+        `(${formatDuration(durationMicroseconds)})`;
 
     if (outcome.kind === 'fail') {
         return [ errorSymbol, message ];
@@ -72,19 +177,17 @@ function formatTestResult(id: CaseId, outcome: TestOutcome, durationMicroseconds
 function formatTerminalTestResult(
     id: CaseId,
     verdict: TestVerdict,
-    durationMicroseconds: number
+    durationMicroseconds: number,
+    prefix: string
 ): readonly [string, string] {
-    const message = `${formatCaseTitle(id)} (${formatDuration(durationMicroseconds)})`;
+    const context = prefix.length === 0 ? '' : `${prefix} `;
+    const message = `${context}${formatCaseTitle(id)} (${formatDuration(durationMicroseconds)})`;
 
     if (verdict === 'resource-exhausted') {
         return [ errorSymbol, `${message}: resource exhausted` ];
     }
 
     return [ errorSymbol, `${message}: crashed` ];
-}
-
-function formatSuiteName(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): string {
-    return event.suitePath.at(-1)?.title ?? '';
 }
 
 function formatOrphanLines(orphan: OrphanedNode, context: ReportingContext): readonly string[] {
@@ -99,41 +202,14 @@ function formatOrphanLines(orphan: OrphanedNode, context: ReportingContext): rea
     ];
 }
 
-function logFailures(
-    terminal: TerminalLineLogger,
-    suiteDepth: number,
-    outcome: FailOutcome,
-    context: ReportingContext
-): void {
-    for (const failure of outcome.failures) {
-        for (const line of formatFailure(failure, context)) {
-            terminal.line(`${indent(suiteDepth + 1)}${line}`);
-        }
-    }
-}
-
 function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
-    const { summary } = result;
-    const executed = summary.passed + summary.failed + summary.skipped + summary.inconclusive +
-        summary.crashed + summary.resourceExhausted;
-    const outcomes = [
-        `${summary.passed} pass`,
-        `${summary.failed} fail`,
-        `${summary.skipped} skip`,
-        ...summary.inconclusive === 0 ? [] : [ `${summary.inconclusive} inconclusive` ],
-        ...summary.resourceExhausted === 0 ? [] : [ `${summary.resourceExhausted} resource-exhausted` ],
-        ...summary.crashed === 0 ? [] : [ `${summary.crashed} crash` ]
-    ]
-        .join(', ');
-    const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
-    const countSummary = `${summary.discovered} discovered, ${summary.planned} planned, ${executed} executed`;
     const symbol = result.status === 'failed' ? errorSymbol : successSymbol;
 
     terminal.line(
         symbol,
-        `${countSummary} (${outcomes})${orphanSummary} in ${
-            formatDuration(result.timings.summary.totalWallTimeMicroseconds)
-        }`
+        `${formatCountSummary(result)} in ${formatDuration(result.timings.summary.totalWallTimeMicroseconds)} (${
+            formatTimingSummary(result)
+        })`
     );
 }
 
@@ -155,61 +231,15 @@ function logOrphans(
     }
 }
 
-function outputArtifactLines(artifact: RunArtifact): readonly string[] {
-    if (artifact.payload.kind !== 'captured-output') {
-        return [];
-    }
-
-    const suffix = artifact.payload.truncated ? ' truncated' : '';
-    const header = `${artifact.payload.stream}${suffix}:`;
-    const textLines = artifact.payload.text.length === 0 ? [] : artifact.payload.text.replace(/\n$/u, '').split('\n');
-
-    return [ header, ...textLines ];
-}
-
-function logOutputArtifacts(
-    terminal: TerminalLineLogger,
-    suiteDepth: number,
-    artifacts: readonly RunArtifact[]
-): void {
-    for (const artifact of artifacts) {
-        for (const line of outputArtifactLines(artifact)) {
-            terminal.line(`${indent(suiteDepth + 1)}${line}`);
-        }
-    }
-}
-
-function shouldLogTestArtifacts(
-    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    verbose: boolean
-): boolean {
-    return event.verdict !== 'pass' || verbose;
-}
-
 function failureLocation(
     event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    definitionLocations: RenderedSourceLocations
+    definitionLocations: DefinitionLocationSummary
 ): string {
     if (event.outcome?.kind !== 'fail' || definitionLocations.primary === null) {
         return '';
     }
 
     return ` (${definitionLocations.primary})`;
-}
-
-function nonGreenRun(result: RunResult): boolean {
-    return result.runnerErrors.length > 0 ||
-        result.summary.crashed > 0 ||
-        result.summary.failed > 0 ||
-        result.summary.inconclusive > 0 ||
-        result.summary.resourceExhausted > 0 ||
-        result.summary.runtimePolicy > 0;
-}
-
-function runArtifacts(result: RunResult): readonly RunArtifact[] {
-    return result.artifacts.filter(function isRunArtifact(artifact) {
-        return artifact.id.scope.kind === 'run';
-    });
 }
 
 function runStartLine(event: Extract<ReporterEvent, { readonly kind: 'run-start'; }>): string {
@@ -220,41 +250,23 @@ function runStartLine(event: Extract<ReporterEvent, { readonly kind: 'run-start'
 }
 
 export function createLineReporter(dependencies: LineReporterDependencies): DefinedReporter<RealTimeReporter> {
-    const { stdoutConsole, verbose } = dependencies;
+    const { columns, formatOptions, stdoutConsole, verbose } = dependencies;
     return defineReporter(function createLineRuntimeReporter(context) {
         const terminal = createTerminalLineLogger({ stdoutConsole });
-        let suiteDepth = 0;
-
-        function logFailureDetails(
-            event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-            definitionLocations: RenderedSourceLocations
-        ): void {
-            if (event.outcome?.kind !== 'fail') {
-                return;
+        const wrappedTerminal: TerminalLineLogger = {
+            line(...values) {
+                logWrappedLine(terminal, columns, formatOptions, ...values);
             }
-
-            for (const detailLine of definitionLocations.details) {
-                terminal.line(`${indent(suiteDepth + 1)}${detailLine}`);
-            }
-            logFailures(terminal, suiteDepth, event.outcome, context);
-        }
+        };
 
         function logTestEnd(event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>): void {
+            const prefix = contextPrefix(event.workId?.runtimes ?? [], event.case.suite, formatOptions);
             const [ symbol, message ] = event.outcome === null
-                ? formatTerminalTestResult(event.case, event.verdict, event.durationMicroseconds)
-                : formatTestResult(event.case, event.outcome, event.durationMicroseconds);
+                ? formatTerminalTestResult(event.case, event.verdict, event.durationMicroseconds, prefix)
+                : formatTestResult(event.case, event.outcome, event.durationMicroseconds, prefix);
             const definitionLocations = formatDefinitionLocations(event.definitionLocations, context);
 
-            terminal.line(symbol, `${indent(suiteDepth)}${message}${failureLocation(event, definitionLocations)}`);
-            logFailureDetails(event, definitionLocations);
-            if (shouldLogTestArtifacts(event, verbose)) {
-                logOutputArtifacts(terminal, suiteDepth, event.artifacts);
-            }
-        }
-
-        function logSuiteStart(event: Extract<ReporterEvent, { readonly kind: 'suite-start'; }>): void {
-            terminal.line(infoSymbol, `${indent(suiteDepth)}${formatSuiteName(event)}`);
-            suiteDepth += 1;
+            wrappedTerminal.line(symbol, `${message}${failureLocation(event, definitionLocations)}`);
         }
 
         return {
@@ -265,24 +277,22 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
 
             async onEvent(event) {
                 if (event.kind === 'run-start') {
-                    terminal.line(infoSymbol, runStartLine(event));
-                } else if (event.kind === 'suite-start') {
-                    logSuiteStart(event);
-                } else if (event.kind === 'suite-end') {
-                    suiteDepth = Math.max(0, suiteDepth - 1);
+                    wrappedTerminal.line(infoSymbol, runStartLine(event));
                 } else if (event.kind === 'test-end') {
                     logTestEnd(event);
                 } else if (event.kind === 'runner-error') {
-                    terminal.line(errorSymbol, `Runner error: ${event.error.message}`);
+                    wrappedTerminal.line(errorSymbol, `Runner error: ${event.error.message}`);
                 }
             },
 
             async onFinish(finalResult) {
-                logSummary(terminal, finalResult);
-                if (nonGreenRun(finalResult) || verbose) {
-                    logOutputArtifacts(terminal, 0, runArtifacts(finalResult));
+                const lines = problemLines(finalResult, context, { verbose });
+
+                for (const line of lines) {
+                    wrappedTerminal.line(line);
                 }
-                logOrphans(terminal, finalResult.orphans, context);
+                logSummary(wrappedTerminal, finalResult);
+                logOrphans(wrappedTerminal, finalResult.orphans, context);
             }
         };
     });
