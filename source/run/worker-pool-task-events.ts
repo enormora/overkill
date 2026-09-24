@@ -7,7 +7,10 @@ import { crashError } from './supervised-run-resource-policy.ts';
 import type { WorkUnit } from './run-types.ts';
 import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
 import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
-import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
+import type {
+    WorkerPoolUnitLease,
+    WorkerPoolWorkDispatcher
+} from './worker-pool-dispatch-state.ts';
 
 type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
 type WorkerPoolPermissionFailureContext = {
@@ -19,6 +22,30 @@ type WorkerPoolPermissionFailureContext = {
 function memberUnits(taskRun: WorkerPoolTaskRun): readonly WorkUnit[] {
     return taskRun.members.map(function toUnit(member) {
         return member.unit;
+    });
+}
+
+function taskRunKeepsLeaseReservation(taskRun: WorkerPoolTaskRun, lease: WorkerPoolUnitLease): boolean {
+    return lease.kind === 'primary' && taskRun.startedCases.size > 0;
+}
+
+export function finishCompletedLease(dispatcher: WorkerPoolWorkDispatcher, lease: WorkerPoolUnitLease): void {
+    dispatcher.finish(lease, {
+        learnWarmth: lease.kind === 'primary',
+        retainReservation: lease.kind === 'primary',
+        workerCrashed: false
+    });
+}
+
+export function finishFailedLease(
+    dispatcher: WorkerPoolWorkDispatcher,
+    taskRun: WorkerPoolTaskRun,
+    lease: WorkerPoolUnitLease
+): void {
+    dispatcher.finish(lease, {
+        learnWarmth: false,
+        retainReservation: taskRunKeepsLeaseReservation(taskRun, lease),
+        workerCrashed: true
     });
 }
 

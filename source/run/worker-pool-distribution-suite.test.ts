@@ -1,6 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as workerPoolCommandPlanningTestNode } from './worker-pool-command-planning.test.ts';
-import { testNode as workerPoolLanesTestNode } from './worker-pool-lanes.test.ts';
+import { testNode as workerPoolLanePlacementSuiteTestNode } from './worker-pool-lane-placement-suite.test.ts';
 import { testNode as workerPoolLifecycleResourceUsageTestNode } from './worker-pool-lifecycle-resource-usage.test.ts';
 import { testNode as workerPoolLifecycleRoutingTestNode } from './worker-pool-lifecycle-routing.test.ts';
 import { testNode as workerPoolPlacementPlanningTestNode } from './worker-pool-placement-planning.test.ts';
@@ -15,7 +15,7 @@ export const testNode = createOverkillSuite({
     title: 'source/run/worker-pool-distribution-suite.test.ts',
     children: [
         workerPoolCommandPlanningTestNode,
-        workerPoolLanesTestNode,
+        workerPoolLanePlacementSuiteTestNode,
         workerPoolLifecycleResourceUsageTestNode,
         workerPoolLifecycleRoutingTestNode,
         workerPoolPlacementPlanningTestNode,

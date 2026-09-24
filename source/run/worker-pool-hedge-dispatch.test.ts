@@ -311,7 +311,11 @@ function assertIdleHedgeCheckClears(scope: OverkillScope): void {
     const filler = pullRequiredLease(dispatcher, secondLane(plan));
 
     pullRequiredLease(dispatcher, firstLane(plan));
-    dispatcher.finish(filler, false);
+    dispatcher.finish(filler, {
+        learnWarmth: true,
+        retainReservation: true,
+        workerCrashed: false
+    });
     scope.assert.equal(dispatcher.blocked(secondLane(plan)), false);
     dispatcher.clear();
     scope.assert.equal(dispatcher.pull(secondLane(plan)), null);

@@ -1,5 +1,6 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { PlacementLane, WorkUnitId } from './run-types.ts';
+import type { WarmLaneAffinityKeyKind } from './worker-pool-warm-lane-affinity.ts';
 
 export type PlacementTrace = {
     readonly entries: readonly PlacementTraceEntry[];
@@ -21,6 +22,14 @@ export type PlacementTraceEntry = {
     readonly conflictingWorkerId: string;
     readonly kind: 'hedged-duplicate-conflict';
     readonly unit: TraceWorkUnitId;
+} | {
+    readonly baselineUnit: TraceWorkUnitId;
+    readonly candidateUnits: NonEmptyReadonlyArray<TraceWorkUnitId>;
+    readonly kind: 'warm-lane-affinity-selected';
+    readonly lane: PlacementLane['id'];
+    readonly matchedWarmKeys: NonEmptyReadonlyArray<WarmLaneAffinityKeyKind>;
+    readonly score: number;
+    readonly selectedUnit: TraceWorkUnitId;
 } | {
     readonly children: NonEmptyReadonlyArray<DynamicWorkUnitId>;
     readonly kind: 'unit-split';

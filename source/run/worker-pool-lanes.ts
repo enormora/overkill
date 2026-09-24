@@ -182,13 +182,6 @@ function chooseLane(
     state: LaneChoiceSnapshot
 ): PlacementLane {
     const orderedLanes = lanes.toSorted(function compareLanes(left, right) {
-        const affinityDifference = affinityScore(unit, right, state.preferredLaneByAffinity) -
-            affinityScore(unit, left, state.preferredLaneByAffinity);
-
-        if (affinityDifference !== 0) {
-            return affinityDifference;
-        }
-
         const faultDifference = faultDomainScore(unit, left, state.faultDomainLanes) -
             faultDomainScore(unit, right, state.faultDomainLanes);
 
@@ -198,7 +191,14 @@ function chooseLane(
 
         const loadDifference = laneLoad(left, state.laneLoads) - laneLoad(right, state.laneLoads);
 
-        return loadDifference === 0 ? left.id.localeCompare(right.id) : loadDifference;
+        if (loadDifference !== 0) {
+            return loadDifference;
+        }
+
+        const affinityDifference = affinityScore(unit, right, state.preferredLaneByAffinity) -
+            affinityScore(unit, left, state.preferredLaneByAffinity);
+
+        return affinityDifference === 0 ? left.id.localeCompare(right.id) : affinityDifference;
     });
     const lane = orderedLanes[0];
 

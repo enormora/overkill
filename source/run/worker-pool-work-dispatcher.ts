@@ -7,18 +7,28 @@ import type {
     PlacementPlan,
     WorkUnit
 } from './run-types.ts';
-import { traceUnitKey, type TraceWorkUnitId } from './placement-trace.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import {
+    assignedWorkUnits,
+    faultQuotas,
+    laneLifecycles
+} from './worker-pool-dynamic-plan.ts';
+import {
     createChangeWaiters,
+    createDynamicReservations,
     createLeaseCounter,
     createWorkUnitQueue,
     type ChangeWaiters,
+    type DynamicReservations,
     type LeaseReservation,
     type LeaseCounter,
     type WorkerPoolUnitLease,
     type WorkerPoolWorkDispatcher,
-    type WorkUnitQueue
+    type WorkUnitQueue,
+    faultReservationKey,
+    hardConstraintKeys,
+    uniqueText,
+    workerPoolLeaseKey
 } from './worker-pool-dispatch-state.ts';
 import {
     compareQueuePriority,
@@ -40,24 +50,12 @@ import {
     unitHedgeWorkKey
 } from './worker-pool-hedge-dispatch.ts';
 import { createStaticDispatcher } from './worker-pool-static-dispatcher.ts';
-import { compatibleBatchLeaseParts } from './worker-pool-compatible-batching.ts';
-
-type DynamicReservations = {
-    readonly bindHardLane: (key: string, lane: PlacementLane) => void;
-    readonly boundHardLane: (key: string) => string | undefined;
-    readonly decrementFault: (faultDomain: string, lane: PlacementLane) => void;
-    readonly hardKeyIsBound: (key: string) => boolean;
-    readonly incrementFault: (faultDomain: string, lane: PlacementLane) => void;
-    readonly releaseHardLane: (key: string, lane: PlacementLane) => void;
-    readonly reservedFaultCount: (faultDomain: string, lane: PlacementLane) => number;
-    readonly retainedLane: (traceUnit: TraceWorkUnitId) => string | undefined;
-    readonly retainUnit: (traceUnit: TraceWorkUnitId, lane: PlacementLane) => void;
-};
-
-type FaultQuotaLedger = {
-    readonly quotas: () => ReadonlyMap<string, number>;
-    readonly record: (unit: WorkUnit, laneId: string) => void;
-};
+import {
+    compatibleBatchLeaseParts,
+    createWarmLaneAffinity,
+    selectWarmPendingUnit,
+    type WarmLaneAffinity
+} from './worker-pool-lease-selection.ts';
 
 type DynamicDispatchState = HedgeDispatchState & {
     readonly activeLeases: LeaseCounter;
@@ -75,6 +73,7 @@ type DynamicDispatchState = HedgeDispatchState & {
     readonly runtime: WorkerPoolRunRuntime;
     readonly unitLoad: UnitLoad;
     readonly waiters: ChangeWaiters;
+    readonly warmLaneAffinity: WarmLaneAffinity;
 };
 type HedgeWakeTimeout = DynamicDispatchState['hedgeWakeTimeout'] extends StoredRunValue<infer Value> ? Value : never;
 
@@ -90,148 +89,8 @@ type DuplicateWorkLedger = {
     readonly has: (key: string) => boolean;
 };
 
-function unitByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
-    return new Map(units.map(function toEntry(unit) {
-        return [ JSON.stringify(unit.id), unit ];
-    }));
-}
-
-function uniqueText(values: readonly string[]): readonly string[] {
-    return Array.from(new Set(values));
-}
-
-function hardConstraintKeys(unit: WorkUnit): readonly string[] {
-    return Array.from(
-        new Set([
-            ...unit.resourceConstraints.serialKeys,
-            ...unit.resourceConstraints.singleWorkerKeys
-        ])
-    );
-}
-
-function faultReservationKey(faultDomain: string, lane: PlacementLane): string {
-    return JSON.stringify([ faultDomain, lane.id ]);
-}
-
-function knownUnit(units: ReadonlyMap<string, WorkUnit>, unitId: WorkUnit['id']): WorkUnit {
-    const unit = units.get(JSON.stringify(unitId));
-
-    if (unit === undefined) {
-        throw new Error('Placement assignment referenced an unknown work unit.');
-    }
-
-    return unit;
-}
-
-function createDynamicReservations(): DynamicReservations {
-    const hardLaneByKey = new Map<string, string>();
-    const reservedFaultCounts = new Map<string, number>();
-    const retainedLaneByTraceUnit = new Map<string, string>();
-
-    return {
-        bindHardLane(key, lane) {
-            hardLaneByKey.set(key, lane.id);
-        },
-        boundHardLane(key) {
-            return hardLaneByKey.get(key);
-        },
-        decrementFault(faultDomain, lane) {
-            const key = faultReservationKey(faultDomain, lane);
-            const count = reservedFaultCounts.get(key) ?? 0;
-
-            if (count <= 1) {
-                reservedFaultCounts.delete(key);
-
-                return;
-            }
-
-            reservedFaultCounts.set(key, count - 1);
-        },
-        hardKeyIsBound(key) {
-            return hardLaneByKey.has(key);
-        },
-        incrementFault(faultDomain, lane) {
-            const key = faultReservationKey(faultDomain, lane);
-
-            reservedFaultCounts.set(key, (reservedFaultCounts.get(key) ?? 0) + 1);
-        },
-        releaseHardLane(key, lane) {
-            if (hardLaneByKey.get(key) === lane.id) {
-                hardLaneByKey.delete(key);
-            }
-        },
-        reservedFaultCount(faultDomain, lane) {
-            return reservedFaultCounts.get(faultReservationKey(faultDomain, lane)) ?? 0;
-        },
-        retainedLane(traceUnit) {
-            return retainedLaneByTraceUnit.get(traceUnitKey(traceUnit));
-        },
-        retainUnit(traceUnit, lane) {
-            retainedLaneByTraceUnit.set(traceUnitKey(traceUnit), lane.id);
-        }
-    };
-}
-
-function laneLifecycles(plan: PlacementPlan): ReadonlyMap<string, WorkUnit['workerLifecycle']> {
-    const lifecycles = new Map<string, WorkUnit['workerLifecycle']>();
-    const units = unitByKey(plan.units);
-
-    for (const assignment of plan.assignments) {
-        const unit = knownUnit(units, assignment.unit);
-        const existing = lifecycles.get(assignment.lane);
-
-        if (existing !== undefined && existing !== unit.workerLifecycle) {
-            throw new Error('Placement lane cannot mix worker lifecycle policies.');
-        }
-
-        lifecycles.set(assignment.lane, unit.workerLifecycle);
-    }
-
-    return lifecycles;
-}
-
-function createFaultQuotaLedger(plan: PlacementPlan): FaultQuotaLedger {
-    const quotas = new Map<string, number>();
-    const lanes = new Map(plan.lanes.map(function toLaneEntry(lane) {
-        return [ lane.id, lane ];
-    }));
-
-    return {
-        quotas() {
-            return quotas;
-        },
-        record(unit, laneId) {
-            const lane = lanes.get(laneId);
-
-            if (lane === undefined) {
-                throw new Error('Placement assignment referenced an unknown lane.');
-            }
-
-            for (const faultDomain of uniqueText(unit.resourceConstraints.faultDomains)) {
-                const key = faultReservationKey(faultDomain, lane);
-
-                quotas.set(key, (quotas.get(key) ?? 0) + 1);
-            }
-        }
-    };
-}
-
-function faultQuotas(plan: PlacementPlan): ReadonlyMap<string, number> {
-    const ledger = createFaultQuotaLedger(plan);
-    const units = unitByKey(plan.units);
-
-    for (const assignment of plan.assignments) {
-        ledger.record(knownUnit(units, assignment.unit), assignment.lane);
-    }
-
-    return ledger.quotas();
-}
-
 function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): DynamicDispatchState {
-    const units = unitByKey(plan.units);
-    const pendingUnits = plan.assignments.map(function toUnit(assignment, index) {
-        return originalQueueItem(knownUnit(units, assignment.unit), index);
-    });
+    const pendingUnits = assignedWorkUnits(plan).map(originalQueueItem);
 
     return {
         activeLeases: createLeaseCounter(),
@@ -248,6 +107,7 @@ function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: Placeme
         resolvedRun: runtime.resolvedRun,
         unitLoad: runtimeUnitLoad(runtime),
         waiters: createChangeWaiters(),
+        warmLaneAffinity: createWarmLaneAffinity(),
         wallClock: runtime.dependencies.wallClock
     };
 }
@@ -340,13 +200,9 @@ function release(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void 
     }
 }
 
-function activeLeaseKey(lease: WorkerPoolUnitLease): string {
-    return JSON.stringify([ lease.kind, lease.envelopeId, traceUnitKey(lease.traceUnit), lease.lane.id ]);
-}
-
 function recordActiveLease(state: DynamicDispatchState, lease: WorkerPoolUnitLease): void {
     state.activeLeases.increment();
-    state.activeUnits.set(activeLeaseKey(lease), {
+    state.activeUnits.set(workerPoolLeaseKey(lease), {
         lane: lease.lane,
         lease,
         startedAtMicroseconds: state.runtime.dependencies.wallClock.currentMonotonicMicroseconds
@@ -422,7 +278,7 @@ function splitPendingUnit(state: DynamicDispatchState, item: QueuedWorkUnit): vo
 }
 
 function selectPendingUnit(state: DynamicDispatchState, lane: PlacementLane): QueuedWorkUnit | undefined {
-    return state
+    const candidates = state
         .pendingUnits
         .all()
         .filter(function isEligible(candidate) {
@@ -430,7 +286,26 @@ function selectPendingUnit(state: DynamicDispatchState, lane: PlacementLane): Qu
         })
         .toSorted(function compareUnits(left, right) {
             return comparePriority(state, left, right);
-        })[0];
+        });
+    const [ firstCandidate ] = candidates;
+
+    if (firstCandidate === undefined) {
+        return undefined;
+    }
+
+    const selection = selectWarmPendingUnit({
+        candidates: [ firstCandidate, ...candidates.slice(1) ],
+        lane,
+        laneCount: state.lanes.length,
+        unitLoad: state.unitLoad,
+        warmLaneAffinity: state.warmLaneAffinity
+    });
+
+    if (selection.traceEntry !== null) {
+        state.runtime.recordPlacementTraceEntry(selection.traceEntry);
+    }
+
+    return selection.item;
 }
 
 function leasePendingUnit(state: DynamicDispatchState, lane: PlacementLane, item: QueuedWorkUnit): WorkerPoolUnitLease {
@@ -510,6 +385,54 @@ function pull(state: DynamicDispatchState, lane: PlacementLane): WorkerPoolUnitL
     return hedgeCandidate === null ? null : leaseHedgedDuplicate(state, lane, hedgeCandidate);
 }
 
+function finishWarmLaneAffinity(
+    state: DynamicDispatchState,
+    lease: WorkerPoolUnitLease,
+    outcome: Parameters<WorkerPoolWorkDispatcher['finish']>[1]
+): void {
+    if (outcome.workerCrashed) {
+        state.warmLaneAffinity.clear(lease.lane);
+    }
+
+    if (outcome.learnWarmth) {
+        state.warmLaneAffinity.learn(
+            lease.lane,
+            lease.members.map(function toUnit(member) {
+                return member.unit;
+            })
+        );
+    }
+}
+
+function finishReservation(
+    state: DynamicDispatchState,
+    lease: WorkerPoolUnitLease,
+    outcome: Parameters<WorkerPoolWorkDispatcher['finish']>[1]
+): void {
+    if (outcome.retainReservation) {
+        state.reservations.retainUnit(lease.traceUnit, lease.lane);
+    } else {
+        release(state, lease);
+    }
+}
+
+function finishLease(
+    state: DynamicDispatchState,
+    lease: WorkerPoolUnitLease,
+    outcome: Parameters<WorkerPoolWorkDispatcher['finish']>[1]
+): void {
+    state.activeLeases.decrement();
+    state.activeUnits.delete(workerPoolLeaseKey(lease));
+
+    if (lease.kind === 'hedged-duplicate') {
+        state.duplicateWork.delete(unitHedgeWorkKey(lease.unit));
+    }
+
+    finishWarmLaneAffinity(state, lease, outcome);
+    finishReservation(state, lease, outcome);
+    state.waiters.notify();
+}
+
 function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): WorkerPoolWorkDispatcher {
     const state = createDynamicDispatchState(runtime, plan);
 
@@ -522,21 +445,8 @@ function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementP
             state.pendingUnits.clear();
             state.waiters.notify();
         },
-        finish(lease, keepReservation) {
-            state.activeLeases.decrement();
-            state.activeUnits.delete(activeLeaseKey(lease));
-
-            if (lease.kind === 'hedged-duplicate') {
-                state.duplicateWork.delete(unitHedgeWorkKey(lease.unit));
-            }
-
-            if (keepReservation) {
-                state.reservations.retainUnit(lease.traceUnit, lease.lane);
-            } else {
-                release(state, lease);
-            }
-
-            state.waiters.notify();
+        finish(lease, outcome) {
+            finishLease(state, lease, outcome);
         },
         pull(lane) {
             return pull(state, lane);

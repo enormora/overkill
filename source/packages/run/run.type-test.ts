@@ -130,6 +130,7 @@ type ExpectedPlacementTraceKinds = {
     readonly 'unit-reassigned': true;
     readonly 'unit-split': true;
     readonly 'unit-started': true;
+    readonly 'warm-lane-affinity-selected': true;
     readonly 'worker-crashed': true;
 };
 type ExpectedRunWorkDistribution = {

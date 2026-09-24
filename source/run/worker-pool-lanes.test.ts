@@ -278,7 +278,7 @@ export const testNode = createOverkillSuite({
                     ], 3),
                     [
                         'worker-1',
-                        'worker-1'
+                        'worker-2'
                     ]
                 );
                 scope.assert.deepEqual(

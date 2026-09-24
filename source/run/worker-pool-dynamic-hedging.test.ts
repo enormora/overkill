@@ -237,7 +237,11 @@ function runHedgedStraggler(): HedgedStragglerRun {
     const primary = pullRequiredLease(dispatcher, firstLane(plan));
     const filler = pullRequiredLease(dispatcher, secondLane(plan));
 
-    dispatcher.finish(filler, false);
+    dispatcher.finish(filler, {
+        learnWarmth: true,
+        retainReservation: true,
+        workerCrashed: false
+    });
     const duplicate = pullRequiredLease(dispatcher, secondLane(plan));
 
     return { dispatcher, duplicate, filler, plan, primary, runtime };
@@ -258,7 +262,11 @@ function assertHedgedStraggler(scope: OverkillScope): void {
         unit: primary.traceUnit,
         workerId: secondLane(plan).id
     });
-    dispatcher.finish(duplicate, false);
+    dispatcher.finish(duplicate, {
+        learnWarmth: false,
+        retainReservation: false,
+        workerCrashed: false
+    });
 }
 
 export const testNode = createOverkillSuite({
