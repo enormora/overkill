@@ -37,6 +37,8 @@ import {
 } from './worker-pool-hedged-arbitration.ts';
 import {
     clearTaskTimeout,
+    finishCompletedLease,
+    finishFailedLease,
     handleWorkerMessage,
     recordTaskCrash,
     recordTaskPermissionFailure
@@ -450,11 +452,7 @@ async function recordCompletedTaskRun(
     recordBatchStarted(taskRun, context.runtime);
     const output = await runFileUnit(taskRun, context.runtime, lease.lane, context.startedAtMilliseconds);
     recordBatchCompleted(taskRun, context.runtime);
-    context.dispatcher.finish(lease, {
-        learnWarmth: lease.kind === 'primary',
-        retainReservation: lease.kind === 'primary',
-        workerCrashed: false
-    });
+    finishCompletedLease(context.dispatcher, lease);
 
     if (!taskRun.reporterEventsBuffered) {
         context.runtime.taskResults.push(...output.results.map(function toResult(result) {
@@ -471,22 +469,6 @@ async function recordCompletedTaskRun(
     }
 }
 
-function taskRunKeepsLeaseReservation(taskRun: WorkerPoolTaskRun, lease: WorkerPoolUnitLease): boolean {
-    return lease.kind === 'primary' && taskRun.startedCases.size > 0;
-}
-
-function finishFailedTaskRun(
-    taskRun: WorkerPoolTaskRun,
-    lease: WorkerPoolUnitLease,
-    context: TaskExecutionContext
-): void {
-    context.dispatcher.finish(lease, {
-        learnWarmth: false,
-        retainReservation: taskRunKeepsLeaseReservation(taskRun, lease),
-        workerCrashed: true
-    });
-}
-
 function finishAfterHostRunnerErrors(
     taskRun: WorkerPoolTaskRun,
     lease: WorkerPoolUnitLease,
@@ -496,7 +478,7 @@ function finishAfterHostRunnerErrors(
         return false;
     }
 
-    finishFailedTaskRun(taskRun, lease, context);
+    finishFailedLease(context.dispatcher, taskRun, lease);
 
     return true;
 }
@@ -519,7 +501,7 @@ function recordFailedTaskRun(
 
     const pending = handleTaskFailure(error, taskRun, context);
 
-    finishFailedTaskRun(taskRun, lease, context);
+    finishFailedLease(context.dispatcher, taskRun, lease);
     recordCancelledTaskRun(taskRun, context);
 
     for (const member of pending) {
