@@ -30,6 +30,7 @@ export const testNode = createOverkillSuite({
                             {
                                 attributedTo: null,
                                 cause: null,
+                                diagnostics: [],
                                 message: 'Collection failed.',
                                 subtype: 'loader'
                             }

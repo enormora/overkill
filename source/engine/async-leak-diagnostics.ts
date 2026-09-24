@@ -123,6 +123,11 @@ export function activeResourceLeakError(input: ActiveResourceLeakInput): RunnerE
         attributedTo: input.attributedTo,
         attributedToWork: input.attributedToWork,
         cause,
+        diagnostics: [
+            { label: 'capability', value: cause.capability },
+            { label: 'phase', value: cause.phase },
+            { label: 'resources', value: resourceTypes.join(', ') }
+        ],
         message: `Runtime policy violation: active resources leaked: ${resourceTypes.join(', ')}.`,
         subtype: 'runtime-policy'
     };
@@ -141,6 +146,11 @@ function promiseLeakError(testCase: TestPlanCase, pendingPromiseCount: number): 
         attributedTo: testCase.id,
         attributedToWork: testCase.workId,
         cause,
+        diagnostics: [
+            { label: 'capability', value: cause.capability },
+            { label: 'phase', value: cause.phase },
+            { label: 'pending promises', value: String(pendingPromiseCount) }
+        ],
         message: `Runtime policy violation: ${pendingPromiseCount} promise(s) still pending after test cleanup.`,
         subtype: 'runtime-policy'
     };

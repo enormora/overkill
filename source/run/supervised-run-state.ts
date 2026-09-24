@@ -4,6 +4,7 @@ import type { RunRequest } from './run-types.ts';
 
 export type SupervisedCase = {
     readonly capture: RunRequest['capture'] | null;
+    readonly definitionLocations?: PerTestResult['definitionLocations'];
     readonly id: CaseId;
     readonly workId?: WorkId;
 };
@@ -63,6 +64,7 @@ function terminalResult(
     completedAtMicroseconds: number
 ): PerTestResult {
     return {
+        definitionLocations: testCase.definitionLocations ?? [ { kind: 'unknown' } ],
         id: testCase.id,
         outcome: null,
         verdict,
@@ -119,6 +121,16 @@ function capturedOutputBytes(
     };
 }
 
+function singleAttribution<Value>(values: readonly Value[]): Value | null {
+    const [ value = null ] = values;
+
+    return values.length === 1 ? value : null;
+}
+
+function runtimePolicyPhase(activeCaseCount: number): 'body' | 'out-of-test' {
+    return activeCaseCount === 0 ? 'out-of-test' : 'body';
+}
+
 function createRuntimePolicyError(
     activeCases: ReadonlyMap<string, SupervisedCase>,
     capability: string,
@@ -130,19 +142,23 @@ function createRuntimePolicyError(
     const policyActiveWorkIds = Array.from(activeCases.values(), function toWorkId(testCase) {
         return testCase.workId ?? createDefaultWorkId(testCase.id);
     });
-    const [ activeCase = null ] = policyActiveCaseIds;
-    const [ activeWork = null ] = policyActiveWorkIds;
+    const phase = runtimePolicyPhase(policyActiveCaseIds.length);
 
     return {
-        attributedTo: policyActiveCaseIds.length === 1 ? activeCase : null,
-        attributedToWork: policyActiveWorkIds.length === 1 ? activeWork : null,
+        attributedTo: singleAttribution(policyActiveCaseIds),
+        attributedToWork: singleAttribution(policyActiveWorkIds),
         cause: {
             activeCases: policyActiveCaseIds,
             activeWork: policyActiveWorkIds,
             capability,
-            phase: policyActiveCaseIds.length === 0 ? 'out-of-test' : 'body',
+            phase,
             strictness: 'observed'
         },
+        diagnostics: [
+            { label: 'capability', value: capability },
+            { label: 'phase', value: phase },
+            { label: 'strictness', value: 'observed' }
+        ],
         message,
         subtype: 'runtime-policy'
     };

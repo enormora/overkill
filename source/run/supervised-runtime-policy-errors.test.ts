@@ -21,6 +21,7 @@ function runtimePolicyError(message: string, attributedTo: CaseId | null, capabi
     return {
         attributedTo,
         cause: { capability },
+        diagnostics: [ { label: 'capability', value: capability } ],
         message,
         subtype: 'runtime-policy'
     };
@@ -30,6 +31,7 @@ function reporterError(): RunnerError {
     return {
         attributedTo: caseId,
         cause: {},
+        diagnostics: [],
         message: 'Reporter failed after process.env output.',
         subtype: 'reporter'
     };

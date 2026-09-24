@@ -139,6 +139,7 @@ export const testNode = createOverkillSuite({
                         attributedTo: null,
                         attributedToWork: null,
                         cause: error.cause,
+                        diagnostics: [],
                         message: `Failed to load test module: ${throwsOnImportFixturePath}`,
                         subtype: 'loader'
                     });

@@ -77,6 +77,7 @@ function startCollectionTimeout(
             attributedTo: null,
             attributedToWork: null,
             cause: { reason: 'Worker-pool collection exceeded collection timeout.' },
+            diagnostics: [ { label: 'reason', value: 'Worker-pool collection exceeded collection timeout.' } ],
             message: 'Worker-pool collection exceeded collection timeout.',
             subtype: 'crash'
         });

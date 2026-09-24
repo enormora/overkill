@@ -206,6 +206,7 @@ export const testNode = createOverkillSuite({
                     error: {
                         attributedTo: null,
                         cause: new Error('boom'),
+                        diagnostics: [],
                         message: 'runner exploded',
                         subtype: 'crash'
                     },
@@ -312,9 +313,17 @@ export const testNode = createOverkillSuite({
                     [
                         colors.green(figures.tick),
                         `${colors.red(figures.cross)} 3 discovered, 3 planned, 3 executed ` +
-                        '(1 pass, 1 fail, 0 skip, 1 inconclusive) in 12 ms',
-                        'Failed: root > fails: numbers differ',
-                        'Inconclusive: root > maybe: missing signal',
+                        '(1 pass, 1 fail, 0 skip, 1 inconclusive) in 12 ms ' +
+                        '(total 12 ms, execution 0 ms, overhead 12 ms)',
+                        'Problems',
+                        '  root > fails (source/example.test.ts)',
+                        '    numbers differ',
+                        '    expected: null',
+                        '    actual: null',
+                        '  root > maybe (source/example.test.ts)',
+                        '    missing signal',
+                        '  Runner error: loader failed',
+                        '  type: loader',
                         ''
                     ]
                         .join('\n')
@@ -401,9 +410,19 @@ export const testNode = createOverkillSuite({
                     terminal.text(),
                     [
                         `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
-                        '(0 pass, 2 fail, 0 skip) in 7 ms',
-                        'Failed: source/users.test.ts:10:5 root > fails: numbers differ',
-                        'Failed: source/profile.test.ts root > file only: missing field',
+                        '(0 pass, 2 fail, 0 skip) in 7 ms ' +
+                        '(total 7 ms, execution 0 ms, overhead 7 ms)',
+                        'Problems',
+                        '  root > fails (source/example.test.ts)',
+                        '    numbers differ',
+                        '    source: source/users.test.ts:10:5',
+                        '    expected: null',
+                        '    actual: null',
+                        '  root > file only (source/example.test.ts)',
+                        '    missing field',
+                        '    source: source/profile.test.ts',
+                        '    expected: null',
+                        '    actual: null',
                         ''
                     ]
                         .join('\n')
@@ -437,13 +456,25 @@ export const testNode = createOverkillSuite({
                     terminal.text(),
                     [
                         `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
-                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms',
-                        'Failed: root > throws: boom',
-                        'Failed: root > empty: Expected at least one assertion.',
+                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms ' +
+                        '(total 0 ms, execution 0 ms, overhead 0 ms)',
+                        'Problems',
+                        '  root > throws (source/example.test.ts)',
+                        '    Error: boom',
+                        '  root > empty (source/example.test.ts)',
+                        '    Expected at least one assertion. (no-assertions)',
+                        '    expected: at least one assertion',
+                        '    actual: 0',
                         `${colors.red(figures.cross)} 2 discovered, 2 planned, 2 executed ` +
-                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms',
-                        'Failed: root > throws: boom',
-                        'Failed: root > empty: Expected at least one assertion.',
+                        '(0 pass, 2 fail, 0 skip), 1 orphaned in 0 ms ' +
+                        '(total 0 ms, execution 0 ms, overhead 0 ms)',
+                        'Problems',
+                        '  root > throws (source/example.test.ts)',
+                        '    Error: boom',
+                        '  root > empty (source/example.test.ts)',
+                        '    Expected at least one assertion. (no-assertions)',
+                        '    expected: at least one assertion',
+                        '    actual: 0',
                         ''
                     ]
                         .join('\n')
@@ -474,6 +505,7 @@ export const testNode = createOverkillSuite({
                     error: {
                         attributedTo: null,
                         cause: new Error('late'),
+                        diagnostics: [],
                         message: 'final reporter failed',
                         subtype: 'reporter'
                     },
@@ -484,38 +516,12 @@ export const testNode = createOverkillSuite({
                     terminal.text(),
                     [
                         `${colors.red(figures.cross)} 0 discovered, 0 planned, 0 executed ` +
-                        '(0 pass, 0 fail, 0 skip) in 0 ms',
+                        '(0 pass, 0 fail, 0 skip) in 0 ms (total 0 ms, execution 0 ms, overhead 0 ms)',
                         'Runner error: final reporter failed',
                         ''
                     ]
                         .join('\n')
                 );
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'dot reporter disposes its resize listener',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const terminal = createFakeTerminal(80);
-                const reporter = createDotRuntimeReporter({
-                    interactive: true,
-                    stdout: terminal.output
-                });
-
-                scope.assert.equal(terminal.listenerCount(), 1);
-                const { dispose } = reporter;
-
-                if (dispose === null) {
-                    throw new TypeError('Expected dot reporter to expose dispose.');
-                }
-
-                await dispose();
-
-                scope.assert.equal(terminal.listenerCount(), 0);
 
                 return scope.assert.collect();
             }

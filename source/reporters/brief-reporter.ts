@@ -12,6 +12,7 @@ import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.t
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import { formatRunFactSummary } from './run-fact-summary.ts';
+import { formatTimingSummary } from './run-timing-summary.ts';
 
 const progressInterval = 100;
 const microsecondsPerMillisecond = 1000;
@@ -90,11 +91,12 @@ function finishIntent(result: RunResult): OutputLineIntent {
     const executionCounts = `executed=${executedCount(result)} passed=${summary.passed} failed=${summary.failed}`;
     const totalMicroseconds = result.timings.summary.totalWallTimeMicroseconds;
     const remainingCounts = `skipped=${summary.skipped} inconclusive=${summary.inconclusive} ` +
-        `resourceExhausted=${summary.resourceExhausted} crashed=${summary.crashed} ` +
+        `resourceExhausted=${summary.resourceExhausted} runtimePolicy=${summary.runtimePolicy} ` +
+        `crashed=${summary.crashed} ` +
         `ms=${totalMicroseconds / microsecondsPerMillisecond}`;
 
     return stdout(
-        `${discoveryCounts} ${executionCounts} ${remainingCounts}`,
+        `${discoveryCounts} ${executionCounts} ${remainingCounts} timing="${formatTimingSummary(result)}"`,
         null
     );
 }

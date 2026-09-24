@@ -19,16 +19,22 @@ const infoSymbol = colors.cyan(figures.info);
 const errorSymbol = colors.red(figures.cross);
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
-    const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
+    const fakeDependencies: LineReporterDependencies = {
+        columns: 200,
+        formatOptions: { color: false, wrap: true },
+        stdoutConsole: { log },
+        verbose: false
+    };
 
     return createLineReporter(fakeDependencies)(createReportingContext({ projectRoot: null }));
 }
 
 function assertOrphanOutput(scope: OverkillScope, log: Log): void {
-    scope.assert(doubleUsage.callCount, log, 3);
+    scope.assert(doubleUsage.callCount, log, 4);
     scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
         errorSymbol,
-        '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip), 1 orphaned in 0 ms'
+        '0 discovered, 0 planned, 0 executed (0 pass, 0 fail, 0 skip), 2 orphaned in 0 ms ' +
+        '(total 0 ms, execution 0 ms, overhead 0 ms)'
     ]);
     scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
         infoSymbol,
@@ -36,6 +42,10 @@ function assertOrphanOutput(scope: OverkillScope, log: Log): void {
     ]);
     scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
         '  constructed at source/example.test.ts:20'
+    ]);
+    scope.assert(doubleUsage.nthCallWithExactly, log, 3, [
+        infoSymbol,
+        'suite: detached (source/detached.test.ts)'
     ]);
 }
 
@@ -69,6 +79,12 @@ export const testNode = createOverkillSuite({
                             file: null,
                             kind: 'test',
                             title: 'unused'
+                        },
+                        {
+                            definitionLocations: [ { kind: 'unknown' as const } ],
+                            file: 'source/detached.test.ts',
+                            kind: 'suite',
+                            title: 'detached'
                         }
                     ],
                     summary: {

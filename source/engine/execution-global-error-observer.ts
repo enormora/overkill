@@ -306,6 +306,7 @@ function attributedError(
         attributedTo: activeCase.id,
         attributedToWork: activeCase.workId,
         cause,
+        diagnostics: [],
         message: hookMessage(hook, cause.reason),
         subtype: hookSubtype(hook)
     };
@@ -318,6 +319,7 @@ function runLevelHookError(scope: RunErrorScope, hook: HookKind, reason: unknown
         attributedTo: null,
         attributedToWork: null,
         cause,
+        diagnostics: [],
         message: hookMessage(hook, cause.reason),
         subtype: hookSubtype(hook)
     };
@@ -335,6 +337,7 @@ function attributionDriftError(
         attributedTo: null,
         attributedToWork: null,
         cause,
+        diagnostics: [],
         message: `Async failure could not be attributed safely: ${cause.reason.message}`,
         subtype: 'attribution-drift'
     };

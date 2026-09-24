@@ -89,6 +89,7 @@ type TestOutcomeOverrideByKind = {
 type TestOutcomeOverrides = TestOutcomeOverrideByKind[keyof TestOutcomeOverrideByKind];
 
 type PerTestResultOverrides = {
+    readonly definitionLocations?: RunResult['perTest'][number]['definitionLocations'];
     readonly id?: CaseId;
     readonly outcome?: TestOutcomeOverrides | null;
     readonly verdict?: TestVerdict;
@@ -332,11 +333,20 @@ function buildPerTestVerdict(
     return overrides.verdict ?? outcome?.kind ?? 'crashed';
 }
 
+function buildPerTestOutcome(overrides: PerTestResultOverrides): TestOutcome | null {
+    if (overrides.outcome === null) {
+        return null;
+    }
+
+    return buildOutcome(overrides.outcome);
+}
+
 function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['perTest'][number] {
-    const outcome = overrides.outcome === null ? null : buildOutcome(overrides.outcome);
+    const outcome = buildPerTestOutcome(overrides);
     const id = overrides.id ?? defaultCaseId;
 
     return {
+        definitionLocations: overrides.definitionLocations ?? [ defaultLocation ],
         id,
         outcome,
         verdict: buildPerTestVerdict(overrides, outcome),
@@ -368,6 +378,7 @@ function buildRunnerError(overrides: RunnerErrorOverrides = {}): RunnerError {
     return {
         ...buildRunnerErrorAttribution(overrides),
         cause: overrides.cause ?? null,
+        diagnostics: overrides.diagnostics ?? [],
         message: overrides.message ?? 'Runner error',
         subtype: overrides.subtype ?? 'crash'
     };

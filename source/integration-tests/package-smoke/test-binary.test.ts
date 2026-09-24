@@ -371,7 +371,7 @@ export const testNode = createSuite({
 
                 scope.assert.equal(result.code, 2);
                 scope.assert.includes(result.stdout, 'Runner error: Runtime policy violation: console.');
-                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 0 executed');
+                scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
                 scope.assert.equal(result.stderr, '');
 
                 return scope.assert.collect();

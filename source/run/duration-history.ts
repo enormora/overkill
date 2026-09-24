@@ -161,6 +161,7 @@ function durationHistoryWriteError(cause: unknown): RunnerError {
     return {
         attributedTo: null,
         cause,
+        diagnostics: [],
         message: 'Failed to write duration history.',
         subtype: 'runtime-state'
     };

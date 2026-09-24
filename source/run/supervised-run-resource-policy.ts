@@ -96,6 +96,11 @@ export function resourceExhaustionError(breach: ResourceBudgetBreach, state: Sup
             activeWork,
             enforcement: activeCases.length === 0 ? 'post-test-diagnostic' : 'sampled'
         },
+        diagnostics: [
+            { label: 'metric', value: breach.metric },
+            { label: 'observed', value: String(breach.observed) },
+            { label: 'budget', value: String(breach.budget) }
+        ],
         message: `Resource budget exceeded: ${breach.metric} observed ${breach.observed}, budget ${breach.budget}.`,
         subtype: 'resource-exhaustion'
     };
@@ -111,6 +116,7 @@ export function crashError(state: SupervisedRunState, reason: string): RunnerErr
         attributedTo: activeCases.length === 1 ? activeCase : null,
         attributedToWork: activeWork.length === 1 ? activeWorkItem : null,
         cause: { activeCases, activeWork, reason },
+        diagnostics: [ { label: 'reason', value: reason } ],
         message: reason,
         subtype: 'crash'
     };

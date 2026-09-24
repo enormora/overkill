@@ -134,6 +134,7 @@ function createTerminalCase(
 ): ConcurrentCase {
     return {
         result: {
+            definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome: null,
             verdict,
@@ -145,7 +146,7 @@ function createTerminalCase(
     };
 }
 function failCase(
-    testCase: Pick<TestPlanCase, 'id' | 'workId'>,
+    testCase: Pick<TestPlanCase, 'definitionLocations' | 'id' | 'workId'>,
     failures: TestFailures,
     durationMicroseconds: number
 ): PerTestResult {
@@ -155,6 +156,7 @@ function failCase(
     } as const;
 
     return {
+        definitionLocations: testCase.definitionLocations,
         id: testCase.id,
         outcome,
         verdict: verdictFromOutcome(outcome),
@@ -288,6 +290,11 @@ function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
         attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
+        diagnostics: [
+            { label: 'metric', value: cause.metric },
+            { label: 'observed', value: String(cause.observed) },
+            { label: 'budget', value: String(cause.budget) }
+        ],
         message: `Resource budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
         subtype: 'resource-exhaustion'
     };
@@ -301,6 +308,7 @@ function crashError(cause: CrashCause): RunnerError {
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
         attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
+        diagnostics: [ { label: 'reason', value: cause.reason } ],
         message: 'Test execution exceeded hard timeout.',
         subtype: 'crash'
     };
@@ -453,6 +461,7 @@ function createInconclusiveCaseResult(
     } as const;
 
     return {
+        definitionLocations: testCase.definitionLocations,
         id: testCase.id,
         outcome,
         verdict: verdictFromOutcome(outcome),
@@ -498,20 +507,12 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
     }
 }
 
-function createCaseBodyInput(
-    input: ActiveCaseInput,
-    activeCase: ActiveCase,
-    timeoutMilliseconds: number | null
-): CaseBodyInput {
+function registerCaseBodyInput(input: ActiveCaseInput, timeoutMilliseconds: number | null): CaseBodyInput {
     return {
         ...input,
-        activeCase,
+        activeCase: registerActiveCase(input),
         timeoutMilliseconds
     };
-}
-
-function registerCaseBodyInput(input: ActiveCaseInput, timeoutMilliseconds: number | null): CaseBodyInput {
-    return createCaseBodyInput(input, registerActiveCase(input), timeoutMilliseconds);
 }
 
 function createActiveCaseInput(

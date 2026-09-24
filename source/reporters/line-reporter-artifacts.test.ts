@@ -20,7 +20,12 @@ const skippedCaseId = { file: null, title: 'skips', params: null, suite: [] };
 const definitionLocation = { kind: 'unknown' as const };
 
 function lineReporterWithOptions(log: Log, verbose: boolean): RealTimeReporter {
-    const fakeDependencies: LineReporterDependencies = { stdoutConsole: { log }, verbose };
+    const fakeDependencies: LineReporterDependencies = {
+        columns: 200,
+        formatOptions: { color: false, wrap: true },
+        stdoutConsole: { log },
+        verbose
+    };
 
     return createLineReporter(fakeDependencies)({
         relativizeLocationPath(location) {
@@ -133,7 +138,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints captured output for passing tests in verbose mode',
+            title: 'line reporter defers captured output for passing tests in verbose mode',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -152,16 +157,14 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 3000
                 });
 
-                scope.assert(doubleUsage.callCount, log, 3);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  stdout:' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  visible output' ]);
+                scope.assert(doubleUsage.callCount, log, 1);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints truncated empty captured output as a header',
+            title: 'line reporter defers truncated empty captured output',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -180,15 +183,14 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 3000
                 });
 
-                scope.assert(doubleUsage.callCount, log, 2);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  stdout truncated:' ]);
+                scope.assert(doubleUsage.callCount, log, 1);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints captured output for non-passing tests',
+            title: 'line reporter defers captured output for non-passing tests',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -207,9 +209,7 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 4000
                 });
 
-                scope.assert(doubleUsage.callCount, log, 3);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  stdout:' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  skip output' ]);
+                scope.assert(doubleUsage.callCount, log, 1);
 
                 return scope.assert.collect();
             }
@@ -229,9 +229,10 @@ export const testNode = createOverkillSuite({
                     summary: { failed: 1 }
                 }));
 
-                scope.assert(doubleUsage.callCount, log, 3);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ '  stderr:' ]);
-                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  collection error output' ]);
+                scope.assert(doubleUsage.callCount, log, 6);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ 'Problems' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 3, [ '  stderr:' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 4, [ '  collection error output' ]);
 
                 return scope.assert.collect();
             }

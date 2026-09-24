@@ -153,6 +153,7 @@ async function observeCollection(
                 attributedTo: null,
                 attributedToWork: null,
                 cause: { reason: 'Supervised collection exceeded collection timeout.' },
+                diagnostics: [ { label: 'reason', value: 'Supervised collection exceeded collection timeout.' } ],
                 message: 'Supervised collection exceeded collection timeout.',
                 subtype: 'crash'
             });
@@ -172,6 +173,7 @@ async function observeCollection(
                 attributedTo: null,
                 attributedToWork: null,
                 cause: error,
+                diagnostics: [],
                 message: error.message,
                 subtype: 'crash'
             });
@@ -235,6 +237,7 @@ function recordCollectionTimeout(
         attributedTo: null,
         attributedToWork: null,
         cause: { reason: 'Supervised collection exceeded collection timeout.' },
+        diagnostics: [ { label: 'reason', value: 'Supervised collection exceeded collection timeout.' } ],
         message: 'Supervised collection exceeded collection timeout.',
         subtype: 'crash'
     });
@@ -350,6 +353,7 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
             attributedTo: null,
             attributedToWork: null,
             cause: error,
+            diagnostics: [],
             message: error.message,
             subtype: 'crash'
         });

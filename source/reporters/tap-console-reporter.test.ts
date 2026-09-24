@@ -324,6 +324,7 @@ export const testNode = createOverkillSuite({
                     error: {
                         attributedTo: null,
                         cause: new Error('reporter broke'),
+                        diagnostics: [],
                         message: 'line: reporter broke',
                         subtype: 'reporter'
                     },

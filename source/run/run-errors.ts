@@ -43,6 +43,7 @@ export class RunCollectionError extends Error {
             attributedTo: null,
             attributedToWork: null,
             cause: this.cause,
+            diagnostics: [],
             message: this.message,
             subtype: this.errorSubtype
         };

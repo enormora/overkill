@@ -277,6 +277,7 @@ export const testNode = createOverkillSuite({
                     error: {
                         attributedTo: null,
                         cause: new Error('original'),
+                        diagnostics: [],
                         message: 'original',
                         subtype: 'crash'
                     },

@@ -124,6 +124,7 @@ function runnerErrorEvent(): Extract<ReporterEvent, { readonly kind: 'runner-err
         error: {
             attributedTo: null,
             cause: new Error('cannot collect tests'),
+            diagnostics: [],
             message: 'cannot collect tests',
             subtype: 'crash'
         },
@@ -440,7 +441,7 @@ export const testNode = createOverkillSuite({
                         return intent.text;
                     }),
                     [
-                        'done status=failed discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 resourceExhausted=0 crashed=0 ms=42'
+                        'done status=failed discovered=5 planned=5 executed=5 passed=2 failed=1 skipped=1 inconclusive=1 resourceExhausted=0 runtimePolicy=0 crashed=0 ms=42 timing="total 42 ms, execution 0 ms, overhead 42 ms"'
                     ]
                 );
 

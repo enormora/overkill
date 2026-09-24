@@ -296,6 +296,7 @@ function recordRunCrash(runtime: WorkerPoolRunRuntime, message: string, cause: u
         attributedTo: null,
         attributedToWork: null,
         cause,
+        diagnostics: [],
         message,
         subtype: 'crash'
     });

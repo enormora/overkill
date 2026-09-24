@@ -30,6 +30,7 @@ const missingObservedWorkerError: RunnerError = {
     attributedTo: null,
     attributedToWork: null,
     cause: null,
+    diagnostics: [],
     message: 'Worker-pool worker failed after a process-level runtime error.',
     subtype: 'crash'
 };

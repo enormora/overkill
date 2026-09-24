@@ -17,7 +17,12 @@ type Log = TestDouble<LogFunction>;
 const errorSymbol = colors.red(figures.cross);
 
 function lineReporterWithLog(log: Log): RealTimeReporter {
-    const fakeDependencies = { stdoutConsole: { log } } as unknown as LineReporterDependencies;
+    const fakeDependencies: LineReporterDependencies = {
+        columns: 200,
+        formatOptions: { color: false, wrap: true },
+        stdoutConsole: { log },
+        verbose: false
+    };
 
     return createLineReporter(fakeDependencies)({
         relativizeLocationPath(location) {
@@ -68,7 +73,8 @@ export const testNode = createOverkillSuite({
                 scope.assert(doubleUsage.callCount, log, 1);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                     errorSymbol,
-                    '3 discovered, 3 planned, 3 executed (2 pass, 1 fail, 0 skip) in 10 ms'
+                    '3 discovered, 3 planned, 3 executed (2 pass, 1 fail, 0 skip) in 10 ms ' +
+                    '(total 10 ms, execution 0 ms, overhead 10 ms)'
                 ]);
 
                 return scope.assert.collect();
@@ -76,7 +82,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'line reporter prints nonzero resource, inconclusive, and crash counts in the run summary',
+            title: 'line reporter prints nonzero neutral and terminal counts in the run summary',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -91,6 +97,7 @@ export const testNode = createOverkillSuite({
                         passed: 1,
                         planned: 4,
                         resourceExhausted: 1,
+                        runtimePolicy: 1,
                         skipped: 1
                     },
                     totalWallTimeMicroseconds: 15_000
@@ -101,8 +108,10 @@ export const testNode = createOverkillSuite({
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
                     errorSymbol,
                     [
-                        '4 discovered, 4 planned, 6 executed',
-                        '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 resource-exhausted, 1 crash) in 15 ms'
+                        '4 discovered, 4 planned, 7 executed',
+                        '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 resource-exhausted, 1 runtime-policy, 1 crash) ' +
+                        'in 15 ms',
+                        '(total 15 ms, execution 0 ms, overhead 15 ms)'
                     ]
                         .join(' ')
                 ]);
