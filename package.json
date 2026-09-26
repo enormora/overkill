@@ -21,7 +21,7 @@
     "homepage": "https://github.com/enormora/overkill#readme",
     "dependencies": {
         "@overkill-dev/reporter-line": "0.0.32",
-        "@schema-hub/zod-error-formatter": "0.0.16",
+        "@schema-hub/zod-error-formatter": "0.0.19",
         "ansi-escapes": "7.3.0",
         "cmd-ts": "0.15.0",
         "diff": "9.0.0",
