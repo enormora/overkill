@@ -21,10 +21,12 @@ import type {
     TimingCollectionMode
 } from './run-types.ts';
 
+type RunFactsDependencies = Pick<RunOrchestratorDependencies, 'createSeed' | 'node'>;
+
 export type RunFactsInput = {
     readonly cases: readonly RunCaseFacts[];
     readonly config: RunConfig;
-    readonly dependencies: RunOrchestratorDependencies;
+    readonly dependencies: RunFactsDependencies;
     readonly durationHistory: DurationHistoryInput | null;
     readonly engine: RunCommand['engine'];
     readonly placementPlan: PlacementPlan | null;
@@ -120,7 +122,7 @@ export function resolveResourceUsagePolicy(
     };
 }
 
-function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependencies): bigint {
+function resolvedSeed(request: RunRequest, dependencies: RunFactsDependencies): bigint {
     return request.seed.value ?? dependencies.createSeed();
 }
 

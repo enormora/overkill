@@ -4,10 +4,16 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
+    defaultIntegrationProfile,
+    defaultRunConfig,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
+import {
     emptyWorkUnitResourceConstraints,
     type RunWorkerLifecycle,
     type WorkUnit
 } from './run-types.ts';
+import { createRunFacts } from './run-facts.ts';
 import {
     resolveWorkerCount,
     workerPoolLanes,
@@ -99,6 +105,40 @@ export const testNode = createOverkillSuite({
                         resolved: 2
                     }
                 );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool facts require a resolved worker count',
+            body(scope: OverkillScope) {
+                const profile = defaultIntegrationProfile({ execution: { maxWorkers: null } });
+
+                scope.assert.throws(function createFactsWithoutWorkerCount() {
+                    createRunFacts({
+                        cases: [],
+                        config: defaultRunConfig({ profiles: { integration: profile } }),
+                        dependencies: {
+                            createSeed() {
+                                return 42n;
+                            },
+                            node: {
+                                arch: 'test-arch',
+                                platform: 'test-platform',
+                                version: 'test-version'
+                            }
+                        },
+                        durationHistory: null,
+                        engine: { kind: 'default' },
+                        placementPlan: null,
+                        projectRoot: '/project',
+                        request: defaultRunRequest({ profile: 'integration' }),
+                        workerCount: null
+                    });
+                }, { message: 'Worker-pool execution facts require worker-count resolution.' });
 
                 return scope.assert.collect();
             }
