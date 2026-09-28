@@ -138,6 +138,18 @@ message, shutdown request to exit, and worker-pool start to ready. The concept
 does not pretend that different processes share one monotonic nanosecond
 clock.
 
+Parent-observed spans carry a parent-relative `startOffsetMicroseconds`.
+Child-process and worker-local spans carry precise durations but use
+`startOffsetMicroseconds: null`. This keeps the timeline honest while still
+making slow import, assignment, and teardown work visible.
+
+Precise spans may overlap. Aggregates are per-kind diagnostic totals, not a
+partition of wall-clock time.
+
+For reusable worker pools, `worker.teardown` means observable assigned-task
+teardown at the worker task boundary. It does not imply the underlying worker
+thread or process exited.
+
 ## Resource Lifecycle Timings
 
 Precise timings include resource lifecycle spans for every acquired resource.

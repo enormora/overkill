@@ -1,5 +1,6 @@
 import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import type { ReporterEvent } from '../engine/reporter.ts';
+import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type { WorkId } from '../engine/identity.ts';
 import type {
     RunnerError,
@@ -78,9 +79,15 @@ type WorkerPoolUnitStartedMessage = {
     readonly traceUnit: TraceWorkUnitId;
 };
 
+type WorkerPoolTimingMessage = {
+    readonly kind: 'timing';
+    readonly span: RunTimingSpan;
+};
+
 type WorkerPoolMessagesByKind = {
     readonly event: WorkerPoolReporterMessage;
     readonly output: WorkerPoolOutputMessage;
+    readonly timing: WorkerPoolTimingMessage;
     readonly unitCompleted: WorkerPoolUnitCompletedMessage;
     readonly unitStarted: WorkerPoolUnitStartedMessage;
 };

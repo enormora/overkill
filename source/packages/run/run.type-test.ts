@@ -29,6 +29,7 @@ import {
     type RunHostProcess,
     type RunHostProcessFacts,
     type RunHostProcessReason,
+    type RunInvocationTimingOptions,
     type runIfMain,
     type RunIntegrationProfileConfig,
     type RunSelection,
@@ -164,8 +165,12 @@ describe('@overkill-dev/run', function () {
         expect<RunCommand['engine']>().type.toBe<RunEngineSelection>();
         expect<RunCommand['request']>().type.toBe<RunRequest>();
         expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
-        expect<typeof orchestrator.resolve>().type.toBe<(command: RunCommand) => Promise<ResolvedRun>>();
-        expect<typeof orchestrator.run>().type.toBe<(command: RunCommand) => Promise<RunResult>>();
+        expect<typeof orchestrator.resolve>().type.toBe<
+            (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
+        >();
+        expect<typeof orchestrator.run>().type.toBe<
+            (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>
+        >();
     });
 
     test('exposes the direct-file execution companion', function () {

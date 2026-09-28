@@ -118,15 +118,11 @@ const resourceBudgetNames: ReadonlySet<string> = new Set([
 ]);
 const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
 
-const wrapperExitCodes: {
-    readonly argumentOrConfig: CommandLineExitCode;
-    readonly internalCrash: CommandLineExitCode;
-    readonly pass: CommandLineExitCode;
-} = {
+const wrapperExitCodes = {
     argumentOrConfig: 3,
     internalCrash: 70,
     pass: 0
-};
+} as const;
 
 function writeLine(output: WritableOutput, text: string): void {
     output.write(text.endsWith('\n') ? text : `${text}\n`);
@@ -504,21 +500,13 @@ function applyCmdTsExit(request: OverkillCommandLineRunRequest, message: string,
     request.applyExitCode(exitCode);
 }
 
-function applyCmdTsSuccessExit(
-    request: OverkillCommandLineRunRequest,
-    message: string,
-    into: 'stderr' | 'stdout'
-): void {
-    writeLine(into === 'stdout' ? request.stdout : request.stderr, message);
-    request.applyExitCode(wrapperExitCodes.pass);
-}
-
 async function readCmdTsErrorExitCode(
     request: OverkillCommandLineRunRequest,
     error: CmdTsExit
 ): Promise<CommandLineExitCode> {
     if (error.config.exitCode === 0) {
-        applyCmdTsSuccessExit(request, error.config.message, error.config.into);
+        writeLine(error.config.into === 'stdout' ? request.stdout : request.stderr, error.config.message);
+        request.applyExitCode(wrapperExitCodes.pass);
 
         return wrapperExitCodes.pass;
     }
@@ -526,6 +514,19 @@ async function readCmdTsErrorExitCode(
     applyCmdTsExit(request, error.config.message, wrapperExitCodes.argumentOrConfig);
 
     return wrapperExitCodes.argumentOrConfig;
+}
+
+function isCmdTsRunFailure(result: unknown): result is CmdTsRunFailure {
+    return isInspectableObject(result) &&
+        Object.hasOwn(result, 'error') &&
+        isCmdTsExit(result.error);
+}
+
+function isCmdTsRunSuccess(result: unknown): result is CmdTsRunSuccess {
+    return isInspectableObject(result) &&
+        Object.hasOwn(result, 'value') &&
+        isInspectableObject(result.value) &&
+        Object.hasOwn(result.value, 'value');
 }
 
 function applyRunResultExit(
@@ -539,27 +540,10 @@ function applyRunResultExit(
     return result.exitCode;
 }
 
-function isCmdTsRunFailure(result: unknown): result is CmdTsRunFailure {
-    return isInspectableObject(result) &&
-        Object.hasOwn(result, 'error') &&
-        isCmdTsExit(result.error);
-}
-
-function isCmdTsRunSuccess(result: unknown): result is CmdTsRunSuccess {
-    if (!isInspectableObject(result) || !Object.hasOwn(result, 'value')) {
-        return false;
-    }
-
-    const commandResult = result.value;
-
-    return isInspectableObject(commandResult) && Object.hasOwn(commandResult, 'value');
-}
-
 async function runWithCmdTs(request: OverkillCommandLineRunRequest): Promise<CommandLineExitCode> {
-    const result: unknown = await runSafely(
-        createOverkillCommand(request.loadRunner, request.cwd),
-        Array.from(request.arguments)
-    );
+    const commandLine = createOverkillCommand(request.loadRunner, request.cwd);
+
+    const result: unknown = await runSafely(commandLine, Array.from(request.arguments));
 
     if (isCmdTsRunFailure(result)) {
         return await readCmdTsErrorExitCode(request, result.error);

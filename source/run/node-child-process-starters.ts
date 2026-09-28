@@ -13,7 +13,7 @@ import {
 } from './supervised-child-process.ts';
 import {
     createWorkerPoolHostProcessStarter
-} from './worker-pool-host-process.ts';
+} from './worker-pool-host-process-starter.ts';
 
 const childProcessEntryPoint = fileURLToPath(childProcessEntryPointUrl);
 const childPackageRoot = dirname(dirname(childProcessEntryPoint));

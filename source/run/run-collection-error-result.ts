@@ -3,7 +3,10 @@ import { runStatusFromSummary, type RunResult } from '../engine/run-result.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { resolveTimingCollection, selectedProfile } from './run-facts.ts';
-import { resultWithTimingCollection } from './run-timing-collection.ts';
+import {
+    resultWithTimingCollection,
+    type RunTimingMeasurement
+} from './run-timing-collection.ts';
 import { resolveRunReporters, type RunRuntimePolicy } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunCommand } from './run-types.ts';
@@ -124,7 +127,8 @@ async function reportCollectionResultWithDelivery(
 export async function reportCollectionErrorResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    result: RunResult
+    result: RunResult,
+    timing: RunTimingMeasurement | null = null
 ): Promise<RunResult> {
     const profile = selectedProfile(command.request, command.config);
     const reporters = resolveRunReporters(profile, command.config.reporters);
@@ -134,7 +138,8 @@ export async function reportCollectionErrorResult(
     );
     const timedResult = resultWithTimingCollection(
         resolveTimingCollection(command.request, profile),
-        result
+        result,
+        timing
     );
 
     return await reportCollectionResultWithDelivery(reporterDelivery, timedResult);

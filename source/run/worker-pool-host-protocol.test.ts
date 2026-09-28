@@ -25,7 +25,7 @@ import {
     type WorkerPoolHostCommand,
     workerPoolHostCorrelationId
 } from './worker-pool-host-protocol.ts';
-import { createWorkerPoolHostProcessStarter } from './worker-pool-host-process.ts';
+import { createWorkerPoolHostProcessStarter } from './worker-pool-host-process-starter.ts';
 
 function createChildProcess(): SupervisedChildProcess {
     return {

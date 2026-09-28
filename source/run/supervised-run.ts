@@ -1,7 +1,6 @@
 import type {
     ResourceUsageSnapshot,
-    RunResult,
-    RunnerError
+    RunResult
 } from '../packages/engine/engine.entry-point.ts';
 import {
     childProcessEnvelope,
@@ -15,7 +14,6 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import {
     supervisedChildCorrelationId,
     type SupervisedChildMessage,
-    type SupervisedCollectCommand,
     type SupervisedRunCommand
 } from './supervised-protocol.ts';
 import {
@@ -47,20 +45,26 @@ import {
     type StoredRunValue,
     type SupervisedRunState
 } from './supervised-run-state.ts';
+import {
+    emptyTimingSpanMetadata,
+    instantTimingSpanObservation,
+    type RunTimingMeasurement
+} from './run-timing-collection.ts';
+
+type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
 
 type SupervisedCollectionResult = {
     readonly collectedPlan: CollectedRunPlan;
-    readonly runnerErrors: readonly RunnerError[];
+    readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
 };
 
 type CreateResolvedRunFromCollection = (
     collection: SupervisedCollectionResult
 ) => Promise<ResolvedRun>;
 
-type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
-
 type SupervisedExecutionOptions = {
     readonly finalizeResult: RunResultFinalizer;
+    readonly timing: RunTimingMeasurement | null;
 };
 
 type SupervisedRunStartTimes = {
@@ -85,6 +89,7 @@ type SupervisedLiveRun = {
     readonly runtime: StoredRunValue<SupervisedRunRuntime | null>;
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
+    readonly timing: RunTimingMeasurement | null;
 };
 
 function createSignal(): Signal {
@@ -109,121 +114,8 @@ function supervisedRunStartTimes(dependencies: RunOrchestratorDependencies): Sup
     };
 }
 
-function handleCollectionMessage(
-    message: SupervisedChildMessage,
-    runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
-): void {
-    if (message.kind === 'collected') {
-        runtime.collected.write({
-            collectedPlan: message.collectedPlan,
-            runnerErrors: message.runnerErrors
-        });
-    } else if (message.kind === 'event') {
-        applyEvent(
-            message.event,
-            runtime.state,
-            new Map(),
-            runtime.dependencies.wallClock.currentMonotonicMicroseconds
-        );
-    } else if (message.kind === 'sample') {
-        handleCollectionSample(message.sample, runtime);
-    }
-}
-
 function supervisedChildMessage(message: unknown): SupervisedChildMessage | null {
     return envelopeMessage<SupervisedChildMessage>(message, supervisedChildCorrelationId);
-}
-
-async function observeCollection(
-    runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
-): Promise<void> {
-    observeSupervisedChildOutput({
-        capabilityRestrictions: runtime.command.capabilityRestrictions,
-        capture: runtime.command.capture,
-        child: runtime.child,
-        dependencies: runtime.dependencies,
-        state: runtime.state,
-        terminalFailure: runtime.terminalFailure
-    });
-
-    return new Promise(function waitForCollectionChild(resolve) {
-        const collectionTimeout = runtime.dependencies.wallClock.setTimeout(function killTimedOutCollection() {
-            runtime.terminalFailure.write(true);
-            runtime.state.recordRunnerError({
-                attributedTo: null,
-                attributedToWork: null,
-                cause: { reason: 'Supervised collection exceeded collection timeout.' },
-                diagnostics: [ { label: 'reason', value: 'Supervised collection exceeded collection timeout.' } ],
-                message: 'Supervised collection exceeded collection timeout.',
-                subtype: 'crash'
-            });
-            kill(runtime.child);
-        }, runtime.command.collectionTimeoutMilliseconds);
-
-        runtime.child.on('message', function receiveMessage(message: unknown) {
-            const childMessage = supervisedChildMessage(message);
-
-            if (childMessage !== null) {
-                handleCollectionMessage(childMessage, runtime);
-            }
-        });
-        runtime.child.on('error', function recordChildError(error: Error) {
-            runtime.terminalFailure.write(true);
-            runtime.state.recordRunnerError({
-                attributedTo: null,
-                attributedToWork: null,
-                cause: error,
-                diagnostics: [],
-                message: error.message,
-                subtype: 'crash'
-            });
-        });
-        runtime.child.on('exit', function resolveExit() {
-            runtime.dependencies.wallClock.clearTimeout(collectionTimeout);
-            resolve();
-        });
-    });
-}
-
-async function createCollectionRuntime(
-    command: SupervisedCollectCommand | SupervisedRunCommand,
-    dependencies: RunOrchestratorDependencies
-): Promise<SupervisedCollectionRuntime<SupervisedCollectionResult | null>> {
-    return {
-        child: await dependencies.startSupervisedChild({
-            capabilityRestrictions: command.capabilityRestrictions,
-            cwd: command.cwd,
-            environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
-            testFamily: command.testFamily
-        }),
-        command,
-        collected: createStoredRunValue<SupervisedCollectionResult | null>(null),
-        dependencies,
-        previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
-        state: createSupervisedRunState(),
-        terminalFailure: createStoredRunValue(false)
-    };
-}
-
-function readCollectedResult(
-    runtime: SupervisedCollectionRuntime<SupervisedCollectionResult | null>
-): SupervisedCollectionResult {
-    const collected = runtime.collected.read();
-
-    if (collected !== null && !runtime.terminalFailure.read()) {
-        return {
-            collectedPlan: collected.collectedPlan,
-            runnerErrors: [ ...runtime.state.runnerErrors(), ...collected.runnerErrors ]
-        };
-    }
-
-    const [ firstError ] = runtime.state.runnerErrors();
-
-    throw new RunCollectionError(
-        firstError?.message ?? 'Supervised collection failed.',
-        { cause: firstError ?? null },
-        'loader'
-    );
 }
 
 function recordCollectionTimeout(
@@ -250,12 +142,23 @@ async function createLiveRun(
     dependencies: RunOrchestratorDependencies,
     options: SupervisedExecutionOptions
 ): Promise<SupervisedLiveRun> {
-    const child = await dependencies.startSupervisedChild({
+    const child = await (options.timing?.measureAsync(
+        'supervised-process.spawn',
+        emptyTimingSpanMetadata(),
+        async function startTimedLiveSupervisedChild() {
+            return await dependencies.startSupervisedChild({
+                capabilityRestrictions: command.capabilityRestrictions,
+                cwd: command.cwd,
+                environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
+                testFamily: command.testFamily
+            });
+        }
+    ) ?? dependencies.startSupervisedChild({
         capabilityRestrictions: command.capabilityRestrictions,
         cwd: command.cwd,
         environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
         testFamily: command.testFamily
-    });
+    }));
     const collectedSignal = createSignal();
     const state = createSupervisedRunState();
     const terminalFailure = createStoredRunValue(false);
@@ -274,7 +177,8 @@ async function createLiveRun(
         previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
         runtime: createStoredRunValue<SupervisedRunRuntime | null>(null),
         state,
-        terminalFailure
+        terminalFailure,
+        timing: options.timing
     };
 }
 
@@ -300,6 +204,12 @@ function handleLiveCollectionMessage(
 ): void {
     if (message.kind === 'collected') {
         liveRun.dependencies.wallClock.clearTimeout(liveRun.collectionTimeout);
+        liveRun.timing?.record(instantTimingSpanObservation({
+            kind: 'supervised-process.ready',
+            metadata: emptyTimingSpanMetadata(),
+            observedAtMicroseconds: liveRun.dependencies.wallClock.currentMonotonicMicroseconds,
+            status: 'success'
+        }));
         liveRun.collected.write({
             collectedPlan: message.collectedPlan,
             runnerErrors: message.runnerErrors
@@ -360,6 +270,14 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
         liveRun.collectedSignal.resolve();
     });
     liveRun.child.on('exit', function resolveExit() {
+        const exitedAtMicroseconds = liveRun.dependencies.wallClock.currentMonotonicMicroseconds;
+
+        liveRun.timing?.record(instantTimingSpanObservation({
+            kind: 'supervised-process.exit',
+            metadata: emptyTimingSpanMetadata(),
+            observedAtMicroseconds: exitedAtMicroseconds,
+            status: liveRun.terminalFailure.read() ? 'failure' : 'success'
+        }));
         liveRun.dependencies.wallClock.clearTimeout(liveRun.collectionTimeout);
         liveRun.collectedSignal.resolve();
         liveRun.finishedSignal.resolve();
@@ -447,18 +365,6 @@ async function continueLiveRun(
     return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);
 }
 
-export async function collectSupervisedRun(
-    command: SupervisedCollectCommand,
-    dependencies: RunOrchestratorDependencies
-): Promise<SupervisedCollectionResult> {
-    const runtime = await createCollectionRuntime(command, dependencies);
-    const childFinished = observeCollection(runtime);
-    runtime.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
-    await childFinished;
-
-    return readCollectedResult(runtime);
-}
-
 export async function runSupervisedCommand(
     command: SupervisedRunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -480,12 +386,23 @@ async function createRuntime(
 ): Promise<SupervisedRunRuntime> {
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     const runtimeWithoutTimeout = {
-        child: await dependencies.startSupervisedChild({
+        child: await (options.timing?.measureAsync(
+            'supervised-process.spawn',
+            emptyTimingSpanMetadata(),
+            async function startTimedSupervisedChild() {
+                return await dependencies.startSupervisedChild({
+                    capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
+                    cwd: resolvedRun.cwd,
+                    environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
+                    testFamily: resolvedRun.facts.execution.testFamily
+                });
+            }
+        ) ?? dependencies.startSupervisedChild({
             capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
             cwd: resolvedRun.cwd,
             environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
             testFamily: resolvedRun.facts.execution.testFamily
-        }),
+        })),
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(collectedPlan),
         completedResult: createStoredRunValue<RunResult | null>(null),
         dependencies,
@@ -506,20 +423,72 @@ async function createRuntime(
     };
 }
 
+function recordSupervisedReady(
+    timing: RunTimingMeasurement | null,
+    dependencies: RunOrchestratorDependencies,
+    startedAtMicroseconds: number
+): void {
+    timing?.record({
+        completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+        kind: 'supervised-process.ready',
+        metadata: emptyTimingSpanMetadata(),
+        startedAtMicroseconds,
+        status: 'success'
+    });
+}
+
+function recordSupervisedExit(
+    timing: RunTimingMeasurement | null,
+    dependencies: RunOrchestratorDependencies,
+    runtime: SupervisedRunRuntime
+): void {
+    timing?.record(instantTimingSpanObservation({
+        kind: 'supervised-process.exit',
+        metadata: emptyTimingSpanMetadata(),
+        observedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+        status: runtime.terminalFailure.read() ? 'failure' : 'success'
+    }));
+}
+
+async function runSupervisedChild(
+    runtime: SupervisedRunRuntime,
+    dependencies: RunOrchestratorDependencies,
+    timing: RunTimingMeasurement | null
+): Promise<void> {
+    const childFinished = observeChild(runtime);
+    const readyStartedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    sendRunCommand(runtime);
+    sendAssignment(runtime);
+    recordSupervisedReady(timing, dependencies, readyStartedAtMicroseconds);
+    await childFinished;
+    recordSupervisedExit(timing, dependencies, runtime);
+}
+
+async function finishTimedSupervisedRun(
+    runtime: SupervisedRunRuntime,
+    startedAtMicroseconds: number,
+    timing: RunTimingMeasurement | null
+): Promise<RunResult> {
+    return await (timing?.measureAsync(
+        'supervised-process.teardown',
+        emptyTimingSpanMetadata(),
+        async function finishTimedSupervisedRuntime() {
+            return await finishSupervisedRuntime(runtime, startedAtMicroseconds);
+        }
+    ) ?? finishSupervisedRuntime(runtime, startedAtMicroseconds));
+}
+
 export async function executeSupervisedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    options: SupervisedExecutionOptions = { finalizeResult: keepRunResult }
+    options: SupervisedExecutionOptions = { finalizeResult: keepRunResult, timing: null }
 ): Promise<RunResult> {
     const runtime = await createRuntime(resolvedRun, dependencies, options);
     const startedAt = supervisedRunStartTimes(dependencies);
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
     await reportRunStart(runtime, collectedPlan, startedAt.epochMilliseconds);
-    const childFinished = observeChild(runtime);
-    sendRunCommand(runtime);
-    sendAssignment(runtime);
-    await childFinished;
+    await runSupervisedChild(runtime, dependencies, options.timing);
 
-    return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);
+    return await finishTimedSupervisedRun(runtime, startedAt.monotonicMicroseconds, options.timing);
 }

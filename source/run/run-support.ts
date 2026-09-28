@@ -35,6 +35,7 @@ import { validateRunResourceUsagePolicy } from './run-validation.ts';
 import {
     readDurationHistoryIndex,
     resultWithUpdatedDurationHistoryAndTiming,
+    type DurationHistoryTimingMeasurement,
     type DurationHistoryIndex
 } from './duration-history.ts';
 
@@ -53,14 +54,16 @@ export async function readRunDurationHistory(
 export async function finalizeResultWithDurationHistory(
     dependencies: RunOrchestratorDependencies,
     resolvedRun: ResolvedRun,
-    result: RunResult
+    result: RunResult,
+    timing: DurationHistoryTimingMeasurement | null = null
 ): Promise<RunResult> {
-    return await resultWithUpdatedDurationHistoryAndTiming(
-        dependencies.durationHistoryStore,
+    return await resultWithUpdatedDurationHistoryAndTiming({
+        completedAtMilliseconds: dependencies.wallClock.currentEpochMilliseconds,
         resolvedRun,
         result,
-        dependencies.wallClock.currentEpochMilliseconds
-    );
+        store: dependencies.durationHistoryStore,
+        timing
+    });
 }
 
 function composeRunRuntimePolicies(

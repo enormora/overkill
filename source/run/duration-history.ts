@@ -10,7 +10,10 @@ import type {
     WorkId,
     WorkUnit
 } from './run-types.ts';
-import { resultWithResolvedTimingCollection } from './run-timing-collection.ts';
+import {
+    resultWithResolvedTimingCollection,
+    type RunTimingMeasurement
+} from './run-timing-collection.ts';
 
 const indexVersion = 1;
 const maximumObservationCount = 8;
@@ -521,14 +524,27 @@ export async function resultWithUpdatedDurationHistory(
     }
 }
 
+export type DurationHistoryTimingMeasurement = RunTimingMeasurement;
+
+export type TimedDurationHistoryResultInput = {
+    readonly completedAtMilliseconds: number;
+    readonly resolvedRun: ResolvedRun;
+    readonly result: RunResult;
+    readonly store: DurationHistoryStore;
+    readonly timing: DurationHistoryTimingMeasurement | null;
+};
+
 export async function resultWithUpdatedDurationHistoryAndTiming(
-    store: DurationHistoryStore,
-    resolvedRun: ResolvedRun,
-    result: RunResult,
-    completedAtMilliseconds: number
+    input: TimedDurationHistoryResultInput
 ): Promise<RunResult> {
     return resultWithResolvedTimingCollection(
-        resolvedRun,
-        await resultWithUpdatedDurationHistory(store, resolvedRun, result, completedAtMilliseconds)
+        input.resolvedRun,
+        await resultWithUpdatedDurationHistory(
+            input.store,
+            input.resolvedRun,
+            input.result,
+            input.completedAtMilliseconds
+        ),
+        input.timing
     );
 }

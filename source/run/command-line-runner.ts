@@ -27,6 +27,11 @@ import {
 } from './run-reporter-resolution.ts';
 import { renderResolvedRunList } from './run-list-renderer.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
+import {
+    createSystemRunTimingMeasurement,
+    emptyTimingSpanMetadata,
+    type RunInvocationTimingOptions
+} from './run-timing-collection.ts';
 
 export type CommandLineRunner = {
     readonly baseline: CommandLineBaselineCommands;
@@ -161,10 +166,11 @@ function createCommandFromListRequest(
 async function runTestsWithLoadedConfig(
     request: CommandLineRunTestsRequest,
     dependencies: CommandLineRunnerDependencies,
-    loadedConfig: LoadedRunConfig
+    loadedConfig: LoadedRunConfig,
+    options: RunInvocationTimingOptions
 ): Promise<CommandLineRunnerResult> {
     const command = await createCommandFromRequest(request, loadedConfig, dependencies);
-    const runResult = await dependencies.orchestrator.runWithReporterDelivery(command);
+    const runResult = await dependencies.orchestrator.runWithReporterDelivery(command, options);
 
     return {
         exitCode: readExitCodeFromRunResult(runResult.result),
@@ -219,9 +225,18 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
         replayRun: createUnimplementedCommand('replay'),
         replayWitness: createUnimplementedCommand('replay-witness'),
         async runTests(request) {
+            const timing = createSystemRunTimingMeasurement();
+
             try {
-                const loadedConfig = await dependencies.loadRunConfig(request);
-                return await runTestsWithLoadedConfig(request, dependencies, loadedConfig);
+                const loadedConfig = await timing.measureAsync(
+                    'config.load',
+                    emptyTimingSpanMetadata(),
+                    async function loadRunTestsConfig() {
+                        return await dependencies.loadRunConfig(request);
+                    }
+                );
+
+                return await runTestsWithLoadedConfig(request, dependencies, loadedConfig, { timing });
             } catch (error: unknown) {
                 return createCommandLineErrorResultFromUnknown(error);
             }

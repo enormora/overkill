@@ -259,6 +259,8 @@ export function handleWorkerMessage(
         handleUnitStarted(message, taskRun, runtime);
     } else if (message.kind === 'unit-completed') {
         handleUnitCompleted(message, taskRun, runtime);
+    } else if (message.kind === 'timing') {
+        runtime.timing?.recordLocal(message.span);
     } else {
         handleWorkerEvent(message.event, taskRun, runtime);
     }

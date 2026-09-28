@@ -1,4 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as supervisedRunCollectionTestNode } from './supervised-run-collection.test.ts';
 import { testNode as supervisedRunArtifactsTestNode } from './supervised-run-artifacts.test.ts';
 import { testNode as supervisedRunStateTestNode } from './supervised-run-state.test.ts';
 import { testNode as supervisedRunTestNode } from './supervised-run.test.ts';
@@ -10,6 +11,7 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         supervisedRunTestNode,
+        supervisedRunCollectionTestNode,
         supervisedRunArtifactsTestNode,
         supervisedRunStateTestNode
     ]
