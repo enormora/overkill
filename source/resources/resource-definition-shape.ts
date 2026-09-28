@@ -1,3 +1,5 @@
+import type { ResourceScenarioSlots } from './resource-scenario.ts';
+
 export type Awaitable<Value> = Promise<Value> | Value;
 export type ValueOf<Values> = Values[keyof Values];
 
@@ -39,6 +41,7 @@ export type AnyResourceDefinition = {
     readonly dispose: ((handle: never, context: never) => Awaitable<void>) | null;
     readonly name: string;
     readonly requirements: readonly ExecutionRequirement[];
+    readonly scenarios: ResourceScenarioSlots;
     readonly scope: ResourceScope;
     readonly serializeHandle?: (handle: never, context: never) => ResourceProjectionPayload;
 };

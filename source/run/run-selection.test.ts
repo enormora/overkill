@@ -79,6 +79,7 @@ function graphOnlyResourceAttachments(): TestBodyResourceAttachments {
                 dependencies: [],
                 name: 'database',
                 requirements: [],
+                scenarios: [],
                 scope: 'per-case'
             }
         ],
@@ -95,6 +96,7 @@ function runtimeResourceAttachments(): TestBodyResourceAttachments {
                 dimensions: {},
                 name: 'api',
                 requirements: [],
+                scenarioBindings: [],
                 resources: [ { key: 'database', resourceName: 'database' } ]
             }
         ]
@@ -110,6 +112,7 @@ function pureRuntimeAttachments(): TestBodyResourceAttachments {
                 dimensions: { node: '26' },
                 name: 'node',
                 requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
+                scenarioBindings: [],
                 resources: []
             }
         ]

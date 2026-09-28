@@ -12,14 +12,15 @@ import {
     type TestBodyRuntimeSummary,
     type TestScope
 } from '../engine/engine.entry-point.ts';
-import type {
-    AnyResourceDefinition,
-    ExecutionRequirement,
-    ResourceContext,
-    ResourceMap,
-    RuntimeGraph,
-    RuntimeGraphLeaf,
-    RuntimeMatrixDefinition
+import {
+    resolvedRuntimeScenarioOwners,
+    type AnyResourceDefinition,
+    type ExecutionRequirement,
+    type ResourceContext,
+    type ResourceMap,
+    type RuntimeGraph,
+    type RuntimeGraphLeaf,
+    type RuntimeMatrixDefinition
 } from '../resources/resources.entry-point.ts';
 import {
     resourceContextForStep,
@@ -107,6 +108,14 @@ function resourceSummary(resource: AnyResourceDefinition): TestBodyResourceSumma
         }),
         name: resource.name,
         requirements: resource.requirements.map(requirementSummary),
+        scenarios: Object.entries(resource.scenarios).map(function scenarioSummary([ name, scenario ]) {
+            return {
+                default: scenario.default,
+                name,
+                timing: scenario.timing,
+                values: scenario.values
+            };
+        }),
         scope: resource.scope
     };
 }
@@ -209,6 +218,22 @@ function leafRuntimeSummary(
             return {
                 key,
                 resourceName: resource.name
+            };
+        }),
+        scenarioBindings: Array.from(resolvedRuntimeScenarioOwners(runtimeGraph), function scenarioBinding([
+            name,
+            owner
+        ]) {
+            return {
+                default: owner.slot.default,
+                name,
+                owner: {
+                    path: owner.path,
+                    resourceName: owner.resource.name
+                },
+                timing: owner.slot.timing,
+                value: owner.value,
+                values: owner.slot.values
             };
         })
     };

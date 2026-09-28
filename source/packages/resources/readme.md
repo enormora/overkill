@@ -139,10 +139,17 @@ readiness, and terminates then force-kills during disposal according to the
 declared shutdown contract. Output buffers are lifecycle diagnostics, not
 artifacts.
 
+Resources may declare finite scenario slots with a default, timing, and allowed
+values. `defineRuntime(...)` lifts slots from its complete dependency graph.
+`runtime.scenario({...})` applies partial overrides, while omitted slots retain
+their current value or declared default. Acquisition and disposal callbacks
+receive the resolved values through `context.scenarios`.
+
 `createSimulatedHttpServerResource({ simulation, address })` starts a simulated
-HTTP server from `@overkill-dev/simulation` as a per-case resource. The
-acquired handle exposes `baseUrl` for the `default` scenario and
-`scenarioUrl(...)` for URL-selected scenarios.
+HTTP server from `@overkill-dev/simulation` as a per-case resource. Its
+request-routed scenario slot uses the simulation name. A runtime binding makes
+`baseUrl` select that scenario, while `scenarioUrl(...)` remains available for
+explicit URL selection.
 
 `startRuntime(...)` acquires dependencies before dependents, shares one handle
 per descriptor inside the session, and disposes acquired resources once in

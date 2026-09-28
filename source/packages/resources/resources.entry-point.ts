@@ -39,6 +39,7 @@ export {
     isDefinedRuntime,
     isDefinedRuntimeGraph,
     isDefinedRuntimeMatrix,
+    resolvedRuntimeScenarioOwners,
     runtimeGraphLeaves
 } from '../../resources/resources.ts';
 export {
@@ -68,6 +69,12 @@ export type {
     ResourceProjectionContext,
     ResourceProjectionPayload,
     ResourceScope,
+    ResourceScenarioBindings,
+    ResourceScenarioSlot,
+    ResourceScenarioSlotInput,
+    ResourceScenarioSlotInputs,
+    ResourceScenarioSlotsFromInputs,
+    ResourceScenarioSlots,
     RuntimeContext,
     RuntimeContextComposition,
     RuntimeDefinition,
@@ -83,6 +90,8 @@ export type {
     RuntimeMatrixVariantMap,
     RuntimeResourceMap,
     RuntimeScopeContext,
+    RuntimeScenarioOwner,
+    ScenarioTiming,
     SharedRuntimeMatrixDefinitionInput,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';

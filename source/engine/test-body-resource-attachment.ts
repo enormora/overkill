@@ -2,10 +2,26 @@ const testBodyResourceAttachmentsBrand = Symbol.for('@overkill-dev/engine/TestBo
 
 export type TestBodyExecutionRequirementSummary = Readonly<Record<string, unknown>>;
 
+export type TestBodyScenarioSlotSummary = {
+    readonly default: string;
+    readonly name: string;
+    readonly timing: 'acquire' | 'request-routed';
+    readonly values: readonly string[];
+};
+
+export type TestBodyRuntimeScenarioBindingSummary = TestBodyScenarioSlotSummary & {
+    readonly owner: {
+        readonly path: readonly string[];
+        readonly resourceName: string;
+    };
+    readonly value: string;
+};
+
 export type TestBodyResourceSummary = {
     readonly dependencies: readonly string[];
     readonly name: string;
     readonly requirements: readonly TestBodyExecutionRequirementSummary[];
+    readonly scenarios: readonly TestBodyScenarioSlotSummary[];
     readonly scope: string;
 };
 
@@ -15,6 +31,7 @@ export type TestBodyLeafRuntimeSummary = {
     readonly name: string;
     readonly requirements: readonly TestBodyExecutionRequirementSummary[];
     readonly resources: readonly TestBodyDirectResourceAttachmentSummary[];
+    readonly scenarioBindings: readonly TestBodyRuntimeScenarioBindingSummary[];
 };
 
 export type TestBodyRuntimeMatrixVariantSummary = {
@@ -149,6 +166,12 @@ function freezeResourceGraph(resources: readonly TestBodyResourceSummary[]): rea
             dependencies: Object.freeze(Array.from(resource.dependencies)),
             name: resource.name,
             requirements: freezeRequirements(resource.requirements),
+            scenarios: Object.freeze(resource.scenarios.map(function freezeScenario(scenario) {
+                return Object.freeze({
+                    ...scenario,
+                    values: Object.freeze(Array.from(scenario.values))
+                });
+            })),
             scope: resource.scope
         });
     }));
@@ -164,6 +187,16 @@ function freezeLeafRuntime(runtime: TestBodyLeafRuntimeSummary): TestBodyLeafRun
             return Object.freeze({
                 key: resource.key,
                 resourceName: resource.resourceName
+            });
+        })),
+        scenarioBindings: Object.freeze(runtime.scenarioBindings.map(function freezeScenarioBinding(binding) {
+            return Object.freeze({
+                ...binding,
+                owner: Object.freeze({
+                    path: Object.freeze(Array.from(binding.owner.path)),
+                    resourceName: binding.owner.resourceName
+                }),
+                values: Object.freeze(Array.from(binding.values))
             });
         }))
     });

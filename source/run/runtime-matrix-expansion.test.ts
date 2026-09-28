@@ -16,14 +16,26 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
         resourceAttachments: {
             directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
             resourceGraph: [
-                { dependencies: [ 'scratch-root' ], name: 'scratch', requirements: [], scope: 'per-case' },
-                { dependencies: [], name: 'scratch-root', requirements: [], scope: 'per-case' },
-                { dependencies: [], name: 'database-26', requirements: [], scope: 'per-case' },
-                { dependencies: [], name: 'database-27', requirements: [], scope: 'per-case' },
-                { dependencies: [], name: 'browser-chromium', requirements: [], scope: 'per-case' },
-                { dependencies: [], name: 'browser-firefox', requirements: [], scope: 'per-case' },
-                { dependencies: [ 'remote-sidecar' ], name: 'sidecar', requirements: [], scope: 'per-case' },
-                { dependencies: [], name: 'unused', requirements: [], scope: 'per-case' }
+                {
+                    dependencies: [ 'scratch-root' ],
+                    name: 'scratch',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                },
+                { dependencies: [], name: 'scratch-root', requirements: [], scenarios: [], scope: 'per-case' },
+                { dependencies: [], name: 'database-26', requirements: [], scenarios: [], scope: 'per-case' },
+                { dependencies: [], name: 'database-27', requirements: [], scenarios: [], scope: 'per-case' },
+                { dependencies: [], name: 'browser-chromium', requirements: [], scenarios: [], scope: 'per-case' },
+                { dependencies: [], name: 'browser-firefox', requirements: [], scenarios: [], scope: 'per-case' },
+                {
+                    dependencies: [ 'remote-sidecar' ],
+                    name: 'sidecar',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                },
+                { dependencies: [], name: 'unused', requirements: [], scenarios: [], scope: 'per-case' }
             ],
             runtimeGraphs
         },
@@ -60,6 +72,7 @@ function matrixRuntimeGraph(name: string): TestPlanCase['resourceAttachments']['
                     kind: 'runtime',
                     name: 'node-26',
                     requirements: [],
+                    scenarioBindings: [],
                     resources: [ { key: 'database', resourceName: 'database-26' } ]
                 }
             },
@@ -70,6 +83,7 @@ function matrixRuntimeGraph(name: string): TestPlanCase['resourceAttachments']['
                     kind: 'runtime',
                     name: 'node-27',
                     requirements: [],
+                    scenarioBindings: [],
                     resources: [ { key: 'database', resourceName: 'database-27' } ]
                 }
             }
@@ -90,6 +104,7 @@ function browserRuntimeGraph(): TestPlanCase['resourceAttachments']['runtimeGrap
                     kind: 'runtime',
                     name: 'chromium',
                     requirements: [],
+                    scenarioBindings: [],
                     resources: [ { key: 'page', resourceName: 'browser-chromium' } ]
                 }
             },
@@ -100,6 +115,7 @@ function browserRuntimeGraph(): TestPlanCase['resourceAttachments']['runtimeGrap
                     kind: 'runtime',
                     name: 'firefox',
                     requirements: [],
+                    scenarioBindings: [],
                     resources: [ { key: 'page', resourceName: 'browser-firefox' } ]
                 }
             }
@@ -113,6 +129,7 @@ function sidecarRuntimeGraph(): TestPlanCase['resourceAttachments']['runtimeGrap
         kind: 'runtime',
         name: 'sidecar',
         requirements: [],
+        scenarioBindings: [],
         resources: [ { key: 'server', resourceName: 'sidecar' } ]
     };
 }

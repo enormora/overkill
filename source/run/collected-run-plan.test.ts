@@ -15,6 +15,7 @@ const attachments: TestBodyResourceAttachments = {
             dependencies: [],
             name: 'database',
             requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
+            scenarios: [],
             scope: 'per-case'
         }
     ],
@@ -24,6 +25,7 @@ const attachments: TestBodyResourceAttachments = {
             kind: 'runtime',
             name: 'api',
             requirements: [],
+            scenarioBindings: [],
             resources: [ { key: 'database', resourceName: 'database' } ]
         }
     ]

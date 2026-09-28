@@ -268,6 +268,7 @@ function assertRuntimeAttachments(
                 dependencies: [],
                 name: 'database',
                 requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
+                scenarios: [],
                 scope: 'per-case'
             }
         ],
@@ -277,6 +278,7 @@ function assertRuntimeAttachments(
                 kind: 'runtime',
                 name: 'api',
                 requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
+                scenarioBindings: [],
                 resources: [ { key: 'database', resourceName: 'database' } ]
             }
         ]
@@ -294,6 +296,7 @@ function assertDirectResourceAttachments(
                 dependencies: [],
                 name: 'scratch',
                 requirements: [],
+                scenarios: [],
                 scope: 'per-case'
             }
         ],
@@ -354,12 +357,14 @@ function assertResourceWrapperValidation(
                     dependencies: [],
                     name: 'scratch',
                     requirements: [],
+                    scenarios: [],
                     scope: 'per-case'
                 },
                 {
                     dependencies: [],
                     name: 'database',
                     requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
+                    scenarios: [],
                     scope: 'per-case'
                 }
             ],
@@ -369,6 +374,7 @@ function assertResourceWrapperValidation(
                     kind: 'runtime',
                     name: 'api',
                     requirements: [ { kind: 'startup-budget-milliseconds', minimumMilliseconds: 1000 } ],
+                    scenarioBindings: [],
                     resources: [ { key: 'database', resourceName: 'database' } ]
                 }
             ]
@@ -445,7 +451,6 @@ async function assertResourcesSubpath(scope: TestScope): Promise<void> {
             return runtimeScope.assert.collect();
         }
     );
-
     await assertResourceWrapperBehavior(scope, {
         body,
         database,

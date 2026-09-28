@@ -350,7 +350,9 @@ export type {
     TestBodyLeafRuntimeSummary,
     TestBodyResourceAttachments,
     TestBodyResourceSummary,
-    TestBodyRuntimeSummary
+    TestBodyRuntimeScenarioBindingSummary,
+    TestBodyRuntimeSummary,
+    TestBodyScenarioSlotSummary
 } from '../../engine/test-body-resource-attachment.ts';
 export type {
     CaptureMode,

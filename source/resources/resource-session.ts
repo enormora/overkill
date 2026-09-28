@@ -4,7 +4,8 @@ import type {
     ResourceContext,
     ResourceCreationContext,
     ResourceDependencies,
-    ResourceDisposalContext
+    ResourceDisposalContext,
+    ResourceScenarioSlots
 } from './resources.ts';
 import {
     callableResourceDefinition,
@@ -19,6 +20,7 @@ import {
     resourceLifecycleError,
     type ResourceLifecycleFailure
 } from './resource-lifecycle-error.ts';
+import { resolvedResourceScenarioBindings } from './resource-scenario-binding.ts';
 
 type Mutable<Value> = {
     -readonly [Key in keyof Value]: Value[Key];
@@ -76,7 +78,7 @@ function acquiredDependencyHandles(
 
 function acquireResourceHandle(
     resource: AnyResourceDefinition,
-    context: ResourceCreationContext<ResourceDependencies>
+    context: ResourceCreationContext<ResourceDependencies, ResourceScenarioSlots>
 ): Awaitable<unknown> {
     return callableResourceDefinition(resource).acquire(context);
 }
@@ -84,7 +86,7 @@ function acquireResourceHandle(
 function disposeResourceHandle(
     dispose: ResourceDisposeCallback,
     handle: unknown,
-    context: ResourceDisposalContext<ResourceDependencies>
+    context: ResourceDisposalContext<ResourceDependencies, ResourceScenarioSlots>
 ): Awaitable<void> {
     return dispose(handle, context);
 }
@@ -104,6 +106,7 @@ async function disposeResource(
     try {
         await disposeResourceHandle(dispose, handle, {
             dependencies: acquiredDependencyHandles(node.descriptor.dependencies, handles),
+            scenarios: resolvedResourceScenarioBindings(node.descriptor),
             signal
         });
 
@@ -206,6 +209,7 @@ function createResourceAcquisition(
             try {
                 const handle = await acquireResourceHandle(resource, {
                     dependencies,
+                    scenarios: resolvedResourceScenarioBindings(resource),
                     signal: acquisitionSignal
                 });
 

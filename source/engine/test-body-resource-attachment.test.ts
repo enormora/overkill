@@ -29,6 +29,7 @@ function resourceAttachments(
                 dependencies: [],
                 name: resource.resourceName,
                 requirements: [],
+                scenarios: [],
                 scope: 'per-case'
             };
         }),
@@ -48,6 +49,7 @@ function runtimeAttachments(
                 dimensions: {},
                 name: 'runtime',
                 requirements,
+                scenarioBindings: [],
                 resources
             }
         ]
@@ -117,6 +119,7 @@ export const testNode = createOverkillSuite({
                             dependencies: [],
                             name: 'scratch',
                             requirements: [ { kind: 'exclusive-resource', name: 'scratch' } ],
+                            scenarios: [],
                             scope: 'per-case'
                         }
                     ],
@@ -147,6 +150,7 @@ export const testNode = createOverkillSuite({
                                     dependencies: [],
                                     name: 'scratch',
                                     requirements: [],
+                                    scenarios: [],
                                     scope: 'per-case'
                                 }
                             ],
@@ -182,6 +186,7 @@ export const testNode = createOverkillSuite({
                             dependencies: [],
                             name: 'scratch',
                             requirements: [],
+                            scenarios: [],
                             scope: 'per-case'
                         }
                     ],
@@ -196,6 +201,7 @@ export const testNode = createOverkillSuite({
                                 dependencies: [],
                                 name: 'database',
                                 requirements: [],
+                                scenarios: [],
                                 scope: 'per-case'
                             }
                         ],
@@ -219,12 +225,14 @@ export const testNode = createOverkillSuite({
                                 dependencies: [],
                                 name: 'scratch',
                                 requirements: [],
+                                scenarios: [],
                                 scope: 'per-case'
                             },
                             {
                                 dependencies: [],
                                 name: 'workspace',
                                 requirements: [],
+                                scenarios: [],
                                 scope: 'per-case'
                             }
                         ],
@@ -246,12 +254,14 @@ export const testNode = createOverkillSuite({
                                 dimensions: {},
                                 name: 'api',
                                 requirements: [],
+                                scenarioBindings: [],
                                 resources: []
                             },
                             {
                                 dimensions: {},
                                 name: 'api',
                                 requirements: [],
+                                scenarioBindings: [],
                                 resources: []
                             }
                         ]

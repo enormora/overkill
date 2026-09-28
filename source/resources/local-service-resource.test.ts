@@ -116,14 +116,14 @@ async function assertOwnerCleanup(scope: TestScope): Promise<void> {
             events.push(`dispose:${owner.id}`);
         }
     });
-    const handle = await service.acquire({ dependencies: {}, signal: testSignal });
+    const handle = await service.acquire({ dependencies: {}, scenarios: {}, signal: testSignal });
 
     if (service.dispose === null) {
         throw new Error('Expected local-service disposal.');
     }
 
-    await service.dispose(handle, { dependencies: {}, signal: testSignal });
-    await service.dispose(handle, { dependencies: {}, signal: testSignal });
+    await service.dispose(handle, { dependencies: {}, scenarios: {}, signal: testSignal });
+    await service.dispose(handle, { dependencies: {}, scenarios: {}, signal: testSignal });
     scope.assert.deepEqual(events, [
         'start:127.0.0.1:0',
         'ready:owner',
@@ -153,7 +153,7 @@ async function assertReadinessFailureCleanup(scope: TestScope): Promise<void> {
             events.push(`dispose:${owner.id}`);
         }
     });
-    const error = await rejectedValue(service.acquire({ dependencies: {}, signal: testSignal }));
+    const error = await rejectedValue(service.acquire({ dependencies: {}, scenarios: {}, signal: testSignal }));
 
     scope.assert.equal(error, readyError);
     scope.assert.deepEqual(events, [ 'start', 'ready', 'dispose:owner' ]);
@@ -197,6 +197,7 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
                 }
             }
         },
+        scenarios: {},
         signal: testSignal
     });
 

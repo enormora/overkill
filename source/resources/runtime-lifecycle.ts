@@ -1,10 +1,17 @@
 import {
     isDefinedRuntime,
+    type AnyResourceDefinition,
     type ResourceContext,
     type RuntimeContext,
     type RuntimeDefinition,
     type RuntimeResourceMap
 } from './resources.ts';
+import { resolvedRuntimeScenarioOwners } from './runtime-definition.ts';
+import {
+    bindResourceScenarios,
+    type ResolvedResourceScenarioBindings
+} from './resource-scenario-binding.ts';
+import { defaultScenarioBindings } from './resource-scenario.ts';
 import {
     resourceLifecycleError
 } from './resource-lifecycle-error.ts';
@@ -88,6 +95,60 @@ function internalDisposalSignal(): AbortSignal {
     return controller.signal;
 }
 
+function scenarioBindingsByResource(
+    runtime: RuntimeDefinition
+): ReadonlyMap<AnyResourceDefinition, ResolvedResourceScenarioBindings> {
+    const bindingsByResource = new Map<AnyResourceDefinition, Record<string, string>>();
+
+    for (const [ name, owner ] of resolvedRuntimeScenarioOwners(runtime)) {
+        const bindings = bindingsByResource.get(owner.resource) ?? {};
+
+        bindings[name] = owner.value;
+        bindingsByResource.set(owner.resource, bindings);
+    }
+
+    return bindingsByResource;
+}
+
+function boundRuntimeResources(runtime: RuntimeDefinition): RuntimeResourceMap {
+    const scenarioOwners = resolvedRuntimeScenarioOwners(runtime);
+
+    if (scenarioOwners.size === 0) {
+        return runtime.resources;
+    }
+
+    const bindingsByResource = scenarioBindingsByResource(runtime);
+    const boundResources = new Map<AnyResourceDefinition, typeof runtime.resources[string]>();
+
+    function bindResource(resource: typeof runtime.resources[string]): typeof runtime.resources[string] {
+        const existing = boundResources.get(resource);
+
+        if (existing !== undefined) {
+            return existing;
+        }
+
+        const dependencies = Object.freeze(Object.fromEntries(
+            Object.entries(resource.dependencies).map(function bindDependency([ key, dependency ]) {
+                return [ key, bindResource(dependency) ];
+            })
+        ));
+        const bindings: ResolvedResourceScenarioBindings = Object.freeze(
+            bindingsByResource.get(resource) ?? defaultScenarioBindings(resource.scenarios)
+        );
+        const bound = bindResourceScenarios(Object.freeze({ ...resource, dependencies }), bindings);
+
+        boundResources.set(resource, bound);
+
+        return bound;
+    }
+
+    return Object.freeze(Object.fromEntries(
+        Object.entries(runtime.resources).map(function bindTopLevelResource([ key, resource ]) {
+            return [ key, bindResource(resource) ];
+        })
+    ));
+}
+
 function isRuntimeSession<Runtime extends RuntimeDefinition>(
     session: RuntimeSessionBase<Runtime>
 ): session is RuntimeSession<Runtime> {
@@ -141,8 +202,9 @@ export async function startRuntime<Runtime extends RuntimeDefinition>(
     request: StartRuntimeRequest<Runtime>
 ): Promise<RuntimeSession<Runtime>> {
     assertRuntimeDefinition(request.runtime);
+    const resources = boundRuntimeResources(request.runtime);
     const acquisition = await acquireResourceGraph({
-        resources: request.runtime.resources,
+        resources,
         signal: request.signal
     }, runtimeResourceAcquisitionContext);
     const context = runtimeContext<Runtime['resources']>(request.runtime.resources, acquisition.context);

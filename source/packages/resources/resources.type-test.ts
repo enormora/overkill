@@ -114,6 +114,32 @@ const server = defineResource({
         expect(context.dependencies.database).type.toBe<Database>();
     }
 });
+const scenarioDatabase = defineResource({
+    name: 'scenario-database',
+    scope: 'per-case',
+    requirements: [],
+    scenarios: {
+        database: {
+            default: 'populated',
+            timing: 'acquire',
+            values: [ 'populated', 'empty' ]
+        }
+    },
+    acquire(context) {
+        expect(context.scenarios.database).type.toBe<'empty' | 'populated'>();
+
+        return context.scenarios.database;
+    },
+    dispose(_handle, context) {
+        expect(context.scenarios.database).type.toBe<'empty' | 'populated'>();
+    }
+});
+const scenarioRuntime = defineRuntime({
+    name: 'scenario-api',
+    dimensions: {},
+    resources: { database: scenarioDatabase },
+    requirements: []
+});
 
 const runtime = defineRuntime({
     name: 'api',
@@ -462,5 +488,17 @@ describe('@overkill-dev/resources', function () {
             acquire: createInvalidDatabase,
             dispose: null
         });
+    });
+});
+
+describe('runtime scenarios', function () {
+    test('types partial bindings from resource slots', function () {
+        expect(scenarioRuntime.scenario).type.toBeCallableWith({});
+        expect(scenarioRuntime.scenario).type.toBeCallableWith({ database: 'empty' });
+        expect(scenarioRuntime.scenario).type.not.toBeCallableWith({ database: 'missing' });
+        expect(scenarioRuntime.scenario).type.not.toBeCallableWith({ unknown: 'empty' });
+        expect(simulatedApiResource.scenarios['simulated-api'].values).type.toBe<
+            readonly ['default' | 'outage', ...('default' | 'outage')[]]
+        >();
     });
 });

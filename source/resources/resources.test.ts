@@ -275,20 +275,21 @@ function assertDatabaseResourceDescriptor(scope: TestScope): void {
 }
 
 async function assertDatabaseResourceCallbacks(scope: TestScope): Promise<void> {
-    const database = await databaseResource.acquire({ dependencies: {}, signal: disposalSignal });
+    const database = await databaseResource.acquire({ dependencies: {}, scenarios: {}, signal: disposalSignal });
 
     scope.assert.deepEqual(database.query('select 1'), [ 'select 1' ]);
     if (databaseResource.dispose === null) {
         throw new Error('Expected resource disposal.');
     }
 
-    await databaseResource.dispose(database, { dependencies: {}, signal: disposalSignal });
+    await databaseResource.dispose(database, { dependencies: {}, scenarios: {}, signal: disposalSignal });
 }
 
 async function assertServerResourceCallbacks(scope: TestScope): Promise<void> {
     const database = createDatabase();
     const server = await serverResource.acquire({
         dependencies: { database },
+        scenarios: {},
         signal: disposalSignal
     });
 
@@ -299,6 +300,7 @@ async function assertServerResourceCallbacks(scope: TestScope): Promise<void> {
 
     await serverResource.dispose(server, {
         dependencies: { database },
+        scenarios: {},
         signal: disposalSignal
     });
 }
@@ -433,10 +435,10 @@ async function assertTemporaryDirectoryLifecycle(
         throw new Error('Expected temporary directory disposal.');
     }
 
-    const handle = await resource.acquire({ dependencies: {}, signal: disposalSignal });
+    const handle = await resource.acquire({ dependencies: {}, scenarios: {}, signal: disposalSignal });
 
     assertTemporaryDirectoryHandle(scope, handle);
-    await resource.dispose(handle, { dependencies: {}, signal: disposalSignal });
+    await resource.dispose(handle, { dependencies: {}, scenarios: {}, signal: disposalSignal });
     scope.assert.deepEqual(recordedTemporaryDirectoryDependencies.createdPathPrefixes, [
         '/virtual/overkill-temporary-directory-'
     ]);
@@ -453,7 +455,7 @@ async function assertTemporaryDirectoryAcquireAbort(
 
     controller.abort();
     await scope.assert.rejects(async function acquireAfterAbort() {
-        await resource.acquire({ dependencies: {}, signal: controller.signal });
+        await resource.acquire({ dependencies: {}, scenarios: {}, signal: controller.signal });
     }, {
         name: 'AbortError'
     });

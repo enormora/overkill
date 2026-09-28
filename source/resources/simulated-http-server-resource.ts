@@ -6,9 +6,12 @@ import type {
     SimulatedHttpServerDefinition,
     SimulationScenarioCatalog
 } from '../simulation/simulation.ts';
-import type {
-    EmptyResourceDependencies,
-    ResourceDefinition
+import {
+    defineResource,
+    type EmptyResourceDependencies,
+    type ResourceDefinition,
+    type ResourceScenarioSlot,
+    type ResourceScenarioSlotInput
 } from './resources.ts';
 import {
     createLocalHttpServiceResource,
@@ -45,7 +48,9 @@ export type SimulatedHttpServerResource<
 > = ResourceDefinition<
     Simulation['name'],
     SimulatedHttpServerResourceHandle<Simulation>,
-    EmptyResourceDependencies
+    EmptyResourceDependencies,
+    SimulatedHttpServerResourceHandle<Simulation>,
+    Readonly<Record<Simulation['name'], ResourceScenarioSlot<string & keyof Simulation['scenarios']>>>
 >;
 
 const scenarioQueryParameterName = '__overkill_scenario';
@@ -63,15 +68,54 @@ function simulatedHttpServerResourceHandle<
         readonly scenarios: SimulationScenarioCatalog;
     }
 >(
-    service: LocalHttpServiceHandle
+    service: LocalHttpServiceHandle,
+    scenario: string & keyof Simulation['scenarios']
 ): SimulatedHttpServerResourceHandle<Simulation> {
     return Object.freeze({
-        baseUrl: service.baseUrl,
+        baseUrl: scenario === 'default' ? service.baseUrl : scenarioUrl(service.baseUrl, scenario, '/'),
         endpoint: service.endpoint,
-        scenarioUrl(scenario: string & keyof Simulation['scenarios'], path: string) {
-            return scenarioUrl(service.baseUrl, scenario, path);
+        scenarioUrl(requestedScenario: string & keyof Simulation['scenarios'], path: string) {
+            return scenarioUrl(service.baseUrl, requestedScenario, path);
         }
     });
+}
+
+function selectedScenario(context: Readonly<Record<string, unknown>>, name: string): string {
+    const scenarios: unknown = Reflect.get(context, 'scenarios');
+
+    if (typeof scenarios !== 'object' || scenarios === null) {
+        return 'default';
+    }
+
+    const selected: unknown = Reflect.get(scenarios, name);
+
+    return typeof selected === 'string' ? selected : 'default';
+}
+
+function simulatedHttpScenarioSlots<
+    Name extends string,
+    Scenarios extends SimulationScenarioCatalog
+>(
+    name: Name,
+    simulationScenarios: Scenarios
+): Readonly<Record<Name, ResourceScenarioSlotInput<string & keyof Scenarios>>> {
+    const values: [string & keyof Scenarios, ...(string & keyof Scenarios)[]] = [ 'default' ];
+
+    for (const scenarioName in simulationScenarios) {
+        if (scenarioName !== 'default') {
+            values.push(scenarioName);
+        }
+    }
+
+    const slots: Record<string, ResourceScenarioSlotInput<string & keyof Scenarios>> = {
+        [name]: {
+            default: 'default',
+            timing: 'request-routed',
+            values
+        }
+    };
+
+    return Object.freeze(slots);
 }
 
 export function createSimulatedHttpServerResource<
@@ -81,8 +125,11 @@ export function createSimulatedHttpServerResource<
     options: SimulatedHttpServerResourceOptions<Name, Scenarios>
 ): SimulatedHttpServerResource<SimulatedHttpServerDefinition<Name, Scenarios>> {
     const handlerErrors = new WeakMap<LocalHttpServer, readonly unknown[]>();
-
-    return createLocalHttpServiceResource({
+    const acquiredServices = new WeakMap<
+        SimulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>,
+        LocalHttpServiceHandle
+    >();
+    const service = createLocalHttpServiceResource({
         name: options.simulation.name,
         scope: 'per-case',
         requirements: [],
@@ -99,9 +146,54 @@ export function createSimulatedHttpServerResource<
 
             return listeningServer.server;
         },
-        handle: simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>,
+        handle(localService) {
+            return localService;
+        },
         dispose(server) {
             assertNoSimulatedHttpHandlerErrors(handlerErrors.get(server) ?? []);
+        }
+    });
+    const scenarios = simulatedHttpScenarioSlots(options.simulation.name, options.simulation.scenarios);
+
+    return defineResource<
+        Name,
+        SimulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>,
+        'per-case',
+        typeof scenarios
+    >({
+        name: options.simulation.name,
+        scope: 'per-case',
+        requirements: service.requirements,
+        scenarios,
+        async acquire(context) {
+            const localService = await service.acquire({
+                dependencies: context.dependencies,
+                signal: context.signal,
+                scenarios: {}
+            });
+            const handle = simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
+                localService,
+                selectedScenario(context, options.simulation.name)
+            );
+
+            acquiredServices.set(handle, localService);
+
+            return handle;
+        },
+        async dispose(handle, context) {
+            const localService = acquiredServices.get(handle);
+
+            if (localService === undefined) {
+                return undefined;
+            }
+
+            acquiredServices.delete(handle);
+
+            return service.dispose?.(localService, {
+                dependencies: context.dependencies,
+                signal: context.signal,
+                scenarios: {}
+            });
         }
     });
 }
