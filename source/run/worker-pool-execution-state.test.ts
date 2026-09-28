@@ -397,9 +397,7 @@ export function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRu
         runState: createSupervisedRunState(),
         taskResults,
         terminalFailure: createStoredRunValue(false),
-        lifecycle: {
-            token: 'fake-worker-runtime'
-        }
+        lifecycle: { token: 'fake-worker-runtime' }
     };
 }
 

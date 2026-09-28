@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type {
     ReporterEvent,
     ResourceUsageSnapshot,
@@ -25,14 +24,14 @@ import { createReporterDelivery, createReporterEventQueue, type ReporterEventQue
 import { createStoredRunValue, type StoredRunValue, type SupervisedRunState } from './supervised-run-state.ts';
 import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { runTask as workerPoolWorkerEntryPoint } from './worker-pool-worker.ts';
-import { createRoutedPool } from './worker-pool-routing.ts';
+import { createRoutedPool, type WorkerPoolRoute } from './worker-pool-routing.ts';
 import {
     emptyTimingSpanMetadata,
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
-import { workerPoolRunResourceOwnerLane } from './worker-pool-protocol.ts';
 
 const Tinypool = loadTinypoolConstructor();
+const workerPoolRunResourceOwnerLane = 'run-resource-owner';
 
 export type WorkerPoolCollectionResult = {
     readonly collectedPlan: CollectedRunPlan;
@@ -290,6 +289,65 @@ function createEmptyExecutionPool(
     };
 }
 
+function createExecutionWorkerPool(
+    input: WorkerPoolRuntimeInput,
+    execution: WorkerPoolExecutionFacts,
+    workerCount: number,
+    workerLifecycle: RunWorkerLifecycle
+): CreatedWorkerPool {
+    const options = workerPoolOptions({
+        execution,
+        resolvedRun: input.resolvedRun,
+        timing: input.timing ?? null,
+        workerCount,
+        workerLifecycle
+    });
+
+    return input.timing?.measure(
+        'worker-pool.start',
+        emptyTimingSpanMetadata(),
+        function createTimedWorkerPool() {
+            return input.dependencies.createWorkerPool(options);
+        }
+    ) ?? input.dependencies.createWorkerPool(options);
+}
+
+export function workerPoolCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
+    if (resolvedRun.plan.kind !== 'worker-pool') {
+        throw new Error('Worker-pool execution requires a worker-pool collected plan.');
+    }
+
+    return resolvedRun.plan.collectedPlan;
+}
+
+export function collectedPlanNeedsRunResourceOwner(resolvedRun: ResolvedRun): boolean {
+    return workerPoolCollectedPlan(resolvedRun).files.some(function fileHasRunResource(file) {
+        return file.cases.some(function caseHasRunResource(testCase) {
+            return testCase.resourceAttachments.resourceGraph.some(function isRunResource(resource) {
+                return resource.scope === 'per-run';
+            });
+        });
+    });
+}
+
+function runResourceOwnerRoutes(
+    input: WorkerPoolRuntimeInput,
+    execution: WorkerPoolExecutionFacts,
+    needsRunResourceOwner: boolean
+): readonly WorkerPoolRoute[] {
+    if (!needsRunResourceOwner) {
+        return [];
+    }
+
+    return [
+        {
+            lane: workerPoolRunResourceOwnerLane,
+            pool: createExecutionWorkerPool(input, execution, 1, 'reuse'),
+            workerLifecycle: 'reuse'
+        }
+    ];
+}
+
 function createLaneExecutionPool(
     input: WorkerPoolRuntimeInput,
     execution: WorkerPoolExecutionFacts,
@@ -319,44 +377,12 @@ function createLaneExecutionPool(
         }
 
         return {
-            pool: input.timing?.measure(
-                'worker-pool.start',
-                emptyTimingSpanMetadata(),
-                function createTimedLaneWorkerPool() {
-                    return input.dependencies.createWorkerPool(workerPoolOptions({
-                        execution,
-                        resolvedRun: input.resolvedRun,
-                        timing: input.timing ?? null,
-                        workerCount: 1,
-                        workerLifecycle
-                    }));
-                }
-            ) ?? input.dependencies.createWorkerPool(workerPoolOptions({
-                execution,
-                resolvedRun: input.resolvedRun,
-                timing: input.timing ?? null,
-                workerCount: 1,
-                workerLifecycle
-            })),
             lane: lane.id,
+            pool: createExecutionWorkerPool(input, execution, 1, workerLifecycle),
             workerLifecycle
         };
     });
-    const ownerRoutes = needsRunResourceOwner
-        ? [
-            {
-                pool: input.dependencies.createWorkerPool(workerPoolOptions({
-                    execution,
-                    resolvedRun: input.resolvedRun,
-                    timing: input.timing ?? null,
-                    workerCount: 1,
-                    workerLifecycle: 'reuse'
-                })),
-                lane: workerPoolRunResourceOwnerLane,
-                workerLifecycle: 'reuse' as const
-            }
-        ]
-        : [];
+    const ownerRoutes = runResourceOwnerRoutes(input, execution, needsRunResourceOwner);
 
     return {
         destroyPool: true,
@@ -372,24 +398,6 @@ function createExecutionPool(input: WorkerPoolRuntimeInput, placementPlan: Place
     }
 
     return createLaneExecutionPool(input, execution, placementPlan);
-}
-
-export function workerPoolCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
-    if (resolvedRun.plan.kind !== 'worker-pool') {
-        throw new Error('Worker-pool execution requires a worker-pool collected plan.');
-    }
-
-    return resolvedRun.plan.collectedPlan;
-}
-
-export function collectedPlanNeedsRunResourceOwner(resolvedRun: ResolvedRun): boolean {
-    return workerPoolCollectedPlan(resolvedRun).files.some(function fileHasRunResource(file) {
-        return file.cases.some(function caseHasRunResource(testCase) {
-            return testCase.resourceAttachments.resourceGraph.some(function isRunResource(resource) {
-                return resource.scope === 'per-run';
-            });
-        });
-    });
 }
 
 function createPoolResourceUsageTracker(
@@ -464,7 +472,7 @@ export async function createWorkerPoolRuntime(
         terminalFailure: createStoredRunValue(false),
         timing: input.timing ?? null,
         lifecycle: {
-            token: randomUUID()
+            token: dependencies.createSeed().toString()
         }
     };
 }

@@ -9,6 +9,7 @@ import type {
 import { createResourceUsageFromSamples } from './resource-usage.ts';
 import type { RunWorkerLifecycle } from './run-types.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
+import { isWorkerPoolTaskKind } from './worker-pool-task-validation.ts';
 
 export type WorkerPoolRoute = {
     readonly lane: string | null;
@@ -49,13 +50,7 @@ function routeForLane(
 function isWorkerPoolTask(value: unknown): value is WorkerPoolTask {
     return typeof value === 'object' &&
         value !== null &&
-        (
-            Reflect.get(value, 'kind') === 'acquire-run-resources' ||
-            Reflect.get(value, 'kind') === 'collect' ||
-            Reflect.get(value, 'kind') === 'dispose-lane-lifecycle' ||
-            Reflect.get(value, 'kind') === 'dispose-run-resources' ||
-            Reflect.get(value, 'kind') === 'run'
-        );
+        isWorkerPoolTaskKind(Reflect.get(value, 'kind'));
 }
 
 function taskWorkerLifecycle(task: unknown): RunWorkerLifecycle {

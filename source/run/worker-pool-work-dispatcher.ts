@@ -57,7 +57,7 @@ import {
     type WarmLaneAffinity
 } from './worker-pool-lease-selection.ts';
 
-type DynamicDispatchState = HedgeDispatchState & {
+type DynamicDispatchStateDetails = {
     readonly activeLeases: LeaseCounter;
     readonly activeUnits: ActiveUnitLeases;
     readonly batchId: StoredRunValue<number>;
@@ -75,7 +75,16 @@ type DynamicDispatchState = HedgeDispatchState & {
     readonly waiters: ChangeWaiters;
     readonly warmLaneAffinity: WarmLaneAffinity;
 };
+type HedgeDispatchStateCore = {
+    readonly activeUnits: HedgeDispatchState['activeUnits'];
+    readonly duplicateWork: HedgeDispatchState['duplicateWork'];
+    readonly lifecycleByLane: HedgeDispatchState['lifecycleByLane'];
+    readonly resolvedRun: HedgeDispatchState['resolvedRun'];
+    readonly wallClock: HedgeDispatchState['wallClock'];
+};
+type DynamicDispatchState = DynamicDispatchStateDetails & HedgeDispatchState;
 type HedgeWakeTimeout = DynamicDispatchState['hedgeWakeTimeout'] extends StoredRunValue<infer Value> ? Value : never;
+type DynamicDispatchStateCore = DynamicDispatchStateDetails & HedgeDispatchStateCore;
 
 type ActiveUnitLease = HedgeActiveUnitLease;
 type ActiveUnitLeases = {
@@ -89,46 +98,12 @@ type DuplicateWorkLedger = {
     readonly has: (key: string) => boolean;
 };
 
-function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): DynamicDispatchState {
-    const pendingUnits = assignedWorkUnits(plan).map(originalQueueItem);
-
-    let state: DynamicDispatchState;
-
-    state = {
-        activeLeases: createLeaseCounter(),
-        activeUnits: new Map(),
-        batchId: createStoredRunValue(0),
-        duplicateWork: new Set(),
-        hedgeWakeTimeout: createStoredRunValue<HedgeWakeTimeout>(null),
-        lanes: plan.lanes,
-        lifecycleByLane: laneLifecycles(plan),
-        laneCanLeaseHedgeCandidate(entry, lane) {
-            return laneCanLease(
-                state,
-                fixedQueueItem(entry.lease.unit, entry.lease.traceUnit, requeuedPriority()),
-                lane
-            );
-        },
-        pendingUnits: createWorkUnitQueue(pendingUnits),
-        quotas: faultQuotas(plan),
-        reservations: createDynamicReservations(),
-        runtime,
-        resolvedRun: runtime.resolvedRun,
-        unitLoad: runtimeUnitLoad(runtime),
-        waiters: createChangeWaiters(),
-        warmLaneAffinity: createWarmLaneAffinity(),
-        wallClock: runtime.dependencies.wallClock
-    };
-
-    return state;
-}
-
-function laneMatchesLifecycle(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+function laneMatchesLifecycle(state: DynamicDispatchStateCore, item: QueuedWorkUnit, lane: PlacementLane): boolean {
     return state.lifecycleByLane.get(lane.id) === item.unit.workerLifecycle;
 }
 
 function laneMatchesRetainedReservation(
-    state: DynamicDispatchState,
+    state: DynamicDispatchStateCore,
     item: QueuedWorkUnit,
     lane: PlacementLane
 ): boolean {
@@ -137,7 +112,7 @@ function laneMatchesRetainedReservation(
     return retainedLane === undefined || retainedLane === lane.id;
 }
 
-function laneMatchesHardKeys(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+function laneMatchesHardKeys(state: DynamicDispatchStateCore, item: QueuedWorkUnit, lane: PlacementLane): boolean {
     return hardConstraintKeys(item.unit).every(function keyMatchesLane(key) {
         const boundLane = state.reservations.boundHardLane(key);
 
@@ -145,7 +120,7 @@ function laneMatchesHardKeys(state: DynamicDispatchState, item: QueuedWorkUnit, 
     });
 }
 
-function laneHasFaultCapacity(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+function laneHasFaultCapacity(state: DynamicDispatchStateCore, item: QueuedWorkUnit, lane: PlacementLane): boolean {
     if (state.reservations.retainedLane(item.traceUnit) === lane.id) {
         return true;
     }
@@ -157,11 +132,44 @@ function laneHasFaultCapacity(state: DynamicDispatchState, item: QueuedWorkUnit,
     });
 }
 
-function laneCanLease(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {
+function laneCanLease(state: DynamicDispatchStateCore, item: QueuedWorkUnit, lane: PlacementLane): boolean {
     return laneMatchesRetainedReservation(state, item, lane) &&
         laneMatchesLifecycle(state, item, lane) &&
         laneMatchesHardKeys(state, item, lane) &&
         laneHasFaultCapacity(state, item, lane);
+}
+
+function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): DynamicDispatchState {
+    const pendingUnits = assignedWorkUnits(plan).map(originalQueueItem);
+    const state: DynamicDispatchStateCore = {
+        activeLeases: createLeaseCounter(),
+        activeUnits: new Map(),
+        batchId: createStoredRunValue(0),
+        duplicateWork: new Set(),
+        hedgeWakeTimeout: createStoredRunValue<HedgeWakeTimeout>(null),
+        lanes: plan.lanes,
+        lifecycleByLane: laneLifecycles(plan),
+        pendingUnits: createWorkUnitQueue(pendingUnits),
+        quotas: faultQuotas(plan),
+        reservations: createDynamicReservations(),
+        runtime,
+        resolvedRun: runtime.resolvedRun,
+        unitLoad: runtimeUnitLoad(runtime),
+        waiters: createChangeWaiters(),
+        warmLaneAffinity: createWarmLaneAffinity(),
+        wallClock: runtime.dependencies.wallClock
+    };
+
+    return {
+        ...state,
+        laneCanLeaseHedgeCandidate(entry, lane) {
+            return laneCanLease(
+                state,
+                fixedQueueItem(entry.lease.unit, entry.lease.traceUnit, requeuedPriority()),
+                lane
+            );
+        }
+    };
 }
 
 function comparePriority(state: DynamicDispatchState, left: QueuedWorkUnit, right: QueuedWorkUnit): number {

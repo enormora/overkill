@@ -257,6 +257,21 @@ function hedgeDispatchState(
     };
 }
 
+function activeHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): HedgeActiveUnitLease {
+    return {
+        lane: firstLane(plan),
+        lease: primaryLease(firstUnit(plan), firstLane(plan)),
+        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 50_000
+    };
+}
+
+function readyHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): HedgeActiveUnitLease {
+    return {
+        ...activeHedgeLease(runtime, plan),
+        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 100_000
+    };
+}
+
 function assertIncompatibleLaneSuppressesHedge(scope: OverkillScope): void {
     const unit = hedgeSafeUnit();
     const plan = twoLanePlan(unit);
@@ -271,21 +286,6 @@ function assertIncompatibleLaneSuppressesHedge(scope: OverkillScope): void {
 
     scope.assert.equal(laneHasPotentialHedge(state, secondLane(plan)), false);
     scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), null);
-}
-
-function activeHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): HedgeActiveUnitLease {
-    return {
-        lane: firstLane(plan),
-        lease: primaryLease(firstUnit(plan), firstLane(plan)),
-        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 50_000
-    };
-}
-
-function readyHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): HedgeActiveUnitLease {
-    return {
-        ...activeHedgeLease(runtime, plan),
-        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 100_000
-    };
 }
 
 function assertEarlyHedgeDelay(

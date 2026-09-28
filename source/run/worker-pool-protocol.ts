@@ -17,9 +17,11 @@ import type {
     RunTestFamily
 } from './run-types.ts';
 import type {
-    ResourceBoundaryUseCount,
+    ResourceBoundaryUseCount
+} from './resource-lifecycle-boundaries.ts';
+import type {
     ResourceProjectionRecords
-} from './resource-lifecycle.ts';
+} from './resource-lifecycle-projection.ts';
 
 export type WorkerPoolCommand = {
     readonly collectionTimeoutMilliseconds: number;
@@ -92,12 +94,15 @@ export type WorkerPoolDisposeLaneLifecycleTask = {
     readonly port: NodeMessagePort;
 };
 
-export type WorkerPoolTask =
-    | WorkerPoolAcquireRunResourcesTask
-    | WorkerPoolCollectTask
-    | WorkerPoolDisposeLaneLifecycleTask
-    | WorkerPoolDisposeRunResourcesTask
-    | WorkerPoolRunTask;
+type WorkerPoolTasksByKind = {
+    readonly acquireRunResources: WorkerPoolAcquireRunResourcesTask;
+    readonly collect: WorkerPoolCollectTask;
+    readonly disposeLaneLifecycle: WorkerPoolDisposeLaneLifecycleTask;
+    readonly disposeRunResources: WorkerPoolDisposeRunResourcesTask;
+    readonly run: WorkerPoolRunTask;
+};
+
+export type WorkerPoolTask = WorkerPoolTasksByKind[keyof WorkerPoolTasksByKind];
 
 type WorkerPoolOutputMessage = {
     readonly capturedAtMicroseconds: number;

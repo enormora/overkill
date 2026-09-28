@@ -46,12 +46,15 @@ type WorkerPoolDisposeLaneLifecycleTaskWithoutPort = {
     readonly lane: WorkerPoolDisposeLaneLifecycleTask['lane'];
     readonly lifecycle: WorkerPoolDisposeLaneLifecycleTask['lifecycle'];
 };
-export type WorkerPoolTaskWithoutPort =
-    | WorkerPoolAcquireRunResourcesTaskWithoutPort
-    | WorkerPoolCollectTaskWithoutPort
-    | WorkerPoolDisposeLaneLifecycleTaskWithoutPort
-    | WorkerPoolDisposeRunResourcesTaskWithoutPort
-    | WorkerPoolRunTaskWithoutPort;
+type WorkerPoolTasksWithoutPortByKind = {
+    readonly acquireRunResources: WorkerPoolAcquireRunResourcesTaskWithoutPort;
+    readonly collect: WorkerPoolCollectTaskWithoutPort;
+    readonly disposeLaneLifecycle: WorkerPoolDisposeLaneLifecycleTaskWithoutPort;
+    readonly disposeRunResources: WorkerPoolDisposeRunResourcesTaskWithoutPort;
+    readonly run: WorkerPoolRunTaskWithoutPort;
+};
+
+export type WorkerPoolTaskWithoutPort = WorkerPoolTasksWithoutPortByKind[keyof WorkerPoolTasksWithoutPortByKind];
 
 export type SerializedError = {
     readonly code: string | null;

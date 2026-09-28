@@ -460,9 +460,7 @@ export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntim
         runState: createSupervisedRunState(),
         taskResults,
         terminalFailure: createStoredRunValue(false),
-        lifecycle: {
-            token: 'fake-worker-runtime'
-        }
+        lifecycle: { token: 'fake-worker-runtime' }
     };
 }
 
