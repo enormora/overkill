@@ -205,7 +205,7 @@ export async function runWorkerPoolCommand(
         hostProcess: command.hostProcess,
         testFamily: command.testFamily,
         ...timingOption,
-        workerCount: dependencies.availableParallelism,
+        workerCount: 1,
         workerLifecycle: command.workerLifecycle
     };
     const pool = command.hostProcess.kind === 'child'

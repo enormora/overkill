@@ -12,6 +12,10 @@ import type {
     RunWorkerLifecycle,
     WorkUnit
 } from './run-types.ts';
+import {
+    hardConstraintKeys,
+    workUnitsShareHardConstraint
+} from './work-unit-resource-constraints.ts';
 
 const maximumWorkerCount = 8;
 
@@ -83,12 +87,17 @@ function requiredLifecycleLaneCount(units: readonly WorkUnit[]): number {
     return lifecycles.size;
 }
 
+function hardConstraintWorkerMaximum(units: readonly WorkUnit[]): number {
+    return workUnitsShareHardConstraint(units) ? 1 : Number.POSITIVE_INFINITY;
+}
+
 export function resolveWorkerCount(input: WorkerPoolLaneInput): RunWorkerCountFacts {
     assertPositiveSafeInteger(input.availableParallelism, 'Available parallelism');
     const resolved = Math.min(
         requestedWorkerCount(input),
         input.availableParallelism,
         configuredWorkerMaximum(input.profileMaximum),
+        hardConstraintWorkerMaximum(input.units),
         input.units.length
     );
     const requiredLanes = requiredLifecycleLaneCount(input.units);
@@ -170,7 +179,7 @@ function firstFixedLane(
     lanes: readonly PlacementLane[],
     fixedLaneByKey: ReadonlyMap<string, string>
 ): PlacementLane | null {
-    const fixedLane = [ ...unit.resourceConstraints.singleWorkerKeys, ...unit.resourceConstraints.serialKeys ]
+    const fixedLane = hardConstraintKeys(unit.resourceConstraints)
         .map(function toFixedLane(key) {
             return fixedLaneByKey.get(key) ?? null;
         })
@@ -255,7 +264,7 @@ function createLanePlacementState(unitLoad: UnitLoad): LanePlacementState {
     function rememberLaneChoice(unit: WorkUnit, lane: PlacementLane): void {
         laneLoads.set(lane.id, laneLoad(lane, laneLoads) + unitLoad(unit));
 
-        for (const key of [ ...unit.resourceConstraints.singleWorkerKeys, ...unit.resourceConstraints.serialKeys ]) {
+        for (const key of hardConstraintKeys(unit.resourceConstraints)) {
             fixedLaneByKey.set(key, lane.id);
         }
 

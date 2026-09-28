@@ -338,7 +338,8 @@ until the configuration schema has a stable policy for which Node/V8 arguments
 are acceptable in persistent project policy.
 
 Worker-pool profiles may set `execution.maxWorkers` to a positive safe integer.
-It caps automatic sizing and explicit `--workers N` requests.
+It caps automatic sizing and explicit `--workers N` requests. Work constraints
+may resolve fewer executor lanes.
 
 Profile names are project-owned strings. First-party config validates that a
 profile name is non-empty and contains only letters, numbers, dots,

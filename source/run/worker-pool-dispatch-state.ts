@@ -1,5 +1,6 @@
 import type { PlacementLane, WorkUnit } from './run-types.ts';
 import { traceUnitKey, type TraceWorkUnitId } from './placement-trace.ts';
+import { hardConstraintKeys as resourceHardConstraintKeys } from './work-unit-resource-constraints.ts';
 
 export type WorkUnitQueue<T> = {
     readonly all: () => readonly T[];
@@ -82,10 +83,7 @@ export function uniqueText(values: readonly string[]): readonly string[] {
 }
 
 export function hardConstraintKeys(unit: WorkUnit): readonly string[] {
-    return uniqueText([
-        ...unit.resourceConstraints.serialKeys,
-        ...unit.resourceConstraints.singleWorkerKeys
-    ]);
+    return resourceHardConstraintKeys(unit.resourceConstraints);
 }
 
 export function faultReservationKey(faultDomain: string, lane: PlacementLane): string {

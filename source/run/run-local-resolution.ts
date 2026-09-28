@@ -61,6 +61,7 @@ function createLocalResolvedRunFromTestPlan(
         placementPlan: null,
         projectRoot: input.projectRoot,
         request: input.request,
+        scheduling: input.profile.execution.scheduling,
         workerCount: null
     }));
 
@@ -115,6 +116,7 @@ function createEmptyShardResolvedRunFromTestPlan(
         placementPlan: null,
         projectRoot: input.projectRoot,
         request: input.request,
+        scheduling: input.profile.execution.scheduling,
         workerCount: null
     }));
 

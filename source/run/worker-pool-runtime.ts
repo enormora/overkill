@@ -348,24 +348,41 @@ function runResourceOwnerRoutes(
     ];
 }
 
+function shareableSingleLaneLifecycle(
+    placementPlan: PlacementPlan,
+    laneLifecycles: ReadonlyMap<string, RunWorkerLifecycle>,
+    needsRunResourceOwner: boolean
+): RunWorkerLifecycle | null {
+    const [ lane ] = placementPlan.lanes;
+
+    if (placementPlan.lanes.length !== 1 || lane === undefined) {
+        return null;
+    }
+
+    const workerLifecycle = laneLifecycles.get(lane.id);
+
+    return workerLifecycle !== undefined && (!needsRunResourceOwner || workerLifecycle === 'reuse')
+        ? workerLifecycle
+        : null;
+}
+
 function createLaneExecutionPool(
     input: WorkerPoolRuntimeInput,
     execution: WorkerPoolExecutionFacts,
     placementPlan: PlacementPlan
 ): WorkerPoolExecutionPool {
     const laneLifecycles = placementLaneLifecycles(placementPlan);
-    const singleLane = placementPlan.lanes[0];
     const needsRunResourceOwner = collectedPlanNeedsRunResourceOwner(input.resolvedRun);
+    const singleLaneLifecycle = shareableSingleLaneLifecycle(
+        placementPlan,
+        laneLifecycles,
+        needsRunResourceOwner
+    );
 
-    if (
-        input.createdPool !== null &&
-        placementPlan.lanes.length === 1 &&
-        singleLane !== undefined &&
-        !needsRunResourceOwner
-    ) {
+    if (singleLaneLifecycle !== null) {
         return {
-            destroyPool: false,
-            pool: input.createdPool
+            destroyPool: input.createdPool === null,
+            pool: input.createdPool ?? createExecutionWorkerPool(input, execution, 1, singleLaneLifecycle)
         };
     }
 

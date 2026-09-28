@@ -10,6 +10,7 @@ import type {
     CollectedRunPlan,
     RunProfileConfig,
     RunRequest,
+    RunScheduling,
     RunWorkerCountFacts,
     RunWorkerPoolAssignmentPolicy
 } from './run-types.ts';
@@ -20,6 +21,10 @@ import {
     type WorkerPoolPlacementResolution,
     type WorkerPoolPlacementResolutionInput
 } from './worker-pool-placement-planning.ts';
+import {
+    constrainedScheduling,
+    workResourceConstraints
+} from './work-unit-resource-constraints.ts';
 
 type CollectedPlanKind = 'supervised' | 'worker-pool';
 
@@ -37,6 +42,7 @@ type CollectedExecutionPlan = {
     readonly durationHistory: WorkerPoolPlacementResolution['durationHistory'] | null;
     readonly orderedCases: ReturnType<typeof shardCollectedRunPlanCases>;
     readonly placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null;
+    readonly scheduling: RunScheduling;
     readonly workerCount: RunWorkerCountFacts | null;
 };
 
@@ -117,6 +123,24 @@ function orderedCollectedCases(
     );
 }
 
+function resolvedScheduling(
+    input: CollectedExecutionPlanInput,
+    orderedCases: CollectedExecutionPlan['orderedCases']
+): RunScheduling {
+    if (input.planKind === 'worker-pool') {
+        return input.profile.execution.scheduling;
+    }
+
+    const constraints = workResourceConstraints(
+        orderedCases.map(function toWorkId(entry) {
+            return entry.workId;
+        }),
+        input.collectedPlan
+    );
+
+    return constrainedScheduling(input.profile.execution.scheduling, constraints);
+}
+
 export async function createCollectedExecutionPlan(
     input: CollectedExecutionPlanInput
 ): Promise<CollectedExecutionPlan> {
@@ -134,6 +158,7 @@ export async function createCollectedExecutionPlan(
         durationHistory: planningFacts.durationHistory,
         orderedCases,
         placementPlan,
+        scheduling: resolvedScheduling(input, orderedCases),
         workerCount
     };
 }
