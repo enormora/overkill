@@ -22,3 +22,5 @@ It prints one mark per completed test and runner error, then a compact
 summary and short detail lines for failed tests, inconclusive tests, and
 runner errors. Failed assertion detail lines include the primary source
 location when the failed check has one.
+
+Precise timing summaries list up to five runner overhead spans above 500 ms.

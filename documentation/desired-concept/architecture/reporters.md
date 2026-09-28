@@ -409,8 +409,9 @@ systems without the reporter knowing platform-specific command syntax.
 
 First-party human reporters render the stable run timing summary. When precise
 timings were collected, timing-aware human reporters additionally render the
-slowest overhead offenders. Full timing detail remains structured data for
-machine-readable reporters.
+five slowest retained overhead spans whose duration strictly exceeds 500
+milliseconds. They omit the offender block when no span crosses that threshold.
+Full timing detail remains structured data for machine-readable reporters.
 
 Timing presentation follows [Run Timings](./run-timings.md). Reporters should
 not invent their own timing categories or recompute runner overhead from raw

@@ -10,7 +10,7 @@ import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output
 import type { RealTimeReporter, ReporterEvent, RunFacts } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefReporter, type BriefReporterSinks } from './brief-reporter.ts';
-import { formatRunFactSummary } from './run-fact-summary.ts';
+import { formatRunFactSummary } from './run-summary-rendering.ts';
 
 const caseId = {
     file: 'source/users.test.ts',
@@ -411,6 +411,68 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(suiteOutput, []);
                 assertRunnerErrorOutput(scope, errorOutput);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'brief reporter emits slow runner overhead as managed output',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const reporter = createBriefRuntimeReporter();
+                scope.require.notNull(reporter.onFinish);
+                const finishOutput = await readOutput(reporter.onFinish(runResultFactory.build({
+                    timings: {
+                        precise: {
+                            aggregates: [ { count: 1, durationMicroseconds: 750_000, kind: 'config.load' } ],
+                            ambientNoise: 'unknown',
+                            droppedSpanCount: 0,
+                            overhead: {
+                                aggregationMicroseconds: 0,
+                                recordingMicroseconds: 0,
+                                renderingMicroseconds: 0,
+                                serializationMicroseconds: 0
+                            },
+                            slowestSpanLimit: 50,
+                            slowestSpans: [ {
+                                durationMicroseconds: 750_000,
+                                kind: 'config.load',
+                                label: null,
+                                processId: null,
+                                resource: null,
+                                startOffsetMicroseconds: 0,
+                                status: 'success',
+                                workerId: null
+                            } ],
+                            spanLimit: 5000,
+                            spans: [ {
+                                durationMicroseconds: 750_000,
+                                kind: 'config.load',
+                                label: null,
+                                processId: null,
+                                resource: null,
+                                startOffsetMicroseconds: 0,
+                                status: 'success',
+                                workerId: null
+                            } ],
+                            truncated: false
+                        },
+                        summary: {
+                            runnerOverheadWallTimeMicroseconds: 1_000_000,
+                            testExecutionWallTimeMicroseconds: 1_000_000,
+                            totalWallTimeMicroseconds: 2_000_000
+                        }
+                    }
+                })));
+
+                scope.assert.deepEqual(
+                    finishOutput.slice(1).map(function toText(intent) {
+                        return intent.text;
+                    }),
+                    [ 'Slow runner overhead:', '  config load: 750 ms' ]
+                );
 
                 return scope.assert.collect();
             }

@@ -31,3 +31,4 @@ Rendering:
   details when a check carries more than one location
 - run summaries include discovered, planned, executed, pass, fail, and skip
   counts, with inconclusive, crash, and orphan counts only when non-zero
+- precise timing summaries list up to five runner overhead spans above 500 ms

@@ -2,11 +2,14 @@ import figures from 'figures';
 import colors from 'yoctocolors';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import type { RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
-import { formatRunFactSummary } from './run-fact-summary.ts';
+import {
+    formatRunFactSummary,
+    formatTimingOffenderLines,
+    formatTimingSummary
+} from './run-summary-rendering.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
 import {
     formatCountSummary,
-    formatTimingSummary,
     problemLines
 } from './human-reporter-rendering.ts';
 
@@ -108,6 +111,9 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
             async onFinish(result: RunResult) {
                 finishProgress();
                 writeLine(formatSummary(result));
+                for (const timingLine of formatTimingOffenderLines(result)) {
+                    writeLine(timingLine);
+                }
                 const detailLines = problemLines(result, context, { verbose: false });
 
                 for (const detailLine of detailLines) {

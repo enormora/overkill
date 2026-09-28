@@ -8,6 +8,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { preciseTimingReport, runTimingSummary } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -47,6 +48,49 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'line reporter prints slow runner overhead after the summary',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const log = testDouble<LogFunction>();
+                const reporter = lineReporterWithLog(log);
+                const summary = runTimingSummary({
+                    testExecutionWallTimeMicroseconds: 1_000_000,
+                    totalWallTimeMicroseconds: 2_000_000
+                });
+                const runResult = runResultFactory.build({
+                    timings: {
+                        precise: preciseTimingReport({
+                            aggregationMicroseconds: 0,
+                            recordingMicroseconds: 0,
+                            slowestSpanLimit: 50,
+                            spanLimit: 5000,
+                            spans: [ {
+                                durationMicroseconds: 750_000,
+                                kind: 'config.load',
+                                label: null,
+                                processId: null,
+                                resource: null,
+                                startOffsetMicroseconds: 0,
+                                status: 'success',
+                                workerId: null
+                            } ]
+                        }),
+                        summary
+                    }
+                });
+
+                await requireFinish(reporter)(runResult);
+
+                scope.assert(doubleUsage.callCount, log, 3);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ 'Slow runner overhead:' ]);
+                scope.assert(doubleUsage.nthCallWithExactly, log, 2, [ '  config load: 750 ms' ]);
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter prints the run count summary once the run finishes',

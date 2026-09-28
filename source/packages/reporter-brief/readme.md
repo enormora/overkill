@@ -19,3 +19,5 @@ The reporter declares `stdout-managed-primary`. It emits run start, sparse
 progress, failed-test causes, runner errors, and final counts. It does not emit
 ANSI color, cursor control, or passing test lines. Failed assertion lines carry
 source-location annotations when the failed check has one.
+
+Precise timing summaries list up to five runner overhead spans above 500 ms.

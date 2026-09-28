@@ -3,7 +3,7 @@ import { formatCaseId, type CaseId, type RuntimeId } from '../engine/identity.ts
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunArtifact, RunResult, RunnerError } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
-import { formatTimingSummary as formatRunTimingSummary } from './run-timing-summary.ts';
+import { formatTimingSummary as formatRunTimingSummary } from './run-summary-rendering.ts';
 
 const colorPalette = [
     colors.cyan,
