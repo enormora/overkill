@@ -5,7 +5,8 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import {
     createDeterministicOverkillClock,
-    type DeterministicOverkillClock
+    type DeterministicOverkillClock,
+    type OverkillClock
 } from '../clock/overkill-clock.ts';
 import { defineResource, type AnyResourceDefinition } from '../resources/resources.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
@@ -58,6 +59,18 @@ function localTiming(clock: DeterministicOverkillClock): LocalTimingFixture {
     });
 
     return { spans, timing };
+}
+
+function unavailableTimingClock(): OverkillClock {
+    const clock = createDeterministicOverkillClock();
+
+    Object.defineProperty(clock, 'currentMonotonicMicroseconds', {
+        get() {
+            throw new Error('clock unavailable');
+        }
+    });
+
+    return clock;
 }
 
 async function capturedError(run: () => Promise<unknown>): Promise<unknown> {
@@ -254,6 +267,36 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(value, 'handle');
                 scope.assert.equal(caughtFailure, failure);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'resource lifecycle timing tolerates unavailable clocks',
+            async body(scope: OverkillScope) {
+                const spans: RunTimingSpan[] = [];
+                const timing = createResourceLifecycleTiming({
+                    clock: unavailableTimingClock(),
+                    processId: 'process-1',
+                    target: {
+                        emit(span) {
+                            spans.push(span);
+                        },
+                        kind: 'local'
+                    },
+                    workerId: null
+                });
+                const controller = new AbortController();
+                const value = await timing.measure(
+                    operation(controller.signal),
+                    async function acquireResource() {
+                        return 'handle';
+                    }
+                );
+
+                scope.assert.equal(value, 'handle');
+                scope.assert.deepEqual(spans, []);
 
                 return scope.assert.collect();
             }

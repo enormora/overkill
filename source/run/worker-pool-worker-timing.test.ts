@@ -185,6 +185,30 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker resource timing omits worker identity during collection',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const fixture = createTimingTaskFixture('collect');
+                const clock = createDeterministicOverkillClock();
+                const timing = createWorkerResourceLifecycleTiming(fixture.task, clock);
+                const controller = new AbortController();
+
+                await timing.measure({
+                    phase: 'acquire',
+                    resource: { name: 'database', scope: 'per-run' },
+                    signal: controller.signal
+                }, async function acquireResource() {
+                    clock.advanceByMicroseconds(9);
+                });
+
+                scope.assert.equal(fixture.messages[0]?.span.workerId, null);
+
+                return scope.assert.collect();
+            }
         })
     ]
 });
