@@ -524,6 +524,7 @@ Supported command-line surface:
 - `--no-capture`
 - `--measure-resource-usage`
 - `--resource-budget <name=value>`
+- `--workers <n>`
 - `--with-locations`
 - `--with-orphans`
 
@@ -531,6 +532,9 @@ Supported command-line surface:
 `javaScriptEngineHeapBytes`, `residentSetBytes`, and
 `residentSetGrowthBytesPerSecond`. Supplying a resource budget enables
 resource usage measurement for that run.
+
+`--workers` applies to `run` only and accepts a positive safe integer. The
+selected profile must use `worker-pool` execution.
 
 `--no-capture` applies to `run` only. It passes stdout and stderr through live
 for capture-capable profiles and is invalid for microtest profiles.

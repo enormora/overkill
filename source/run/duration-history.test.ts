@@ -128,6 +128,8 @@ function durationLaneAssignments(
     const lanes = workerPoolLanes({
         assignmentPolicy: 'duration-history-balanced',
         availableParallelism: 3,
+        profileMaximum: null,
+        requestedWorkers: null,
         units
     });
 

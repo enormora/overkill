@@ -168,9 +168,15 @@ by default, or run as plain file units with profile defaults when
 `PlacementPlan`: work units, resolved per-unit policy, local worker lanes, and
 the deterministic initial lane assignment used by execution. Worker-pool
 placement defaults to `assignmentPolicy: 'case-count-balanced'`, which places
-larger selected work units first and balances lane load by selected case count.
+larger selected work units first and balances lane load by selected case count
+and resource capacity weight.
 Use `assignmentPolicy: 'stable'` to preserve source-order round-robin
 placement.
+Worker-pool size defaults to one fewer than host parallelism, with a minimum of
+one and a maximum of eight. The planner caps that target by host parallelism,
+`execution.maxWorkers`, and the work-unit count. `RunRequest.workers` replaces
+the automatic target before those caps are applied. Resolved worker-count facts
+are recorded in `RunFacts.execution.workerCount`.
 `dispatchPolicy: 'dynamic-lease'` is the default worker-pool dispatch policy.
 It leases pending work to compatible idle lanes and may split eligible
 not-started units along `WorkId` boundaries. Split children keep derived trace

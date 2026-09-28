@@ -879,6 +879,7 @@ type SupervisedIntegrationExecutionConfig = {
 
 type WorkerPoolIntegrationExecutionConfig = {
     readonly hostProcess: HostProcess;
+    readonly maxWorkers: number | null;
     readonly processModel: 'worker-pool';
     readonly scheduling: 'serial' | 'concurrent';
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
@@ -998,6 +999,7 @@ type RunRequest = {
     readonly seed: { readonly value: bigint | null; };
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly verbose: boolean;
+    readonly workers: number | null;
     readonly debug: {
         readonly mode: 'off' | 'all' | 'selected';
         readonly selectors: ReadonlyArray<string>;
@@ -1099,7 +1101,15 @@ type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
     readonly hedging: WorkerPoolHedgingPolicy;
     readonly hostProcess: HostProcessFacts;
     readonly processModel: 'worker-pool';
+    readonly workerCount: RunWorkerCountFacts;
     readonly workerLifecycle: 'reuse' | 'fresh-worker-per-unit';
+};
+
+type RunWorkerCountFacts = {
+    readonly hostMaximum: number;
+    readonly profileMaximum: number | null;
+    readonly requested: number | null;
+    readonly resolved: number;
 };
 
 type HostProcessFacts = { readonly kind: 'direct'; } | {

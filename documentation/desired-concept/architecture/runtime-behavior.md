@@ -677,13 +677,19 @@ Override surfaces:
   family actually requires it (for example benchmarks)
 
 Default worker count is `Math.min(Math.max(availableParallelism() - 1, 1), 8)`
-for worker-pool modes, capped to keep the host responsive and never above the
-available work-unit count. Override via `--workers N`.
+for worker-pool modes. An explicit `--workers N` replaces that automatic
+target. The planner then caps the target by host parallelism, the profile's
+`execution.maxWorkers`, and the available work-unit count. `--workers` is
+invalid for profiles that do not use a worker pool. Mixed `reuse` and
+`fresh-worker-per-unit` plans require at least one lane for each lifecycle.
 Worker-pool placement defaults to case-count balancing: the planner places
-larger work units first, uses selected case count as weight, and uses seeded
-order as a deterministic tie-breaker and lane-local execution order.
+larger work units first, combines selected case count with resource capacity
+weight, and uses seeded order as a deterministic tie-breaker and lane-local
+execution order. Capacity weight affects placement load and lifecycle lane
+allocation. It does not create workers or reject work.
 `assignmentPolicy: 'stable'` is the compatibility policy for profiles that
-need source-order round-robin placement instead.
+need source-order round-robin placement instead; capacity weight still informs
+mixed-lifecycle lane allocation.
 
 ## Sharding
 

@@ -160,6 +160,12 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                     softMilliseconds: 500
                 },
                 workDistribution: { mode: 'file' },
+                workerCount: {
+                    hostMaximum: 1,
+                    profileMaximum: null,
+                    requested: null,
+                    resolved: 1
+                },
                 workerLifecycle: 'reuse',
                 verbose: false
             },
@@ -307,6 +313,8 @@ function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedR
         createWorkerPoolPlacementPlan({
             assignmentPolicy: 'case-count-balanced',
             availableParallelism: 3,
+            profileMaximumWorkers: null,
+            requestedWorkers: null,
             fileSetForFile,
             order: 'plan',
             seed: { value: 1n },
@@ -321,6 +329,8 @@ function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedR
         createWorkerPoolPlacementResolution({
             assignmentPolicy: 'duration-history-balanced',
             availableParallelism: 3,
+            profileMaximumWorkers: null,
+            requestedWorkers: null,
             durationHistoryIndex: null,
             fileSetForFile,
             nowMilliseconds: 0,
@@ -333,7 +343,13 @@ function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedR
         }),
         {
             durationHistory: null,
-            placementPlan: expectedPlacementPlan()
+            placementPlan: expectedPlacementPlan(),
+            workerCount: {
+                hostMaximum: 3,
+                profileMaximum: null,
+                requested: null,
+                resolved: 2
+            }
         }
     );
 }

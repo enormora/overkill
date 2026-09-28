@@ -11,10 +11,7 @@ import {
     type WorkUnit,
     type WorkUnitResourceConstraints
 } from './run-types.ts';
-import {
-    workerPoolLanes,
-    workerPoolPlacementAssignments
-} from './worker-pool-lanes.ts';
+import { workerPoolLanes, workerPoolPlacementAssignments } from './worker-pool-lanes.ts';
 
 function workUnitWithConstraints(
     key: string,
@@ -71,7 +68,13 @@ function assignedLanes(
     availableParallelism: number,
     assignmentPolicy: RunWorkerPoolAssignmentPolicy = 'stable'
 ): readonly string[] {
-    const lanes = workerPoolLanes({ assignmentPolicy, availableParallelism, units });
+    const lanes = workerPoolLanes({
+        assignmentPolicy,
+        availableParallelism,
+        profileMaximum: null,
+        requestedWorkers: null,
+        units
+    });
 
     return workerPoolPlacementAssignments(units, lanes, assignmentPolicy).map(function toLane(assignment) {
         return assignment.lane;
@@ -97,7 +100,13 @@ export const testNode = createOverkillSuite({
                     workUnit('fresh-1', 'fresh-worker-per-unit'),
                     workUnit('fresh-2', 'fresh-worker-per-unit')
                 ];
-                const lanes = workerPoolLanes({ assignmentPolicy: 'stable', availableParallelism: 5, units });
+                const lanes = workerPoolLanes({
+                    assignmentPolicy: 'stable',
+                    availableParallelism: 5,
+                    profileMaximum: null,
+                    requestedWorkers: null,
+                    units
+                });
 
                 scope.assert.equal(lanes.length, 4);
                 scope.assert.deepEqual(assignedLanes(units, 5), [
@@ -192,6 +201,8 @@ export const testNode = createOverkillSuite({
                 const lanes = workerPoolLanes({
                     assignmentPolicy: 'stable',
                     availableParallelism: 2,
+                    profileMaximum: null,
+                    requestedWorkers: null,
                     units: [ unit ]
                 });
 
@@ -482,6 +493,8 @@ export const testNode = createOverkillSuite({
                     workerPoolLanes({
                         assignmentPolicy: 'stable',
                         availableParallelism: 1,
+                        profileMaximum: null,
+                        requestedWorkers: null,
                         units: []
                     }),
                     []
@@ -490,6 +503,8 @@ export const testNode = createOverkillSuite({
                     workerPoolLanes({
                         assignmentPolicy: 'stable',
                         availableParallelism: 0,
+                        profileMaximum: null,
+                        requestedWorkers: null,
                         units: [ workUnit('reuse-1', 'reuse') ]
                     });
                 }, { message: 'Available parallelism must be a positive safe integer.' });

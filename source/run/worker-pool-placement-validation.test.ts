@@ -17,14 +17,9 @@ import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
-type ResourceSample = ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>;
 type WorkUnit = PlacementPlan['units'][number];
-type WorkerPoolOutput = {
-    readonly results: readonly {
-        readonly result: RunResult;
-        readonly traceUnit: WorkUnit['id'];
-    }[];
-};
+type WorkerPoolOutputResult = { readonly result: RunResult; readonly traceUnit: WorkUnit['id']; };
+type WorkerPoolOutput = { readonly results: readonly WorkerPoolOutputResult[]; };
 export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
@@ -252,6 +247,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
                     softMilliseconds: 500
                 },
                 workDistribution: { mode: 'file' },
+                workerCount: { hostMaximum: 1, profileMaximum: null, requested: null, resolved: 1 },
                 workerLifecycle: 'reuse',
                 verbose: false
             },
@@ -443,7 +439,9 @@ export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntim
         pool: createFakePool(),
         poolResourceUsageTracker: null,
         placementTraceEntries,
-        previousPoolSample: createStoredRunValue<ResourceSample>(null),
+        previousPoolSample: createStoredRunValue<
+            ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>
+        >(null),
         recordPlacementTraceEntry(entry) {
             placementTraceEntries.push(entry);
         },

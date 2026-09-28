@@ -287,6 +287,7 @@ export const testNode = createOverkillSuite({
                 assertValidationSuccess(scope, integrationExecutionSchema, {
                     assignmentPolicy: 'case-count-balanced',
                     dispatchPolicy: 'dynamic-lease',
+                    maxWorkers: 4,
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: { mode: 'file' },

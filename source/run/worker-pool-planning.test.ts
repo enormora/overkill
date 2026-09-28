@@ -264,6 +264,8 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
     const singleWorkerPlan = createWorkerPoolPlacementPlan({
         assignmentPolicy: 'case-count-balanced',
         availableParallelism: 1,
+        profileMaximumWorkers: null,
+        requestedWorkers: null,
         fileSetForFile,
         order: 'plan',
         seed: { value: 1n },
@@ -275,6 +277,8 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
     const cappedWorkerPlan = createWorkerPoolPlacementPlan({
         assignmentPolicy: 'case-count-balanced',
         availableParallelism: 99,
+        profileMaximumWorkers: null,
+        requestedWorkers: null,
         fileSetForFile,
         order: 'plan',
         seed: { value: 1n },
@@ -288,6 +292,8 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
         createWorkerPoolPlacementPlan({
             assignmentPolicy: 'case-count-balanced',
             availableParallelism: 8,
+            profileMaximumWorkers: null,
+            requestedWorkers: null,
             fileSetForFile,
             order: 'plan',
             seed: { value: 1n },

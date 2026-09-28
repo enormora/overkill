@@ -5,6 +5,7 @@ import { testNode as commandLineRunnerOrderingTestNode } from './command-line-ru
 import { testNode as commandLineRunnerShardingTestNode } from './command-line-runner-sharding.test.ts';
 import { testNode as commandLineRunnerTimingsTestNode } from './command-line-runner-timings.test.ts';
 import { testNode as commandLineRunnerTestNode } from './command-line-runner.test.ts';
+import { testNode as commandLineRunnerWorkersTestNode } from './command-line-runner-workers.test.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
@@ -17,6 +18,7 @@ export const testNode = createSuite({
         commandLineRunnerOrderingTestNode,
         commandLineRunnerShardingTestNode,
         commandLineRunnerTimingsTestNode,
+        commandLineRunnerWorkersTestNode,
         commandLineRunnerTestNode
     ]
 });

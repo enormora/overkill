@@ -94,6 +94,8 @@ function baseResolvedRun(): ResolvedRun {
                 placementPlan: createWorkerPoolPlacementPlan({
                     assignmentPolicy: 'case-count-balanced',
                     availableParallelism: 2,
+                    profileMaximumWorkers: null,
+                    requestedWorkers: null,
                     fileSetForFile() {
                         return null;
                     },
@@ -123,6 +125,12 @@ function baseResolvedRun(): ResolvedRun {
                     collectionMilliseconds: 1000,
                     hardMilliseconds: 1000,
                     softMilliseconds: 500
+                },
+                workerCount: {
+                    hostMaximum: 2,
+                    profileMaximum: null,
+                    requested: null,
+                    resolved: 1
                 },
                 workDistribution: { mode: 'file' },
                 workerLifecycle: 'reuse',

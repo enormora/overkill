@@ -158,7 +158,8 @@ function createCommandFromListRequest(
             selection: request.listRequest.selection,
             shard: request.listRequest.shard,
             timingCollection: 'profile-default',
-            verbose: false
+            verbose: false,
+            workers: null
         }
     };
 }

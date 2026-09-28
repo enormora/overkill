@@ -1,6 +1,7 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as runConfigSchemaTimingsTestNode } from './run-config-schema-timings.test.ts';
 import { testNode as runConfigSchemaTestNode } from './run-config-schema.test.ts';
+import { testNode as runConfigWorkerCapacitySchemaTestNode } from './run-config-worker-capacity-schema.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -9,7 +10,8 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         runConfigSchemaTimingsTestNode,
-        runConfigSchemaTestNode
+        runConfigSchemaTestNode,
+        runConfigWorkerCapacitySchemaTestNode
     ]
 });
 

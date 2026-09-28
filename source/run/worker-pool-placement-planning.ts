@@ -9,6 +9,7 @@ import type {
     RunSeed,
     RunShard,
     RunScheduling,
+    RunWorkerCountFacts,
     RunWorkDistribution,
     RunWorkerPoolAssignmentPolicy,
     RunWorkerLifecycle
@@ -23,8 +24,10 @@ import {
 } from './work-unit-planning.ts';
 import type { RunShardHasher } from './run-sharding.ts';
 import {
-    workerPoolLanes,
-    workerPoolPlacementAssignments
+    resolveWorkerCount,
+    workerPoolLanesForCount,
+    workerPoolPlacementAssignments,
+    type WorkerPoolLaneInput
 } from './worker-pool-lanes.ts';
 
 const coldStartMilliseconds = 0;
@@ -39,6 +42,8 @@ type WorkerPoolPlacementBaseInput = {
     readonly availableParallelism: number;
     readonly fileSetForFile: (file: string) => string | null;
     readonly order: RunOrder;
+    readonly profileMaximumWorkers: number | null;
+    readonly requestedWorkers: number | null;
     readonly seed: RunSeed;
     readonly selectedPlan: CollectedRunPlan;
     readonly scheduling: RunScheduling;
@@ -56,6 +61,7 @@ export type WorkerPoolPlacementResolutionInput = WorkerPoolPlacementPlanInput & 
 export type WorkerPoolPlacementResolution = {
     readonly durationHistory: DurationHistoryPlacement['facts'];
     readonly placementPlan: PlacementPlan;
+    readonly workerCount: RunWorkerCountFacts;
 };
 
 function collectedEntriesByWorkKey(
@@ -94,11 +100,15 @@ export function createWorkerPoolPlacementResolution(
     const durationHistory = input.assignmentPolicy === 'duration-history-balanced'
         ? selectDurationHistoryPlacement(units, input.durationHistoryIndex, input.nowMilliseconds)
         : { facts: null, unitDuration: null };
-    const lanes = workerPoolLanes({
+    const laneInput: WorkerPoolLaneInput = {
         assignmentPolicy: input.assignmentPolicy,
         availableParallelism: input.availableParallelism,
+        profileMaximum: input.profileMaximumWorkers,
+        requestedWorkers: input.requestedWorkers,
         units
-    });
+    };
+    const workerCount = resolveWorkerCount(laneInput);
+    const lanes = workerPoolLanesForCount(workerCount.resolved);
 
     return {
         durationHistory: durationHistory.facts,
@@ -111,7 +121,8 @@ export function createWorkerPoolPlacementResolution(
             ),
             lanes,
             units
-        }
+        },
+        workerCount
     };
 }
 

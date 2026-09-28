@@ -37,7 +37,13 @@ function workUnitWithConstraints(
 }
 
 function assignedLanes(units: readonly WorkUnit[], availableParallelism: number): readonly string[] {
-    const lanes = workerPoolLanes({ assignmentPolicy: 'stable', availableParallelism, units });
+    const lanes = workerPoolLanes({
+        assignmentPolicy: 'stable',
+        availableParallelism,
+        profileMaximum: null,
+        requestedWorkers: null,
+        units
+    });
 
     return workerPoolPlacementAssignments(units, lanes, 'stable').map(function toLane(assignment) {
         return assignment.lane;

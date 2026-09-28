@@ -52,7 +52,8 @@ function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunReque
             total: 1
         },
         timingCollection: 'profile-default',
-        verbose: false
+        verbose: false,
+        workers: null
     };
 }
 

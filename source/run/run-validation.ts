@@ -118,6 +118,7 @@ function assertValidRunProfileName(profileName: string): void {
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
 
+    validatePositiveSafeInteger(request.workers, 'Worker count');
     validateRunShard(request);
     validateRunSeed(request);
     validateRunSelection(request);
@@ -148,6 +149,7 @@ function validateRunIntegrationProfile(profile: RunProfileConfig): void {
     validateTimeoutPolicy(profile.timeouts);
 
     if (profile.execution.processModel === 'worker-pool') {
+        validatePositiveSafeInteger(profile.execution.maxWorkers, 'Profile worker maximum');
         validateHostProcess(profile.execution.hostProcess);
     }
 }

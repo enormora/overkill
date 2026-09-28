@@ -5,6 +5,7 @@ import { createPlainOutputRenderer, type DefinedOutputRenderer } from '../engine
 import type { DefinedReporter } from '../engine/reporter.ts';
 import {
     projectConfigSchema,
+    workerPoolProjectExecution,
     type RunProjectConfig as ParsedRunProjectConfig,
     type RunProjectIntegrationExecution as ParsedRunProjectIntegrationExecution,
     type RunProjectIntegrationProfileConfig as ParsedRunProjectIntegrationProfileConfig,
@@ -457,13 +458,14 @@ function normalizeWorkerPoolExecution(
     execution: RunProjectIntegrationExecution | undefined,
     scheduling: RunIntegrationExecution['scheduling']
 ): RunIntegrationExecution {
+    const workerPoolExecution = workerPoolProjectExecution(execution);
+
     return {
         assignmentPolicy: normalizeWorkerPoolAssignmentPolicy(execution),
-        dispatchPolicy: execution?.processModel === 'worker-pool'
-            ? execution.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy
-            : defaultWorkerPoolDispatchPolicy,
+        dispatchPolicy: workerPoolExecution?.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy,
         hedging: normalizeWorkerPoolHedgingPolicy(execution),
         hostProcess: { kind: 'direct' },
+        maxWorkers: workerPoolExecution?.maxWorkers ?? null,
         processModel: 'worker-pool',
         scheduling,
         workDistribution: normalizeWorkDistribution(execution, defaultWorkDistribution),

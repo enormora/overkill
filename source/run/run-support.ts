@@ -248,6 +248,7 @@ function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegr
             dispatchPolicy: execution.dispatchPolicy,
             hedging: execution.hedging,
             hostProcess: copyHostProcess(execution.hostProcess),
+            maxWorkers: execution.maxWorkers,
             processModel: execution.processModel,
             scheduling: execution.scheduling,
             workDistribution: copyWorkDistribution(execution.workDistribution),
@@ -350,7 +351,8 @@ export function copyRunRequest(request: RunRequest): RunRequest {
         selection: copyRunSelection(request.selection),
         shard: copyRunShard(request.shard),
         timingCollection: request.timingCollection,
-        verbose: request.verbose
+        verbose: request.verbose,
+        workers: request.workers
     };
 }
 

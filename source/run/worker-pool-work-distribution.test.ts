@@ -469,6 +469,8 @@ export const testNode = createOverkillSuite({
                         createWorkerPoolPlacementPlan({
                             assignmentPolicy: 'case-count-balanced',
                             availableParallelism,
+                            profileMaximumWorkers: null,
+                            requestedWorkers: null,
                             fileSetForFile,
                             order: 'plan',
                             seed: { value: 1n },
@@ -496,6 +498,7 @@ export const testNode = createOverkillSuite({
                             dispatchPolicy: 'dynamic-lease',
                             hedging: { mode: 'off' },
                             hostProcess: { kind: 'direct' },
+                            maxWorkers: null,
                             processModel: 'worker-pool',
                             scheduling: 'concurrent',
                             workDistribution: {
