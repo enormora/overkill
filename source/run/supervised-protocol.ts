@@ -1,5 +1,7 @@
 import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
+import type { OverkillClock } from '../clock/overkill-clock.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
+import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type {
@@ -15,6 +17,14 @@ import {
     envelopeMessage,
     type ChildProcessEnvelope
 } from './child-process-protocol.ts';
+import {
+    createResourceLifecycleTiming,
+    type ResourceLifecycleTiming
+} from './resource-lifecycle-timing.ts';
+
+export type SupervisedTimingRecorder = {
+    readonly recordLocal: (span: RunTimingSpan) => void;
+};
 
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: {
@@ -81,7 +91,27 @@ export type SupervisedChildMessage = {
 } | {
     readonly kind: 'sample';
     readonly sample: ResourceUsageSnapshot;
+} | {
+    readonly kind: 'timing';
+    readonly span: RunTimingSpan;
 };
+
+export function createSupervisedResourceLifecycleTiming(
+    clock: OverkillClock,
+    send: (message: SupervisedChildMessage) => void
+): ResourceLifecycleTiming {
+    return createResourceLifecycleTiming({
+        clock,
+        processId: String(process.pid),
+        target: {
+            emit(span) {
+                send({ kind: 'timing', span });
+            },
+            kind: 'local'
+        },
+        workerId: null
+    });
+}
 
 export function supervisedChildEnvelope(
     message: SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage

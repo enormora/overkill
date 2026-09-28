@@ -13,6 +13,9 @@ import {
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import { createResourceLifecycleRuntimePolicy } from '../../run/resource-lifecycle.ts';
+import { createDeterministicOverkillClock } from '../../clock/overkill-clock.ts';
+import type { RunTimingSpan } from '../../engine/run-timings.ts';
+import { createResourceLifecycleTiming } from '../../run/resource-lifecycle-timing.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
 
 type EmptyResourceDependencies = Readonly<Record<PropertyKey, never>>;
@@ -33,6 +36,7 @@ type LifecycleRecord = {
 };
 type LifecycleRecords = Readonly<Record<string, LifecycleRecord>>;
 type ObservedExecution = {
+    readonly resourceTimings: readonly RunTimingSpan[];
     readonly result: RunResult;
 };
 type LifecycleRecorder = {
@@ -66,16 +70,28 @@ function eventReporter(): DefinedReporter {
 }
 
 async function executeObservedPlan(testPlan: TestPlan): Promise<ObservedExecution> {
+    const resourceTimings: RunTimingSpan[] = [];
+    const timing = createResourceLifecycleTiming({
+        clock: createDeterministicOverkillClock(),
+        processId: 'test-process',
+        target: {
+            emit(span) {
+                resourceTimings.push(span);
+            },
+            kind: 'local'
+        },
+        workerId: null
+    });
     const result = await execute(testPlan, {
         execution: { mode: 'serial-in-process' },
         reporters: [ eventReporter() ],
         resourceUsageTracker: null,
         runFacts: {},
-        runtimePolicy: createResourceLifecycleRuntimePolicy(testPlan.cases),
+        runtimePolicy: createResourceLifecycleRuntimePolicy(testPlan.cases, timing),
         startedAt: epoch.toISOString()
     });
 
-    return { result };
+    return { resourceTimings, result };
 }
 
 function scopeRecord(record: LifecycleRecord | undefined): LifecycleRecord {
@@ -293,6 +309,42 @@ async function assertRunnerManagedResourceScopes(scope: TestScope): Promise<void
         suiteResource: { acquisitions: 2, disposals: 2, seenIds: [ 1, 2 ] },
         workerResource: { acquisitions: 1, disposals: 1, seenIds: [ 1 ] }
     });
+    scope.assert.equal(observed.resourceTimings.length, 20);
+    scope.assert.deepEqual(
+        observed
+            .resourceTimings
+            .map(function timingIdentity(timing) {
+                return {
+                    kind: timing.kind,
+                    processId: timing.processId,
+                    resource: timing.resource,
+                    startOffsetMicroseconds: timing.startOffsetMicroseconds,
+                    status: timing.status,
+                    workerId: timing.workerId
+                };
+            })
+            .filter(function isRunResourceTiming(timing) {
+                return timing.resource?.name === 'runResource';
+            }),
+        [
+            {
+                kind: 'resource.acquire',
+                processId: 'test-process',
+                resource: { name: 'runResource', scope: 'per-run' },
+                startOffsetMicroseconds: null,
+                status: 'success',
+                workerId: null
+            },
+            {
+                kind: 'resource.dispose',
+                processId: 'test-process',
+                resource: { name: 'runResource', scope: 'per-run' },
+                startOffsetMicroseconds: null,
+                status: 'success',
+                workerId: null
+            }
+        ]
+    );
 }
 
 async function assertRunnerManagedArrayProjection(scope: TestScope): Promise<void> {

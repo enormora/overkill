@@ -10,6 +10,7 @@ import {
 } from '../clock/overkill-clock.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 import {
+    createWorkerResourceLifecycleTiming,
     measureWorkerSpan,
     postWorkerTimingSpan
 } from './worker-pool-worker-timing.ts';
@@ -145,6 +146,42 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(thrownError, error);
                 scope.assert.equal(fixture.messages[0]?.span.status, 'failure');
                 scope.assert.equal(fixture.messages[0]?.span.durationMicroseconds, 30);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker resource timing records resource and worker identity',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const fixture = createTimingTaskFixture('run');
+                const clock = createDeterministicOverkillClock();
+                const timing = createWorkerResourceLifecycleTiming(fixture.task, clock);
+                const controller = new AbortController();
+
+                await timing.measure({
+                    phase: 'dispose',
+                    resource: { name: 'database', scope: 'shared-per-worker' },
+                    signal: controller.signal
+                }, async function disposeResource() {
+                    clock.advanceByMicroseconds(17);
+                });
+
+                const [ message ] = fixture.messages;
+
+                scope.require.defined(message);
+                scope.assert.deepEqual(message.span, {
+                    durationMicroseconds: 17,
+                    kind: 'resource.dispose',
+                    label: null,
+                    processId: String(process.pid),
+                    resource: { name: 'database', scope: 'shared-per-worker' },
+                    startOffsetMicroseconds: null,
+                    status: 'success',
+                    workerId: 'lane-1'
+                });
 
                 return scope.assert.collect();
             }

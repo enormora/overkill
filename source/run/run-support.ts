@@ -2,7 +2,8 @@ import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import {
-    createResourceLifecycleRuntimePolicy
+    createResourceLifecycleRuntimePolicy,
+    type ManagedResourceLifecycleTiming
 } from './resource-lifecycle.ts';
 import {
     createPermissionDenialRuntimePolicy,
@@ -112,9 +113,10 @@ export function composeRunRuntimePolicies(
 
 export function createRunResourceRuntimePolicy(
     testCases: readonly TestPlanCase[],
-    runtimePolicy: TestRuntimePolicy | null
+    runtimePolicy: TestRuntimePolicy | null,
+    timing: ManagedResourceLifecycleTiming
 ): TestRuntimePolicy {
-    const resourcePolicy = createResourceLifecycleRuntimePolicy(testCases);
+    const resourcePolicy = createResourceLifecycleRuntimePolicy(testCases, timing);
 
     return composeRunRuntimePolicies(runtimePolicy, resourcePolicy) ?? resourcePolicy;
 }

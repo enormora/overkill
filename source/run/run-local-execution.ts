@@ -12,6 +12,7 @@ import type {
     RunScheduling
 } from './run-types.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
+import { createResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
@@ -52,6 +53,14 @@ export async function executeLocalResolvedRun(
     timing: RunTimingMeasurement | null = null
 ): Promise<RunResult> {
     const { resourceUsagePolicy } = resolvedRun.facts.execution;
+    const resourceTiming = timing === null
+        ? null
+        : createResourceLifecycleTiming({
+            clock: dependencies.wallClock,
+            processId: String(process.pid),
+            target: { kind: 'parent', record: timing.record },
+            workerId: null
+        });
 
     return await dependencies.execute(resolvedRun.plan.testPlan, {
         execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution.scheduling) },
@@ -62,7 +71,11 @@ export async function executeLocalResolvedRun(
         reporters: resolvedRun.reporters,
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
-        runtimePolicy: createRunResourceRuntimePolicy(resolvedRun.plan.testPlan.cases, runtimePolicy),
+        runtimePolicy: createRunResourceRuntimePolicy(
+            resolvedRun.plan.testPlan.cases,
+            runtimePolicy,
+            resourceTiming
+        ),
         runFacts: resolvedRun.facts,
         startedAt: currentRunStartTime(dependencies),
         timeoutPolicy: {

@@ -7,13 +7,12 @@ import type { CaseId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
-import type { SupervisedChildProcess } from './supervised-child-process.ts';
+import { kill, type SupervisedChildProcess } from './supervised-child-process.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createHardTimeout,
     handleChildMessage,
     handleCollectionSample,
-    kill,
     supervisedCollectedPlan,
     type SupervisedCollectionRuntime,
     type SupervisedHardTimeout,

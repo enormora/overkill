@@ -22,7 +22,8 @@ import {
     type CapabilityPolicyOptions
 } from './capability-policy.ts';
 import {
-    createRunResourceRuntimePolicy
+    createRunResourceRuntimePolicy,
+    type RunRuntimePolicy
 } from './run-support.ts';
 import {
     createSupervisedChildTestPlan,
@@ -31,6 +32,7 @@ import {
     type SupervisedChildTestPlanDependencies
 } from './supervised-child-test-plan.ts';
 import {
+    createSupervisedResourceLifecycleTiming,
     supervisedAssignedWork,
     type SupervisedAssignmentCommand,
     type SupervisedChildCommand,
@@ -41,7 +43,7 @@ import {
 type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
 
 type RuntimeCapabilityPolicyDependencies = CapabilityPolicyOptions['dependencies'];
-type SupervisedRuntimePolicy = NonNullable<Parameters<typeof createRunResourceRuntimePolicy>[1]>;
+type SupervisedRuntimePolicy = RunRuntimePolicy;
 
 type CollectedTestPlan = {
     readonly runnerErrors: readonly RunnerError[];
@@ -312,6 +314,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     });
     input.host.dropBodyReadPermission(input.command);
     const testPlan = selectAssignedCases(input.collectedPlan.testPlan, supervisedAssignedWork(input.assignment));
+    const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
     return await execute(testPlan, {
         execution: { mode: executionMode(input.command) },
@@ -324,7 +327,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
             input.dependencies,
             input.wallClock
         ),
-        runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy),
+        runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
         runFacts: {},
         startedAt: startedAtIso(input.startedAtMs),
         timeoutPolicy: {

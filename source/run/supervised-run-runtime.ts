@@ -12,6 +12,7 @@ import type {
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
+    kill,
     observeSupervisedChildOutput,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
@@ -33,8 +34,11 @@ import {
     supervisedChildMessage,
     type SupervisedChildMessage,
     type SupervisedCollectCommand,
-    type SupervisedRunCommand
+    type SupervisedRunCommand,
+    type SupervisedTimingRecorder
 } from './supervised-protocol.ts';
+
+type NonTimingSupervisedChildMessage = Exclude<SupervisedChildMessage, { readonly kind: 'timing'; }>;
 
 export type ReporterEventQueue = {
     readonly add: (eventReport: Promise<void>) => void;
@@ -81,12 +85,6 @@ export type SupervisedCollectionRuntime<CollectionValue> = {
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
 };
-
-function runStartTimeFromMilliseconds(milliseconds: number): string {
-    const startedAt = new Date(milliseconds);
-
-    return startedAt.toISOString();
-}
 
 export function createReporterEventQueue(): ReporterEventQueue {
     const eventReports: Promise<void>[] = [];
@@ -204,12 +202,6 @@ function createPartialRunResult(input: PartialRunResultInput): RunResult {
             testExecutionWallTimeMicroseconds: input.state.testExecutionWallTimeMicroseconds()
         }
     );
-}
-
-export function kill(child: SupervisedChildProcess): void {
-    if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
-        child.kill('SIGKILL');
-    }
 }
 
 export async function createReporterDelivery(
@@ -395,7 +387,10 @@ function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime)
     });
 }
 
-export function handleChildMessage(message: SupervisedChildMessage, runtime: SupervisedRunRuntime): void {
+export function handleChildMessage(
+    message: NonTimingSupervisedChildMessage,
+    runtime: SupervisedRunRuntime
+): void {
     if (message.kind === 'collected') {
         runtime.collectedPlan.write(message.collectedPlan);
         runtime.state.recordRunnerErrors(message.runnerErrors);
@@ -430,7 +425,10 @@ export function handleCollectionSample<CollectionValue>(
     }
 }
 
-export async function observeChild(runtime: SupervisedRunRuntime): Promise<void> {
+export async function observeChild(
+    runtime: SupervisedRunRuntime,
+    timing: SupervisedTimingRecorder | null
+): Promise<void> {
     observeSupervisedChildOutput({
         capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(runtime.resolvedRun),
         capture: runtime.resolvedRun.facts.execution.capture,
@@ -444,7 +442,9 @@ export async function observeChild(runtime: SupervisedRunRuntime): Promise<void>
         runtime.child.on('message', function receiveMessage(message: unknown) {
             const childMessage = supervisedChildMessage(message);
 
-            if (childMessage !== null) {
+            if (childMessage?.kind === 'timing') {
+                timing?.recordLocal(childMessage.span);
+            } else if (childMessage !== null) {
                 handleChildMessage(childMessage, runtime);
             }
         });
@@ -469,6 +469,8 @@ export async function reportRunStart(
     collectedPlan: CollectedRunPlan,
     startedAtMs: number
 ): Promise<void> {
+    const startedAt = new Date(startedAtMs);
+
     await recordReporterEventErrors(
         {
             facts: runtime.resolvedRun.facts,
@@ -477,7 +479,7 @@ export async function reportRunStart(
                 annotations: collectedPlan.root.annotations,
                 title: collectedPlan.root.title
             },
-            startedAt: runStartTimeFromMilliseconds(startedAtMs)
+            startedAt: startedAt.toISOString()
         },
         runtime.state,
         runtime.reporterDelivery
