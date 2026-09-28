@@ -7,7 +7,7 @@ import type {
 } from '../resources/resources.ts';
 import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
 
-export type ResourceProjectionRecord = {
+type ResourceProjectionRecord = {
     readonly boundaryKey: string;
     readonly payload: ResourceProjectionPayload;
 };

@@ -22,7 +22,7 @@ import {
 } from './resource-lifecycle-projection.ts';
 import type { ManagedRunnerError } from './resource-lifecycle-state.ts';
 
-export type ManagedResourceRecord = {
+type ManagedResourceRecord = {
     readonly boundary: LifecycleBoundary;
     readonly dependencyContext: ResourceContext<ResourceMap>;
     readonly descriptor: AnyResourceDefinition;
