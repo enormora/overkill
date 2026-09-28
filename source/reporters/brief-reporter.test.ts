@@ -10,7 +10,7 @@ import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output
 import type { RealTimeReporter, ReporterEvent, RunFacts } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefReporter, type BriefReporterSinks } from './brief-reporter.ts';
-import { formatRunFactSummary } from './run-fact-summary.ts';
+import { formatRunFactSummary } from './run-summary-rendering.ts';
 
 const caseId = {
     file: 'source/users.test.ts',

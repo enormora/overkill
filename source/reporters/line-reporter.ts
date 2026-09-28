@@ -13,13 +13,15 @@ import type {
     TestVerdict
 } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
-import { formatRunFactSummary } from './run-fact-summary.ts';
+import {
+    formatRunFactSummary,
+    formatTimingOffenderLines,
+    formatTimingSummary
+} from './run-summary-rendering.ts';
 import { createTerminalLineLogger, type TerminalLineLogger, visibleTerminalWidth } from './terminal.ts';
 import {
     contextPrefix,
     formatCountSummary,
-    formatTimingOffenderLines,
-    formatTimingSummary,
     problemLines,
     type HumanReporterFormatOptions
 } from './human-reporter-rendering.ts';

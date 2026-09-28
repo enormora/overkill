@@ -11,7 +11,8 @@ import {
     type RunTimingSpan
 } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { formatTimingOffenderLines, problemLines } from './human-reporter-rendering.ts';
+import { problemLines } from './human-reporter-rendering.ts';
+import { formatTimingOffenderLines } from './run-summary-rendering.ts';
 
 const passingCaseId: CaseId = { file: null, params: null, suite: [], title: 'passes' };
 const failingCaseId: CaseId = { file: 'source/fails.test.ts', params: null, suite: [ 'root' ], title: 'fails' };

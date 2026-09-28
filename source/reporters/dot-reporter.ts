@@ -2,12 +2,14 @@ import figures from 'figures';
 import colors from 'yoctocolors';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import type { RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
-import { formatRunFactSummary } from './run-fact-summary.ts';
+import {
+    formatRunFactSummary,
+    formatTimingOffenderLines,
+    formatTimingSummary
+} from './run-summary-rendering.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
 import {
     formatCountSummary,
-    formatTimingOffenderLines,
-    formatTimingSummary,
     problemLines
 } from './human-reporter-rendering.ts';
 
