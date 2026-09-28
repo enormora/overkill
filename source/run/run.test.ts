@@ -123,6 +123,29 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'orchestrator.resolve() rejects worker counts for non-worker-pool profiles',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const runOrchestrator = createDeterministicRunOrchestrator();
+
+                await scope.assert.rejects(async function resolveMicrotestWorkerCount() {
+                    await runOrchestrator.resolve(createRunCommand({
+                        config: defaultConfig,
+                        cwd: process.cwd(),
+                        engine: { kind: 'default' },
+                        request: defaultRunRequest({
+                            paths: [ passingFixturePath ],
+                            workers: 2
+                        })
+                    }));
+                }, { message: 'Worker count can only be requested for worker-pool profiles.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects capture controls for microtest profiles',
             annotations: {},
             controls: {},

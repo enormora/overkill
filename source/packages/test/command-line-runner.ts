@@ -27,6 +27,7 @@ import {
 } from '../run/filters.entry-point.ts';
 import { parseRunSeed } from './run-seed-parser.ts';
 import { parseRunShard } from './run-shard-parser.ts';
+import { runWorkersType } from './run-workers-parser.ts';
 
 type WritableOutput = {
     readonly write: (chunk: string) => unknown;
@@ -67,6 +68,7 @@ type RunCommandArguments = {
     readonly shard: RunShard;
     readonly timings: boolean;
     readonly title: string | null;
+    readonly workers: CommandLineRunTestsRequest['runRequest']['workers'];
 };
 
 type ListCommandArguments = {
@@ -356,7 +358,8 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             selection: createSelection(args),
             shard: args.shard,
             timingCollection: args.timings ? 'precise' : 'profile-default',
-            verbose: false
+            verbose: false,
+            workers: args.workers
         }
     };
 }
@@ -455,7 +458,14 @@ function createOverkillCommand(
                     return null;
                 }
             }),
-            timings: flag({ long: 'timings' })
+            timings: flag({ long: 'timings' }),
+            workers: option({
+                long: 'workers',
+                type: runWorkersType,
+                defaultValue() {
+                    return null;
+                }
+            })
         },
         async handler(args: RunCommandArguments) {
             const runner = await loadRunner();

@@ -305,6 +305,7 @@ export const config = defineConfig({
             },
             execution: {
                 hostProcess: { kind: 'direct' },
+                maxWorkers: 4,
                 processModel: 'worker-pool',
                 scheduling: 'concurrent',
                 workerLifecycle: 'fresh-worker-per-unit',
@@ -335,6 +336,9 @@ Direct `RunConfig` values can choose worker-pool host shape with
 `execution.hostProcess`. Project configuration files do not expose that key
 until the configuration schema has a stable policy for which Node/V8 arguments
 are acceptable in persistent project policy.
+
+Worker-pool profiles may set `execution.maxWorkers` to a positive safe integer.
+It caps automatic sizing and explicit `--workers N` requests.
 
 Profile names are project-owned strings. First-party config validates that a
 profile name is non-empty and contains only letters, numbers, dots,

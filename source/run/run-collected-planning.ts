@@ -10,6 +10,7 @@ import type {
     CollectedRunPlan,
     RunProfileConfig,
     RunRequest,
+    RunWorkerCountFacts,
     RunWorkerPoolAssignmentPolicy
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -36,6 +37,7 @@ type CollectedExecutionPlan = {
     readonly durationHistory: WorkerPoolPlacementResolution['durationHistory'] | null;
     readonly orderedCases: ReturnType<typeof shardCollectedRunPlanCases>;
     readonly placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null;
+    readonly workerCount: RunWorkerCountFacts | null;
 };
 
 function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: string | null) => string | null {
@@ -66,6 +68,12 @@ function workerLifecycle(profile: RunProfileConfig): WorkerPoolPlacementResoluti
         : 'reuse';
 }
 
+function profileMaximumWorkers(profile: RunProfileConfig): number | null {
+    return profile.execution.processModel === 'worker-pool'
+        ? profile.execution.maxWorkers
+        : null;
+}
+
 function createPlacementResolution(
     input: CollectedExecutionPlanInput,
     shardHasher: Awaited<ReturnType<typeof createRunShardHasher>>
@@ -81,6 +89,8 @@ function createPlacementResolution(
         fileSetForFile: fileSetForDiscoveredFiles(input.files),
         nowMilliseconds: input.dependencies.wallClock.currentEpochMilliseconds,
         order: input.request.order,
+        profileMaximumWorkers: profileMaximumWorkers(input.profile),
+        requestedWorkers: input.request.workers,
         seed: input.request.seed,
         selectedPlan: input.collectedPlan,
         shard: input.request.shard,
@@ -91,23 +101,39 @@ function createPlacementResolution(
     });
 }
 
+function orderedCollectedCases(
+    input: CollectedExecutionPlanInput,
+    placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null,
+    shardHasher: Awaited<ReturnType<typeof createRunShardHasher>>
+): CollectedExecutionPlan['orderedCases'] {
+    if (placementPlan !== null) {
+        return collectedRunCaseEntriesFromWorkUnits(input.collectedPlan, placementPlan.units);
+    }
+
+    return orderedRunItems(
+        shardCollectedRunPlanCases(input.collectedPlan, input.request.shard, shardHasher),
+        input.request.order,
+        input.request.seed
+    );
+}
+
 export async function createCollectedExecutionPlan(
     input: CollectedExecutionPlanInput
 ): Promise<CollectedExecutionPlan> {
     const shardHasher = await createRunShardHasher(input.request.shard);
     const placementResolution = createPlacementResolution(input, shardHasher);
-    const placementPlan = placementResolution?.placementPlan ?? null;
-    const orderedCases = placementPlan === null
-        ? orderedRunItems(
-            shardCollectedRunPlanCases(input.collectedPlan, input.request.shard, shardHasher),
-            input.request.order,
-            input.request.seed
-        )
-        : collectedRunCaseEntriesFromWorkUnits(input.collectedPlan, placementPlan.units);
+    const planningFacts = placementResolution ?? {
+        durationHistory: null,
+        placementPlan: null,
+        workerCount: null
+    };
+    const { placementPlan, workerCount } = planningFacts;
+    const orderedCases = orderedCollectedCases(input, placementPlan, shardHasher);
 
     return {
-        durationHistory: placementResolution?.durationHistory ?? null,
+        durationHistory: planningFacts.durationHistory,
         orderedCases,
-        placementPlan
+        placementPlan,
+        workerCount
     };
 }

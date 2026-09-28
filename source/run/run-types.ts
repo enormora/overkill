@@ -280,6 +280,7 @@ type RunWorkerPoolExecution = {
     readonly dispatchPolicy: RunWorkerPoolDispatchPolicy;
     readonly hedging: RunWorkerPoolHedgingPolicy;
     readonly hostProcess: RunHostProcess;
+    readonly maxWorkers: number | null;
     readonly processModel: 'worker-pool';
     readonly scheduling: RunScheduling;
     readonly workDistribution: RunWorkDistribution;
@@ -390,6 +391,7 @@ export type RunRequest = {
     readonly shard: RunShard;
     readonly timingCollection: TimingCollectionOverride;
     readonly verbose: false;
+    readonly workers: number | null;
 };
 
 export type RunCommand = {
@@ -448,8 +450,16 @@ type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
     readonly hedging: RunWorkerPoolHedgingPolicy;
     readonly hostProcess: RunHostProcessFacts;
     readonly processModel: 'worker-pool';
+    readonly workerCount: RunWorkerCountFacts;
     readonly workDistribution: RunWorkDistribution;
     readonly workerLifecycle: RunWorkerLifecycle;
+};
+
+export type RunWorkerCountFacts = {
+    readonly hostMaximum: number;
+    readonly profileMaximum: number | null;
+    readonly requested: number | null;
+    readonly resolved: number;
 };
 
 export type RunHostProcessFacts = {

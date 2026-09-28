@@ -36,6 +36,12 @@ function assertMicrotestCaptureSupported(
     }
 }
 
+function assertWorkerCountSupported(request: RunRequest, profile: RunProfileConfig): void {
+    if (request.workers !== null && profile.execution.processModel !== 'worker-pool') {
+        invalidRequest('Worker count can only be requested for worker-pool profiles.');
+    }
+}
+
 export async function readResolvedRunInput(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies
@@ -45,6 +51,7 @@ export async function readResolvedRunInput(
     const config = freezeValue(copyRunConfig(command.config));
     const profile = selectedProfile(request, config);
     assertMicrotestCaptureSupported(request, profile);
+    assertWorkerCountSupported(request, profile);
     assertSupportedProcessEngine(command, profile);
     const discovery = freezeValue(
         await dependencies.discoverRunFilesWithProjectRoot({

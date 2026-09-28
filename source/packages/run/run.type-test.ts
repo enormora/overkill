@@ -62,6 +62,7 @@ import {
     type RunWorkerPoolAssignmentPolicy,
     type RunWorkerPoolDispatchPolicy,
     type RunWorkerLifecycle,
+    type RunWorkerCountFacts,
     type RuntimeId,
     type SerializedValue,
     type TraceWorkUnitId,
@@ -92,7 +93,8 @@ type RunRequestKeys = readonly [
     'selection',
     'shard',
     'timingCollection',
-    'verbose'
+    'verbose',
+    'workers'
 ];
 
 type ExpectedRunRequestKey = RunRequestKeys[number];
@@ -326,6 +328,35 @@ test('exposes timing collection request types', function () {
 });
 
 describe('@overkill-dev/run worker-pool placement', function () {
+    test('exposes worker-count requests', function () {
+        expect<RunRequest['workers']>().type.toBe<number | null>();
+    });
+
+    test('exposes resolved worker-count facts', function () {
+        expect<
+            Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workerCount']
+        >()
+            .type
+            .toBe<RunWorkerCountFacts>();
+        expect<RunWorkerCountFacts>().type.toBe<{
+            readonly hostMaximum: number;
+            readonly profileMaximum: number | null;
+            readonly requested: number | null;
+            readonly resolved: number;
+        }>();
+    });
+
+    test('exposes worker-pool profile maximums', function () {
+        expect<RunProjectIntegrationProfileConfig>().type.toBeAssignableFrom<{
+            readonly execution: {
+                readonly maxWorkers: number;
+                readonly processModel: 'worker-pool';
+            };
+            readonly files: RunProjectProfileFiles;
+            readonly testFamily: 'integration';
+        }>();
+    });
+
     test('exposes worker-pool assignment policy facts', function () {
         expect<
             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['assignmentPolicy']
@@ -411,6 +442,7 @@ describe('@overkill-dev/run config', function () {
                 readonly assignmentPolicy: 'case-count-balanced';
                 readonly dispatchPolicy: 'dynamic-lease';
                 readonly hedging: { readonly mode: 'off'; };
+                readonly maxWorkers: null;
                 readonly workDistribution: { readonly mode: 'file'; };
                 readonly workerLifecycle: 'reuse';
             };

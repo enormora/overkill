@@ -133,6 +133,12 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workDistribution: profile.execution.workDistribution,
+            workerCount: {
+                hostMaximum: 1,
+                profileMaximum: profile.execution.maxWorkers,
+                requested: command.request.workers,
+                resolved: 1
+            },
             workerLifecycle: profile.execution.workerLifecycle
         };
     }
@@ -213,6 +219,16 @@ function defaultHedging(overrides: Partial<RunIntegrationExecution>): RunWorkerP
         : { mode: 'off' };
 }
 
+function hasMaximumWorkersOverride(
+    overrides: Partial<RunIntegrationExecution>
+): overrides is WorkerPoolExecutionOverrides {
+    return Object.hasOwn(overrides, 'maxWorkers');
+}
+
+function defaultMaximumWorkers(overrides: Partial<RunIntegrationExecution>): number | null {
+    return hasMaximumWorkersOverride(overrides) ? overrides.maxWorkers ?? null : null;
+}
+
 function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
     const processModel = overrides.processModel ?? 'worker-pool';
     const scheduling = overrides.scheduling ?? 'concurrent';
@@ -222,6 +238,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
             assignmentPolicy: defaultAssignmentPolicy(overrides),
             dispatchPolicy: defaultDispatchPolicy(overrides),
             hedging: defaultHedging(overrides),
+            maxWorkers: defaultMaximumWorkers(overrides),
             processModel,
             scheduling,
             workDistribution: defaultWorkDistribution(overrides),
@@ -309,7 +326,8 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         selection: { kind: 'all' },
         shard: { index: 1, total: 1 },
         timingCollection: 'profile-default',
-        verbose: false
+        verbose: false,
+        workers: null
     };
 
     return {

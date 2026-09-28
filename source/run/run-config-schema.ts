@@ -205,6 +205,7 @@ export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
             assignmentPolicy: z.optional(workerPoolAssignmentPolicySchema),
             dispatchPolicy: z.optional(workerPoolDispatchPolicySchema),
             hedging: z.optional(workerPoolHedgingSchema),
+            maxWorkers: z.optional(positiveSafeIntegerSchema),
             processModel: z.literal('worker-pool'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ])),
             workDistribution: z.optional(workDistributionSchema),
@@ -262,6 +263,16 @@ export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
 export type RunProjectTimingProfilePolicy = z.infer<typeof timingProfilePolicySchema>;
 export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
 export type RunProjectIntegrationExecution = z.infer<typeof integrationExecutionSchema>;
+export type RunProjectWorkerPoolExecution = Extract<
+    RunProjectIntegrationExecution,
+    { readonly processModel: 'worker-pool'; }
+>;
+
+export function workerPoolProjectExecution(
+    execution: RunProjectIntegrationExecution | undefined
+): RunProjectWorkerPoolExecution | null {
+    return execution?.processModel === 'worker-pool' ? execution : null;
+}
 export type RunProjectIntegrationProfileConfig = z.infer<typeof integrationProfileSchema>;
 export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
 export type RunProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;

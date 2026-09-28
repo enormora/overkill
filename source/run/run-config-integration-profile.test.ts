@@ -47,6 +47,7 @@ export const testNode = createOverkillSuite({
                         dispatchPolicy: 'dynamic-lease',
                         hedging: { mode: 'off' },
                         hostProcess: { kind: 'direct' },
+                        maxWorkers: null,
                         processModel: 'worker-pool',
                         scheduling: 'concurrent',
                         workDistribution: { mode: 'file' },
@@ -97,6 +98,7 @@ export const testNode = createOverkillSuite({
                             execution: {
                                 assignmentPolicy: 'stable',
                                 dispatchPolicy: 'static-assignment',
+                                maxWorkers: 4,
                                 processModel: 'worker-pool',
                                 scheduling: 'serial',
                                 workDistribution: {
@@ -120,6 +122,7 @@ export const testNode = createOverkillSuite({
                     dispatchPolicy: 'dynamic-lease',
                     hedging: { mode: 'off' },
                     hostProcess: { kind: 'direct' },
+                    maxWorkers: null,
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: { mode: 'file' },
@@ -130,6 +133,7 @@ export const testNode = createOverkillSuite({
                     dispatchPolicy: 'static-assignment',
                     hedging: { mode: 'off' },
                     hostProcess: { kind: 'direct' },
+                    maxWorkers: 4,
                     processModel: 'worker-pool',
                     scheduling: 'serial',
                     workDistribution: {
@@ -186,6 +190,7 @@ export const testNode = createOverkillSuite({
                         mode: 'on'
                     },
                     hostProcess: { kind: 'direct' },
+                    maxWorkers: null,
                     processModel: 'worker-pool',
                     scheduling: 'concurrent',
                     workDistribution: { mode: 'file' },

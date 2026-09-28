@@ -1,26 +1,25 @@
 import { invalidRequest } from './run-errors.ts';
 import {
     caseCountPlacementLoad,
-    freshWorkerLifecycle,
-    lifecycleCount,
     lifecycleLaneCounts,
-    reuseWorkerLifecycle,
     workerLifecycles
 } from './worker-pool-lifecycle-lanes.ts';
 import type {
     PlacementAssignment,
     PlacementLane,
+    RunWorkerCountFacts,
     RunWorkerPoolAssignmentPolicy,
     RunWorkerLifecycle,
     WorkUnit
 } from './run-types.ts';
 
 const maximumWorkerCount = 8;
-const mixedLifecycleCount = 2;
 
 export type WorkerPoolLaneInput = {
     readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
+    readonly profileMaximum: number | null;
+    readonly requestedWorkers: number | null;
     readonly units: readonly WorkUnit[];
 };
 type LanePlacementState = {
@@ -46,29 +45,64 @@ type LaneSelectionInput = {
 };
 type UnitLoad = (unit: WorkUnit) => number;
 
-function defaultWorkerCount(availableParallelism: number, unitCount: number): number {
-    if (!Number.isSafeInteger(availableParallelism) || availableParallelism <= 0) {
-        invalidRequest('Available parallelism must be a positive safe integer.');
+function assertPositiveSafeInteger(value: number, label: string): void {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+        invalidRequest(`${label} must be a positive safe integer.`);
     }
-
-    if (unitCount === 0) {
-        return 0;
-    }
-
-    return Math.min(Math.max(availableParallelism - 1, 1), maximumWorkerCount, unitCount);
 }
 
-function hasMixedLifecycles(units: readonly WorkUnit[]): boolean {
-    return lifecycleCount(units, freshWorkerLifecycle) > 0 &&
-        lifecycleCount(units, reuseWorkerLifecycle) > 0;
+function defaultWorkerCount(availableParallelism: number): number {
+    return Math.min(Math.max(availableParallelism - 1, 1), maximumWorkerCount);
 }
 
-function workerCount(input: WorkerPoolLaneInput): number {
-    const baseWorkerCount = defaultWorkerCount(input.availableParallelism, input.units.length);
+function configuredWorkerMaximum(maximum: number | null): number {
+    if (maximum === null) {
+        return Number.POSITIVE_INFINITY;
+    }
 
-    return hasMixedLifecycles(input.units)
-        ? Math.max(baseWorkerCount, mixedLifecycleCount)
-        : baseWorkerCount;
+    assertPositiveSafeInteger(maximum, 'Profile worker maximum');
+
+    return maximum;
+}
+
+function requestedWorkerCount(input: WorkerPoolLaneInput): number {
+    if (input.requestedWorkers === null) {
+        return defaultWorkerCount(input.availableParallelism);
+    }
+
+    assertPositiveSafeInteger(input.requestedWorkers, 'Requested worker count');
+
+    return input.requestedWorkers;
+}
+
+function requiredLifecycleLaneCount(units: readonly WorkUnit[]): number {
+    const lifecycles = new Set(units.map(function toWorkerLifecycle(unit) {
+        return unit.workerLifecycle;
+    }));
+
+    return lifecycles.size;
+}
+
+export function resolveWorkerCount(input: WorkerPoolLaneInput): RunWorkerCountFacts {
+    assertPositiveSafeInteger(input.availableParallelism, 'Available parallelism');
+    const resolved = Math.min(
+        requestedWorkerCount(input),
+        input.availableParallelism,
+        configuredWorkerMaximum(input.profileMaximum),
+        input.units.length
+    );
+    const requiredLanes = requiredLifecycleLaneCount(input.units);
+
+    if (resolved < requiredLanes) {
+        invalidRequest(`Worker-pool execution requires at least ${requiredLanes} workers for its worker lifecycles.`);
+    }
+
+    return {
+        hostMaximum: input.availableParallelism,
+        profileMaximum: input.profileMaximum,
+        requested: input.requestedWorkers,
+        resolved
+    };
 }
 
 function placementLane(index: number): PlacementLane {
@@ -85,19 +119,22 @@ function placementLane(index: number): PlacementLane {
     };
 }
 
-export function workerPoolLanes(input: WorkerPoolLaneInput): readonly PlacementLane[] {
-    return Array.from({ length: workerCount(input) }, function toLane(_value, index) {
+export function workerPoolLanesForCount(workerCount: number): readonly PlacementLane[] {
+    return Array.from({ length: workerCount }, function toLane(_value, index) {
         return placementLane(index);
     });
+}
+
+export function workerPoolLanes(input: WorkerPoolLaneInput): readonly PlacementLane[] {
+    return workerPoolLanesForCount(resolveWorkerCount(input).resolved);
 }
 
 function lanesByLifecycle(
     lanes: readonly PlacementLane[],
     units: readonly WorkUnit[],
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
-    durationUnitLoad: UnitLoad | null
+    unitLoad: UnitLoad
 ): ReadonlyMap<RunWorkerLifecycle, readonly PlacementLane[]> {
-    const counts = lifecycleLaneCounts(units, lanes.length, assignmentPolicy, durationUnitLoad);
+    const counts = lifecycleLaneCounts(units, lanes.length, unitLoad);
     let nextLaneIndex = 0;
 
     return new Map(
@@ -317,9 +354,9 @@ export function workerPoolPlacementAssignments(
     assignmentPolicy: RunWorkerPoolAssignmentPolicy,
     durationUnitLoad: UnitLoad | null = null
 ): readonly PlacementAssignment[] {
-    const lifecycleLanes = lanesByLifecycle(lanes, units, assignmentPolicy, durationUnitLoad);
-    const lifecycleIndexes = new Map<RunWorkerLifecycle, number>();
     const unitLoad = assignmentUnitLoad(assignmentPolicy, durationUnitLoad);
+    const lifecycleLanes = lanesByLifecycle(lanes, units, unitLoad);
+    const lifecycleIndexes = new Map<RunWorkerLifecycle, number>();
     const placementState = createLanePlacementState(unitLoad);
     const assignmentUnits = orderedUnitsForAssignment(units, assignmentPolicy, unitLoad);
 

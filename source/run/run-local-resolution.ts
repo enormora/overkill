@@ -60,7 +60,8 @@ function createLocalResolvedRunFromTestPlan(
         engine: input.engine,
         placementPlan: null,
         projectRoot: input.projectRoot,
-        request: input.request
+        request: input.request,
+        workerCount: null
     }));
 
     return freezeValue({
@@ -113,7 +114,8 @@ function createEmptyShardResolvedRunFromTestPlan(
         engine: input.engine,
         placementPlan: null,
         projectRoot: input.projectRoot,
-        request: input.request
+        request: input.request,
+        workerCount: null
     }));
 
     return freezeValue({

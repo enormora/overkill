@@ -1,21 +1,13 @@
 import {
     emptyWorkUnitResourceConstraints,
     type RunWorkerLifecycle,
-    type RunWorkerPoolAssignmentPolicy,
     type WorkUnit
 } from './run-types.ts';
 
-const mixedLifecycleCount = 2;
-
-export const freshWorkerLifecycle = 'fresh-worker-per-unit';
-export const reuseWorkerLifecycle = 'reuse';
+const freshWorkerLifecycle = 'fresh-worker-per-unit';
+const reuseWorkerLifecycle = 'reuse';
 export const workerLifecycles: readonly RunWorkerLifecycle[] = [ reuseWorkerLifecycle, freshWorkerLifecycle ];
 
-type LifecycleLaneCounts = {
-    readonly freshLanes: number;
-    readonly remainingLanes: number;
-    readonly reuseLanes: number;
-};
 type LifecycleLaneAllocation = {
     readonly freshLoad: number;
     readonly freshUnitCount: number;
@@ -29,7 +21,7 @@ type AssignedLifecycleLanes = {
 };
 type UnitLoad = (unit: WorkUnit) => number;
 
-export function lifecycleCount(units: readonly WorkUnit[], workerLifecycle: RunWorkerLifecycle): number {
+function lifecycleCount(units: readonly WorkUnit[], workerLifecycle: RunWorkerLifecycle): number {
     return units
         .filter(function hasWorkerLifecycle(unit) {
             return unit.workerLifecycle === workerLifecycle;
@@ -65,77 +57,6 @@ function firstUnitWorkerLifecycle(units: readonly WorkUnit[]): RunWorkerLifecycl
     return units.reduce<RunWorkerLifecycle>(function keepFirstLifecycle(firstLifecycle, unit, index) {
         return index === 0 ? unit.workerLifecycle : firstLifecycle;
     }, reuseWorkerLifecycle);
-}
-
-function proportionalExtraLaneLifecycle(
-    units: readonly WorkUnit[],
-    remainingLanes: number,
-    tiedLifecycle: RunWorkerLifecycle
-): RunWorkerLifecycle {
-    const freshUnits = lifecycleCount(units, freshWorkerLifecycle);
-    const reuseUnits = lifecycleCount(units, reuseWorkerLifecycle);
-    const totalUnits = freshUnits + reuseUnits;
-    const freshRemainder = remainingLanes * freshUnits / totalUnits % 1;
-    const reuseRemainder = remainingLanes * reuseUnits / totalUnits % 1;
-
-    if (freshRemainder !== reuseRemainder) {
-        return freshRemainder > reuseRemainder ? freshWorkerLifecycle : reuseWorkerLifecycle;
-    }
-
-    return tiedLifecycle;
-}
-
-function mixedLifecycleBaseLaneCounts(
-    units: readonly WorkUnit[],
-    totalLaneCount: number
-): LifecycleLaneCounts {
-    const freshUnits = lifecycleCount(units, freshWorkerLifecycle);
-    const reuseUnits = lifecycleCount(units, reuseWorkerLifecycle);
-    const remainingLanes = totalLaneCount - mixedLifecycleCount;
-    const unitCount = freshUnits + reuseUnits;
-
-    return {
-        freshLanes: 1 + Math.floor(remainingLanes * freshUnits / unitCount),
-        remainingLanes,
-        reuseLanes: 1 + Math.floor(remainingLanes * reuseUnits / unitCount)
-    };
-}
-
-function mixedLifecycleLaneCounts(
-    units: readonly WorkUnit[],
-    totalLaneCount: number
-): ReadonlyMap<RunWorkerLifecycle, number> {
-    let { freshLanes, remainingLanes, reuseLanes } = mixedLifecycleBaseLaneCounts(units, totalLaneCount);
-
-    if (freshLanes + reuseLanes < totalLaneCount) {
-        const targetLifecycle = proportionalExtraLaneLifecycle(units, remainingLanes, firstUnitWorkerLifecycle(units));
-
-        if (targetLifecycle === freshWorkerLifecycle) {
-            freshLanes += 1;
-        } else {
-            reuseLanes += 1;
-        }
-    }
-
-    return new Map([
-        [ freshWorkerLifecycle, freshLanes ],
-        [ reuseWorkerLifecycle, reuseLanes ]
-    ]);
-}
-
-function stableLifecycleLaneCounts(
-    units: readonly WorkUnit[],
-    totalLaneCount: number
-): ReadonlyMap<RunWorkerLifecycle, number> {
-    if (lifecycleCount(units, freshWorkerLifecycle) === 0) {
-        return new Map([ [ reuseWorkerLifecycle, totalLaneCount ] ]);
-    }
-
-    if (lifecycleCount(units, reuseWorkerLifecycle) === 0) {
-        return new Map([ [ freshWorkerLifecycle, totalLaneCount ] ]);
-    }
-
-    return mixedLifecycleLaneCounts(units, totalLaneCount);
 }
 
 function balancedLifecycleLaneAllocation(
@@ -277,13 +198,4 @@ function balancedLifecycleLaneCounts(
     ]);
 }
 
-export function lifecycleLaneCounts(
-    units: readonly WorkUnit[],
-    totalLaneCount: number,
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
-    unitLoad: UnitLoad | null
-): ReadonlyMap<RunWorkerLifecycle, number> {
-    return assignmentPolicy === 'case-count-balanced' || unitLoad !== null
-        ? balancedLifecycleLaneCounts(units, totalLaneCount, unitLoad ?? caseCountPlacementLoad)
-        : stableLifecycleLaneCounts(units, totalLaneCount);
-}
+export { balancedLifecycleLaneCounts as lifecycleLaneCounts };

@@ -140,6 +140,7 @@ export type {
     RunWorkerPoolAssignmentPolicy,
     RunWorkerPoolDispatchPolicy,
     RunWorkerPoolHedgingPolicy,
+    RunWorkerCountFacts,
     RunWorkerLifecycle,
     SerializedValue,
     DuplicateExecutionSafety,

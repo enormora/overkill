@@ -86,7 +86,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
 
-    const { durationHistory, orderedCases, placementPlan } = await createCollectedExecutionPlan(input);
+    const { durationHistory, orderedCases, placementPlan, workerCount } = await createCollectedExecutionPlan(input);
     const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
     const facts = freezeValue(createRunFacts({
         cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
@@ -96,7 +96,8 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         engine: input.engine,
         placementPlan,
         projectRoot: input.projectRoot,
-        request: input.request
+        request: input.request,
+        workerCount
     }));
 
     return freezeValue({

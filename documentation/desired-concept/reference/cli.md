@@ -76,6 +76,12 @@ selected profile uses `files.sets`, each explicit file must match exactly one
 set. Directory operands require a selected profile file policy, filter the
 profile-discovered file set, and cannot be mixed with file operands.
 
+`overkill run --workers N` requests a positive safe-integer worker count for a
+worker-pool profile. The request replaces automatic sizing, then remains capped
+by host parallelism, the profile's `execution.maxWorkers`, and the available
+work-unit count. Other process models reject the flag. `overkill list` does not
+accept it.
+
 `overkill merge-results` accepts run-record files and directories containing
 run-record files. It validates that all inputs are completed shard records for
 the same selected profile and planned run, then writes a non-replayable merged

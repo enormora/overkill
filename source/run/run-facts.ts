@@ -17,18 +17,22 @@ import type {
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
+    RunWorkerCountFacts,
     TimingCollectionMode
 } from './run-types.ts';
+
+type RunFactsDependencies = Pick<RunOrchestratorDependencies, 'createSeed' | 'node'>;
 
 export type RunFactsInput = {
     readonly cases: readonly RunCaseFacts[];
     readonly config: RunConfig;
-    readonly dependencies: RunOrchestratorDependencies;
+    readonly dependencies: RunFactsDependencies;
     readonly durationHistory: DurationHistoryInput | null;
     readonly engine: RunCommand['engine'];
     readonly placementPlan: PlacementPlan | null;
     readonly projectRoot: string;
     readonly request: RunRequest;
+    readonly workerCount: RunWorkerCountFacts | null;
 };
 
 export type RunCaseFileSet = (file: RunCaseFacts['id']['file']) => string | null;
@@ -118,7 +122,7 @@ export function resolveResourceUsagePolicy(
     };
 }
 
-function resolvedSeed(request: RunRequest, dependencies: RunOrchestratorDependencies): bigint {
+function resolvedSeed(request: RunRequest, dependencies: RunFactsDependencies): bigint {
     return request.seed.value ?? dependencies.createSeed();
 }
 
@@ -162,6 +166,10 @@ function createRunExecutionFacts(
     };
 
     if (profile.execution.processModel === 'worker-pool') {
+        if (input.workerCount === null) {
+            throw new Error('Worker-pool execution facts require worker-count resolution.');
+        }
+
         return {
             ...facts,
             assignmentPolicy: profile.execution.assignmentPolicy,
@@ -169,6 +177,7 @@ function createRunExecutionFacts(
             hedging: profile.execution.hedging,
             hostProcess: hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
+            workerCount: input.workerCount,
             workDistribution: profile.execution.workDistribution,
             workerLifecycle: profile.execution.workerLifecycle
         };
