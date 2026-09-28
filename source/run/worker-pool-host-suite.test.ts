@@ -2,6 +2,7 @@ import { createSuite as createOverkillSuite } from '../packages/engine/engine.en
 import { testNode as workerPoolHostProcessEdgeTestNode } from './worker-pool-host-process-edge.test.ts';
 import { testNode as workerPoolHostProcessTestNode } from './worker-pool-host-process.test.ts';
 import { testNode as workerPoolHostProtocolTestNode } from './worker-pool-host-protocol.test.ts';
+import { testNode as workerPoolHostTaskTestNode } from './worker-pool-host-task.test.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},
@@ -11,7 +12,8 @@ export const testNode = createOverkillSuite({
     children: [
         workerPoolHostProcessEdgeTestNode,
         workerPoolHostProcessTestNode,
-        workerPoolHostProtocolTestNode
+        workerPoolHostProtocolTestNode,
+        workerPoolHostTaskTestNode
     ]
 });
 

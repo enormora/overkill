@@ -19,15 +19,18 @@ import {
 } from './run-orchestrator-dependencies.ts';
 import { createResourceUsageFromSamples } from './resource-usage.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
-import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 import {
     deserializeError,
     deserializeWorkerPoolMessage,
     type WorkerPoolHostCommand,
     workerPoolHostCorrelationId,
-    type WorkerPoolHostMessage,
-    type WorkerPoolTaskWithoutPort
+    type WorkerPoolHostMessage
 } from './worker-pool-host-protocol.ts';
+import {
+    readWorkerPoolTask,
+    readWorkerPoolTaskWithoutPort,
+    type WorkerPoolTaskPort
+} from './worker-pool-host-task.ts';
 import {
     createCompletionSignal,
     type CompletionSignal
@@ -36,7 +39,7 @@ import {
 const microsecondsPerMillisecond = 1000;
 
 type PendingHostTask = {
-    readonly port: WorkerPoolTask['port'];
+    readonly port: WorkerPoolTaskPort;
     readonly reject: (error: unknown) => void;
     readonly resolve: (value: unknown) => void;
 };
@@ -193,24 +196,6 @@ function createHostedWorkerPoolState(): HostedWorkerPoolState {
 
 function sendCommand(child: SupervisedChildProcess | undefined, command: WorkerPoolHostCommand): void {
     child?.send(childProcessEnvelope(workerPoolHostCorrelationId, command));
-}
-
-function taskWithoutPort(task: WorkerPoolTask): WorkerPoolTaskWithoutPort {
-    if (task.kind === 'collect') {
-        return {
-            command: task.command,
-            kind: 'collect'
-        };
-    }
-
-    return {
-        assignedUnits: task.assignedUnits,
-        assignedWork: task.assignedWork,
-        command: task.command,
-        kind: 'run',
-        lane: task.lane,
-        startedAtMilliseconds: task.startedAtMilliseconds
-    };
 }
 
 function createResourceUsage(samples: readonly ResourceUsageSnapshot[]): RunResourceUsage {
@@ -405,22 +390,6 @@ async function activeRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPo
     return currentRuntime;
 }
 
-function isWorkerPoolTask(value: unknown): value is WorkerPoolTask {
-    return typeof value === 'object' &&
-        value !== null &&
-        Object.hasOwn(value, 'kind') &&
-        Object.hasOwn(value, 'port') &&
-        (Reflect.get(value, 'kind') === 'collect' || Reflect.get(value, 'kind') === 'run');
-}
-
-function readWorkerPoolTask(value: unknown): WorkerPoolTask {
-    if (!isWorkerPoolTask(value)) {
-        throw new Error('Hosted worker-pool received an invalid task.');
-    }
-
-    return value;
-}
-
 async function requestHostResourceTracking(
     input: HostedWorkerPoolInput,
     state: HostedWorkerPoolState,
@@ -512,7 +481,7 @@ async function runHostedTask(
             options.signal.addEventListener('abort', abortHostTask, { once: true });
             sendCommand(hostRuntime.child, {
                 kind: 'run-task',
-                task: taskWithoutPort(workerPoolTask),
+                task: readWorkerPoolTaskWithoutPort(workerPoolTask),
                 taskId
             });
         });

@@ -72,14 +72,6 @@ function resourceScopePlacementKey(
     testCase: CollectedRunCase,
     file: string
 ): string | null {
-    if (resource.scope === 'per-run') {
-        return null;
-    }
-
-    if (resource.scope === 'shared-per-worker') {
-        return `resource:worker:${resource.name}`;
-    }
-
     if (resource.scope === 'per-file') {
         return `resource:file:${file}:${resource.name}`;
     }
@@ -89,6 +81,12 @@ function resourceScopePlacementKey(
     }
 
     return null;
+}
+
+function resourceScopeAffinityKey(resource: ResourceSummary): string | null {
+    return resource.scope === 'shared-per-worker'
+        ? `resource:worker:${resource.name}`
+        : null;
 }
 
 function emptyConstraintSets(): ConstraintSets {
@@ -192,6 +190,7 @@ function resourceConstraintSets(
         return applyRequirement(nextSets, resource, requirement);
     }, {
         ...sets,
+        affinityKeys: withOptionalValue(sets.affinityKeys, resourceScopeAffinityKey(resource)),
         singleWorkerKeys: withOptionalValue(
             sets.singleWorkerKeys,
             resourceScopePlacementKey(resource, testCase, file)

@@ -9,6 +9,9 @@ export const workerPoolHostCorrelationId = 'worker-pool-host';
 
 type WorkerPoolCollectTask = Extract<WorkerPoolTask, { readonly kind: 'collect'; }>;
 type WorkerPoolRunTask = Extract<WorkerPoolTask, { readonly kind: 'run'; }>;
+type WorkerPoolAcquireRunResourcesTask = Extract<WorkerPoolTask, { readonly kind: 'acquire-run-resources'; }>;
+type WorkerPoolDisposeRunResourcesTask = Extract<WorkerPoolTask, { readonly kind: 'dispose-run-resources'; }>;
+type WorkerPoolDisposeLaneLifecycleTask = Extract<WorkerPoolTask, { readonly kind: 'dispose-lane-lifecycle'; }>;
 type WorkerPoolCollectTaskWithoutPort = {
     readonly command: WorkerPoolCollectTask['command'];
     readonly kind: 'collect';
@@ -16,12 +19,42 @@ type WorkerPoolCollectTaskWithoutPort = {
 type WorkerPoolRunTaskWithoutPort = {
     readonly assignedUnits: WorkerPoolRunTask['assignedUnits'];
     readonly assignedWork: WorkerPoolRunTask['assignedWork'];
+    readonly boundaryUseCounts: WorkerPoolRunTask['boundaryUseCounts'];
     readonly command: WorkerPoolRunTask['command'];
     readonly kind: 'run';
     readonly lane: WorkerPoolRunTask['lane'];
+    readonly lifecycle: WorkerPoolRunTask['lifecycle'];
+    readonly projectedResources: WorkerPoolRunTask['projectedResources'];
+    readonly runWork: WorkerPoolRunTask['runWork'];
     readonly startedAtMilliseconds: WorkerPoolRunTask['startedAtMilliseconds'];
 };
-export type WorkerPoolTaskWithoutPort = WorkerPoolCollectTaskWithoutPort | WorkerPoolRunTaskWithoutPort;
+type WorkerPoolAcquireRunResourcesTaskWithoutPort = {
+    readonly assignedWork: WorkerPoolAcquireRunResourcesTask['assignedWork'];
+    readonly boundaryUseCounts: WorkerPoolAcquireRunResourcesTask['boundaryUseCounts'];
+    readonly command: WorkerPoolAcquireRunResourcesTask['command'];
+    readonly kind: 'acquire-run-resources';
+    readonly lane: WorkerPoolAcquireRunResourcesTask['lane'];
+    readonly lifecycle: WorkerPoolAcquireRunResourcesTask['lifecycle'];
+};
+type WorkerPoolDisposeRunResourcesTaskWithoutPort = {
+    readonly kind: 'dispose-run-resources';
+    readonly lane: WorkerPoolDisposeRunResourcesTask['lane'];
+    readonly lifecycle: WorkerPoolDisposeRunResourcesTask['lifecycle'];
+};
+type WorkerPoolDisposeLaneLifecycleTaskWithoutPort = {
+    readonly kind: 'dispose-lane-lifecycle';
+    readonly lane: WorkerPoolDisposeLaneLifecycleTask['lane'];
+    readonly lifecycle: WorkerPoolDisposeLaneLifecycleTask['lifecycle'];
+};
+type WorkerPoolTasksWithoutPortByKind = {
+    readonly acquireRunResources: WorkerPoolAcquireRunResourcesTaskWithoutPort;
+    readonly collect: WorkerPoolCollectTaskWithoutPort;
+    readonly disposeLaneLifecycle: WorkerPoolDisposeLaneLifecycleTaskWithoutPort;
+    readonly disposeRunResources: WorkerPoolDisposeRunResourcesTaskWithoutPort;
+    readonly run: WorkerPoolRunTaskWithoutPort;
+};
+
+export type WorkerPoolTaskWithoutPort = WorkerPoolTasksWithoutPortByKind[keyof WorkerPoolTasksWithoutPortByKind];
 
 export type SerializedError = {
     readonly code: string | null;

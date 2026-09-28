@@ -3,9 +3,7 @@ import { testNode as directResourceLifecycleTestNode } from '../../resources/dir
 import { testNode as resourceLifecycleDisposalTestNode } from '../../resources/resource-lifecycle-disposal.test.ts';
 import { testNode as resourceLifecycleTestNode } from '../../resources/resource-lifecycle.test.ts';
 import { testNode as localServiceResourceTestNode } from '../../resources/local-service-resource.test.ts';
-import {
-    testNode as resourceLifecycleCompositionTestNode
-} from '../../run/resource-lifecycle-composition.test.ts';
+import { testNode as resourceLifecycleRunSuiteTestNode } from '../../run/resource-lifecycle-run-suite.test.ts';
 import { testNode as runtimeCompositionTestNode } from '../../resources/runtime-composition.test.ts';
 import {
     testNode as simulatedHttpServerResourceTestNode
@@ -23,7 +21,7 @@ export const testNode = createSuite({
         resourceLifecycleDisposalTestNode,
         resourceLifecycleTestNode,
         localServiceResourceTestNode,
-        resourceLifecycleCompositionTestNode,
+        resourceLifecycleRunSuiteTestNode,
         runtimeCompositionTestNode,
         simulatedHttpServerResourceTestNode,
         resourcesTestNode,

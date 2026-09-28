@@ -2,26 +2,22 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import { workIdentityKey } from '../engine/identity.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
     type StoredRunValue
 } from './supervised-run-state.ts';
 import type {
-    WorkerPoolCommand,
     WorkerPoolMessage,
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
-import {
-    workerPoolExecutionFacts,
-    type WorkerPoolRunRuntime,
-    type WorkerPoolTaskRun
+import type {
+    WorkerPoolRunRuntime,
+    WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
 import type {
     PlacementPlan,
-    PlacementLane,
-    WorkUnit
+    PlacementLane
 } from './run-types.ts';
 import { createWorkDispatcher } from './worker-pool-work-dispatcher.ts';
 import type {
@@ -43,6 +39,13 @@ import {
     recordTaskCrash,
     recordTaskPermissionFailure
 } from './worker-pool-task-events.ts';
+import {
+    acquireWorkerPoolResourceLifecycle,
+    createWorkerPoolBatchRunCommand,
+    disposeWorkerPoolResourceLifecycles,
+    workerPoolWorkHasStarted,
+    type WorkerPoolResourceLifecycle
+} from './worker-pool-resource-lifecycle-execution.ts';
 
 type WorkerPoolTaskChannel = {
     readonly close: () => void;
@@ -62,20 +65,47 @@ type TaskFailureContext = {
 
 type TaskExecutionContext = TaskFailureContext & {
     readonly authorities: HedgedAuthorities;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
     readonly startedAtMilliseconds: number;
 };
 
 type WorkerLoopContext = TaskExecutionContext & {
     readonly completedTaskRuns: CompletedTaskRuns;
     readonly lane: PlacementLane;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
 };
 
 type WorkerTaskRunRequest = {
     readonly channel: WorkerPoolTaskChannel;
     readonly lane: PlacementLane;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
     readonly runtime: WorkerPoolRunRuntime;
     readonly startedAtMilliseconds: number;
     readonly taskRun: WorkerPoolTaskRun;
+};
+
+type FileUnitRunRequest = {
+    readonly lane: PlacementLane;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
+    readonly runtime: WorkerPoolRunRuntime;
+    readonly startedAtMilliseconds: number;
+    readonly taskRun: WorkerPoolTaskRun;
+};
+
+type WorkerPoolExecutionContext = {
+    readonly authorities: HedgedAuthorities;
+    readonly completedTaskRuns: CompletedTaskRuns;
+    readonly crashCount: StoredRunValue<number>;
+    readonly dispatcher: WorkerPoolWorkDispatcher;
+    readonly placementPlan: PlacementPlan;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
+    readonly runtime: WorkerPoolRunRuntime;
+    readonly startedAtMilliseconds: number;
+};
+
+type CreatedWorkerPoolExecutionContext = {
+    readonly completedTaskRuns: readonly WorkerPoolTaskRun[];
+    readonly context: WorkerPoolExecutionContext;
 };
 
 type HostRunnerErrors = ReturnType<NonNullable<WorkerPoolRunRuntime['pool']['takeHostRunnerErrors']>>;
@@ -117,79 +147,10 @@ function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunR
 
     return {
         close() {
+            port1.close();
             port2.close();
         },
         port: port1
-    };
-}
-
-function workerPoolEngine(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['engine'] {
-    if (runtime.resolvedRun.engine.kind === 'instance') {
-        throw new Error('Instance engines are not supported with worker-pool execution. Use a module engine.');
-    }
-
-    return runtime.resolvedRun.engine;
-}
-
-function unitPaths(unit: WorkUnit): readonly string[] {
-    return Array.from(
-        new Set(unit.work.map(function toFile(work) {
-            if (work.case.file === null) {
-                throw new Error('Worker-pool work units require file-backed cases.');
-            }
-
-            return work.case.file;
-        }))
-    );
-}
-
-function memberPaths(members: readonly WorkerPoolLeaseMember[]): readonly string[] {
-    return Array.from(
-        new Set(members.flatMap(function toPaths(member) {
-            return unitPaths(member.unit);
-        }))
-    );
-}
-
-function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit): WorkerPoolCommand {
-    const execution = workerPoolExecutionFacts(runtime.resolvedRun);
-
-    return {
-        collectionTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
-        cwd: runtime.resolvedRun.cwd,
-        definitionLocationCapture: 'disabled',
-        engine: workerPoolEngine(runtime),
-        hardTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
-        hostProcess: execution.hostProcess.kind === 'direct'
-            ? { kind: 'direct' }
-            : {
-                kind: 'child',
-                nodeArguments: Array.from(execution.hostProcess.nodeArguments)
-            },
-        paths: unitPaths(unit),
-        resourceBudgets: runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
-        resourceUsageSamplingIntervalMilliseconds: runtime
-            .resolvedRun
-            .facts
-            .execution
-            .resourceUsagePolicy
-            .samplingIntervalMilliseconds,
-        scheduling: unit.scheduling,
-        testFamily: runtime.resolvedRun.facts.execution.testFamily,
-        timeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.softMilliseconds,
-        workerLifecycle: unit.workerLifecycle
-    };
-}
-
-function createBatchRunCommand(
-    runtime: WorkerPoolRunRuntime,
-    members: readonly [WorkerPoolLeaseMember, ...readonly WorkerPoolLeaseMember[]]
-): WorkerPoolCommand {
-    const [ first ] = members;
-
-    return {
-        ...createRunCommand(runtime, first.unit),
-        paths: memberPaths(members)
     };
 }
 
@@ -208,10 +169,14 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
             return { traceUnit: member.traceUnit, work: member.unit.work };
         }),
         assignedWork,
-        command: createBatchRunCommand(request.runtime, request.taskRun.members),
+        boundaryUseCounts: [],
+        command: createWorkerPoolBatchRunCommand(request.runtime, request.taskRun.members),
         kind: 'run',
         lane: request.lane.id,
+        lifecycle: request.runtime.lifecycle,
         port: request.channel.port,
+        projectedResources: request.resourceLifecycle.projectedResources,
+        runWork: request.resourceLifecycle.runWork,
         startedAtMilliseconds: request.startedAtMilliseconds
     }, {
         name: 'runTask',
@@ -226,16 +191,11 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
     return output;
 }
 
-async function runFileUnit(
-    taskRun: WorkerPoolTaskRun,
-    runtime: WorkerPoolRunRuntime,
-    lane: PlacementLane,
-    startedAtMilliseconds: number
-): Promise<WorkerPoolRunOutput> {
-    const channel = observeTaskMessages(taskRun, runtime);
+async function runFileUnit(request: FileUnitRunRequest): Promise<WorkerPoolRunOutput> {
+    const channel = observeTaskMessages(request.taskRun, request.runtime);
 
     try {
-        return await runWorkerTask({ channel, lane, runtime, startedAtMilliseconds, taskRun });
+        return await runWorkerTask({ ...request, channel });
     } finally {
         channel.close();
     }
@@ -266,7 +226,7 @@ function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime
 
 function pendingMember(member: WorkerPoolLeaseMember, taskRun: WorkerPoolTaskRun): WorkerPoolLeaseMember | null {
     const work = member.unit.work.filter(function caseHasNotStarted(item) {
-        return !taskRun.startedCases.has(workIdentityKey(item));
+        return !workerPoolWorkHasStarted(taskRun.startedCases, item);
     });
     const firstWork = work[0];
 
@@ -451,7 +411,13 @@ async function recordCompletedTaskRun(
     context: TaskExecutionContext
 ): Promise<void> {
     recordBatchStarted(taskRun, context.runtime);
-    const output = await runFileUnit(taskRun, context.runtime, lease.lane, context.startedAtMilliseconds);
+    const output = await runFileUnit({
+        taskRun,
+        lane: lease.lane,
+        resourceLifecycle: context.resourceLifecycle,
+        runtime: context.runtime,
+        startedAtMilliseconds: context.startedAtMilliseconds
+    });
     recordBatchCompleted(taskRun, context.runtime);
     finishCompletedLease(context.dispatcher, lease);
 
@@ -545,29 +511,59 @@ async function runWorkerLoop(context: WorkerLoopContext): Promise<void> {
     }
 }
 
+async function createWorkerPoolExecutionContext(
+    runtime: WorkerPoolRunRuntime,
+    placementPlan: PlacementPlan,
+    startedAtMilliseconds: number
+): Promise<CreatedWorkerPoolExecutionContext> {
+    const completedTaskRuns: WorkerPoolTaskRun[] = [];
+    const resourceLifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan);
+
+    return {
+        completedTaskRuns,
+        context: {
+            authorities: new Map(),
+            completedTaskRuns,
+            crashCount: createStoredRunValue(0),
+            dispatcher: createWorkDispatcher(runtime, placementPlan),
+            placementPlan,
+            resourceLifecycle,
+            runtime,
+            startedAtMilliseconds
+        }
+    };
+}
+
+async function runPlacementLanes(context: WorkerPoolExecutionContext): Promise<void> {
+    await Promise.all(
+        context.placementPlan.lanes.map(async function runLoop(lane) {
+            await runWorkerLoop({ ...context, lane });
+        })
+    );
+}
+
+async function runPlacementLanesWhenActive(context: WorkerPoolExecutionContext): Promise<void> {
+    if (!context.runtime.terminalFailure.read()) {
+        await runPlacementLanes(context);
+    }
+}
+
 export async function executeWorkerPoolUnits(
     runtime: WorkerPoolRunRuntime,
     placementPlan: PlacementPlan,
     startedAtMilliseconds: number
 ): Promise<readonly WorkerPoolTaskRun[]> {
-    const completedTaskRuns: WorkerPoolTaskRun[] = [];
-    const authorities: HedgedAuthorities = new Map();
-    const crashCount = createStoredRunValue(0);
-    const dispatcher = createWorkDispatcher(runtime, placementPlan);
-
-    await Promise.all(
-        placementPlan.lanes.map(async function runLoop(lane) {
-            await runWorkerLoop({
-                completedTaskRuns,
-                authorities,
-                crashCount,
-                dispatcher,
-                lane,
-                runtime,
-                startedAtMilliseconds
-            });
-        })
+    const { completedTaskRuns, context } = await createWorkerPoolExecutionContext(
+        runtime,
+        placementPlan,
+        startedAtMilliseconds
     );
+
+    try {
+        await runPlacementLanesWhenActive(context);
+    } finally {
+        await disposeWorkerPoolResourceLifecycles(runtime, placementPlan, context.resourceLifecycle);
+    }
 
     return completedTaskRuns;
 }

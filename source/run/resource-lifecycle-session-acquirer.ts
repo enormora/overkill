@@ -1,0 +1,302 @@
+import { workIdentityKey } from '../engine/identity.ts';
+import type { TestPlanCase } from '../engine/test-plan.ts';
+import type {
+    AnyResourceDefinition,
+    ResourceContext,
+    ResourceProjectionPayload,
+    RuntimeResourceMap as ResourceMap
+} from '../resources/resources.ts';
+import { resourceEntries } from '../resources/resource-graph.ts';
+import {
+    boundaryFor,
+    initialBoundaryUseCountsFromRecords,
+    type LifecycleBoundary
+} from './resource-lifecycle-boundaries.ts';
+import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
+import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
+import {
+    deserializeProjectedHandle,
+    projectedHandle,
+    serializeProjectedHandle,
+    type ResourceProjectionRecords
+} from './resource-lifecycle-projection.ts';
+import type { ManagedRunnerError } from './resource-lifecycle-state.ts';
+
+type ManagedResourceRecord = {
+    readonly boundary: LifecycleBoundary;
+    readonly dependencyContext: ResourceContext<ResourceMap>;
+    readonly descriptor: AnyResourceDefinition;
+    readonly external: boolean;
+    readonly exposedHandle: unknown;
+    readonly ownerHandle: unknown;
+};
+
+type ManagedResourceAcquisition = Promise<ManagedResourceRecord>;
+
+export type ManagedLifecycleStores = {
+    readonly deleteAcquisition: (boundaryKey: string) => void;
+    readonly deleteRecord: (boundaryKey: string) => void;
+    readonly existingAcquisition: (boundaryKey: string) => Promise<ManagedResourceRecord | null>;
+    readonly existingRecord: (boundaryKey: string) => ManagedResourceRecord | undefined;
+    readonly recordCaseError: (testCase: TestPlanCase, message: string, cause: unknown) => void;
+    readonly remainingBoundaryUses: (boundaryKey: string) => number;
+    readonly rememberAcquisition: (boundaryKey: string, acquisition: ManagedResourceAcquisition) => void;
+    readonly rememberRecord: (boundaryKey: string, record: ManagedResourceRecord) => void;
+    readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
+    readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
+    readonly takeRunErrors: () => readonly ManagedRunnerError[];
+    readonly records: () => readonly ManagedResourceRecord[];
+};
+
+export type ManagedResourceAcquirer = {
+    readonly acquire: (
+        resource: AnyResourceDefinition,
+        testCase: TestPlanCase,
+        signal: AbortSignal
+    ) => Promise<ManagedResourceRecord>;
+};
+
+type ResourceLifecycleStoreOptions = {
+    readonly boundaryUseCounts: readonly {
+        readonly boundaryKey: string;
+        readonly count: number;
+    }[];
+    readonly projectedResources: ResourceProjectionRecords;
+};
+
+function caseKey(testCase: TestPlanCase): string {
+    return workIdentityKey(testCase.workId);
+}
+
+function mutableDependencyContext(): Record<string, unknown> {
+    return {};
+}
+
+export function createManagedStores(options: ResourceLifecycleStoreOptions): ManagedLifecycleStores {
+    const acquisitions = new Map<string, ManagedResourceAcquisition>();
+    const boundaryUseCounts = new Map(initialBoundaryUseCountsFromRecords(options.boundaryUseCounts));
+    const errorsByCase = new Map<string, ManagedRunnerError[]>();
+    const records = new Map<string, ManagedResourceRecord>();
+    const runErrors: ManagedRunnerError[] = [];
+
+    return {
+        deleteAcquisition(boundaryKey) {
+            acquisitions.delete(boundaryKey);
+        },
+        deleteRecord(boundaryKey) {
+            records.delete(boundaryKey);
+        },
+        async existingAcquisition(boundaryKey) {
+            return await (acquisitions.get(boundaryKey) ?? Promise.resolve(null));
+        },
+        existingRecord(boundaryKey) {
+            return records.get(boundaryKey);
+        },
+        recordCaseError(testCase, message, cause) {
+            const key = caseKey(testCase);
+            const errors = errorsByCase.get(key) ?? [];
+
+            errors.push(resourceWrapperLifecycleError(message, cause).runnerError(testCase.id, testCase.workId));
+            errorsByCase.set(key, errors);
+        },
+        remainingBoundaryUses(boundaryKey) {
+            const remaining = (boundaryUseCounts.get(boundaryKey) ?? 0) - 1;
+
+            boundaryUseCounts.set(boundaryKey, remaining);
+
+            return remaining;
+        },
+        rememberAcquisition(boundaryKey, acquisition) {
+            acquisitions.set(boundaryKey, acquisition);
+        },
+        rememberRecord(boundaryKey, record) {
+            records.set(boundaryKey, record);
+        },
+        records() {
+            return Array.from(records.values());
+        },
+        takeCaseErrors(testCase) {
+            const key = caseKey(testCase);
+            const errors = errorsByCase.get(key) ?? [];
+
+            errorsByCase.delete(key);
+
+            return errors;
+        },
+        takePendingRunErrors() {
+            const errors = Array.from(runErrors);
+            runErrors.length = 0;
+
+            return errors;
+        },
+        takeRunErrors() {
+            const errors = Array.from(runErrors);
+
+            runErrors.length = 0;
+
+            return errors;
+        }
+    };
+}
+
+export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStores): ResourceProjectionRecords {
+    return {
+        resources: stores.records().flatMap(function toProjectionRecord(record) {
+            const payload = serializeProjectedHandle(record.descriptor, record.ownerHandle, record.dependencyContext);
+
+            return payload === null
+                ? []
+                : [ { boundaryKey: record.boundary.key, payload } ];
+        })
+    };
+}
+
+function assertCompatibleResource(
+    stores: ManagedLifecycleStores,
+    boundary: LifecycleBoundary,
+    resource: AnyResourceDefinition
+): void {
+    const record = stores.existingRecord(boundary.key);
+
+    if (record !== undefined && record.descriptor !== resource) {
+        throw resourceWrapperLifecycleError(
+            `Resource name "${resource.name}" is used by multiple descriptors in one lifecycle boundary.`,
+            resource
+        );
+    }
+}
+
+function projectionRecords(records: ResourceProjectionRecords): ReadonlyMap<string, ResourceProjectionPayload> {
+    return new Map(records.resources.map(function toEntry(record) {
+        return [ record.boundaryKey, record.payload ];
+    }));
+}
+
+export function createManagedResourceAcquirer(
+    stores: ManagedLifecycleStores,
+    options: ResourceLifecycleStoreOptions
+): ManagedResourceAcquirer {
+    const externalProjections = projectionRecords(options.projectedResources);
+    let acquireResource: ManagedResourceAcquirer['acquire'] = async function acquireBeforeReady() {
+        throw resourceWrapperLifecycleError('Resource lifecycle is not ready.', null);
+    };
+
+    async function acquireDependencyContext(
+        resource: AnyResourceDefinition,
+        testCase: TestPlanCase,
+        signal: AbortSignal
+    ): Promise<ResourceContext<ResourceMap>> {
+        const context = mutableDependencyContext();
+
+        await Promise.all(
+            resourceEntries(resource.dependencies).map(async function acquireDependency([ key, dependency ]) {
+                const record = await acquireResource(dependency, testCase, signal);
+
+                context[key] = record.exposedHandle;
+            })
+        );
+
+        return Object.freeze(context);
+    }
+
+    async function startResource(
+        resource: AnyResourceDefinition,
+        boundary: LifecycleBoundary,
+        testCase: TestPlanCase,
+        signal: AbortSignal
+    ): Promise<ManagedResourceRecord> {
+        const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
+        const ownerHandle = await acquireResourceWithStartupBudget(resource, {
+            dependencies: dependencyContext,
+            signal
+        });
+        const record = {
+            boundary,
+            dependencyContext,
+            descriptor: resource,
+            external: false,
+            exposedHandle: projectedHandle(resource, ownerHandle, dependencyContext),
+            ownerHandle
+        };
+
+        stores.rememberRecord(boundary.key, record);
+
+        return record;
+    }
+
+    async function startExternalResource(
+        resource: AnyResourceDefinition,
+        boundary: LifecycleBoundary,
+        testCase: TestPlanCase,
+        signal: AbortSignal
+    ): Promise<ManagedResourceRecord | null> {
+        const payload = externalProjections.get(boundary.key);
+
+        if (payload === undefined) {
+            return null;
+        }
+
+        const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
+        const record = {
+            boundary,
+            dependencyContext,
+            descriptor: resource,
+            external: true,
+            exposedHandle: deserializeProjectedHandle(resource, payload, dependencyContext),
+            ownerHandle: null
+        };
+
+        stores.rememberRecord(boundary.key, record);
+
+        return record;
+    }
+
+    async function acquireNewResource(
+        resource: AnyResourceDefinition,
+        boundary: LifecycleBoundary,
+        testCase: TestPlanCase,
+        signal: AbortSignal
+    ): Promise<ManagedResourceRecord> {
+        const acquisition = startResource(resource, boundary, testCase, signal);
+
+        stores.rememberAcquisition(boundary.key, acquisition);
+
+        try {
+            return await acquisition;
+        } catch (error: unknown) {
+            stores.deleteAcquisition(boundary.key);
+            throw error;
+        }
+    }
+
+    async function acquire(
+        resource: AnyResourceDefinition,
+        testCase: TestPlanCase,
+        signal: AbortSignal
+    ): Promise<ManagedResourceRecord> {
+        const boundary = boundaryFor(resource, testCase);
+        const existingRecord = stores.existingRecord(boundary.key);
+
+        assertCompatibleResource(stores, boundary, resource);
+
+        if (existingRecord !== undefined) {
+            return existingRecord;
+        }
+
+        const externalRecord = boundary.scope === 'per-run'
+            ? await startExternalResource(resource, boundary, testCase, signal)
+            : null;
+
+        if (externalRecord !== null) {
+            return externalRecord;
+        }
+
+        const existingAcquisition = await stores.existingAcquisition(boundary.key);
+
+        return existingAcquisition ?? await acquireNewResource(resource, boundary, testCase, signal);
+    }
+
+    acquireResource = acquire;
+
+    return { acquire };
+}

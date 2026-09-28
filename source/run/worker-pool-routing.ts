@@ -9,6 +9,7 @@ import type {
 import { createResourceUsageFromSamples } from './resource-usage.ts';
 import type { RunWorkerLifecycle } from './run-types.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
+import { isWorkerPoolTaskKind } from './worker-pool-task-validation.ts';
 
 export type WorkerPoolRoute = {
     readonly lane: string | null;
@@ -49,13 +50,16 @@ function routeForLane(
 function isWorkerPoolTask(value: unknown): value is WorkerPoolTask {
     return typeof value === 'object' &&
         value !== null &&
-        Object.hasOwn(value, 'command') &&
-        (Reflect.get(value, 'kind') === 'collect' || Reflect.get(value, 'kind') === 'run');
+        isWorkerPoolTaskKind(Reflect.get(value, 'kind'));
 }
 
 function taskWorkerLifecycle(task: unknown): RunWorkerLifecycle {
     if (!isWorkerPoolTask(task)) {
         throw new Error('Worker-pool received an invalid task.');
+    }
+
+    if (task.kind === 'dispose-lane-lifecycle' || task.kind === 'dispose-run-resources') {
+        return 'reuse';
     }
 
     return task.command.workerLifecycle;
@@ -66,7 +70,7 @@ function taskLane(task: unknown): string | null {
         throw new Error('Worker-pool received an invalid task.');
     }
 
-    return task.kind === 'run' ? task.lane : null;
+    return task.kind === 'collect' ? null : task.lane;
 }
 
 function routeForTask(routes: readonly WorkerPoolRoute[], task: unknown): WorkerPoolRoute {

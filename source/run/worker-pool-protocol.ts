@@ -16,6 +16,12 @@ import type {
     RunScheduling,
     RunTestFamily
 } from './run-types.ts';
+import type {
+    ResourceBoundaryUseCount
+} from './resource-lifecycle-boundaries.ts';
+import type {
+    ResourceProjectionRecords
+} from './resource-lifecycle-projection.ts';
 
 export type WorkerPoolCommand = {
     readonly collectionTimeoutMilliseconds: number;
@@ -33,6 +39,8 @@ export type WorkerPoolCommand = {
     readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
 };
 
+export const workerPoolRunResourceOwnerLane = 'run-resource-owner';
+
 export type WorkerPoolAssignedUnit = {
     readonly traceUnit: TraceWorkUnitId;
     readonly work: readonly WorkId[];
@@ -44,17 +52,57 @@ type WorkerPoolCollectTask = {
     readonly port: NodeMessagePort;
 };
 
+export type WorkerPoolLifecycleIdentity = {
+    readonly token: string;
+};
+
 export type WorkerPoolRunTask = {
     readonly assignedUnits: readonly WorkerPoolAssignedUnit[];
     readonly assignedWork: readonly WorkId[];
+    readonly boundaryUseCounts: readonly ResourceBoundaryUseCount[];
     readonly command: WorkerPoolCommand;
     readonly kind: 'run';
     readonly lane: string;
+    readonly lifecycle: WorkerPoolLifecycleIdentity;
     readonly port: NodeMessagePort;
+    readonly projectedResources: ResourceProjectionRecords;
+    readonly runWork: readonly WorkId[];
     readonly startedAtMilliseconds: number;
 };
 
-export type WorkerPoolTask = WorkerPoolCollectTask | WorkerPoolRunTask;
+export type WorkerPoolAcquireRunResourcesTask = {
+    readonly assignedWork: readonly WorkId[];
+    readonly boundaryUseCounts: readonly ResourceBoundaryUseCount[];
+    readonly command: WorkerPoolCommand;
+    readonly kind: 'acquire-run-resources';
+    readonly lane: string;
+    readonly lifecycle: WorkerPoolLifecycleIdentity;
+    readonly port: NodeMessagePort;
+};
+
+export type WorkerPoolDisposeRunResourcesTask = {
+    readonly kind: 'dispose-run-resources';
+    readonly lane: string;
+    readonly lifecycle: WorkerPoolLifecycleIdentity;
+    readonly port: NodeMessagePort;
+};
+
+export type WorkerPoolDisposeLaneLifecycleTask = {
+    readonly kind: 'dispose-lane-lifecycle';
+    readonly lane: string;
+    readonly lifecycle: WorkerPoolLifecycleIdentity;
+    readonly port: NodeMessagePort;
+};
+
+type WorkerPoolTasksByKind = {
+    readonly acquireRunResources: WorkerPoolAcquireRunResourcesTask;
+    readonly collect: WorkerPoolCollectTask;
+    readonly disposeLaneLifecycle: WorkerPoolDisposeLaneLifecycleTask;
+    readonly disposeRunResources: WorkerPoolDisposeRunResourcesTask;
+    readonly run: WorkerPoolRunTask;
+};
+
+export type WorkerPoolTask = WorkerPoolTasksByKind[keyof WorkerPoolTasksByKind];
 
 type WorkerPoolOutputMessage = {
     readonly capturedAtMicroseconds: number;
@@ -104,4 +152,13 @@ export type WorkerPoolRunOutput = {
         readonly result: RunResult;
         readonly traceUnit: TraceWorkUnitId;
     }[];
+};
+
+export type WorkerPoolRunResourceOutput = {
+    readonly projectedResources: ResourceProjectionRecords;
+    readonly runnerErrors: readonly RunnerError[];
+};
+
+export type WorkerPoolDisposeResourceOutput = {
+    readonly runnerErrors: readonly RunnerError[];
 };

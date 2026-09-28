@@ -2,7 +2,7 @@ import { createSuite as createOverkillSuite } from '../packages/engine/engine.en
 import { testNode as workerPoolExecutionStateTestNode } from './worker-pool-execution-state.test.ts';
 import { testNode as workerPoolHedgingSuiteTestNode } from './worker-pool-hedging-suite.test.ts';
 import { testNode as workerPoolPendingSplittingTestNode } from './worker-pool-pending-splitting.test.ts';
-import { testNode as workerPoolResourceTrackingTestNode } from './worker-pool-resource-tracking.test.ts';
+import { testNode as workerPoolResourceLifecycleSuiteTestNode } from './worker-pool-resource-lifecycle-suite.test.ts';
 import { testNode as workerPoolResultsTestNode } from './worker-pool-results.test.ts';
 import { testNode as workerPoolWarmLaneDispatchTestNode } from './worker-pool-warm-lane-dispatch.test.ts';
 import { testNode as workerPoolWarmLaneAffinityTestNode } from './worker-pool-warm-lane-affinity.test.ts';
@@ -17,7 +17,7 @@ export const testNode = createOverkillSuite({
         workerPoolExecutionStateTestNode,
         workerPoolHedgingSuiteTestNode,
         workerPoolPendingSplittingTestNode,
-        workerPoolResourceTrackingTestNode,
+        workerPoolResourceLifecycleSuiteTestNode,
         workerPoolResultsTestNode,
         workerPoolWarmLaneDispatchTestNode,
         workerPoolWarmLaneAffinityTestNode,

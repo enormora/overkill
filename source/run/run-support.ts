@@ -66,7 +66,7 @@ export async function finalizeResultWithDurationHistory(
     });
 }
 
-function composeRunRuntimePolicies(
+export function composeRunRuntimePolicies(
     firstPolicy: TestRuntimePolicy | null,
     secondPolicy: TestRuntimePolicy | null
 ): TestRuntimePolicy | null {
