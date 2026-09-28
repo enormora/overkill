@@ -8,6 +8,7 @@ import {
     type TemporaryDirectoryHandle,
     type ResourcesModuleDependencies
 } from './resources.ts';
+import { testNode as resourceScenarioValidationTestNode } from './resource-scenario-validation.test.ts';
 
 type Database = {
     readonly query: (sql: string) => readonly string[];
@@ -467,6 +468,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        resourceScenarioValidationTestNode,
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'defineResource returns an inert frozen descriptor',

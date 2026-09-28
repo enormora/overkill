@@ -4,10 +4,9 @@ import {
     type ResourceMapScenarioSlots,
     type ResourceScenarioOwner
 } from './resource-scenario-binding.ts';
-import {
-    defaultScenarioBindings,
-    type ResourceScenarioSlots,
-    type ScenarioBindingInput
+import type {
+    ResourceScenarioSlots,
+    ScenarioBindingInput
 } from './resource-scenario.ts';
 
 const runtimeDefinitionBrand: unique symbol = Symbol('overkill.runtimeDefinition');
@@ -114,7 +113,7 @@ function createRuntimeDefinition(
 ): RuntimeDefinition {
     const owners = resourceScenarioOwners(definition.resources);
     const slots = scenarioSlots(owners);
-    const resolvedOwners = resolveScenarioOwners(owners, defaultScenarioBindings(slots), bindings);
+    const resolvedOwners = resolveScenarioOwners(owners, {}, bindings);
     const scenario = function bindRuntimeScenario(
         overrides: Readonly<Record<string, string>>
     ): RuntimeDefinition {

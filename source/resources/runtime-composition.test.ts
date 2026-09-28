@@ -265,10 +265,38 @@ function assertScenarioCompositionValidation(scope: TestScope): void {
     });
     const first = defineRuntime({ name: 'first', dimensions: {}, resources: { resource }, requirements: [] });
     const second = defineRuntime({ name: 'second', dimensions: {}, resources: { resource }, requirements: [] });
+    const otherResource = defineResource({
+        name: 'other-scenario-owner',
+        scope: 'per-case',
+        requirements: [],
+        scenarios: {
+            mode: { default: 'default', timing: 'acquire', values: [ 'default', 'alternate' ] }
+        },
+        acquire(context) {
+            return context.scenarios.mode;
+        },
+        dispose: null
+    });
 
+    scope.assert.equal(resolvedRuntimeScenarioOwners({} as RuntimeDefinition).size, 0);
+    scope.assert.equal(
+        first.scenario({ mode: 'alternate' }).scenario({}).scenario({ mode: 'default' }).scenarios.mode.default,
+        'default'
+    );
+    scope.assert.throws(function rejectUnknownScenarioSlot() {
+        Reflect.apply(first.scenario, undefined, [ { missing: 'value' } ]);
+    }, { message: 'Runtime scenario slot "missing" is not declared.' });
     scope.assert.throws(function rejectUnknownScenarioValue() {
         Reflect.apply(first.scenario, undefined, [ { mode: 'missing' } ]);
     }, { message: 'Runtime scenario slot "mode" does not declare value "missing".' });
+    scope.assert.throws(function rejectMultipleScenarioOwners() {
+        defineRuntime({
+            name: 'multiple-owners',
+            dimensions: {},
+            resources: { otherResource, resource },
+            requirements: []
+        });
+    }, { message: 'Scenario slot "mode" is declared by multiple resources.' });
     scope.assert.throws(function rejectDuplicateComposedScenarioSlot() {
         composeRuntimes(first, second);
     }, { message: 'Scenario slot "mode" is attached multiple times.' });

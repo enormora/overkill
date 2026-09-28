@@ -70,10 +70,6 @@ function assertScenarioSlotName(name: string): void {
 function assertScenarioSlot(name: string, slot: ResourceScenarioSlot): void {
     assertScenarioSlotName(name);
 
-    if (slot.values.length === 0) {
-        throw new TypeError(`Scenario slot "${name}" requires at least one value.`);
-    }
-
     const values = new Set(slot.values);
 
     if (values.size !== slot.values.length) {

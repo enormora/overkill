@@ -154,6 +154,45 @@ async function assertRuntimeScenarioSelectsBaseUrl(scope: TestScope): Promise<vo
     await session.disposeOnce({ signal: testSignal() });
 }
 
+async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
+    const simulation = defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        handle() {
+            return Response.json({ status: 'ok' });
+        }
+    });
+    const resource = createSimulatedHttpServerResource({
+        simulation,
+        address: { kind: 'loopback', port: 0 }
+    });
+    const signal = testSignal();
+    const acquisitions = [
+        Promise.resolve(resource.acquire({ dependencies: {}, signal } as never)),
+        Promise.resolve(resource.acquire({ dependencies: {}, scenarios: { api: 1 }, signal } as never))
+    ] as const;
+    const [ withoutScenarios, invalidScenario ] = await Promise.all(acquisitions);
+
+    scope.assert.deepEqual([
+        typeof Reflect.get(withoutScenarios as Readonly<Record<string, unknown>>, 'baseUrl'),
+        typeof Reflect.get(invalidScenario as Readonly<Record<string, unknown>>, 'baseUrl')
+    ], [ 'string', 'string' ]);
+    if (resource.dispose === null) {
+        throw new Error('Expected resource disposal.');
+    }
+
+    const context = { dependencies: {}, scenarios: { api: 'default' as const }, signal };
+
+    scope.assert.deepEqual(
+        await Promise.all([
+            resource.dispose({} as never, context),
+            resource.dispose(withoutScenarios as never, context),
+            resource.dispose(invalidScenario as never, context)
+        ]),
+        [ undefined, undefined, undefined ]
+    );
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/resources/simulated-http-server-resource.test.ts',
@@ -200,6 +239,17 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 await assertRuntimeScenarioSelectsBaseUrl(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'simulated HTTP resources default malformed scenario contexts',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertScenarioContextFallbacks(scope);
 
                 return scope.assert.collect();
             }
