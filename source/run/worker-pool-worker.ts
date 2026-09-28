@@ -1,15 +1,9 @@
-import { createOverkillClock, type OverkillClock } from '../clock/overkill-clock.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import {
     createPlainOutputRenderer,
     type RunResourceUsageTracker
 } from '../packages/engine/engine.entry-point.ts';
-import type {
-    RunTimingSpan,
-    RunTimingSpanKind,
-    TimingSpanStatus
-} from '../engine/run-timings.ts';
 import {
     createRunPermissionRuntimePolicy,
     createRunResourceRuntimePolicy
@@ -38,52 +32,14 @@ import {
     sendCollectedPlan,
     type CollectedWorkerPoolTestPlan
 } from './worker-pool-worker-plan.ts';
+import {
+    createWorkerTimingClock,
+    measureWorkerSpan,
+    postWorkerTimingSpan,
+    type WorkerTimingClock
+} from './worker-pool-worker-timing.ts';
 
 type WorkerExecutionMode = 'concurrent-in-process' | 'serial-in-process';
-
-function workerProcessId(): string {
-    return String(process.pid);
-}
-
-function postTimingSpan(
-    task: WorkerPoolTask,
-    kind: RunTimingSpanKind,
-    status: TimingSpanStatus,
-    startedAtMicroseconds: number,
-    completedAtMicroseconds: number
-): void {
-    const span: RunTimingSpan = {
-        durationMicroseconds: Math.max(0, Math.trunc(completedAtMicroseconds - startedAtMicroseconds)),
-        kind,
-        label: null,
-        processId: workerProcessId(),
-        resource: null,
-        startOffsetMicroseconds: null,
-        status,
-        workerId: task.kind === 'run' ? task.lane : null
-    };
-
-    task.port.postMessage({ kind: 'timing', span }, []);
-}
-
-async function measureWorkerSpan<Value>(
-    task: WorkerPoolTask,
-    wallClock: OverkillClock,
-    kind: RunTimingSpanKind,
-    work: () => Promise<Value>
-): Promise<Value> {
-    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
-
-    try {
-        const value = await work();
-        postTimingSpan(task, kind, 'success', startedAtMicroseconds, wallClock.currentMonotonicMicroseconds);
-
-        return value;
-    } catch (error: unknown) {
-        postTimingSpan(task, kind, 'failure', startedAtMicroseconds, wallClock.currentMonotonicMicroseconds);
-        throw error;
-    }
-}
 
 function executionMode(command: WorkerPoolCommand): WorkerExecutionMode {
     return command.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
@@ -99,7 +55,7 @@ function workerResourceBudgets(command: WorkerPoolCommand): WorkerPoolCommand['r
 }
 
 function createResourceUsageTracker(command: WorkerPoolCommand): RunResourceUsageTracker {
-    return createNodeResourceUsageTracker(createOverkillClock(), {
+    return createNodeResourceUsageTracker(createWorkerTimingClock(), {
         samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
     });
 }
@@ -116,7 +72,7 @@ function readActiveResourceTypes(): readonly string[] {
 
 async function collectAssignmentTestPlan(
     task: WorkerPoolRunTask,
-    wallClock: OverkillClock
+    wallClock: WorkerTimingClock
 ): Promise<CollectedWorkerPoolTestPlan> {
     const bootstrapOutput = suppressOutput();
 
@@ -138,7 +94,7 @@ async function collectAssignmentTestPlan(
 
 async function runAssignment(
     task: WorkerPoolRunTask,
-    wallClock: OverkillClock,
+    wallClock: WorkerTimingClock,
     collectedPlan: CollectedWorkerPoolTestPlan,
     assignedUnit: WorkerPoolAssignedUnit
 ): Promise<WorkerPoolRunOutput['results'][number]> {
@@ -163,18 +119,18 @@ async function runAssignment(
         'worker.assign-work',
         async function executeTimedWorkerAssignment() {
             return await execute(testPlan, {
-        execution: { mode: executionMode(task.command) },
-        outputRenderer: createPlainOutputRenderer(),
-        reporters: [ createWorkerPoolReporter(task) ],
-        resourceBudgets: workerResourceBudgets(task.command),
-        resourceUsageTracker: createResourceUsageTracker(task.command),
-        runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, createRunPermissionRuntimePolicy()),
-        runFacts: {},
-        startedAt: startedAtIso(task.startedAtMilliseconds),
-        timeoutPolicy: {
-            hardTimeoutMilliseconds: task.command.hardTimeoutMilliseconds,
-            timeoutMilliseconds: task.command.timeoutMilliseconds
-        }
+                execution: { mode: executionMode(task.command) },
+                outputRenderer: createPlainOutputRenderer(),
+                reporters: [ createWorkerPoolReporter(task) ],
+                resourceBudgets: workerResourceBudgets(task.command),
+                resourceUsageTracker: createResourceUsageTracker(task.command),
+                runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, createRunPermissionRuntimePolicy()),
+                runFacts: {},
+                startedAt: startedAtIso(task.startedAtMilliseconds),
+                timeoutPolicy: {
+                    hardTimeoutMilliseconds: task.command.hardTimeoutMilliseconds,
+                    timeoutMilliseconds: task.command.timeoutMilliseconds
+                }
             });
         }
     );
@@ -194,7 +150,7 @@ async function runAssignment(
 
 async function runAssignedUnits(
     task: WorkerPoolRunTask,
-    wallClock: OverkillClock,
+    wallClock: WorkerTimingClock,
     collectedPlan: CollectedWorkerPoolTestPlan
 ): Promise<WorkerPoolRunOutput['results']> {
     const results: WorkerPoolRunOutput['results'][number][] = [];
@@ -206,7 +162,7 @@ async function runAssignedUnits(
     return results;
 }
 
-async function runAssignments(task: WorkerPoolRunTask, wallClock: OverkillClock): Promise<WorkerPoolRunOutput> {
+async function runAssignments(task: WorkerPoolRunTask, wallClock: WorkerTimingClock): Promise<WorkerPoolRunOutput> {
     const collectedPlan = await collectAssignmentTestPlan(task, wallClock);
 
     if (task.assignedUnits.length === 0) {
@@ -224,7 +180,7 @@ async function runAssignments(task: WorkerPoolRunTask, wallClock: OverkillClock)
 
 async function runCollectionTask(
     task: Extract<WorkerPoolTask, { readonly kind: 'collect'; }>,
-    wallClock: OverkillClock
+    wallClock: WorkerTimingClock
 ): Promise<WorkerPoolCollection> {
     const outputCapture = captureOutput(task, wallClock);
 
@@ -242,30 +198,41 @@ async function runCollectionTask(
     } finally {
         outputCapture.restore();
         const teardownStartedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
-        postTimingSpan(
-            task,
-            'worker.teardown',
-            'success',
-            teardownStartedAtMicroseconds,
-            wallClock.currentMonotonicMicroseconds
-        );
+        postWorkerTimingSpan({
+            completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
+            kind: 'worker.teardown',
+            startedAtMicroseconds: teardownStartedAtMicroseconds,
+            status: 'success',
+            task
+        });
         task.port.close();
     }
 }
 
-export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolCollection | WorkerPoolRunOutput> {
-    const wallClock = createOverkillClock();
+function recordWorkerStartup(task: WorkerPoolTask, wallClock: WorkerTimingClock): void {
     const createdAtMicroseconds = wallClock.currentMonotonicMicroseconds;
 
-    postTimingSpan(task, 'worker.create', 'success', createdAtMicroseconds, createdAtMicroseconds);
-    postTimingSpan(
-        task,
-        'worker.ready',
-        'success',
-        wallClock.currentMonotonicMicroseconds,
-        wallClock.currentMonotonicMicroseconds
-    );
+    postWorkerTimingSpan({
+        completedAtMicroseconds: createdAtMicroseconds,
+        kind: 'worker.create',
+        startedAtMicroseconds: createdAtMicroseconds,
+        status: 'success',
+        task
+    });
+    const readyAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    postWorkerTimingSpan({
+        completedAtMicroseconds: readyAtMicroseconds,
+        kind: 'worker.ready',
+        startedAtMicroseconds: readyAtMicroseconds,
+        status: 'success',
+        task
+    });
+}
 
+async function runTimedTask(
+    task: WorkerPoolTask,
+    wallClock: WorkerTimingClock
+): Promise<WorkerPoolCollection | WorkerPoolRunOutput> {
     if (task.kind === 'collect') {
         return await runCollectionTask(task, wallClock);
     }
@@ -274,13 +241,21 @@ export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolCollectio
         return await runAssignments(task, wallClock);
     } finally {
         const teardownStartedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
-        postTimingSpan(
-            task,
-            'worker.teardown',
-            'success',
-            teardownStartedAtMicroseconds,
-            wallClock.currentMonotonicMicroseconds
-        );
+        postWorkerTimingSpan({
+            completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
+            kind: 'worker.teardown',
+            startedAtMicroseconds: teardownStartedAtMicroseconds,
+            status: 'success',
+            task
+        });
         task.port.close();
     }
+}
+
+export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolCollection | WorkerPoolRunOutput> {
+    const wallClock = createWorkerTimingClock();
+
+    recordWorkerStartup(task, wallClock);
+
+    return await runTimedTask(task, wallClock);
 }

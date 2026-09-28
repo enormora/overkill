@@ -65,10 +65,10 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
         },
         replayRun: createUnimplementedCommand('replay'),
         replayWitness: createUnimplementedCommand('replay-witness'),
-        async runTests(request, options) {
+        async runTests(request) {
             const loadedRunner = await loadRunner();
 
-            return await loadedRunner.runTests(request, options);
+            return await loadedRunner.runTests(request);
         }
     };
 }
@@ -111,10 +111,10 @@ export const commandLineRunner: CommandLineRunner = {
 
         return await runner.listTests(request);
     },
-    async runTests(request, options) {
+    async runTests(request) {
         const runner = await loadDefaultRunner();
 
-        return await runner.runTests(request, options);
+        return await runner.runTests(request);
     }
 };
 

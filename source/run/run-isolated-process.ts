@@ -22,11 +22,9 @@ import {
     type RunRuntimePolicy
 } from './run-support.ts';
 import {
-    emptyTimingSpanMetadata,
-    type RunTimingMeasurement
-} from './run-timing-collection.ts';
+    collectSupervisedRun
+} from './supervised-run-collection.ts';
 import {
-    collectSupervisedRun,
     executeSupervisedRun,
     runSupervisedCommand
 } from './supervised-run.ts';
@@ -43,10 +41,17 @@ import type {
 } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunTimingMeasurement = NonNullable<NonNullable<Parameters<RunOrchestrator['run']>[1]>['timing']>;
 type CollectedExecution = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
 };
+const emptyCollectionTimingMetadata = Object.freeze({
+    label: null,
+    processId: null,
+    resource: null,
+    workerId: null
+});
 
 type ExecutionResolutionInput = {
     readonly allowEmptySelection: boolean;
@@ -101,7 +106,7 @@ async function createWorkerPoolResolvedRun(
 ): Promise<ResolvedRun> {
     const collection = await (timing?.measureAsync(
         'collection.import',
-        emptyTimingSpanMetadata(),
+        emptyCollectionTimingMetadata,
         async function collectTimedWorkerPoolRun() {
             return await collectWorkerPoolRun(
                 createWorkerPoolCommand(command, 'enabled', input.profile, input.files),
@@ -135,7 +140,7 @@ async function createSupervisedResolvedRun(
 ): Promise<ResolvedRun> {
     const collection = await (timing?.measureAsync(
         'collection.import',
-        emptyTimingSpanMetadata(),
+        emptyCollectionTimingMetadata,
         async function collectTimedSupervisedRun() {
             return await collectSupervisedRun(
                 createSupervisedCollectCommand(command, input.profile, input.files),

@@ -1,5 +1,4 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
-import { createOverkillClock } from '../clock/overkill-clock.ts';
 import type { RunCommand, RunConfig, RunOrchestrator, RunProfileConfig } from './run-types.ts';
 import type {
     LoadedRunConfig,
@@ -29,7 +28,7 @@ import {
 import { renderResolvedRunList } from './run-list-renderer.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import {
-    createRunTimingMeasurement,
+    createSystemRunTimingMeasurement,
     emptyTimingSpanMetadata,
     type RunInvocationTimingOptions
 } from './run-timing-collection.ts';
@@ -40,10 +39,7 @@ export type CommandLineRunner = {
     readonly listTests: (request: CommandLineListTestsRequest) => Promise<CommandLineRunnerResult>;
     readonly replayRun: CommandLineCommand;
     readonly replayWitness: CommandLineCommand;
-    readonly runTests: (
-        request: CommandLineRunTestsRequest,
-        options?: RunInvocationTimingOptions
-    ) => Promise<CommandLineRunnerResult>;
+    readonly runTests: (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>;
 };
 
 export type CommandLineRunnerResult = CommandLineRunnerResultShape;
@@ -228,8 +224,8 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
         },
         replayRun: createUnimplementedCommand('replay'),
         replayWitness: createUnimplementedCommand('replay-witness'),
-        async runTests(request, options) {
-            const timing = options?.timing ?? createRunTimingMeasurement(createOverkillClock());
+        async runTests(request) {
+            const timing = createSystemRunTimingMeasurement();
 
             try {
                 const loadedConfig = await timing.measureAsync(

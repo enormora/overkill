@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { performance } from 'node:perf_hooks';
 import type {
     RunResourceUsage,
     RunResourceUsageTracker,
@@ -11,23 +10,15 @@ import {
     envelopeMessage
 } from './child-process-protocol.ts';
 import {
-    childRoleArgument,
-    workerPoolHostRole
-} from './child-process-roles.ts';
-import {
     createHostRunnerErrors,
     type CreatedWorkerPool,
     type HostRunnerErrors,
     type WorkerPoolCreationOptions,
     type WorkerPoolHostOutputSink,
-    type WorkerPoolHostProcessStartOptions,
     type WorkerPoolHostProcessStarter
 } from './run-orchestrator-dependencies.ts';
 import { createResourceUsageFromSamples } from './resource-usage.ts';
-import {
-    sanitizedChildEnvironment,
-    type SupervisedChildProcess
-} from './supervised-child-process.ts';
+import type { SupervisedChildProcess } from './supervised-child-process.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 import {
     deserializeError,
@@ -37,22 +28,12 @@ import {
     type WorkerPoolHostMessage,
     type WorkerPoolTaskWithoutPort
 } from './worker-pool-host-protocol.ts';
+import {
+    createCompletionSignal,
+    type CompletionSignal
+} from './worker-pool-host-signal.ts';
 
-type WorkerPoolHostForkOptions = {
-    readonly cwd: string;
-    readonly env: Readonly<Record<string, string>>;
-    readonly execArgv: readonly string[];
-    readonly stdio: readonly ['ignore', 'pipe', 'pipe', 'ipc'];
-};
-
-type WorkerPoolHostProcessStarterDependencies = {
-    readonly childProcessEntryPoint: string;
-    readonly fork: (
-        modulePath: string,
-        childArguments: readonly string[],
-        options: WorkerPoolHostForkOptions
-    ) => SupervisedChildProcess;
-};
+const microsecondsPerMillisecond = 1000;
 
 type PendingHostTask = {
     readonly port: WorkerPoolTask['port'];
@@ -62,12 +43,6 @@ type PendingHostTask = {
 
 type HostResourceUsageTracker = RunResourceUsageTracker & {
     readonly waitForStart: () => Promise<void>;
-};
-
-type CompletionSignal = {
-    readonly promise: Promise<void>;
-    readonly reject: (error: Error) => void;
-    readonly resolve: () => void;
 };
 
 type HostRuntime = {
@@ -134,31 +109,17 @@ type RuntimeFailureContext = {
     readonly state: HostedWorkerPoolState;
 };
 
+type RuntimeObservationInput = RuntimeFailureContext & {
+    readonly input: HostedWorkerPoolInput;
+    readonly startupStartedAtMicroseconds: number | null;
+};
+
 function nextTaskId(): string {
     return `worker-pool-task-${randomUUID()}`;
 }
 
-function signalNotReady(): never {
-    throw new Error('Hosted worker-pool signal was used before initialization.');
-}
-
-function createCompletionSignal(): CompletionSignal {
-    let resolveSignal: () => void = signalNotReady;
-    let rejectSignal: (error: Error) => void = signalNotReady;
-    const promise = new Promise<void>(function createSignal(resolve, reject) {
-        resolveSignal = resolve;
-        rejectSignal = reject;
-    });
-
-    return {
-        promise,
-        reject(error) {
-            rejectSignal(error);
-        },
-        resolve() {
-            resolveSignal();
-        }
-    };
+function currentPerformanceMicroseconds(): number {
+    return Math.trunc(performance.now() * microsecondsPerMillisecond);
 }
 
 function createStoredValue<Value>(initialValue: Value): StoredValue<Value> {
@@ -362,10 +323,58 @@ function handleRuntimeFailure(
     context.finished.resolve();
 }
 
+function recordHostStartup(
+    input: HostedWorkerPoolInput,
+    child: SupervisedChildProcess,
+    startedAtMicroseconds: number | null
+): void {
+    if (startedAtMicroseconds !== null) {
+        input.options.timing?.record({
+            completedAtMicroseconds: currentPerformanceMicroseconds(),
+            kind: 'host.entry-startup',
+            metadata: {
+                label: null,
+                processId: String(child.pid ?? ''),
+                resource: null,
+                workerId: null
+            },
+            startedAtMicroseconds,
+            status: 'success'
+        });
+    }
+}
+
+function observeRuntime(
+    observation: RuntimeObservationInput
+): void {
+    observation.child.on('message', function receiveMessage(message: unknown) {
+        const hostMessage = envelopeMessage<WorkerPoolHostMessage>(message, workerPoolHostCorrelationId);
+
+        if (hostMessage?.kind === 'configured') {
+            recordHostStartup(observation.input, observation.child, observation.startupStartedAtMicroseconds);
+            observation.configured.resolve();
+        } else if (hostMessage !== null) {
+            handleHostMessage(observation.state, hostMessage);
+        }
+    });
+    observeChildOutput(observation.child, function readOutputSink() {
+        return observation.state.outputSink.read();
+    });
+    observation.child.on('error', function rejectTasks(error: Error) {
+        handleRuntimeFailure(observation, error);
+    });
+    observation.child.on('exit', function rejectTasksAfterExit() {
+        handleRuntimeFailure(
+            observation,
+            new Error('Hosted worker-pool process exited.')
+        );
+    });
+}
+
 function createRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPoolState): HostRuntime {
     const startupStartedAtMicroseconds = input.options.timing === undefined || input.options.timing === null
         ? null
-        : Math.trunc(performance.now() * 1000);
+        : currentPerformanceMicroseconds();
     const child = input.startWorkerPoolHost({
         cwd: input.options.cwd,
         environmentVariables: input.environmentVariables,
@@ -374,42 +383,13 @@ function createRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPoolStat
     });
     const configured = createCompletionSignal();
     const finished = createCompletionSignal();
-    const failureContext = { child, configured, finished, state };
-
-    child.on('message', function receiveMessage(message: unknown) {
-        const hostMessage = envelopeMessage<WorkerPoolHostMessage>(message, workerPoolHostCorrelationId);
-
-        if (hostMessage?.kind === 'configured') {
-            if (startupStartedAtMicroseconds !== null) {
-                input.options.timing?.record(
-                    'host.entry-startup',
-                    'success',
-                    startupStartedAtMicroseconds,
-                    Math.trunc(performance.now() * 1000),
-                    {
-                        label: null,
-                        processId: String(child.pid ?? ''),
-                        resource: null,
-                        workerId: null
-                    }
-                );
-            }
-            configured.resolve();
-        } else if (hostMessage !== null) {
-            handleHostMessage(state, hostMessage);
-        }
-    });
-    observeChildOutput(child, function readOutputSink() {
-        return state.outputSink.read();
-    });
-    child.on('error', function rejectTasks(error: Error) {
-        handleRuntimeFailure(failureContext, error);
-    });
-    child.on('exit', function rejectTasksAfterExit() {
-        handleRuntimeFailure(
-            failureContext,
-            new Error('Hosted worker-pool process exited.')
-        );
+    observeRuntime({
+        child,
+        configured,
+        finished,
+        input,
+        startupStartedAtMicroseconds,
+        state
     });
     sendCommand(child, { kind: 'configure', options: input.options });
 
@@ -539,23 +519,6 @@ async function runHostedTask(
     } finally {
         options.signal.removeEventListener('abort', abortHostTask);
     }
-}
-
-export function createWorkerPoolHostProcessStarter(
-    dependencies: WorkerPoolHostProcessStarterDependencies
-): WorkerPoolHostProcessStarter {
-    return function startWorkerPoolHost(options: WorkerPoolHostProcessStartOptions) {
-        return dependencies.fork(
-            dependencies.childProcessEntryPoint,
-            [ childRoleArgument(workerPoolHostRole) ],
-            {
-                cwd: options.cwd,
-                env: sanitizedChildEnvironment(options.environmentVariables, options.testFamily),
-                execArgv: Array.from(options.nodeArguments),
-                stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
-            }
-        );
-    };
 }
 
 export function createHostedWorkerPool(input: HostedWorkerPoolInput): CreatedWorkerPool {

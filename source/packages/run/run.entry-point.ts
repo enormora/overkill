@@ -74,6 +74,7 @@ export type {
     RunIfMainRootOptions
 } from '../../run/run-if-main-options.ts';
 export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
+export type { RunInvocationTimingOptions } from '../../run/run-timing-collection.ts';
 export type { RuntimeDimensions, RuntimeId, WorkId, WorkloadId } from '../../engine/identity.ts';
 export type {
     DynamicWorkUnitId,

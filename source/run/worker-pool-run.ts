@@ -26,14 +26,18 @@ import {
 import {
     createWorkerPoolRuntime,
     workerPoolPlacementPlan,
-    type WorkerPoolCollectionResult
+    type WorkerPoolCollectionResult,
+    type WorkerPoolRuntimeInput
 } from './worker-pool-runtime.ts';
-import {
-    emptyTimingSpanMetadata,
-    type RunTimingMeasurement
-} from './run-timing-collection.ts';
 
 type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
+type RunTimingMeasurement = NonNullable<NonNullable<WorkerPoolRuntimeInput['timing']>>;
+const emptyWorkerPoolTimingMetadata = Object.freeze({
+    label: null,
+    processId: null,
+    resource: null,
+    workerId: null
+});
 
 type WorkerPoolExecutionOptions = {
     readonly finalizeResult: RunResultFinalizer;
@@ -45,16 +49,24 @@ type WorkerPoolExecutionState = WorkerPoolExecutionOptions & {
     readonly createdPool: CreatedWorkerPool | null;
 };
 
+type WorkerPoolRunRuntime = Awaited<ReturnType<typeof createWorkerPoolRuntime>>;
+
 export async function collectWorkerPoolRun(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement | null = null
 ): Promise<WorkerPoolCollectionResult> {
-    return await collectInWorkerPool(command, dependencies, createSupervisedRunState(), null, timing);
+    return await collectInWorkerPool({
+        command,
+        createdPool: null,
+        dependencies,
+        runState: createSupervisedRunState(),
+        timing
+    });
 }
 
 async function releaseRuntimePool(
-    runtime: Awaited<ReturnType<typeof createWorkerPoolRuntime>>
+    runtime: WorkerPoolRunRuntime
 ): Promise<void> {
     runtime.pool.setHostOutputSink?.(null);
 
@@ -63,8 +75,25 @@ async function releaseRuntimePool(
     }
 }
 
+async function releaseTimedRuntimePool(
+    runtime: WorkerPoolRunRuntime,
+    timing: RunTimingMeasurement | null
+): Promise<void> {
+    if (runtime.destroyPool) {
+        await (timing?.measureAsync(
+            'worker-pool.shutdown',
+            emptyWorkerPoolTimingMetadata,
+            async function releaseTimedWorkerPoolRuntime() {
+                await releaseRuntimePool(runtime);
+            }
+        ) ?? releaseRuntimePool(runtime));
+    } else {
+        await releaseRuntimePool(runtime);
+    }
+}
+
 async function finishExecution(
-    runtime: Awaited<ReturnType<typeof createWorkerPoolRuntime>>,
+    runtime: WorkerPoolRunRuntime,
     resolvedRun: ResolvedRun,
     startedAtMilliseconds: number,
     startedAtMicroseconds: number
@@ -79,16 +108,12 @@ async function finishExecution(
     );
 }
 
-async function executeWorkerPoolRunWithState(
+async function createRuntime(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
     state: WorkerPoolExecutionState
-): Promise<RunResult> {
-    if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
-        return await createEmptyWorkerPoolResult(resolvedRun, dependencies, state.collectionRunState);
-    }
-
-    const runtime = await createWorkerPoolRuntime({
+): Promise<WorkerPoolRunRuntime> {
+    return await createWorkerPoolRuntime({
         collectionRunnerErrors: resolvedRun.collectionRunnerErrors,
         createdPool: state.createdPool,
         dependencies,
@@ -99,31 +124,44 @@ async function executeWorkerPoolRunWithState(
         runState: state.collectionRunState,
         timing: state.timing
     });
+}
+
+async function finishExecutionWithRuntime(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    state: WorkerPoolExecutionState,
+    runtime: WorkerPoolRunRuntime
+): Promise<RunResult> {
     const startedAtMilliseconds = dependencies.wallClock.currentEpochMilliseconds;
     const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    const readyAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+
+    state.timing?.record({
+        completedAtMicroseconds: readyAtMicroseconds,
+        kind: 'worker-pool.ready',
+        metadata: emptyWorkerPoolTimingMetadata,
+        startedAtMicroseconds: readyAtMicroseconds,
+        status: 'success'
+    });
+
+    return await finishExecution(runtime, resolvedRun, startedAtMilliseconds, startedAtMicroseconds);
+}
+
+async function executeWorkerPoolRunWithState(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    state: WorkerPoolExecutionState
+): Promise<RunResult> {
+    if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
+        return await createEmptyWorkerPoolResult(resolvedRun, dependencies, state.collectionRunState);
+    }
+
+    const runtime = await createRuntime(resolvedRun, dependencies, state);
 
     try {
-        state.timing?.record(
-            'worker-pool.ready',
-            'success',
-            dependencies.wallClock.currentMonotonicMicroseconds,
-            dependencies.wallClock.currentMonotonicMicroseconds,
-            emptyTimingSpanMetadata()
-        );
-
-        return await finishExecution(runtime, resolvedRun, startedAtMilliseconds, startedAtMicroseconds);
+        return await finishExecutionWithRuntime(resolvedRun, dependencies, state, runtime);
     } finally {
-        if (runtime.destroyPool) {
-            await (state.timing?.measureAsync(
-                'worker-pool.shutdown',
-                emptyTimingSpanMetadata(),
-                async function releaseTimedWorkerPoolRuntime() {
-                    await releaseRuntimePool(runtime);
-                }
-            ) ?? releaseRuntimePool(runtime));
-        } else {
-            await releaseRuntimePool(runtime);
-        }
+        await releaseTimedRuntimePool(runtime, state.timing);
     }
 }
 
@@ -139,6 +177,21 @@ export async function executeWorkerPoolRun(
     });
 }
 
+async function destroyCommandPool(
+    pool: CreatedWorkerPool | null,
+    timing: RunTimingMeasurement | null
+): Promise<void> {
+    if (pool !== null) {
+        await (timing?.measureAsync(
+            'worker-pool.shutdown',
+            emptyWorkerPoolTimingMetadata,
+            async function destroyTimedCollectionWorkerPool() {
+                await pool.destroy();
+            }
+        ) ?? pool.destroy());
+    }
+}
+
 export async function runWorkerPoolCommand(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
@@ -146,18 +199,19 @@ export async function runWorkerPoolCommand(
     options: WorkerPoolExecutionOptions
 ): Promise<RunResult> {
     const collectionRunState = createSupervisedRunState();
+    const timingOption = options.timing === null ? {} : { timing: options.timing };
     const poolOptions = {
         cwd: command.cwd,
         hostProcess: command.hostProcess,
         testFamily: command.testFamily,
-        ...(options.timing === null ? {} : { timing: options.timing }),
+        ...timingOption,
         workerCount: dependencies.availableParallelism,
         workerLifecycle: command.workerLifecycle
     };
     const pool = command.hostProcess.kind === 'child'
         ? options.timing?.measure(
             'worker-pool.start',
-            emptyTimingSpanMetadata(),
+            emptyWorkerPoolTimingMetadata,
             function createTimedHostedWorkerPool() {
                 return dependencies.createWorkerPool(poolOptions);
             }
@@ -165,7 +219,13 @@ export async function runWorkerPoolCommand(
         : null;
 
     try {
-        const collection = await collectInWorkerPool(command, dependencies, collectionRunState, pool, options.timing);
+        const collection = await collectInWorkerPool({
+            command,
+            createdPool: pool,
+            dependencies,
+            runState: collectionRunState,
+            timing: options.timing
+        });
 
         return await executeWorkerPoolRunWithState(
             await createResolvedRun(collection),
@@ -177,14 +237,6 @@ export async function runWorkerPoolCommand(
             }
         );
     } finally {
-        if (pool !== null) {
-            await (options.timing?.measureAsync(
-                'worker-pool.shutdown',
-                emptyTimingSpanMetadata(),
-                async function destroyTimedCollectionWorkerPool() {
-                    await pool.destroy();
-                }
-            ) ?? pool.destroy());
-        }
+        await destroyCommandPool(pool, options.timing);
     }
 }

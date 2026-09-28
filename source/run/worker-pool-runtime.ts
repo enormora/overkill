@@ -106,7 +106,7 @@ export type WorkerPoolRunRuntime = {
     readonly timing?: RunTimingMeasurement | null;
 };
 
-type WorkerPoolRuntimeInput = {
+export type WorkerPoolRuntimeInput = {
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly createdPool: CreatedWorkerPool | null;
     readonly dependencies: RunOrchestratorDependencies;
@@ -232,20 +232,24 @@ function placementLaneLifecycles(plan: PlacementPlan): ReadonlyMap<string, RunWo
     return laneLifecycles;
 }
 
-function workerPoolOptions(
-    resolvedRun: ResolvedRun,
-    execution: WorkerPoolExecutionFacts,
-    workerCount: number,
-    workerLifecycle: RunWorkerLifecycle,
-    timing: RunTimingMeasurement | null
-): WorkerPoolCreationOptions {
+type WorkerPoolOptionsInput = {
+    readonly execution: WorkerPoolExecutionFacts;
+    readonly resolvedRun: ResolvedRun;
+    readonly timing: RunTimingMeasurement | null;
+    readonly workerCount: number;
+    readonly workerLifecycle: RunWorkerLifecycle;
+};
+
+function workerPoolOptions(input: WorkerPoolOptionsInput): WorkerPoolCreationOptions {
+    const timingOption = input.timing === null ? {} : { timing: input.timing };
+
     return {
-        cwd: resolvedRun.cwd,
-        hostProcess: copiedHostProcess(execution),
-        testFamily: execution.testFamily,
-        ...(timing === null ? {} : { timing }),
-        workerCount,
-        workerLifecycle
+        cwd: input.resolvedRun.cwd,
+        hostProcess: copiedHostProcess(input.execution),
+        testFamily: input.execution.testFamily,
+        ...timingOption,
+        workerCount: input.workerCount,
+        workerLifecycle: input.workerLifecycle
     };
 }
 
@@ -260,11 +264,23 @@ function createEmptyExecutionPool(
             emptyTimingSpanMetadata(),
             function createTimedEmptyWorkerPool() {
                 return input.dependencies.createWorkerPool(
-                    workerPoolOptions(input.resolvedRun, execution, 0, execution.workerLifecycle, input.timing ?? null)
+                    workerPoolOptions({
+                        execution,
+                        resolvedRun: input.resolvedRun,
+                        timing: input.timing ?? null,
+                        workerCount: 0,
+                        workerLifecycle: execution.workerLifecycle
+                    })
                 );
             }
         ) ?? input.dependencies.createWorkerPool(
-            workerPoolOptions(input.resolvedRun, execution, 0, execution.workerLifecycle, input.timing ?? null)
+            workerPoolOptions({
+                execution,
+                resolvedRun: input.resolvedRun,
+                timing: input.timing ?? null,
+                workerCount: 0,
+                workerLifecycle: execution.workerLifecycle
+            })
         )
     };
 }
@@ -296,21 +312,21 @@ function createLaneExecutionPool(
                 'worker-pool.start',
                 emptyTimingSpanMetadata(),
                 function createTimedLaneWorkerPool() {
-                    return input.dependencies.createWorkerPool(workerPoolOptions(
-                        input.resolvedRun,
+                    return input.dependencies.createWorkerPool(workerPoolOptions({
                         execution,
-                        1,
-                        workerLifecycle,
-                        input.timing ?? null
-                    ));
+                        resolvedRun: input.resolvedRun,
+                        timing: input.timing ?? null,
+                        workerCount: 1,
+                        workerLifecycle
+                    }));
                 }
-            ) ?? input.dependencies.createWorkerPool(workerPoolOptions(
-                input.resolvedRun,
+            ) ?? input.dependencies.createWorkerPool(workerPoolOptions({
                 execution,
-                1,
-                workerLifecycle,
-                input.timing ?? null
-            )),
+                resolvedRun: input.resolvedRun,
+                timing: input.timing ?? null,
+                workerCount: 1,
+                workerLifecycle
+            })),
             lane: lane.id,
             workerLifecycle
         };
