@@ -1473,6 +1473,9 @@ type RunTimingSpan = {
     readonly status: TimingSpanStatus;
 };
 
+// Parent-observed spans use a parent-relative start offset.
+// Child-process and worker-local observations use null and expose duration only.
+
 type RunTimingAggregate = {
     readonly kind: RunTimingSpanKind;
     readonly count: number;

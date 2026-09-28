@@ -10,6 +10,7 @@ import type {
 } from '../engine/identity.ts';
 import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
@@ -540,9 +541,9 @@ export type ResolvedRun = {
 };
 
 export type RunOrchestrator = {
-    readonly resolve: (command: RunCommand) => Promise<ResolvedRun>;
-    readonly run: (command: RunCommand) => Promise<RunResult>;
-    readonly runWithReporterDelivery: (command: RunCommand) => Promise<{
+    readonly resolve: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>;
+    readonly run: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>;
+    readonly runWithReporterDelivery: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<{
         readonly deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
         readonly result: RunResult;
         readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];

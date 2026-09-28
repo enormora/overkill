@@ -30,6 +30,7 @@ import type {
     RunWorkGroup
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import { copyRunSelection } from './run-selection-filters.ts';
 import { validateRunResourceUsagePolicy } from './run-validation.ts';
 import {
@@ -53,13 +54,15 @@ export async function readRunDurationHistory(
 export async function finalizeResultWithDurationHistory(
     dependencies: RunOrchestratorDependencies,
     resolvedRun: ResolvedRun,
-    result: RunResult
+    result: RunResult,
+    timing: RunTimingMeasurement | null = null
 ): Promise<RunResult> {
     return await resultWithUpdatedDurationHistoryAndTiming(
         dependencies.durationHistoryStore,
         resolvedRun,
         result,
-        dependencies.wallClock.currentEpochMilliseconds
+        dependencies.wallClock.currentEpochMilliseconds,
+        timing
     );
 }
 

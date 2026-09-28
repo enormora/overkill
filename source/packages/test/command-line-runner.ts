@@ -4,6 +4,7 @@ import {
     multioption,
     oneOf,
     option,
+    parse as parseCommandLine,
     restPositionals,
     runSafely,
     string,
@@ -17,6 +18,12 @@ import type {
     CommandLineRunner,
     CommandLineRunnerResult
 } from '../run/command-line.entry-point.ts';
+import { createOverkillClock } from '../../clock/overkill-clock.ts';
+import {
+    createRunTimingMeasurement,
+    emptyTimingSpanMetadata,
+    type RunTimingMeasurement
+} from '../../run/run-timing-collection.ts';
 import {
     all,
     contains,
@@ -444,7 +451,8 @@ const sharedCommandArguments = {
 
 function createOverkillCommand(
     loadRunner: () => Promise<CommandLineRunner>,
-    cwd: string
+    cwd: string,
+    timing: RunTimingMeasurement
 ): Parameters<typeof runSafely>[0] {
     const runCommand = command({
         name: 'run',
@@ -464,7 +472,7 @@ function createOverkillCommand(
         async handler(args: RunCommandArguments) {
             const runner = await loadRunner();
 
-            return await runner.runTests(createRunTestsRequest(args, cwd));
+            return await runner.runTests(createRunTestsRequest(args, cwd), { timing });
         }
     });
     const listCommand = command({
@@ -556,8 +564,15 @@ function isCmdTsRunSuccess(result: unknown): result is CmdTsRunSuccess {
 }
 
 async function runWithCmdTs(request: OverkillCommandLineRunRequest): Promise<CommandLineExitCode> {
+    const timing = createRunTimingMeasurement(createOverkillClock());
+    const commandLine = createOverkillCommand(request.loadRunner, request.cwd, timing);
+
+    await timing.measureAsync('command.parse', emptyTimingSpanMetadata(), async function parseOverkillCommandLine() {
+        await parseCommandLine(commandLine, Array.from(request.arguments));
+    });
+
     const result: unknown = await runSafely(
-        createOverkillCommand(request.loadRunner, request.cwd),
+        commandLine,
         Array.from(request.arguments)
     );
 

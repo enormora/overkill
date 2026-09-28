@@ -1,4 +1,5 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
+import { createOverkillClock } from '../clock/overkill-clock.ts';
 import type { RunCommand, RunConfig, RunOrchestrator, RunProfileConfig } from './run-types.ts';
 import type {
     LoadedRunConfig,
@@ -27,6 +28,11 @@ import {
 } from './run-reporter-resolution.ts';
 import { renderResolvedRunList } from './run-list-renderer.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
+import {
+    createRunTimingMeasurement,
+    emptyTimingSpanMetadata,
+    type RunInvocationTimingOptions
+} from './run-timing-collection.ts';
 
 export type CommandLineRunner = {
     readonly baseline: CommandLineBaselineCommands;
@@ -34,7 +40,10 @@ export type CommandLineRunner = {
     readonly listTests: (request: CommandLineListTestsRequest) => Promise<CommandLineRunnerResult>;
     readonly replayRun: CommandLineCommand;
     readonly replayWitness: CommandLineCommand;
-    readonly runTests: (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>;
+    readonly runTests: (
+        request: CommandLineRunTestsRequest,
+        options?: RunInvocationTimingOptions
+    ) => Promise<CommandLineRunnerResult>;
 };
 
 export type CommandLineRunnerResult = CommandLineRunnerResultShape;
@@ -161,10 +170,11 @@ function createCommandFromListRequest(
 async function runTestsWithLoadedConfig(
     request: CommandLineRunTestsRequest,
     dependencies: CommandLineRunnerDependencies,
-    loadedConfig: LoadedRunConfig
+    loadedConfig: LoadedRunConfig,
+    options: RunInvocationTimingOptions
 ): Promise<CommandLineRunnerResult> {
     const command = await createCommandFromRequest(request, loadedConfig, dependencies);
-    const runResult = await dependencies.orchestrator.runWithReporterDelivery(command);
+    const runResult = await dependencies.orchestrator.runWithReporterDelivery(command, options);
 
     return {
         exitCode: readExitCodeFromRunResult(runResult.result),
@@ -218,10 +228,19 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
         },
         replayRun: createUnimplementedCommand('replay'),
         replayWitness: createUnimplementedCommand('replay-witness'),
-        async runTests(request) {
+        async runTests(request, options) {
+            const timing = options?.timing ?? createRunTimingMeasurement(createOverkillClock());
+
             try {
-                const loadedConfig = await dependencies.loadRunConfig(request);
-                return await runTestsWithLoadedConfig(request, dependencies, loadedConfig);
+                const loadedConfig = await timing.measureAsync(
+                    'config.load',
+                    emptyTimingSpanMetadata(),
+                    async function loadRunTestsConfig() {
+                        return await dependencies.loadRunConfig(request);
+                    }
+                );
+
+                return await runTestsWithLoadedConfig(request, dependencies, loadedConfig, { timing });
             } catch (error: unknown) {
                 return createCommandLineErrorResultFromUnknown(error);
             }

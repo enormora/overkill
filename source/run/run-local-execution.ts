@@ -11,6 +11,7 @@ import type {
     RunResourceUsagePolicy,
     RunScheduling
 } from './run-types.ts';
+import type { RunTimingMeasurement } from './run-timing-collection.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
@@ -47,7 +48,8 @@ function createExecutionResourceUsageTracker(
 export async function executeLocalResolvedRun(
     resolvedRun: LocalResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null
+    runtimePolicy: RunRuntimePolicy | null,
+    timing: RunTimingMeasurement | null = null
 ): Promise<RunResult> {
     const { resourceUsagePolicy } = resolvedRun.facts.execution;
 
@@ -55,7 +57,7 @@ export async function executeLocalResolvedRun(
         execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution.scheduling) },
         outputRenderer: resolvedRun.config.outputRenderer,
         async finalizeResult(result) {
-            return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result);
+            return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result, timing);
         },
         reporters: resolvedRun.reporters,
         resourceBudgets: resourceUsagePolicy.budgets,

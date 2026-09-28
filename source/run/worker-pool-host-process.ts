@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import type {
     RunResourceUsage,
     RunResourceUsageTracker,
@@ -362,6 +363,9 @@ function handleRuntimeFailure(
 }
 
 function createRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPoolState): HostRuntime {
+    const startupStartedAtMicroseconds = input.options.timing === undefined || input.options.timing === null
+        ? null
+        : Math.trunc(performance.now() * 1000);
     const child = input.startWorkerPoolHost({
         cwd: input.options.cwd,
         environmentVariables: input.environmentVariables,
@@ -376,6 +380,20 @@ function createRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPoolStat
         const hostMessage = envelopeMessage<WorkerPoolHostMessage>(message, workerPoolHostCorrelationId);
 
         if (hostMessage?.kind === 'configured') {
+            if (startupStartedAtMicroseconds !== null) {
+                input.options.timing?.record(
+                    'host.entry-startup',
+                    'success',
+                    startupStartedAtMicroseconds,
+                    Math.trunc(performance.now() * 1000),
+                    {
+                        label: null,
+                        processId: String(child.pid ?? ''),
+                        resource: null,
+                        workerId: null
+                    }
+                );
+            }
             configured.resolve();
         } else if (hostMessage !== null) {
             handleHostMessage(state, hostMessage);

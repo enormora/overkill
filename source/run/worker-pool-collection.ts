@@ -18,6 +18,10 @@ import type {
     WorkerPoolCommand,
     WorkerPoolMessage
 } from './worker-pool-protocol.ts';
+import {
+    emptyTimingSpanMetadata,
+    type RunTimingMeasurement
+} from './run-timing-collection.ts';
 
 function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
     return [ port ];
@@ -118,7 +122,8 @@ function createCollectionRuntime(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
     runState: SupervisedRunState,
-    createdPool: CreatedWorkerPool | null
+    createdPool: CreatedWorkerPool | null,
+    timing: RunTimingMeasurement | null
 ): CollectionRuntime {
     const { port1, port2 } = new NodeMessageChannel();
     const controller = new AbortController();
@@ -126,13 +131,21 @@ function createCollectionRuntime(
     const timeout = startCollectionTimeout({ command, controller, dependencies, runState, terminalFailure });
 
     observeCollectionOutput(port2, runState);
-    const pool = createdPool ?? dependencies.createWorkerPool({
+    const poolOptions = {
         cwd: command.cwd,
         hostProcess: command.hostProcess,
         testFamily: command.testFamily,
+        ...(timing === null ? {} : { timing }),
         workerCount: 1,
-        workerLifecycle: 'fresh-worker-per-unit'
-    });
+        workerLifecycle: 'fresh-worker-per-unit' as const
+    };
+    const pool = createdPool ?? timing?.measure(
+        'worker-pool.start',
+        emptyTimingSpanMetadata(),
+        function createTimedCollectionWorkerPool() {
+            return dependencies.createWorkerPool(poolOptions);
+        }
+    ) ?? dependencies.createWorkerPool(poolOptions);
     pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
         runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentMonotonicMicroseconds);
     });
@@ -174,11 +187,20 @@ export async function collectInWorkerPool(
     command: WorkerPoolCommand,
     dependencies: RunOrchestratorDependencies,
     runState: SupervisedRunState,
-    createdPool: CreatedWorkerPool | null = null
+    createdPool: CreatedWorkerPool | null = null,
+    timing: RunTimingMeasurement | null = null
 ): Promise<WorkerPoolCollectionResult> {
-    const runtime = createCollectionRuntime(command, dependencies, runState, createdPool);
+    const runtime = createCollectionRuntime(command, dependencies, runState, createdPool, timing);
 
     try {
+        timing?.record(
+            'worker-pool.ready',
+            'success',
+            dependencies.wallClock.currentMonotonicMicroseconds,
+            dependencies.wallClock.currentMonotonicMicroseconds,
+            emptyTimingSpanMetadata()
+        );
+
         return completeCollection(
             await runCollectionTask(runtime.pool, command, runtime.port1, runtime.controller),
             runtime,
@@ -191,7 +213,13 @@ export async function collectInWorkerPool(
         runtime.port2.close();
         runtime.pool.setHostOutputSink?.(null);
         if (runtime.destroyPool) {
-            await runtime.pool.destroy();
+            await (timing?.measureAsync(
+                'worker-pool.shutdown',
+                emptyTimingSpanMetadata(),
+                async function destroyTimedCollectionPool() {
+                    await runtime.pool.destroy();
+                }
+            ) ?? runtime.pool.destroy());
         }
     }
 }

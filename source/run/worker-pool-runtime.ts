@@ -25,6 +25,10 @@ import { createStoredRunValue, type StoredRunValue, type SupervisedRunState } fr
 import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { runTask as workerPoolWorkerEntryPoint } from './worker-pool-worker.ts';
 import { createRoutedPool } from './worker-pool-routing.ts';
+import {
+    emptyTimingSpanMetadata,
+    type RunTimingMeasurement
+} from './run-timing-collection.ts';
 
 const Tinypool = loadTinypoolConstructor();
 
@@ -99,6 +103,7 @@ export type WorkerPoolRunRuntime = {
     readonly runState: SupervisedRunState;
     readonly taskResults: WorkerPoolTaskResultList;
     readonly terminalFailure: StoredRunValue<boolean>;
+    readonly timing?: RunTimingMeasurement | null;
 };
 
 type WorkerPoolRuntimeInput = {
@@ -108,6 +113,7 @@ type WorkerPoolRuntimeInput = {
     readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
     readonly resolvedRun: ResolvedRun;
     readonly runState: SupervisedRunState;
+    readonly timing?: RunTimingMeasurement | null;
 };
 
 type WorkerPoolExecutionPool = {
@@ -230,12 +236,14 @@ function workerPoolOptions(
     resolvedRun: ResolvedRun,
     execution: WorkerPoolExecutionFacts,
     workerCount: number,
-    workerLifecycle: RunWorkerLifecycle
+    workerLifecycle: RunWorkerLifecycle,
+    timing: RunTimingMeasurement | null
 ): WorkerPoolCreationOptions {
     return {
         cwd: resolvedRun.cwd,
         hostProcess: copiedHostProcess(execution),
         testFamily: execution.testFamily,
+        ...(timing === null ? {} : { timing }),
         workerCount,
         workerLifecycle
     };
@@ -247,8 +255,16 @@ function createEmptyExecutionPool(
 ): WorkerPoolExecutionPool {
     return {
         destroyPool: input.createdPool === null,
-        pool: input.createdPool ?? input.dependencies.createWorkerPool(
-            workerPoolOptions(input.resolvedRun, execution, 0, execution.workerLifecycle)
+        pool: input.createdPool ?? input.timing?.measure(
+            'worker-pool.start',
+            emptyTimingSpanMetadata(),
+            function createTimedEmptyWorkerPool() {
+                return input.dependencies.createWorkerPool(
+                    workerPoolOptions(input.resolvedRun, execution, 0, execution.workerLifecycle, input.timing ?? null)
+                );
+            }
+        ) ?? input.dependencies.createWorkerPool(
+            workerPoolOptions(input.resolvedRun, execution, 0, execution.workerLifecycle, input.timing ?? null)
         )
     };
 }
@@ -276,11 +292,24 @@ function createLaneExecutionPool(
         }
 
         return {
-            pool: input.dependencies.createWorkerPool(workerPoolOptions(
+            pool: input.timing?.measure(
+                'worker-pool.start',
+                emptyTimingSpanMetadata(),
+                function createTimedLaneWorkerPool() {
+                    return input.dependencies.createWorkerPool(workerPoolOptions(
+                        input.resolvedRun,
+                        execution,
+                        1,
+                        workerLifecycle,
+                        input.timing ?? null
+                    ));
+                }
+            ) ?? input.dependencies.createWorkerPool(workerPoolOptions(
                 input.resolvedRun,
                 execution,
                 1,
-                workerLifecycle
+                workerLifecycle,
+                input.timing ?? null
             )),
             lane: lane.id,
             workerLifecycle
@@ -380,6 +409,7 @@ export async function createWorkerPoolRuntime(
         resolvedRun,
         runState,
         taskResults,
-        terminalFailure: createStoredRunValue(false)
+        terminalFailure: createStoredRunValue(false),
+        timing: input.timing ?? null
     };
 }

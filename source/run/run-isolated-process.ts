@@ -22,6 +22,10 @@ import {
     type RunRuntimePolicy
 } from './run-support.ts';
 import {
+    emptyTimingSpanMetadata,
+    type RunTimingMeasurement
+} from './run-timing-collection.ts';
+import {
     collectSupervisedRun,
     executeSupervisedRun,
     runSupervisedCommand
@@ -92,12 +96,24 @@ async function readWorkerPoolDurationHistory(
 async function createWorkerPoolResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput
+    input: ResolvedRunInput,
+    timing: RunTimingMeasurement | null
 ): Promise<ResolvedRun> {
-    const collection = await collectWorkerPoolRun(
+    const collection = await (timing?.measureAsync(
+        'collection.import',
+        emptyTimingSpanMetadata(),
+        async function collectTimedWorkerPoolRun() {
+            return await collectWorkerPoolRun(
+                createWorkerPoolCommand(command, 'enabled', input.profile, input.files),
+                dependencies,
+                timing
+            );
+        }
+    ) ?? collectWorkerPoolRun(
         createWorkerPoolCommand(command, 'enabled', input.profile, input.files),
-        dependencies
-    );
+        dependencies,
+        null
+    ));
     const durationHistoryIndex = await readWorkerPoolDurationHistory(input, dependencies);
 
     return await createResolvedExecutionRun({
@@ -114,12 +130,24 @@ async function createWorkerPoolResolvedRun(
 async function createSupervisedResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput
+    input: ResolvedRunInput,
+    timing: RunTimingMeasurement | null
 ): Promise<ResolvedRun> {
-    const collection = await collectSupervisedRun(
+    const collection = await (timing?.measureAsync(
+        'collection.import',
+        emptyTimingSpanMetadata(),
+        async function collectTimedSupervisedRun() {
+            return await collectSupervisedRun(
+                createSupervisedCollectCommand(command, input.profile, input.files),
+                dependencies,
+                timing
+            );
+        }
+    ) ?? collectSupervisedRun(
         createSupervisedCollectCommand(command, input.profile, input.files),
-        dependencies
-    );
+        dependencies,
+        null
+    ));
 
     return await createResolvedExecutionRun({
         allowEmptySelection: false,
@@ -135,14 +163,15 @@ async function createSupervisedResolvedRun(
 export function createIsolatedResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput
+    input: ResolvedRunInput,
+    timing: RunTimingMeasurement | null = null
 ): Promise<ResolvedRun> | null {
     if (input.profile.execution.processModel === 'supervised-process') {
-        return createSupervisedResolvedRun(command, dependencies, input);
+        return createSupervisedResolvedRun(command, dependencies, input, timing);
     }
 
     if (input.profile.execution.processModel === 'worker-pool') {
-        return createWorkerPoolResolvedRun(command, dependencies, input);
+        return createWorkerPoolResolvedRun(command, dependencies, input, timing);
     }
 
     return null;
@@ -162,7 +191,8 @@ function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['ru
 
 async function createSupervisedRunResult(
     command: RunCommand,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    timing: RunTimingMeasurement | null
 ): Promise<RunResult> {
     const input = await readResolvedRunInput(command, dependencies);
 
@@ -187,22 +217,25 @@ async function createSupervisedRunResult(
             },
             {
                 async finalizeResult(resolvedRun, result) {
-                    return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result);
-                }
+                    return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result, timing);
+                },
+                timing
             }
         );
     } catch (error: unknown) {
         return await reportCollectionErrorResult(
             command,
             dependencies,
-            createResultFromResolutionError(error, null)
+            createResultFromResolutionError(error, null),
+            timing
         );
     }
 }
 
 async function createWorkerPoolRunResult(
     command: RunCommand,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    timing: RunTimingMeasurement | null
 ): Promise<RunResult> {
     const input = await readResolvedRunInput(command, dependencies);
 
@@ -229,31 +262,34 @@ async function createWorkerPoolRunResult(
             },
             {
                 async finalizeResult(resolvedRun, result) {
-                    return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result);
-                }
+                    return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result, timing);
+                },
+                timing
             }
         );
     } catch (error: unknown) {
         return await reportCollectionErrorResult(
             command,
             dependencies,
-            createResultFromResolutionError(error, null)
+            createResultFromResolutionError(error, null),
+            timing
         );
     }
 }
 
 export function runIsolatedProcessCommand(
     command: RunCommand,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    timing: RunTimingMeasurement | null = null
 ): Promise<RunResult> | null {
     const processModel = command.config.profiles[command.request.profile]?.execution.processModel;
 
     if (processModel === 'supervised-process') {
-        return createSupervisedRunResult(command, dependencies);
+        return createSupervisedRunResult(command, dependencies, timing);
     }
 
     if (processModel === 'worker-pool') {
-        return createWorkerPoolRunResult(command, dependencies);
+        return createWorkerPoolRunResult(command, dependencies, timing);
     }
 
     return null;
@@ -262,13 +298,15 @@ export function runIsolatedProcessCommand(
 export async function executeNonLocalResolvedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null
+    runtimePolicy: RunRuntimePolicy | null,
+    timing: RunTimingMeasurement | null = null
 ): Promise<RunResult | null> {
     if (resolvedRun.facts.execution.processModel === 'supervised-process') {
         const result = await executeSupervisedRun(resolvedRun, dependencies, {
             async finalizeResult(supervisedRun, finalResult) {
-                return await finalizeResultWithDurationHistory(dependencies, supervisedRun, finalResult);
-            }
+                return await finalizeResultWithDurationHistory(dependencies, supervisedRun, finalResult, timing);
+            },
+            timing
         });
 
         return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
@@ -277,8 +315,9 @@ export async function executeNonLocalResolvedRun(
     if (resolvedRun.facts.execution.processModel === 'worker-pool') {
         return await executeWorkerPoolRun(resolvedRun, dependencies, {
             async finalizeResult(workerPoolRun, result) {
-                return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, result);
-            }
+                return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, result, timing);
+            },
+            timing
         });
     }
 
