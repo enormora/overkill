@@ -21,8 +21,11 @@ import {
     type ResourceProjectionRecords
 } from './resource-lifecycle-projection.ts';
 import type { ManagedRunnerError } from './resource-lifecycle-state.ts';
+import type { ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
-type ManagedResourceRecord = {
+export type ManagedResourceLifecycleTiming = ResourceLifecycleTiming | null;
+
+export type ManagedResourceRecord = {
     readonly boundary: LifecycleBoundary;
     readonly dependencyContext: ResourceContext<ResourceMap>;
     readonly descriptor: AnyResourceDefinition;
@@ -62,6 +65,7 @@ type ResourceLifecycleStoreOptions = {
         readonly count: number;
     }[];
     readonly projectedResources: ResourceProjectionRecords;
+    readonly timing: ManagedResourceLifecycleTiming;
 };
 
 function caseKey(testCase: TestPlanCase): string {
@@ -206,10 +210,19 @@ export function createManagedResourceAcquirer(
         signal: AbortSignal
     ): Promise<ManagedResourceRecord> {
         const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
-        const ownerHandle = await acquireResourceWithStartupBudget(resource, {
-            dependencies: dependencyContext,
-            signal
-        });
+        const acquireHandle = async function acquireResourceHandle(): Promise<unknown> {
+            return await acquireResourceWithStartupBudget(resource, {
+                dependencies: dependencyContext,
+                signal
+            });
+        };
+        const ownerHandle = options.timing === null
+            ? await acquireHandle()
+            : await options.timing.measure({
+                phase: 'acquire',
+                resource: { name: resource.name, scope: resource.scope },
+                signal
+            }, acquireHandle);
         const record = {
             boundary,
             dependencyContext,

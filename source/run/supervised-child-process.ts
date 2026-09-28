@@ -33,6 +33,12 @@ export type SupervisedChildProcess = {
     readonly stdout: SupervisedChildProcessOutput | null;
 };
 
+export function kill(child: SupervisedChildProcess): void {
+    if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
+        child.kill('SIGKILL');
+    }
+}
+
 type SupervisedChildStartOptions = {
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';

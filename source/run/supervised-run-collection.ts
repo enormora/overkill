@@ -11,7 +11,6 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import {
     applyEvent,
     handleCollectionSample,
-    kill,
     type SupervisedCollectionRuntime
 } from './supervised-run-runtime.ts';
 import {
@@ -24,6 +23,7 @@ import {
 } from './run-timing-collection.ts';
 import type { CollectedRunPlan } from './run-types.ts';
 import {
+    kill,
     observeSupervisedChildOutput,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';

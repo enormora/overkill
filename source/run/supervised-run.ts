@@ -17,6 +17,7 @@ import {
     type SupervisedRunCommand
 } from './supervised-protocol.ts';
 import {
+    kill,
     observeSupervisedChildOutput,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
@@ -30,7 +31,6 @@ import {
     finishSupervisedRuntime,
     handleChildMessage,
     handleCollectionSample,
-    kill,
     observeChild,
     reportRunStart,
     sendAssignment,
@@ -232,6 +232,11 @@ function handleLiveMessage(
     command: SupervisedRunCommand,
     liveRun: SupervisedLiveRun
 ): void {
+    if (message.kind === 'timing') {
+        liveRun.timing?.recordLocal(message.span);
+        return;
+    }
+
     const runtime = liveRun.runtime.read();
 
     if (runtime === null) {
@@ -455,7 +460,7 @@ async function runSupervisedChild(
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement | null
 ): Promise<void> {
-    const childFinished = observeChild(runtime);
+    const childFinished = observeChild(runtime, timing);
     const readyStartedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
     sendRunCommand(runtime);
     sendAssignment(runtime);

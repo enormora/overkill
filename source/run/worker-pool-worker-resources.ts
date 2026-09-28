@@ -5,6 +5,7 @@ import type { RunResourceUsageTracker } from '../packages/engine/engine.entry-po
 import {
     acquireResourceLifecycleScopes,
     createResourceLifecycleSession,
+    type ManagedResourceLifecycleTiming,
     type ResourceLifecycleSession
 } from './resource-lifecycle.ts';
 import { resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
@@ -27,7 +28,6 @@ import {
 type ResourceWrapperAction = ResourceWrapperStep | {
     readonly kind: 'scope';
 };
-
 type WorkerPoolLifecycleSessionKeyInput = Pick<WorkerPoolRunTask, 'lane' | 'lifecycle'>;
 
 const composedResourceBodyBrand = Symbol.for('@overkill-dev/test/ComposedResourceBody');
@@ -83,7 +83,8 @@ function runnerError(message: string, cause: unknown): RunnerError {
 
 export function laneResourceSession(
     task: WorkerPoolRunTask,
-    collectedPlan: CollectedWorkerPoolTestPlan
+    collectedPlan: CollectedWorkerPoolTestPlan,
+    timing: ManagedResourceLifecycleTiming
 ): ResourceLifecycleSession {
     const key = lifecycleSessionKey(task);
     const existingSession = laneResourceSessions.get(key);
@@ -96,7 +97,8 @@ export function laneResourceSession(
     const session = createResourceLifecycleSession({
         boundaryUseCounts: resourceLifecycleBoundaryUseCounts(runPlan.cases),
         caseDisposalScopes: laneDisposalScopes,
-        projectedResources: task.projectedResources
+        projectedResources: task.projectedResources,
+        timing
     });
 
     laneResourceSessions.set(key, session);
@@ -106,7 +108,8 @@ export function laneResourceSession(
 
 export async function acquireWorkerRunResources(
     task: WorkerPoolAcquireRunResourcesTask,
-    collectedPlan: CollectedWorkerPoolTestPlan
+    collectedPlan: CollectedWorkerPoolTestPlan,
+    timing: ManagedResourceLifecycleTiming
 ): Promise<WorkerPoolRunResourceOutput> {
     const testPlan = selectedAssignedWork(collectedPlan.testPlan, task.assignedWork);
 
@@ -115,7 +118,8 @@ export async function acquireWorkerRunResources(
             options: {
                 boundaryUseCounts: resourceLifecycleBoundaryUseCounts(testPlan.cases),
                 caseDisposalScopes: new Set(),
-                projectedResources: { resources: [] }
+                projectedResources: { resources: [] },
+                timing
             },
             scopes: runResourceScopes,
             signal: freshSignal(),

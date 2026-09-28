@@ -5,6 +5,10 @@ import type {
     TimingSpanStatus
 } from '../engine/run-timings.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
+import {
+    createResourceLifecycleTiming,
+    type ResourceLifecycleTiming
+} from './resource-lifecycle-timing.ts';
 
 export type WorkerTimingClock = OverkillClock;
 
@@ -24,6 +28,27 @@ export function createWorkerTimingClock(): WorkerTimingClock {
     const clock = createOverkillClock();
 
     return clock;
+}
+
+function workerId(task: WorkerPoolTask): string | null {
+    return task.kind === 'collect' ? null : task.lane;
+}
+
+export function createWorkerResourceLifecycleTiming(
+    task: WorkerPoolTask,
+    clock: WorkerTimingClock
+): ResourceLifecycleTiming {
+    return createResourceLifecycleTiming({
+        clock,
+        processId: workerProcessId(),
+        target: {
+            emit(span) {
+                task.port.postMessage({ kind: 'timing', span }, []);
+            },
+            kind: 'local'
+        },
+        workerId: workerId(task)
+    });
 }
 
 export function postWorkerTimingSpan(input: WorkerTimingSpanInput): void {

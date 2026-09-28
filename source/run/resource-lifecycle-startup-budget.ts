@@ -16,6 +16,22 @@ type StartupBudgetTimer = {
     readonly timeout: Promise<never>;
 };
 
+const resourceStartupTimeoutBrand = Symbol('ResourceStartupTimeout');
+
+function resourceStartupTimeoutError(message: string): Error {
+    const error = new Error(message);
+
+    Object.defineProperty(error, resourceStartupTimeoutBrand, { value: true });
+
+    return error;
+}
+
+export function isResourceStartupTimeoutError(error: unknown): boolean {
+    return typeof error === 'object' &&
+        error !== null &&
+        Reflect.get(error, resourceStartupTimeoutBrand) === true;
+}
+
 function isStartupBudgetRequirement(requirement: unknown): requirement is StartupBudgetRequirement {
     if (requirement === null || typeof requirement !== 'object') {
         return false;
@@ -50,7 +66,9 @@ function createStartupBudgetTimer(
         rejectTimeout = reject;
     });
     const timer = setNodeTimeout(function abortForStartupBudget() {
-        const error = new Error(`Resource "${resource.name}" exceeded startup budget of ${budgetMilliseconds} ms.`);
+        const error = resourceStartupTimeoutError(
+            `Resource "${resource.name}" exceeded startup budget of ${budgetMilliseconds} ms.`
+        );
 
         controller.abort(error);
         rejectTimeout(error);

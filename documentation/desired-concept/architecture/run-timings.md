@@ -166,6 +166,13 @@ Resource timing spans are emitted even when acquisition or disposal fails.
 Slow failed setup and slow cleanup are often the most important timings in an
 integration run.
 
+Lifecycle status follows the operation's observable cause. Successful callback
+completion is `success`, resource startup-budget expiry is `timeout`, rejection
+after the lifecycle signal aborts is `cancelled`, and other rejection is
+`failure`. Spans represent executed owner callbacks: cache hits, projected
+handle deserialization, and resources without a disposal callback do not create
+synthetic lifecycle spans.
+
 Aggregate resource timing should remain available even if detailed spans are
 truncated.
 

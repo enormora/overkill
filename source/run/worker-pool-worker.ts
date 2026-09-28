@@ -42,6 +42,7 @@ import {
 } from './worker-pool-worker-plan.ts';
 import {
     createWorkerTimingClock,
+    createWorkerResourceLifecycleTiming,
     measureWorkerSpan,
     postWorkerTimingSpan,
     type WorkerTimingClock
@@ -117,7 +118,11 @@ async function runAssignment(
     const testPlan = resolvedTestPlanDefinitionLocations(
         selectedAssignedWork(collectedPlan.testPlan, assignedUnit.work)
     );
-    const resourceSession = laneResourceSession(task, collectedPlan);
+    const resourceSession = laneResourceSession(
+        task,
+        collectedPlan,
+        createWorkerResourceLifecycleTiming(task, wallClock)
+    );
     const result = await measureWorkerSpan(
         task,
         wallClock,
@@ -162,7 +167,11 @@ async function acquireRunResources(
 ): Promise<WorkerPoolRunResourceOutput> {
     const collectedPlan = await collectAssignmentTestPlan(task, wallClock);
 
-    return await acquireWorkerRunResources(task, collectedPlan);
+    return await acquireWorkerRunResources(
+        task,
+        collectedPlan,
+        createWorkerResourceLifecycleTiming(task, wallClock)
+    );
 }
 
 async function disposeRunResources(
