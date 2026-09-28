@@ -12,7 +12,7 @@ import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.t
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import { formatRunFactSummary } from './run-fact-summary.ts';
-import { formatTimingSummary } from './run-timing-summary.ts';
+import { formatTimingOffenderLines, formatTimingSummary } from './run-timing-rendering.ts';
 
 const progressInterval = 100;
 const microsecondsPerMillisecond = 1000;
@@ -199,7 +199,12 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
             },
 
             onFinish(result) {
-                return [ finishIntent(result) ];
+                return [
+                    finishIntent(result),
+                    ...formatTimingOffenderLines(result).map(function timingIntent(line) {
+                        return stdout(line, null);
+                    })
+                ];
             }
         };
     });

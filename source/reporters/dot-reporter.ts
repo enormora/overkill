@@ -6,6 +6,7 @@ import { formatRunFactSummary } from './run-fact-summary.ts';
 import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
 import {
     formatCountSummary,
+    formatTimingOffenderLines,
     formatTimingSummary,
     problemLines
 } from './human-reporter-rendering.ts';
@@ -108,6 +109,9 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
             async onFinish(result: RunResult) {
                 finishProgress();
                 writeLine(formatSummary(result));
+                for (const timingLine of formatTimingOffenderLines(result)) {
+                    writeLine(timingLine);
+                }
                 const detailLines = problemLines(result, context, { verbose: false });
 
                 for (const detailLine of detailLines) {

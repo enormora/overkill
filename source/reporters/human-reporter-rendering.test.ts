@@ -4,9 +4,14 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, type CaseId } from '../engine/identity.ts';
-import type { RunArtifact } from '../engine/run-result.ts';
+import type { RunArtifact, RunResult } from '../engine/run-result.ts';
+import {
+    preciseTimingReport,
+    runTimingSummary,
+    type RunTimingSpan
+} from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { problemLines } from './human-reporter-rendering.ts';
+import { formatTimingOffenderLines, problemLines } from './human-reporter-rendering.ts';
 
 const passingCaseId: CaseId = { file: null, params: null, suite: [], title: 'passes' };
 const failingCaseId: CaseId = { file: 'source/fails.test.ts', params: null, suite: [ 'root' ], title: 'fails' };
@@ -76,12 +81,99 @@ function ignoredRunArtifact(): RunArtifact {
     };
 }
 
+function successfulTimingSpan(kind: RunTimingSpan['kind'], durationMicroseconds: number): RunTimingSpan {
+    return {
+        durationMicroseconds,
+        kind,
+        label: null,
+        processId: null,
+        resource: null,
+        startOffsetMicroseconds: 0,
+        status: 'success',
+        workerId: null
+    };
+}
+
+function resultWithTimingSpans(spans: readonly RunTimingSpan[]): RunResult {
+    return runResultFactory.build({
+        timings: {
+            precise: preciseTimingReport({
+                aggregationMicroseconds: 3,
+                recordingMicroseconds: 4,
+                slowestSpanLimit: 50,
+                spanLimit: 5000,
+                spans
+            }),
+            summary: runTimingSummary({
+                testExecutionWallTimeMicroseconds: 0,
+                totalWallTimeMicroseconds: 2_000_000
+            })
+        }
+    });
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/human-reporter-rendering.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'human timing output shows at most five spans strictly above 500 ms',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const spans: readonly RunTimingSpan[] = [
+                    {
+                        ...successfulTimingSpan('resource.acquire', 1_200_000),
+                        label: 'startup',
+                        processId: '42',
+                        resource: { name: 'database', scope: 'per-run' },
+                        status: 'timeout',
+                        workerId: 'lane-1'
+                    },
+                    { ...successfulTimingSpan('collection.import', 1_100_000), label: 'source/users.test.ts' },
+                    { ...successfulTimingSpan('worker-pool.ready', 1_000_000), workerId: 'lane-2' },
+                    successfulTimingSpan('config.load', 900_000),
+                    { ...successfulTimingSpan('cleanup', 800_000), status: 'failure' },
+                    successfulTimingSpan('reporter.finish', 700_000),
+                    successfulTimingSpan('reporter.deliver', 500_000)
+                ];
+
+                scope.assert.deepEqual(
+                    formatTimingOffenderLines(resultWithTimingSpans(spans)),
+                    [
+                        'Slow runner overhead:',
+                        '  resource acquire for startup (resource database, per-run, process 42, worker lane-1, ' +
+                        'timeout): 1200 ms',
+                        '  collection import for source/users.test.ts: 1100 ms',
+                        '  worker pool ready (worker lane-2): 1000 ms',
+                        '  config load: 900 ms',
+                        '  cleanup (failure): 800 ms'
+                    ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'human timing output omits the block without a qualifying precise span',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(formatTimingOffenderLines(runResultFactory.build()), []);
+                scope.assert.deepEqual(
+                    formatTimingOffenderLines(resultWithTimingSpans([
+                        successfulTimingSpan('config.load', 500_000)
+                    ])),
+                    []
+                );
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'human reporter problem lines include verbose passing artifacts and attributed runner errors',

@@ -8,9 +8,11 @@ import type {
     ResourceUsageSnapshot,
     RunResourceUsage,
     RunResourceUsageTracker,
+    RunPreciseTimingReport,
     RunResult,
     RunPlanStatus,
     RunSummary,
+    RunTimings,
     RunnerError
 } from './engine.entry-point.ts';
 
@@ -55,6 +57,18 @@ type RunSummaryKeys = readonly [
     'skipped'
 ];
 type ExpectedRunSummaryKey = RunSummaryKeys[number];
+type PreciseTimingKeys = readonly [
+    'aggregates',
+    'ambientNoise',
+    'droppedSpanCount',
+    'overhead',
+    'slowestSpanLimit',
+    'slowestSpans',
+    'spanLimit',
+    'spans',
+    'truncated'
+];
+type ExpectedPreciseTimingKey = PreciseTimingKeys[number];
 type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 
 describe('run result verdicts', function () {
@@ -80,6 +94,9 @@ describe('RunResult', function () {
         expect<RunResult['status']>().type.toBe<'failed' | 'passed'>();
         expect<RunResult['planStatus']>().type.toBe<RunPlanStatus>();
         expect<RunResult['resourceUsage']>().type.toBe<RunResourceUsage | null>();
+        expect<RunResult['timings']>().type.toBe<RunTimings>();
+        expect<RunTimings['precise']>().type.toBe<RunPreciseTimingReport | null>();
+        expect<keyof RunPreciseTimingReport>().type.toBe<ExpectedPreciseTimingKey>();
         expect<RunResourceUsage['start']>().type.toBe<ResourceUsageSnapshot>();
         expect<RunResourceUsageTracker['finish']>().type.toBe<() => RunResourceUsage>();
     });

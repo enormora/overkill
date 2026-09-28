@@ -18,6 +18,7 @@ import { createTerminalLineLogger, type TerminalLineLogger, visibleTerminalWidth
 import {
     contextPrefix,
     formatCountSummary,
+    formatTimingOffenderLines,
     formatTimingSummary,
     problemLines,
     type HumanReporterFormatOptions
@@ -292,6 +293,9 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
                     wrappedTerminal.line(line);
                 }
                 logSummary(wrappedTerminal, finalResult);
+                for (const line of formatTimingOffenderLines(finalResult)) {
+                    wrappedTerminal.line(line);
+                }
                 logOrphans(wrappedTerminal, finalResult.orphans, context);
             }
         };

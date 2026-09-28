@@ -222,8 +222,11 @@ be documented before it appears in default reporter output.
 
 Line, brief, and dot reporters show the compact timing summary for ordinary
 runs. Timing-aware reporters show top overhead offenders when precise timings
-are available. Protocol reporters such as TAP keep their protocol semantics and
-may omit human timing decoration.
+are available. They show at most the five slowest retained spans whose duration
+strictly exceeds 500 milliseconds and omit the offender block when no span
+crosses that threshold. The limit and threshold affect human presentation only.
+Protocol reporters such as TAP keep their protocol semantics and may omit human
+timing decoration.
 
 Machine-readable reporters receive the structured timing report from
 `RunResult`.

@@ -3,7 +3,10 @@ import { formatCaseId, type CaseId, type RuntimeId } from '../engine/identity.ts
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunArtifact, RunResult, RunnerError } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
-import { formatTimingSummary as formatRunTimingSummary } from './run-timing-summary.ts';
+import {
+    formatTimingOffenderLines as formatRunTimingOffenderLines,
+    formatTimingSummary as formatRunTimingSummary
+} from './run-timing-rendering.ts';
 
 const colorPalette = [
     colors.cyan,
@@ -14,6 +17,7 @@ const colorPalette = [
 ] as const;
 type ColorFormatter = (value: string) => string;
 type TimingSummaryFormatter = (result: RunResult) => string;
+type TimingOffenderLinesFormatter = (result: RunResult) => readonly string[];
 
 export type HumanReporterFormatOptions = {
     readonly color: boolean;
@@ -32,6 +36,7 @@ function executedCount(result: RunResult): number {
 }
 
 export const formatTimingSummary: TimingSummaryFormatter = formatRunTimingSummary;
+export const formatTimingOffenderLines: TimingOffenderLinesFormatter = formatRunTimingOffenderLines;
 
 export function formatCountSummary(result: RunResult): string {
     const { summary } = result;
