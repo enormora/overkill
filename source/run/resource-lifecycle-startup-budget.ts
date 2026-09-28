@@ -2,6 +2,7 @@ import { clearTimeout as clearNodeTimeout, setTimeout as setNodeTimeout } from '
 import type {
     AnyResourceDefinition,
     ResourceCreationContext,
+    ResourceScenarioSlots,
     RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
 import { callableResourceDefinition } from '../resources/resource-graph.ts';
@@ -96,7 +97,7 @@ function linkParentSignal(parentSignal: AbortSignal, controller: AbortController
 
 export async function acquireResourceWithStartupBudget(
     resource: AnyResourceDefinition,
-    context: ResourceCreationContext<ResourceMap>
+    context: ResourceCreationContext<ResourceMap, ResourceScenarioSlots>
 ): Promise<unknown> {
     const budgetMilliseconds = startupBudgetMilliseconds(resource);
 
@@ -112,6 +113,7 @@ export async function acquireResourceWithStartupBudget(
         return await Promise.race([
             callableResourceDefinition(resource).acquire({
                 dependencies: context.dependencies,
+                scenarios: context.scenarios,
                 signal: controller.signal
             }),
             timer.timeout

@@ -32,6 +32,7 @@ function resource(name: string, scope: ResourceScope): ResourceSummary {
         dependencies: [],
         name,
         requirements: [],
+        scenarios: [],
         scope
     };
 }

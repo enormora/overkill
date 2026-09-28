@@ -1861,13 +1861,35 @@ type ResourceContext<Resources extends ResourceDependencies> = {
     readonly [Key in keyof Resources]: ResourceHandle<Resources[Key]>;
 };
 
-type ResourceCreationContext<Dependencies extends ResourceDependencies = Readonly<Record<never, never>>> = {
+type ScenarioTiming = 'acquire' | 'request-routed';
+
+type ResourceScenarioSlot<Scenario extends string = string> = {
+    readonly default: Scenario;
+    readonly timing: ScenarioTiming;
+    readonly values: readonly [Scenario, ...Scenario[]];
+};
+
+type ResourceScenarioSlots = Readonly<Record<string, ResourceScenarioSlot>>;
+
+type ResourceScenarioBindings<Scenarios extends ResourceScenarioSlots> = {
+    readonly [Slot in keyof Scenarios]: Scenarios[Slot]['values'][number];
+};
+
+type ResourceCreationContext<
+    Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
+> = {
     readonly dependencies: ResourceContext<Dependencies>;
+    readonly scenarios: ResourceScenarioBindings<Scenarios>;
     readonly signal: AbortSignal;
 };
 
-type ResourceDisposalContext<Dependencies extends ResourceDependencies = Readonly<Record<never, never>>> = {
+type ResourceDisposalContext<
+    Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
+> = {
     readonly dependencies: ResourceContext<Dependencies>;
+    readonly scenarios: ResourceScenarioBindings<Scenarios>;
     readonly signal: AbortSignal;
 };
 
@@ -1886,20 +1908,22 @@ type ResourceProjectionContext<Dependencies extends ResourceDependencies = Reado
 type ResourceDefinition<
     OwnerHandle,
     Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
-    ConsumerHandle = OwnerHandle
+    ConsumerHandle = OwnerHandle,
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
 > = {
     readonly dependencies: Dependencies;
     readonly name: string;
     readonly scope: ResourceScope;
     readonly requirements: ReadonlyArray<ExecutionRequirement>;
-    readonly acquire: (context: ResourceCreationContext<Dependencies>) => OwnerHandle | Promise<OwnerHandle>;
+    readonly scenarios: Scenarios;
+    readonly acquire: (context: ResourceCreationContext<Dependencies, Scenarios>) => OwnerHandle | Promise<OwnerHandle>;
     readonly deserializeHandle?: (
         payload: ResourceProjectionPayload,
         context: ResourceProjectionContext<Dependencies>
     ) => ConsumerHandle;
     readonly dispose:
         | null
-        | ((handle: OwnerHandle, context: ResourceDisposalContext<Dependencies>) => void | Promise<void>);
+        | ((handle: OwnerHandle, context: ResourceDisposalContext<Dependencies, Scenarios>) => void | Promise<void>);
     readonly serializeHandle?: (
         handle: OwnerHandle,
         context: ResourceProjectionContext<Dependencies>
@@ -1915,7 +1939,7 @@ type ResourceHandle<Resource extends ResourceDefinition<unknown>> = Resource ext
 type RuntimeDefinition<
     Name extends string,
     Resources extends Readonly<Record<string, ResourceDefinition<unknown>>>,
-    Scenarios extends Readonly<Record<string, readonly string[]>> = {}
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
 > = {
     readonly kind: 'runtime';
     readonly name: Name;
@@ -1923,11 +1947,14 @@ type RuntimeDefinition<
     readonly resources: Resources;
     readonly requirements: ReadonlyArray<ExecutionRequirement>;
     readonly scenarios: Scenarios;
+    readonly scenario: (
+        bindings: Partial<ResourceScenarioBindings<Scenarios>>
+    ) => RuntimeDefinition<Name, Resources, Scenarios>;
 };
 
 type RuntimeVariantBody<
     Resources extends Readonly<Record<string, ResourceDefinition<unknown>>>,
-    Scenarios extends Readonly<Record<string, readonly string[]>>
+    Scenarios extends ResourceScenarioSlots
 > = {
     readonly name: string;
     readonly dimensions: RuntimeDimensions;
@@ -1941,7 +1968,7 @@ type RuntimeMatrixVariant<
     Runtime extends RuntimeDefinition<
         string,
         Readonly<Record<string, ResourceDefinition<unknown>>>,
-        Readonly<Record<string, readonly string[]>>
+        ResourceScenarioSlots
     >
 > = {
     readonly id: VariantId;
@@ -1958,12 +1985,12 @@ type RuntimeMatrix<
                 RuntimeDefinition<
                     string,
                     Readonly<Record<string, ResourceDefinition<unknown>>>,
-                    Readonly<Record<string, readonly string[]>>
+                    ResourceScenarioSlots
                 >
             >
             | RuntimeVariantBody<
                 Readonly<Record<string, ResourceDefinition<unknown>>>,
-                Readonly<Record<string, readonly string[]>>
+                ResourceScenarioSlots
             >
         >
     >
@@ -1977,7 +2004,7 @@ type RuntimeGraph =
     | RuntimeDefinition<
         string,
         Readonly<Record<string, ResourceDefinition<unknown>>>,
-        Readonly<Record<string, readonly string[]>>
+        ResourceScenarioSlots
     >
     | RuntimeMatrix<
         string,
@@ -1986,7 +2013,7 @@ type RuntimeGraph =
                 string,
                 RuntimeVariantBody<
                     Readonly<Record<string, ResourceDefinition<unknown>>>,
-                    Readonly<Record<string, readonly string[]>>
+                    ResourceScenarioSlots
                 >
             >
         >
@@ -2127,7 +2154,7 @@ type RuntimeVariantMap = Readonly<
         string,
         RuntimeVariantBody<
             Readonly<Record<string, ResourceDefinition<unknown>>>,
-            Readonly<Record<string, readonly string[]>>
+            ResourceScenarioSlots
         >
     >
 >;

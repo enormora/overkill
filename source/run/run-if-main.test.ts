@@ -79,6 +79,7 @@ function resourceAttachedCase(): DirectTestNode {
                     dependencies: [],
                     name: 'database',
                     requirements: [],
+                    scenarios: [],
                     scope: 'per-case'
                 }
             ],

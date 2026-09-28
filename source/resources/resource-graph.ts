@@ -5,6 +5,7 @@ import {
     type ResourceCreationContext,
     type ResourceDependencies,
     type ResourceDisposalContext,
+    type ResourceScenarioSlots,
     type ResourceScope
 } from './resources.ts';
 import { resourceLifecycleError } from './resource-lifecycle-error.ts';
@@ -28,10 +29,12 @@ export type ResourceGraph = {
     readonly order: readonly ResourceNode[];
     readonly topLevelEntries: readonly ResourceEntry[];
 };
-type DependencyDisposalContext = ResourceDisposalContext<ResourceDependencies>;
+type DependencyDisposalContext = ResourceDisposalContext<ResourceDependencies, ResourceScenarioSlots>;
 export type ResourceDisposeCallback = (handle: unknown, context: DependencyDisposalContext) => Awaitable<void>;
 export type CallableResourceDefinition = AnyResourceDefinition & {
-    readonly acquire: (context: ResourceCreationContext<ResourceDependencies>) => Awaitable<unknown>;
+    readonly acquire: (
+        context: ResourceCreationContext<ResourceDependencies, ResourceScenarioSlots>
+    ) => Awaitable<unknown>;
     readonly dispose: ResourceDisposeCallback | null;
 };
 

@@ -1,10 +1,11 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
-import type {
-    AnyResourceDefinition,
-    ResourceContext,
-    ResourceProjectionPayload,
-    RuntimeResourceMap as ResourceMap
+import {
+    resolvedResourceScenarioBindings,
+    type AnyResourceDefinition,
+    type ResourceContext,
+    type ResourceProjectionPayload,
+    type RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
 import { resourceEntries } from '../resources/resource-graph.ts';
 import {
@@ -213,6 +214,7 @@ export function createManagedResourceAcquirer(
         const acquireHandle = async function acquireResourceHandle(): Promise<unknown> {
             return await acquireResourceWithStartupBudget(resource, {
                 dependencies: dependencyContext,
+                scenarios: resolvedResourceScenarioBindings(resource),
                 signal
             });
         };

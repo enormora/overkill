@@ -53,6 +53,7 @@ function resource(
         dependencies: [],
         name,
         requirements,
+        scenarios: [],
         scope
     };
 }

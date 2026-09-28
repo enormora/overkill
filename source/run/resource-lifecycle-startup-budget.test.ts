@@ -8,6 +8,7 @@ import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-b
 
 type ResourceCreationContext = {
     readonly dependencies: Readonly<Record<string, never>>;
+    readonly scenarios: Readonly<Record<string, string>>;
     readonly signal: AbortSignal;
 };
 
@@ -40,7 +41,7 @@ function resource(
 }
 
 function creationContext(signal: AbortSignal): ResourceCreationContext {
-    return { dependencies: {}, signal };
+    return { dependencies: {}, scenarios: {}, signal };
 }
 
 async function neverResolvingResource(context: ResourceCreationContext): Promise<never> {

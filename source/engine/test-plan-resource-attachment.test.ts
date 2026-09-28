@@ -22,6 +22,7 @@ function resourceAttachments(): TestBodyResourceAttachments {
                 dependencies: [],
                 name: 'scratch',
                 requirements: [],
+                scenarios: [],
                 scope: 'per-case'
             }
         ],

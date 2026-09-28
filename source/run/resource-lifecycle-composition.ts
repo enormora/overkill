@@ -9,6 +9,13 @@ import {
     type RuntimeGraphLeaf,
     type RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
+import { resolvedRuntimeScenarioOwners } from '../resources/runtime-definition.ts';
+import {
+    bindResourceScenarios,
+    resolvedResourceScenarioBindings,
+    type ResolvedResourceScenarioBindings
+} from '../resources/resource-scenario-binding.ts';
+import { defaultScenarioBindings } from '../resources/resource-scenario.ts';
 import { runtimeIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { ResourceSession } from '../resources/resource-session.ts';
 import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
@@ -54,6 +61,12 @@ export type ResourceEntry = {
     readonly key: string;
     readonly resource: AnyResourceDefinition;
 };
+
+export function lifecycleScenarioBindings(
+    resource: AnyResourceDefinition
+): ResolvedResourceScenarioBindings {
+    return Object.freeze({ ...resolvedResourceScenarioBindings(resource) });
+}
 
 function entries(record: Readonly<Record<string, AnyResourceDefinition>>): readonly [string, AnyResourceDefinition][] {
     return Object.entries(record);
@@ -271,32 +284,69 @@ function cacheScopedRuntimeResource(
     scopedRuntimeResources.set(resource, new Map([ ...cachedResources, [ runtimeKey, scoped ] ]));
 }
 
+function scopedRuntimeDependencies(
+    resource: AnyResourceDefinition,
+    runtimeKey: string,
+    bindingsByResource: ReadonlyMap<AnyResourceDefinition, ResolvedResourceScenarioBindings>,
+    bindDependency: (
+        dependency: AnyResourceDefinition,
+        dependencyRuntimeKey: string,
+        dependencyBindings: ReadonlyMap<AnyResourceDefinition, ResolvedResourceScenarioBindings>
+    ) => AnyResourceDefinition
+): Readonly<Record<string, AnyResourceDefinition>> {
+    return Object.freeze(Object.fromEntries(
+        entries(resource.dependencies).map(function scopedDependency([
+            key,
+            dependency
+        ]) {
+            return [ key, bindDependency(dependency, runtimeKey, bindingsByResource) ];
+        })
+    ));
+}
+
 function scopedRuntimeResource(
     resource: AnyResourceDefinition,
-    runtimeKey: string
+    runtimeKey: string,
+    bindingsByResource: ReadonlyMap<AnyResourceDefinition, ResolvedResourceScenarioBindings>
 ): AnyResourceDefinition {
     const cachedResources = scopedRuntimeResources.get(resource) ?? new Map<string, AnyResourceDefinition>();
-    const cached = cachedResources.get(runtimeKey);
+    const bindings = bindingsByResource.get(resource) ?? defaultScenarioBindings(resource.scenarios);
+    const scopedResourceKey = `${runtimeKey}:${JSON.stringify(bindings)}`;
+    const cached = cachedResources.get(scopedResourceKey);
 
     if (cached !== undefined) {
         return cached;
     }
 
-    const dependencies: Mutable<Record<string, AnyResourceDefinition>> = {};
+    const scoped = bindResourceScenarios(
+        Object.freeze({
+            ...resource,
+            dependencies: scopedRuntimeDependencies(resource, runtimeKey, bindingsByResource, scopedRuntimeResource),
+            name: `${resource.name}@${runtimeKey}`
+        }),
+        bindings
+    );
 
-    for (const [ key, dependency ] of entries(resource.dependencies)) {
-        dependencies[key] = scopedRuntimeResource(dependency, runtimeKey);
-    }
-
-    const scoped = Object.freeze({
-        ...resource,
-        dependencies: Object.freeze(dependencies),
-        name: `${resource.name}@${runtimeKey}`
-    });
-
-    cacheScopedRuntimeResource(resource, runtimeKey, scoped, cachedResources);
+    cacheScopedRuntimeResource(resource, scopedResourceKey, scoped, cachedResources);
 
     return scoped;
+}
+
+function runtimeScenarioBindings(
+    runtime: RuntimeDefinition
+): ReadonlyMap<AnyResourceDefinition, ResolvedResourceScenarioBindings> {
+    const mutableBindings = new Map<AnyResourceDefinition, Record<string, string>>();
+
+    for (const [ name, owner ] of resolvedRuntimeScenarioOwners(runtime)) {
+        const bindings = mutableBindings.get(owner.resource) ?? {};
+
+        bindings[name] = owner.value;
+        mutableBindings.set(owner.resource, bindings);
+    }
+
+    return new Map(Array.from(mutableBindings, function freezeBindings([ resource, bindings ]) {
+        return [ resource, Object.freeze(bindings) ];
+    }));
 }
 
 export function combinedResourceEntries(
@@ -311,11 +361,13 @@ export function combinedResourceEntries(
 
     for (const runtime of resolvedRuntimeGraphs(steps, workId)) {
         const runtimeKey = runtimeIdentityKey(runtime.id);
+        const bindingsByResource = runtimeScenarioBindings(runtime.runtime);
 
         for (const [ key, resource ] of entries(runtime.runtime.resources)) {
             resources[combinedResourceKey('runtime', [ runtimeKey, key ])] = scopedRuntimeResource(
                 resource,
-                runtimeKey
+                runtimeKey,
+                bindingsByResource
             );
         }
     }

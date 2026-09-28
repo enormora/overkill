@@ -4,6 +4,11 @@ import {
     type RuntimeDimensions
 } from './runtime-definition.ts';
 import type { RuntimeResourceMap } from './resource-definition-shape.ts';
+import type {
+    EmptyResourceScenarioSlots,
+    ResourceScenarioSlots,
+    ScenarioBindingInput
+} from './resource-scenario.ts';
 
 const runtimeMatrixDefinitionBrand: unique symbol = Symbol('overkill.runtimeMatrixDefinition');
 const composedRuntimeGraphBrand: unique symbol = Symbol('overkill.composedRuntimeGraph');
@@ -43,6 +48,40 @@ export type RuntimeMatrixVariant<
 
 type RuntimeMatrixVariantMap = Readonly<Record<string, RuntimeMatrixVariant>>;
 
+type UnionToIntersection<Value> = (
+    Value extends unknown ? (value: Value) => void : never
+) extends (value: infer Intersection) => void ? Intersection : never;
+
+type RuntimeDefinitionScenarios<Runtime> = Runtime extends RuntimeDefinition<
+    string,
+    RuntimeDimensions,
+    RuntimeResourceMap,
+    infer Scenarios
+> ? Scenarios
+    : EmptyResourceScenarioSlots;
+
+type RuntimeVariantsScenarios<Variants extends RuntimeMatrixVariantMap> = UnionToIntersection<
+    RuntimeDefinitionScenarios<Variants[keyof Variants]['runtime']>
+> extends infer Scenarios extends ResourceScenarioSlots ? Scenarios : EmptyResourceScenarioSlots;
+
+type CombinedRuntimeScenarios<Runtime extends RuntimeGraph> = UnionToIntersection<
+    RuntimeGraphScenarioSlots<Runtime>
+> extends infer Scenarios extends ResourceScenarioSlots ? Scenarios : EmptyResourceScenarioSlots;
+
+type RuntimeLeafScenarioSlots<Graph extends RuntimeGraph> = Graph extends RuntimeMatrixDefinition<
+    string,
+    infer Variants
+> ? RuntimeVariantsScenarios<Variants>
+    : RuntimeDefinitionScenarios<Graph>;
+
+type RuntimeGraphScenarioSlots<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
+    ? CombinedRuntimeScenarios<Runtimes[number]>
+    : RuntimeLeafScenarioSlots<Graph>;
+
+type RuntimeGraphScenarioMethod<Scenarios extends ResourceScenarioSlots, Result> = <
+    const Bindings extends Readonly<Record<string, string>>
+>(bindings: Bindings & ScenarioBindingInput<Scenarios, Bindings>) => Result;
+
 type ResolvedRuntimeMatrixVariants<
     Variants extends Readonly<Record<string, RuntimeMatrixVariantValue<Shared, RuntimeDimensions, RuntimeResourceMap>>>,
     Shared
@@ -59,6 +98,11 @@ export type RuntimeMatrixDefinition<
 > = {
     readonly kind: 'runtime-matrix';
     readonly name: Name;
+    readonly scenario: RuntimeGraphScenarioMethod<
+        RuntimeVariantsScenarios<Variants>,
+        RuntimeMatrixDefinition<Name, Variants>
+    >;
+    readonly scenarios: RuntimeVariantsScenarios<Variants>;
     readonly variants: Variants;
     readonly [runtimeMatrixDefinitionBrand]: true;
 };
@@ -69,6 +113,11 @@ export type ComposedRuntimeGraph<
     Runtimes extends readonly RuntimeGraphLeaf[] = readonly RuntimeGraphLeaf[]
 > = {
     readonly kind: 'composed-runtimes';
+    readonly scenario: RuntimeGraphScenarioMethod<
+        CombinedRuntimeScenarios<Runtimes[number]>,
+        ComposedRuntimeGraph<Runtimes>
+    >;
+    readonly scenarios: CombinedRuntimeScenarios<Runtimes[number]>;
     readonly runtimes: Runtimes;
     readonly [composedRuntimeGraphBrand]: true;
 };
@@ -115,6 +164,7 @@ type VariantState = {
     readonly dimensionIdentities: ReadonlySet<string>;
     readonly dimensionKeys: readonly string[];
     readonly resourceKeys: readonly string[];
+    readonly scenarioShape: string;
 };
 type RuntimeMatrixEntry = readonly [
     string,
@@ -152,6 +202,14 @@ function dimensionIdentity(dimensions: RuntimeDimensions): string {
     );
 }
 
+function scenarioShape(scenarios: ResourceScenarioSlots): string {
+    return JSON.stringify(
+        Object.entries(scenarios).toSorted(function compareScenarioEntries(left, right) {
+            return left[0].localeCompare(right[0]);
+        })
+    );
+}
+
 function resolveMatrixRuntime(
     variant: RuntimeDefinition | ((shared: unknown) => RuntimeDefinition),
     shared: unknown
@@ -172,6 +230,10 @@ function assertSameShape(matrixName: string, variantId: string, runtime: Runtime
 
     if (!sameStringItems(sortedKeys(runtime.resources), state.resourceKeys)) {
         throw new TypeError(`Runtime matrix "${matrixName}" variant "${variantId}" has different resource keys.`);
+    }
+
+    if (scenarioShape(runtime.scenarios) !== state.scenarioShape) {
+        throw new TypeError(`Runtime matrix "${matrixName}" variant "${variantId}" has different scenario slots.`);
     }
 }
 
@@ -210,7 +272,8 @@ function initialVariantState(runtime: RuntimeDefinition): VariantState {
     return {
         dimensionIdentities: new Set<string>(),
         dimensionKeys: sortedKeys(runtime.dimensions),
-        resourceKeys: sortedKeys(runtime.resources)
+        resourceKeys: sortedKeys(runtime.resources),
+        scenarioShape: scenarioShape(runtime.scenarios)
     };
 }
 
@@ -279,7 +342,7 @@ function runtimeMatrixVariants(definition: RuntimeMatrixInput): RuntimeMatrixVar
     return variantRecord(variants);
 }
 
-export function defineRuntimeMatrix<
+function defineRuntimeMatrix<
     const Name extends string,
     const Dimensions extends RuntimeDimensions,
     const Resources extends RuntimeResourceMap,
@@ -287,7 +350,7 @@ export function defineRuntimeMatrix<
 >(
     definition: RuntimeMatrixDefinitionInput<Name, Variants>
 ): RuntimeMatrixDefinition<Name, ResolvedRuntimeMatrixVariants<Variants, never>>;
-export function defineRuntimeMatrix<
+function defineRuntimeMatrix<
     const Name extends string,
     Shared,
     const Dimensions extends RuntimeDimensions,
@@ -296,26 +359,54 @@ export function defineRuntimeMatrix<
 >(
     definition: SharedRuntimeMatrixDefinitionInput<Name, Shared, Variants>
 ): RuntimeMatrixDefinition<Name, ResolvedRuntimeMatrixVariants<Variants, Shared>>;
-export function defineRuntimeMatrix(
+function defineRuntimeMatrix(
     definition: RuntimeMatrixInput
 ): RuntimeMatrixDefinition {
     assertDescriptorName('Runtime matrix', definition.name);
 
+    const variants = runtimeMatrixVariants(definition);
+    const firstVariant = Object.values(variants)[0];
+
+    if (firstVariant === undefined) {
+        throw new TypeError(`Runtime matrix "${definition.name}" requires at least one variant.`);
+    }
+
+    const scenario = function bindRuntimeMatrixScenario(
+        bindings: Readonly<Record<string, string>>
+    ): RuntimeMatrixDefinition {
+        const boundVariants = Object.fromEntries(
+            Object.entries(variants).map(function bindVariant([ id, variant ]) {
+                return [ id, { id: variant.id, runtime: variant.runtime.scenario(bindings) } ];
+            })
+        );
+
+        return Object.freeze({
+            kind: 'runtime-matrix',
+            name: definition.name,
+            scenario,
+            scenarios: firstVariant.runtime.scenarios,
+            variants: Object.freeze(boundVariants),
+            [runtimeMatrixDefinitionBrand]: true as const
+        });
+    };
+
     return Object.freeze({
         kind: 'runtime-matrix',
         name: definition.name,
-        variants: runtimeMatrixVariants(definition),
+        scenario,
+        scenarios: firstVariant.runtime.scenarios,
+        variants,
         [runtimeMatrixDefinitionBrand]: true as const
     });
 }
 
-export function isDefinedRuntimeMatrix(runtime: unknown): runtime is RuntimeMatrixDefinition {
+function isDefinedRuntimeMatrix(runtime: unknown): runtime is RuntimeMatrixDefinition {
     return typeof runtime === 'object' &&
         runtime !== null &&
         Reflect.get(runtime, runtimeMatrixDefinitionBrand) === true;
 }
 
-export function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraphLeaf[] {
+function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraphLeaf[] {
     return runtime.kind === 'composed-runtimes' ? runtime.runtimes : [ runtime ];
 }
 
@@ -335,16 +426,36 @@ function assertUniqueRuntimeNames(runtimes: readonly RuntimeGraphLeaf[]): void {
     }
 }
 
+function assertUniqueScenarioSlots(runtimes: readonly RuntimeGraphLeaf[]): void {
+    const slots = new Set<string>();
+
+    for (const runtime of runtimes) {
+        for (const slot of Object.keys(runtime.scenarios)) {
+            if (slots.has(slot)) {
+                throw new TypeError(`Scenario slot "${slot}" is attached multiple times.`);
+            }
+
+            slots.add(slot);
+        }
+    }
+}
+
 function flattenRuntimeGraphs(runtimes: readonly RuntimeGraph[]): readonly RuntimeGraphLeaf[] {
     return runtimes.flatMap(runtimeGraphLeaves);
 }
 
-export function composeRuntimes<
+function combinedScenarioSlots(runtimes: readonly RuntimeGraphLeaf[]): ResourceScenarioSlots {
+    return Object.freeze(Object.fromEntries(runtimes.flatMap(function runtimeScenarioEntries(runtime) {
+        return Object.entries(runtime.scenarios);
+    })));
+}
+
+function composeRuntimes<
     const Runtimes extends readonly [RuntimeGraph, ...RuntimeGraph[]]
 >(
     ...runtimes: Runtimes
 ): ComposedRuntimeGraph<FlattenRuntimeGraphs<Runtimes>>;
-export function composeRuntimes(
+function composeRuntimes(
     ...runtimes: readonly RuntimeGraph[]
 ): ComposedRuntimeGraph {
     if (runtimes.length === 0) {
@@ -354,16 +465,52 @@ export function composeRuntimes(
     const flattened = flattenRuntimeGraphs(runtimes);
 
     assertUniqueRuntimeNames(flattened);
+    assertUniqueScenarioSlots(flattened);
 
-    return Object.freeze({
+    const scenarios = combinedScenarioSlots(flattened);
+    const scenario = function bindComposedRuntimeScenario(
+        bindings: Readonly<Record<string, string>>
+    ): ComposedRuntimeGraph {
+        const boundRuntimes = flattened.map(function bindChildRuntime(runtime) {
+            const childBindings = Object.fromEntries(
+                Object.entries(bindings).filter(function childBinding([ name ]) {
+                    return Object.hasOwn(runtime.scenarios, name);
+                })
+            );
+
+            return runtime.scenario(childBindings);
+        });
+
+        const [ firstBoundRuntime, ...remainingBoundRuntimes ] = boundRuntimes;
+
+        if (firstBoundRuntime === undefined) {
+            throw new TypeError('Composed runtime graph requires at least one runtime.');
+        }
+
+        return composeRuntimes(firstBoundRuntime, ...remainingBoundRuntimes);
+    };
+
+    const descriptor: ComposedRuntimeGraph = Object.freeze({
         kind: 'composed-runtimes',
+        scenario,
+        scenarios,
         runtimes: Object.freeze(Array.from(flattened)),
         [composedRuntimeGraphBrand]: true as const
     });
+
+    return descriptor;
 }
 
-export function isComposedRuntimeGraph(runtime: unknown): runtime is ComposedRuntimeGraph {
+function isComposedRuntimeGraph(runtime: unknown): runtime is ComposedRuntimeGraph {
     return typeof runtime === 'object' &&
         runtime !== null &&
         Reflect.get(runtime, composedRuntimeGraphBrand) === true;
 }
+
+export const runtimeMatrixDefinitionApi = Object.freeze({
+    composeRuntimes,
+    defineRuntimeMatrix,
+    isComposedRuntimeGraph,
+    isDefinedRuntimeMatrix,
+    runtimeGraphLeaves
+});

@@ -221,17 +221,15 @@ filtering, reporting, or replay metadata.
 Two scenario timing modes are in scope:
 
 - `request-routed`: the resource can serve multiple scenarios from the same
-  acquired handle. The scenario affects the exposed handle, URL builder, or
-  request construction. It does not affect the resource acquisition cache key.
+  acquired service. The scenario affects the exposed handle, URL builder, or
+  request construction.
 - `acquire`: the scenario changes startup or acquired state. The scenario is
-  part of the acquisition context, disposal context, and resource acquisition
-  cache key.
+  part of the acquisition and disposal contexts.
 
-For `shared-per-worker` resources, acquire-time scenarios are cached per worker
-and per scenario key. If an app server depends on a simulated API URL during
-`acquire`, the API scenario must also be acquire-time for that graph. The
-runner must not pretend a body-time scenario can reconfigure an already
-acquired dependent resource.
+Until scenario-aware lifecycle cache identity lands, the runner rejects
+distinct bindings that would share one reusable lifecycle boundary. This
+applies to `per-run`, `per-file`, `per-suite`, and `shared-per-worker`
+resources. `per-case` bindings remain independent.
 
 ## What A Test Might Look Like
 

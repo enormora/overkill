@@ -451,6 +451,11 @@ owner path internally so a public scenario binding such as
 `runtime.scenario({ api: 'payments-500' })` can still reach the resource that
 declared the `api` scenario slot inside a nested graph.
 
+Scenario bindings are collected as planning metadata and forwarded to the
+owning resource's acquisition and disposal contexts. Distinct bindings cannot
+share a reusable lifecycle boundary until cache identity includes scenario
+bindings.
+
 Runtime and resource wrappers are composable values:
 
 ```ts

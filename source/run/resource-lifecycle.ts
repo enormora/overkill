@@ -15,6 +15,7 @@ import {
     combinedResourceEntries,
     composedResourceSession,
     directResourceEntries,
+    lifecycleScenarioBindings,
     resourceMapFromEntries,
     stepRuntimeGraphs,
     type ComposedResourceSession,
@@ -140,6 +141,7 @@ async function disposeResourceRecord(
     const disposeHandle = async function disposeResourceHandle(): Promise<void> {
         await dispose(record.ownerHandle, {
             dependencies: record.dependencyContext,
+            scenarios: lifecycleScenarioBindings(record.descriptor),
             signal
         });
     };
