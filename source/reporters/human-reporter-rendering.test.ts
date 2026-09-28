@@ -135,7 +135,10 @@ export const testNode = createOverkillSuite({
                     },
                     { ...successfulTimingSpan('collection.import', 1_100_000), label: 'source/users.test.ts' },
                     { ...successfulTimingSpan('worker-pool.ready', 1_000_000), workerId: 'lane-2' },
-                    successfulTimingSpan('config.load', 900_000),
+                    {
+                        ...successfulTimingSpan('resource.release', 900_000),
+                        resource: { name: 'database', scope: 'per-run' }
+                    },
                     { ...successfulTimingSpan('cleanup', 800_000), status: 'failure' },
                     successfulTimingSpan('reporter.finish', 700_000),
                     successfulTimingSpan('reporter.deliver', 500_000)
@@ -149,7 +152,7 @@ export const testNode = createOverkillSuite({
                         'timeout): 1200 ms',
                         '  collection import for source/users.test.ts: 1100 ms',
                         '  worker pool ready (worker lane-2): 1000 ms',
-                        '  config load: 900 ms',
+                        '  resource release for database (per-run): 900 ms',
                         '  cleanup (failure): 800 ms'
                     ]
                 );
