@@ -203,12 +203,35 @@ function taskWithoutPort(task: WorkerPoolTask): WorkerPoolTaskWithoutPort {
         };
     }
 
+    if (task.kind === 'acquire-run-resources') {
+        return {
+            assignedWork: task.assignedWork,
+            boundaryUseCounts: task.boundaryUseCounts,
+            command: task.command,
+            kind: 'acquire-run-resources',
+            lane: task.lane,
+            lifecycle: task.lifecycle
+        };
+    }
+
+    if (task.kind === 'dispose-run-resources' || task.kind === 'dispose-lane-lifecycle') {
+        return {
+            kind: task.kind,
+            lane: task.lane,
+            lifecycle: task.lifecycle
+        };
+    }
+
     return {
         assignedUnits: task.assignedUnits,
         assignedWork: task.assignedWork,
+        boundaryUseCounts: task.boundaryUseCounts,
         command: task.command,
         kind: 'run',
         lane: task.lane,
+        lifecycle: task.lifecycle,
+        projectedResources: task.projectedResources,
+        runWork: task.runWork,
         startedAtMilliseconds: task.startedAtMilliseconds
     };
 }
@@ -410,7 +433,13 @@ function isWorkerPoolTask(value: unknown): value is WorkerPoolTask {
         value !== null &&
         Object.hasOwn(value, 'kind') &&
         Object.hasOwn(value, 'port') &&
-        (Reflect.get(value, 'kind') === 'collect' || Reflect.get(value, 'kind') === 'run');
+        (
+            Reflect.get(value, 'kind') === 'acquire-run-resources' ||
+            Reflect.get(value, 'kind') === 'collect' ||
+            Reflect.get(value, 'kind') === 'dispose-lane-lifecycle' ||
+            Reflect.get(value, 'kind') === 'dispose-run-resources' ||
+            Reflect.get(value, 'kind') === 'run'
+        );
 }
 
 function readWorkerPoolTask(value: unknown): WorkerPoolTask {

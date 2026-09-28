@@ -134,7 +134,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(
                     constraints,
                     {
-                        affinityKeys: [ 'tenant-a', 'tenant-b' ],
+                        affinityKeys: [ 'resource:worker:workerScoped', 'tenant-a', 'tenant-b' ],
                         capacityWeight: 8,
                         duplicateExecution: [ 'disposable-isolated' ],
                         faultDomains: [ 'postgres-primary', 'redis-primary' ],
@@ -142,7 +142,6 @@ export const testNode = createOverkillSuite({
                         singleWorkerKeys: [
                             `resource:file:${filePath}:fileScoped`,
                             `resource:suite:${filePath}:["api"]:suiteScoped`,
-                            'resource:worker:workerScoped',
                             'single-worker:singleWorkerBound'
                         ]
                     }

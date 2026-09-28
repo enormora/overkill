@@ -246,12 +246,31 @@ function hedgeDispatchState(
             return [ JSON.stringify(entry.lease.traceUnit), entry ];
         })),
         duplicateWork,
+        laneCanLeaseHedgeCandidate() {
+            return true;
+        },
         lifecycleByLane: new Map(plan.lanes.map(function toLifecycleEntry(lane) {
             return [ lane.id, unit.workerLifecycle ];
         })),
         resolvedRun: runtime.resolvedRun,
         wallClock: runtime.dependencies.wallClock
     };
+}
+
+function assertIncompatibleLaneSuppressesHedge(scope: OverkillScope): void {
+    const unit = hedgeSafeUnit();
+    const plan = twoLanePlan(unit);
+    const runtime = runtimeWithHedging(plan);
+    const entry = readyHedgeLease(runtime, plan);
+    const state: HedgeDispatchState = {
+        ...hedgeDispatchState(runtime, plan, [ entry ], new Set()),
+        laneCanLeaseHedgeCandidate() {
+            return false;
+        }
+    };
+
+    scope.assert.equal(laneHasPotentialHedge(state, secondLane(plan)), false);
+    scope.assert.equal(selectHedgeCandidate(state, secondLane(plan)), null);
 }
 
 function activeHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): HedgeActiveUnitLease {
@@ -389,6 +408,15 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool hedge dispatch accepts disposable isolated fresh workers',
             body(scope: OverkillScope) {
                 assertDisposableIsolatedHedge(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker-pool hedge dispatch rejects incompatible lanes',
+            body(scope: OverkillScope) {
+                assertIncompatibleLaneSuppressesHedge(scope);
 
                 return scope.assert.collect();
             }

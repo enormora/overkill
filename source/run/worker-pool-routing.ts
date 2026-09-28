@@ -49,13 +49,22 @@ function routeForLane(
 function isWorkerPoolTask(value: unknown): value is WorkerPoolTask {
     return typeof value === 'object' &&
         value !== null &&
-        Object.hasOwn(value, 'command') &&
-        (Reflect.get(value, 'kind') === 'collect' || Reflect.get(value, 'kind') === 'run');
+        (
+            Reflect.get(value, 'kind') === 'acquire-run-resources' ||
+            Reflect.get(value, 'kind') === 'collect' ||
+            Reflect.get(value, 'kind') === 'dispose-lane-lifecycle' ||
+            Reflect.get(value, 'kind') === 'dispose-run-resources' ||
+            Reflect.get(value, 'kind') === 'run'
+        );
 }
 
 function taskWorkerLifecycle(task: unknown): RunWorkerLifecycle {
     if (!isWorkerPoolTask(task)) {
         throw new Error('Worker-pool received an invalid task.');
+    }
+
+    if (task.kind === 'dispose-lane-lifecycle' || task.kind === 'dispose-run-resources') {
+        return 'reuse';
     }
 
     return task.command.workerLifecycle;
@@ -66,7 +75,7 @@ function taskLane(task: unknown): string | null {
         throw new Error('Worker-pool received an invalid task.');
     }
 
-    return task.kind === 'run' ? task.lane : null;
+    return task.kind === 'collect' ? null : task.lane;
 }
 
 function routeForTask(routes: readonly WorkerPoolRoute[], task: unknown): WorkerPoolRoute {

@@ -92,7 +92,9 @@ type DuplicateWorkLedger = {
 function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): DynamicDispatchState {
     const pendingUnits = assignedWorkUnits(plan).map(originalQueueItem);
 
-    return {
+    let state: DynamicDispatchState;
+
+    state = {
         activeLeases: createLeaseCounter(),
         activeUnits: new Map(),
         batchId: createStoredRunValue(0),
@@ -100,6 +102,13 @@ function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: Placeme
         hedgeWakeTimeout: createStoredRunValue<HedgeWakeTimeout>(null),
         lanes: plan.lanes,
         lifecycleByLane: laneLifecycles(plan),
+        laneCanLeaseHedgeCandidate(entry, lane) {
+            return laneCanLease(
+                state,
+                fixedQueueItem(entry.lease.unit, entry.lease.traceUnit, requeuedPriority()),
+                lane
+            );
+        },
         pendingUnits: createWorkUnitQueue(pendingUnits),
         quotas: faultQuotas(plan),
         reservations: createDynamicReservations(),
@@ -110,6 +119,8 @@ function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: Placeme
         warmLaneAffinity: createWarmLaneAffinity(),
         wallClock: runtime.dependencies.wallClock
     };
+
+    return state;
 }
 
 function laneMatchesLifecycle(state: DynamicDispatchState, item: QueuedWorkUnit, lane: PlacementLane): boolean {

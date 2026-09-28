@@ -18,6 +18,7 @@ export type HedgeDispatchState = {
     };
     readonly duplicateWork: ReadonlySet<string>;
     readonly lifecycleByLane: ReadonlyMap<string, WorkUnit['workerLifecycle']>;
+    readonly laneCanLeaseHedgeCandidate: (entry: HedgeActiveUnitLease, lane: PlacementLane) => boolean;
     readonly resolvedRun: WorkerPoolRunRuntime['resolvedRun'];
     readonly wallClock: RunOrchestratorDependencies['wallClock'];
 };
@@ -79,7 +80,8 @@ function hedgeCandidateCanRunOnLane(
     lane: PlacementLane
 ): boolean {
     return entry.lane.id !== lane.id &&
-        state.lifecycleByLane.get(lane.id) === entry.lease.unit.workerLifecycle;
+        state.lifecycleByLane.get(lane.id) === entry.lease.unit.workerLifecycle &&
+        state.laneCanLeaseHedgeCandidate(entry, lane);
 }
 
 function hedgeCandidateIsEligible(state: HedgeDispatchState, entry: HedgeActiveUnitLease): boolean {

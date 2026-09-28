@@ -2,7 +2,8 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import { workIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey, type WorkId } from '../engine/identity.ts';
+import type { RunnerError } from '../engine/run-result.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
@@ -10,10 +11,14 @@ import {
 } from './supervised-run-state.ts';
 import type {
     WorkerPoolCommand,
+    WorkerPoolDisposeResourceOutput,
     WorkerPoolMessage,
+    WorkerPoolRunResourceOutput,
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
+import { workerPoolRunResourceOwnerLane } from './worker-pool-protocol.ts';
 import {
+    collectedPlanNeedsRunResourceOwner,
     workerPoolExecutionFacts,
     type WorkerPoolRunRuntime,
     type WorkerPoolTaskRun
@@ -62,20 +67,28 @@ type TaskFailureContext = {
 
 type TaskExecutionContext = TaskFailureContext & {
     readonly authorities: HedgedAuthorities;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
     readonly startedAtMilliseconds: number;
 };
 
 type WorkerLoopContext = TaskExecutionContext & {
     readonly completedTaskRuns: CompletedTaskRuns;
     readonly lane: PlacementLane;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
 };
 
 type WorkerTaskRunRequest = {
     readonly channel: WorkerPoolTaskChannel;
     readonly lane: PlacementLane;
+    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
     readonly runtime: WorkerPoolRunRuntime;
     readonly startedAtMilliseconds: number;
     readonly taskRun: WorkerPoolTaskRun;
+};
+
+export type WorkerPoolResourceLifecycle = {
+    readonly projectedResources: WorkerPoolRunResourceOutput['projectedResources'];
+    readonly runWork: readonly WorkId[];
 };
 
 type HostRunnerErrors = ReturnType<NonNullable<WorkerPoolRunRuntime['pool']['takeHostRunnerErrors']>>;
@@ -117,6 +130,7 @@ function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunR
 
     return {
         close() {
+            port1.close();
             port2.close();
         },
         port: port1
@@ -199,6 +213,168 @@ function isWorkerPoolRunOutput(value: unknown): value is WorkerPoolRunOutput {
         Object.hasOwn(value, 'results');
 }
 
+function isWorkerPoolRunResourceOutput(value: unknown): value is WorkerPoolRunResourceOutput {
+    return value !== null &&
+        typeof value === 'object' &&
+        Object.hasOwn(value, 'projectedResources') &&
+        Object.hasOwn(value, 'runnerErrors');
+}
+
+function isWorkerPoolDisposeResourceOutput(value: unknown): value is WorkerPoolDisposeResourceOutput {
+    return value !== null &&
+        typeof value === 'object' &&
+        Object.hasOwn(value, 'runnerErrors');
+}
+
+function runWork(plan: PlacementPlan): readonly WorkId[] {
+    return plan.units.flatMap(function toWork(unit) {
+        return unit.work;
+    });
+}
+
+function collectedPlanNeedsLaneResourceLifecycle(runtime: WorkerPoolRunRuntime): boolean {
+    return runtime.collectedPlan.files.some(function fileHasLaneResource(file) {
+        return file.cases.some(function caseHasLaneResource(testCase) {
+            return testCase.resourceAttachments.resourceGraph.some(function isLaneResource(resource) {
+                return resource.scope !== 'per-run';
+            });
+        });
+    });
+}
+
+function firstPlanUnit(plan: PlacementPlan): WorkUnit {
+    const unit = plan.units[0];
+
+    if (unit === undefined) {
+        throw new Error('Worker-pool resource acquisition requires a work unit.');
+    }
+
+    return unit;
+}
+
+function resourceTaskChannel(): WorkerPoolTaskChannel {
+    const { port1, port2 } = new NodeMessageChannel();
+
+    return {
+        close() {
+            port2.close();
+        },
+        port: port1
+    };
+}
+
+function recordResourceRunnerErrors(runtime: WorkerPoolRunRuntime, errors: readonly RunnerError[]): void {
+    if (errors.length > 0) {
+        runtime.runState.recordRunnerErrors(errors);
+        runtime.terminalFailure.write(true);
+    }
+}
+
+function recordResourceLifecycleFailure(runtime: WorkerPoolRunRuntime, message: string, cause: unknown): void {
+    if (runtime.terminalFailure.read()) {
+        return;
+    }
+
+    runtime.runState.recordRunnerError({
+        attributedTo: null,
+        attributedToWork: null,
+        cause,
+        diagnostics: [],
+        message,
+        subtype: 'runtime-policy'
+    });
+}
+
+async function acquireRunResources(
+    runtime: WorkerPoolRunRuntime,
+    plan: PlacementPlan
+): Promise<WorkerPoolResourceLifecycle> {
+    const channel = resourceTaskChannel();
+    const work = runWork(plan);
+
+    try {
+        const output: unknown = await runtime.pool.run({
+            assignedWork: work,
+            boundaryUseCounts: [],
+            command: createRunCommand(runtime, firstPlanUnit(plan)),
+            kind: 'acquire-run-resources',
+            lane: workerPoolRunResourceOwnerLane,
+            lifecycle: runtime.lifecycle,
+            port: channel.port
+        }, {
+            name: 'runTask',
+            signal: new AbortController().signal,
+            transferList: portTransferList(channel.port)
+        });
+
+        if (!isWorkerPoolRunResourceOutput(output)) {
+            throw new Error('Worker-pool run resource task returned an invalid result.');
+        }
+
+        recordResourceRunnerErrors(runtime, output.runnerErrors);
+
+        return { projectedResources: output.projectedResources, runWork: work };
+    } finally {
+        channel.close();
+    }
+}
+
+async function disposeRunResources(runtime: WorkerPoolRunRuntime): Promise<void> {
+    const channel = resourceTaskChannel();
+
+    try {
+        const output: unknown = await runtime.pool.run({
+            kind: 'dispose-run-resources',
+            lane: workerPoolRunResourceOwnerLane,
+            lifecycle: runtime.lifecycle,
+            port: channel.port
+        }, {
+            name: 'runTask',
+            signal: new AbortController().signal,
+            transferList: portTransferList(channel.port)
+        });
+
+        if (!isWorkerPoolDisposeResourceOutput(output)) {
+            throw new Error('Worker-pool run resource disposal returned an invalid result.');
+        }
+
+        recordResourceRunnerErrors(runtime, output.runnerErrors);
+    } catch (error: unknown) {
+        recordResourceLifecycleFailure(runtime, 'Worker-pool run resource disposal failed.', error);
+    } finally {
+        channel.close();
+    }
+}
+
+async function disposeLaneLifecycles(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): Promise<void> {
+    await Promise.all(plan.lanes.map(async function disposeLane(lane) {
+        const channel = resourceTaskChannel();
+
+        try {
+            const output: unknown = await runtime.pool.run({
+                kind: 'dispose-lane-lifecycle',
+                lane: lane.id,
+                lifecycle: runtime.lifecycle,
+                port: channel.port
+            }, {
+                name: 'runTask',
+                signal: new AbortController().signal,
+                transferList: portTransferList(channel.port)
+            });
+
+            if (!isWorkerPoolDisposeResourceOutput(output)) {
+                throw new Error('Worker-pool lane resource disposal returned an invalid result.');
+            }
+
+            recordResourceRunnerErrors(runtime, output.runnerErrors);
+        } catch (error: unknown) {
+            recordResourceLifecycleFailure(runtime, 'Worker-pool lane resource disposal failed.', error);
+        } finally {
+            channel.close();
+        }
+    }));
+}
+
 async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolRunOutput> {
     const assignedWork = request.taskRun.members.flatMap(function toWork(member) {
         return member.unit.work;
@@ -208,10 +384,14 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
             return { traceUnit: member.traceUnit, work: member.unit.work };
         }),
         assignedWork,
+        boundaryUseCounts: [],
         command: createBatchRunCommand(request.runtime, request.taskRun.members),
         kind: 'run',
         lane: request.lane.id,
+        lifecycle: request.runtime.lifecycle,
         port: request.channel.port,
+        projectedResources: request.resourceLifecycle.projectedResources,
+        runWork: request.resourceLifecycle.runWork,
         startedAtMilliseconds: request.startedAtMilliseconds
     }, {
         name: 'runTask',
@@ -230,12 +410,13 @@ async function runFileUnit(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime,
     lane: PlacementLane,
+    resourceLifecycle: WorkerPoolResourceLifecycle,
     startedAtMilliseconds: number
 ): Promise<WorkerPoolRunOutput> {
     const channel = observeTaskMessages(taskRun, runtime);
 
     try {
-        return await runWorkerTask({ channel, lane, runtime, startedAtMilliseconds, taskRun });
+        return await runWorkerTask({ channel, lane, resourceLifecycle, runtime, startedAtMilliseconds, taskRun });
     } finally {
         channel.close();
     }
@@ -451,7 +632,13 @@ async function recordCompletedTaskRun(
     context: TaskExecutionContext
 ): Promise<void> {
     recordBatchStarted(taskRun, context.runtime);
-    const output = await runFileUnit(taskRun, context.runtime, lease.lane, context.startedAtMilliseconds);
+    const output = await runFileUnit(
+        taskRun,
+        context.runtime,
+        lease.lane,
+        context.resourceLifecycle,
+        context.startedAtMilliseconds
+    );
     recordBatchCompleted(taskRun, context.runtime);
     finishCompletedLease(context.dispatcher, lease);
 
@@ -554,20 +741,44 @@ export async function executeWorkerPoolUnits(
     const authorities: HedgedAuthorities = new Map();
     const crashCount = createStoredRunValue(0);
     const dispatcher = createWorkDispatcher(runtime, placementPlan);
+    const hasRunResourceOwner = collectedPlanNeedsRunResourceOwner(runtime.resolvedRun);
+    const hasLaneResourceLifecycle = collectedPlanNeedsLaneResourceLifecycle(runtime);
+    const resourceLifecycle = hasRunResourceOwner
+        ? await acquireRunResources(runtime, placementPlan)
+        : { projectedResources: { resources: [] }, runWork: runWork(placementPlan) };
 
-    await Promise.all(
-        placementPlan.lanes.map(async function runLoop(lane) {
-            await runWorkerLoop({
-                completedTaskRuns,
-                authorities,
-                crashCount,
-                dispatcher,
-                lane,
-                runtime,
-                startedAtMilliseconds
-            });
-        })
-    );
+    if (runtime.terminalFailure.read()) {
+        if (hasRunResourceOwner) {
+            await disposeRunResources(runtime);
+        }
+
+        return completedTaskRuns;
+    }
+
+    try {
+        await Promise.all(
+            placementPlan.lanes.map(async function runLoop(lane) {
+                await runWorkerLoop({
+                    completedTaskRuns,
+                    authorities,
+                    crashCount,
+                    dispatcher,
+                    lane,
+                    resourceLifecycle,
+                    runtime,
+                    startedAtMilliseconds
+                });
+            })
+        );
+    } finally {
+        if (hasLaneResourceLifecycle && !runtime.terminalFailure.read()) {
+            await disposeLaneLifecycles(runtime, placementPlan);
+        }
+
+        if (hasRunResourceOwner) {
+            await disposeRunResources(runtime);
+        }
+    }
 
     return completedTaskRuns;
 }

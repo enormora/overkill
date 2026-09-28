@@ -15,6 +15,13 @@ export type ManagedLifecycleState = {
         signal: AbortSignal,
         messages: LifecycleMessages
     ) => Promise<ComposedResourceSession>;
+    readonly acquireResourceScopes: (
+        steps: readonly ResourceWrapperStep[],
+        testCase: TestPlanCase,
+        signal: AbortSignal,
+        scopes: ReadonlySet<string>
+    ) => Promise<void>;
+    readonly disposeAll: (signal: AbortSignal) => Promise<readonly ManagedRunnerError[]>;
     readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
     readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
     readonly takePendingRunErrors: () => readonly ManagedRunnerError[];

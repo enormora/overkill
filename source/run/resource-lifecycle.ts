@@ -5,6 +5,7 @@ import type {
     AnyResourceDefinition,
     ResourceContext,
     ResourceProjectionContext,
+    ResourceCreationContext,
     ResourceProjectionPayload,
     ResourceScope,
     RuntimeResourceMap as ResourceMap
@@ -44,10 +45,28 @@ type LifecycleBoundary = {
     readonly scope: ResourceScope;
 };
 
+export type ResourceBoundaryUseCount = {
+    readonly boundaryKey: string;
+    readonly count: number;
+};
+export type ResourceProjectionRecord = {
+    readonly boundaryKey: string;
+    readonly payload: ResourceProjectionPayload;
+};
+export type ResourceProjectionRecords = {
+    readonly resources: readonly ResourceProjectionRecord[];
+};
+export type ResourceLifecycleSession = {
+    readonly disposeAll: (signal: AbortSignal) => Promise<readonly ManagedRunnerError[]>;
+    readonly projectionRecords: () => ResourceProjectionRecords;
+    readonly runtimePolicy: TestRuntimePolicy;
+};
+
 type ManagedResourceRecord = {
     readonly boundary: LifecycleBoundary;
     readonly dependencyContext: ResourceContext<ResourceMap>;
     readonly descriptor: AnyResourceDefinition;
+    readonly external: boolean;
     readonly exposedHandle: unknown;
     readonly ownerHandle: unknown;
 };
@@ -74,6 +93,13 @@ type ManagedLifecycleStores = {
     readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
     readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
     readonly takeRunErrors: () => readonly ManagedRunnerError[];
+    readonly records: () => readonly ManagedResourceRecord[];
+};
+
+export type ResourceLifecycleOptions = {
+    readonly boundaryUseCounts: readonly ResourceBoundaryUseCount[];
+    readonly caseDisposalScopes: ReadonlySet<ResourceScope>;
+    readonly projectedResources: ResourceProjectionRecords;
 };
 
 type ManagedResourceAcquirer = {
@@ -125,13 +151,13 @@ function resourceHasProjection(resource: AnyResourceDefinition): resource is Pro
         typeof resource.deserializeHandle === 'function';
 }
 
-function projectedHandle(
+function serializeProjectedHandle(
     resource: AnyResourceDefinition,
     ownerHandle: unknown,
     dependencyContext: ResourceContext<ResourceMap>
-): unknown {
+): ResourceProjectionPayload | null {
     if (!resourceHasProjection(resource)) {
-        return ownerHandle;
+        return null;
     }
 
     const context = { dependencies: dependencyContext };
@@ -144,7 +170,34 @@ function projectedHandle(
         );
     }
 
-    return resource.deserializeHandle(payload, context);
+    return payload;
+}
+
+function projectedHandle(
+    resource: AnyResourceDefinition,
+    ownerHandle: unknown,
+    dependencyContext: ResourceContext<ResourceMap>
+): unknown {
+    const payload = serializeProjectedHandle(resource, ownerHandle, dependencyContext);
+
+    return payload === null
+        ? ownerHandle
+        : deserializeProjectedHandle(resource, payload, dependencyContext);
+}
+
+function deserializeProjectedHandle(
+    resource: AnyResourceDefinition,
+    payload: ResourceProjectionPayload,
+    dependencyContext: ResourceContext<ResourceMap>
+): unknown {
+    if (!resourceHasProjection(resource)) {
+        throw resourceWrapperLifecycleError(
+            `Resource "${resource.name}" requires a projection for worker-pool per-run ownership.`,
+            resource
+        );
+    }
+
+    return resource.deserializeHandle(payload, { dependencies: dependencyContext });
 }
 
 function suiteBoundary(testCase: TestPlanCase): string {
@@ -193,13 +246,18 @@ function currentRunningCase(): TestPlanCase {
     return testCase;
 }
 
-function caseResourceBoundaries(testCase: TestPlanCase): readonly string[] {
+function caseResourceBoundaries(testCase: TestPlanCase): readonly LifecycleBoundary[] {
     return Array.from(
-        new Set(testCase.resourceAttachments.resourceGraph.flatMap(function toBoundary(resource) {
-            return isResourceScope(resource.scope)
-                ? [ resourceBoundary(resource.name, resource.scope, testCase).key ]
-                : [];
+        new Map(testCase.resourceAttachments.resourceGraph.flatMap(function toBoundary(resource) {
+            if (!isResourceScope(resource.scope)) {
+                return [];
+            }
+
+            const boundary = resourceBoundary(resource.name, resource.scope, testCase);
+
+            return [ [ boundary.key, boundary ] ];
         }))
+            .values()
     );
 }
 
@@ -208,11 +266,41 @@ function initialBoundaryUseCounts(testCases: readonly TestPlanCase[]): ReadonlyM
 
     for (const testCase of testCases) {
         for (const boundary of caseResourceBoundaries(testCase)) {
-            counts.set(boundary, (counts.get(boundary) ?? 0) + 1);
+            counts.set(boundary.key, (counts.get(boundary.key) ?? 0) + 1);
         }
     }
 
     return counts;
+}
+
+function initialBoundaryUseCountsFromRecords(
+    counts: readonly ResourceBoundaryUseCount[]
+): ReadonlyMap<string, number> {
+    return new Map(counts.map(function toEntry(count) {
+        return [ count.boundaryKey, count.count ];
+    }));
+}
+
+export function resourceLifecycleBoundaryUseCounts(
+    testCases: readonly TestPlanCase[]
+): readonly ResourceBoundaryUseCount[] {
+    return Array.from(initialBoundaryUseCounts(testCases), function toCount([ boundaryKey, count ]) {
+        return { boundaryKey, count };
+    });
+}
+
+function defaultLifecycleOptions(testCases: readonly TestPlanCase[]): ResourceLifecycleOptions {
+    return {
+        boundaryUseCounts: resourceLifecycleBoundaryUseCounts(testCases),
+        caseDisposalScopes: new Set(resourceScopes) as ReadonlySet<ResourceScope>,
+        projectedResources: { resources: [] }
+    };
+}
+
+function caseResourceBoundaryKeys(testCase: TestPlanCase, scopes: ReadonlySet<ResourceScope>): readonly string[] {
+    return caseResourceBoundaries(testCase).flatMap(function toBoundaryKey(boundary) {
+        return scopes.has(boundary.scope) ? [ boundary.key ] : [];
+    });
 }
 
 function caseKey(testCase: TestPlanCase): string {
@@ -223,9 +311,9 @@ function mutableDependencyContext(): Record<string, unknown> {
     return {};
 }
 
-function createManagedStores(testCases: readonly TestPlanCase[]): ManagedLifecycleStores {
+function createManagedStores(options: ResourceLifecycleOptions): ManagedLifecycleStores {
     const acquisitions = new Map<string, ManagedResourceAcquisition>();
-    const boundaryUseCounts = new Map(initialBoundaryUseCounts(testCases));
+    const boundaryUseCounts = new Map(initialBoundaryUseCountsFromRecords(options.boundaryUseCounts));
     const errorsByCase = new Map<string, ManagedRunnerError[]>();
     const records = new Map<string, ManagedResourceRecord>();
     const runErrors: ManagedRunnerError[] = [];
@@ -262,6 +350,9 @@ function createManagedStores(testCases: readonly TestPlanCase[]): ManagedLifecyc
         },
         rememberRecord(boundaryKey, record) {
             records.set(boundaryKey, record);
+        },
+        records() {
+            return Array.from(records.values());
         },
         takeCaseErrors(testCase) {
             const key = caseKey(testCase);
@@ -306,7 +397,76 @@ function assertCompatibleResource(
     }
 }
 
-function createManagedResourceAcquirer(stores: ManagedLifecycleStores): ManagedResourceAcquirer {
+function projectionRecords(records: ResourceProjectionRecords): ReadonlyMap<string, ResourceProjectionPayload> {
+    return new Map(records.resources.map(function toEntry(record) {
+        return [ record.boundaryKey, record.payload ];
+    }));
+}
+
+function startupBudgetMilliseconds(resource: AnyResourceDefinition): number | null {
+    const budgets = resource.requirements.flatMap(function toBudget(requirement) {
+        const kind = Reflect.get(requirement, 'kind');
+        const minimumMilliseconds = Reflect.get(requirement, 'minimumMilliseconds');
+
+        return kind === 'startup-budget-milliseconds' &&
+                typeof minimumMilliseconds === 'number' &&
+            Number.isFinite(minimumMilliseconds) &&
+                minimumMilliseconds >= 0
+            ? [ minimumMilliseconds ]
+            : [];
+    });
+
+    return budgets.length === 0 ? null : Math.max(...budgets);
+}
+
+async function acquireResourceWithStartupBudget(
+    resource: AnyResourceDefinition,
+    context: ResourceCreationContext<ResourceMap>
+): Promise<unknown> {
+    const budgetMilliseconds = startupBudgetMilliseconds(resource);
+
+    if (budgetMilliseconds === null) {
+        return await callableResourceDefinition(resource).acquire(context);
+    }
+
+    const controller = new AbortController();
+    let rejectTimeout: (error: Error) => void = function rejectBeforeTimeoutReady(error) {
+        throw error;
+    };
+    const timedOut = new Promise<never>(function createStartupTimeout(_resolve, reject) {
+        rejectTimeout = reject;
+    });
+    const abortForParentSignal = function abortForParentSignal(): void {
+        controller.abort(context.signal.reason);
+    };
+    const timeout = setTimeout(function abortForStartupBudget() {
+        const error = new Error(`Resource "${resource.name}" exceeded startup budget of ${budgetMilliseconds} ms.`);
+
+        controller.abort(error);
+        rejectTimeout(error);
+    }, budgetMilliseconds);
+
+    context.signal.addEventListener('abort', abortForParentSignal, { once: true });
+
+    try {
+        return await Promise.race([
+            callableResourceDefinition(resource).acquire({
+                dependencies: context.dependencies,
+                signal: controller.signal
+            }),
+            timedOut
+        ]);
+    } finally {
+        clearTimeout(timeout);
+        context.signal.removeEventListener('abort', abortForParentSignal);
+    }
+}
+
+function createManagedResourceAcquirer(
+    stores: ManagedLifecycleStores,
+    options: ResourceLifecycleOptions
+): ManagedResourceAcquirer {
+    const externalProjections = projectionRecords(options.projectedResources);
     let acquireResource: ManagedResourceAcquirer['acquire'] = async function acquireBeforeReady() {
         throw resourceWrapperLifecycleError('Resource lifecycle is not ready.', null);
     };
@@ -336,7 +496,7 @@ function createManagedResourceAcquirer(stores: ManagedLifecycleStores): ManagedR
         signal: AbortSignal
     ): Promise<ManagedResourceRecord> {
         const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
-        const ownerHandle = await callableResourceDefinition(resource).acquire({
+        const ownerHandle = await acquireResourceWithStartupBudget(resource, {
             dependencies: dependencyContext,
             signal
         });
@@ -344,8 +504,36 @@ function createManagedResourceAcquirer(stores: ManagedLifecycleStores): ManagedR
             boundary,
             dependencyContext,
             descriptor: resource,
+            external: false,
             exposedHandle: projectedHandle(resource, ownerHandle, dependencyContext),
             ownerHandle
+        };
+
+        stores.rememberRecord(boundary.key, record);
+
+        return record;
+    }
+
+    async function startExternalResource(
+        resource: AnyResourceDefinition,
+        boundary: LifecycleBoundary,
+        testCase: TestPlanCase,
+        signal: AbortSignal
+    ): Promise<ManagedResourceRecord | null> {
+        const payload = externalProjections.get(boundary.key);
+
+        if (payload === undefined) {
+            return null;
+        }
+
+        const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
+        const record = {
+            boundary,
+            dependencyContext,
+            descriptor: resource,
+            external: true,
+            exposedHandle: deserializeProjectedHandle(resource, payload, dependencyContext),
+            ownerHandle: null
         };
 
         stores.rememberRecord(boundary.key, record);
@@ -385,6 +573,14 @@ function createManagedResourceAcquirer(stores: ManagedLifecycleStores): ManagedR
             return existingRecord;
         }
 
+        if (boundary.scope === 'per-run') {
+            const externalRecord = await startExternalResource(resource, boundary, testCase, signal);
+
+            if (externalRecord !== null) {
+                return externalRecord;
+            }
+        }
+
         const existingAcquisition = await stores.existingAcquisition(boundary.key);
 
         return existingAcquisition ?? await acquireNewResource(resource, boundary, testCase, signal);
@@ -411,7 +607,7 @@ async function disposeBoundary(
     stores.deleteRecord(boundaryKey);
     stores.deleteAcquisition(boundaryKey);
 
-    if (dispose !== null) {
+    if (!record.external && dispose !== null) {
         await dispose(record.ownerHandle, {
             dependencies: record.dependencyContext,
             signal
@@ -436,8 +632,12 @@ async function disposeCompletedBoundary(
     }
 }
 
-async function disposeCompletedBoundaries(stores: ManagedLifecycleStores, testCase: TestPlanCase): Promise<void> {
-    for (const boundary of caseResourceBoundaries(testCase)) {
+async function disposeCompletedBoundaries(
+    stores: ManagedLifecycleStores,
+    options: ResourceLifecycleOptions,
+    testCase: TestPlanCase
+): Promise<void> {
+    for (const boundary of caseResourceBoundaryKeys(testCase, options.caseDisposalScopes)) {
         try {
             await disposeCompletedBoundary(stores, boundary);
         } catch (error: unknown) {
@@ -476,6 +676,7 @@ async function managedResourceHandles(
 
 async function acquireComposedResourcesWithLifecycle(
     stores: ManagedLifecycleStores,
+    options: ResourceLifecycleOptions,
     steps: readonly ResourceWrapperStep[],
     signal: AbortSignal
 ): Promise<ComposedResourceSession> {
@@ -484,7 +685,7 @@ async function acquireComposedResourcesWithLifecycle(
     const runtimes = stepRuntimeGraphs(steps);
     const combinedResources = combinedResourceEntries(steps, testCase.workId);
     const graph = createResourceGraph(combinedResources);
-    const acquirer = createManagedResourceAcquirer(stores);
+    const acquirer = createManagedResourceAcquirer(stores, options);
 
     assertResourceDependencyScopes(combinedResources);
     await acquireTopLevelResources(acquirer, graph, testCase, signal);
@@ -500,46 +701,114 @@ async function acquireComposedResourcesWithLifecycle(
 
 async function acquireManagedComposedResources(
     stores: ManagedLifecycleStores,
+    options: ResourceLifecycleOptions,
     steps: readonly ResourceWrapperStep[],
     signal: AbortSignal,
     messages: LifecycleMessages
 ): Promise<ComposedResourceSession> {
     try {
-        return await acquireComposedResourcesWithLifecycle(stores, steps, signal);
+        return await acquireComposedResourcesWithLifecycle(stores, options, steps, signal);
     } catch (error: unknown) {
         throw resourceWrapperErrorFromUnknown(messages.acquisitionFailure, error);
     }
 }
 
-function createManagedLifecycle(testCases: readonly TestPlanCase[]): ManagedLifecycleState {
-    const stores = createManagedStores(testCases);
+async function acquireManagedResourceScopes(
+    stores: ManagedLifecycleStores,
+    options: ResourceLifecycleOptions,
+    steps: readonly ResourceWrapperStep[],
+    testCase: TestPlanCase,
+    signal: AbortSignal,
+    scopes: ReadonlySet<string>
+): Promise<void> {
+    const combinedResources = combinedResourceEntries(steps, testCase.workId);
+    const graph = createResourceGraph(combinedResources);
+    const acquirer = createManagedResourceAcquirer(stores, options);
+
+    assertResourceDependencyScopes(combinedResources);
+
+    for (const node of graph.order) {
+        if (scopes.has(node.descriptor.scope)) {
+            await acquirer.acquire(node.descriptor, testCase, signal);
+        }
+    }
+}
+
+async function disposeAllManagedResources(
+    stores: ManagedLifecycleStores,
+    signal: AbortSignal
+): Promise<readonly ManagedRunnerError[]> {
+    const errors: ManagedRunnerError[] = [];
+
+    for (const record of stores.records().toReversed()) {
+        try {
+            await disposeBoundary(stores, record.boundary.key, signal);
+        } catch (error: unknown) {
+            errors.push({
+                attributedTo: null,
+                attributedToWork: null,
+                cause: error,
+                diagnostics: [],
+                message: 'Resource disposal failed.',
+                subtype: 'runtime-policy'
+            });
+        }
+    }
+
+    return errors;
+}
+
+function projectionRecordsFromStores(stores: ManagedLifecycleStores): ResourceProjectionRecords {
+    return {
+        resources: stores.records().flatMap(function toProjectionRecord(record) {
+            const payload = serializeProjectedHandle(record.descriptor, record.ownerHandle, record.dependencyContext);
+
+            return payload === null
+                ? []
+                : [ { boundaryKey: record.boundary.key, payload } ];
+        })
+    };
+}
+
+function createManagedLifecycleState(options: ResourceLifecycleOptions): {
+    readonly lifecycle: ManagedLifecycleState;
+    readonly stores: ManagedLifecycleStores;
+} {
+    const stores = createManagedStores(options);
 
     return {
-        async acquireComposedResources(steps, signal, messages) {
-            return await acquireManagedComposedResources(stores, steps, signal, messages);
-        },
-        async runCase<Value>(testCase: TestPlanCase, run: () => Promise<Value>): Promise<Value> {
-            try {
-                return await runWithLifecycleCase(testCase, run);
-            } finally {
-                await disposeCompletedBoundaries(stores, testCase);
+        stores,
+        lifecycle: {
+            async acquireComposedResources(steps, signal, messages) {
+                return await acquireManagedComposedResources(stores, options, steps, signal, messages);
+            },
+            async acquireResourceScopes(steps, testCase, signal, scopes) {
+                await acquireManagedResourceScopes(stores, options, steps, testCase, signal, scopes);
+            },
+            async disposeAll(signal) {
+                return await disposeAllManagedResources(stores, signal);
+            },
+            async runCase<Value>(testCase: TestPlanCase, run: () => Promise<Value>): Promise<Value> {
+                try {
+                    return await runWithLifecycleCase(testCase, run);
+                } finally {
+                    await disposeCompletedBoundaries(stores, options, testCase);
+                }
+            },
+            takeCaseErrors(testCase: TestPlanCase) {
+                return stores.takeCaseErrors(testCase);
+            },
+            takePendingRunErrors() {
+                return stores.takePendingRunErrors();
+            },
+            takeRunErrors() {
+                return stores.takeRunErrors();
             }
-        },
-        takeCaseErrors(testCase: TestPlanCase) {
-            return stores.takeCaseErrors(testCase);
-        },
-        takePendingRunErrors() {
-            return stores.takePendingRunErrors();
-        },
-        takeRunErrors() {
-            return stores.takeRunErrors();
         }
     };
 }
 
-export function createResourceLifecycleRuntimePolicy(testCases: readonly TestPlanCase[]): TestRuntimePolicy {
-    const lifecycle = createManagedLifecycle(testCases);
-
+function createRuntimePolicyFromLifecycle(lifecycle: ManagedLifecycleState): TestRuntimePolicy {
     return {
         async runCase<Value>(testCase: TestPlanCase, run: () => Promise<Value>): Promise<Value> {
             return await runWithManagedLifecycle(lifecycle, async function runWithResourceLifecycle() {
@@ -558,5 +827,51 @@ export function createResourceLifecycleRuntimePolicy(testCases: readonly TestPla
         takeRunErrors() {
             return lifecycle.takeRunErrors();
         }
+    };
+}
+
+export function createResourceLifecycleRuntimePolicy(testCases: readonly TestPlanCase[]): TestRuntimePolicy {
+    const { lifecycle } = createManagedLifecycleState(defaultLifecycleOptions(testCases));
+
+    return createRuntimePolicyFromLifecycle(lifecycle);
+}
+
+export function createResourceLifecycleSession(options: ResourceLifecycleOptions): ResourceLifecycleSession {
+    const { lifecycle, stores } = createManagedLifecycleState(options);
+
+    return {
+        async disposeAll(signal) {
+            return await lifecycle.disposeAll(signal);
+        },
+        projectionRecords() {
+            return projectionRecordsFromStores(stores);
+        },
+        runtimePolicy: createRuntimePolicyFromLifecycle(lifecycle)
+    };
+}
+
+export async function acquireResourceLifecycleScopes(
+    options: ResourceLifecycleOptions,
+    testCases: readonly TestPlanCase[],
+    stepsForCase: (testCase: TestPlanCase) => readonly ResourceWrapperStep[],
+    signal: AbortSignal,
+    scopes: ReadonlySet<string>
+): Promise<ResourceLifecycleSession> {
+    const { lifecycle, stores } = createManagedLifecycleState(options);
+
+    await runWithManagedLifecycle(lifecycle, async function acquireSelectedScopes() {
+        for (const testCase of testCases) {
+            await lifecycle.acquireResourceScopes(stepsForCase(testCase), testCase, signal, scopes);
+        }
+    });
+
+    return {
+        async disposeAll(disposalSignal) {
+            return await lifecycle.disposeAll(disposalSignal);
+        },
+        projectionRecords() {
+            return projectionRecordsFromStores(stores);
+        },
+        runtimePolicy: createRuntimePolicyFromLifecycle(lifecycle)
     };
 }
