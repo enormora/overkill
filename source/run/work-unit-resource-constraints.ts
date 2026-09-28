@@ -4,6 +4,8 @@ import {
     type CollectedRunCase,
     type CollectedRunPlan,
     type DuplicateExecutionSafety,
+    type RunScheduling,
+    type WorkUnit,
     type WorkUnitResourceConstraints
 } from './run-types.ts';
 
@@ -303,4 +305,29 @@ export function workResourceConstraints(
             ? constraints
             : mergeResourceConstraints(constraints, caseResourceConstraints(testCase, item.case.file));
     }, emptyWorkUnitResourceConstraints);
+}
+
+export function hardConstraintKeys(constraints: WorkUnitResourceConstraints): readonly string[] {
+    return Array.from(new Set([ ...constraints.serialKeys, ...constraints.singleWorkerKeys ]));
+}
+
+export function constrainedScheduling(
+    scheduling: RunScheduling,
+    constraints: WorkUnitResourceConstraints
+): RunScheduling {
+    return constraints.serialKeys.length > 0 ? 'serial' : scheduling;
+}
+
+export function workUnitsShareHardConstraint(units: readonly WorkUnit[]): boolean {
+    const [ firstUnit, ...remainingUnits ] = units;
+
+    if (firstUnit === undefined) {
+        return false;
+    }
+
+    return hardConstraintKeys(firstUnit.resourceConstraints).some(function isSharedConstraint(key) {
+        return remainingUnits.every(function unitHasConstraint(unit) {
+            return hardConstraintKeys(unit.resourceConstraints).includes(key);
+        });
+    });
 }

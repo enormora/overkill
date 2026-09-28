@@ -62,6 +62,41 @@ export function createCollectedPlan(): CollectedRunPlan {
     };
 }
 
+function collectedPlanWithRunResource(): CollectedRunPlan {
+    const plan = createCollectedPlan();
+    const firstFile = plan.files[0];
+    const firstCase = firstFile?.cases[0];
+
+    if (firstFile === undefined || firstCase === undefined) {
+        throw new Error('Run-resource fixture requires one file-backed case.');
+    }
+
+    return {
+        ...plan,
+        files: [
+            {
+                ...firstFile,
+                cases: [
+                    {
+                        ...firstCase,
+                        resourceAttachments: {
+                            ...firstCase.resourceAttachments,
+                            resourceGraph: [
+                                {
+                                    dependencies: [],
+                                    name: 'database',
+                                    requirements: [],
+                                    scope: 'per-run'
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        ]
+    };
+}
+
 export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
     return {
         collectionRunnerErrors: [],
@@ -405,6 +440,33 @@ export const testNode = createOverkillSuite({
                         workerLifecycle: 'fresh-worker-per-unit'
                     }
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'one reusable lane owns per-run resources without another worker',
+            async body(scope: OverkillScope) {
+                const fixture = createRecordedPoolDependencies();
+                const runtime = await createRuntime(
+                    fixture.dependencies,
+                    workerPoolResolvedRun(collectedPlanWithRunResource())
+                );
+
+                scope.assert.equal(runtime.pool.options.maxThreads, 1);
+                scope.assert.deepEqual(fixture.createdWorkerPools, [
+                    {
+                        cwd: process.cwd(),
+                        hostProcess: { kind: 'direct' },
+                        testFamily: 'integration',
+                        workerCount: 1,
+                        workerLifecycle: 'reuse'
+                    }
+                ]);
+                await runtime.pool.destroy();
 
                 return scope.assert.collect();
             }

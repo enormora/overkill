@@ -25,7 +25,10 @@ import {
     type RunWorkerLifecycle,
     type WorkUnit
 } from './run-types.ts';
-import { workResourceConstraints } from './work-unit-resource-constraints.ts';
+import {
+    constrainedScheduling,
+    workResourceConstraints
+} from './work-unit-resource-constraints.ts';
 import {
     caseWorkUnitId,
     fileWorkUnitId,
@@ -166,9 +169,12 @@ function caseWorkUnit(work: WorkId, policy: WorkUnitPolicy, group: string | null
 }
 
 function workUnitWithResourceConstraints(unit: WorkUnit, plan: CollectedRunPlan): WorkUnit {
+    const resourceConstraints = workResourceConstraints(unit.work, plan);
+
     return {
         ...unit,
-        resourceConstraints: workResourceConstraints(unit.work, plan)
+        resourceConstraints,
+        scheduling: constrainedScheduling(unit.scheduling, resourceConstraints)
     };
 }
 

@@ -17,6 +17,7 @@ import type {
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
+    RunScheduling,
     RunWorkerCountFacts,
     TimingCollectionMode
 } from './run-types.ts';
@@ -32,6 +33,7 @@ export type RunFactsInput = {
     readonly placementPlan: PlacementPlan | null;
     readonly projectRoot: string;
     readonly request: RunRequest;
+    readonly scheduling: RunScheduling;
     readonly workerCount: RunWorkerCountFacts | null;
 };
 
@@ -158,7 +160,7 @@ function createRunExecutionFacts(
         placementPlan: input.placementPlan,
         profile: input.request.profile,
         resourceUsagePolicy: resolveResourceUsagePolicy(input.request, profile),
-        scheduling: profile.execution.scheduling,
+        scheduling: input.scheduling,
         testFamily: profile.testFamily,
         timingCollection: resolveTimingCollection(input.request, profile),
         timeoutPolicy: profile.timeouts,

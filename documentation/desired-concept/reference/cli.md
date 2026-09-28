@@ -79,8 +79,9 @@ profile-discovered file set, and cannot be mixed with file operands.
 `overkill run --workers N` requests a positive safe-integer worker count for a
 worker-pool profile. The request replaces automatic sizing, then remains capped
 by host parallelism, the profile's `execution.maxWorkers`, and the available
-work-unit count. Other process models reject the flag. `overkill list` does not
-accept it.
+work-unit count. A plan-wide serial or single-worker constraint may reduce the
+resolved count to one. Other process models reject the flag. `overkill list`
+does not accept it.
 
 `overkill merge-results` accepts run-record files and directories containing
 run-record files. It validates that all inputs are completed shard records for

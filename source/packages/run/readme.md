@@ -175,8 +175,10 @@ placement.
 Worker-pool size defaults to one fewer than host parallelism, with a minimum of
 one and a maximum of eight. The planner caps that target by host parallelism,
 `execution.maxWorkers`, and the work-unit count. `RunRequest.workers` replaces
-the automatic target before those caps are applied. Resolved worker-count facts
-are recorded in `RunFacts.execution.workerCount`.
+the automatic target before those caps are applied. A serial or single-worker
+key shared by every selected unit caps the resolved executor count at one.
+Resolved worker-count facts are recorded in `RunFacts.execution.workerCount`;
+resource-owner workers are not included.
 `dispatchPolicy: 'dynamic-lease'` is the default worker-pool dispatch policy.
 It leases pending work to compatible idle lanes and may split eligible
 not-started units along `WorkId` boundaries. Split children keep derived trace
@@ -195,6 +197,13 @@ artifact.
 `workerLifecycle: 'fresh-worker-per-unit'` creates disposable isolation per
 unit. `supervised-process` remains available when a single process-isolated
 child boundary is preferred.
+
+Resource requirements resolve after work-unit formation. A `serial` or
+`exclusive-resource` requirement makes its containing file or group unit
+serial without serializing unrelated units. `single-worker` pins matching work
+to one lane without changing in-unit scheduling. For `supervised-process`, a
+serial or exclusive requirement anywhere in the selected plan makes the
+containing process plan serial.
 Direct `RunConfig` values may set `execution.hostProcess` for worker-pool
 profiles. `{ kind: 'direct' }` keeps the worker-thread pool in the coordinator
 process. `{ kind: 'child', nodeArguments: [...] }` starts one supervised host

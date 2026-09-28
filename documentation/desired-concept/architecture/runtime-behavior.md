@@ -579,6 +579,13 @@ Execution requirements add scheduling pressure:
 - `fault-domain` spreads matching work across lanes where possible
 - `startup-budget-milliseconds` is budget metadata for acquisition policy
 
+Resource lowering does not change work-unit granularity. If a file or group
+unit contains work with a `serial` or `exclusive-resource` requirement, the
+whole containing unit resolves to serial scheduling. Other units remain
+eligible for parallel lanes. When every selected unit shares one serial or
+single-worker key, the worker-pool executor count resolves to one lane even if
+automatic sizing, `execution.maxWorkers`, or `--workers` allowed more.
+
 Logical lane assignment is the scheduler contract. Worker-pool profiles that
 reuse workers should map a logical lane to a stable executor while work needing
 that lane remains live; fresh-worker profiles may satisfy the same placement
@@ -679,9 +686,11 @@ Override surfaces:
 Default worker count is `Math.min(Math.max(availableParallelism() - 1, 1), 8)`
 for worker-pool modes. An explicit `--workers N` replaces that automatic
 target. The planner then caps the target by host parallelism, the profile's
-`execution.maxWorkers`, and the available work-unit count. `--workers` is
-invalid for profiles that do not use a worker pool. Mixed `reuse` and
-`fresh-worker-per-unit` plans require at least one lane for each lifecycle.
+`execution.maxWorkers`, the available work-unit count, and plan-wide hard lane
+constraints. `--workers` is invalid for profiles that do not use a worker pool.
+Mixed `reuse` and `fresh-worker-per-unit` plans require at least one lane for
+each lifecycle. `RunWorkerCountFacts.resolved` counts executor lanes;
+infrastructure-only resource-owner workers are not executor lanes.
 Worker-pool placement defaults to case-count balancing: the planner places
 larger work units first, combines selected case count with resource capacity
 weight, and uses seeded order as a deterministic tie-breaker and lane-local

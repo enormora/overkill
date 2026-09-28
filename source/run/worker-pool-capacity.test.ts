@@ -42,6 +42,24 @@ function workUnit(key: string, workerLifecycle: RunWorkerLifecycle): WorkUnit {
     return weightedWorkUnit(key, workerLifecycle, emptyWorkUnitResourceConstraints.capacityWeight);
 }
 
+function constrainedWorkUnit(
+    key: string,
+    workerLifecycle: RunWorkerLifecycle,
+    hardKey: string,
+    kind: 'serial' | 'single-worker'
+): WorkUnit {
+    const unit = workUnit(key, workerLifecycle);
+
+    return {
+        ...unit,
+        resourceConstraints: {
+            ...unit.resourceConstraints,
+            serialKeys: kind === 'serial' ? [ hardKey ] : [],
+            singleWorkerKeys: kind === 'single-worker' ? [ hardKey ] : []
+        }
+    };
+}
+
 function workerCount(
     units: readonly WorkUnit[],
     host: number,
@@ -78,6 +96,58 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(workerCount(units, 4, null, 8), 4);
                 scope.assert.equal(workerCount(units, 16, 3, 6), 3);
                 scope.assert.equal(workerCount(units.slice(0, 2), 16, null, 6), 2);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'shared hard constraints cap worker count at one',
+            body(scope: OverkillScope) {
+                const singleWorkerUnits = [
+                    constrainedWorkUnit('first', 'reuse', 'runtime:benchmark', 'single-worker'),
+                    constrainedWorkUnit('second', 'reuse', 'runtime:benchmark', 'single-worker')
+                ];
+                const serialUnits = [
+                    constrainedWorkUnit('first', 'reuse', 'database', 'serial'),
+                    constrainedWorkUnit('second', 'reuse', 'database', 'serial')
+                ];
+                const unrelatedUnits = [
+                    constrainedWorkUnit('first', 'reuse', 'database', 'serial'),
+                    constrainedWorkUnit('second', 'reuse', 'registry', 'serial')
+                ];
+
+                scope.assert.equal(workerCount(singleWorkerUnits, 8, 6, 4), 1);
+                scope.assert.equal(workerCount(serialUnits, 8, null, null), 1);
+                scope.assert.equal(workerCount(unrelatedUnits, 8, null, null), 2);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'shared hard constraints reject incompatible worker lifecycles',
+            body(scope: OverkillScope) {
+                scope.assert.throws(function resolveSharedConstraintAcrossLifecycles() {
+                    workerCount(
+                        [
+                            constrainedWorkUnit('reuse', 'reuse', 'runtime:benchmark', 'single-worker'),
+                            constrainedWorkUnit(
+                                'fresh',
+                                'fresh-worker-per-unit',
+                                'runtime:benchmark',
+                                'single-worker'
+                            )
+                        ],
+                        8,
+                        null,
+                        null
+                    );
+                }, { message: 'Worker-pool execution requires at least 2 workers for its worker lifecycles.' });
 
                 return scope.assert.collect();
             }
@@ -136,6 +206,7 @@ export const testNode = createOverkillSuite({
                         placementPlan: null,
                         projectRoot: '/project',
                         request: defaultRunRequest({ profile: 'integration' }),
+                        scheduling: profile.execution.scheduling,
                         workerCount: null
                     });
                 }, { message: 'Worker-pool execution facts require worker-count resolution.' });

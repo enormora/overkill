@@ -187,6 +187,7 @@ export const testNode = createOverkillSuite({
                         ...baseDependencies,
                         createWorkerPool(options) {
                             scope.assert.equal(Object.hasOwn(options, 'timing'), false);
+                            scope.assert.equal(options.workerCount, 1);
 
                             return createFakePool({
                                 async destroy() {
