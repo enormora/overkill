@@ -342,7 +342,7 @@ function runtimeMatrixVariants(definition: RuntimeMatrixInput): RuntimeMatrixVar
     return variantRecord(variants);
 }
 
-export function defineRuntimeMatrix<
+function defineRuntimeMatrix<
     const Name extends string,
     const Dimensions extends RuntimeDimensions,
     const Resources extends RuntimeResourceMap,
@@ -350,7 +350,7 @@ export function defineRuntimeMatrix<
 >(
     definition: RuntimeMatrixDefinitionInput<Name, Variants>
 ): RuntimeMatrixDefinition<Name, ResolvedRuntimeMatrixVariants<Variants, never>>;
-export function defineRuntimeMatrix<
+function defineRuntimeMatrix<
     const Name extends string,
     Shared,
     const Dimensions extends RuntimeDimensions,
@@ -359,7 +359,7 @@ export function defineRuntimeMatrix<
 >(
     definition: SharedRuntimeMatrixDefinitionInput<Name, Shared, Variants>
 ): RuntimeMatrixDefinition<Name, ResolvedRuntimeMatrixVariants<Variants, Shared>>;
-export function defineRuntimeMatrix(
+function defineRuntimeMatrix(
     definition: RuntimeMatrixInput
 ): RuntimeMatrixDefinition {
     assertDescriptorName('Runtime matrix', definition.name);
@@ -400,13 +400,13 @@ export function defineRuntimeMatrix(
     });
 }
 
-export function isDefinedRuntimeMatrix(runtime: unknown): runtime is RuntimeMatrixDefinition {
+function isDefinedRuntimeMatrix(runtime: unknown): runtime is RuntimeMatrixDefinition {
     return typeof runtime === 'object' &&
         runtime !== null &&
         Reflect.get(runtime, runtimeMatrixDefinitionBrand) === true;
 }
 
-export function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraphLeaf[] {
+function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraphLeaf[] {
     return runtime.kind === 'composed-runtimes' ? runtime.runtimes : [ runtime ];
 }
 
@@ -450,12 +450,12 @@ function combinedScenarioSlots(runtimes: readonly RuntimeGraphLeaf[]): ResourceS
     })));
 }
 
-export function composeRuntimes<
+function composeRuntimes<
     const Runtimes extends readonly [RuntimeGraph, ...RuntimeGraph[]]
 >(
     ...runtimes: Runtimes
 ): ComposedRuntimeGraph<FlattenRuntimeGraphs<Runtimes>>;
-export function composeRuntimes(
+function composeRuntimes(
     ...runtimes: readonly RuntimeGraph[]
 ): ComposedRuntimeGraph {
     if (runtimes.length === 0) {
@@ -501,8 +501,16 @@ export function composeRuntimes(
     return descriptor;
 }
 
-export function isComposedRuntimeGraph(runtime: unknown): runtime is ComposedRuntimeGraph {
+function isComposedRuntimeGraph(runtime: unknown): runtime is ComposedRuntimeGraph {
     return typeof runtime === 'object' &&
         runtime !== null &&
         Reflect.get(runtime, composedRuntimeGraphBrand) === true;
 }
+
+export const runtimeMatrixDefinitionApi = Object.freeze({
+    composeRuntimes,
+    defineRuntimeMatrix,
+    isComposedRuntimeGraph,
+    isDefinedRuntimeMatrix,
+    runtimeGraphLeaves
+});

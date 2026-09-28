@@ -8,7 +8,9 @@ import {
     type ResourceScenarioSlot,
     type RuntimeDefinition
 } from './resources.ts';
-import { defineRuntimeMatrix } from './runtime-matrix-definition.ts';
+import { runtimeMatrixDefinitionApi } from './runtime-matrix-definition.ts';
+
+const { defineRuntimeMatrix } = runtimeMatrixDefinitionApi;
 
 type ScenarioResource = ResourceDefinition<
     string,

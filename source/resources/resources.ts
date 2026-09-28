@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import {
     defineRuntime as createRuntimeDefinition,
     isDefinedRuntime as isRuntimeDefinition,
@@ -9,11 +10,7 @@ import {
     type RuntimeScenarioOwner as RuntimeScenarioOwnerShape
 } from './runtime-definition.ts';
 import {
-    composeRuntimes as composeRuntimeGraphs,
-    defineRuntimeMatrix as createRuntimeMatrixDefinition,
-    isComposedRuntimeGraph,
-    isDefinedRuntimeMatrix as isRuntimeMatrixDefinition,
-    runtimeGraphLeaves as runtimeGraphLeafDescriptors,
+    runtimeMatrixDefinitionApi,
     type ComposedRuntimeGraph as ComposedRuntimeGraphDescriptor,
     type RuntimeGraph as RuntimeGraphDescriptor,
     type RuntimeGraphLeaf as RuntimeGraphLeafDescriptor,
@@ -32,18 +29,21 @@ import type {
     ResourceScope as ResourceScopeShape,
     RuntimeResourceMap as RuntimeResourceMapShape
 } from './resource-definition-shape.ts';
-import {
-    defineResource as createResourceDescriptor,
-    isDefinedResource as isResourceDefinition
-} from './resource-definition.ts';
+import { resourceDefinitionApi } from './resource-definition.ts';
 import type {
+    DefineResource as DefineResourceShape,
+    LocalOnlyResourceDefinitionInput as LocalOnlyResourceDefinitionInputShape,
+    ProjectedResourceDefinitionInput as ProjectedResourceDefinitionInputShape,
     ResourceContext as ResourceContextShape,
     ResourceCreationContext as ResourceCreationContextShape,
     ResourceDefinition as ResourceDefinitionShape,
     ResourceDefinitionInput as ResourceDefinitionInputShape,
     ResourceDisposalContext as ResourceDisposalContextShape,
     ResourceHandle as ResourceHandleShape,
-    ResourceProjectionContext as ResourceProjectionContextShape
+    ResourceProjectionContext as ResourceProjectionContextShape,
+    ScenarioLocalInput as ScenarioLocalInputShape,
+    ScenarioProjectedInput as ScenarioProjectedInputShape,
+    WithDependencies as WithDependenciesShape
 } from './resource-definition-types.ts';
 import type {
     ResourceScenarioBindings as ResourceScenarioBindingsShape,
@@ -56,19 +56,205 @@ import type {
 } from './resource-scenario.ts';
 import { resolvedResourceScenarioBindings as readResourceScenarioBindings } from './resource-scenario-binding.ts';
 
-const resourceDescriptorApi = Object.freeze({
-    defineResource: createResourceDescriptor,
+const composeRuntimeGraphs = runtimeMatrixDefinitionApi.composeRuntimes;
+const createRuntimeMatrixDefinition = runtimeMatrixDefinitionApi.defineRuntimeMatrix;
+const { isComposedRuntimeGraph } = runtimeMatrixDefinitionApi;
+const isRuntimeMatrixDefinition = runtimeMatrixDefinitionApi.isDefinedRuntimeMatrix;
+const runtimeGraphLeafDescriptors = runtimeMatrixDefinitionApi.runtimeGraphLeaves;
+const createResourceDescriptor = resourceDefinitionApi.defineResource;
+const isResourceDefinition = resourceDefinitionApi.isDefinedResource;
+
+export type ProjectedResourceScope = 'per-file' | 'per-run' | 'per-suite';
+export type WithDependencies<Input, Dependencies extends ResourceDependencies> = WithDependenciesShape<
+    Input,
+    Dependencies
+>;
+export type LocalOnlyResourceDefinitionInput<
+    Name extends string,
+    Handle,
+    Scope extends ResourceScope,
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>
+> = LocalOnlyResourceDefinitionInputShape<Name, Handle, Scope, Dependencies, Scenarios>;
+export type ProjectedResourceDefinitionInput<
+    Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>
+> = ProjectedResourceDefinitionInputShape<
+    Name,
+    OwnerHandle,
+    Projection,
+    ConsumerHandle,
+    Scope,
+    Dependencies,
+    Scenarios
+>;
+export type ScenarioLocalInput<
+    Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    Dependencies extends ResourceDependencies,
+    ScenarioInputs extends ResourceScenarioSlotInputs
+> = ScenarioLocalInputShape<Name, Handle, Scope, Dependencies, ScenarioInputs>;
+export type ScenarioProjectedInput<
+    Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    Dependencies extends ResourceDependencies,
+    ScenarioInputs extends ResourceScenarioSlotInputs
+> = ScenarioProjectedInputShape<
+    Name,
+    OwnerHandle,
+    Projection,
+    ConsumerHandle,
+    Scope,
+    Dependencies,
+    ScenarioInputs
+>;
+
+export const {
+    isDefinedResource,
+    resolvedResourceScenarioBindings,
+    resolvedRuntimeScenarioOwners
+} = Object.freeze({
     isDefinedResource: isResourceDefinition,
     resolvedResourceScenarioBindings: readResourceScenarioBindings,
     resolvedRuntimeScenarioOwners: readRuntimeScenarioOwners
 });
-
-export const {
-    defineResource,
-    isDefinedResource,
-    resolvedResourceScenarioBindings,
-    resolvedRuntimeScenarioOwners
-} = resourceDescriptorApi;
+export function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const Dependencies extends ResourceDependencies,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: WithDependencies<
+        ScenarioLocalInput<Name, Handle, Scope, Dependencies, ScenarioInputs>,
+        Dependencies
+    >
+): ResourceDefinition<Name, Handle, Dependencies, Handle, ResourceScenarioSlotsFromInputs<ScenarioInputs>>;
+export function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    const Dependencies extends ResourceDependencies,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: WithDependencies<
+        ScenarioProjectedInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies, ScenarioInputs>,
+        Dependencies
+    >
+): ResourceDefinition<
+    Name,
+    OwnerHandle,
+    Dependencies,
+    ConsumerHandle,
+    ResourceScenarioSlotsFromInputs<ScenarioInputs>
+>;
+export function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: Except<
+        ScenarioLocalInput<Name, Handle, Scope, EmptyResourceDependencies, ScenarioInputs>,
+        'dependencies'
+    >
+): ResourceDefinition<
+    Name,
+    Handle,
+    EmptyResourceDependencies,
+    Handle,
+    ResourceScenarioSlotsFromInputs<ScenarioInputs>
+>;
+export function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: Except<
+        ScenarioProjectedInput<
+            Name,
+            OwnerHandle,
+            Projection,
+            ConsumerHandle,
+            Scope,
+            EmptyResourceDependencies,
+            ScenarioInputs
+        >,
+        'dependencies'
+    >
+): ResourceDefinition<
+    Name,
+    OwnerHandle,
+    EmptyResourceDependencies,
+    ConsumerHandle,
+    ResourceScenarioSlotsFromInputs<ScenarioInputs>
+>;
+export function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>
+>(definition: Except<LocalOnlyResourceDefinitionInput<Name, Handle, Scope>, 'scenarios'>): ResourceDefinition<
+    Name,
+    Handle,
+    EmptyResourceDependencies,
+    Handle
+>;
+export function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope
+>(
+    definition: Except<
+        ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope>,
+        'scenarios'
+    >
+): ResourceDefinition<Name, OwnerHandle, EmptyResourceDependencies, ConsumerHandle>;
+export function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const Dependencies extends ResourceDependencies
+>(
+    definition: WithDependencies<
+        Except<LocalOnlyResourceDefinitionInput<Name, Handle, Scope, Dependencies>, 'scenarios'>,
+        Dependencies
+    >
+): ResourceDefinition<Name, Handle, Dependencies, Handle>;
+export function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    const Dependencies extends ResourceDependencies
+>(
+    definition: WithDependencies<
+        Except<
+            ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies>,
+            'scenarios'
+        >,
+        Dependencies
+    >
+): ResourceDefinition<Name, OwnerHandle, Dependencies, ConsumerHandle>;
+export function defineResource(definition: Readonly<Record<string, unknown>>): unknown {
+    return Reflect.apply(createResourceDescriptor, undefined, [ definition ]);
+}
 export type RuntimeScenarioOwner = RuntimeScenarioOwnerShape;
 export type ResourceScenarioBindings<
     Scenarios extends ResourceScenarioSlots
@@ -254,7 +440,7 @@ type CreateTemporaryDirectoryResource = <const Name extends string>(
 export type ResourcesModule = {
     readonly composeRuntimeContext: typeof composeRuntimeContext;
     readonly createTemporaryDirectoryResource: CreateTemporaryDirectoryResource;
-    readonly defineResource: typeof createResourceDescriptor;
+    readonly defineResource: DefineResourceShape;
     readonly defineRuntime: typeof defineRuntime;
     readonly defineRuntimeMatrix: typeof createRuntimeMatrixDefinition;
     readonly composeRuntimes: typeof composeRuntimeGraphs;
@@ -264,7 +450,7 @@ function createTemporaryDirectoryResource<const Name extends string>(
     dependencies: ResourcesModuleDependencies,
     name: Name
 ): ResourceDefinition<Name, TemporaryDirectoryHandle, EmptyResourceDependencies> {
-    return createResourceDescriptor({
+    return defineResource({
         name,
         scope: 'per-case',
         requirements: [],
@@ -327,7 +513,7 @@ export function createResourcesModule(dependencies: ResourcesModuleDependencies)
             return createTemporaryDirectoryResource(dependencies, name);
         },
         composeRuntimes,
-        defineResource: createResourceDescriptor,
+        defineResource,
         defineRuntime,
         defineRuntimeMatrix: createRuntimeMatrixDefinition
     });
