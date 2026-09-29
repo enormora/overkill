@@ -90,6 +90,7 @@ function successfulTimingSpan(kind: RunTimingSpan['kind'], durationMicroseconds:
         processId: null,
         resource: null,
         startOffsetMicroseconds: 0,
+        startTimeUnixMicroseconds: 0,
         status: 'success',
         workerId: null
     };
@@ -100,6 +101,7 @@ function resultWithTimingSpans(spans: readonly RunTimingSpan[]): RunResult {
         timings: {
             precise: preciseTimingReport({
                 aggregationMicroseconds: 3,
+                observationWindow: { durationMicroseconds: 0, startTimeUnixMicroseconds: 0 },
                 recordingMicroseconds: 4,
                 slowestSpanLimit: 50,
                 spanLimit: 5000,

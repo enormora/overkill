@@ -163,6 +163,7 @@ export const testNode = createOverkillSuite({
                     processId: 'parent-process',
                     resource: { name: 'database', scope: 'per-run' },
                     startOffsetMicroseconds: 10,
+                    startTimeUnixMicroseconds: 10,
                     status: 'success',
                     workerId: null
                 } ]);

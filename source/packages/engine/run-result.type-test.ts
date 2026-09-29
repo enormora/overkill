@@ -61,6 +61,7 @@ type PreciseTimingKeys = readonly [
     'aggregates',
     'ambientNoise',
     'droppedSpanCount',
+    'observationWindow',
     'overhead',
     'slowestSpanLimit',
     'slowestSpans',

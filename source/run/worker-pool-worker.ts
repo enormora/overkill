@@ -239,6 +239,7 @@ async function runCollectionTask(
         postWorkerTimingSpan({
             completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
             kind: 'worker.teardown',
+            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
             startedAtMicroseconds: teardownStartedAtMicroseconds,
             status: 'success',
             task
@@ -253,6 +254,7 @@ function recordWorkerStartup(task: WorkerPoolTask, wallClock: WorkerTimingClock)
     postWorkerTimingSpan({
         completedAtMicroseconds: createdAtMicroseconds,
         kind: 'worker.create',
+        monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
         startedAtMicroseconds: createdAtMicroseconds,
         status: 'success',
         task
@@ -261,6 +263,7 @@ function recordWorkerStartup(task: WorkerPoolTask, wallClock: WorkerTimingClock)
     postWorkerTimingSpan({
         completedAtMicroseconds: readyAtMicroseconds,
         kind: 'worker.ready',
+        monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
         startedAtMicroseconds: readyAtMicroseconds,
         status: 'success',
         task
@@ -305,6 +308,7 @@ async function runClosableTask(
         postWorkerTimingSpan({
             completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
             kind: 'worker.teardown',
+            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
             startedAtMicroseconds: teardownStartedAtMicroseconds,
             status: 'success',
             task

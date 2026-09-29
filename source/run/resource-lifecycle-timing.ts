@@ -91,6 +91,8 @@ function writeResourceTiming(
             kind: timingKind(completed.operation.phase),
             ...metadata,
             startOffsetMicroseconds: null,
+            startTimeUnixMicroseconds: options.clock.monotonicTimeOriginUnixMicroseconds +
+                completed.startedAtMicroseconds,
             status: completed.status
         });
     }

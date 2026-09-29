@@ -319,6 +319,7 @@ async function assertRunnerManagedResourceScopes(scope: TestScope): Promise<void
                     processId: timing.processId,
                     resource: timing.resource,
                     startOffsetMicroseconds: timing.startOffsetMicroseconds,
+                    startTimeUnixMicroseconds: timing.startTimeUnixMicroseconds,
                     status: timing.status,
                     workerId: timing.workerId
                 };
@@ -332,6 +333,7 @@ async function assertRunnerManagedResourceScopes(scope: TestScope): Promise<void
                 processId: 'test-process',
                 resource: { name: 'runResource', scope: 'per-run' },
                 startOffsetMicroseconds: null,
+                startTimeUnixMicroseconds: 0,
                 status: 'success',
                 workerId: null
             },
@@ -340,6 +342,7 @@ async function assertRunnerManagedResourceScopes(scope: TestScope): Promise<void
                 processId: 'test-process',
                 resource: { name: 'runResource', scope: 'per-run' },
                 startOffsetMicroseconds: null,
+                startTimeUnixMicroseconds: 0,
                 status: 'success',
                 workerId: null
             }

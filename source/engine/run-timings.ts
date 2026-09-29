@@ -68,8 +68,14 @@ export type RunTimingSpan = {
         readonly scope: ResourceScope;
     } | null;
     readonly startOffsetMicroseconds: number | null;
+    readonly startTimeUnixMicroseconds: number;
     readonly status: TimingSpanStatus;
     readonly workerId: string | null;
+};
+
+export type RunTimingObservationWindow = {
+    readonly durationMicroseconds: number;
+    readonly startTimeUnixMicroseconds: number;
 };
 
 export type RunTimingAggregate = {
@@ -90,6 +96,7 @@ export type RunPreciseTimingReport = {
     readonly ambientNoise: AmbientNoiseEstimate;
     readonly droppedSpanCount: number;
     readonly overhead: TimingCollectionOverhead;
+    readonly observationWindow: RunTimingObservationWindow;
     readonly slowestSpans: readonly RunTimingSpan[];
     readonly slowestSpanLimit: number;
     readonly spanLimit: number;
@@ -109,6 +116,7 @@ export type RunTimingSummaryInput = {
 
 export type PreciseTimingReportInput = {
     readonly aggregationMicroseconds: number;
+    readonly observationWindow: RunTimingObservationWindow;
     readonly recordingMicroseconds: number;
     readonly slowestSpanLimit: number;
     readonly spanLimit: number;
@@ -198,6 +206,7 @@ export function preciseTimingReport(input: PreciseTimingReportInput): RunPrecise
             renderingMicroseconds: 0,
             serializationMicroseconds: 0
         },
+        observationWindow: input.observationWindow,
         slowestSpans: slowestTimingSpans(input.spans, slowestSpanLimit),
         slowestSpanLimit,
         spanLimit,

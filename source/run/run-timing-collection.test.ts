@@ -54,8 +54,10 @@ function assertMeasuredParentAndLocalSpans(scope: OverkillScope, report: RunPrec
     const localSpan = timingSpanByKind(report, 'worker.import-startup');
 
     scope.assert.equal(parentSpan.startOffsetMicroseconds, 10);
+    scope.assert.equal(parentSpan.startTimeUnixMicroseconds, 10);
     scope.assert.equal(parentSpan.durationMicroseconds, 25);
     scope.assert.equal(localSpan.startOffsetMicroseconds, null);
+    scope.assert.equal(localSpan.startTimeUnixMicroseconds, 999);
     scope.assert.equal(localSpan.durationMicroseconds, 40);
     scope.assert.equal(
         report.aggregates.some(function hasWorkerImportAggregate(aggregate) {
@@ -197,12 +199,18 @@ export const testNode = createOverkillSuite({
                     processId: 'worker-process',
                     resource: null,
                     startOffsetMicroseconds: 999,
+                    startTimeUnixMicroseconds: 999,
                     status: 'success',
                     workerId: 'lane-1'
                 });
 
                 const report = timing.report();
                 assertMeasuredParentAndLocalSpans(scope, report);
+                scope.assert.deepEqual(report.observationWindow, {
+                    durationMicroseconds: 35,
+                    startTimeUnixMicroseconds: 0
+                });
+                scope.assert.equal(clock.monotonicTimeOriginUnixMicroseconds, 0);
 
                 return scope.assert.collect();
             }
@@ -258,6 +266,7 @@ export const testNode = createOverkillSuite({
                 const summaryResult = runResultFactory.build();
                 const preciseReport = preciseTimingReport({
                     aggregationMicroseconds: 0,
+                    observationWindow: { durationMicroseconds: 0, startTimeUnixMicroseconds: 0 },
                     recordingMicroseconds: 0,
                     slowestSpanLimit: 50,
                     spanLimit: 5000,
@@ -328,6 +337,7 @@ export const testNode = createOverkillSuite({
                     processId: 'worker-process',
                     resource: null,
                     startOffsetMicroseconds: 999,
+                    startTimeUnixMicroseconds: 999,
                     status: 'success',
                     workerId: 'lane-1'
                 });

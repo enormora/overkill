@@ -283,6 +283,7 @@ export const testNode = createOverkillSuite({
                         processId: String(process.pid),
                         resource: { name: 'database', scope: 'per-run' },
                         startOffsetMicroseconds: null,
+                        startTimeUnixMicroseconds: 0,
                         status: 'success',
                         workerId: null
                     }

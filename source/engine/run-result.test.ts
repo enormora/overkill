@@ -82,6 +82,7 @@ const timingSpan = function timingSpan(
         processId: null,
         resource: null,
         startOffsetMicroseconds,
+        startTimeUnixMicroseconds: startOffsetMicroseconds,
         status: 'success',
         workerId: null
     };
@@ -288,6 +289,7 @@ export const testNode = createOverkillSuite({
                 const configLoadEnd = timingSpan('config.load', 10, 23);
                 const input: PreciseTimingReportInput = {
                     aggregationMicroseconds: 3,
+                    observationWindow: { durationMicroseconds: 33, startTimeUnixMicroseconds: 0 },
                     recordingMicroseconds: 2,
                     slowestSpanLimit: 2,
                     spanLimit: 2,
@@ -307,6 +309,7 @@ export const testNode = createOverkillSuite({
                         renderingMicroseconds: 0,
                         serializationMicroseconds: 0
                     },
+                    observationWindow: { durationMicroseconds: 33, startTimeUnixMicroseconds: 0 },
                     slowestSpanLimit: 2,
                     slowestSpans: [ reporterDelivery, configLoadEnd ],
                     spanLimit: 2,

@@ -435,6 +435,7 @@ export const testNode = createOverkillSuite({
                                 renderingMicroseconds: 0,
                                 serializationMicroseconds: 0
                             },
+                            observationWindow: { durationMicroseconds: 750_000, startTimeUnixMicroseconds: 0 },
                             slowestSpanLimit: 50,
                             slowestSpans: [ {
                                 durationMicroseconds: 750_000,
@@ -443,6 +444,7 @@ export const testNode = createOverkillSuite({
                                 processId: null,
                                 resource: null,
                                 startOffsetMicroseconds: 0,
+                                startTimeUnixMicroseconds: 0,
                                 status: 'success',
                                 workerId: null
                             } ],
@@ -454,6 +456,7 @@ export const testNode = createOverkillSuite({
                                 processId: null,
                                 resource: null,
                                 startOffsetMicroseconds: 0,
+                                startTimeUnixMicroseconds: 0,
                                 status: 'success',
                                 workerId: null
                             } ],
