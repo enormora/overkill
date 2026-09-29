@@ -1,7 +1,18 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createCaseId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
-import { resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
+import { defineResource } from '../resources/resources.ts';
+import { bindResourceScenarios } from '../resources/resource-scenario-binding.ts';
+import {
+    caseResourceBoundaryKeys,
+    resourceLifecycleBoundaryUseCounts
+} from './resource-lifecycle-boundaries.ts';
+import {
+    resourceAcquisitionCacheIdentity,
+    resourceDescriptorCacheIdentityNode,
+    resourceHandleCacheIdentity,
+    type ResourceCacheIdentityNode
+} from './resource-lifecycle-cache-identity.ts';
 
 type ScenarioCaseOptions = {
     readonly dependent?: boolean;
@@ -116,6 +127,75 @@ function assertScenarioCacheIdentities(scope: TestScope): void {
 
     scope.assert.deepEqual(countsForResource(dependentCases, 'database'), [ 2 ]);
     scope.assert.deepEqual(countsForResource(dependentCases, 'server'), [ 1, 1 ]);
+    scope.assert.deepEqual(caseResourceBoundaryKeys(first, new Set()), []);
+}
+
+function assertCacheIdentityNodes(scope: TestScope): void {
+    const empty: ResourceCacheIdentityNode = { dependencies: [], scenarios: [] };
+    const emptyDependency: ResourceCacheIdentityNode = {
+        dependencies: [ { key: 'empty', resource: empty } ],
+        scenarios: []
+    };
+    const database = defineResource({
+        name: 'identity-database',
+        scope: 'per-case',
+        requirements: [],
+        scenarios: {
+            database: { default: 'primary', timing: 'acquire', values: [ 'primary', 'replica' ] }
+        },
+        acquire(context) {
+            return context.scenarios.database;
+        },
+        dispose: null
+    });
+    const replica = bindResourceScenarios(database, { database: 'replica' });
+    const server = defineResource({
+        name: 'identity-server',
+        scope: 'per-case',
+        requirements: [],
+        dependencies: { database: replica },
+        acquire(context) {
+            return context.dependencies.database;
+        },
+        dispose: null
+    });
+    const serverNode = resourceDescriptorCacheIdentityNode(server);
+    const routed: ResourceCacheIdentityNode = {
+        dependencies: [],
+        scenarios: [ { name: 'database', timing: 'request-routed', value: 'replica' } ]
+    };
+    const ordered: ResourceCacheIdentityNode = {
+        dependencies: [
+            { key: 'routed', resource: routed },
+            {
+                key: 'acquired',
+                resource: {
+                    dependencies: [],
+                    scenarios: [ { name: 'database', timing: 'acquire', value: 'primary' } ]
+                }
+            }
+        ],
+        scenarios: [
+            { name: 'second', timing: 'acquire', value: 'second' },
+            { name: 'first', timing: 'acquire', value: 'first' }
+        ]
+    };
+    const defaultedNode = resourceDescriptorCacheIdentityNode(bindResourceScenarios(database, {}));
+
+    scope.assert.deepEqual([
+        resourceAcquisitionCacheIdentity(empty),
+        resourceHandleCacheIdentity(empty),
+        resourceAcquisitionCacheIdentity(emptyDependency),
+        resourceAcquisitionCacheIdentity(serverNode).includes('replica'),
+        resourceHandleCacheIdentity(serverNode).includes('replica'),
+        resourceAcquisitionCacheIdentity(defaultedNode).includes('primary'),
+        resourceAcquisitionCacheIdentity(routed),
+        resourceHandleCacheIdentity(routed).includes('replica'),
+        resourceHandleCacheIdentity(ordered) === resourceHandleCacheIdentity({
+            dependencies: ordered.dependencies.toReversed(),
+            scenarios: ordered.scenarios.toReversed()
+        })
+    ], [ '', '', '', true, true, true, '', true, true ]);
 }
 
 export const testNode = createSuite({
@@ -131,6 +211,17 @@ export const testNode = createSuite({
             controls: {},
             body(scope: TestScope) {
                 assertScenarioCacheIdentities(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'cache identities omit empty state and traverse resource descriptors',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                assertCacheIdentityNodes(scope);
 
                 return scope.assert.collect();
             }
