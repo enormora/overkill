@@ -1,13 +1,3 @@
-import {
-    ROOT_CONTEXT,
-    SpanKind,
-    SpanStatusCode,
-    trace,
-    type Attributes,
-    type HrTime,
-    type Span,
-    type Tracer
-} from '@opentelemetry/api';
 import { defineReporter, type DefinedReporter, type FinalResultReporter } from '../engine/reporter.ts';
 import type { RunResult, RunSummary } from '../engine/run-result.ts';
 import type {
@@ -17,19 +7,52 @@ import type {
 } from '../engine/run-timings.ts';
 
 export type OpenTelemetryReporterDependencies = {
-    readonly tracer: Pick<Tracer, 'startSpan'>;
+    readonly createSpanId: () => string;
+    readonly createTraceId: () => string;
+    readonly writeFile: (path: string, content: string) => Promise<void>;
+};
+
+export type OpenTelemetryReporterOptions = {
+    readonly outputFile: string;
+};
+
+type AttributeValue = boolean | number | string;
+type Attributes = Readonly<Record<string, AttributeValue>>;
+type OtlpAnyValueTypes = readonly [
+    { readonly boolValue: boolean; },
+    { readonly doubleValue: number; },
+    { readonly intValue: string; },
+    { readonly stringValue: string; }
+];
+type OtlpAnyValue = OtlpAnyValueTypes[number];
+type OtlpStatusTypes = readonly [Readonly<Record<string, never>>, { readonly code: number; }];
+type OtlpStatus = OtlpStatusTypes[number];
+type OtlpKeyValue = {
+    readonly key: string;
+    readonly value: OtlpAnyValue;
+};
+type OtlpSpan = {
+    readonly attributes: readonly OtlpKeyValue[];
+    readonly endTimeUnixNano: string;
+    readonly flags: number;
+    readonly kind: number;
+    readonly name: string;
+    readonly parentSpanId: string;
+    readonly spanId: string;
+    readonly startTimeUnixNano: string;
+    readonly status: OtlpStatus;
+    readonly traceId: string;
 };
 
 const preciseTimingRequiredMessage =
     'OpenTelemetry reporter requires precise run timings. Enable timings.collection as "precise" or use --timings.';
-const microsecondsPerSecond = 1_000_000;
-const nanosecondsPerMicrosecond = 1000;
+const nanosecondsPerMicrosecond = 1000n;
+const internalSpanKind = 1;
+const errorStatusCode = 2;
+const sampledTraceFlags = 1;
 
-function hrTime(unixMicroseconds: number): HrTime {
-    const seconds = Math.floor(unixMicroseconds / microsecondsPerSecond);
-    const microseconds = unixMicroseconds - seconds * microsecondsPerSecond;
-
-    return [ seconds, microseconds * nanosecondsPerMicrosecond ];
+function unixNanoseconds(unixMicroseconds: number): string {
+    return (BigInt(unixMicroseconds) * nanosecondsPerMicrosecond).toString();
 }
 
 function runSummaryAttributes(summary: RunSummary): Attributes {
@@ -56,7 +79,7 @@ function timingSummaryAttributes(summary: RunTimingSummary): Attributes {
 }
 
 function preciseTimingAttributes(precise: RunPreciseTimingReport): Attributes {
-    const attributes: Attributes = {
+    const attributes: Record<string, AttributeValue> = {
         'overkill.timing.ambient_noise': precise.ambientNoise,
         'overkill.timing.dropped_span_count': precise.droppedSpanCount,
         'overkill.timing.overhead.aggregation_us': precise.overhead.aggregationMicroseconds,
@@ -94,71 +117,110 @@ function childSpanAttributes(span: RunTimingSpan): Attributes {
     };
 }
 
-function markFailedSpan(span: Span): void {
-    span.setStatus({ code: SpanStatusCode.ERROR });
-}
-
-function exportTimingSpan(tracer: Pick<Tracer, 'startSpan'>, rootSpan: Span, timingSpan: RunTimingSpan): void {
-    const span = tracer.startSpan(
-        `overkill.timing.${timingSpan.kind}`,
-        {
-            attributes: childSpanAttributes(timingSpan),
-            kind: SpanKind.INTERNAL,
-            startTime: hrTime(timingSpan.startTimeUnixMicroseconds)
-        },
-        trace.setSpan(ROOT_CONTEXT, rootSpan)
-    );
-
-    if (timingSpan.status !== 'success') {
-        markFailedSpan(span);
+function otlpAnyValue(value: AttributeValue): OtlpAnyValue {
+    if (typeof value === 'boolean') {
+        return { boolValue: value };
+    }
+    if (typeof value === 'number') {
+        return Number.isSafeInteger(value) ? { intValue: value.toString() } : { doubleValue: value };
     }
 
-    span.end(hrTime(timingSpan.startTimeUnixMicroseconds + timingSpan.durationMicroseconds));
+    return { stringValue: value };
 }
 
-function exportRunResult(tracer: Pick<Tracer, 'startSpan'>, result: RunResult): void {
+function otlpAttributes(attributes: Attributes): readonly OtlpKeyValue[] {
+    return Object.entries(attributes).map(function toOtlpAttribute([ key, value ]) {
+        return { key, value: otlpAnyValue(value) };
+    });
+}
+
+function spanStatus(failed: boolean): OtlpStatus {
+    return failed ? { code: errorStatusCode } : {};
+}
+
+function childSpan(
+    dependencies: OpenTelemetryReporterDependencies,
+    traceId: string,
+    parentSpanId: string,
+    timingSpan: RunTimingSpan
+): OtlpSpan {
+    return {
+        attributes: otlpAttributes(childSpanAttributes(timingSpan)),
+        endTimeUnixNano: unixNanoseconds(
+            timingSpan.startTimeUnixMicroseconds + timingSpan.durationMicroseconds
+        ),
+        flags: sampledTraceFlags,
+        kind: internalSpanKind,
+        name: `overkill.timing.${timingSpan.kind}`,
+        parentSpanId,
+        spanId: dependencies.createSpanId(),
+        startTimeUnixNano: unixNanoseconds(timingSpan.startTimeUnixMicroseconds),
+        status: spanStatus(timingSpan.status !== 'success'),
+        traceId
+    };
+}
+
+function traceData(dependencies: OpenTelemetryReporterDependencies, result: RunResult): unknown {
     const { precise } = result.timings;
 
     if (precise === null) {
         throw new Error(preciseTimingRequiredMessage);
     }
 
+    const traceId = dependencies.createTraceId();
+    const rootSpanId = dependencies.createSpanId();
     const startTime = precise.observationWindow.startTimeUnixMicroseconds;
-    const rootSpan = tracer.startSpan('overkill.run', {
-        attributes: {
+    const rootSpan: OtlpSpan = {
+        attributes: otlpAttributes({
             'overkill.run.plan_status': result.planStatus,
             'overkill.run.status': result.status,
             ...runSummaryAttributes(result.summary),
             ...timingSummaryAttributes(result.timings.summary),
             ...preciseTimingAttributes(precise)
-        },
-        kind: SpanKind.INTERNAL,
-        root: true,
-        startTime: hrTime(startTime)
-    });
+        }),
+        endTimeUnixNano: unixNanoseconds(startTime + precise.observationWindow.durationMicroseconds),
+        flags: sampledTraceFlags,
+        kind: internalSpanKind,
+        name: 'overkill.run',
+        parentSpanId: '',
+        spanId: rootSpanId,
+        startTimeUnixNano: unixNanoseconds(startTime),
+        status: spanStatus(result.status === 'failed'),
+        traceId
+    };
+    const spans = [
+        rootSpan,
+        ...precise.spans.map(function toChildSpan(timingSpan) {
+            return childSpan(dependencies, traceId, rootSpanId, timingSpan);
+        })
+    ];
 
-    if (result.status === 'failed') {
-        markFailedSpan(rootSpan);
-    }
-
-    for (const span of precise.spans) {
-        exportTimingSpan(tracer, rootSpan, span);
-    }
-
-    rootSpan.end(hrTime(startTime + precise.observationWindow.durationMicroseconds));
+    return {
+        resourceSpans: [ {
+            resource: {
+                attributes: otlpAttributes({ 'service.name': 'overkill' })
+            },
+            scopeSpans: [ {
+                scope: { name: '@overkill-dev/reporter-opentelemetry' },
+                spans
+            } ]
+        } ]
+    };
 }
 
 export function createOpenTelemetryReporter(
-    dependencies: OpenTelemetryReporterDependencies
+    dependencies: OpenTelemetryReporterDependencies,
+    options: OpenTelemetryReporterOptions
 ): DefinedReporter<FinalResultReporter> {
     return defineReporter(function createOpenTelemetryRuntimeReporter() {
         return {
             dispose: null,
             kind: 'final-result',
             name: 'opentelemetry',
-            sinks: [],
-            onResult(result) {
-                exportRunResult(dependencies.tracer, result);
+            sinks: [ { kind: 'file', path: options.outputFile } ],
+            async onResult(result) {
+                const content = `${JSON.stringify(traceData(dependencies, result))}\n`;
+                await dependencies.writeFile(options.outputFile, content);
             }
         };
     });

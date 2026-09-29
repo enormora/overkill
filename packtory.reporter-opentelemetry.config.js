@@ -16,7 +16,7 @@ export function reporterOpenTelemetryPackage(projectFolder, packageMetadata) {
         } ],
         additionalPackageJsonAttributes: {
             ...packageMetadata,
-            description: 'OpenTelemetry exporter for Overkill timing data.'
+            description: 'OTLP JSON file reporter for Overkill timing data.'
         }
     };
 }

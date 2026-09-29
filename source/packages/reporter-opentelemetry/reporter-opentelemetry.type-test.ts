@@ -4,6 +4,8 @@ import { createOpenTelemetryReporter } from './reporter-opentelemetry.entry-poin
 
 describe('createOpenTelemetryReporter', function () {
     test('returns the public final-result reporter contract', function () {
-        expect(createOpenTelemetryReporter()).type.toBe<DefinedReporter<FinalResultReporter>>();
+        expect(createOpenTelemetryReporter({ outputFile: 'traces.jsonl' })).type.toBe<
+            DefinedReporter<FinalResultReporter>
+        >();
     });
 });
