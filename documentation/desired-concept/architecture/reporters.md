@@ -269,7 +269,8 @@ convention and no package-name lookup magic in the settled concept.
 `@overkill-dev/test/reporters` may re-export built-in reporter factories so
 standard users do not need to import each built-in reporter from its leaf
 package by default. The current standard distribution exports
-`createLineReporter`, `createBriefReporter`, `createDotReporter`, and
+`createLineReporter`, `createLineTreeReporter`, `createLineProgressReporter`,
+`createBriefReporter`, `createDotReporter`, and
 `createGithubActionsOutputRenderer`; benchmark-specific and artifact reporters
 arrive with their leaf packages.
 
@@ -327,8 +328,15 @@ sink and returns output intents.
 
 ## Default Line Reporter Rendering
 
-`@overkill-dev/reporter-line` is the default human terminal reporter. It
-renders the real-time event stream directly:
+`@overkill-dev/reporter-line` is the default human terminal reporter package.
+It provides three presentation variants:
+
+- `createLineReporter` renders the real-time event stream in completion order
+- `createLineTreeReporter` renders the final logical result tree
+- `createLineProgressReporter` renders compact live progress followed by the
+  same final logical result tree
+
+The default `createLineReporter` behavior is:
 
 - passing tests render one compact line with the case identity and duration
 - failing tests render a compact header, then one detail block for each

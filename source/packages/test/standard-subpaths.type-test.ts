@@ -3,6 +3,7 @@ import type {
     AssertAssertionFacade,
     DefinedOutputRenderer,
     DefinedReporter,
+    FinalResultReporter,
     RealTimeReporter,
     RequireAssertionFacade,
     Table,
@@ -38,8 +39,12 @@ import type {
     createBriefReporter,
     createDotReporter,
     createGithubActionsOutputRenderer,
+    createLineProgressReporter,
     createLineReporter,
-    LineReporterOptions
+    createLineTreeReporter,
+    LineProgressReporterOptions,
+    LineReporterOptions,
+    LineTreeReporterOptions
 } from './reporters.entry-point.ts';
 import {
     composeRuntimeContext,
@@ -75,6 +80,12 @@ import {
 
 type UnavailableStandardSubpathApi = (...parameters: readonly unknown[]) => never;
 type LineReporterFactory = (options?: LineReporterOptions) => DefinedReporter<RealTimeReporter>;
+type LineProgressReporterFactory = (
+    options?: LineProgressReporterOptions
+) => DefinedReporter<RealTimeReporter>;
+type LineTreeReporterFactory = (
+    options?: LineTreeReporterOptions
+) => DefinedReporter<FinalResultReporter>;
 type CompositeBooleanDefinition = CompositeAssertionDefinition<
     [value: boolean],
     ReturnType<CompositeCheckBuilder<'assert'>['true']>
@@ -166,6 +177,8 @@ describe('@overkill-dev/test standard subpaths', function () {
 
     test('exposes reporter factories through the standard distribution', function () {
         expect<typeof createLineReporter>().type.toBe<LineReporterFactory>();
+        expect<typeof createLineProgressReporter>().type.toBe<LineProgressReporterFactory>();
+        expect<typeof createLineTreeReporter>().type.toBe<LineTreeReporterFactory>();
         expect<typeof createBriefReporter>().type.toBe<
             () => DefinedReporter<RealTimeReporter<BriefReporterSinks>>
         >();

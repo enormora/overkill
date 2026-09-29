@@ -1,10 +1,12 @@
 # `@overkill-dev/reporter-line`
 
-Human-readable real-time line reporter for Overkill test runs.
+Human-readable line reporter family for Overkill test runs.
 
 Top-level API:
 
 - `createLineReporter()`
+- `createLineTreeReporter()`
+- `createLineProgressReporter()`
 
 Usage:
 
@@ -21,6 +23,11 @@ await execute(testPlan, {
 ```
 
 The reporter writes directly to `stdout` and declares `stdout-raw`.
+
+`createLineReporter()` emits completed tests in completion order.
+`createLineTreeReporter()` prints the logical result tree after the run.
+`createLineProgressReporter()` shows compact live progress, then prints the
+same logical result tree.
 
 Rendering:
 

@@ -87,7 +87,8 @@ Standard subpaths:
 - `@overkill-dev/test/config` exports `defineConfig` and run project config
   types.
 - `@overkill-dev/test/reporters` exports `createLineReporter`,
-  `createBriefReporter`, `createDotReporter`, and
+  `createLineTreeReporter`, `createLineProgressReporter`, `createBriefReporter`,
+  `createDotReporter`, and
   `createGithubActionsOutputRenderer`.
 - `@overkill-dev/test/assert` re-exports assertion-extension helpers from
   `@overkill-dev/assert`.

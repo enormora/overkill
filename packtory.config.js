@@ -267,8 +267,6 @@ export const config = {
                 '@overkill-dev/reporter-brief',
                 '@overkill-dev/reporter-dot',
                 '@overkill-dev/reporter-line',
-                '@overkill-dev/reporter-progress',
-                '@overkill-dev/reporter-tree',
                 '@overkill-dev/resources',
                 '@overkill-dev/run',
                 '@overkill-dev/simulation'
@@ -388,7 +386,7 @@ export const config = {
             ],
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
-                description: 'Human-readable Overkill line reporter.'
+                description: 'Human-readable Overkill line reporter family.'
             }
         },
         {
@@ -429,46 +427,6 @@ export const config = {
             additionalPackageJsonAttributes: {
                 ...packageMetadata,
                 description: 'Compact Overkill dot progress reporter.'
-            }
-        },
-        {
-            name: '@overkill-dev/reporter-tree',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/reporter-tree/reporter-tree.entry-point.js',
-                    declarationFile: 'packages/reporter-tree/reporter-tree.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-tree/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Logical tree Overkill final-result reporter.'
-            }
-        },
-        {
-            name: '@overkill-dev/reporter-progress',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/reporter-progress/reporter-progress.entry-point.js',
-                    declarationFile: 'packages/reporter-progress/reporter-progress.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-progress/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Progress Overkill reporter with final tree output.'
             }
         },
         reporterOpenTelemetryPackage(projectFolder, packageMetadata),
