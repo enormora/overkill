@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { reporterOpenTelemetryPackage } from './packtory.reporter-opentelemetry.config.js';
 
 const projectFolder = process.cwd();
 const rootPackageJson = JSON.parse(await fs.readFile(path.join(projectFolder, 'package.json'), 'utf8'));
@@ -470,6 +471,7 @@ export const config = {
                 description: 'Progress Overkill reporter with final tree output.'
             }
         },
+        reporterOpenTelemetryPackage(projectFolder, packageMetadata),
         {
             name: '@overkill-dev/output-renderer-github-actions',
             bundlePeerDependencies: [ '@overkill-dev/engine' ],

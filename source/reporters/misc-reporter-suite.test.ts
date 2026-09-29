@@ -1,5 +1,6 @@
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as nullReporterTestNode } from './null-reporter.test.ts';
+import { testNode as openTelemetryReporterTestNode } from './opentelemetry-reporter.test.ts';
 import { testNode as tapConsoleReporterTestNode } from './tap-console-reporter.test.ts';
 import { testNode as terminalTestNode } from './terminal.test.ts';
 
@@ -10,6 +11,7 @@ export const testNode = createSuite({
     controls: {},
     children: [
         nullReporterTestNode,
+        openTelemetryReporterTestNode,
         tapConsoleReporterTestNode,
         terminalTestNode
     ]

@@ -625,6 +625,7 @@ Examples:
 - `@overkill-dev/reporter-json`
 - `@overkill-dev/reporter-html`
 - `@overkill-dev/reporter-benchmark-html`
+- `@overkill-dev/reporter-opentelemetry`
 - `@overkill-dev/output-renderer-github-actions`
 
 Multiple reporters should be attachable to one run.
@@ -965,6 +966,7 @@ heavyweight, or aimed at a narrower audience. Examples:
 - property, model, differential, and linearizability packages
 - type-test adapters
 - mutation integrations
+- OpenTelemetry timing export
 - ESLint, AWS CDK, contract, accessibility, and similar domain adapters
 
 Optional packages integrate through explicit imports: typed profiles,
