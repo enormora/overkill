@@ -283,6 +283,7 @@ export type {
     ResourceScope,
     RunPreciseTimingReport,
     RunTimingAggregate,
+    RunTimingObservationWindow,
     RunTimings,
     RunTimingSpan,
     RunTimingSpanKind,

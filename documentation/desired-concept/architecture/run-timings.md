@@ -44,7 +44,10 @@ for core timing facts.
 Overkill owns its timing clock abstraction. Durations and diagnostic offsets
 come from a monotonic microsecond clock. Wall-clock metadata, such as the ISO
 run-start timestamp shown to users, remains available through the same
-platform boundary but is not used for duration math.
+platform boundary but is not used for duration math. Precise spans also carry
+an absolute Unix start timestamp derived from the process performance time
+origin plus the monotonic timestamp. The precise report carries the absolute
+start and monotonic duration of its observation window.
 
 ## Precise Timings
 
@@ -124,8 +127,9 @@ timings stay coarse and orchestration-oriented.
 
 The parent process owns the canonical orchestration timeline.
 
-Child processes and workers report local durations, not globally comparable
-absolute timestamps. Useful child and worker facts include:
+Child processes and workers report local durations and absolute Unix start
+timestamps derived from their own performance clocks. Useful child and worker
+facts include:
 
 - entry loaded to ready message
 - ready message to first assigned work
@@ -134,9 +138,10 @@ absolute timestamps. Useful child and worker facts include:
 - teardown start to exit
 
 The parent can measure parent-observed spans such as spawn call to ready
-message, shutdown request to exit, and worker-pool start to ready. The concept
-does not pretend that different processes share one monotonic nanosecond
-clock.
+message, shutdown request to exit, and worker-pool start to ready. Absolute
+timestamps support external trace export, but process clock skew may affect
+cross-process ordering. They never affect verdicts, timeouts, resource budgets,
+or duration calculations.
 
 Parent-observed spans carry a parent-relative `startOffsetMicroseconds`.
 Child-process and worker-local spans carry precise durations but use
@@ -235,9 +240,17 @@ Machine-readable reporters receive the structured timing report from
 `RunResult`.
 
 OpenTelemetry is an export path, not the canonical timing model. The concept
-allows an optional `@overkill-dev/reporter-opentelemetry` package that maps
-Overkill timing reports to OpenTelemetry spans without making OpenTelemetry a
-core dependency or changing the hot path.
+provides an optional `@overkill-dev/reporter-opentelemetry` final-result
+reporter. It requires precise timings, creates one `overkill.run` root span,
+and creates one flat child span for every retained precise timing span. It maps
+summary, aggregate, truncation, overhead, identity, resource, and status facts
+to stable attributes. Selecting the reporter does not enable precise timing
+collection automatically.
+
+The package uses the application-configured global OpenTelemetry tracer. It
+does not configure an SDK or transport and does not flush or shut down the
+application's telemetry provider. OpenTelemetry stays outside the engine and
+timing hot path.
 
 ## Boundaries With Debug And Benchmarking
 

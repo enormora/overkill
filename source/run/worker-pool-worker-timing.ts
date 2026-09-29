@@ -16,6 +16,7 @@ export type WorkerTimingClock = OverkillClock;
 type WorkerTimingSpanInput = {
     readonly completedAtMicroseconds: number;
     readonly kind: RunTimingSpanKind;
+    readonly monotonicTimeOriginUnixMicroseconds: number;
     readonly startedAtMicroseconds: number;
     readonly status: TimingSpanStatus;
     readonly task: WorkerPoolTask;
@@ -64,6 +65,7 @@ export function postWorkerTimingSpan(input: WorkerTimingSpanInput): void {
         processId: workerProcessId(),
         resource: null,
         startOffsetMicroseconds: null,
+        startTimeUnixMicroseconds: input.monotonicTimeOriginUnixMicroseconds + input.startedAtMicroseconds,
         status: input.status,
         workerId: input.task.kind === 'run' ? workerPoolWorkerId() : null
     };
@@ -84,6 +86,7 @@ export async function measureWorkerSpan<Value>(
         postWorkerTimingSpan({
             completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
             kind,
+            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
             startedAtMicroseconds,
             status: 'success',
             task
@@ -94,6 +97,7 @@ export async function measureWorkerSpan<Value>(
         postWorkerTimingSpan({
             completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
             kind,
+            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
             startedAtMicroseconds,
             status: 'failure',
             task

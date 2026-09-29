@@ -735,6 +735,8 @@ type OutputRenderer = {
 };
 
 type DefinedOutputRenderer = (context: ReportingContext) => OutputRenderer;
+
+declare function createOpenTelemetryReporter(): DefinedReporter;
 ```
 
 Reporter method return types are conditional in the public TypeScript
@@ -1499,6 +1501,7 @@ type RunPreciseTimingReport = {
     readonly spans: ReadonlyArray<RunTimingSpan>;
     readonly aggregates: ReadonlyArray<RunTimingAggregate>;
     readonly overhead: TimingCollectionOverhead;
+    readonly observationWindow: RunTimingObservationWindow;
     readonly ambientNoise: AmbientNoiseEstimate;
     readonly truncated: boolean;
     readonly droppedSpanCount: number;
@@ -1511,11 +1514,17 @@ type RunTimingSpan = {
     readonly kind: RunTimingSpanKind;
     readonly label: string | null;
     readonly startOffsetMicroseconds: number | null;
+    readonly startTimeUnixMicroseconds: number;
     readonly durationMicroseconds: number;
     readonly processId: string | null;
     readonly workerId: string | null;
     readonly resource: { readonly name: string; readonly scope: ResourceScope; } | null;
     readonly status: TimingSpanStatus;
+};
+
+type RunTimingObservationWindow = {
+    readonly durationMicroseconds: number;
+    readonly startTimeUnixMicroseconds: number;
 };
 
 // Parent-observed spans use a parent-relative start offset.

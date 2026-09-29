@@ -42,6 +42,7 @@ function createTimingDeliveryEngine(): Engine {
 function preciseTimings(): RunPreciseTimingReport {
     return preciseTimingReport({
         aggregationMicroseconds: 3,
+        observationWindow: { durationMicroseconds: 750_010, startTimeUnixMicroseconds: 0 },
         recordingMicroseconds: 4,
         slowestSpanLimit: 1,
         spanLimit: 1,
@@ -53,6 +54,7 @@ function preciseTimings(): RunPreciseTimingReport {
                 processId: '42',
                 resource: null,
                 startOffsetMicroseconds: 10,
+                startTimeUnixMicroseconds: 10,
                 status: 'success',
                 workerId: null
             },
@@ -63,6 +65,7 @@ function preciseTimings(): RunPreciseTimingReport {
                 processId: '43',
                 resource: null,
                 startOffsetMicroseconds: null,
+                startTimeUnixMicroseconds: 20,
                 status: 'failure',
                 workerId: 'lane-1'
             }

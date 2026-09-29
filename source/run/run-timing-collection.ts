@@ -87,6 +87,7 @@ function recordingOverhead(
 }
 
 function timingSpan(
+    clock: OverkillClock,
     originMicroseconds: number,
     observation: RunTimingSpanObservation
 ): RunTimingSpan {
@@ -97,6 +98,7 @@ function timingSpan(
         processId: observation.metadata.processId,
         resource: observation.metadata.resource,
         startOffsetMicroseconds: nonNegativeMicroseconds(observation.startedAtMicroseconds - originMicroseconds),
+        startTimeUnixMicroseconds: clock.monotonicTimeOriginUnixMicroseconds + observation.startedAtMicroseconds,
         status: observation.status,
         workerId: observation.metadata.workerId
     };
@@ -120,6 +122,7 @@ function localTimingSpan(span: RunTimingSpan): RunTimingSpan {
         processId: span.processId,
         resource: span.resource,
         startOffsetMicroseconds: null,
+        startTimeUnixMicroseconds: span.startTimeUnixMicroseconds,
         status: span.status,
         workerId: span.workerId
     };
@@ -137,7 +140,7 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
     }
 
     function record(observation: RunTimingSpanObservation): void {
-        addSpan(timingSpan(originMicroseconds, observation));
+        addSpan(timingSpan(clock, originMicroseconds, observation));
     }
 
     function recordLocal(span: RunTimingSpan): void {
@@ -208,18 +211,27 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
         const aggregationStartedAtMicroseconds = clock.currentMonotonicMicroseconds;
         const reportValue = preciseTimingReport({
             aggregationMicroseconds: 0,
+            observationWindow: {
+                durationMicroseconds: spanDuration(originMicroseconds, aggregationStartedAtMicroseconds),
+                startTimeUnixMicroseconds: clock.monotonicTimeOriginUnixMicroseconds + originMicroseconds
+            },
             recordingMicroseconds,
             slowestSpanLimit: defaultRunTimingSlowestSpanLimit,
             spanLimit: defaultRunTimingSpanLimit,
             spans
         });
+        const aggregationCompletedAtMicroseconds = clock.currentMonotonicMicroseconds;
         const aggregationMicroseconds = spanDuration(
             aggregationStartedAtMicroseconds,
-            clock.currentMonotonicMicroseconds
+            aggregationCompletedAtMicroseconds
         );
 
         return {
             ...reportValue,
+            observationWindow: {
+                ...reportValue.observationWindow,
+                durationMicroseconds: spanDuration(originMicroseconds, aggregationCompletedAtMicroseconds)
+            },
             overhead: {
                 ...reportValue.overhead,
                 aggregationMicroseconds
@@ -243,13 +255,7 @@ export function createSystemRunTimingMeasurement(): RunTimingMeasurement {
 function preciseReportFromMeasurement(
     timing: RunTimingMeasurement | null
 ): NonNullable<RunResult['timings']['precise']> {
-    return timing?.report() ?? preciseTimingReport({
-        aggregationMicroseconds: 0,
-        recordingMicroseconds: 0,
-        slowestSpanLimit: defaultRunTimingSlowestSpanLimit,
-        spanLimit: defaultRunTimingSpanLimit,
-        spans: []
-    });
+    return (timing ?? createSystemRunTimingMeasurement()).report();
 }
 
 function observedWallTimeMicroseconds(precise: NonNullable<RunResult['timings']['precise']>): number {

@@ -80,6 +80,7 @@ export const testNode = createOverkillSuite({
                 postWorkerTimingSpan({
                     completedAtMicroseconds: 10,
                     kind: 'worker.assign-work',
+                    monotonicTimeOriginUnixMicroseconds: 0,
                     startedAtMicroseconds: 20,
                     status: 'success',
                     task: fixture.task
@@ -97,6 +98,7 @@ export const testNode = createOverkillSuite({
                             processId: String(process.pid),
                             resource: null,
                             startOffsetMicroseconds: null,
+                            startTimeUnixMicroseconds: 20,
                             status: 'success',
                             workerId: workerPoolWorkerId()
                         }
@@ -180,6 +182,7 @@ export const testNode = createOverkillSuite({
                     processId: String(process.pid),
                     resource: { name: 'database', scope: 'shared-per-worker' },
                     startOffsetMicroseconds: null,
+                    startTimeUnixMicroseconds: 0,
                     status: 'success',
                     workerId: workerPoolWorkerId()
                 });

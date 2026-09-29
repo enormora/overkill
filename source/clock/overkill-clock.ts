@@ -19,6 +19,7 @@ export type OverkillClock = {
     readonly clearTimeout: (identifier: TimerIdentifier) => void;
     readonly currentEpochMilliseconds: number;
     readonly currentMonotonicMicroseconds: number;
+    readonly monotonicTimeOriginUnixMicroseconds: number;
     readonly setInterval: (callback: () => void, delayMilliseconds: number) => IntervalIdentifier;
     readonly setTimeout: (callback: () => void, delayMilliseconds: number) => TimerIdentifier;
 };
@@ -46,6 +47,9 @@ export function createOverkillClock(): OverkillClock {
     const intervals = new Map<number, ReturnType<typeof setNodeInterval>>();
     const timers = new Map<number, ReturnType<typeof setNodeTimeout>>();
     let nextIdentifier = 0;
+    const monotonicTimeOriginUnixMicroseconds = Math.trunc(
+        nodePerformance.timeOrigin * microsecondsPerMillisecond
+    );
 
     return {
         clearInterval(identifier) {
@@ -74,6 +78,7 @@ export function createOverkillClock(): OverkillClock {
         get currentMonotonicMicroseconds() {
             return Math.trunc(nodePerformance.now() * microsecondsPerMillisecond);
         },
+        monotonicTimeOriginUnixMicroseconds,
         setInterval(callback, delayMilliseconds) {
             const id = nextIdentifier;
             nextIdentifier += 1;
@@ -181,6 +186,7 @@ export function createDeterministicOverkillClock(): DeterministicOverkillClock {
         get currentMonotonicMicroseconds() {
             return nowMicroseconds;
         },
+        monotonicTimeOriginUnixMicroseconds: 0,
         setInterval(callback, delayMilliseconds) {
             return setTimer('interval', callback, delayMilliseconds);
         },

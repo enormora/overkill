@@ -63,6 +63,7 @@ export const testNode = createOverkillSuite({
                     timings: {
                         precise: preciseTimingReport({
                             aggregationMicroseconds: 0,
+                            observationWindow: { durationMicroseconds: 600_000, startTimeUnixMicroseconds: 0 },
                             recordingMicroseconds: 0,
                             slowestSpanLimit: 50,
                             spanLimit: 5000,
@@ -73,6 +74,7 @@ export const testNode = createOverkillSuite({
                                 processId: null,
                                 resource: null,
                                 startOffsetMicroseconds: 0,
+                                startTimeUnixMicroseconds: 0,
                                 status: 'success',
                                 workerId: null
                             } ]
