@@ -1,4 +1,4 @@
-import type { OverkillClock } from '../clock/overkill-clock.ts';
+import type { Clock } from '@enormora/clock';
 import {
     invalidTimeoutControlFailure,
     runTestCase,
@@ -34,7 +34,7 @@ export type ConcurrentCase = {
 export type ExecutionSupervisionDependencies = {
     readonly globalErrorObserver: ExecutionGlobalErrorObserver;
     readonly runtimePolicy?: TestRuntimePolicy | null;
-    readonly wallClock: OverkillClock;
+    readonly wallClock: Clock;
 };
 type CaseCompletion = {
     readonly complete: (executedCase: ConcurrentCase) => void;
@@ -43,7 +43,7 @@ type CaseCompletion = {
 type ActiveCase = {
     readonly abort: () => void;
     readonly completion: CaseCompletion;
-    readonly hardTimeout: ReturnType<OverkillClock['setTimeout']> | null;
+    readonly hardTimeout: ReturnType<Clock['setTimeout']> | null;
     readonly startedAtMicroseconds: number;
     readonly testCase: TestPlanCase;
 };
@@ -227,7 +227,7 @@ function resultWithTimeoutFailure(
     };
 }
 
-function clearTimer(wallClock: OverkillClock, timer: ReturnType<OverkillClock['setTimeout']> | null): void {
+function clearTimer(wallClock: Clock, timer: ReturnType<Clock['setTimeout']> | null): void {
     if (timer !== null) {
         wallClock.clearTimeout(timer);
     }
@@ -326,7 +326,7 @@ function completeActiveCasesAs(
         activeCase.completion.complete(createTerminalCase(
             activeCase.testCase,
             verdict,
-            dependencies.wallClock.currentMonotonicMicroseconds - activeCase.startedAtMicroseconds
+            Number(dependencies.wallClock.currentMonotonicMicroseconds) - activeCase.startedAtMicroseconds
         ));
     }
 }
@@ -418,7 +418,7 @@ function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): Concu
 
 function registerActiveCase(input: ActiveCaseInput): ActiveCase {
     const key = workIdentityKey(input.testCase.workId);
-    const startedAtMicroseconds = input.dependencies.wallClock.currentMonotonicMicroseconds;
+    const startedAtMicroseconds = Number(input.dependencies.wallClock.currentMonotonicMicroseconds);
     const hardTimeout = input.timeoutPolicy === null || input.timeoutPolicy === undefined
         ? null
         : input.dependencies.wallClock.setTimeout(function hardTimeoutActiveCases() {
@@ -470,7 +470,7 @@ function createInconclusiveCaseResult(
     };
 }
 function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void {
-    const durationMicroseconds = input.dependencies.wallClock.currentMonotonicMicroseconds -
+    const durationMicroseconds = Number(input.dependencies.wallClock.currentMonotonicMicroseconds) -
         input.activeCase.startedAtMicroseconds;
 
     completeFinishedActiveCase(input, {
@@ -492,7 +492,7 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
         completeFinishedActiveCase(input, executedCase);
         return executedCase;
     } catch (error: unknown) {
-        const durationMicroseconds = input.dependencies.wallClock.currentMonotonicMicroseconds -
+        const durationMicroseconds = Number(input.dependencies.wallClock.currentMonotonicMicroseconds) -
             input.activeCase.startedAtMicroseconds;
         const fallbackCase = {
             result: createInconclusiveCaseResult(input.testCase, error, durationMicroseconds),

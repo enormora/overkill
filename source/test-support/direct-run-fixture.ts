@@ -1,6 +1,6 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import type { RunResourceUsageTracker } from '../engine/run-result.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
@@ -20,6 +20,10 @@ export type DirectRunFixture = {
     readonly setExitCode: (exitCode: number | string | null | undefined) => void;
     readonly stderr: () => string;
 };
+
+function createTestClock(): DeterministicClock {
+    return createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+}
 
 type DirectRunFixtureInput = {
     readonly config: DirectRunConfigFixture | null;
@@ -193,7 +197,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
             createRuntimePolicy() {
                 return null;
             },
-            createOverkillClock: createDeterministicOverkillClock,
+            createClock: createTestClock,
             currentWorkingDirectory() {
                 return cwd;
             },

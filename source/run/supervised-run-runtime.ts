@@ -193,7 +193,7 @@ function createPartialRunResult(input: PartialRunResultInput): RunResult {
         input.state.perTestResults(),
         input.state.runnerErrors(),
         {
-            completedAtMicroseconds: input.dependencies.wallClock.currentMonotonicMicroseconds,
+            completedAtMicroseconds: Number(input.dependencies.wallClock.currentMonotonicMicroseconds),
             planStatus: input.resolvedRun.facts.cases.length === 0 && input.resolvedRun.request.shard.total > 1
                 ? 'empty-shard'
                 : 'planned',
@@ -242,7 +242,7 @@ export function createHardTimeout(runtime: SupervisedRunRuntimeSeed): Supervised
                 runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
                 runtime.state.recordTerminalActiveCases(
                     'crashed',
-                    runtime.dependencies.wallClock.currentMonotonicMicroseconds
+                    Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
                 );
                 kill(runtime.child);
             }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds);
@@ -321,7 +321,7 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
             reportedEvent,
             runtime.state,
             caseByKey(collectedPlan),
-            runtime.dependencies.wallClock.currentMonotonicMicroseconds
+            Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
         );
     }
 
@@ -352,7 +352,7 @@ function handleResourceBudgetBreach(
     ));
     runtime.state.recordTerminalActiveCases(
         'resource-exhausted',
-        runtime.dependencies.wallClock.currentMonotonicMicroseconds
+        Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
     runtime.timeout.clear();
     kill(runtime.child);
@@ -454,7 +454,7 @@ export async function observeChild(
                 runtime.state.recordRunnerError(crashError(runtime.state, error.message));
                 runtime.state.recordTerminalActiveCases(
                     'crashed',
-                    runtime.dependencies.wallClock.currentMonotonicMicroseconds
+                    Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
                 );
             }
         });

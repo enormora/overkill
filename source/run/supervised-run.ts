@@ -109,8 +109,8 @@ const keepRunResult: RunResultFinalizer = async function keepRunResult(_resolved
 
 function supervisedRunStartTimes(dependencies: RunOrchestratorDependencies): SupervisedRunStartTimes {
     return {
-        epochMilliseconds: dependencies.wallClock.currentEpochMilliseconds,
-        monotonicMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds
+        epochMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
+        monotonicMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds)
     };
 }
 
@@ -207,7 +207,7 @@ function handleLiveCollectionMessage(
         liveRun.timing?.record(instantTimingSpanObservation({
             kind: 'supervised-process.ready',
             metadata: emptyTimingSpanMetadata(),
-            observedAtMicroseconds: liveRun.dependencies.wallClock.currentMonotonicMicroseconds,
+            observedAtMicroseconds: Number(liveRun.dependencies.wallClock.currentMonotonicMicroseconds),
             status: 'success'
         }));
         liveRun.collected.write({
@@ -222,7 +222,7 @@ function handleLiveCollectionMessage(
             message.event,
             liveRun.state,
             new Map(),
-            liveRun.dependencies.wallClock.currentMonotonicMicroseconds
+            Number(liveRun.dependencies.wallClock.currentMonotonicMicroseconds)
         );
     }
 }
@@ -275,7 +275,7 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
         liveRun.collectedSignal.resolve();
     });
     liveRun.child.on('exit', function resolveExit() {
-        const exitedAtMicroseconds = liveRun.dependencies.wallClock.currentMonotonicMicroseconds;
+        const exitedAtMicroseconds = Number(liveRun.dependencies.wallClock.currentMonotonicMicroseconds);
 
         liveRun.timing?.record(instantTimingSpanObservation({
             kind: 'supervised-process.exit',
@@ -434,7 +434,7 @@ function recordSupervisedReady(
     startedAtMicroseconds: number
 ): void {
     timing?.record({
-        completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+        completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
         kind: 'supervised-process.ready',
         metadata: emptyTimingSpanMetadata(),
         startedAtMicroseconds,
@@ -450,7 +450,7 @@ function recordSupervisedExit(
     timing?.record(instantTimingSpanObservation({
         kind: 'supervised-process.exit',
         metadata: emptyTimingSpanMetadata(),
-        observedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+        observedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
         status: runtime.terminalFailure.read() ? 'failure' : 'success'
     }));
 }
@@ -461,7 +461,7 @@ async function runSupervisedChild(
     timing: RunTimingMeasurement | null
 ): Promise<void> {
     const childFinished = observeChild(runtime, timing);
-    const readyStartedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    const readyStartedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
     sendRunCommand(runtime);
     sendAssignment(runtime);
     recordSupervisedReady(timing, dependencies, readyStartedAtMicroseconds);

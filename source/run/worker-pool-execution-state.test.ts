@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -362,7 +362,7 @@ export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         },
         startSupervisedChild: testOnlyDependency,
         startWorkerPoolHost: testOnlyDependency,
-        wallClock: createDeterministicOverkillClock()
+        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
     };
 }
 

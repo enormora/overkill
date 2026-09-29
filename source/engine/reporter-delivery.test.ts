@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock, type DeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -192,7 +192,7 @@ function readNoActiveResourceTypes(): readonly string[] {
     return [];
 }
 
-function createReporterDeliveryEngine(wallClock: DeterministicOverkillClock): Engine {
+function createReporterDeliveryEngine(wallClock: DeterministicClock): Engine {
     return createEngine({
         execute: createExecute({
             asyncLeakDiagnostics: 'enabled',
@@ -209,7 +209,7 @@ function createReporterDeliveryEngine(wallClock: DeterministicOverkillClock): En
 }
 
 function createDefaultReporterDeliveryEngine(): Engine {
-    return createReporterDeliveryEngine(createDeterministicOverkillClock());
+    return createReporterDeliveryEngine(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
 }
 
 export const testNode = createOverkillSuite({
@@ -323,7 +323,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             body: async function body(scope: OverkillScope) {
                 const testStartSignal = createReporterSignal();
-                const wallClock = createDeterministicOverkillClock();
+                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const engine = createReporterDeliveryEngine(wallClock);
                 const hangingReporter: RealTimeReporter = {
                     dispose: null,

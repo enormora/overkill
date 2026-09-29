@@ -1,5 +1,5 @@
+import type { Clock } from '@enormora/clock';
 import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { OverkillClock } from '../clock/overkill-clock.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
@@ -97,7 +97,7 @@ export type SupervisedChildMessage = {
 };
 
 export function createSupervisedResourceLifecycleTiming(
-    clock: OverkillClock,
+    clock: Clock,
     send: (message: SupervisedChildMessage) => void
 ): ResourceLifecycleTiming {
     return createResourceLifecycleTiming({

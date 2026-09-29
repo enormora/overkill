@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock } from '@enormora/clock';
 import { doubleUsage, rule, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
@@ -29,7 +29,7 @@ export const testNode = createOverkillSuite({
                         return expectedResult;
                     })
                 });
-                const wallClock = createDeterministicOverkillClock();
+                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const engine = createEngine({
                     execute,
                     wallClock

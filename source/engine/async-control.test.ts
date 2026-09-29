@@ -1,5 +1,5 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -20,7 +20,7 @@ function ignoreOutputLine(): void {
 }
 
 function createEngineWithActiveResources(readActiveResourceTypes: () => readonly string[]): Engine {
-    const wallClock = createDeterministicOverkillClock();
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
 
     return createEngine({
         execute: createExecute({

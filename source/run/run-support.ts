@@ -59,7 +59,7 @@ export async function finalizeResultWithDurationHistory(
     timing: DurationHistoryTimingMeasurement | null = null
 ): Promise<RunResult> {
     return await resultWithUpdatedDurationHistoryAndTiming({
-        completedAtMilliseconds: dependencies.wallClock.currentEpochMilliseconds,
+        completedAtMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
         resolvedRun,
         result,
         store: dependencies.durationHistoryStore,

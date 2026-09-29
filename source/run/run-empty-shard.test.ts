@@ -11,7 +11,7 @@ import {
 } from '../test-support/run-command-factory.ts';
 import { executeEmptyShardRun } from './run-empty-shard.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { RunCommand, RunConfig, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
     readonly config: RunConfig;
@@ -41,6 +41,33 @@ function inProcessMicrotestConfig(): RunConfig {
     });
 }
 
+async function emptyShardResult(
+    runOrchestrator: RunOrchestrator,
+    capabilityRestrictions: RunRequest['capabilityRestrictions']
+): Promise<Awaited<ReturnType<RunOrchestrator['run']>>> {
+    const results = await Promise.all([ 1, 2 ].map(async function runShard(index) {
+        return await runOrchestrator.run(createRunCommand({
+            config: inProcessMicrotestConfig(),
+            cwd: process.cwd(),
+            engine: { kind: 'default' },
+            request: defaultRunRequest({
+                capabilityRestrictions,
+                paths: [ passingFixturePath ],
+                shard: { index, total: 2 }
+            })
+        }));
+    }));
+    const emptyShard = results.find(function isEmptyShard(result) {
+        return result.planStatus === 'empty-shard';
+    });
+
+    if (emptyShard === undefined) {
+        throw new Error('Expected one empty shard.');
+    }
+
+    return emptyShard;
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-empty-shard.test.ts',
@@ -54,20 +81,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
-                const results = await Promise.all([ 1, 2 ].map(async function runShard(index) {
-                    return await runOrchestrator.run(createRunCommand({
-                        config: inProcessMicrotestConfig(),
-                        cwd: process.cwd(),
-                        engine: { kind: 'default' },
-                        request: defaultRunRequest({
-                            paths: [ passingFixturePath ],
-                            shard: { index, total: 2 }
-                        })
-                    }));
-                }));
-                const emptyShard = results.find(function isEmptyShard(result) {
-                    return result.planStatus === 'empty-shard';
-                });
+                const emptyShard = await emptyShardResult(runOrchestrator, { mode: 'enabled' });
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
                     config: inProcessMicrotestConfig(),
                     cwd: process.cwd(),
@@ -75,7 +89,6 @@ export const testNode = createOverkillSuite({
                     request: defaultRunRequest({ paths: [ passingFixturePath ] })
                 }));
 
-                scope.require.defined(emptyShard);
                 scope.assert.equal(emptyShard.status, 'passed');
                 scope.assert.equal(emptyShard.summary.planned, 0);
                 scope.assert.deepEqual(emptyShard.runnerErrors, []);
@@ -86,6 +99,24 @@ export const testNode = createOverkillSuite({
                         null
                     );
                 }, { message: 'Empty shard execution requires an empty-shard collected plan.' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'orchestrator.run() reports empty shards without a runtime policy',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const emptyShard = await emptyShardResult(
+                    createDeterministicRunOrchestrator(),
+                    { mode: 'disabled' }
+                );
+
+                scope.assert.equal(emptyShard.status, 'passed');
+                scope.assert.equal(emptyShard.summary.planned, 0);
+                scope.assert.deepEqual(emptyShard.runnerErrors, []);
 
                 return scope.assert.collect();
             }

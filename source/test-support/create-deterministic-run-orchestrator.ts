@@ -1,4 +1,4 @@
-import { createOverkillClock } from '../clock/overkill-clock.ts';
+import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/run-result.ts';
 import {
@@ -265,7 +265,7 @@ function runDeterministicSupervisedChild(context: FakeSupervisedChildRunContext)
 
 export function createDeterministicRunOrchestratorWithSeed(createSeed: () => bigint): RunOrchestrator {
     const engine = createTestEngine();
-    const wallClock = createOverkillClock();
+    const wallClock = createClock();
     const environment: Record<string, string | undefined> = {};
     const reporterDispatcher = createReporterDispatcher({
         stderr: {

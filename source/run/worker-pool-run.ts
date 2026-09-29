@@ -134,9 +134,9 @@ async function finishExecutionWithRuntime(
     state: WorkerPoolExecutionState,
     runtime: WorkerPoolRunRuntime
 ): Promise<RunResult> {
-    const startedAtMilliseconds = dependencies.wallClock.currentEpochMilliseconds;
-    const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
-    const readyAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    const startedAtMilliseconds = dependencies.wallClock.currentUnixEpochMilliseconds;
+    const startedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
+    const readyAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
 
     state.timing?.record({
         completedAtMicroseconds: readyAtMicroseconds,

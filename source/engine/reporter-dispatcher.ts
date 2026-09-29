@@ -1,4 +1,4 @@
-import type { OverkillClock } from '../clock/overkill-clock.ts';
+import type { Clock } from '@enormora/clock';
 import {
     createReporterDisposal as createReporterDisposalFromCallback,
     type ReporterDisposal as CoreReporterDisposal
@@ -52,7 +52,7 @@ export type ReporterDelivery = {
 export type ReporterDispatcherDependencies = {
     readonly stderr: OutputLineWriter;
     readonly stdout: OutputLineWriter;
-    readonly wallClock: OverkillClock;
+    readonly wallClock: Clock;
 };
 
 type ReporterDispatchContext = {

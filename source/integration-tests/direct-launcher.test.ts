@@ -1,5 +1,5 @@
 import { pathToFileURL } from 'node:url';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock } from '@enormora/clock';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import {
@@ -51,7 +51,7 @@ export async function runIfMain(
     }
 
     const startedAt = new Date(0);
-    const wallClock = createDeterministicOverkillClock();
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const execute = createExecute({
         asyncLeakDiagnostics: 'disabled',
         readActiveResourceTypes: readNoActiveResourceTypes,

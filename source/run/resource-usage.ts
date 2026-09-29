@@ -1,5 +1,5 @@
 import { getHeapStatistics } from 'node:v8';
-import type { OverkillClock } from '../clock/overkill-clock.ts';
+import type { Clock } from '@enormora/clock';
 import type {
     ResourceUsageSnapshot,
     RunResourceUsage,
@@ -14,7 +14,7 @@ type ResourceUsageTrackerDependencies = {
     readonly readActiveResourceTypes: () => readonly string[];
     readonly readJavaScriptEngineHeapBytes: () => number;
     readonly readResidentSetBytes: () => number;
-    readonly wallClock: OverkillClock;
+    readonly wallClock: Clock;
 };
 
 export type ResourceUsageTrackerOptions = {
@@ -33,7 +33,7 @@ function readResourceUsageSample(dependencies: ResourceUsageTrackerDependencies)
     return {
         activeResourceCount: activeResourceTypes.length,
         activeResourceTypes: sortedUnique(activeResourceTypes),
-        capturedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+        capturedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
         javaScriptEngineHeapBytes: dependencies.readJavaScriptEngineHeapBytes(),
         residentSetBytes: dependencies.readResidentSetBytes()
     };
@@ -117,7 +117,7 @@ export function createResourceUsageTracker(
     dependencies: ResourceUsageTrackerDependencies,
     options: ResourceUsageTrackerOptions
 ): RunResourceUsageTracker {
-    let intervalIdentifier: ReturnType<OverkillClock['setInterval']> | null = null;
+    let intervalIdentifier: ReturnType<Clock['setInterval']> | null = null;
     let samples: readonly ResourceUsageSample[] = [];
     let startSnapshot: ResourceUsageSnapshot | null = null;
 
@@ -155,7 +155,7 @@ export function createResourceUsageTracker(
 }
 
 export function createNodeResourceUsageTracker(
-    wallClock: OverkillClock,
+    wallClock: Clock,
     options: ResourceUsageTrackerOptions
 ): RunResourceUsageTracker {
     return createResourceUsageTracker({

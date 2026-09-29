@@ -64,7 +64,7 @@ function stopTaskForResourceExhaustion(taskRun: WorkerPoolTaskRun, runtime: Work
     taskRun.requeuePendingCases.write(false);
     taskRun.state.recordTerminalActiveCases(
         'resource-exhausted',
-        runtime.dependencies.wallClock.currentMonotonicMicroseconds
+        Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
     clearTaskTimeout(taskRun, runtime);
     taskRun.controller.abort();

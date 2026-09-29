@@ -1,13 +1,13 @@
 import {
+    createDeterministicClock,
+    type DeterministicClock,
+    type Clock
+} from '@enormora/clock';
+import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    createDeterministicOverkillClock,
-    type DeterministicOverkillClock,
-    type OverkillClock
-} from '../clock/overkill-clock.ts';
 import { defineResource, type AnyResourceDefinition } from '../resources/resources.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
@@ -44,7 +44,7 @@ function operation(signal: AbortSignal): ResourceLifecycleTimingOperation {
     };
 }
 
-function localTiming(clock: DeterministicOverkillClock): LocalTimingFixture {
+function localTiming(clock: DeterministicClock): LocalTimingFixture {
     const spans: RunTimingSpan[] = [];
     const timing = createResourceLifecycleTiming({
         clock,
@@ -61,8 +61,8 @@ function localTiming(clock: DeterministicOverkillClock): LocalTimingFixture {
     return { spans, timing };
 }
 
-function unavailableTimingClock(): OverkillClock {
-    const clock = createDeterministicOverkillClock();
+function unavailableTimingClock(): Clock {
+    const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
 
     Object.defineProperty(clock, 'currentMonotonicMicroseconds', {
         get() {
@@ -84,14 +84,14 @@ async function capturedError(run: () => Promise<unknown>): Promise<unknown> {
 }
 
 async function failureObservations(
-    clock: DeterministicOverkillClock,
+    clock: DeterministicClock,
     timing: ResourceLifecycleTiming
 ): Promise<FailureObservations> {
     const failureController = new AbortController();
     const failure = new Error('acquire failed');
     const caughtFailure = await capturedError(async function failAcquisition() {
         await timing.measure(operation(failureController.signal), async function acquireResource() {
-            clock.advanceByMicroseconds(12);
+            clock.advanceByMicroseconds(12n);
             throw failure;
         });
     });
@@ -99,7 +99,7 @@ async function failureObservations(
     const cancellation = new Error('cancelled');
     const caughtCancellation = await capturedError(async function cancelAcquisition() {
         await timing.measure(operation(cancellationController.signal), async function acquireResource() {
-            clock.advanceByMicroseconds(8);
+            clock.advanceByMicroseconds(8n);
             cancellationController.abort(cancellation);
             throw cancellation;
         });
@@ -139,7 +139,7 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'resource lifecycle timing records parent-relative resource spans',
             async body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const measurement = createRunTimingMeasurement(clock);
                 const timing = createResourceLifecycleTiming({
                     clock,
@@ -149,9 +149,9 @@ export const testNode = createOverkillSuite({
                 });
                 const controller = new AbortController();
 
-                clock.advanceByMicroseconds(10);
+                clock.advanceByMicroseconds(10n);
                 await timing.measure(operation(controller.signal), async function acquireResource() {
-                    clock.advanceByMicroseconds(25);
+                    clock.advanceByMicroseconds(25n);
                 });
 
                 const report = measurement.report();
@@ -180,7 +180,7 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'resource lifecycle timing records local failures and cancellations',
             async body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const fixture = localTiming(clock);
                 const observed = await failureObservations(clock, fixture.timing);
 
@@ -221,7 +221,7 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'resource lifecycle timing distinguishes startup budget timeouts',
             async body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const fixture = localTiming(clock);
                 const controller = new AbortController();
 
@@ -244,7 +244,7 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'resource lifecycle timing cannot change resource behavior',
             async body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createResourceLifecycleTiming({
                     clock,
                     processId: 'process-1',

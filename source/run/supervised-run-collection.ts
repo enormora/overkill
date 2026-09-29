@@ -52,7 +52,7 @@ function handleCollectionMessage(
             message.event,
             runtime.state,
             new Map(),
-            runtime.dependencies.wallClock.currentMonotonicMicroseconds
+            Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
         );
     } else if (message.kind === 'sample') {
         handleCollectionSample(message.sample, runtime);
@@ -182,10 +182,10 @@ export async function collectSupervisedRun(
 ): Promise<SupervisedCollectionResult> {
     const runtime = await createCollectionRuntime(command, dependencies, timing);
     const childFinished = observeCollection(runtime);
-    const readyStartedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    const readyStartedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
     runtime.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
     await childFinished;
-    const readyCompletedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    const readyCompletedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
 
     timing?.record({
         completedAtMicroseconds: readyCompletedAtMicroseconds,

@@ -136,7 +136,7 @@ async function reportTestEnd(
 
 async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<TimedLeakCheckedCase> {
     const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
-    const startedAtMicroseconds = input.context.dependencies.wallClock.currentMonotonicMicroseconds;
+    const startedAtMicroseconds = Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds);
     const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
         input.testCase,
         async function runCase() {
@@ -162,7 +162,7 @@ async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<Tim
     });
 
     return {
-        endedAtMicroseconds: input.context.dependencies.wallClock.currentMonotonicMicroseconds,
+        endedAtMicroseconds: Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds),
         leakCheckedCase,
         startedAtMicroseconds
     };
@@ -356,7 +356,7 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
     const endReporterErrors: RunnerError[] = [];
     const reportedRunnerErrors: RunnerError[] = [];
     const caseExecutions = input.testPlan.cases.map(async function executeCaseConcurrently(testCase) {
-        const startedAtMicroseconds = input.context.dependencies.wallClock.currentMonotonicMicroseconds;
+        const startedAtMicroseconds = Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds);
         const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
             testCase,
             async function runCase() {
@@ -380,7 +380,7 @@ async function executeConcurrentCases(input: ExecuteConcurrentCasesInput): Promi
             includeActiveResourceLeaks: false,
             testCase
         });
-        const endedAtMicroseconds = input.context.dependencies.wallClock.currentMonotonicMicroseconds;
+        const endedAtMicroseconds = Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds);
         const caseRunnerErrors = [
             ...input.context.dependencies.globalErrorObserver.takeErrors(),
             ...leakCheckedCase.executedCase.runnerErrors,
