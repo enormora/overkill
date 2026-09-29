@@ -9,10 +9,9 @@ import type {
 import {
     defineResource,
     type EmptyResourceDependencies,
-    type ResourceDefinition,
-    type ResourceScenarioSlot,
-    type ResourceScenarioSlotInput
+    type ResourceDefinition
 } from './resources.ts';
+import type { ResourceScenarioSlot, ResourceScenarioSlotInput } from './resource-scenario.ts';
 import {
     createLocalHttpServiceResource,
     type LocalHttpServer,
@@ -50,7 +49,12 @@ export type SimulatedHttpServerResource<
     SimulatedHttpServerResourceHandle<Simulation>,
     EmptyResourceDependencies,
     SimulatedHttpServerResourceHandle<Simulation>,
-    Readonly<Record<Simulation['name'], ResourceScenarioSlot<string & keyof Simulation['scenarios']>>>
+    Readonly<
+        Record<
+            Simulation['name'],
+            ResourceScenarioSlot<string & keyof Simulation['scenarios'], 'request-routed'>
+        >
+    >
 >;
 
 const scenarioQueryParameterName = '__overkill_scenario';
@@ -98,7 +102,7 @@ function simulatedHttpScenarioSlots<
 >(
     name: Name,
     simulationScenarios: Scenarios
-): Readonly<Record<Name, ResourceScenarioSlotInput<string & keyof Scenarios>>> {
+): Readonly<Record<Name, ResourceScenarioSlotInput<string & keyof Scenarios, 'request-routed'>>> {
     const values: [string & keyof Scenarios, ...(string & keyof Scenarios)[]] = [ 'default' ];
 
     for (const scenarioName in simulationScenarios) {
@@ -107,7 +111,7 @@ function simulatedHttpScenarioSlots<
         }
     }
 
-    const slots: Record<string, ResourceScenarioSlotInput<string & keyof Scenarios>> = {
+    const slots: Record<string, ResourceScenarioSlotInput<string & keyof Scenarios, 'request-routed'>> = {
         [name]: {
             default: 'default',
             timing: 'request-routed',
@@ -155,12 +159,7 @@ export function createSimulatedHttpServerResource<
     });
     const scenarios = simulatedHttpScenarioSlots(options.simulation.name, options.simulation.scenarios);
 
-    return defineResource<
-        Name,
-        SimulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>,
-        'per-case',
-        typeof scenarios
-    >({
+    return defineResource({
         name: options.simulation.name,
         scope: 'per-case',
         requirements: service.requirements,
@@ -173,7 +172,7 @@ export function createSimulatedHttpServerResource<
             });
             const handle = simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
                 localService,
-                selectedScenario(context, options.simulation.name)
+                'default'
             );
 
             acquiredServices.set(handle, localService);
@@ -194,6 +193,12 @@ export function createSimulatedHttpServerResource<
                 signal: context.signal,
                 scenarios: {}
             });
+        },
+        exposeHandle(handle, context) {
+            return simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
+                handle,
+                selectedScenario(context, options.simulation.name)
+            );
         }
     });
 }

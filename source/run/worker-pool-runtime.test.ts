@@ -86,6 +86,7 @@ function collectedPlanWithRunResource(): CollectedRunPlan {
                                     dependencies: [],
                                     name: 'database',
                                     requirements: [],
+                                    scenarios: [],
                                     scope: 'per-run'
                                 }
                             ]

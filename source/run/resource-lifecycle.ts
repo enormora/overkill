@@ -44,6 +44,7 @@ import {
     createManagedResourceAcquirer,
     createManagedStores,
     resourceProjectionRecordsFromStores,
+    managedResourceHandle,
     type ManagedLifecycleStores,
     type ManagedResourceAcquirer,
     type ManagedResourceLifecycleTiming as SessionResourceLifecycleTiming,
@@ -229,7 +230,7 @@ async function managedResourceHandles(
     for (const node of graph.order) {
         const record = await acquirer.acquire(node.descriptor, testCase, signal);
 
-        handles.set(node.descriptor, record.exposedHandle);
+        handles.set(node.descriptor, managedResourceHandle(record, node.descriptor));
     }
 
     return handles;

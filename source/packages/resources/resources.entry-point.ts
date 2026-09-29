@@ -95,6 +95,8 @@ export type {
     SharedRuntimeMatrixDefinitionInput,
     TemporaryDirectoryHandle
 } from '../../resources/resources.ts';
+export type { ResourceHandleExposureContext } from '../../resources/resource-definition-types.ts';
+export type { ResourceScenarioBindingsForTiming } from '../../resources/resource-scenario.ts';
 export type {
     LocalServiceAddress,
     LocalServiceAddressRequest,

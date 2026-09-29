@@ -1,21 +1,28 @@
 export type ScenarioTiming = 'acquire' | 'request-routed';
 
-export type ResourceScenarioSlot<Scenario extends string = string> = {
+export type ResourceScenarioSlot<
+    Scenario extends string = string,
+    Timing extends ScenarioTiming = ScenarioTiming
+> = {
     readonly default: Scenario;
-    readonly timing: ScenarioTiming;
+    readonly timing: Timing;
     readonly values: readonly [Scenario, ...(readonly Scenario[])];
 };
 
-export type ResourceScenarioSlotInput<Scenario extends string = string> = {
+export type ResourceScenarioSlotInput<
+    Scenario extends string = string,
+    Timing extends ScenarioTiming = ScenarioTiming
+> = {
     readonly default: Scenario;
-    readonly timing: ScenarioTiming;
+    readonly timing: Timing;
     readonly values: readonly Scenario[];
 };
 
 export type ResourceScenarioSlotInputs = Readonly<Record<string, ResourceScenarioSlotInput>>;
 export type ResourceScenarioSlotsFromInputs<Inputs extends ResourceScenarioSlotInputs> = {
     readonly [Slot in keyof Inputs]: ResourceScenarioSlot<
-        Inputs[Slot]['default'] | Inputs[Slot]['values'][number]
+        Inputs[Slot]['default'] | Inputs[Slot]['values'][number],
+        Inputs[Slot]['timing']
     >;
 };
 
@@ -24,6 +31,15 @@ export type EmptyResourceScenarioSlots = Readonly<Record<PropertyKey, never>>;
 
 export type ResourceScenarioBindings<Scenarios extends ResourceScenarioSlots> = {
     readonly [Slot in keyof Scenarios]: Scenarios[Slot]['values'][number];
+};
+
+export type ResourceScenarioBindingsForTiming<
+    Scenarios extends ResourceScenarioSlots,
+    Timing extends ScenarioTiming
+> = {
+    readonly [Slot in keyof Scenarios as Timing extends Scenarios[Slot]['timing'] ? Slot : never]: Scenarios[Slot][
+        'values'
+    ][number];
 };
 
 export type ScenarioBindingInput<
@@ -113,6 +129,22 @@ export function defaultScenarioBindings(
     return Object.freeze(Object.fromEntries(
         Object.entries(scenarios).map(function defaultScenarioEntry([ name, slot ]) {
             return [ name, slot.default ];
+        })
+    ));
+}
+
+export function scenarioBindingsForTiming(
+    scenarios: ResourceScenarioSlots,
+    bindings: ResolvedResourceScenarioBindings,
+    timing: ScenarioTiming
+): ResolvedResourceScenarioBindings {
+    return Object.freeze(Object.fromEntries(
+        Object.entries(scenarios).flatMap(function bindingForMatchingTiming([ name, slot ]) {
+            if (slot.timing !== timing) {
+                return [];
+            }
+
+            return [ [ name, bindings[name] ?? slot.default ] ];
         })
     ));
 }

@@ -64,6 +64,29 @@ function assertResourceScenarioValidation(scope: TestScope): void {
         }, { message: invalid.message });
     }
 
+    scope.assert.throws(function rejectMissingHandleExposure() {
+        defineResourceWithScenarios({
+            mode: { default: 'default', timing: 'request-routed', values: [ 'default' ] }
+        });
+    }, { message: 'Resource "invalid-scenarios" requires exposeHandle().' });
+    scope.assert.throws(function rejectUnexpectedHandleExposure() {
+        Reflect.apply(defineResource, undefined, [ {
+            acquire() {
+                return 'handle';
+            },
+            dispose: null,
+            exposeHandle(handle: unknown) {
+                return handle;
+            },
+            name: 'invalid-exposure',
+            requirements: [],
+            scenarios: {
+                mode: { default: 'default', timing: 'acquire', values: [ 'default' ] }
+            },
+            scope: 'per-case'
+        } ]);
+    }, { message: 'Resource exposeHandle() requires a request-routed scenario.' });
+
     scope.assert.equal(
         resourceScenarioOwners(
             ({

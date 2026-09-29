@@ -1,6 +1,7 @@
 import type { AnyResourceDefinition, ResourceDependencies } from './resource-definition-shape.ts';
 import {
     defaultScenarioBindings,
+    scenarioBindingsForTiming,
     type EmptyResourceScenarioSlots,
     type ResourceScenarioSlot,
     type ResourceScenarioSlots
@@ -60,6 +61,7 @@ export type ResourceScenarioOwner = {
 export type ResolvedResourceScenarioBindings = Readonly<Record<string, string>>;
 
 const boundResourceScenarios = new WeakMap<AnyResourceDefinition, ResolvedResourceScenarioBindings>();
+const sourceResourceDefinitions = new WeakMap<AnyResourceDefinition, AnyResourceDefinition>();
 
 function isScenarioTiming(value: unknown): boolean {
     return value === 'acquire' || value === 'request-routed';
@@ -161,6 +163,10 @@ export function resourceScenarioOwners(
     return owners;
 }
 
+export function sourceResourceDefinition(resource: AnyResourceDefinition): AnyResourceDefinition {
+    return sourceResourceDefinitions.get(resource) ?? resource;
+}
+
 export function bindResourceScenarios(
     resource: AnyResourceDefinition,
     bindings: ResolvedResourceScenarioBindings
@@ -168,6 +174,7 @@ export function bindResourceScenarios(
     const bound = Object.freeze({ ...resource });
 
     boundResourceScenarios.set(bound, bindings);
+    sourceResourceDefinitions.set(bound, sourceResourceDefinition(resource));
 
     return bound;
 }
@@ -176,4 +183,26 @@ export function resolvedResourceScenarioBindings(
     resource: AnyResourceDefinition
 ): ResolvedResourceScenarioBindings {
     return boundResourceScenarios.get(resource) ?? defaultScenarioBindings(resource.scenarios);
+}
+
+export function acquisitionResourceScenarioBindings(
+    resource: AnyResourceDefinition
+): ResolvedResourceScenarioBindings {
+    return scenarioBindingsForTiming(resource.scenarios, resolvedResourceScenarioBindings(resource), 'acquire');
+}
+
+function requestRoutedResourceScenarioBindings(
+    resource: AnyResourceDefinition
+): ResolvedResourceScenarioBindings {
+    return scenarioBindingsForTiming(resource.scenarios, resolvedResourceScenarioBindings(resource), 'request-routed');
+}
+
+export function exposeResourceHandle(resource: AnyResourceDefinition, handle: unknown): unknown {
+    if (resource.exposeHandle === null) {
+        return handle;
+    }
+
+    return Reflect.apply(resource.exposeHandle, undefined, [ handle, {
+        scenarios: requestRoutedResourceScenarioBindings(resource)
+    } ]);
 }

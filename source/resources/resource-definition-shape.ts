@@ -39,6 +39,7 @@ export type AnyResourceDefinition = {
     readonly dependencies: ResourceDependencies;
     readonly deserializeHandle?: (payload: never, context: never) => unknown;
     readonly dispose: ((handle: never, context: never) => Awaitable<void>) | null;
+    readonly exposeHandle: ((handle: never, context: never) => unknown) | null;
     readonly name: string;
     readonly requirements: readonly ExecutionRequirement[];
     readonly scenarios: ResourceScenarioSlots;

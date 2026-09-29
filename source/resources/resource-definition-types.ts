@@ -12,7 +12,7 @@ import type {
 import type { resourceDefinitionBrand } from './resource-definition-brand.ts';
 import type {
     EmptyResourceScenarioSlots,
-    ResourceScenarioBindings,
+    ResourceScenarioBindingsForTiming,
     ResourceScenarioSlotInputs,
     ResourceScenarioSlotsFromInputs,
     ResourceScenarioSlots
@@ -37,6 +37,12 @@ export type ResourceProjectionContext<Dependencies extends ResourceDependencies 
     readonly dependencies: ResourceContext<Dependencies>;
 };
 
+export type ResourceHandleExposureContext<
+    Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
+> = {
+    readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'request-routed'>;
+};
+
 export type ResourceHandle<Resource extends AnyResourceDefinition> = Resource extends {
     readonly deserializeHandle?: ((payload: never, context: never) => infer ConsumerHandle) | undefined;
 } ? ConsumerHandle
@@ -51,7 +57,7 @@ export type ResourceCreationContext<
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
 > = {
     readonly dependencies: ResourceContext<Dependencies>;
-    readonly scenarios: ResourceScenarioBindings<Scenarios>;
+    readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
 };
 
@@ -60,9 +66,22 @@ export type ResourceDisposalContext<
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
 > = {
     readonly dependencies: ResourceContext<Dependencies>;
-    readonly scenarios: ResourceScenarioBindings<Scenarios>;
+    readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
 };
+
+type RequestRoutedScenarioNames<Scenarios extends ResourceScenarioSlots> = keyof {
+    readonly [Slot in keyof Scenarios as 'request-routed' extends Scenarios[Slot]['timing'] ? Slot : never]: true;
+};
+
+type ResourceHandleExposureInput<Handle, Scenarios extends ResourceScenarioSlots> = {
+    readonly exposeHandle?: (handle: Handle, context: ResourceHandleExposureContext<Scenarios>) => Handle;
+};
+
+type ResourceHandleExposureDefinition<Handle, Scenarios extends ResourceScenarioSlots> =
+    RequestRoutedScenarioNames<Scenarios> extends never ? { readonly exposeHandle: null; } : {
+        readonly exposeHandle: (handle: Handle, context: ResourceHandleExposureContext<Scenarios>) => Handle;
+    };
 
 type ResourceDisposal<
     Handle,
@@ -91,11 +110,14 @@ export type LocalOnlyResourceDefinitionInput<
     Scope extends ResourceScope,
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
-> = ResourceDefinitionBaseInput<Name, Handle, Scope, Dependencies, Scenarios> & {
-    readonly deserializeHandle?: never;
-    readonly scenarios: Scenarios;
-    readonly serializeHandle?: never;
-};
+> = Merge<
+    ResourceDefinitionBaseInput<Name, Handle, Scope, Dependencies, Scenarios>,
+    ResourceHandleExposureInput<Handle, NoInfer<Scenarios>> & {
+        readonly deserializeHandle?: never;
+        readonly scenarios: Scenarios;
+        readonly serializeHandle?: never;
+    }
+>;
 
 export type ProjectedResourceDefinitionInput<
     Name extends string,
@@ -105,17 +127,20 @@ export type ProjectedResourceDefinitionInput<
     Scope extends 'per-file' | 'per-run' | 'per-suite',
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
-> = ResourceDefinitionBaseInput<Name, OwnerHandle, Scope, Dependencies, Scenarios> & {
-    readonly deserializeHandle: (
-        payload: Projection,
-        context: ResourceProjectionContext<Dependencies>
-    ) => ConsumerHandle;
-    readonly scenarios: Scenarios;
-    readonly serializeHandle: (
-        handle: OwnerHandle,
-        context: ResourceProjectionContext<Dependencies>
-    ) => Projection;
-};
+> = Merge<
+    ResourceDefinitionBaseInput<Name, OwnerHandle, Scope, Dependencies, Scenarios>,
+    ResourceHandleExposureInput<ConsumerHandle, NoInfer<Scenarios>> & {
+        readonly deserializeHandle: (
+            payload: Projection,
+            context: ResourceProjectionContext<Dependencies>
+        ) => ConsumerHandle;
+        readonly scenarios: Scenarios;
+        readonly serializeHandle: (
+            handle: OwnerHandle,
+            context: ResourceProjectionContext<Dependencies>
+        ) => Projection;
+    }
+>;
 
 export type ScenarioLocalInput<
     Name extends string,
@@ -355,7 +380,7 @@ export type ResourceDefinition<
     Dependencies extends ResourceDependencies = ResourceDependencies,
     ConsumerHandle = OwnerHandle,
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
-> = {
+> = ResourceHandleExposureDefinition<ConsumerHandle, Scenarios> & {
     readonly acquire: (context: ResourceCreationContext<Dependencies, Scenarios>) => Awaitable<OwnerHandle>;
     readonly dependencies: Dependencies;
     readonly deserializeHandle?: (

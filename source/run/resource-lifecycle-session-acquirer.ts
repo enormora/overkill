@@ -1,13 +1,16 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
-import {
-    resolvedResourceScenarioBindings,
-    type AnyResourceDefinition,
-    type ResourceContext,
-    type ResourceProjectionPayload,
-    type RuntimeResourceMap as ResourceMap
+import type {
+    AnyResourceDefinition,
+    ResourceContext,
+    ResourceProjectionPayload,
+    RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
-import { resourceEntries } from '../resources/resource-graph.ts';
+import {
+    acquisitionResourceScenarioBindings,
+    exposeResourceHandle,
+    sourceResourceDefinition
+} from '../resources/resource-scenario-binding.ts';
 import {
     boundaryFor,
     initialBoundaryUseCountsFromRecords,
@@ -31,7 +34,7 @@ export type ManagedResourceRecord = {
     readonly dependencyContext: ResourceContext<ResourceMap>;
     readonly descriptor: AnyResourceDefinition;
     readonly external: boolean;
-    readonly exposedHandle: unknown;
+    readonly consumerHandle: unknown;
     readonly ownerHandle: unknown;
 };
 
@@ -156,6 +159,10 @@ export function resourceProjectionRecordsFromStores(stores: ManagedLifecycleStor
     };
 }
 
+export function managedResourceHandle(record: ManagedResourceRecord, resource: AnyResourceDefinition): unknown {
+    return exposeResourceHandle(resource, record.consumerHandle);
+}
+
 function assertCompatibleResource(
     stores: ManagedLifecycleStores,
     boundary: LifecycleBoundary,
@@ -163,7 +170,10 @@ function assertCompatibleResource(
 ): void {
     const record = stores.existingRecord(boundary.key);
 
-    if (record !== undefined && record.descriptor !== resource) {
+    if (
+        record !== undefined &&
+        sourceResourceDefinition(record.descriptor) !== sourceResourceDefinition(resource)
+    ) {
         throw resourceWrapperLifecycleError(
             `Resource name "${resource.name}" is used by multiple descriptors in one lifecycle boundary.`,
             resource
@@ -194,10 +204,10 @@ export function createManagedResourceAcquirer(
         const context = mutableDependencyContext();
 
         await Promise.all(
-            resourceEntries(resource.dependencies).map(async function acquireDependency([ key, dependency ]) {
+            Object.entries(resource.dependencies).map(async function acquireDependency([ key, dependency ]) {
                 const record = await acquireResource(dependency, testCase, signal);
 
-                context[key] = record.exposedHandle;
+                context[key] = managedResourceHandle(record, dependency);
             })
         );
 
@@ -214,7 +224,7 @@ export function createManagedResourceAcquirer(
         const acquireHandle = async function acquireResourceHandle(): Promise<unknown> {
             return await acquireResourceWithStartupBudget(resource, {
                 dependencies: dependencyContext,
-                scenarios: resolvedResourceScenarioBindings(resource),
+                scenarios: acquisitionResourceScenarioBindings(resource),
                 signal
             });
         };
@@ -230,7 +240,7 @@ export function createManagedResourceAcquirer(
             dependencyContext,
             descriptor: resource,
             external: false,
-            exposedHandle: projectedHandle(resource, ownerHandle, dependencyContext),
+            consumerHandle: projectedHandle(resource, ownerHandle, dependencyContext),
             ownerHandle
         };
 
@@ -257,7 +267,7 @@ export function createManagedResourceAcquirer(
             dependencyContext,
             descriptor: resource,
             external: true,
-            exposedHandle: deserializeProjectedHandle(resource, payload, dependencyContext),
+            consumerHandle: deserializeProjectedHandle(resource, payload, dependencyContext),
             ownerHandle: null
         };
 

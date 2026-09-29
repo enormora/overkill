@@ -11,14 +11,18 @@ import {
 } from '../resources/resources.ts';
 import { resolvedRuntimeScenarioOwners } from '../resources/runtime-definition.ts';
 import {
+    acquisitionResourceScenarioBindings,
     bindResourceScenarios,
-    resolvedResourceScenarioBindings,
     type ResolvedResourceScenarioBindings
 } from '../resources/resource-scenario-binding.ts';
 import { defaultScenarioBindings } from '../resources/resource-scenario.ts';
 import { runtimeIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { ResourceSession } from '../resources/resource-session.ts';
 import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
+import {
+    resourceHandleCacheIdentity,
+    type ResourceCacheIdentityNode
+} from './resource-lifecycle-cache-identity.ts';
 
 type Mutable<Value> = {
     -readonly [Key in keyof Value]: Value[Key];
@@ -65,7 +69,7 @@ export type ResourceEntry = {
 export function lifecycleScenarioBindings(
     resource: AnyResourceDefinition
 ): ResolvedResourceScenarioBindings {
-    return Object.freeze({ ...resolvedResourceScenarioBindings(resource) });
+    return Object.freeze({ ...acquisitionResourceScenarioBindings(resource) });
 }
 
 function entries(record: Readonly<Record<string, AnyResourceDefinition>>): readonly [string, AnyResourceDefinition][] {
@@ -304,6 +308,26 @@ function scopedRuntimeDependencies(
     ));
 }
 
+function resourceCacheIdentityNode(
+    resource: AnyResourceDefinition,
+    bindingsByResource: ReadonlyMap<AnyResourceDefinition, ResolvedResourceScenarioBindings>
+): ResourceCacheIdentityNode {
+    const bindings = bindingsByResource.get(resource) ?? defaultScenarioBindings(resource.scenarios);
+
+    return {
+        dependencies: entries(resource.dependencies).map(function dependencyNode([ , dependency ]) {
+            return { key: dependency.name, resource: resourceCacheIdentityNode(dependency, bindingsByResource) };
+        }),
+        scenarios: Object.entries(resource.scenarios).map(function scenarioBinding([ name, slot ]) {
+            return {
+                name,
+                timing: slot.timing,
+                value: bindings[name] ?? slot.default
+            };
+        })
+    };
+}
+
 function scopedRuntimeResource(
     resource: AnyResourceDefinition,
     runtimeKey: string,
@@ -311,7 +335,11 @@ function scopedRuntimeResource(
 ): AnyResourceDefinition {
     const cachedResources = scopedRuntimeResources.get(resource) ?? new Map<string, AnyResourceDefinition>();
     const bindings = bindingsByResource.get(resource) ?? defaultScenarioBindings(resource.scenarios);
-    const scopedResourceKey = `${runtimeKey}:${JSON.stringify(bindings)}`;
+    const scopedResourceKey = `${runtimeKey}:${
+        resourceHandleCacheIdentity(
+            resourceCacheIdentityNode(resource, bindingsByResource)
+        )
+    }`;
     const cached = cachedResources.get(scopedResourceKey);
 
     if (cached !== undefined) {

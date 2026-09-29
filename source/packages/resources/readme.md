@@ -143,7 +143,13 @@ Resources may declare finite scenario slots with a default, timing, and allowed
 values. `defineRuntime(...)` lifts slots from its complete dependency graph.
 `runtime.scenario({...})` applies partial overrides, while omitted slots retain
 their current value or declared default. Acquisition and disposal callbacks
-receive the resolved values through `context.scenarios`.
+receive acquire-timed values through `context.scenarios`. Those values form
+part of the resource cache key.
+
+Request-routed slots require `exposeHandle(handle, context)`. The callback
+receives only request-routed values and returns the handle view for that use.
+Different routed bindings reuse one acquired owner handle. A dependent
+resource still acquires separately when those views differ.
 
 `createSimulatedHttpServerResource({ simulation, address })` starts a simulated
 HTTP server from `@overkill-dev/simulation` as a per-case resource. Its
