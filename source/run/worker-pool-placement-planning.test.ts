@@ -125,6 +125,7 @@ function createConstrainedPlan(requirements: readonly TestBodyExecutionRequireme
                                     dependencies: [],
                                     name: 'database',
                                     requirements,
+                                    scenarios: [],
                                     scope: 'per-case'
                                 }
                             ]
