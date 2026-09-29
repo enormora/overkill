@@ -1,5 +1,5 @@
 import { threadId } from 'node:worker_threads';
-import { createOverkillClock, type OverkillClock } from '../clock/overkill-clock.ts';
+import { createClock, type Clock } from '@enormora/clock';
 import type {
     RunTimingSpan,
     RunTimingSpanKind,
@@ -11,12 +11,12 @@ import {
     type ResourceLifecycleTiming
 } from './resource-lifecycle-timing.ts';
 
-export type WorkerTimingClock = OverkillClock;
+export type WorkerTimingClock = Clock;
 
 type WorkerTimingSpanInput = {
     readonly completedAtMicroseconds: number;
     readonly kind: RunTimingSpanKind;
-    readonly monotonicTimeOriginUnixMicroseconds: number;
+    readonly monotonicTimeOriginUnixEpochMicroseconds: number;
     readonly startedAtMicroseconds: number;
     readonly status: TimingSpanStatus;
     readonly task: WorkerPoolTask;
@@ -31,7 +31,7 @@ export function workerPoolWorkerId(): `${number}:${number}` {
 }
 
 export function createWorkerTimingClock(): WorkerTimingClock {
-    const clock = createOverkillClock();
+    const clock = createClock();
 
     return clock;
 }
@@ -65,7 +65,7 @@ export function postWorkerTimingSpan(input: WorkerTimingSpanInput): void {
         processId: workerProcessId(),
         resource: null,
         startOffsetMicroseconds: null,
-        startTimeUnixMicroseconds: input.monotonicTimeOriginUnixMicroseconds + input.startedAtMicroseconds,
+        startTimeUnixMicroseconds: input.monotonicTimeOriginUnixEpochMicroseconds + input.startedAtMicroseconds,
         status: input.status,
         workerId: input.task.kind === 'run' ? workerPoolWorkerId() : null
     };
@@ -79,14 +79,14 @@ export async function measureWorkerSpan<Value>(
     kind: RunTimingSpanKind,
     work: () => Promise<Value>
 ): Promise<Value> {
-    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    const startedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
 
     try {
         const value = await work();
         postWorkerTimingSpan({
-            completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
+            completedAtMicroseconds: Number(wallClock.currentMonotonicMicroseconds),
             kind,
-            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
+            monotonicTimeOriginUnixEpochMicroseconds: Number(wallClock.monotonicTimeOriginUnixEpochMicroseconds),
             startedAtMicroseconds,
             status: 'success',
             task
@@ -95,9 +95,9 @@ export async function measureWorkerSpan<Value>(
         return value;
     } catch (error: unknown) {
         postWorkerTimingSpan({
-            completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
+            completedAtMicroseconds: Number(wallClock.currentMonotonicMicroseconds),
             kind,
-            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
+            monotonicTimeOriginUnixEpochMicroseconds: Number(wallClock.monotonicTimeOriginUnixEpochMicroseconds),
             startedAtMicroseconds,
             status: 'failure',
             task

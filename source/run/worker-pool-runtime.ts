@@ -497,7 +497,7 @@ export async function createWorkerPoolRuntime(
             return;
         }
 
-        runState.recordCapturedOutput(stream, chunk, dependencies.wallClock.currentMonotonicMicroseconds);
+        runState.recordCapturedOutput(stream, chunk, Number(dependencies.wallClock.currentMonotonicMicroseconds));
     });
 
     return {

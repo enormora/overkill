@@ -1,4 +1,4 @@
-import type { OverkillClock } from '../clock/overkill-clock.ts';
+import type { Clock } from '@enormora/clock';
 import {
     evaluateAssertion,
     invalidDeepAssertionOperand
@@ -542,16 +542,16 @@ function skippedCase(
 
 export async function runTestCase(
     testCase: TestPlanCase,
-    wallClock: OverkillClock,
+    wallClock: Clock,
     options: RunTestCaseOptions = defaultRunTestCaseOptions()
 ): Promise<ExecutedCase> {
-    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    const startedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
 
     if (testCase.execution.kind === 'skip') {
         return skippedCase(
             testCase,
             testCase.execution.reason,
-            wallClock.currentMonotonicMicroseconds - startedAtMicroseconds
+            Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds
         );
     }
 
@@ -560,7 +560,7 @@ export async function runTestCase(
     const executedBody = await runCaseBody(testCase, recorder, options);
     const outcome = createOutcome(recorder, executedBody);
     const verdict = verdictFromOutcome(outcome);
-    const durationMicroseconds = wallClock.currentMonotonicMicroseconds - startedAtMicroseconds;
+    const durationMicroseconds = Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
 
     return {
         result: {

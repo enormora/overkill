@@ -41,13 +41,13 @@ The summary uses microsecond integer durations. Human reporters may render
 milliseconds, but the structured model should not use floating point values
 for core timing facts.
 
-Overkill owns its timing clock abstraction. Durations and diagnostic offsets
-come from a monotonic microsecond clock. Wall-clock metadata, such as the ISO
-run-start timestamp shown to users, remains available through the same
-platform boundary but is not used for duration math. Precise spans also carry
-an absolute Unix start timestamp derived from the process performance time
-origin plus the monotonic timestamp. The precise report carries the absolute
-start and monotonic duration of its observation window.
+Overkill uses `@enormora/clock` for explicit timing access. Durations and
+diagnostic offsets come from its monotonic microsecond clock. Wall-clock
+metadata, such as the ISO run-start timestamp shown to users, remains available
+through the same boundary but is not used for duration math. Precise spans also
+carry an absolute Unix start timestamp derived from the process performance
+time origin plus the monotonic timestamp. The precise report carries the
+absolute start and monotonic duration of its observation window.
 
 ## Precise Timings
 

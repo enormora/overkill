@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock, type DeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -76,7 +76,7 @@ function createSilentReporterDelivery(): ReporterDelivery {
 }
 
 function executionDependencies(
-    wallClock: DeterministicOverkillClock
+    wallClock: DeterministicClock
 ): ExecutionSupervisionDependencies {
     return {
         globalErrorObserver: createDisabledExecutionGlobalErrorObserver(),
@@ -408,7 +408,7 @@ export const testNode = createOverkillSuite({
                         residentSetBytes: 1,
                         residentSetGrowthBytesPerSecond: null
                     },
-                    dependencies: executionDependencies(createDeterministicOverkillClock()),
+                    dependencies: executionDependencies(createDeterministicClock({ initialUnixEpochMicroseconds: 0n })),
                     previousSample,
                     sample,
                     supervision
@@ -439,7 +439,9 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
-                const dependencies = executionDependencies(createDeterministicOverkillClock());
+                const dependencies = executionDependencies(
+                    createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+                );
                 const nullBudgetBreach = recordResourceUsageSample({
                     budgets: null,
                     dependencies,
@@ -473,7 +475,9 @@ export const testNode = createOverkillSuite({
                 await scope.assert.rejects(async function executeThrowingCases() {
                     await executeResourceTrackedCases({
                         context: {
-                            dependencies: executionDependencies(createDeterministicOverkillClock()),
+                            dependencies: executionDependencies(
+                                createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+                            ),
                             reporterDelivery: createSilentReporterDelivery()
                         },
                         options: {

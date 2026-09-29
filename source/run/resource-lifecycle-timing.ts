@@ -1,4 +1,4 @@
-import type { OverkillClock } from '../clock/overkill-clock.ts';
+import type { Clock } from '@enormora/clock';
 import type {
     RunTimingSpan,
     TimingSpanStatus
@@ -32,7 +32,7 @@ type ResourceLifecycleTimingTarget = {
 };
 
 export type ResourceLifecycleTimingOptions = {
-    readonly clock: OverkillClock;
+    readonly clock: Clock;
     readonly processId: string;
     readonly target: ResourceLifecycleTimingTarget;
     readonly workerId: string | null;
@@ -91,7 +91,7 @@ function writeResourceTiming(
             kind: timingKind(completed.operation.phase),
             ...metadata,
             startOffsetMicroseconds: null,
-            startTimeUnixMicroseconds: options.clock.monotonicTimeOriginUnixMicroseconds +
+            startTimeUnixMicroseconds: Number(options.clock.monotonicTimeOriginUnixEpochMicroseconds) +
                 completed.startedAtMicroseconds,
             status: completed.status
         });
@@ -108,9 +108,9 @@ function recordResourceTiming(
     }
 }
 
-function currentTime(clock: OverkillClock): number | null {
+function currentTime(clock: Clock): number | null {
     try {
-        return clock.currentMonotonicMicroseconds;
+        return Number(clock.currentMonotonicMicroseconds);
     } catch {
         return null;
     }

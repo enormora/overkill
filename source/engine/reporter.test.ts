@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -63,7 +63,7 @@ async function reportEvent(
 function createRecordingDispatcher(): RecordingDispatcher {
     const stdoutLines: string[] = [];
     const stderrLines: string[] = [];
-    const wallClock = createDeterministicOverkillClock();
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
 
     function recordStderrLine(line: string): void {
         stderrLines.push(line);
@@ -254,7 +254,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const wallClock = createDeterministicOverkillClock();
+                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const dispatcher = createReporterDispatcher({
                     stderr: { writeLine: ignoreOutputLine },
                     stdout: { writeLine: ignoreOutputLine },

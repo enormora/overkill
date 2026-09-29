@@ -224,7 +224,7 @@ function recordActiveLease(state: DynamicDispatchState, lease: WorkerPoolUnitLea
     state.activeUnits.set(workerPoolLeaseKey(lease), {
         lane: lease.lane,
         lease,
-        startedAtMicroseconds: state.runtime.dependencies.wallClock.currentMonotonicMicroseconds
+        startedAtMicroseconds: Number(state.runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     });
 
     if (lease.kind === 'hedged-duplicate') {

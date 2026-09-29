@@ -1,4 +1,4 @@
-import type { OverkillClock } from '../clock/overkill-clock.ts';
+import type { Clock } from '@enormora/clock';
 import type { Execute } from './execution.ts';
 import { formatCaseId } from './identity.ts';
 import {
@@ -41,7 +41,7 @@ export type Engine = {
 
 export type EngineDependencies = {
     readonly execute: Execute;
-    readonly wallClock: OverkillClock;
+    readonly wallClock: Clock;
 };
 
 export function createEngineWithOwner(dependencies: EngineDependencies, owner: TestNodeOwner): Engine {

@@ -93,7 +93,7 @@ function createPlacementResolution(
         availableParallelism: input.dependencies.availableParallelism,
         durationHistoryIndex: input.durationHistoryIndex,
         fileSetForFile: fileSetForDiscoveredFiles(input.files),
-        nowMilliseconds: input.dependencies.wallClock.currentEpochMilliseconds,
+        nowMilliseconds: input.dependencies.wallClock.currentUnixEpochMilliseconds,
         order: input.request.order,
         profileMaximumWorkers: profileMaximumWorkers(input.profile),
         requestedWorkers: input.request.workers,

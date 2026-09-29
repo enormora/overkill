@@ -1,4 +1,4 @@
-import { createOverkillClock } from '../clock/overkill-clock.ts';
+import { createClock } from '@enormora/clock';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
@@ -37,7 +37,7 @@ const runResourceOwners = new Map<string, ResourceLifecycleSession>();
 const laneResourceSessions = new Map<string, ResourceLifecycleSession>();
 
 export function createWorkerResourceUsageTracker(command: WorkerPoolCommand): RunResourceUsageTracker {
-    return createNodeResourceUsageTracker(createOverkillClock(), {
+    return createNodeResourceUsageTracker(createClock(), {
         samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
     });
 }

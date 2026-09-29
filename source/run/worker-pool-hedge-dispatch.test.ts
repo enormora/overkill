@@ -261,14 +261,14 @@ function activeHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): H
     return {
         lane: firstLane(plan),
         lease: primaryLease(firstUnit(plan), firstLane(plan)),
-        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 50_000
+        startedAtMicroseconds: Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds) - 50_000
     };
 }
 
 function readyHedgeLease(runtime: WorkerPoolRunRuntime, plan: PlacementPlan): HedgeActiveUnitLease {
     return {
         ...activeHedgeLease(runtime, plan),
-        startedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds - 100_000
+        startedAtMicroseconds: Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds) - 100_000
     };
 }
 

@@ -24,7 +24,7 @@ type LocalResolvedRun = ResolvedRun & {
 };
 
 function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
-    const startedAt = new Date(dependencies.wallClock.currentEpochMilliseconds);
+    const startedAt = new Date(dependencies.wallClock.currentUnixEpochMilliseconds);
 
     return startedAt.toISOString();
 }

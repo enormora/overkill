@@ -166,7 +166,7 @@ export async function finishWorkerPoolRun(
             perTest,
             allTaskErrors(runtime, completedTaskRuns),
             {
-                completedAtMicroseconds: runtime.dependencies.wallClock.currentMonotonicMicroseconds,
+                completedAtMicroseconds: Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds),
                 planStatus: 'planned',
                 resourceUsage: finishPoolResourceUsage(runtime),
                 startedAtMicroseconds,
@@ -196,8 +196,8 @@ export async function createEmptyWorkerPoolResult(
     collectionRunState: SupervisedRunState
 ): Promise<RunResult> {
     const reporterDelivery = await createReporterDelivery(resolvedRun, dependencies);
-    const startedAtMilliseconds = dependencies.wallClock.currentEpochMilliseconds;
-    const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    const startedAtMilliseconds = dependencies.wallClock.currentUnixEpochMilliseconds;
+    const startedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
     const collectedPlan = workerPoolCollectedPlan(resolvedRun);
     const runStartErrors = await reportEmptyShardRunStart(
         reporterDelivery,
@@ -211,7 +211,7 @@ export async function createEmptyWorkerPoolResult(
             [],
             [ ...resolvedRun.collectionRunnerErrors, ...collectionRunState.runnerErrors(), ...runStartErrors ],
             {
-                completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+                completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
                 planStatus: emptyWorkerPoolPlanStatus(resolvedRun),
                 resourceUsage: null,
                 startedAtMicroseconds,

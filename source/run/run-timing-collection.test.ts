@@ -1,9 +1,9 @@
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
@@ -185,12 +185,12 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createRunTimingMeasurement(clock);
 
-                clock.advanceByMicroseconds(10);
+                clock.advanceByMicroseconds(10n);
                 timing.measure('collection.resolve', emptyTimingSpanMetadata(), function resolveCollection() {
-                    clock.advanceByMicroseconds(25);
+                    clock.advanceByMicroseconds(25n);
                 });
                 timing.recordLocal({
                     durationMicroseconds: 40,
@@ -210,7 +210,7 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 35,
                     startTimeUnixMicroseconds: 0
                 });
-                scope.assert.equal(clock.monotonicTimeOriginUnixMicroseconds, 0);
+                scope.assert.equal(Number(clock.monotonicTimeOriginUnixEpochMicroseconds), 0);
 
                 return scope.assert.collect();
             }
@@ -221,14 +221,14 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createRunTimingMeasurement(clock);
                 const error = new Error('measurement failure');
                 let thrownError: unknown = null;
 
                 try {
                     timing.measure('config.load', emptyTimingSpanMetadata(), function loadConfig() {
-                        clock.advanceByMicroseconds(15);
+                        clock.advanceByMicroseconds(15n);
                         throw error;
                     });
                 } catch (caughtError: unknown) {
@@ -306,12 +306,12 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createRunTimingMeasurement(clock);
 
-                clock.advanceByMicroseconds(20);
+                clock.advanceByMicroseconds(20n);
                 timing.measure('collection.resolve', emptyTimingSpanMetadata(), function resolveCollection() {
-                    clock.advanceByMicroseconds(30);
+                    clock.advanceByMicroseconds(30n);
                 });
 
                 const result = resultWithTimingCollection('precise', runResultFactory.build(), timing);
@@ -328,7 +328,9 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const timing = createRunTimingMeasurement(createDeterministicOverkillClock());
+                const timing = createRunTimingMeasurement(
+                    createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+                );
 
                 timing.recordLocal({
                     durationMicroseconds: 70,

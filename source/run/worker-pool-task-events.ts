@@ -169,7 +169,7 @@ function recordPermissionFailure(
     taskRun.state.recordRunnerError(runnerError);
     taskRun.state.recordTerminalActiveCases(
         'runtime-policy',
-        context.runtime.dependencies.wallClock.currentMonotonicMicroseconds
+        Number(context.runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
     context.runtime.terminalFailure.write(true);
     context.dispatcher.clear();
@@ -247,7 +247,7 @@ export function recordTaskCrash(
     taskRun.state.recordRunnerError(crashError(taskRun.state, message));
     taskRun.state.recordTerminalActiveCases(
         'crashed',
-        runtime.dependencies.wallClock.currentMonotonicMicroseconds
+        Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
 }
 
@@ -314,7 +314,7 @@ function handleWorkerEvent(
         reportedEvent,
         taskRun.state,
         casesByKey(taskRun),
-        runtime.dependencies.wallClock.currentMonotonicMicroseconds
+        Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
 
     if (reportedEvent.kind === 'test-end' && taskRun.state.activeCases.size === 0) {

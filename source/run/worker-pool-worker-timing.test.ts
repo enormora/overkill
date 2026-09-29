@@ -1,13 +1,13 @@
 import {
+    createDeterministicClock,
+    type DeterministicClock
+} from '@enormora/clock';
+import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
-import {
-    createDeterministicOverkillClock,
-    type DeterministicOverkillClock
-} from '../clock/overkill-clock.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 import {
     createWorkerResourceLifecycleTiming,
@@ -43,7 +43,7 @@ function createTimingTaskFixture(kind: 'collect' | 'run'): TimingTaskFixture {
 
 async function captureMeasuredFailure(
     task: WorkerPoolTask,
-    clock: DeterministicOverkillClock,
+    clock: DeterministicClock,
     error: Error
 ): Promise<unknown> {
     try {
@@ -52,7 +52,7 @@ async function captureMeasuredFailure(
             clock,
             'worker.assign-work',
             async function measureFailedWork() {
-                clock.advanceByMicroseconds(30);
+                clock.advanceByMicroseconds(30n);
                 throw error;
             }
         );
@@ -80,7 +80,7 @@ export const testNode = createOverkillSuite({
                 postWorkerTimingSpan({
                     completedAtMicroseconds: 10,
                     kind: 'worker.assign-work',
-                    monotonicTimeOriginUnixMicroseconds: 0,
+                    monotonicTimeOriginUnixEpochMicroseconds: 0,
                     startedAtMicroseconds: 20,
                     status: 'success',
                     task: fixture.task
@@ -115,13 +115,13 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const fixture = createTimingTaskFixture('collect');
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const value = await measureWorkerSpan(
                     fixture.task,
                     clock,
                     'worker.import-startup',
                     async function measureSuccessfulWork() {
-                        clock.advanceByMicroseconds(25);
+                        clock.advanceByMicroseconds(25n);
 
                         return 'ok';
                     }
@@ -142,7 +142,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const fixture = createTimingTaskFixture('run');
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const error = new Error('worker failed');
                 const thrownError = await captureMeasuredFailure(fixture.task, clock, error);
 
@@ -160,7 +160,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const fixture = createTimingTaskFixture('run');
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createWorkerResourceLifecycleTiming(fixture.task, clock);
                 const controller = new AbortController();
 
@@ -169,7 +169,7 @@ export const testNode = createOverkillSuite({
                     resource: { name: 'database', scope: 'shared-per-worker' },
                     signal: controller.signal
                 }, async function disposeResource() {
-                    clock.advanceByMicroseconds(17);
+                    clock.advanceByMicroseconds(17n);
                 });
 
                 const [ message ] = fixture.messages;
@@ -197,7 +197,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const fixture = createTimingTaskFixture('collect');
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createWorkerResourceLifecycleTiming(fixture.task, clock);
                 const controller = new AbortController();
 
@@ -206,7 +206,7 @@ export const testNode = createOverkillSuite({
                     resource: { name: 'database', scope: 'per-run' },
                     signal: controller.signal
                 }, async function acquireResource() {
-                    clock.advanceByMicroseconds(9);
+                    clock.advanceByMicroseconds(9n);
                 });
 
                 scope.assert.equal(fixture.messages[0]?.span.workerId, null);

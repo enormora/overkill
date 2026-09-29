@@ -1,4 +1,4 @@
-import { createOverkillClock } from '../clock/overkill-clock.ts';
+import { createClock } from '@enormora/clock';
 import {
     childProcessEnvelope,
     envelopeMessage
@@ -133,6 +133,6 @@ await runSupervisedChild(
     },
     {
         createResourceUsageTracker: createNodeResourceUsageTracker,
-        createOverkillClock
+        createClock
     }
 );

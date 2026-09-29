@@ -1,4 +1,4 @@
-import { createOverkillClock } from '../../clock/overkill-clock.ts';
+import { createClock } from '@enormora/clock';
 import {
     createEngineWithOwner,
     type Engine,
@@ -32,7 +32,7 @@ function readActiveResourceTypes(): readonly string[] {
 }
 
 function createEngineDependencies(): EngineDependencies {
-    const wallClock = createOverkillClock();
+    const wallClock = createClock();
 
     return {
         execute: createExecute({

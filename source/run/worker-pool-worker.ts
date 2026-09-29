@@ -119,7 +119,7 @@ async function runAssignment(
         kind: 'attempt-started',
         workerId: workerPoolWorkerId()
     }, []);
-    const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    const startedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
     const testPlan = resolvedTestPlanDefinitionLocations(
         selectedAssignedWork(collectedPlan.testPlan, assignedUnit.work)
     );
@@ -152,7 +152,7 @@ async function runAssignment(
             });
         }
     );
-    const completedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    const completedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
 
     task.port.postMessage(
         {
@@ -240,11 +240,11 @@ async function runCollectionTask(
         );
     } finally {
         outputCapture.restore();
-        const teardownStartedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+        const teardownStartedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
         postWorkerTimingSpan({
-            completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
+            completedAtMicroseconds: Number(wallClock.currentMonotonicMicroseconds),
             kind: 'worker.teardown',
-            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
+            monotonicTimeOriginUnixEpochMicroseconds: Number(wallClock.monotonicTimeOriginUnixEpochMicroseconds),
             startedAtMicroseconds: teardownStartedAtMicroseconds,
             status: 'success',
             task
@@ -254,21 +254,21 @@ async function runCollectionTask(
 }
 
 function recordWorkerStartup(task: WorkerPoolTask, wallClock: WorkerTimingClock): void {
-    const createdAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    const createdAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
 
     postWorkerTimingSpan({
         completedAtMicroseconds: createdAtMicroseconds,
         kind: 'worker.create',
-        monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
+        monotonicTimeOriginUnixEpochMicroseconds: Number(wallClock.monotonicTimeOriginUnixEpochMicroseconds),
         startedAtMicroseconds: createdAtMicroseconds,
         status: 'success',
         task
     });
-    const readyAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+    const readyAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
     postWorkerTimingSpan({
         completedAtMicroseconds: readyAtMicroseconds,
         kind: 'worker.ready',
-        monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
+        monotonicTimeOriginUnixEpochMicroseconds: Number(wallClock.monotonicTimeOriginUnixEpochMicroseconds),
         startedAtMicroseconds: readyAtMicroseconds,
         status: 'success',
         task
@@ -309,11 +309,11 @@ async function runClosableTask(
     try {
         return await runWorkerTask(task, wallClock);
     } finally {
-        const teardownStartedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
+        const teardownStartedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
         postWorkerTimingSpan({
-            completedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
+            completedAtMicroseconds: Number(wallClock.currentMonotonicMicroseconds),
             kind: 'worker.teardown',
-            monotonicTimeOriginUnixMicroseconds: wallClock.monotonicTimeOriginUnixMicroseconds,
+            monotonicTimeOriginUnixEpochMicroseconds: Number(wallClock.monotonicTimeOriginUnixEpochMicroseconds),
             startedAtMicroseconds: teardownStartedAtMicroseconds,
             status: 'success',
             task

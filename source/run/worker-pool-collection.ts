@@ -159,7 +159,11 @@ function createCollectionRuntime(
         }
     ) ?? input.dependencies.createWorkerPool(poolOptions);
     pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
-        input.runState.recordCapturedOutput(stream, chunk, input.dependencies.wallClock.currentMonotonicMicroseconds);
+        input.runState.recordCapturedOutput(
+            stream,
+            chunk,
+            Number(input.dependencies.wallClock.currentMonotonicMicroseconds)
+        );
     });
 
     return {
@@ -221,7 +225,7 @@ async function collectWithRuntime(
     input.timing?.record(instantTimingSpanObservation({
         kind: 'worker-pool.ready',
         metadata: emptyTimingSpanMetadata(),
-        observedAtMicroseconds: input.dependencies.wallClock.currentMonotonicMicroseconds,
+        observedAtMicroseconds: Number(input.dependencies.wallClock.currentMonotonicMicroseconds),
         status: 'success'
     }));
 

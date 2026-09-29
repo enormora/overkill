@@ -1,9 +1,9 @@
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import type {
     CreatedWorkerPool,
@@ -220,7 +220,9 @@ export const testNode = createOverkillSuite({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runWorkerPoolCommand() records child-host pool startup and shutdown timing',
             async body(scope: OverkillScope) {
-                const timing = createRunTimingMeasurement(createDeterministicOverkillClock());
+                const timing = createRunTimingMeasurement(
+                    createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+                );
                 const fixture = createRecordedPoolDependencies();
                 const result = await runWorkerPoolCommand(
                     workerPoolCommand({ kind: 'child', nodeArguments: [ '--conditions=overkill-test' ] }),

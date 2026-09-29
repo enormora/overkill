@@ -1,3 +1,4 @@
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite,
     createTestCase,
@@ -13,7 +14,6 @@ import {
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import { createResourceLifecycleRuntimePolicy } from '../../run/resource-lifecycle.ts';
-import { createDeterministicOverkillClock } from '../../clock/overkill-clock.ts';
 import type { RunTimingSpan } from '../../engine/run-timings.ts';
 import { createResourceLifecycleTiming } from '../../run/resource-lifecycle-timing.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
@@ -72,7 +72,7 @@ function eventReporter(): DefinedReporter {
 async function executeObservedPlan(testPlan: TestPlan): Promise<ObservedExecution> {
     const resourceTimings: RunTimingSpan[] = [];
     const timing = createResourceLifecycleTiming({
-        clock: createDeterministicOverkillClock(),
+        clock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
         processId: 'test-process',
         target: {
             emit(span) {

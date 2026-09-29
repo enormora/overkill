@@ -19,7 +19,7 @@ import type { RunRuntimePolicy } from './run-support.ts';
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 
 function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
-    const startedAt = new Date(dependencies.wallClock.currentEpochMilliseconds);
+    const startedAt = new Date(dependencies.wallClock.currentUnixEpochMilliseconds);
 
     return startedAt.toISOString();
 }
@@ -40,7 +40,7 @@ export async function executeEmptyShardRun(
 ): Promise<RunResult> {
     const collectedPlan = emptyShardCollectedPlan(resolvedRun);
     const reporterDelivery = await createReporterDelivery(resolvedRun, dependencies);
-    const startedAtMicroseconds = dependencies.wallClock.currentMonotonicMicroseconds;
+    const startedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
     const runStartErrors = await reporterDelivery.reportEvent({
         facts: resolvedRun.facts,
         kind: 'run-start',
@@ -57,7 +57,7 @@ export async function executeEmptyShardRun(
             [],
             [ ...resolvedRun.collectionRunnerErrors, ...runStartErrors, ...runtimePolicy?.takeRunErrors() ?? [] ],
             {
-                completedAtMicroseconds: dependencies.wallClock.currentMonotonicMicroseconds,
+                completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
                 planStatus: 'empty-shard',
                 resourceUsage: null,
                 startedAtMicroseconds,

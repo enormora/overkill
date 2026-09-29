@@ -1,4 +1,4 @@
-import type { OverkillClock } from '../clock/overkill-clock.ts';
+import type { Clock } from '@enormora/clock';
 import {
     defineReporter,
     type DefinedReporter
@@ -55,7 +55,7 @@ function invokeWriteCallbacks(
 function captureStream(
     streamName: WorkerPoolStreamName,
     task: WorkerPoolTask,
-    wallClock: OverkillClock
+    wallClock: Clock
 ): () => void {
     function writeCapturedOutput(chunk: WriteChunk, callback?: WriteCallback): boolean;
     function writeCapturedOutput(
@@ -69,7 +69,7 @@ function captureStream(
         callback?: WriteCallback
     ): boolean {
         const output: WorkerPoolMessage = {
-            capturedAtMicroseconds: wallClock.currentMonotonicMicroseconds,
+            capturedAtMicroseconds: Number(wallClock.currentMonotonicMicroseconds),
             chunk: outputBuffer(chunk),
             kind: 'output',
             stream: streamName
@@ -86,7 +86,7 @@ function captureStream(
 
 export function captureOutput(
     task: WorkerPoolTask,
-    wallClock: OverkillClock
+    wallClock: Clock
 ): RestoredOutputCapture {
     const restoreStdout = captureStream('stdout', task, wallClock);
     const restoreStderr = captureStream('stderr', task, wallClock);

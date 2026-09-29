@@ -1,5 +1,5 @@
 import os from 'node:os';
-import { createOverkillClock } from '../clock/overkill-clock.ts';
+import { createClock } from '@enormora/clock';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
@@ -44,7 +44,7 @@ export type NodeRunOrchestratorInput = {
 };
 
 export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunOrchestrator {
-    const wallClock = createOverkillClock();
+    const wallClock = createClock();
     const reporterDispatcher = createReporterDispatcher({
         stderr: input.stderr,
         stdout: input.stdout,

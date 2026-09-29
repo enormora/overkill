@@ -166,10 +166,20 @@ function timeoutDependencies(): RunOrchestratorDependencies {
             clearTimeout() {
                 return undefined;
             },
-            setTimeout(callback: TimeoutCallback) {
-                timeoutCallback = callback;
+            setTimeout<HandlerArguments extends readonly unknown[]>(
+                callback: (...handlerArguments: HandlerArguments) => void,
+                delayInMilliseconds: number,
+                ...handlerArguments: HandlerArguments
+            ) {
+                timeoutCallback = function invokeTimeoutCallback() {
+                    callback(...handlerArguments);
+                };
 
-                return { id: 1, source: 'deterministic' as const };
+                return baseDependencies.wallClock.setTimeout(
+                    callback,
+                    delayInMilliseconds,
+                    ...handlerArguments
+                );
             }
         }
     };

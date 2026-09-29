@@ -57,7 +57,7 @@ function hedgeThresholdMicroseconds(state: HedgeDispatchState, entry: HedgeActiv
 }
 
 function elapsedMicroseconds(state: HedgeDispatchState, entry: HedgeActiveUnitLease): number {
-    return state.wallClock.currentMonotonicMicroseconds - entry.startedAtMicroseconds;
+    return Number(state.wallClock.currentMonotonicMicroseconds) - entry.startedAtMicroseconds;
 }
 
 function unitIsHedgeSafe(unit: WorkUnit): boolean {

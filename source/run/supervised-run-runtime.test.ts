@@ -100,7 +100,7 @@ function timeoutRuntime(child: SupervisedChildProcess): TimeoutRuntimeRecord {
                     clearTimeout(timeout: unknown) {
                         clears += timeout === null ? 0 : 1;
                     },
-                    currentEpochMilliseconds: 0,
+                    currentUnixEpochMilliseconds: 0,
                     setTimeout(callback: () => void) {
                         callbacks.push(callback);
                         return callbacks.length;

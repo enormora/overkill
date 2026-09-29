@@ -1,5 +1,5 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -64,10 +64,14 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
     };
 }
 
+function createTestClock(): DeterministicClock {
+    return createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+}
+
 function supervisedChildDependencies(): SupervisedChildDependencies {
     return {
         createResourceUsageTracker: createEmptyResourceUsageTracker,
-        createOverkillClock: createDeterministicOverkillClock
+        createClock: createTestClock
     };
 }
 
@@ -259,7 +263,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const messages: SupervisedChildMessage[] = [];
                 const timing = createSupervisedResourceLifecycleTiming(clock, function recordMessage(message) {
                     messages.push(message);
@@ -271,7 +275,7 @@ export const testNode = createOverkillSuite({
                     resource: { name: 'database', scope: 'per-run' },
                     signal: controller.signal
                 }, async function acquireResource() {
-                    clock.advanceByMicroseconds(21);
+                    clock.advanceByMicroseconds(21n);
                 });
 
                 scope.assert.deepEqual(messages, [ {

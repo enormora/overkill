@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock } from '@enormora/clock';
 import { createEngine, type Engine } from '../engine/engine.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -12,7 +12,7 @@ function readNoActiveResourceTypes(): readonly string[] {
 }
 
 export function createTestEngine(): Engine {
-    const wallClock = createDeterministicOverkillClock();
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
 
     return createEngine({
         execute: createExecute({

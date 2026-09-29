@@ -1,9 +1,9 @@
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type {
     CreatedWorkerPool,
@@ -113,7 +113,7 @@ function createDependencies(createWorkerPool: WorkerPoolFactory): RunOrchestrato
             clearTimeout() {
                 return undefined;
             },
-            currentEpochMilliseconds: 0,
+            currentUnixEpochMilliseconds: 0,
             currentMonotonicMicroseconds: 0,
             setTimeout() {
                 return 1;
@@ -132,7 +132,7 @@ function createTimeoutDependencies(
             clearTimeout() {
                 return undefined;
             },
-            currentEpochMilliseconds: 0,
+            currentUnixEpochMilliseconds: 0,
             currentMonotonicMicroseconds: 0,
             setTimeout(callback: TimeoutCallback) {
                 writeTimeoutCallback(callback);
@@ -221,7 +221,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const clock = createDeterministicOverkillClock();
+                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const timing = createRunTimingMeasurement(clock);
                 const result = await collectInvalidOwnedPool(timing);
 

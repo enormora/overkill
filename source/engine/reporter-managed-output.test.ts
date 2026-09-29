@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -69,7 +69,7 @@ function createRecordingDispatcher(): RecordingDispatcher {
                 stdoutLines.push(line);
             }
         },
-        wallClock: createDeterministicOverkillClock()
+        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
     });
 
     return {

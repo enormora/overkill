@@ -1,3 +1,4 @@
+import { createClock, type Clock } from '@enormora/clock';
 import type { RunResult } from '../engine/run-result.ts';
 import {
     defaultRunTimingSlowestSpanLimit,
@@ -8,7 +9,6 @@ import {
     type RunTimingSpanKind,
     type TimingSpanStatus
 } from '../engine/run-timings.ts';
-import { createOverkillClock, type OverkillClock } from '../clock/overkill-clock.ts';
 
 type TimingCollectionMode = 'precise' | 'summary';
 type TimingResolvedRun = {
@@ -76,18 +76,18 @@ function spanDuration(startedAtMicroseconds: number, completedAtMicroseconds: nu
 }
 
 function recordingOverhead(
-    clock: OverkillClock,
+    clock: Clock,
     record: () => void
 ): number {
-    const startedAtMicroseconds = clock.currentMonotonicMicroseconds;
+    const startedAtMicroseconds = Number(clock.currentMonotonicMicroseconds);
 
     record();
 
-    return spanDuration(startedAtMicroseconds, clock.currentMonotonicMicroseconds);
+    return spanDuration(startedAtMicroseconds, Number(clock.currentMonotonicMicroseconds));
 }
 
 function timingSpan(
-    clock: OverkillClock,
+    clock: Clock,
     originMicroseconds: number,
     observation: RunTimingSpanObservation
 ): RunTimingSpan {
@@ -98,7 +98,8 @@ function timingSpan(
         processId: observation.metadata.processId,
         resource: observation.metadata.resource,
         startOffsetMicroseconds: nonNegativeMicroseconds(observation.startedAtMicroseconds - originMicroseconds),
-        startTimeUnixMicroseconds: clock.monotonicTimeOriginUnixMicroseconds + observation.startedAtMicroseconds,
+        startTimeUnixMicroseconds: Number(clock.monotonicTimeOriginUnixEpochMicroseconds) +
+            observation.startedAtMicroseconds,
         status: observation.status,
         workerId: observation.metadata.workerId
     };
@@ -128,8 +129,8 @@ function localTimingSpan(span: RunTimingSpan): RunTimingSpan {
     };
 }
 
-export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasurement {
-    const originMicroseconds = clock.currentMonotonicMicroseconds;
+export function createRunTimingMeasurement(clock: Clock): RunTimingMeasurement {
+    const originMicroseconds = Number(clock.currentMonotonicMicroseconds);
     const spans: RunTimingSpan[] = [];
     let recordingMicroseconds = 0;
 
@@ -152,12 +153,12 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
         metadata: RunTimingSpanMetadata,
         work: () => Value
     ): Value {
-        const startedAtMicroseconds = clock.currentMonotonicMicroseconds;
+        const startedAtMicroseconds = Number(clock.currentMonotonicMicroseconds);
 
         try {
             const value = work();
             record({
-                completedAtMicroseconds: clock.currentMonotonicMicroseconds,
+                completedAtMicroseconds: Number(clock.currentMonotonicMicroseconds),
                 kind,
                 metadata,
                 startedAtMicroseconds,
@@ -167,7 +168,7 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
             return value;
         } catch (error: unknown) {
             record({
-                completedAtMicroseconds: clock.currentMonotonicMicroseconds,
+                completedAtMicroseconds: Number(clock.currentMonotonicMicroseconds),
                 kind,
                 metadata,
                 startedAtMicroseconds,
@@ -182,12 +183,12 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
         metadata: RunTimingSpanMetadata,
         work: () => Promise<Value>
     ): Promise<Value> {
-        const startedAtMicroseconds = clock.currentMonotonicMicroseconds;
+        const startedAtMicroseconds = Number(clock.currentMonotonicMicroseconds);
 
         try {
             const value = await work();
             record({
-                completedAtMicroseconds: clock.currentMonotonicMicroseconds,
+                completedAtMicroseconds: Number(clock.currentMonotonicMicroseconds),
                 kind,
                 metadata,
                 startedAtMicroseconds,
@@ -197,7 +198,7 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
             return value;
         } catch (error: unknown) {
             record({
-                completedAtMicroseconds: clock.currentMonotonicMicroseconds,
+                completedAtMicroseconds: Number(clock.currentMonotonicMicroseconds),
                 kind,
                 metadata,
                 startedAtMicroseconds,
@@ -208,19 +209,19 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
     }
 
     function report(): NonNullable<RunResult['timings']['precise']> {
-        const aggregationStartedAtMicroseconds = clock.currentMonotonicMicroseconds;
+        const aggregationStartedAtMicroseconds = Number(clock.currentMonotonicMicroseconds);
         const reportValue = preciseTimingReport({
             aggregationMicroseconds: 0,
             observationWindow: {
                 durationMicroseconds: spanDuration(originMicroseconds, aggregationStartedAtMicroseconds),
-                startTimeUnixMicroseconds: clock.monotonicTimeOriginUnixMicroseconds + originMicroseconds
+                startTimeUnixMicroseconds: Number(clock.monotonicTimeOriginUnixEpochMicroseconds) + originMicroseconds
             },
             recordingMicroseconds,
             slowestSpanLimit: defaultRunTimingSlowestSpanLimit,
             spanLimit: defaultRunTimingSpanLimit,
             spans
         });
-        const aggregationCompletedAtMicroseconds = clock.currentMonotonicMicroseconds;
+        const aggregationCompletedAtMicroseconds = Number(clock.currentMonotonicMicroseconds);
         const aggregationMicroseconds = spanDuration(
             aggregationStartedAtMicroseconds,
             aggregationCompletedAtMicroseconds
@@ -249,7 +250,7 @@ export function createRunTimingMeasurement(clock: OverkillClock): RunTimingMeasu
 }
 
 export function createSystemRunTimingMeasurement(): RunTimingMeasurement {
-    return createRunTimingMeasurement(createOverkillClock());
+    return createRunTimingMeasurement(createClock());
 }
 
 function preciseReportFromMeasurement(

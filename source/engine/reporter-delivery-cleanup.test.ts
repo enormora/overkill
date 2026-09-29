@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock, type DeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -62,13 +62,13 @@ type ConcurrentFinishFixture = {
     readonly finalReporter: FinalResultReporter;
     readonly finishStarted: ReporterSignal;
     readonly realTimeReporter: RealTimeReporter;
-    readonly wallClock: DeterministicOverkillClock;
+    readonly wallClock: DeterministicClock;
 };
 
 type ReporterDeliveryFixture = {
     readonly disposeSignal: ReporterSignal;
     readonly engine: Engine;
-    readonly wallClock: DeterministicOverkillClock;
+    readonly wallClock: DeterministicClock;
 };
 
 function createReporterSignal(): ReporterSignal {
@@ -159,7 +159,7 @@ function readNoActiveResourceTypes(): readonly string[] {
     return [];
 }
 
-function createReporterDeliveryEngine(wallClock: DeterministicOverkillClock): Engine {
+function createReporterDeliveryEngine(wallClock: DeterministicClock): Engine {
     return createEngine({
         execute: createExecute({
             asyncLeakDiagnostics: 'enabled',
@@ -176,12 +176,12 @@ function createReporterDeliveryEngine(wallClock: DeterministicOverkillClock): En
 }
 
 function createDefaultReporterDeliveryEngine(): Engine {
-    return createReporterDeliveryEngine(createDeterministicOverkillClock());
+    return createReporterDeliveryEngine(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
 }
 
 function createReporterDeliveryFixture(): ReporterDeliveryFixture {
     const disposeSignal = createReporterSignal();
-    const wallClock = createDeterministicOverkillClock();
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const engine = createReporterDeliveryEngine(wallClock);
 
     return { disposeSignal, engine, wallClock };
@@ -190,7 +190,7 @@ function createReporterDeliveryFixture(): ReporterDeliveryFixture {
 function createConcurrentFinishFixture(): ConcurrentFinishFixture {
     const finishStarted = createReporterSignal();
     const finalReported = createReporterSignal();
-    const wallClock = createDeterministicOverkillClock();
+    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const engine = createReporterDeliveryEngine(wallClock);
 
     return {
@@ -377,7 +377,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             body: async function body(scope: OverkillScope) {
                 const engine = createDefaultReporterDeliveryEngine();
-                const wallClock = createDeterministicOverkillClock();
+                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 let disposeCalls = 0;
                 const reporterDispatcher: ReporterDispatcher = {
                     async createDelivery() {

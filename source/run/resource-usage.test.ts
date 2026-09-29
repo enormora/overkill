@@ -1,4 +1,4 @@
-import { createDeterministicOverkillClock, type DeterministicOverkillClock } from '../clock/overkill-clock.ts';
+import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -29,14 +29,14 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
         readResidentSetBytes() {
             return 0;
         },
-        wallClock: createDeterministicOverkillClock()
+        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
     }, {
         samplingIntervalMilliseconds: 100
     });
 }
 
 function createChangingResourceUsageTracker(
-    wallClock: DeterministicOverkillClock
+    wallClock: DeterministicClock
 ): RunResourceUsageTracker {
     let activeResourceReadCount = 0;
 
@@ -70,7 +70,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const wallClock = createDeterministicOverkillClock();
+                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                 const tracker = createChangingResourceUsageTracker(wallClock);
                 const observedActiveResourceCounts: number[] = [];
 
