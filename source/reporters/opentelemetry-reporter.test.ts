@@ -50,10 +50,10 @@ function createRecordingDependencies(): RecordingDependencies {
     };
 }
 
-function preciseResult(): RunResult {
+function preciseResult(runStatus: 'failed' | 'passed', timingStatus: 'success' | 'timeout'): RunResult {
     return runResultFactory.build({
-        status: 'failed',
-        summary: { failed: 1 },
+        status: runStatus,
+        summary: runStatus === 'failed' ? { failed: 1 } : { passed: 1 },
         timings: {
             precise: preciseTimingReport({
                 aggregationMicroseconds: 7,
@@ -72,7 +72,7 @@ function preciseResult(): RunResult {
                     resource: { name: 'database', scope: 'per-run' },
                     startOffsetMicroseconds: null,
                     startTimeUnixMicroseconds: 1_700_000_000_000_010,
-                    status: 'timeout',
+                    status: timingStatus,
                     workerId: 'lane-1'
                 } ]
             }),
@@ -174,7 +174,7 @@ async function writePreciseResult(recording: RecordingDependencies): Promise<{
     const reporter = createOpenTelemetryReporter(recording.dependencies, {
         outputFile: 'reports/traces.jsonl'
     })(reportingContext);
-    await reporter.onResult(preciseResult());
+    await reporter.onResult(preciseResult('failed', 'timeout'));
     const write = recording.writes[0];
 
     if (write === undefined) {
@@ -210,6 +210,30 @@ export const testNode = createOverkillSuite({
                 const { reporterSinks, write } = await writePreciseResult(recording);
                 scope.assert.deepEqual(reporterSinks, [ { kind: 'file', path: 'reports/traces.jsonl' } ]);
                 assertWrittenTrace(scope, recording, write);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'writes unset OTLP statuses for a successful run and timing span',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const recording = createRecordingDependencies();
+                const reporter = createOpenTelemetryReporter(recording.dependencies, {
+                    outputFile: 'traces.jsonl'
+                })(reportingContext);
+                await reporter.onResult(preciseResult('passed', 'success'));
+                const write = recording.writes[0];
+
+                if (write === undefined) {
+                    throw new Error('Expected an OTLP file write.');
+                }
+
+                const spans = exportedSpans(write.content);
+                scope.assert.deepEqual(entry(spans, 0, 'root span').status, {});
+                scope.assert.deepEqual(entry(spans, 1, 'child span').status, {});
 
                 return scope.assert.collect();
             }

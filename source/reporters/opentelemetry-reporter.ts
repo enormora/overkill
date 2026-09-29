@@ -20,7 +20,6 @@ type AttributeValue = boolean | number | string;
 type Attributes = Readonly<Record<string, AttributeValue>>;
 type OtlpAnyValueTypes = readonly [
     { readonly boolValue: boolean; },
-    { readonly doubleValue: number; },
     { readonly intValue: string; },
     { readonly stringValue: string; }
 ];
@@ -122,7 +121,7 @@ function otlpAnyValue(value: AttributeValue): OtlpAnyValue {
         return { boolValue: value };
     }
     if (typeof value === 'number') {
-        return Number.isSafeInteger(value) ? { intValue: value.toString() } : { doubleValue: value };
+        return { intValue: value.toString() };
     }
 
     return { stringValue: value };
