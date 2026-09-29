@@ -350,8 +350,8 @@ function handleUnitCompleted(
     }
 }
 
-export function handleWorkerMessage(
-    message: WorkerPoolMessage,
+function handleTaskMessage(
+    message: Exclude<WorkerPoolMessage, { readonly kind: 'task-messages-completed'; }>,
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
@@ -369,5 +369,15 @@ export function handleWorkerMessage(
         runtime.timing?.recordLocal(message.span);
     } else {
         handleWorkerEvent(message.event, taskRun, runtime);
+    }
+}
+
+export function handleWorkerMessage(
+    message: WorkerPoolMessage,
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): void {
+    if (message.kind !== 'task-messages-completed') {
+        handleTaskMessage(message, taskRun, runtime);
     }
 }

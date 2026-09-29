@@ -1,4 +1,7 @@
-import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
+import {
+    MessageChannel as NodeMessageChannel,
+    type MessagePort as NodeMessagePort
+} from 'node:worker_threads';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type { WorkId } from '../engine/identity.ts';
@@ -144,15 +147,50 @@ type WorkerPoolTimingMessage = {
     readonly span: RunTimingSpan;
 };
 
+type WorkerPoolTaskMessagesCompleted = {
+    readonly kind: 'task-messages-completed';
+};
+
 type WorkerPoolMessagesByKind = {
     readonly event: WorkerPoolReporterMessage;
     readonly output: WorkerPoolOutputMessage;
     readonly timing: WorkerPoolTimingMessage;
     readonly attemptCompleted: WorkerPoolUnitCompletedMessage;
     readonly attemptStarted: WorkerPoolUnitStartedMessage;
+    readonly taskMessagesCompleted: WorkerPoolTaskMessagesCompleted;
 };
 
 export type WorkerPoolMessage = WorkerPoolMessagesByKind[keyof WorkerPoolMessagesByKind];
+
+export type WorkerPoolMessageChannel = {
+    readonly close: () => void;
+    readonly messagesCompleted: Promise<undefined>;
+    readonly port: NodeMessagePort;
+};
+
+export function createWorkerPoolMessageChannel(
+    receiveMessage: (message: WorkerPoolMessage) => void
+): WorkerPoolMessageChannel {
+    const { port1, port2 } = new NodeMessageChannel();
+    const messagesCompleted = Promise.withResolvers<undefined>();
+
+    port2.on('message', function receiveWorkerMessage(message: WorkerPoolMessage) {
+        receiveMessage(message);
+
+        if (message.kind === 'task-messages-completed') {
+            messagesCompleted.resolve(undefined);
+        }
+    });
+
+    return {
+        close() {
+            port1.close();
+            port2.close();
+        },
+        messagesCompleted: messagesCompleted.promise,
+        port: port1
+    };
+}
 
 export type WorkerPoolCollection = {
     readonly collectedPlan: CollectedRunPlan;

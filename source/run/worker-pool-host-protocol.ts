@@ -81,6 +81,7 @@ type SerializedWorkerPoolEventMessagesByKind = {
     readonly timing: Extract<WorkerPoolMessage, { readonly kind: 'timing'; }>;
     readonly attemptCompleted: Extract<WorkerPoolMessage, { readonly kind: 'attempt-completed'; }>;
     readonly attemptStarted: Extract<WorkerPoolMessage, { readonly kind: 'attempt-started'; }>;
+    readonly taskMessagesCompleted: Extract<WorkerPoolMessage, { readonly kind: 'task-messages-completed'; }>;
 };
 type SerializedWorkerPoolEventMessage =
     SerializedWorkerPoolEventMessagesByKind[keyof SerializedWorkerPoolEventMessagesByKind];

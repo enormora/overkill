@@ -322,12 +322,14 @@ function createControlledPool(): ControlledPool {
             },
             options: { isolateWorkers: false, maxThreads: 1 },
             async run(task) {
-                capturedTasks.push(task as CapturedWorkerTask);
+                const workerTask = task as CapturedWorkerTask;
+
+                capturedTasks.push(workerTask);
                 await new Promise<void>(function waitForFinish(resolve) {
                     pendingTasks = [ ...pendingTasks, resolve ];
                 });
 
-                return completedWorkerPoolOutput();
+                return completedWorkerPoolOutput(workerTask);
             }
         }
     };

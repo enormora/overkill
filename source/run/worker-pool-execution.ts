@@ -1,15 +1,13 @@
-import {
-    MessageChannel as NodeMessageChannel,
-    type MessagePort as NodeMessagePort
-} from 'node:worker_threads';
+import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import {
     createStoredRunValue,
     createSupervisedRunState,
     type StoredRunValue
 } from './supervised-run-state.ts';
-import type {
-    WorkerPoolMessage,
-    WorkerPoolRunOutput
+import {
+    createWorkerPoolMessageChannel,
+    type WorkerPoolMessageChannel,
+    type WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
 import {
     workerPoolPlacementTrace,
@@ -52,11 +50,6 @@ import {
     type WorkerPoolResourceLifecycle
 } from './worker-pool-resource-lifecycle-execution.ts';
 
-type WorkerPoolTaskChannel = {
-    readonly close: () => void;
-    readonly port: NodeMessagePort;
-};
-
 type CompletedTaskRuns = {
     readonly push: (taskRun: WorkerPoolTaskRun) => number;
 };
@@ -80,7 +73,7 @@ type WorkerLoopContext = TaskExecutionContext & {
 };
 
 type WorkerTaskRunRequest = {
-    readonly channel: WorkerPoolTaskChannel;
+    readonly channel: WorkerPoolMessageChannel;
     readonly lane: PlacementLane;
     readonly resourceLifecycle: WorkerPoolResourceLifecycle;
     readonly runtime: WorkerPoolRunRuntime;
@@ -143,20 +136,10 @@ function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
     return [ port ];
 }
 
-function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): WorkerPoolTaskChannel {
-    const { port1, port2 } = new NodeMessageChannel();
-
-    port2.on('message', function receiveWorkerMessage(message: WorkerPoolMessage) {
+function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): WorkerPoolMessageChannel {
+    return createWorkerPoolMessageChannel(function receiveWorkerMessage(message) {
         handleWorkerMessage(message, taskRun, runtime);
     });
-
-    return {
-        close() {
-            port1.close();
-            port2.close();
-        },
-        port: port1
-    };
 }
 
 function isWorkerPoolRunOutput(value: unknown): value is WorkerPoolRunOutput {
@@ -200,7 +183,11 @@ async function runFileUnit(request: FileUnitRunRequest): Promise<WorkerPoolRunOu
     const channel = observeTaskMessages(request.taskRun, request.runtime);
 
     try {
-        return await runWorkerTask({ ...request, channel });
+        const output = await runWorkerTask({ ...request, channel });
+
+        await channel.messagesCompleted;
+
+        return output;
     } finally {
         channel.close();
     }

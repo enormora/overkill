@@ -257,6 +257,7 @@ async function runCollectionTask(
             status: 'success',
             task
         });
+        task.port.postMessage({ kind: 'task-messages-completed' }, []);
         task.port.close();
     }
 }
@@ -330,6 +331,7 @@ async function runClosableTask(
             status: 'success',
             task
         });
+        task.port.postMessage({ kind: 'task-messages-completed' }, []);
         task.port.close();
     }
 }
