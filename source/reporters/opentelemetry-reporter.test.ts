@@ -67,13 +67,13 @@ function preciseResult(runStatus: 'failed' | 'passed', timingStatus: 'success' |
                 spans: [ {
                     durationMicroseconds: 20,
                     kind: 'resource.acquire',
-                    label: 'setup',
-                    processId: '42',
-                    resource: { name: 'database', scope: 'per-run' },
+                    label: runStatus === 'failed' ? 'setup' : null,
+                    processId: runStatus === 'failed' ? '42' : null,
+                    resource: runStatus === 'failed' ? { name: 'database', scope: 'per-run' } : null,
                     startOffsetMicroseconds: null,
                     startTimeUnixMicroseconds: 1_700_000_000_000_010,
                     status: timingStatus,
-                    workerId: 'lane-1'
+                    workerId: runStatus === 'failed' ? 'lane-1' : null
                 } ]
             }),
             summary: {
