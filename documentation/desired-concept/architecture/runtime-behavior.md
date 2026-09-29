@@ -816,11 +816,14 @@ Workers re-import code to obtain executable test-body references, but that
 re-import is execution-time plumbing, not a second discovery authority.
 
 The frozen `PlacementPlan` is the initial assignment. A runtime
-`PlacementTrace` records what actually happened: worker ids, started units,
-retries, crash recovery, hedged duplicates, cancellations, and timings.
+`PlacementTrace` records what actually happened as an unbounded attempt log.
+Each assignment attempt names its exact non-empty `WorkId` subset, lane,
+opaque executor-instance id after start, completion duration, and whether it
+was initial work, recovery, or a hedge. Interruptions and recovery decisions
+are explicit, including partial retries and abandoned work.
 Detailed spawn, ready, import, teardown, resource lifecycle, and runner phase
 durations are owned by [Run Timings](./run-timings.md); placement trace only
-records assignment and recovery facts.
+records assignment, per-attempt duration, and recovery facts.
 If a reused worker crashes, only its active unit follows retry/recovery
 policy. Units planned for that lane but not started can move to eligible
 replacement lanes and the trace records that repair.

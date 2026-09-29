@@ -1,4 +1,4 @@
-import type { PlacementTraceEntry, TraceWorkUnitId } from './placement-trace.ts';
+import type { PlacementDecisionEntry, TraceWorkUnitId } from './placement-trace.ts';
 import type { PlacementLane } from './run-types.ts';
 import { compatibleBatchLeaseParts as createCompatibleBatchLeaseParts } from './worker-pool-compatible-batching.ts';
 import { compareQueuePriority, type QueuedWorkUnit } from './worker-pool-pending-splitting.ts';
@@ -20,7 +20,7 @@ type WarmSelectedUnit = {
 
 export type WarmPendingSelection = {
     readonly item: QueuedWorkUnit;
-    readonly traceEntry: PlacementTraceEntry | null;
+    readonly traceEntry: Extract<PlacementDecisionEntry, { readonly kind: 'warm-lane-affinity-selected'; }> | null;
 };
 
 export type WarmPendingSelectionInput = {
@@ -105,7 +105,10 @@ function traceUnits(
     ];
 }
 
-function traceEntry(selection: WarmSelectedUnit, lane: PlacementLane): PlacementTraceEntry | null {
+function traceEntry(
+    selection: WarmSelectedUnit,
+    lane: PlacementLane
+): WarmPendingSelection['traceEntry'] {
     if (selection.item === selection.baseline) {
         return null;
     }

@@ -28,7 +28,7 @@ type ControlledExecution = {
     readonly controlledPool: ControlledPool;
 };
 type BatchStartedTraceEntry = Extract<WorkerPoolRunRuntime['placementTraceEntries'][number], {
-    readonly kind: 'batch-started';
+    readonly kind: 'batch-completed' | 'batch-started';
 }>;
 
 function firstUnit(): WorkUnit {
@@ -243,14 +243,13 @@ function assertBatchTraceStarted(
     placement: PlacementPlan,
     runtime: WorkerPoolRunRuntime
 ): void {
-    scope.assert.deepEqual(batchStartedTraceEntry(runtime.placementTraceEntries[0]), {
+    scope.assert.deepEqual(batchStartedTraceEntry(runtime.placementTraceEntries[placement.units.length]), {
+        attempts: placement.units.map(function toAttempt(_unit, index) {
+            return `attempt-${index + 1}`;
+        }),
         envelopeId: 'batch-1',
         kind: 'batch-started',
-        lane: 'worker-1',
-        units: placement.units.map(function toUnitId(unit) {
-            return unit.id;
-        }),
-        workerId: 'worker-1'
+        lane: 'worker-1'
     });
 }
 
@@ -308,7 +307,7 @@ export const testNode = createOverkillSuite({
                     runtime.placementTraceEntries.map(function toKind(entry) {
                         return entry.kind;
                     }),
-                    [ 'batch-started', 'batch-completed' ]
+                    [ 'attempt-assigned', 'attempt-assigned', 'batch-started', 'batch-completed' ]
                 );
                 assertBatchTraceStarted(scope, placement, runtime);
 

@@ -124,8 +124,8 @@ async function routedResourceUsage(): Promise<{
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies: trackingDependencies(createdWorkerPools),
-        async finalizeResult(result) {
-            return result;
+        async finalizeResult(completion) {
+            return completion.result;
         },
         resolvedRun: measuredMixedLifecycleResolvedRun(),
         runState: createSupervisedRunState()

@@ -326,8 +326,8 @@ async function createRuntime(
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies,
-        async finalizeResult(result) {
-            return result;
+        async finalizeResult(completion) {
+            return completion.result;
         },
         resolvedRun,
         runState: createSupervisedRunState()
@@ -483,8 +483,8 @@ export const testNode = createOverkillSuite({
                         collectionRunnerErrors: [],
                         createdPool: null,
                         dependencies: fakeDependencies(),
-                        async finalizeResult(result) {
-                            return result;
+                        async finalizeResult(completion) {
+                            return completion.result;
                         },
                         resolvedRun: workerPoolPlanWithSupervisedFacts(),
                         runState: createSupervisedRunState()

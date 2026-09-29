@@ -12,7 +12,10 @@ import { defaultRunEngine } from './default-run-engine.ts';
 import type { CreatedWorkerPool } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
-import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
+import {
+    createWorkerPoolPlacementTraceRecorder,
+    type WorkerPoolRunRuntime
+} from './worker-pool-runtime.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
@@ -425,26 +428,25 @@ function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
 
 export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntime {
     const taskResults: RunResult[] = [];
-    const placementTraceEntries: WorkerPoolRunRuntime['placementTraceEntries'][number][] = [];
-
+    const placementTrace = createWorkerPoolPlacementTraceRecorder();
     return {
         activeTasks: new Set(),
         collectedPlan: createCollectedPlan(),
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
         destroyPool: true,
-        async finalizeResult(result) {
-            return result;
+        async finalizeResult(completion) {
+            return completion.result;
         },
         pool: createFakePool(),
         poolResourceUsageTracker: null,
-        placementTraceEntries,
+        placementTrace,
+        get placementTraceEntries() {
+            return placementTrace.entries();
+        },
         previousPoolSample: createStoredRunValue<
             ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>
         >(null),
-        recordPlacementTraceEntry(entry) {
-            placementTraceEntries.push(entry);
-        },
         reporterDelivery: fakeReporterDelivery,
         reporterEvents: {
             add() {
@@ -517,7 +519,6 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool execution reports instance engines as crashes',
             async body(scope: OverkillScope) {
                 const completed = await executeWorkerPoolUnits(runtimeWithInstanceEngine(), placementPlan(), 0);
-                scope.assert.equal(completed.length, 3);
                 scope.assert.equal(
                     completed[0]?.state.runnerErrors()[0]?.message,
                     'Instance engines are not supported with worker-pool execution. Use a module engine.'

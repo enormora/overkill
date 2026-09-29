@@ -1,5 +1,15 @@
 import type { PlacementLane, PlacementPlan, WorkUnit } from './run-types.ts';
 import { createWorkUnitQueue, type WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
+import {
+    createPlacementTraceRecorder,
+    type PlacementAttemptId,
+    type PlacementTraceRecorder
+} from './placement-trace.ts';
+
+type StaticQueueItem = {
+    readonly previousAttempt: PlacementAttemptId | null;
+    readonly unit: WorkUnit;
+};
 
 function workUnitIdKey(unit: WorkUnit['id']): string {
     return JSON.stringify(unit);
@@ -25,7 +35,7 @@ function knownUnit(units: ReadonlyMap<string, WorkUnit>, unitId: WorkUnit['id'])
     return unit;
 }
 
-function unitsAssignedToLane(plan: PlacementPlan, lane: PlacementLane): readonly WorkUnit[] {
+function unitsAssignedToLane(plan: PlacementPlan, lane: PlacementLane): readonly StaticQueueItem[] {
     const units = unitByKey(plan.units);
 
     return plan.assignments.flatMap(function toUnit(assignment) {
@@ -33,11 +43,14 @@ function unitsAssignedToLane(plan: PlacementPlan, lane: PlacementLane): readonly
             return [];
         }
 
-        return [ knownUnit(units, assignment.unit) ];
+        return [ { previousAttempt: null, unit: knownUnit(units, assignment.unit) } ];
     });
 }
 
-export function createStaticDispatcher(plan: PlacementPlan): WorkerPoolWorkDispatcher {
+export function createStaticDispatcher(
+    plan: PlacementPlan,
+    placementTrace: PlacementTraceRecorder = createPlacementTraceRecorder()
+): WorkerPoolWorkDispatcher {
     const queues = new Map(plan.lanes.map(function toLaneQueue(lane) {
         return [ lane.id, createWorkUnitQueue(unitsAssignedToLane(plan, lane)) ];
     }));
@@ -58,18 +71,29 @@ export function createStaticDispatcher(plan: PlacementPlan): WorkerPoolWorkDispa
             return undefined;
         },
         pull(lane) {
-            const unit = queues.get(lane.id)?.takeFirst() ?? null;
+            const item = queues.get(lane.id)?.takeFirst() ?? null;
 
-            return unit === null
+            return item === null
                 ? null
                 : {
                     envelopeId: null,
                     kind: 'primary',
                     lane,
-                    members: [ { traceUnit: unit.id, unit } ],
+                    members: [ {
+                        attempt: placementTrace.assignAttempt(
+                            item.unit.id,
+                            item.unit.work,
+                            lane.id,
+                            item.previousAttempt === null
+                                ? { kind: 'initial' }
+                                : { kind: 'recovery', previousAttempt: item.previousAttempt }
+                        ),
+                        traceUnit: item.unit.id,
+                        unit: item.unit
+                    } ],
                     reservation: { faultDomains: [], hardKeys: [] },
-                    traceUnit: unit.id,
-                    unit
+                    traceUnit: item.unit.id,
+                    unit: item.unit
                 };
         },
         requeue(requeuedUnit) {
@@ -79,7 +103,10 @@ export function createStaticDispatcher(plan: PlacementPlan): WorkerPoolWorkDispa
                 throw new Error('Static worker-pool dispatch cannot requeue an unassigned work unit.');
             }
 
-            queues.get(lane)?.push(requeuedUnit.unit);
+            queues.get(lane)?.push({
+                previousAttempt: requeuedUnit.previousAttempt,
+                unit: requeuedUnit.unit
+            });
         },
         async waitForChange() {
             return undefined;

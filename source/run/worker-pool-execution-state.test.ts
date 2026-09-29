@@ -15,7 +15,11 @@ import type {
 import { createStoredRunValue, createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import { reportRunStart, startPoolResourceTracking } from './worker-pool-resource-tracking.ts';
-import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
+import {
+    createWorkerPoolPlacementTraceRecorder,
+    type WorkerPoolRunRuntime,
+    type WorkerPoolTaskRun
+} from './worker-pool-runtime.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
@@ -24,10 +28,11 @@ type WorkUnit = PlacementPlan['units'][number];
 type BufferedReporterEvent = ReturnType<
     WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
 > extends IterableIterator<infer Event> ? Event : never;
-type ActiveTraceUnit = ReturnType<WorkerPoolTaskRun['activeTraceUnit']['read']>;
+type ActiveAttempt = ReturnType<WorkerPoolTaskRun['activeAttempt']['read']>;
 type BatchEnvelopeId = ReturnType<WorkerPoolTaskRun['envelopeId']['read']>;
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+const crashLimitMessage = 'Worker-pool stopped after 3 worker crashes.';
 const annotations = { ownership: [], tags: [] };
 
 function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'] {
@@ -363,26 +368,25 @@ export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
 
 export function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntime {
     const taskResults: RunResult[] = [];
-    const placementTraceEntries: WorkerPoolRunRuntime['placementTraceEntries'][number][] = [];
-
+    const placementTrace = createWorkerPoolPlacementTraceRecorder();
     return {
         activeTasks: new Set(),
         collectedPlan,
         collectionRunnerErrors: [],
         dependencies: fakeDependencies(),
         destroyPool: true,
-        async finalizeResult(result) {
-            return result;
+        async finalizeResult(completion) {
+            return completion.result;
         },
         pool: createFakePool(1, false),
         poolResourceUsageTracker: null,
-        placementTraceEntries,
+        placementTrace,
+        get placementTraceEntries() {
+            return placementTrace.entries();
+        },
         previousPoolSample: createStoredRunValue<
             ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>
         >(null),
-        recordPlacementTraceEntry(entry) {
-            placementTraceEntries.push(entry);
-        },
         reporterDelivery: fakeReporterDelivery,
         reporterEvents: {
             add() {
@@ -406,22 +410,27 @@ export function createTaskRun(state: SupervisedRunState): WorkerPoolTaskRun {
     );
 
     return {
-        activeTraceUnit: createStoredRunValue<ActiveTraceUnit>(null),
+        activeAttempt: createStoredRunValue<ActiveAttempt>(null),
         bufferedReporterEvents: createReporterEventBuffer(),
+        completedAttempts: new Set(),
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
         envelopeId: createStoredRunValue<BatchEnvelopeId>(null),
         includeArtifacts: createStoredRunValue(true),
+        interruptionCause: createStoredRunValue<
+            ReturnType<WorkerPoolTaskRun['interruptionCause']['read']>
+        >(null),
         lane: 'worker-1',
         leaseKind: 'primary',
-        members: [ { traceUnit: firstWorkUnit().id, unit: firstWorkUnit() } ],
+        members: [ { attempt: 'attempt-1', traceUnit: firstWorkUnit().id, unit: firstWorkUnit() } ],
         reporterEventsBuffered: false,
         requeuePendingCases: createStoredRunValue(false),
         state,
         startedCases: new Set(),
         timeout,
         traceUnit: firstWorkUnit().id,
-        unit: firstWorkUnit()
+        unit: firstWorkUnit(),
+        workerId: createStoredRunValue<ReturnType<WorkerPoolTaskRun['workerId']['read']>>(null)
     };
 }
 
@@ -477,12 +486,6 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
     };
 }
 
-function startTrackedTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
-    taskRun.timeout.write(runtime.dependencies.wallClock.setTimeout(function expireTask() {
-        return undefined;
-    }, 100));
-}
-
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-execution-state.test.ts',
@@ -495,18 +498,11 @@ export const testNode = createOverkillSuite({
                 const runtime = invalidOutputRuntime(function recordRun() {
                     poolRuns += 1;
                 });
-                const completed = await executeWorkerPoolUnits(
-                    runtime,
-                    placementPlan(),
-                    0
-                );
+                const completed = await executeWorkerPoolUnits(runtime, placementPlan(), 0);
 
                 scope.assert.equal(poolRuns, 3);
                 scope.assert.equal(runtime.terminalFailure.read(), true);
-                scope.assert.equal(
-                    runtime.runState.runnerErrors()[0]?.message,
-                    'Worker-pool stopped after 3 worker crashes.'
-                );
+                scope.assert.equal(runtime.runState.runnerErrors()[0]?.message, crashLimitMessage);
                 scope.assert.equal(completed.length, 3);
 
                 return scope.assert.collect();
@@ -520,7 +516,10 @@ export const testNode = createOverkillSuite({
                 const runtime = budgetedRuntime(activeTask);
 
                 activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0);
-                startTrackedTaskTimeout(activeTask, runtime);
+                activeTask.timeout.write(runtime.dependencies.wallClock.setTimeout(
+                    activeTask.controller.abort.bind(activeTask.controller),
+                    100
+                ));
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
                 await startPoolResourceTracking(runtime);
 

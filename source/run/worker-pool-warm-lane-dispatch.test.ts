@@ -173,7 +173,9 @@ function assertWarmAffinitySelection(
 ): void {
     const baselineUnit = plan.units[1];
     const selectedUnit = plan.units[2];
-    const trace = warmAffinityTraceEntry(runtime.placementTraceEntries[0]);
+    const trace = warmAffinityTraceEntry(runtime.placementTraceEntries.find(function isWarmSelection(entry) {
+        return entry.kind === 'warm-lane-affinity-selected';
+    }));
 
     scope.require.defined(baselineUnit);
     scope.require.defined(selectedUnit);
@@ -218,7 +220,12 @@ export const testNode = createOverkillSuite({
                 const selected = pullRequiredLease(dispatcher, firstLane(plan));
 
                 scope.assert.equal(selected.unit.id.key, 'cold');
-                scope.assert.deepEqual(runtime.placementTraceEntries, []);
+                scope.assert.deepEqual(
+                    runtime.placementTraceEntries.filter(function isWarmSelection(entry) {
+                        return entry.kind === 'warm-lane-affinity-selected';
+                    }),
+                    []
+                );
 
                 return scope.assert.collect();
             }
@@ -237,7 +244,12 @@ export const testNode = createOverkillSuite({
                 const selected = pullRequiredLease(dispatcher, firstLane(plan));
 
                 scope.assert.equal(selected.unit.id.key, 'cold');
-                scope.assert.deepEqual(runtime.placementTraceEntries, []);
+                scope.assert.deepEqual(
+                    runtime.placementTraceEntries.filter(function isWarmSelection(entry) {
+                        return entry.kind === 'warm-lane-affinity-selected';
+                    }),
+                    []
+                );
 
                 return scope.assert.collect();
             }

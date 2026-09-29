@@ -266,8 +266,13 @@ async function createWorkerPoolRunResult(
                 });
             },
             {
-                async finalizeResult(resolvedRun, result) {
-                    return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result, timing);
+                async finalizeResult(resolvedRun, completion) {
+                    return await finalizeResultWithDurationHistory(
+                        dependencies,
+                        resolvedRun,
+                        completion.result,
+                        timing
+                    );
                 },
                 timing
             }
@@ -319,8 +324,8 @@ export async function executeNonLocalResolvedRun(
 
     if (resolvedRun.facts.execution.processModel === 'worker-pool') {
         return await executeWorkerPoolRun(resolvedRun, dependencies, {
-            async finalizeResult(workerPoolRun, result) {
-                return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, result, timing);
+            async finalizeResult(workerPoolRun, completion) {
+                return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, completion.result, timing);
             },
             timing
         });

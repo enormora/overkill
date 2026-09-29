@@ -104,10 +104,15 @@ function runResult(perTest: PerTestResult): RunResult {
     return emptyRunResult([ perTest ]);
 }
 
-function taskRunWithLane(lane: string): WorkerPoolTaskRun {
+function taskRunWithLane(lane: string, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
+    const taskRun = createTaskRun(createSupervisedRunState());
+    const member = taskRun.members[0];
+    const attempt = runtime.placementTrace.assignAttempt(member.traceUnit, member.unit.work, lane, { kind: 'initial' });
+
     return {
-        ...createTaskRun(createSupervisedRunState()),
+        ...taskRun,
         lane,
+        members: [ { ...member, attempt } ],
         reporterEventsBuffered: true
     };
 }
@@ -191,8 +196,8 @@ async function cancelledHedgedPeerResult(): Promise<{
     readonly runtime: WorkerPoolRunRuntime;
 }> {
     const runtime = hedgedRuntime();
-    const authorityTask = taskRunWithLane('worker-1');
-    const peerTask = taskRunWithLane('worker-2');
+    const authorityTask = taskRunWithLane('worker-1', runtime);
+    const peerTask = taskRunWithLane('worker-2', runtime);
     const authorities: HedgedAuthorities = new Map();
 
     bufferStartEvent(authorityTask);
@@ -208,8 +213,8 @@ async function matchingHedgedDuplicateResult(): Promise<{
     readonly runtime: WorkerPoolRunRuntime;
 }> {
     const runtime = hedgedRuntime();
-    const authorityTask = taskRunWithLane('worker-1');
-    const duplicateTask = taskRunWithLane('worker-2');
+    const authorityTask = taskRunWithLane('worker-1', runtime);
+    const duplicateTask = taskRunWithLane('worker-2', runtime);
 
     await recordCompletedHedgedTaskRun(
         authorityMap(authorityTask, runResult(passResult())),
@@ -223,8 +228,8 @@ async function matchingHedgedDuplicateResult(): Promise<{
 
 async function conflictingHedgedResult(): Promise<WorkerPoolRunRuntime> {
     const runtime = hedgedRuntime();
-    const authorityTask = taskRunWithLane('worker-1');
-    const conflictingTask = taskRunWithLane('worker-2');
+    const authorityTask = taskRunWithLane('worker-1', runtime);
+    const conflictingTask = taskRunWithLane('worker-2', runtime);
 
     await recordCompletedHedgedTaskRun(
         authorityMap(authorityTask, runResult(passResult())),
@@ -238,7 +243,7 @@ async function conflictingHedgedResult(): Promise<WorkerPoolRunRuntime> {
 
 async function firstHedgedAuthorityResult(): Promise<WorkerPoolRunRuntime> {
     const runtime = hedgedRuntime();
-    const authorityTask = taskRunWithLane('worker-1');
+    const authorityTask = taskRunWithLane('worker-1', runtime);
 
     await recordCompletedHedgedTaskRun(new Map(), runResult(passResult()), authorityTask, runtime);
 
@@ -247,8 +252,8 @@ async function firstHedgedAuthorityResult(): Promise<WorkerPoolRunRuntime> {
 
 async function emptyHedgedConflictResult(): Promise<WorkerPoolRunRuntime> {
     const runtime = hedgedRuntime();
-    const authorityTask = taskRunWithLane('worker-1');
-    const conflictingTask = taskRunWithLane('worker-2');
+    const authorityTask = taskRunWithLane('worker-1', runtime);
+    const conflictingTask = taskRunWithLane('worker-2', runtime);
 
     await recordCompletedHedgedTaskRun(
         authorityMap(authorityTask, emptyRunResult([])),
@@ -319,10 +324,10 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(peerTask.includeArtifacts.read(), false);
                 scope.assert.equal(flattenPerTest(runtime).length, 1);
                 scope.assert.deepEqual(
-                    runtime.placementTraceEntries.map(function toKind(entry) {
+                    runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
                         return entry.kind;
                     }),
-                    [ 'hedged-duplicate-discarded' ]
+                    [ 'attempt-interrupted', 'hedge-resolved' ]
                 );
 
                 return scope.assert.collect();
@@ -341,10 +346,10 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.outcome.kind, 'fail');
                 scope.assert.equal(runtime.runState.artifacts()[0]?.payload.kind, 'hedged-conflict');
                 scope.assert.deepEqual(
-                    runtime.placementTraceEntries.map(function toKind(entry) {
+                    runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
                         return entry.kind;
                     }),
-                    [ 'hedged-duplicate-conflict' ]
+                    [ 'hedge-conflict' ]
                 );
 
                 return scope.assert.collect();
@@ -380,10 +385,10 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(duplicateTask.includeArtifacts.read(), false);
                 scope.assert.equal(flattenPerTest(runtime).length, 1);
                 scope.assert.deepEqual(
-                    runtime.placementTraceEntries.map(function toKind(entry) {
+                    runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
                         return entry.kind;
                     }),
-                    [ 'hedged-duplicate-discarded' ]
+                    [ 'hedge-resolved' ]
                 );
 
                 return scope.assert.collect();
@@ -394,7 +399,7 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool hedged arbitration buffers only safe single-work units',
             body(scope: OverkillScope) {
                 const runtime = runtimeWithHedging();
-                const taskRun = taskRunWithLane('worker-1');
+                const taskRun = taskRunWithLane('worker-1', runtime);
                 const duplicateWork = taskRun.unit.work[0];
 
                 scope.require.defined(duplicateWork);

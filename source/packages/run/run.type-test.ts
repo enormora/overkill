@@ -124,15 +124,16 @@ type ProjectProfileFileSets = {
     >;
 };
 type ExpectedPlacementTraceKinds = {
+    readonly 'attempt-assigned': true;
+    readonly 'attempt-completed': true;
+    readonly 'attempt-interrupted': true;
+    readonly 'attempt-started': true;
     readonly 'batch-completed': true;
     readonly 'batch-started': true;
-    readonly 'hedged-duplicate-conflict': true;
-    readonly 'hedged-duplicate-discarded': true;
-    readonly 'hedged-duplicate-started': true;
-    readonly 'unit-completed': true;
-    readonly 'unit-reassigned': true;
+    readonly 'hedge-conflict': true;
+    readonly 'hedge-resolved': true;
+    readonly 'recovery-decided': true;
     readonly 'unit-split': true;
-    readonly 'unit-started': true;
     readonly 'warm-lane-affinity-selected': true;
     readonly 'worker-crashed': true;
 };

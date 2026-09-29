@@ -3,7 +3,6 @@ import type { WorkUnit } from './run-types.ts';
 import type { QueuedWorkUnit } from './worker-pool-pending-splitting.ts';
 import type {
     LeaseReservation,
-    WorkerPoolLeaseMember,
     WorkUnitQueue
 } from './worker-pool-dispatch-state.ts';
 
@@ -23,7 +22,6 @@ export type CompatibleBatchLeaseParts = {
     readonly envelopeId: string | null;
     readonly members: readonly [QueuedWorkUnit, ...readonly QueuedWorkUnit[]];
     readonly reservation: LeaseReservation;
-    readonly leaseMembers: readonly [WorkerPoolLeaseMember, ...readonly WorkerPoolLeaseMember[]];
 };
 
 function uniqueText(values: readonly string[]): readonly string[] {
@@ -162,19 +160,6 @@ function reserveBatch(
     };
 }
 
-function leaseMembers(
-    members: readonly [QueuedWorkUnit, ...QueuedWorkUnit[]]
-): CompatibleBatchLeaseParts['leaseMembers'] {
-    const [ firstMember, ...restMembers ] = members;
-
-    return [
-        { traceUnit: firstMember.traceUnit, unit: firstMember.unit },
-        ...restMembers.map(function toMember(member) {
-            return { traceUnit: member.traceUnit, unit: member.unit };
-        })
-    ];
-}
-
 export function compatibleBatchLeaseParts(
     state: CompatibleBatchingState,
     item: QueuedWorkUnit,
@@ -184,7 +169,6 @@ export function compatibleBatchLeaseParts(
 
     return {
         envelopeId: nextBatchEnvelopeId(state, members),
-        leaseMembers: leaseMembers(members),
         members,
         reservation: reserveBatch(members, dependencies)
     };

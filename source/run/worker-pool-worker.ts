@@ -45,6 +45,7 @@ import {
     createWorkerResourceLifecycleTiming,
     measureWorkerSpan,
     postWorkerTimingSpan,
+    workerPoolWorkerId,
     type WorkerTimingClock
 } from './worker-pool-worker-timing.ts';
 
@@ -113,7 +114,11 @@ async function runAssignment(
         wallClock
     });
 
-    task.port.postMessage({ kind: 'unit-started', traceUnit: assignedUnit.traceUnit }, []);
+    task.port.postMessage({
+        attempt: assignedUnit.attempt,
+        kind: 'attempt-started',
+        workerId: workerPoolWorkerId()
+    }, []);
     const startedAtMicroseconds = wallClock.currentMonotonicMicroseconds;
     const testPlan = resolvedTestPlanDefinitionLocations(
         selectedAssignedWork(collectedPlan.testPlan, assignedUnit.work)
@@ -152,8 +157,8 @@ async function runAssignment(
     task.port.postMessage(
         {
             durationMicroseconds: Math.max(0, completedAtMicroseconds - startedAtMicroseconds),
-            kind: 'unit-completed',
-            traceUnit: assignedUnit.traceUnit
+            attempt: assignedUnit.attempt,
+            kind: 'attempt-completed'
         },
         []
     );

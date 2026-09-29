@@ -12,7 +12,8 @@ import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 import {
     createWorkerResourceLifecycleTiming,
     measureWorkerSpan,
-    postWorkerTimingSpan
+    postWorkerTimingSpan,
+    workerPoolWorkerId
 } from './worker-pool-worker-timing.ts';
 
 type TimingMessage = {
@@ -97,7 +98,7 @@ export const testNode = createOverkillSuite({
                             resource: null,
                             startOffsetMicroseconds: null,
                             status: 'success',
-                            workerId: 'lane-1'
+                            workerId: workerPoolWorkerId()
                         }
                     ]
                 );
@@ -180,7 +181,7 @@ export const testNode = createOverkillSuite({
                     resource: { name: 'database', scope: 'shared-per-worker' },
                     startOffsetMicroseconds: null,
                     status: 'success',
-                    workerId: 'lane-1'
+                    workerId: workerPoolWorkerId()
                 });
 
                 return scope.assert.collect();

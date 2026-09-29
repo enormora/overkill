@@ -398,8 +398,8 @@ export const testNode = createOverkillSuite({
                     collectionRunnerErrors: [],
                     createdPool: null,
                     dependencies: fakeDependencies(createdWorkerPools, routedLifecycles, routedHostOutputSinks),
-                    async finalizeResult(result) {
-                        return result;
+                    async finalizeResult(completion) {
+                        return completion.result;
                     },
                     resolvedRun: mixedLifecycleResolvedRun(),
                     runState: createSupervisedRunState()

@@ -11,9 +11,10 @@ import type {
     WorkerPoolMessage,
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
-import type {
-    WorkerPoolRunRuntime,
-    WorkerPoolTaskRun
+import {
+    workerPoolPlacementTrace,
+    type WorkerPoolRunRuntime,
+    type WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
 import type {
     PlacementPlan,
@@ -36,8 +37,10 @@ import {
     finishCompletedLease,
     finishFailedLease,
     handleWorkerMessage,
+    recordPlacementRecoveryDecisions,
     recordTaskCrash,
-    recordTaskPermissionFailure
+    recordTaskPermissionFailure,
+    stopWorkerPoolTasks
 } from './worker-pool-task-events.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
@@ -55,7 +58,7 @@ type WorkerPoolTaskChannel = {
 type CompletedTaskRuns = {
     readonly push: (taskRun: WorkerPoolTaskRun) => number;
 };
-type TaskTraceUnit = WorkerPoolTaskRun['members'][number]['traceUnit'];
+type TaskAttempt = WorkerPoolTaskRun['members'][number]['attempt'];
 
 type TaskFailureContext = {
     readonly crashCount: StoredRunValue<number>;
@@ -111,6 +114,7 @@ type CreatedWorkerPoolExecutionContext = {
 type HostRunnerErrors = ReturnType<NonNullable<WorkerPoolRunRuntime['pool']['takeHostRunnerErrors']>>;
 
 const maximumCrashCount = 3;
+const runtimePolicyStopMessage = 'Worker-pool execution stopped by runtime policy.';
 
 type BufferedReporterEvent = ReturnType<
     WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
@@ -166,7 +170,7 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
     });
     const output: unknown = await request.runtime.pool.run({
         assignedUnits: request.taskRun.members.map(function toAssignedUnit(member) {
-            return { traceUnit: member.traceUnit, work: member.unit.work };
+            return { attempt: member.attempt, traceUnit: member.traceUnit, work: member.unit.work };
         }),
         assignedWork,
         boundaryUseCounts: [],
@@ -203,12 +207,16 @@ async function runFileUnit(request: FileUnitRunRequest): Promise<WorkerPoolRunOu
 
 function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
     return {
-        activeTraceUnit: createStoredRunValue<TaskTraceUnit | null>(null),
+        activeAttempt: createStoredRunValue<TaskAttempt | null>(null),
         bufferedReporterEvents: createReporterEventBuffer(),
+        completedAttempts: new Set(),
         controller: new AbortController(),
         endedByParent: createStoredRunValue(false),
         envelopeId: createStoredRunValue(lease.envelopeId),
         includeArtifacts: createStoredRunValue(true),
+        interruptionCause: createStoredRunValue<
+            ReturnType<WorkerPoolTaskRun['interruptionCause']['read']>
+        >(null),
         lane: lease.lane.id,
         leaseKind: lease.kind,
         members: lease.members,
@@ -220,7 +228,8 @@ function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime
             ReturnType<WorkerPoolRunRuntime['dependencies']['wallClock']['setTimeout']> | null
         >(null),
         traceUnit: lease.traceUnit,
-        unit: lease.unit
+        unit: lease.unit,
+        workerId: createStoredRunValue<ReturnType<WorkerPoolTaskRun['workerId']['read']>>(null)
     };
 }
 
@@ -233,6 +242,7 @@ function pendingMember(member: WorkerPoolLeaseMember, taskRun: WorkerPoolTaskRun
     return firstWork === undefined
         ? null
         : {
+            attempt: member.attempt,
             traceUnit: member.traceUnit,
             unit: {
                 ...member.unit,
@@ -249,10 +259,6 @@ function pendingMembers(taskRun: WorkerPoolTaskRun): readonly WorkerPoolLeaseMem
     });
 }
 
-function crashReason(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
-}
-
 function recordRunCrash(runtime: WorkerPoolRunRuntime, message: string, cause: unknown): void {
     runtime.runState.recordRunnerError({
         attributedTo: null,
@@ -264,20 +270,6 @@ function recordRunCrash(runtime: WorkerPoolRunRuntime, message: string, cause: u
     });
 }
 
-function markActiveTasksCrashed(runtime: WorkerPoolRunRuntime, excludedTask: WorkerPoolTaskRun | null): void {
-    const crashedTasks = Array.from(runtime.activeTasks).filter(function isIncludedTask(activeTask) {
-        return activeTask !== excludedTask;
-    });
-
-    for (const activeTask of crashedTasks) {
-        activeTask.endedByParent.write(true);
-        activeTask.requeuePendingCases.write(false);
-        recordTaskCrash(activeTask, runtime, 'Worker-pool execution stopped.');
-        clearTaskTimeout(activeTask, runtime.dependencies);
-        activeTask.controller.abort();
-    }
-}
-
 function stopAfterCrashLimit(
     runtime: WorkerPoolRunRuntime,
     dispatcher: WorkerPoolWorkDispatcher,
@@ -286,7 +278,7 @@ function stopAfterCrashLimit(
     runtime.terminalFailure.write(true);
     recordRunCrash(runtime, 'Worker-pool stopped after 3 worker crashes.', { crashCount });
     dispatcher.clear();
-    markActiveTasksCrashed(runtime, null);
+    stopWorkerPoolTasks(runtime, null, 'run-stopped', 'Worker-pool execution stopped.');
 }
 
 function recordWorkerCrash(
@@ -320,7 +312,7 @@ function handleHostRunnerErrors(
     context.runtime.terminalFailure.write(true);
     context.runtime.runState.recordRunnerErrors(hostRunnerErrors);
     context.dispatcher.clear();
-    markActiveTasksCrashed(context.runtime, null);
+    stopWorkerPoolTasks(context.runtime, null, 'host-failure', 'Worker-pool host failed.');
 
     return true;
 }
@@ -354,25 +346,25 @@ function handleTaskFailure(
             dispatcher: context.dispatcher,
             runtime: context.runtime,
             stopActiveTasks(excludedTask) {
-                markActiveTasksCrashed(context.runtime, excludedTask);
+                stopWorkerPoolTasks(context.runtime, excludedTask, 'runtime-policy', runtimePolicyStopMessage);
             }
         })
     ) {
         return [];
     }
 
-    recordTaskCrash(taskRun, context.runtime, crashReason(error));
+    recordTaskCrash(taskRun, context.runtime, 'worker-crash', error instanceof Error ? error.message : String(error));
 
     return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? [] : pendingMembers(taskRun);
 }
 
-function batchTraceUnits(taskRun: WorkerPoolTaskRun): readonly [TaskTraceUnit, ...TaskTraceUnit[]] {
+function batchAttempts(taskRun: WorkerPoolTaskRun): readonly [TaskAttempt, ...TaskAttempt[]] {
     const [ first, ...rest ] = taskRun.members;
 
     return [
-        first.traceUnit,
-        ...rest.map(function toTraceUnit(member) {
-            return member.traceUnit;
+        first.attempt,
+        ...rest.map(function toAttempt(member) {
+            return member.attempt;
         })
     ];
 }
@@ -381,12 +373,11 @@ function recordBatchStarted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRu
     const envelopeId = taskRun.envelopeId.read();
 
     if (envelopeId !== null) {
-        runtime.recordPlacementTraceEntry({
+        workerPoolPlacementTrace(runtime).recordDecision({
+            attempts: batchAttempts(taskRun),
             envelopeId,
             kind: 'batch-started',
-            lane: taskRun.lane,
-            units: batchTraceUnits(taskRun),
-            workerId: taskRun.lane
+            lane: taskRun.lane
         });
     }
 }
@@ -395,12 +386,11 @@ function recordBatchCompleted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRun
     const envelopeId = taskRun.envelopeId.read();
 
     if (envelopeId !== null) {
-        runtime.recordPlacementTraceEntry({
+        workerPoolPlacementTrace(runtime).recordDecision({
+            attempts: batchAttempts(taskRun),
             envelopeId,
             kind: 'batch-completed',
-            lane: taskRun.lane,
-            units: batchTraceUnits(taskRun),
-            workerId: taskRun.lane
+            lane: taskRun.lane
         });
     }
 }
@@ -456,6 +446,18 @@ function recordCancelledTaskRun(taskRun: WorkerPoolTaskRun, context: TaskExecuti
     }
 }
 
+function recordTaskRecovery(
+    taskRun: WorkerPoolTaskRun,
+    pending: readonly WorkerPoolLeaseMember[],
+    runtime: WorkerPoolRunRuntime
+): void {
+    const cause = taskRun.interruptionCause.read();
+
+    if (cause !== null) {
+        recordPlacementRecoveryDecisions(taskRun, pending, runtime, cause);
+    }
+}
+
 function recordFailedTaskRun(
     error: unknown,
     taskRun: WorkerPoolTaskRun,
@@ -463,16 +465,22 @@ function recordFailedTaskRun(
     context: TaskExecutionContext
 ): void {
     if (finishAfterHostRunnerErrors(taskRun, lease, context)) {
+        recordTaskRecovery(taskRun, [], context.runtime);
         return;
     }
 
     const pending = handleTaskFailure(error, taskRun, context);
+    recordTaskRecovery(taskRun, pending, context.runtime);
 
     finishFailedLease(context.dispatcher, taskRun, lease);
     recordCancelledTaskRun(taskRun, context);
 
     for (const member of pending) {
-        context.dispatcher.requeue({ traceUnit: member.traceUnit, unit: member.unit });
+        context.dispatcher.requeue({
+            previousAttempt: member.attempt,
+            traceUnit: member.traceUnit,
+            unit: member.unit
+        });
     }
 }
 

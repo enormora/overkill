@@ -1,3 +1,4 @@
+import { threadId } from 'node:worker_threads';
 import { createOverkillClock, type OverkillClock } from '../clock/overkill-clock.ts';
 import type {
     RunTimingSpan,
@@ -24,6 +25,10 @@ function workerProcessId(): string {
     return String(process.pid);
 }
 
+export function workerPoolWorkerId(): `${number}:${number}` {
+    return `${process.pid}:${threadId}`;
+}
+
 export function createWorkerTimingClock(): WorkerTimingClock {
     const clock = createOverkillClock();
 
@@ -31,7 +36,7 @@ export function createWorkerTimingClock(): WorkerTimingClock {
 }
 
 function workerId(task: WorkerPoolTask): string | null {
-    return task.kind === 'collect' ? null : task.lane;
+    return task.kind === 'collect' ? null : workerPoolWorkerId();
 }
 
 export function createWorkerResourceLifecycleTiming(
@@ -60,7 +65,7 @@ export function postWorkerTimingSpan(input: WorkerTimingSpanInput): void {
         resource: null,
         startOffsetMicroseconds: null,
         status: input.status,
-        workerId: input.task.kind === 'run' ? input.task.lane : null
+        workerId: input.task.kind === 'run' ? workerPoolWorkerId() : null
     };
 
     input.task.port.postMessage({ kind: 'timing', span }, []);

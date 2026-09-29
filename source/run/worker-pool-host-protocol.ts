@@ -68,8 +68,8 @@ export type SerializedError = {
 type SerializedWorkerPoolEventMessagesByKind = {
     readonly event: Extract<WorkerPoolMessage, { readonly kind: 'event'; }>;
     readonly timing: Extract<WorkerPoolMessage, { readonly kind: 'timing'; }>;
-    readonly unitCompleted: Extract<WorkerPoolMessage, { readonly kind: 'unit-completed'; }>;
-    readonly unitStarted: Extract<WorkerPoolMessage, { readonly kind: 'unit-started'; }>;
+    readonly attemptCompleted: Extract<WorkerPoolMessage, { readonly kind: 'attempt-completed'; }>;
+    readonly attemptStarted: Extract<WorkerPoolMessage, { readonly kind: 'attempt-started'; }>;
 };
 type SerializedWorkerPoolEventMessage =
     SerializedWorkerPoolEventMessagesByKind[keyof SerializedWorkerPoolEventMessagesByKind];

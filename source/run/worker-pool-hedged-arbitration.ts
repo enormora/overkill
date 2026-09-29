@@ -1,7 +1,11 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import type { PerTestResult, RunArtifact, RunResult } from '../engine/run-result.ts';
 import type { WorkUnit } from './run-types.ts';
-import type { WorkerPoolRunRuntime, WorkerPoolTaskRun } from './worker-pool-runtime.ts';
+import {
+    workerPoolPlacementTrace,
+    type WorkerPoolRunRuntime,
+    type WorkerPoolTaskRun
+} from './worker-pool-runtime.ts';
 
 type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
 
@@ -66,22 +70,39 @@ function activePeerExists(runtime: WorkerPoolRunRuntime, taskRun: WorkerPoolTask
     return false;
 }
 
+function cancelHedgedPeer(
+    runtime: WorkerPoolRunRuntime,
+    authority: WorkerPoolTaskRun,
+    discarded: WorkerPoolTaskRun
+): void {
+    const discardedAttempt = discarded.members[0].attempt;
+
+    discarded.endedByParent.write(true);
+    discarded.requeuePendingCases.write(false);
+    discarded.includeArtifacts.write(false);
+    discarded.interruptionCause.write('hedge-cancelled');
+    workerPoolPlacementTrace(runtime).interruptAttempt(discardedAttempt, 'hedge-cancelled');
+    workerPoolPlacementTrace(runtime).recordDecision({
+        authoritativeAttempt: authority.members[0].attempt,
+        discardedAttempt,
+        kind: 'hedge-resolved',
+        outcome: 'cancelled'
+    });
+    discarded.controller.abort();
+}
+
 function cancelActiveHedgedPeers(runtime: WorkerPoolRunRuntime, taskRun: WorkerPoolTaskRun): void {
     const key = taskWorkKey(taskRun);
-    const activePeers = Array.from(runtime.activeTasks).filter(function isActivePeer(activeTask) {
-        return activeTask !== taskRun && taskWorkKey(activeTask) === key;
+    const activePeers = Array.from(runtime.activeTasks).filter(function isIncompleteActivePeer(activeTask) {
+        const { attempt } = activeTask.members[0];
+
+        return activeTask !== taskRun &&
+            taskWorkKey(activeTask) === key &&
+            !activeTask.completedAttempts.has(attempt);
     });
 
     for (const activeTask of activePeers) {
-        activeTask.endedByParent.write(true);
-        activeTask.requeuePendingCases.write(false);
-        activeTask.includeArtifacts.write(false);
-        runtime.recordPlacementTraceEntry({
-            kind: 'hedged-duplicate-discarded',
-            unit: activeTask.traceUnit,
-            workerId: activeTask.lane
-        });
-        activeTask.controller.abort();
+        cancelHedgedPeer(runtime, taskRun, activeTask);
     }
 }
 
@@ -186,11 +207,10 @@ function conflictResult(
 
     const artifact = conflictArtifact(authoritativeResult, conflictingResult, runtime);
     runtime.runState.recordArtifact(artifact);
-    runtime.recordPlacementTraceEntry({
-        authoritativeWorkerId: authority.taskRun.lane,
-        conflictingWorkerId: taskRun.lane,
-        kind: 'hedged-duplicate-conflict',
-        unit: taskRun.traceUnit
+    workerPoolPlacementTrace(runtime).recordDecision({
+        authoritativeAttempt: authority.taskRun.members[0].attempt,
+        conflictingAttempt: taskRun.members[0].attempt,
+        kind: 'hedge-conflict'
     });
 
     return {
@@ -220,10 +240,11 @@ async function recordMatchingDuplicate(
     runtime: WorkerPoolRunRuntime
 ): Promise<void> {
     taskRun.includeArtifacts.write(false);
-    runtime.recordPlacementTraceEntry({
-        kind: 'hedged-duplicate-discarded',
-        unit: taskRun.traceUnit,
-        workerId: taskRun.lane
+    workerPoolPlacementTrace(runtime).recordDecision({
+        authoritativeAttempt: authority.taskRun.members[0].attempt,
+        discardedAttempt: taskRun.members[0].attempt,
+        kind: 'hedge-resolved',
+        outcome: 'matched'
     });
 
     if (!activePeerExists(runtime, taskRun)) {
