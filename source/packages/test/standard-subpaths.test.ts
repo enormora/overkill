@@ -89,8 +89,8 @@ function reporterSubpathOutputs(): readonly string[] {
     const line = reportersSubpath.createLineReporter()(context);
     const brief = reportersSubpath.createBriefReporter()(context);
     const dot = reportersSubpath.createDotReporter()(context);
-    const progress = reportersSubpath.createProgressReporter()(context);
-    const tree = reportersSubpath.createTreeReporter()(context);
+    const progress = reportersSubpath.createLineProgressReporter()(context);
+    const tree = reportersSubpath.createLineTreeReporter()(context);
     const githubActions = reportersSubpath.createGithubActionsOutputRenderer()(context);
 
     return [
@@ -113,9 +113,9 @@ async function assertReporterSubpath(scope: TestScope): Promise<void> {
         'createBriefReporter',
         'createDotReporter',
         'createGithubActionsOutputRenderer',
+        'createLineProgressReporter',
         'createLineReporter',
-        'createProgressReporter',
-        'createTreeReporter'
+        'createLineTreeReporter'
     ]);
     scope.assert.deepEqual(reporterSubpathOutputs(), [ 'line', 'brief', 'dot', 'progress', 'tree', 'hello' ]);
 }

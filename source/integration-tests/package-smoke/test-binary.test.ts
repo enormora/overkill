@@ -4,7 +4,11 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
-import { createLineReporter } from '@overkill-dev/reporter-line';
+import {
+    createLineProgressReporter,
+    createLineReporter,
+    createLineTreeReporter
+} from '@overkill-dev/reporter-line';
 import {
     assertResourcesPackageRootExport,
     assertRunConfigSubpathExport,
@@ -168,6 +172,11 @@ function assertPackagedFilters(scope: TestScope, filters: FiltersModule): void {
     });
 }
 
+function assertLineReporterVariants(scope: TestScope): void {
+    scope.assert.equal(typeof createLineProgressReporter, 'function');
+    scope.assert.equal(typeof createLineTreeReporter, 'function');
+}
+
 async function assertPackagedStandardSubpathImports(
     scope: TestScope,
     packageExports: Readonly<Record<string, unknown>>
@@ -246,6 +255,17 @@ export const testNode = createSuite({
                 scope.assert.equal(runPackageJson.bin, undefined);
                 scope.assert.deepEqual(testPackageJson.engines, { node: '^26.9.0' });
                 scope.assert.deepEqual(runPackageJson.engines, { node: '^26.9.0' });
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/reporter-line exposes every presentation variant',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                assertLineReporterVariants(scope);
 
                 return scope.assert.collect();
             }

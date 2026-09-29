@@ -324,6 +324,8 @@ export const standardSubpathImportScript = [
     '    }',
     '};',
     'console.log(reportersModule.createLineReporter()(context).name);',
+    'console.log(reportersModule.createLineProgressReporter()(context).name);',
+    'console.log(reportersModule.createLineTreeReporter()(context).name);',
     'console.log(reportersModule.createBriefReporter()(context).name);',
     'const dotReporter = reportersModule.createDotReporter()(context);',
     'console.log(dotReporter.name);',
@@ -449,7 +451,7 @@ export const expectedRootImportOutput = [
 
 export const expectedStandardSubpathImportOutput = [
     '["defineConfig"]',
-    '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineReporter","createProgressReporter","createTreeReporter"]',
+    '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineProgressReporter","createLineReporter","createLineTreeReporter"]',
     '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
     '["throwingTest"]',
     '["ResourceLifecycleError","composeRuntimeContext","composeRuntimes","createLocalHttpServiceResource","createLocalProcessServiceResource","createSimulatedHttpServerResource","createTemporaryDirectoryResource","defineLocalServiceResource","defineResource","defineRuntime","defineRuntimeMatrix","startRuntime","withResource","withResources","withRuntime"]',
@@ -462,6 +464,8 @@ export const expectedStandardSubpathImportOutput = [
     'function',
     'false',
     'line',
+    'progress',
+    'tree',
     'brief',
     'dot',
     'hello',
