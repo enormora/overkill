@@ -143,7 +143,7 @@ export const testNode = createOverkillSuite({
                 const runtime = fakeWorkerRuntime(createCollectedPlan());
 
                 scope.assert.throws(function readEmptyPlan() {
-                    firstPlanUnit({ assignments: [], lanes: [], units: [] });
+                    firstPlanUnit({ assignments: [], lanes: [], resourceOwnership: { owners: [] }, units: [] });
                 }, {
                     message: 'Worker-pool resource acquisition requires a work unit.'
                 });

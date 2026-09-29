@@ -4,6 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
+import { createResourceOwnershipPlan } from './execution-plan-resolution.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
     disposeWorkerPoolResourceLifecycles
@@ -28,6 +29,7 @@ const testCaseMetadata = {
 function resource(name: string, scope: ResourceScope): ResourceSummary {
     return {
         dependencies: [],
+        handleTransport: 'local',
         name,
         requirements: [],
         scenarios: [],
@@ -54,6 +56,9 @@ function collectedPlanWithResources(resourceGraph: readonly ResourceSummary[]): 
                         ...firstCase,
                         resourceAttachments: {
                             ...firstCase.resourceAttachments,
+                            directResources: resourceGraph.map(function directResource(resourceValue) {
+                                return { key: resourceValue.name, resourceName: resourceValue.name };
+                            }),
                             resourceGraph
                         }
                     }
@@ -70,7 +75,14 @@ function placementPlan(runtime: WorkerPoolRunRuntime): PlacementPlan {
         throw new Error('Worker-pool runtime fixture requires a placement plan.');
     }
 
-    return plan;
+    return {
+        ...plan,
+        resourceOwnership: createResourceOwnershipPlan({
+            lanes: plan.lanes,
+            selectedPlan: runtime.collectedPlan,
+            units: plan.units
+        })
+    };
 }
 
 function runtimeWithPoolRun(
@@ -124,7 +136,7 @@ async function assertPerRunResourcesUseOwner(scope: OverkillScope): Promise<void
     );
     const lifecycle = await acquireWorkerPoolResourceLifecycle(runtime, placementPlan(runtime));
 
-    scope.assert.equal(lifecycle.runResourceOwner, true);
+    scope.assert.equal(lifecycle.resourceOwner, true);
     scope.assert.deepEqual(lifecycle.projectedResources, {
         resources: [ { boundaryKey: 'run:database', payload: 'database-handle' } ]
     });

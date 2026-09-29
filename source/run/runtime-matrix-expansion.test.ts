@@ -18,24 +18,68 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
             resourceGraph: [
                 {
                     dependencies: [ 'scratch-root' ],
+                    handleTransport: 'local',
                     name: 'scratch',
                     requirements: [],
                     scenarios: [],
                     scope: 'per-case'
                 },
-                { dependencies: [], name: 'scratch-root', requirements: [], scenarios: [], scope: 'per-case' },
-                { dependencies: [], name: 'database-26', requirements: [], scenarios: [], scope: 'per-case' },
-                { dependencies: [], name: 'database-27', requirements: [], scenarios: [], scope: 'per-case' },
-                { dependencies: [], name: 'browser-chromium', requirements: [], scenarios: [], scope: 'per-case' },
-                { dependencies: [], name: 'browser-firefox', requirements: [], scenarios: [], scope: 'per-case' },
+                {
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'scratch-root',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                },
+                {
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'database-26',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                },
+                {
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'database-27',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                },
+                {
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'browser-chromium',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                },
+                {
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'browser-firefox',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                },
                 {
                     dependencies: [ 'remote-sidecar' ],
+                    handleTransport: 'local',
                     name: 'sidecar',
                     requirements: [],
                     scenarios: [],
                     scope: 'per-case'
                 },
-                { dependencies: [], name: 'unused', requirements: [], scenarios: [], scope: 'per-case' }
+                {
+                    dependencies: [],
+                    handleTransport: 'local',
+                    name: 'unused',
+                    requirements: [],
+                    scenarios: [],
+                    scope: 'per-case'
+                }
             ],
             runtimeGraphs
         },

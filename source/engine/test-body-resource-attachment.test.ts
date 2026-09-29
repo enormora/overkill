@@ -27,6 +27,7 @@ function resourceAttachments(
         resourceGraph: resources.map(function toResource(resource) {
             return {
                 dependencies: [],
+                handleTransport: 'local',
                 name: resource.resourceName,
                 requirements: [],
                 scenarios: [],
@@ -117,6 +118,7 @@ export const testNode = createOverkillSuite({
                     resourceGraph: [
                         {
                             dependencies: [],
+                            handleTransport: 'local',
                             name: 'scratch',
                             requirements: [ { kind: 'exclusive-resource', name: 'scratch' } ],
                             scenarios: [],
@@ -148,6 +150,7 @@ export const testNode = createOverkillSuite({
                             resourceGraph: [
                                 {
                                     dependencies: [],
+                                    handleTransport: 'local',
                                     name: 'scratch',
                                     requirements: [],
                                     scenarios: [],
@@ -184,6 +187,7 @@ export const testNode = createOverkillSuite({
                     resourceGraph: [
                         {
                             dependencies: [],
+                            handleTransport: 'local',
                             name: 'scratch',
                             requirements: [],
                             scenarios: [],
@@ -199,6 +203,7 @@ export const testNode = createOverkillSuite({
                         resourceGraph: [
                             {
                                 dependencies: [],
+                                handleTransport: 'local',
                                 name: 'database',
                                 requirements: [],
                                 scenarios: [],
@@ -223,6 +228,7 @@ export const testNode = createOverkillSuite({
                         resourceGraph: [
                             {
                                 dependencies: [],
+                                handleTransport: 'local',
                                 name: 'scratch',
                                 requirements: [],
                                 scenarios: [],
@@ -230,6 +236,7 @@ export const testNode = createOverkillSuite({
                             },
                             {
                                 dependencies: [],
+                                handleTransport: 'local',
                                 name: 'workspace',
                                 requirements: [],
                                 scenarios: [],

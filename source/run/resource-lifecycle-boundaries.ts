@@ -18,10 +18,17 @@ export type LifecycleBoundary = {
     readonly scope: ResourceScope;
 };
 
+export type ResourceOwnershipBoundary = LifecycleBoundary & {
+    readonly handleTransport: TestBodyResourceSummary['handleTransport'];
+    readonly resourceName: string;
+};
+
 export type ResourceBoundaryUseCount = {
     readonly boundaryKey: string;
     readonly count: number;
 };
+
+type ResourceBoundaryCase = Pick<TestPlanCase, 'id' | 'resourceAttachments' | 'workId'>;
 
 const resourceScopeValues: readonly ResourceScope[] = [
     'per-case',
@@ -38,14 +45,14 @@ function isResourceScope(scope: string): scope is ResourceScope {
     return resourceScopeTexts.has(scope);
 }
 
-function suiteBoundary(testCase: TestPlanCase): string {
+function suiteBoundary(testCase: ResourceBoundaryCase): string {
     return JSON.stringify(testCase.id.suite);
 }
 
 function resourceBoundaryForCase(
     resourceName: string,
     scope: Extract<ResourceScope, 'per-case' | 'shared-per-worker'>,
-    testCase: TestPlanCase
+    testCase: ResourceBoundaryCase
 ): LifecycleBoundary {
     return scope === 'shared-per-worker'
         ? { key: `worker:${resourceName}`, scope }
@@ -61,7 +68,7 @@ function resourceNameWithAcquisitionIdentity(resourceName: string, acquisitionId
 function resourceBoundary(
     resourceName: string,
     scope: ResourceScope,
-    testCase: TestPlanCase,
+    testCase: ResourceBoundaryCase,
     acquisitionIdentity: string
 ): LifecycleBoundary {
     const identifiedResourceName = resourceNameWithAcquisitionIdentity(resourceName, acquisitionIdentity);
@@ -82,7 +89,7 @@ function resourceBoundary(
     return resourceBoundaryForCase(identifiedResourceName, scope, testCase);
 }
 
-function selectedRuntimeId(testCase: TestPlanCase, runtime: TestBodyRuntimeSummary): RuntimeId {
+function selectedRuntimeId(testCase: ResourceBoundaryCase, runtime: TestBodyRuntimeSummary): RuntimeId {
     const selected = testCase.workId.runtimes.find(function runtimeNameMatches(candidate) {
         return candidate.name === runtime.name;
     });
@@ -104,7 +111,10 @@ function selectedRuntimeId(testCase: TestPlanCase, runtime: TestBodyRuntimeSumma
     return { dimensions: runtime.dimensions, name: runtime.name, variantId: null };
 }
 
-function selectedLeafRuntime(testCase: TestPlanCase, runtime: TestBodyRuntimeSummary): TestBodyLeafRuntimeSummary {
+function selectedLeafRuntime(
+    testCase: ResourceBoundaryCase,
+    runtime: TestBodyRuntimeSummary
+): TestBodyLeafRuntimeSummary {
     if (runtime.kind !== 'runtime-matrix') {
         return runtime;
     }
@@ -167,16 +177,16 @@ function resourceSummaryCacheIdentityNode(
 }
 
 function resourceGraphBoundaries(
-    testCase: TestPlanCase,
+    testCase: ResourceBoundaryCase,
     rootResourceNames: readonly string[],
     resourceName: (resource: TestBodyResourceSummary) => string,
     bindingsByResource: ScenarioBindingsByResource
-): readonly LifecycleBoundary[] {
+): readonly ResourceOwnershipBoundary[] {
     const resourcesByName = new Map(testCase.resourceAttachments.resourceGraph.map(function resourceEntry(resource) {
         return [ resource.name, resource ] as const;
     }));
     const visited = new Set<string>();
-    const boundaries: LifecycleBoundary[] = [];
+    const boundaries: ResourceOwnershipBoundary[] = [];
 
     function recordBoundary(resource: TestBodyResourceSummary): void {
         if (!isResourceScope(resource.scope)) {
@@ -187,7 +197,11 @@ function resourceGraphBoundaries(
             resourceSummaryCacheIdentityNode(resource, resourcesByName, bindingsByResource)
         );
 
-        boundaries.push(resourceBoundary(resourceName(resource), resource.scope, testCase, identity));
+        boundaries.push({
+            ...resourceBoundary(resourceName(resource), resource.scope, testCase, identity),
+            handleTransport: resource.handleTransport,
+            resourceName: resource.name
+        });
     }
 
     function visit(name: string): void {
@@ -217,7 +231,7 @@ function resourceGraphBoundaries(
     return boundaries;
 }
 
-function caseResourceBoundaries(testCase: TestPlanCase): readonly LifecycleBoundary[] {
+export function caseResourceOwnershipBoundaries(testCase: ResourceBoundaryCase): readonly ResourceOwnershipBoundary[] {
     const directBoundaries = resourceGraphBoundaries(
         testCase,
         testCase.resourceAttachments.directResources.map(function directResourceName(resource) {
@@ -256,7 +270,7 @@ function initialBoundaryUseCounts(testCases: readonly TestPlanCase[]): ReadonlyM
     const counts = new Map<string, number>();
 
     for (const testCase of testCases) {
-        for (const boundary of caseResourceBoundaries(testCase)) {
+        for (const boundary of caseResourceOwnershipBoundaries(testCase)) {
             counts.set(boundary.key, (counts.get(boundary.key) ?? 0) + 1);
         }
     }
@@ -284,7 +298,7 @@ export function caseResourceBoundaryKeys(
     testCase: TestPlanCase,
     scopes: ReadonlySet<ResourceScope>
 ): readonly string[] {
-    return caseResourceBoundaries(testCase).flatMap(function toBoundaryKey(boundary) {
+    return caseResourceOwnershipBoundaries(testCase).flatMap(function toBoundaryKey(boundary) {
         return scopes.has(boundary.scope) ? [ boundary.key ] : [];
     });
 }

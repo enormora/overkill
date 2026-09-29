@@ -14,6 +14,7 @@ import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import type {
     WorkerPoolAcquireRunResourcesTask,
     WorkerPoolCommand,
+    WorkerPoolCompleteResourceOwnerWorkTask,
     WorkerPoolDisposeLaneLifecycleTask,
     WorkerPoolDisposeResourceOutput,
     WorkerPoolDisposeRunResourcesTask,
@@ -31,7 +32,7 @@ type ResourceWrapperAction = ResourceWrapperStep | {
 type WorkerPoolLifecycleSessionKeyInput = Pick<WorkerPoolRunTask, 'lane' | 'lifecycle'>;
 
 const composedResourceBodyBrand = Symbol.for('@overkill-dev/test/ComposedResourceBody');
-const runResourceScopes: ReadonlySet<string> = new Set([ 'per-run' ]);
+const externallyOwnedResourceScopes: ReadonlySet<string> = new Set([ 'per-file', 'per-run', 'per-suite' ]);
 const laneDisposalScopes = new Set([ 'per-case', 'per-file', 'per-suite' ] as const);
 const runResourceOwners = new Map<string, ResourceLifecycleSession>();
 const laneResourceSessions = new Map<string, ResourceLifecycleSession>();
@@ -115,13 +116,14 @@ export async function acquireWorkerRunResources(
 
     try {
         const session = await acquireResourceLifecycleScopes({
+            boundaryKeys: new Set(task.boundaryKeys),
             options: {
                 boundaryUseCounts: resourceLifecycleBoundaryUseCounts(testPlan.cases),
                 caseDisposalScopes: new Set(),
                 projectedResources: { resources: [] },
                 timing
             },
-            scopes: runResourceScopes,
+            scopes: externallyOwnedResourceScopes,
             signal: freshSignal(),
             stepsForCase: resourceWrapperSteps,
             testCases: testPlan.cases
@@ -139,6 +141,16 @@ export async function acquireWorkerRunResources(
             runnerErrors: [ runnerError('Resource acquisition failed.', error) ]
         };
     }
+}
+
+export async function completeWorkerResourceOwnerWork(
+    task: WorkerPoolCompleteResourceOwnerWorkTask
+): Promise<WorkerPoolDisposeResourceOutput> {
+    const session = runResourceOwners.get(task.lifecycle.token);
+
+    return {
+        runnerErrors: session === undefined ? [] : await session.completeBoundaries(task.boundaryKeys)
+    };
 }
 
 export async function disposeWorkerRunResources(

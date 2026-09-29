@@ -817,6 +817,12 @@ re-import is execution-time plumbing, not a second discovery authority.
 
 The frozen `PlacementPlan` is the initial assignment. A runtime
 `PlacementTrace` records what actually happened as an unbounded attempt log.
+The plan also freezes shared resource ownership. A reusable executor lane owns
+boundaries that stay lane-local. Boundaries that span fresh workers use a
+dedicated infrastructure worker and projected handles. The coordinator tracks
+logical `WorkId` completion so `per-file` and `per-suite` owners can dispose as
+soon as their selected consumers finish, while `per-run` owners remain alive
+through run teardown.
 Each assignment attempt names its exact non-empty `WorkId` subset, lane,
 opaque executor-instance id after start, completion duration, and whether it
 was initial work, recovery, or a hedge. Interruptions and recovery decisions

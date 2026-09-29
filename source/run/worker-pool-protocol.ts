@@ -73,9 +73,18 @@ export type WorkerPoolRunTask = {
 
 export type WorkerPoolAcquireRunResourcesTask = {
     readonly assignedWork: readonly WorkId[];
+    readonly boundaryKeys: readonly string[];
     readonly boundaryUseCounts: readonly ResourceBoundaryUseCount[];
     readonly command: WorkerPoolCommand;
     readonly kind: 'acquire-run-resources';
+    readonly lane: string;
+    readonly lifecycle: WorkerPoolLifecycleIdentity;
+    readonly port: NodeMessagePort;
+};
+
+export type WorkerPoolCompleteResourceOwnerWorkTask = {
+    readonly boundaryKeys: readonly string[];
+    readonly kind: 'complete-resource-owner-work';
     readonly lane: string;
     readonly lifecycle: WorkerPoolLifecycleIdentity;
     readonly port: NodeMessagePort;
@@ -98,6 +107,7 @@ export type WorkerPoolDisposeLaneLifecycleTask = {
 type WorkerPoolTasksByKind = {
     readonly acquireRunResources: WorkerPoolAcquireRunResourcesTask;
     readonly collect: WorkerPoolCollectTask;
+    readonly completeResourceOwnerWork: WorkerPoolCompleteResourceOwnerWorkTask;
     readonly disposeLaneLifecycle: WorkerPoolDisposeLaneLifecycleTask;
     readonly disposeRunResources: WorkerPoolDisposeRunResourcesTask;
     readonly run: WorkerPoolRunTask;

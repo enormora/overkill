@@ -1214,6 +1214,20 @@ type PlacementPlan = {
     readonly units: ReadonlyArray<WorkUnit>;
     readonly lanes: ReadonlyArray<PlacementLane>;
     readonly assignments: ReadonlyArray<PlacementAssignment>;
+    readonly resourceOwnership: ResourceOwnershipPlan;
+};
+
+type ResourceOwnershipPlan = {
+    readonly owners: ReadonlyArray<{
+        readonly boundaryKey: string;
+        readonly resourceName: string;
+        readonly scope: 'per-run' | 'per-file' | 'per-suite';
+        readonly work: readonly [WorkId, ...WorkId[]];
+        readonly placement:
+            | { readonly id: 'resource-owner'; readonly kind: 'infrastructure-worker'; }
+            | { readonly kind: 'executor-lane'; readonly lane: string; }
+            | { readonly kind: 'work-unit'; readonly unit: WorkUnitId; };
+    }>;
 };
 
 type PlacementLane = {

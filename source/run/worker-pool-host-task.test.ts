@@ -95,6 +95,7 @@ function runTask(): WorkerPoolTask {
 function acquireRunResourcesTask(): WorkerPoolTask {
     return {
         ...taskBase(),
+        boundaryKeys: [ 'run:database' ],
         kind: 'acquire-run-resources'
     };
 }
@@ -102,6 +103,16 @@ function acquireRunResourcesTask(): WorkerPoolTask {
 function disposeRunResourcesTask(): WorkerPoolTask {
     return {
         kind: 'dispose-run-resources',
+        lane: 'worker-1',
+        lifecycle: { token: 'lifecycle-1' },
+        port
+    };
+}
+
+function completeResourceOwnerWorkTask(): WorkerPoolTask {
+    return {
+        boundaryKeys: [ 'file:test.ts:database' ],
+        kind: 'complete-resource-owner-work',
         lane: 'worker-1',
         lifecycle: { token: 'lifecycle-1' },
         port
@@ -136,6 +147,7 @@ export const testNode = createOverkillSuite({
                 const tasks = [
                     collectTask(),
                     acquireRunResourcesTask(),
+                    completeResourceOwnerWorkTask(),
                     disposeRunResourcesTask(),
                     disposeLaneLifecycleTask(),
                     runTask()
@@ -145,9 +157,16 @@ export const testNode = createOverkillSuite({
                     { command: command(), kind: 'collect' },
                     {
                         assignedWork: [ workId() ],
+                        boundaryKeys: [ 'run:database' ],
                         boundaryUseCounts: [ { boundaryKey: 'run:database', count: 1 } ],
                         command: command(),
                         kind: 'acquire-run-resources',
+                        lane: 'worker-1',
+                        lifecycle: { token: 'lifecycle-1' }
+                    },
+                    {
+                        boundaryKeys: [ 'file:test.ts:database' ],
+                        kind: 'complete-resource-owner-work',
                         lane: 'worker-1',
                         lifecycle: { token: 'lifecycle-1' }
                     },

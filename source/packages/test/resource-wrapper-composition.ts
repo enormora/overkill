@@ -101,11 +101,20 @@ function requirementSummary(requirement: ExecutionRequirement): TestBodyExecutio
     return { ...requirement };
 }
 
+function resourceHandleTransport(resource: AnyResourceDefinition): TestBodyResourceSummary['handleTransport'] {
+    if (typeof resource.serializeHandle === 'function' && typeof resource.deserializeHandle === 'function') {
+        return 'projected';
+    }
+
+    return 'local';
+}
+
 function resourceSummary(resource: AnyResourceDefinition): TestBodyResourceSummary {
     return {
         dependencies: Object.values(resource.dependencies).map(function dependencyName(dependency) {
             return dependency.name;
         }),
+        handleTransport: resourceHandleTransport(resource),
         name: resource.name,
         requirements: resource.requirements.map(requirementSummary),
         scenarios: Object.entries(resource.scenarios).map(function scenarioSummary([ name, scenario ]) {

@@ -9,18 +9,21 @@ import type {
 
 export type ManagedRunnerError = RunnerError;
 
+type ManagedResourceScopeAcquisition = {
+    readonly boundaryKeys: ReadonlySet<string>;
+    readonly scopes: ReadonlySet<string>;
+    readonly signal: AbortSignal;
+    readonly steps: readonly ResourceWrapperStep[];
+    readonly testCase: TestPlanCase;
+};
+
 export type ManagedLifecycleState = {
     readonly acquireComposedResources: (
         steps: readonly ResourceWrapperStep[],
         signal: AbortSignal,
         messages: LifecycleMessages
     ) => Promise<ComposedResourceSession>;
-    readonly acquireResourceScopes: (
-        steps: readonly ResourceWrapperStep[],
-        testCase: TestPlanCase,
-        signal: AbortSignal,
-        scopes: ReadonlySet<string>
-    ) => Promise<void>;
+    readonly acquireResourceScopes: (request: ManagedResourceScopeAcquisition) => Promise<void>;
     readonly disposeAll: (signal: AbortSignal) => Promise<readonly ManagedRunnerError[]>;
     readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
     readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];

@@ -20,6 +20,7 @@ function resourceAttachments(): TestBodyResourceAttachments {
         resourceGraph: [
             {
                 dependencies: [],
+                handleTransport: 'local',
                 name: 'scratch',
                 requirements: [],
                 scenarios: [],

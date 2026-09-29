@@ -166,7 +166,12 @@ local order, and worker lifecycle. Unmatched selected file sets are rejected
 by default, or run as plain file units with profile defaults when
 `unmatched: 'file'` is configured. `RunFacts.execution` contains the frozen
 `PlacementPlan`: work units, resolved per-unit policy, local worker lanes, and
-the deterministic initial lane assignment used by execution. Worker-pool
+the deterministic initial lane assignment used by execution. The plan also
+freezes resource ownership for every selected `per-run`, `per-file`, and
+`per-suite` boundary. Shared resources either stay on one reusable executor
+lane or use a dedicated infrastructure worker that projects handles to the
+assigned work. Local-only handles are rejected when the resolved placement
+requires projection. Worker-pool
 placement defaults to `assignmentPolicy: 'case-count-balanced'`, which places
 larger selected work units first and balances lane load by selected case count
 and resource capacity weight.
@@ -208,6 +213,11 @@ serial without serializing unrelated units. `single-worker` pins matching work
 to one lane without changing in-unit scheduling. For `supervised-process`, a
 serial or exclusive requirement anywhere in the selected plan makes the
 containing process plan serial.
+Planning rejects incompatible runtime or resource definitions, invalid resource
+dependency scopes, mixed worker lifecycles for one hard constraint, and worker
+capacity that cannot satisfy the resolved lifecycle lanes. These failures are
+reported as `RunExecutionPlanError` with deterministic structured conflicts
+before test execution begins.
 Direct `RunConfig` values may set `execution.hostProcess` for worker-pool
 profiles. `{ kind: 'direct' }` keeps the worker-thread pool in the coordinator
 process. `{ kind: 'child', nodeArguments: [...] }` starts one supervised host

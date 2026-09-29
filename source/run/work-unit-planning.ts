@@ -6,7 +6,7 @@ import {
 import {
     collectedRunCaseEntries
 } from './collected-run-plan.ts';
-import { invalidRequest } from './run-errors.ts';
+import { RunExecutionPlanError, type RunExecutionPlanConflict } from './run-errors.ts';
 import {
     type RunShardHasher,
     workUnitBelongsToShard
@@ -210,6 +210,14 @@ function filesWithCases(plan: CollectedRunPlan): readonly CollectedRunFile[] {
     });
 }
 
+function rejectWorkDistribution(
+    conflict: Extract<RunExecutionPlanConflict, {
+        readonly kind: 'work-distribution';
+    }>
+): never {
+    throw new RunExecutionPlanError([ conflict ], undefined);
+}
+
 function selectedFileSets(
     plan: CollectedRunPlan,
     fileSetForFile: (file: string) => string | null
@@ -220,7 +228,12 @@ function selectedFileSets(
         const fileSet = fileSetForFile(file.file);
 
         if (fileSet === null) {
-            invalidRequest(`Grouped work distribution requires a file set for "${file.file}".`);
+            rejectWorkDistribution({
+                file: file.file,
+                fileSet,
+                kind: 'work-distribution',
+                reason: 'missing-file-set'
+            });
         }
 
         fileSets.set(file.file, fileSet);
@@ -245,7 +258,12 @@ function assertNoUnmatchedSelectedFileSets(
 
     for (const [ file, fileSet ] of fileSets) {
         if (!assignedFileSets.has(fileSet)) {
-            invalidRequest(`Grouped work distribution has no group for file set "${fileSet}" selected by "${file}".`);
+            rejectWorkDistribution({
+                file,
+                fileSet,
+                kind: 'work-distribution',
+                reason: 'unmatched-file-set'
+            });
         }
     }
 

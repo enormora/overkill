@@ -116,6 +116,7 @@ function twoLanePlacement(assignments: readonly PlacementAssignment[], units: re
     return {
         assignments,
         lanes: [ workerLane('worker-1'), workerLane('worker-2') ],
+        resourceOwnership: { owners: [] },
         units
     };
 }
@@ -140,6 +141,7 @@ function batchingPlacement(): PlacementPlan {
             { lane: lane.id, unit: second.id }
         ],
         lanes: [ lane ],
+        resourceOwnership: { owners: [] },
         units: [ first, second ]
     };
 }

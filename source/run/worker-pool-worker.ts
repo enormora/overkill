@@ -14,6 +14,7 @@ import {
 } from './worker-pool-output.ts';
 import {
     acquireWorkerRunResources,
+    completeWorkerResourceOwnerWork,
     createWorkerResourceUsageTracker,
     disposeWorkerLaneLifecycle,
     disposeWorkerRunResources,
@@ -22,6 +23,7 @@ import {
 import type {
     WorkerPoolCollection,
     WorkerPoolCommand,
+    WorkerPoolCompleteResourceOwnerWorkTask,
     WorkerPoolAssignedUnit,
     WorkerPoolDisposeResourceOutput,
     WorkerPoolDisposeLaneLifecycleTask,
@@ -185,6 +187,12 @@ async function disposeRunResources(
     return await disposeWorkerRunResources(task);
 }
 
+async function completeResourceOwnerWork(
+    task: WorkerPoolCompleteResourceOwnerWorkTask
+): Promise<WorkerPoolDisposeResourceOutput> {
+    return await completeWorkerResourceOwnerWork(task);
+}
+
 async function disposeLaneLifecycle(
     task: WorkerPoolDisposeLaneLifecycleTask
 ): Promise<WorkerPoolDisposeResourceOutput> {
@@ -293,6 +301,10 @@ async function runWorkerTask(
 
     if (task.kind === 'dispose-run-resources') {
         return await disposeRunResources(task);
+    }
+
+    if (task.kind === 'complete-resource-owner-work') {
+        return await completeResourceOwnerWork(task);
     }
 
     if (task.kind === 'dispose-lane-lifecycle') {

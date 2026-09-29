@@ -25,6 +25,8 @@ import {
     constrainedScheduling,
     workResourceConstraints
 } from './work-unit-resource-constraints.ts';
+import { collectedPlanCompatibilityConflicts } from './execution-plan-resolution.ts';
+import { RunExecutionPlanError } from './run-errors.ts';
 
 type CollectedPlanKind = 'supervised' | 'worker-pool';
 
@@ -144,6 +146,14 @@ function resolvedScheduling(
 export async function createCollectedExecutionPlan(
     input: CollectedExecutionPlanInput
 ): Promise<CollectedExecutionPlan> {
+    if (input.planKind === 'supervised') {
+        const conflicts = collectedPlanCompatibilityConflicts(input.collectedPlan);
+
+        if (conflicts.length > 0) {
+            throw new RunExecutionPlanError(conflicts, undefined);
+        }
+    }
+
     const shardHasher = await createRunShardHasher(input.request.shard);
     const placementResolution = createPlacementResolution(input, shardHasher);
     const planningFacts = placementResolution ?? {

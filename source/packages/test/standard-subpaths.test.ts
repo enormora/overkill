@@ -5,6 +5,7 @@ import {
     createTestPlan,
     readTestBodyResourceAttachments,
     type RootOptions,
+    type TestBodyResourceSummary,
     type TestPlan,
     type TestScope
 } from '../engine/engine.entry-point.ts';
@@ -257,6 +258,20 @@ function assertResourceDescriptors(
     scope.assert.equal(temporaryDirectory.name, 'scratch');
 }
 
+function expectedLocalResource(
+    name: string,
+    requirements: readonly Readonly<Record<string, unknown>>[]
+): TestBodyResourceSummary {
+    return {
+        dependencies: [],
+        handleTransport: 'local',
+        name,
+        requirements,
+        scenarios: [],
+        scope: 'per-case'
+    };
+}
+
 function assertRuntimeAttachments(
     scope: TestScope,
     body: resourcesSubpath.RuntimeWrappedTestBody
@@ -264,13 +279,7 @@ function assertRuntimeAttachments(
     scope.assert.deepEqual(readTestBodyResourceAttachments(body), {
         directResources: [],
         resourceGraph: [
-            {
-                dependencies: [],
-                name: 'database',
-                requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
-                scenarios: [],
-                scope: 'per-case'
-            }
+            expectedLocalResource('database', [ { kind: 'exclusive-resource', name: 'database' } ])
         ],
         runtimeGraphs: [
             {
@@ -291,15 +300,7 @@ function assertDirectResourceAttachments(
 ): void {
     scope.assert.deepEqual(readTestBodyResourceAttachments(body), {
         directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
-        resourceGraph: [
-            {
-                dependencies: [],
-                name: 'scratch',
-                requirements: [],
-                scenarios: [],
-                scope: 'per-case'
-            }
-        ],
+        resourceGraph: [ expectedLocalResource('scratch', []) ],
         runtimeGraphs: []
     });
 }
@@ -353,20 +354,8 @@ function assertResourceWrapperValidation(
         {
             directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
             resourceGraph: [
-                {
-                    dependencies: [],
-                    name: 'scratch',
-                    requirements: [],
-                    scenarios: [],
-                    scope: 'per-case'
-                },
-                {
-                    dependencies: [],
-                    name: 'database',
-                    requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
-                    scenarios: [],
-                    scope: 'per-case'
-                }
+                expectedLocalResource('scratch', []),
+                expectedLocalResource('database', [ { kind: 'exclusive-resource', name: 'database' } ])
             ],
             runtimeGraphs: [
                 {

@@ -191,6 +191,7 @@ export function mixedLifecycleResolvedRun(): ResolvedRun {
                         placementPlan.lanes[0] ?? workerLane('worker-1'),
                         workerLane('worker-2')
                     ],
+                    resourceOwnership: { owners: [] },
                     units: [
                         { ...firstUnit, workerLifecycle: 'reuse' },
                         { ...secondUnit, workerLifecycle: 'fresh-worker-per-unit' }

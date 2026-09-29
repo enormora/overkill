@@ -24,11 +24,16 @@ import {
 } from './work-unit-planning.ts';
 import type { RunShardHasher } from './run-sharding.ts';
 import {
-    resolveWorkerCount,
+    resolveWorkerCountCapacity,
     workerPoolLanesForCount,
     workerPoolPlacementAssignments,
     type WorkerPoolLaneInput
 } from './worker-pool-lanes.ts';
+import {
+    createResourceOwnershipPlan,
+    executionPlanCompatibilityConflicts
+} from './execution-plan-resolution.ts';
+import { RunExecutionPlanError, type RunExecutionPlanConflict } from './run-errors.ts';
 
 const coldStartMilliseconds = 0;
 
@@ -63,6 +68,12 @@ export type WorkerPoolPlacementResolution = {
     readonly placementPlan: PlacementPlan;
     readonly workerCount: RunWorkerCountFacts;
 };
+
+function assertCompatibleExecutionPlan(conflicts: readonly RunExecutionPlanConflict[]): void {
+    if (conflicts.length > 0) {
+        throw new RunExecutionPlanError(conflicts, undefined);
+    }
+}
 
 function collectedEntriesByWorkKey(
     collectedPlan: CollectedRunPlan
@@ -107,19 +118,35 @@ export function createWorkerPoolPlacementResolution(
         requestedWorkers: input.requestedWorkers,
         units
     };
-    const workerCount = resolveWorkerCount(laneInput);
+    const workerCapacity = resolveWorkerCountCapacity(laneInput);
+    const { workerCount } = workerCapacity;
+    const conflicts = executionPlanCompatibilityConflicts({
+        requiredLifecycleLanes: workerCapacity.requiredLanes,
+        selectedPlan: input.selectedPlan,
+        units,
+        workerCount
+    });
+
+    assertCompatibleExecutionPlan(conflicts);
+
     const lanes = workerPoolLanesForCount(workerCount.resolved);
+    const assignments = workerPoolPlacementAssignments(
+        units,
+        lanes,
+        input.assignmentPolicy,
+        durationHistory.unitDuration
+    );
 
     return {
         durationHistory: durationHistory.facts,
         placementPlan: {
-            assignments: workerPoolPlacementAssignments(
-                units,
-                lanes,
-                input.assignmentPolicy,
-                durationHistory.unitDuration
-            ),
+            assignments,
             lanes,
+            resourceOwnership: createResourceOwnershipPlan({
+                lanes,
+                selectedPlan: input.selectedPlan,
+                units
+            }),
             units
         },
         workerCount

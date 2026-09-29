@@ -99,6 +99,7 @@ function splitCandidatePlan(unit: WorkUnit): PlacementPlan {
             { lane: second.id, unit: filler.id }
         ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ unit, filler ]
     };
 }
@@ -110,6 +111,7 @@ function twoLanePlan(unit: WorkUnit): PlacementPlan {
     return {
         assignments: [ { lane: first.id, unit: unit.id } ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ unit ]
     };
 }
@@ -142,6 +144,7 @@ function weightedPlan(): PlacementPlan {
             { lane: second.id, unit: heavy.id }
         ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ light, heavy ]
     };
 }

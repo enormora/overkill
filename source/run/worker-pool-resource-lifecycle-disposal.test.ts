@@ -5,6 +5,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
+import { createResourceOwnershipPlan } from './execution-plan-resolution.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
     collectedPlanNeedsLaneResourceLifecycle,
@@ -30,6 +31,7 @@ const testCaseMetadata = {
 function resource(name: string, scope: ResourceScope): ResourceSummary {
     return {
         dependencies: [],
+        handleTransport: 'local',
         name,
         requirements: [],
         scenarios: [],
@@ -56,6 +58,9 @@ function collectedPlanWithResources(resourceGraph: readonly ResourceSummary[]): 
                         ...firstCase,
                         resourceAttachments: {
                             ...firstCase.resourceAttachments,
+                            directResources: resourceGraph.map(function directResource(resourceValue) {
+                                return { key: resourceValue.name, resourceName: resourceValue.name };
+                            }),
                             resourceGraph
                         }
                     }
@@ -72,7 +77,14 @@ function placementPlan(runtime: WorkerPoolRunRuntime): PlacementPlan {
         throw new Error('Worker-pool runtime fixture requires a placement plan.');
     }
 
-    return plan;
+    return {
+        ...plan,
+        resourceOwnership: createResourceOwnershipPlan({
+            lanes: plan.lanes,
+            selectedPlan: runtime.collectedPlan,
+            units: plan.units
+        })
+    };
 }
 
 function runtimeWithPoolRun(
@@ -110,7 +122,7 @@ async function assertNoResourcesSkipWorkerTasks(scope: OverkillScope): Promise<v
     runtime.terminalFailure.write(true);
     await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), lifecycle);
 
-    scope.assert.equal(lifecycle.runResourceOwner, false);
+    scope.assert.equal(lifecycle.resourceOwner, false);
     scope.assert.deepEqual(lifecycle.projectedResources, { resources: [] });
     scope.assert.equal(collectedPlanNeedsLaneResourceLifecycle(runtime), false);
 }
@@ -157,8 +169,12 @@ async function assertTerminalFailureSuppressesDisposalFailures(scope: OverkillSc
 
     runtime.terminalFailure.write(true);
     await disposeWorkerPoolResourceLifecycles(runtime, placementPlan(runtime), {
+        completedWork: new Set(),
+        ownerBoundaryKeysByWork: new Map(),
+        ownerLane: 'run-resource-owner',
+        projectionBoundaryKeysByWork: new Map(),
         projectedResources: { resources: [] },
-        runResourceOwner: true,
+        resourceOwner: true,
         runWork: []
     });
 

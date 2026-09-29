@@ -44,8 +44,10 @@ import {
 } from './worker-pool-task-events.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
+    completeWorkerPoolResourceMembers,
     createWorkerPoolBatchRunCommand,
     disposeWorkerPoolResourceLifecycles,
+    workerPoolProjectedResourcesForWork,
     workerPoolWorkHasStarted,
     type WorkerPoolResourceLifecycle
 } from './worker-pool-resource-lifecycle-execution.ts';
@@ -75,7 +77,6 @@ type TaskExecutionContext = TaskFailureContext & {
 type WorkerLoopContext = TaskExecutionContext & {
     readonly completedTaskRuns: CompletedTaskRuns;
     readonly lane: PlacementLane;
-    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
 };
 
 type WorkerTaskRunRequest = {
@@ -179,7 +180,7 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
         lane: request.lane.id,
         lifecycle: request.runtime.lifecycle,
         port: request.channel.port,
-        projectedResources: request.resourceLifecycle.projectedResources,
+        projectedResources: workerPoolProjectedResourcesForWork(request.resourceLifecycle, assignedWork),
         runWork: request.resourceLifecycle.runWork,
         startedAtMilliseconds: request.startedAtMilliseconds
     }, {
@@ -411,18 +412,17 @@ async function recordCompletedTaskRun(
     recordBatchCompleted(taskRun, context.runtime);
     finishCompletedLease(context.dispatcher, lease);
 
-    if (!taskRun.reporterEventsBuffered) {
+    if (taskRun.reporterEventsBuffered) {
+        const firstResult = output.results[0]?.result;
+
+        if (firstResult !== undefined) {
+            await recordCompletedHedgedTaskRun(context.authorities, firstResult, taskRun, context.runtime);
+        }
+    } else {
         context.runtime.taskResults.push(...output.results.map(function toResult(result) {
             return result.result;
         }));
-
-        return;
-    }
-
-    const firstResult = output.results[0]?.result;
-
-    if (firstResult !== undefined) {
-        await recordCompletedHedgedTaskRun(context.authorities, firstResult, taskRun, context.runtime);
+        await completeWorkerPoolResourceMembers(context.runtime, context.resourceLifecycle, taskRun.members);
     }
 }
 

@@ -84,6 +84,7 @@ function collectedPlanWithRunResource(): CollectedRunPlan {
                             resourceGraph: [
                                 {
                                     dependencies: [],
+                                    handleTransport: 'local',
                                     name: 'database',
                                     requirements: [],
                                     scenarios: [],

@@ -15,9 +15,19 @@ function taskWithoutPort(task: WorkerPoolTask): WorkerPoolTaskWithoutPort {
     if (task.kind === 'acquire-run-resources') {
         return {
             assignedWork: task.assignedWork,
+            boundaryKeys: task.boundaryKeys,
             boundaryUseCounts: task.boundaryUseCounts,
             command: task.command,
             kind: 'acquire-run-resources',
+            lane: task.lane,
+            lifecycle: task.lifecycle
+        };
+    }
+
+    if (task.kind === 'complete-resource-owner-work') {
+        return {
+            boundaryKeys: task.boundaryKeys,
+            kind: task.kind,
             lane: task.lane,
             lifecycle: task.lifecycle
         };

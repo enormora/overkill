@@ -84,6 +84,7 @@ function twoLanePlan(unit: WorkUnit): PlacementPlan {
     return {
         assignments: [ { lane: first.id, unit: unit.id } ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ unit ]
     };
 }

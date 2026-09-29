@@ -19,10 +19,32 @@ export type HedgedAuthorities = {
     readonly set: (key: string, authority: AuthoritativeTaskRun) => void;
 };
 
-export function unitCanUseBufferedHedging(runtime: WorkerPoolRunRuntime, unit: WorkUnit): boolean {
+function taskWorkKey(taskRun: WorkerPoolTaskRun): string {
+    return workIdentityKey(taskRun.unit.work[0]);
+}
+
+function hedgingEnabledForUnit(runtime: WorkerPoolRunRuntime, unit: WorkUnit): boolean {
     const { execution } = runtime.resolvedRun.facts;
 
-    if (execution.processModel !== 'worker-pool' || execution.hedging.mode === 'off' || unit.work.length !== 1) {
+    return execution.processModel === 'worker-pool' &&
+        execution.hedging.mode !== 'off' &&
+        unit.work.length === 1;
+}
+
+function unitUsesExternallySharedOwner(runtime: WorkerPoolRunRuntime, unit: WorkUnit): boolean {
+    const workKeys = new Set(unit.work.map(workIdentityKey));
+    const { placementPlan } = runtime.resolvedRun.facts.execution;
+
+    return placementPlan?.resourceOwnership.owners.some(function ownerSharesAcrossAttempts(owner) {
+        return (owner.scope === 'per-run' || owner.placement.kind === 'infrastructure-worker') &&
+            owner.work.some(function ownerUsesUnitWork(work) {
+                return workKeys.has(workIdentityKey(work));
+            });
+    }) ?? false;
+}
+
+export function unitCanUseBufferedHedging(runtime: WorkerPoolRunRuntime, unit: WorkUnit): boolean {
+    if (!hedgingEnabledForUnit(runtime, unit)) {
         return false;
     }
 
@@ -30,12 +52,9 @@ export function unitCanUseBufferedHedging(runtime: WorkerPoolRunRuntime, unit: W
         return true;
     }
 
-    return unit.workerLifecycle === 'fresh-worker-per-unit' &&
+    return !unitUsesExternallySharedOwner(runtime, unit) &&
+        unit.workerLifecycle === 'fresh-worker-per-unit' &&
         unit.resourceConstraints.duplicateExecution.includes('disposable-isolated');
-}
-
-function taskWorkKey(taskRun: WorkerPoolTaskRun): string {
-    return workIdentityKey(taskRun.unit.work[0]);
 }
 
 function firstPerTestResult(result: RunResult): PerTestResult | null {

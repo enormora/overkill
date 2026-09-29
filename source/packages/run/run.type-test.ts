@@ -22,6 +22,8 @@ import {
     type RunConfigLoadRequest,
     type RunEngineSelection,
     type RunExecutionFacts,
+    type RunExecutionPlanError,
+    type RunExecutionPlanConflict,
     type RunFacts,
     type RunIfMain,
     type RunIfMainOptions,
@@ -46,6 +48,7 @@ import {
     type RunProjectProfileConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
+    type ResourceOwnershipPlan,
     type RunRequest,
     type RunScheduling,
     type RunTestFamily,
@@ -309,6 +312,7 @@ describe('@overkill-dev/run', function () {
             'browser' | 'local-process' | 'local-worker' | 'remote'
         >();
         expect<PlacementPlan['assignments'][number]['unit']>().type.toBe<WorkUnit['id']>();
+        expect<PlacementPlan['resourceOwnership']>().type.toBe<ResourceOwnershipPlan>();
     });
 
     test('exposes placement trace entry kinds', function () {
@@ -400,6 +404,9 @@ describe('@overkill-dev/run config', function () {
         >();
         expect(new RunResolutionError('Unsupported.', undefined, 'unsupported-request')).type.toBe<
             RunResolutionError
+        >();
+        expect<ReturnType<RunExecutionPlanError['conflicts']>>().type.toBe<
+            readonly [RunExecutionPlanConflict, ...readonly RunExecutionPlanConflict[]]
         >();
     });
 
