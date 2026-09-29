@@ -5,9 +5,9 @@ import {
     resolvedRuntimeScenarioOwners,
     type EmptyResourceDependencies,
     type ResourceDefinition,
-    type ResourceScenarioSlot,
     type RuntimeDefinition
 } from './resources.ts';
+import type { ResourceScenarioSlot } from './resource-scenario.ts';
 import { runtimeMatrixDefinitionApi } from './runtime-matrix-definition.ts';
 
 const { defineRuntimeMatrix } = runtimeMatrixDefinitionApi;
@@ -17,7 +17,7 @@ type ScenarioResource = ResourceDefinition<
     string,
     EmptyResourceDependencies,
     unknown,
-    Readonly<Record<'mode', ResourceScenarioSlot>>
+    Readonly<Record<'mode', ResourceScenarioSlot<string, 'acquire'>>>
 >;
 
 function scenarioResource(name: string, values: readonly [string, ...string[]]): ScenarioResource {

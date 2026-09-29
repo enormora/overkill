@@ -1863,9 +1863,12 @@ type ResourceContext<Resources extends ResourceDependencies> = {
 
 type ScenarioTiming = 'acquire' | 'request-routed';
 
-type ResourceScenarioSlot<Scenario extends string = string> = {
+type ResourceScenarioSlot<
+    Scenario extends string = string,
+    Timing extends ScenarioTiming = ScenarioTiming
+> = {
     readonly default: Scenario;
-    readonly timing: ScenarioTiming;
+    readonly timing: Timing;
     readonly values: readonly [Scenario, ...Scenario[]];
 };
 
@@ -1875,12 +1878,20 @@ type ResourceScenarioBindings<Scenarios extends ResourceScenarioSlots> = {
     readonly [Slot in keyof Scenarios]: Scenarios[Slot]['values'][number];
 };
 
+type ResourceScenarioBindingsForTiming<
+    Scenarios extends ResourceScenarioSlots,
+    Timing extends ScenarioTiming
+> = {
+    readonly [Slot in keyof Scenarios as Timing extends Scenarios[Slot]['timing'] ? Slot : never]:
+        Scenarios[Slot]['values'][number];
+};
+
 type ResourceCreationContext<
     Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
     Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
 > = {
     readonly dependencies: ResourceContext<Dependencies>;
-    readonly scenarios: ResourceScenarioBindings<Scenarios>;
+    readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
 };
 
@@ -1889,8 +1900,14 @@ type ResourceDisposalContext<
     Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
 > = {
     readonly dependencies: ResourceContext<Dependencies>;
-    readonly scenarios: ResourceScenarioBindings<Scenarios>;
+    readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
+};
+
+type ResourceHandleExposureContext<
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
+> = {
+    readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'request-routed'>;
 };
 
 type ResourceProjectionPayload =
@@ -1924,6 +1941,9 @@ type ResourceDefinition<
     readonly dispose:
         | null
         | ((handle: OwnerHandle, context: ResourceDisposalContext<Dependencies, Scenarios>) => void | Promise<void>);
+    readonly exposeHandle:
+        | null
+        | ((handle: ConsumerHandle, context: ResourceHandleExposureContext<Scenarios>) => ConsumerHandle);
     readonly serializeHandle?: (
         handle: OwnerHandle,
         context: ResourceProjectionContext<Dependencies>

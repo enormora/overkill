@@ -159,7 +159,12 @@ async function disposeRuntimeResources(
     acquisition: Awaited<ReturnType<typeof acquireResourceGraph>>,
     signal: AbortSignal
 ): Promise<void> {
-    const failures = await disposeResources(acquisition.order, acquisition.handles, signal);
+    const failures = await disposeResources(
+        acquisition.order,
+        acquisition.ownerHandles,
+        acquisition.resourceHandles,
+        signal
+    );
 
     if (failures.length > 0) {
         throw resourceLifecycleError('Runtime resource disposal failed.', failures, failures[0]?.cause);

@@ -20,14 +20,18 @@ import {
     resourceLifecycleError,
     type ResourceLifecycleFailure
 } from './resource-lifecycle-error.ts';
-import { resolvedResourceScenarioBindings } from './resource-scenario-binding.ts';
+import {
+    acquisitionResourceScenarioBindings,
+    exposeResourceHandle
+} from './resource-scenario-binding.ts';
 
 type Mutable<Value> = {
     -readonly [Key in keyof Value]: Value[Key];
 };
 
 type ResourceAcquisitionResult = {
-    readonly handles: ReadonlyMap<AnyResourceDefinition, unknown>;
+    readonly ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
+    readonly resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
 };
 type ResourceAcquisitionContext = {
     readonly acquisitionFailureMessage: string;
@@ -93,10 +97,11 @@ function disposeResourceHandle(
 
 async function disposeResource(
     node: ResourceNode,
-    handles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
     signal: AbortSignal
 ): Promise<ResourceLifecycleFailure | null> {
-    const handle = handles.get(node.descriptor);
+    const handle = ownerHandles.get(node.descriptor);
     const { dispose } = callableResourceDefinition(node.descriptor);
 
     if (handle === undefined || dispose === null) {
@@ -105,8 +110,8 @@ async function disposeResource(
 
     try {
         await disposeResourceHandle(dispose, handle, {
-            dependencies: acquiredDependencyHandles(node.descriptor.dependencies, handles),
-            scenarios: resolvedResourceScenarioBindings(node.descriptor),
+            dependencies: acquiredDependencyHandles(node.descriptor.dependencies, resourceHandles),
+            scenarios: acquisitionResourceScenarioBindings(node.descriptor),
             signal
         });
 
@@ -118,13 +123,14 @@ async function disposeResource(
 
 export async function disposeResources(
     order: readonly ResourceNode[],
-    handles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
     signal: AbortSignal
 ): Promise<readonly ResourceLifecycleFailure[]> {
     const failures: ResourceLifecycleFailure[] = [];
 
     for (const node of order.toReversed()) {
-        const failure = await disposeResource(node, handles, signal);
+        const failure = await disposeResource(node, ownerHandles, resourceHandles, signal);
 
         if (failure !== null) {
             failures.push(failure);
@@ -136,10 +142,11 @@ export async function disposeResources(
 
 async function disposeResourceSession(
     order: readonly ResourceNode[],
-    handles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
+    resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>,
     signal: AbortSignal
 ): Promise<void> {
-    const failures = await disposeResources(order, handles, signal);
+    const failures = await disposeResources(order, ownerHandles, resourceHandles, signal);
 
     if (failures.length > 0) {
         throw resourceLifecycleError('Resource disposal failed.', failures, failures[0]?.cause);
@@ -153,7 +160,8 @@ function createResourceAcquisition(
     const abortController = new AbortController();
     const acquisitionSignal = AbortSignal.any([ signal, abortController.signal ]);
     const acquisitions = new Map<AnyResourceDefinition, Promise<unknown>>();
-    const handles = new Map<AnyResourceDefinition, unknown>();
+    const ownerHandles = new Map<AnyResourceDefinition, unknown>();
+    const resourceHandles = new Map<AnyResourceDefinition, unknown>();
     const acquisition: ResourceAcquisition = {
         async acquire(graph) {
             const results = await Promise.allSettled(
@@ -167,7 +175,7 @@ function createResourceAcquisition(
                 return await acquisition.failStartup(graph, failures);
             }
 
-            return { handles };
+            return { ownerHandles, resourceHandles };
         },
         async dependencies(dependencies) {
             const context: Mutable<Record<string, unknown>> = {};
@@ -183,7 +191,7 @@ function createResourceAcquisition(
         async failStartup(graph, failures) {
             abortController.abort(failures[0]?.cause);
 
-            const disposalFailures = await disposeResources(graph.order, handles, signal);
+            const disposalFailures = await disposeResources(graph.order, ownerHandles, resourceHandles, signal);
 
             throw resourceLifecycleError(acquisitionContext.acquisitionFailureMessage, [
                 ...failures,
@@ -207,15 +215,17 @@ function createResourceAcquisition(
             const dependencies = await acquisition.dependencies(resource.dependencies);
 
             try {
-                const handle = await acquireResourceHandle(resource, {
+                const ownerHandle = await acquireResourceHandle(resource, {
                     dependencies,
-                    scenarios: resolvedResourceScenarioBindings(resource),
+                    scenarios: acquisitionResourceScenarioBindings(resource),
                     signal: acquisitionSignal
                 });
+                ownerHandles.set(resource, ownerHandle);
+                const resourceHandle = exposeResourceHandle(resource, ownerHandle);
 
-                handles.set(resource, handle);
+                resourceHandles.set(resource, resourceHandle);
 
-                return handle;
+                return resourceHandle;
             } catch (error: unknown) {
                 abortController.abort(error);
                 throw resourceLifecycleError(`Resource "${resource.name}" acquisition failed.`, [
@@ -289,16 +299,18 @@ export async function acquireResourceGraph<Resources extends ResourceDependencie
     context: ResourceAcquisitionContext
 ): Promise<{
     readonly context: ResourceContext<Resources>;
-    readonly handles: ReadonlyMap<AnyResourceDefinition, unknown>;
+    readonly ownerHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
     readonly order: readonly ResourceNode[];
+    readonly resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
 }> {
     const graph = createResourceGraph(request.resources);
     const acquisition = await createResourceAcquisition(request.signal, context).acquire(graph);
 
     return {
-        context: resourceContext(request.resources, acquisition.handles),
-        handles: acquisition.handles,
-        order: graph.order
+        context: resourceContext(request.resources, acquisition.resourceHandles),
+        ownerHandles: acquisition.ownerHandles,
+        order: graph.order,
+        resourceHandles: acquisition.resourceHandles
     };
 }
 
@@ -311,7 +323,12 @@ export async function startResources<Resources extends ResourceDependencies>(
         context: acquisition.context,
         async disposeOnce(disposalContext: ResourceSessionDisposalContext): Promise<void> {
             if (disposal === null) {
-                disposal = disposeResourceSession(acquisition.order, acquisition.handles, disposalContext.signal);
+                disposal = disposeResourceSession(
+                    acquisition.order,
+                    acquisition.ownerHandles,
+                    acquisition.resourceHandles,
+                    disposalContext.signal
+                );
             }
 
             await disposal;

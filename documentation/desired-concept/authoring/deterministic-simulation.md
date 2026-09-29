@@ -222,14 +222,14 @@ Two scenario timing modes are in scope:
 
 - `request-routed`: the resource can serve multiple scenarios from the same
   acquired service. The scenario affects the exposed handle, URL builder, or
-  request construction.
+  request construction through `exposeHandle(...)`. Distinct bindings reuse
+  one acquired owner handle.
 - `acquire`: the scenario changes startup or acquired state. The scenario is
-  part of the acquisition and disposal contexts.
+  part of the acquisition and disposal contexts and the resource cache key.
 
-Until scenario-aware lifecycle cache identity lands, the runner rejects
-distinct bindings that would share one reusable lifecycle boundary. This
-applies to `per-run`, `per-file`, `per-suite`, and `shared-per-worker`
-resources. `per-case` bindings remain independent.
+A dependent resource's acquisition cache key includes the handle identity of
+its dependencies. A request-routed dependency can therefore reuse its owner
+while dependents acquire separately for distinct exposed views.
 
 ## What A Test Might Look Like
 

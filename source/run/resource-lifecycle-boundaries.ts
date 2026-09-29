@@ -7,6 +7,11 @@ import type {
     TestBodyRuntimeSummary
 } from '../engine/test-body-resource-attachment.ts';
 import type { AnyResourceDefinition, ResourceScope } from '../resources/resources.ts';
+import {
+    resourceAcquisitionCacheIdentity,
+    resourceDescriptorCacheIdentityNode,
+    type ResourceCacheIdentityNode
+} from './resource-lifecycle-cache-identity.ts';
 
 export type LifecycleBoundary = {
     readonly key: string;
@@ -47,53 +52,34 @@ function resourceBoundaryForCase(
         : { key: `case:${workIdentityKey(testCase.workId)}:${resourceName}`, scope };
 }
 
+function resourceNameWithAcquisitionIdentity(resourceName: string, acquisitionIdentity: string): string {
+    return acquisitionIdentity === ''
+        ? resourceName
+        : `${resourceName}:acquisition:${acquisitionIdentity}`;
+}
+
 function resourceBoundary(
     resourceName: string,
     scope: ResourceScope,
-    testCase: TestPlanCase
+    testCase: TestPlanCase,
+    acquisitionIdentity: string
 ): LifecycleBoundary {
+    const identifiedResourceName = resourceNameWithAcquisitionIdentity(resourceName, acquisitionIdentity);
     const file = testCase.id.file ?? '<no-file>';
 
     if (scope === 'per-run') {
-        return { key: `run:${resourceName}`, scope };
+        return { key: `run:${identifiedResourceName}`, scope };
     }
 
     if (scope === 'per-file') {
-        return { key: `file:${file}:${resourceName}`, scope };
+        return { key: `file:${file}:${identifiedResourceName}`, scope };
     }
 
     if (scope === 'per-suite') {
-        return { key: `suite:${file}:${suiteBoundary(testCase)}:${resourceName}`, scope };
+        return { key: `suite:${file}:${suiteBoundary(testCase)}:${identifiedResourceName}`, scope };
     }
 
-    return resourceBoundaryForCase(resourceName, scope, testCase);
-}
-
-function caseResourceBoundaries(testCase: TestPlanCase): readonly LifecycleBoundary[] {
-    const boundaryEntries = testCase.resourceAttachments.resourceGraph.flatMap(function toBoundaryEntry(resource) {
-        if (!isResourceScope(resource.scope)) {
-            return [];
-        }
-
-        const boundary = resourceBoundary(resource.name, resource.scope, testCase);
-
-        return [ [ boundary.key, boundary ] as const ];
-    });
-    const boundaries = new Map<string, LifecycleBoundary>(boundaryEntries);
-
-    return Array.from(boundaries.values());
-}
-
-function initialBoundaryUseCounts(testCases: readonly TestPlanCase[]): ReadonlyMap<string, number> {
-    const counts = new Map<string, number>();
-
-    for (const testCase of testCases) {
-        for (const boundary of caseResourceBoundaries(testCase)) {
-            counts.set(boundary.key, (counts.get(boundary.key) ?? 0) + 1);
-        }
-    }
-
-    return counts;
+    return resourceBoundaryForCase(identifiedResourceName, scope, testCase);
 }
 
 function selectedRuntimeId(testCase: TestPlanCase, runtime: TestBodyRuntimeSummary): RuntimeId {
@@ -118,12 +104,15 @@ function selectedRuntimeId(testCase: TestPlanCase, runtime: TestBodyRuntimeSumma
     return { dimensions: runtime.dimensions, name: runtime.name, variantId: null };
 }
 
-function selectedLeafRuntime(runtime: TestBodyRuntimeSummary): TestBodyLeafRuntimeSummary {
+function selectedLeafRuntime(testCase: TestPlanCase, runtime: TestBodyRuntimeSummary): TestBodyLeafRuntimeSummary {
     if (runtime.kind !== 'runtime-matrix') {
         return runtime;
     }
 
-    const variant = runtime.variants[0];
+    const selected = selectedRuntimeId(testCase, runtime);
+    const variant = runtime.variants.find(function variantMatches(candidate) {
+        return candidate.id === selected.variantId;
+    });
 
     if (variant === undefined) {
         throw new TypeError(`Runtime matrix "${runtime.name}" has no selected variant.`);
@@ -132,83 +121,147 @@ function selectedLeafRuntime(runtime: TestBodyRuntimeSummary): TestBodyLeafRunti
     return variant.runtime;
 }
 
-type LifecycleScenarioBinding = {
-    readonly key: string;
-    readonly resourceName: string;
-    readonly scope: ResourceScope;
-    readonly slot: string;
-    readonly value: string;
-};
+type ScenarioBindingsByResource = ReadonlyMap<string, ReadonlyMap<string, TestBodyRuntimeScenarioBindingSummary>>;
 
-function lifecycleScenarioBinding(
-    testCase: TestPlanCase,
-    runtimeKey: string,
-    resource: TestBodyResourceSummary | undefined,
-    binding: TestBodyRuntimeScenarioBindingSummary
-): LifecycleScenarioBinding | null {
-    if (resource === undefined || !isResourceScope(resource.scope) || resource.scope === 'per-case') {
-        return null;
+function scenarioBindingsByResource(runtime: TestBodyLeafRuntimeSummary): ScenarioBindingsByResource {
+    const bindings = new Map<string, Map<string, TestBodyRuntimeScenarioBindingSummary>>();
+
+    for (const binding of runtime.scenarioBindings) {
+        const resourceBindings = bindings.get(binding.owner.resourceName) ??
+            new Map<string, TestBodyRuntimeScenarioBindingSummary>();
+
+        resourceBindings.set(binding.name, binding);
+        bindings.set(binding.owner.resourceName, resourceBindings);
     }
 
-    const scopedResourceName = `${resource.name}@${runtimeKey}`;
-    const boundary = resourceBoundary(scopedResourceName, resource.scope, testCase);
+    return bindings;
+}
+
+function resourceSummaryCacheIdentityNode(
+    resource: TestBodyResourceSummary,
+    resourcesByName: ReadonlyMap<string, TestBodyResourceSummary>,
+    bindingsByResource: ScenarioBindingsByResource
+): ResourceCacheIdentityNode {
+    const bindings = bindingsByResource.get(resource.name) ??
+        new Map<string, TestBodyRuntimeScenarioBindingSummary>();
 
     return {
-        key: `${boundary.key}:${binding.name}`,
-        resourceName: resource.name,
-        scope: resource.scope,
-        slot: binding.name,
-        value: binding.value
+        dependencies: resource.dependencies.flatMap(function dependencyNode(dependencyName) {
+            const dependency = resourcesByName.get(dependencyName);
+
+            return dependency === undefined
+                ? []
+                : [ {
+                    key: dependency.name,
+                    resource: resourceSummaryCacheIdentityNode(dependency, resourcesByName, bindingsByResource)
+                } ];
+        }),
+        scenarios: resource.scenarios.map(function scenarioBinding(scenario) {
+            return {
+                name: scenario.name,
+                timing: scenario.timing,
+                value: bindings.get(scenario.name)?.value ?? scenario.default
+            };
+        })
     };
 }
 
-function caseLifecycleScenarioBindings(testCase: TestPlanCase): readonly LifecycleScenarioBinding[] {
+function resourceGraphBoundaries(
+    testCase: TestPlanCase,
+    rootResourceNames: readonly string[],
+    resourceName: (resource: TestBodyResourceSummary) => string,
+    bindingsByResource: ScenarioBindingsByResource
+): readonly LifecycleBoundary[] {
     const resourcesByName = new Map(testCase.resourceAttachments.resourceGraph.map(function resourceEntry(resource) {
         return [ resource.name, resource ] as const;
     }));
+    const visited = new Set<string>();
+    const boundaries: LifecycleBoundary[] = [];
 
-    return testCase.resourceAttachments.runtimeGraphs.flatMap(function runtimeBindings(runtime) {
-        const runtimeKey = runtimeIdentityKey(selectedRuntimeId(testCase, runtime));
+    function recordBoundary(resource: TestBodyResourceSummary): void {
+        if (!isResourceScope(resource.scope)) {
+            return;
+        }
 
-        return selectedLeafRuntime(runtime).scenarioBindings.flatMap(function resourceBinding(binding) {
-            const resolved = lifecycleScenarioBinding(
-                testCase,
-                runtimeKey,
-                resourcesByName.get(binding.owner.resourceName),
-                binding
-            );
+        const identity = resourceAcquisitionCacheIdentity(
+            resourceSummaryCacheIdentityNode(resource, resourcesByName, bindingsByResource)
+        );
 
-            return resolved === null ? [] : [ resolved ];
-        });
-    });
-}
-
-function recordCompatibleBinding(
-    valuesByBoundaryAndSlot: ReadonlyMap<string, string>,
-    binding: LifecycleScenarioBinding
-): ReadonlyMap<string, string> {
-    const existing = valuesByBoundaryAndSlot.get(binding.key);
-
-    if (existing !== undefined && existing !== binding.value) {
-        const messageParts = [
-            `Resource "${binding.resourceName}" scenario "${binding.slot}" has conflicting values`,
-            `"${existing}" and "${binding.value}" within one ${binding.scope} lifecycle boundary.`
-        ];
-
-        throw new TypeError(messageParts.join(' '));
+        boundaries.push(resourceBoundary(resourceName(resource), resource.scope, testCase, identity));
     }
 
-    return new Map([ ...valuesByBoundaryAndSlot, [ binding.key, binding.value ] ]);
+    function visit(name: string): void {
+        if (visited.has(name)) {
+            return;
+        }
+
+        const resource = resourcesByName.get(name);
+
+        if (resource === undefined) {
+            return;
+        }
+
+        visited.add(name);
+
+        for (const dependencyName of resource.dependencies) {
+            visit(dependencyName);
+        }
+
+        recordBoundary(resource);
+    }
+
+    for (const rootResourceName of rootResourceNames) {
+        visit(rootResourceName);
+    }
+
+    return boundaries;
 }
 
-function assertCompatibleScenarioBindings(testCases: readonly TestPlanCase[]): void {
-    let valuesByBoundaryAndSlot: ReadonlyMap<string, string> = new Map();
+function caseResourceBoundaries(testCase: TestPlanCase): readonly LifecycleBoundary[] {
+    const directBoundaries = resourceGraphBoundaries(
+        testCase,
+        testCase.resourceAttachments.directResources.map(function directResourceName(resource) {
+            return resource.resourceName;
+        }),
+        function directResourceName(resource) {
+            return resource.name;
+        },
+        new Map()
+    );
+    const runtimeBoundaries = testCase.resourceAttachments.runtimeGraphs.flatMap(function runtimeResources(runtime) {
+        const runtimeKey = runtimeIdentityKey(selectedRuntimeId(testCase, runtime));
+        const selectedRuntime = selectedLeafRuntime(testCase, runtime);
+
+        return resourceGraphBoundaries(
+            testCase,
+            selectedRuntime.resources.map(function runtimeResourceName(resource) {
+                return resource.resourceName;
+            }),
+            function scopedResourceName(resource) {
+                return `${resource.name}@${runtimeKey}`;
+            },
+            scenarioBindingsByResource(selectedRuntime)
+        );
+    });
+    const boundaries = new Map(
+        [ ...directBoundaries, ...runtimeBoundaries ].map(function boundaryEntry(boundary) {
+            return [ boundary.key, boundary ] as const;
+        })
+    );
+
+    return Array.from(boundaries.values());
+}
+
+function initialBoundaryUseCounts(testCases: readonly TestPlanCase[]): ReadonlyMap<string, number> {
+    const counts = new Map<string, number>();
 
     for (const testCase of testCases) {
-        for (const binding of caseLifecycleScenarioBindings(testCase)) {
-            valuesByBoundaryAndSlot = recordCompatibleBinding(valuesByBoundaryAndSlot, binding);
+        for (const boundary of caseResourceBoundaries(testCase)) {
+            counts.set(boundary.key, (counts.get(boundary.key) ?? 0) + 1);
         }
     }
+
+    return counts;
 }
 
 export function initialBoundaryUseCountsFromRecords(
@@ -222,8 +275,6 @@ export function initialBoundaryUseCountsFromRecords(
 export function resourceLifecycleBoundaryUseCounts(
     testCases: readonly TestPlanCase[]
 ): readonly ResourceBoundaryUseCount[] {
-    assertCompatibleScenarioBindings(testCases);
-
     return Array.from(initialBoundaryUseCounts(testCases), function toCount([ boundaryKey, count ]) {
         return { boundaryKey, count };
     });
@@ -239,5 +290,10 @@ export function caseResourceBoundaryKeys(
 }
 
 export function boundaryFor(resource: AnyResourceDefinition, testCase: TestPlanCase): LifecycleBoundary {
-    return resourceBoundary(resource.name, resource.scope, testCase);
+    return resourceBoundary(
+        resource.name,
+        resource.scope,
+        testCase,
+        resourceAcquisitionCacheIdentity(resourceDescriptorCacheIdentityNode(resource))
+    );
 }

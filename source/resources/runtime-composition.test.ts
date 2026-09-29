@@ -210,13 +210,18 @@ function nestedScenarioRuntime(events: ScenarioEventLog): RuntimeDefinition {
                 values: [ 'healthy', 'outage' ]
             }
         },
-        acquire(context) {
-            events.add(`acquire:api:${context.scenarios.api}`);
+        acquire(context): string {
+            events.add('acquire:api');
 
-            return `${context.dependencies.database}:${context.scenarios.api}`;
+            return context.dependencies.database;
         },
-        dispose(_handle, context) {
-            events.add(`dispose:api:${context.scenarios.api}`);
+        dispose() {
+            events.add('dispose:api');
+        },
+        exposeHandle(handle, context) {
+            events.add(`expose:api:${context.scenarios.api}`);
+
+            return `${handle}:${context.scenarios.api}`;
         }
     });
     const runtime = defineRuntime({
@@ -244,8 +249,9 @@ async function assertScenarioBindingsReachNestedOwners(scope: TestScope): Promis
 
     scope.assert.deepEqual(events.values(), [
         'acquire:database:empty',
-        'acquire:api:outage',
-        'dispose:api:outage',
+        'acquire:api',
+        'expose:api:outage',
+        'dispose:api',
         'dispose:database:empty'
     ]);
 }

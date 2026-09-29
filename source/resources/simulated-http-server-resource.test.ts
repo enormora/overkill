@@ -166,12 +166,12 @@ async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
         simulation,
         address: { kind: 'loopback', port: 0 }
     });
-    const signal = testSignal();
-    const acquisitions = [
-        Promise.resolve(resource.acquire({ dependencies: {}, signal } as never)),
-        Promise.resolve(resource.acquire({ dependencies: {}, scenarios: { api: 1 }, signal } as never))
-    ] as const;
-    const [ withoutScenarios, invalidScenario ] = await Promise.all(acquisitions);
+    const acquired = await resource.acquire({ dependencies: {}, scenarios: {}, signal: testSignal() });
+    const withoutScenarios: unknown = Reflect.apply(resource.exposeHandle, undefined, [ acquired, {} ]);
+    const invalidScenario: unknown = Reflect.apply(resource.exposeHandle, undefined, [
+        acquired,
+        { scenarios: { api: 1 } }
+    ]);
 
     scope.assert.deepEqual([
         typeof Reflect.get(withoutScenarios as Readonly<Record<string, unknown>>, 'baseUrl'),
@@ -181,15 +181,14 @@ async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
         throw new Error('Expected resource disposal.');
     }
 
-    const context = { dependencies: {}, scenarios: { api: 'default' as const }, signal };
+    const context = { dependencies: {}, scenarios: { api: 'default' as const }, signal: testSignal() };
 
     scope.assert.deepEqual(
         await Promise.all([
             resource.dispose({} as never, context),
-            resource.dispose(withoutScenarios as never, context),
-            resource.dispose(invalidScenario as never, context)
+            resource.dispose(acquired, context)
         ]),
-        [ undefined, undefined, undefined ]
+        [ undefined, undefined ]
     );
 }
 
