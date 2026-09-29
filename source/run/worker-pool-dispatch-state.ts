@@ -1,5 +1,5 @@
 import type { PlacementLane, WorkUnit } from './run-types.ts';
-import { traceUnitKey, type TraceWorkUnitId } from './placement-trace.ts';
+import { traceUnitKey, type PlacementAttemptId, type TraceWorkUnitId } from './placement-trace.ts';
 import { hardConstraintKeys as resourceHardConstraintKeys } from './work-unit-resource-constraints.ts';
 
 export type WorkUnitQueue<T> = {
@@ -40,6 +40,7 @@ export type DynamicReservations = {
 };
 
 export type WorkerPoolLeaseMember = {
+    readonly attempt: PlacementAttemptId;
     readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;
 };
@@ -61,6 +62,7 @@ type WorkerPoolFinishOutcome = {
 };
 
 type WorkerPoolRequeuedUnit = {
+    readonly previousAttempt: PlacementAttemptId;
     readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;
 };

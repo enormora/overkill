@@ -20,6 +20,7 @@ import type {
 } from './supervised-run-state.ts';
 import {
     workerPoolCollectedPlan,
+    workerPoolPlacementTrace,
     type WorkerPoolRunRuntime,
     type WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
@@ -180,7 +181,13 @@ export async function finishWorkerPoolRun(
         [ ...runtime.runState.artifacts(), ...allTaskArtifacts(completedTaskRuns), ...taskArtifacts(runtime) ]
     );
 
-    return await reportFinalResult(await runtime.finalizeResult(result), runtime);
+    return await reportFinalResult(
+        await runtime.finalizeResult({
+            placementTrace: workerPoolPlacementTrace(runtime).finish(),
+            result
+        }),
+        runtime
+    );
 }
 
 export async function createEmptyWorkerPoolResult(

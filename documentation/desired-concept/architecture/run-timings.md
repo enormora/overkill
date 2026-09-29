@@ -146,6 +146,9 @@ making slow import, assignment, and teardown work visible.
 Precise spans may overlap. Aggregates are per-kind diagnostic totals, not a
 partition of wall-clock time.
 
+Worker identity is an opaque executor-instance id shared with placement
+attempts. Consumers must not parse it or treat a placement lane as a worker.
+
 For reusable worker pools, `worker.teardown` means observable assigned-task
 teardown at the worker task boundary. It does not imply the underlying worker
 thread or process exited.

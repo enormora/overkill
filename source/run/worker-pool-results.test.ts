@@ -21,6 +21,7 @@ import {
     workerPoolResolvedRun
 } from './worker-pool-execution-state.test.ts';
 import { createEmptyWorkerPoolResult, finishWorkerPoolRun } from './worker-pool-results.ts';
+import type { PlacementTrace } from './placement-trace.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
@@ -28,6 +29,10 @@ type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
 type ReportedEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
 type ReporterEventRecorder = {
     readonly record: (event: ReportedEvent) => void;
+};
+type TraceCapturingRuntime = {
+    readonly placementTraces: readonly PlacementTrace[];
+    readonly runtime: WorkerPoolRunRuntime;
 };
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -183,6 +188,22 @@ function measuredResultRuntime(): WorkerPoolRunRuntime {
     };
 }
 
+function traceCapturingRuntime(): TraceCapturingRuntime {
+    const placementTraces: PlacementTrace[] = [];
+
+    return {
+        placementTraces,
+        runtime: {
+            ...measuredResultRuntime(),
+            async finalizeResult(completion) {
+                placementTraces.push(completion.placementTrace);
+
+                return completion.result;
+            }
+        }
+    };
+}
+
 function recordFinalizationArtifacts(
     runtime: WorkerPoolRunRuntime,
     activeState: SupervisedRunState,
@@ -193,17 +214,26 @@ function recordFinalizationArtifacts(
     completedState.recordCapturedOutput('stderr', Buffer.from('completed artifact'), 2);
 }
 
-async function workerPoolFinalizationResults(): Promise<{
-    readonly emptyResult: RunResult;
-    readonly result: RunResult;
-}> {
-    const runtime = measuredResultRuntime();
-    const activeState = createSupervisedRunState();
-    const completedState = createSupervisedRunState();
-
+function prepareFinalizationRuntime(
+    runtime: WorkerPoolRunRuntime,
+    activeState: SupervisedRunState,
+    completedState: SupervisedRunState
+): void {
     recordFinalizationArtifacts(runtime, activeState, completedState);
     runtime.activeTasks.add(createTaskRun(activeState));
     runtime.taskResults.push(emptyRunResult([ passResult() ]));
+}
+
+async function workerPoolFinalizationResults(): Promise<{
+    readonly emptyResult: RunResult;
+    readonly placementTrace: PlacementTrace;
+    readonly result: RunResult;
+}> {
+    const { placementTraces, runtime } = traceCapturingRuntime();
+    const activeState = createSupervisedRunState();
+    const completedState = createSupervisedRunState();
+
+    prepareFinalizationRuntime(runtime, activeState, completedState);
 
     const result = await finishWorkerPoolRun(runtime, [ createTaskRun(completedState) ], 10);
     const emptyResult = await createEmptyWorkerPoolResult(
@@ -212,7 +242,13 @@ async function workerPoolFinalizationResults(): Promise<{
         createSupervisedRunState()
     );
 
-    return { emptyResult, result };
+    const placementTrace = placementTraces[0];
+
+    if (placementTrace === undefined) {
+        throw new Error('Worker-pool finalization did not provide a placement trace.');
+    }
+
+    return { emptyResult, placementTrace, result };
 }
 
 export const testNode = createOverkillSuite({
@@ -223,9 +259,11 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'worker-pool finalization and empty results aggregate run state',
             async body(scope: OverkillScope) {
-                const { emptyResult, result } = await workerPoolFinalizationResults();
+                const { emptyResult, placementTrace, result } = await workerPoolFinalizationResults();
 
                 scope.assert.equal(result.perTest[0]?.id.title, 'first');
+                scope.assert.deepEqual(placementTrace.entries, []);
+                scope.assert.equal(Object.isFrozen(placementTrace), true);
                 scope.assert.deepEqual(
                     result.artifacts.map(function toText(artifact) {
                         if (artifact.payload.kind !== 'captured-output') {

@@ -389,7 +389,11 @@ export const testNode = createOverkillSuite({
 
                 assertFreshReservation(scope, firstLease);
                 finishSuccessfulPrimary(dispatcher, firstLease);
-                dispatcher.requeue({ traceUnit: firstLease.traceUnit, unit: firstLease.unit });
+                dispatcher.requeue({
+                    previousAttempt: firstLease.members[0].attempt,
+                    traceUnit: firstLease.traceUnit,
+                    unit: firstLease.unit
+                });
                 scope.assert.equal(dispatcher.pull(secondLane(plan)), null);
                 assertRetainedReservation(scope, pullRequiredLease(dispatcher, firstLane(plan)));
 
@@ -479,7 +483,7 @@ export const testNode = createOverkillSuite({
                 const dispatcher = createWorkDispatcher(fakeWorkerRuntime(plan), plan);
 
                 dispatcher.clear();
-                dispatcher.requeue({ traceUnit: unit.id, unit });
+                dispatcher.requeue({ previousAttempt: 'attempt-1', traceUnit: unit.id, unit });
                 const lease = pullRequiredLease(dispatcher, firstLane(plan));
 
                 scope.assert.equal(lease.unit.work.length, 2);

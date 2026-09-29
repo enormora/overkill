@@ -78,8 +78,13 @@ export type { RunInvocationTimingOptions } from '../../run/run-timing-collection
 export type { RuntimeDimensions, RuntimeId, WorkId, WorkloadId } from '../../engine/identity.ts';
 export type {
     DynamicWorkUnitId,
+    PlacementAttemptId,
+    PlacementAttemptInterruptionCause,
+    PlacementAttemptReason,
+    PlacementRecoveryDecision,
     PlacementTrace,
     PlacementTraceEntry,
+    PlacementWorkerId,
     TraceWorkUnitId
 } from '../../run/placement-trace.ts';
 export type {

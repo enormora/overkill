@@ -223,7 +223,7 @@ function primaryLease(unit: WorkUnit, lane: PlacementLane): WorkerPoolUnitLease 
         envelopeId: null,
         kind: 'primary',
         lane,
-        members: [ { traceUnit: unit.id, unit } ],
+        members: [ { attempt: 'attempt-1', traceUnit: unit.id, unit } ],
         reservation: {
             faultDomains: [],
             hardKeys: []

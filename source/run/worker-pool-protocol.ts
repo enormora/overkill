@@ -7,7 +7,7 @@ import type {
     RunResult
 } from '../engine/run-result.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
-import type { TraceWorkUnitId } from './placement-trace.ts';
+import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
 import type {
     CollectedRunPlan,
     RunEngineSelection,
@@ -42,6 +42,7 @@ export type WorkerPoolCommand = {
 export const workerPoolRunResourceOwnerLane = 'run-resource-owner';
 
 export type WorkerPoolAssignedUnit = {
+    readonly attempt: PlacementAttemptId;
     readonly traceUnit: TraceWorkUnitId;
     readonly work: readonly WorkId[];
 };
@@ -117,14 +118,15 @@ type WorkerPoolReporterMessage = {
 };
 
 type WorkerPoolUnitCompletedMessage = {
+    readonly attempt: PlacementAttemptId;
     readonly durationMicroseconds: number;
-    readonly kind: 'unit-completed';
-    readonly traceUnit: TraceWorkUnitId;
+    readonly kind: 'attempt-completed';
 };
 
 type WorkerPoolUnitStartedMessage = {
-    readonly kind: 'unit-started';
-    readonly traceUnit: TraceWorkUnitId;
+    readonly attempt: PlacementAttemptId;
+    readonly kind: 'attempt-started';
+    readonly workerId: PlacementWorkerId;
 };
 
 type WorkerPoolTimingMessage = {
@@ -136,8 +138,8 @@ type WorkerPoolMessagesByKind = {
     readonly event: WorkerPoolReporterMessage;
     readonly output: WorkerPoolOutputMessage;
     readonly timing: WorkerPoolTimingMessage;
-    readonly unitCompleted: WorkerPoolUnitCompletedMessage;
-    readonly unitStarted: WorkerPoolUnitStartedMessage;
+    readonly attemptCompleted: WorkerPoolUnitCompletedMessage;
+    readonly attemptStarted: WorkerPoolUnitStartedMessage;
 };
 
 export type WorkerPoolMessage = WorkerPoolMessagesByKind[keyof WorkerPoolMessagesByKind];

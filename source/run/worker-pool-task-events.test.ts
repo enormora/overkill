@@ -94,10 +94,15 @@ function eventMessage(event: ReporterEvent): WorkerPoolMessage {
     return { event, kind: 'event' };
 }
 
-function taskRunWithLane(lane: string): WorkerPoolTaskRun {
+function taskRunWithLane(lane: string, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
+    const taskRun = createTaskRun(createSupervisedRunState());
+    const member = taskRun.members[0];
+    const attempt = runtime.placementTrace.assignAttempt(member.traceUnit, member.unit.work, lane, { kind: 'initial' });
+
     return {
-        ...createTaskRun(createSupervisedRunState()),
+        ...taskRun,
         lane,
+        members: [ { ...member, attempt } ],
         reporterEventsBuffered: true
     };
 }
@@ -191,7 +196,7 @@ function recordPermissionFailureForTask(taskRun: WorkerPoolTaskRun, runtime: Wor
 
 function runLevelPermissionFailure(): RunLevelPermissionFailure {
     const runtime = hedgedRuntime();
-    const taskRun = taskRunWithLane('worker-1');
+    const taskRun = taskRunWithLane('worker-1', runtime);
     const actions: string[] = [];
     const recordAction = function recordAction(action: string): void {
         actions.push(action);
@@ -232,7 +237,7 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool task events buffer starts and clear completed timeouts',
             body(scope: OverkillScope) {
                 const runtime = hedgedRuntime();
-                const taskRun = taskRunWithLane('worker-1');
+                const taskRun = taskRunWithLane('worker-1', runtime);
 
                 handleWorkerMessage(eventMessage(startEventWithoutWorkId()), taskRun, runtime);
                 handleWorkerMessage(eventMessage(startEvent()), taskRun, runtime);
@@ -258,16 +263,17 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             ...testCaseMetadata,
-            title: 'worker-pool task events keep active trace for unrelated completed units',
+            title: 'worker-pool task events complete the active placement attempt',
             body(scope: OverkillScope) {
                 const runtime = hedgedRuntime();
-                const taskRun = taskRunWithLane('worker-1');
-                const activeTraceUnit = taskRun.traceUnit;
+                const taskRun = taskRunWithLane('worker-1', runtime);
+                const { attempt } = taskRun.members[0];
 
                 handleWorkerMessage(
                     {
-                        kind: 'unit-started',
-                        traceUnit: activeTraceUnit
+                        attempt,
+                        kind: 'attempt-started',
+                        workerId: '1:1'
                     },
                     taskRun,
                     runtime
@@ -275,14 +281,14 @@ export const testNode = createOverkillSuite({
                 handleWorkerMessage(
                     {
                         durationMicroseconds: 7,
-                        kind: 'unit-completed',
-                        traceUnit: { ...activeTraceUnit }
+                        attempt,
+                        kind: 'attempt-completed'
                     },
                     taskRun,
                     runtime
                 );
 
-                scope.assert.equal(taskRun.activeTraceUnit.read(), activeTraceUnit);
+                scope.assert.equal(taskRun.activeAttempt.read(), null);
 
                 return scope.assert.collect();
             }
@@ -292,7 +298,7 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool task events ignore ordinary task errors for permission handling',
             body(scope: OverkillScope) {
                 const runtime = hedgedRuntime();
-                const taskRun = taskRunWithLane('worker-1');
+                const taskRun = taskRunWithLane('worker-1', runtime);
                 const actions: string[] = [];
 
                 const recorded = recordTaskPermissionFailure(
@@ -330,7 +336,7 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool task events attribute permission task failures to the active case',
             body(scope: OverkillScope) {
                 const runtime = hedgedRuntime();
-                const taskRun = taskRunWithLane('worker-1');
+                const taskRun = taskRunWithLane('worker-1', runtime);
                 const activeCase = firstCaseId();
 
                 taskRun.state.addActiveCase('active', { capture: null, id: activeCase }, 0);

@@ -254,13 +254,18 @@ function assertHedgedStraggler(scope: OverkillScope): void {
     scope.assert.equal(filler.kind, 'primary');
     scope.assert.equal(duplicate.kind, 'hedged-duplicate');
     scope.assert.deepEqual(duplicate.unit.work, primary.unit.work);
-    const traceEntry = runtime.placementTraceEntries[0];
+    const traceEntry = runtime.placementTraceEntries.find(function isHedgeAssignment(entry) {
+        return entry.kind === 'attempt-assigned' && entry.reason.kind === 'hedge';
+    });
 
     scope.require.defined(traceEntry);
     scope.assert.deepEqual(traceEntry, {
-        kind: 'hedged-duplicate-started',
+        attempt: duplicate.members[0].attempt,
+        kind: 'attempt-assigned',
+        lane: secondLane(plan).id,
+        reason: { kind: 'hedge', primaryAttempt: primary.members[0].attempt },
         unit: primary.traceUnit,
-        workerId: secondLane(plan).id
+        work: primary.unit.work
     });
     dispatcher.finish(duplicate, {
         learnWarmth: false,

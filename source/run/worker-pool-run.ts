@@ -25,12 +25,14 @@ import {
 } from './worker-pool-results.ts';
 import {
     createWorkerPoolRuntime,
+    createWorkerPoolPlacementTraceRecorder,
     workerPoolPlacementPlan,
     type WorkerPoolCollectionResult,
+    type WorkerPoolRunCompletion,
     type WorkerPoolRuntimeInput
 } from './worker-pool-runtime.ts';
 
-type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
+type RunResultFinalizer = (resolvedRun: ResolvedRun, completion: WorkerPoolRunCompletion) => Promise<RunResult>;
 type RunTimingMeasurement = NonNullable<NonNullable<WorkerPoolRuntimeInput['timing']>>;
 const emptyWorkerPoolTimingMetadata = Object.freeze({
     label: null,
@@ -117,8 +119,8 @@ async function createRuntime(
         collectionRunnerErrors: resolvedRun.collectionRunnerErrors,
         createdPool: state.createdPool,
         dependencies,
-        async finalizeResult(result: RunResult): Promise<RunResult> {
-            return await state.finalizeResult(resolvedRun, result);
+        async finalizeResult(completion): Promise<RunResult> {
+            return await state.finalizeResult(resolvedRun, completion);
         },
         resolvedRun,
         runState: state.collectionRunState,
@@ -153,7 +155,11 @@ async function executeWorkerPoolRunWithState(
     state: WorkerPoolExecutionState
 ): Promise<RunResult> {
     if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
-        return await createEmptyWorkerPoolResult(resolvedRun, dependencies, state.collectionRunState);
+        const result = await createEmptyWorkerPoolResult(resolvedRun, dependencies, state.collectionRunState);
+        return await state.finalizeResult(resolvedRun, {
+            placementTrace: createWorkerPoolPlacementTraceRecorder().finish(),
+            result
+        });
     }
 
     const runtime = await createRuntime(resolvedRun, dependencies, state);

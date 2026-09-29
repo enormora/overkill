@@ -1,5 +1,10 @@
 import { workIdentityKey } from '../engine/identity.ts';
-import type { DynamicWorkUnitId, PlacementTraceEntry, TraceWorkUnitId } from './placement-trace.ts';
+import type {
+    DynamicWorkUnitId,
+    PlacementDecisionEntry,
+    PlacementAttemptReason,
+    TraceWorkUnitId
+} from './placement-trace.ts';
 import type { WorkUnit } from './run-types.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import { workResourceConstraints } from './work-unit-resource-constraints.ts';
@@ -11,6 +16,7 @@ export type QueuePriority = {
 
 export type QueuedWorkUnit = {
     readonly priority: QueuePriority;
+    readonly reason: PlacementAttemptReason;
     readonly split: 'eligible-original' | 'fixed';
     readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;
@@ -26,7 +32,7 @@ type SplitQueuedWorkUnit = QueuedWorkUnit & {
 };
 type SplitQueuedWorkUnitResult = {
     readonly children: readonly QueuedWorkUnit[];
-    readonly traceEntry: PlacementTraceEntry;
+    readonly traceEntry: Extract<PlacementDecisionEntry, { readonly kind: 'unit-split'; }>;
 };
 
 const requeuedParentOrder = Number.MAX_SAFE_INTEGER;
@@ -38,6 +44,7 @@ function queuePriority(parentOrder: number, childOrder: number): QueuePriority {
 export function originalQueueItem(unit: WorkUnit, parentOrder: number): QueuedWorkUnit {
     return {
         priority: queuePriority(parentOrder, 0),
+        reason: { kind: 'initial' },
         split: 'eligible-original',
         traceUnit: unit.id,
         unit
@@ -47,10 +54,12 @@ export function originalQueueItem(unit: WorkUnit, parentOrder: number): QueuedWo
 export function fixedQueueItem(
     unit: WorkUnit,
     traceUnit: TraceWorkUnitId,
-    priority: QueuePriority
+    priority: QueuePriority,
+    reason: PlacementAttemptReason
 ): QueuedWorkUnit {
     return {
         priority,
+        reason,
         split: 'fixed',
         traceUnit,
         unit
@@ -86,7 +95,8 @@ function splitChildUnits(runtime: WorkerPoolRunRuntime, item: QueuedWorkUnit): r
                     work: [ work ]
                 },
                 traceUnit,
-                priority
+                priority,
+                item.reason
             ),
             traceUnit
         };

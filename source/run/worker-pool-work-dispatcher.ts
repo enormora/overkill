@@ -7,7 +7,7 @@ import type {
     PlacementPlan,
     WorkUnit
 } from './run-types.ts';
-import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
+import { workerPoolPlacementTrace, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import {
     assignedWorkUnits,
     faultQuotas,
@@ -165,7 +165,7 @@ function createDynamicDispatchState(runtime: WorkerPoolRunRuntime, plan: Placeme
         laneCanLeaseHedgeCandidate(entry, lane) {
             return laneCanLease(
                 state,
-                fixedQueueItem(entry.lease.unit, entry.lease.traceUnit, requeuedPriority()),
+                fixedQueueItem(entry.lease.unit, entry.lease.traceUnit, requeuedPriority(), { kind: 'initial' }),
                 lane
             );
         }
@@ -293,7 +293,7 @@ function splitPendingUnit(state: DynamicDispatchState, item: QueuedWorkUnit): vo
 
     state.pendingUnits.remove(item);
     state.pendingUnits.pushMany(split.children);
-    state.runtime.recordPlacementTraceEntry(split.traceEntry);
+    workerPoolPlacementTrace(state.runtime).recordDecision(split.traceEntry);
 }
 
 function selectPendingUnit(state: DynamicDispatchState, lane: PlacementLane): QueuedWorkUnit | undefined {
@@ -321,7 +321,7 @@ function selectPendingUnit(state: DynamicDispatchState, lane: PlacementLane): Qu
     });
 
     if (selection.traceEntry !== null) {
-        state.runtime.recordPlacementTraceEntry(selection.traceEntry);
+        workerPoolPlacementTrace(state.runtime).recordDecision(selection.traceEntry);
     }
 
     return selection.item;
@@ -347,11 +347,24 @@ function leasePendingUnit(state: DynamicDispatchState, lane: PlacementLane, item
         state.pendingUnits.remove(member);
     }
 
+    const [ firstMember, ...remainingMembers ] = batch.members;
+    const assignAttempt = function assignAttempt(member: QueuedWorkUnit): WorkerPoolUnitLease['members'][number] {
+        return {
+            attempt: workerPoolPlacementTrace(state.runtime).assignAttempt(
+                member.traceUnit,
+                member.unit.work,
+                lane.id,
+                member.reason
+            ),
+            traceUnit: member.traceUnit,
+            unit: member.unit
+        };
+    };
     const lease: WorkerPoolUnitLease = {
         envelopeId: batch.envelopeId,
         kind: 'primary',
         lane,
-        members: batch.leaseMembers,
+        members: [ assignAttempt(firstMember), ...remainingMembers.map(assignAttempt) ],
         reservation: batch.reservation,
         traceUnit: item.traceUnit,
         unit: item.unit
@@ -371,19 +384,22 @@ function leaseHedgedDuplicate(
         envelopeId: null,
         kind: 'hedged-duplicate',
         lane,
-        members: [ { traceUnit: active.lease.traceUnit, unit: active.lease.unit } ],
+        members: [ {
+            attempt: workerPoolPlacementTrace(state.runtime).assignAttempt(
+                active.lease.traceUnit,
+                active.lease.unit.work,
+                lane.id,
+                { kind: 'hedge', primaryAttempt: active.lease.members[0].attempt }
+            ),
+            traceUnit: active.lease.traceUnit,
+            unit: active.lease.unit
+        } ],
         reservation: freshReservation(state, active.lease.unit, lane),
         traceUnit: active.lease.traceUnit,
         unit: active.lease.unit
     };
 
     recordActiveLease(state, lease);
-    state.runtime.recordPlacementTraceEntry({
-        kind: 'hedged-duplicate-started',
-        unit: lease.traceUnit,
-        workerId: lane.id
-    });
-
     return lease;
 }
 
@@ -471,7 +487,12 @@ function createDynamicDispatcher(runtime: WorkerPoolRunRuntime, plan: PlacementP
             return pull(state, lane);
         },
         requeue(requeuedUnit) {
-            state.pendingUnits.push(fixedQueueItem(requeuedUnit.unit, requeuedUnit.traceUnit, requeuedPriority()));
+            state.pendingUnits.push(fixedQueueItem(
+                requeuedUnit.unit,
+                requeuedUnit.traceUnit,
+                requeuedPriority(),
+                { kind: 'recovery', previousAttempt: requeuedUnit.previousAttempt }
+            ));
             state.waiters.notify();
         },
         async waitForChange() {
@@ -484,7 +505,7 @@ export function createWorkDispatcher(runtime: WorkerPoolRunRuntime, plan: Placem
     const { execution } = runtime.resolvedRun.facts;
 
     if (execution.processModel !== 'worker-pool' || execution.dispatchPolicy === 'static-assignment') {
-        return createStaticDispatcher(plan);
+        return createStaticDispatcher(plan, workerPoolPlacementTrace(runtime));
     }
 
     return createDynamicDispatcher(runtime, plan);

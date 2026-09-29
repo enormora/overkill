@@ -86,6 +86,7 @@ function unitWithoutFile(runtime: WorkerPoolRunRuntime): WorkUnit {
 
 function leaseMember(unit: WorkUnit): WorkerPoolLeaseMember {
     return {
+        attempt: 'attempt-1',
         traceUnit: {
             key: unit.id.key,
             mode: unit.id.mode,

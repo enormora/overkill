@@ -76,6 +76,7 @@ function runTask(): WorkerPoolTask {
     return {
         ...taskBase(),
         assignedUnits: [ {
+            attempt: 'attempt-1',
             traceUnit: {
                 key: 'test.ts',
                 mode: 'case',
@@ -162,6 +163,7 @@ export const testNode = createOverkillSuite({
                     },
                     {
                         assignedUnits: [ {
+                            attempt: 'attempt-1',
                             traceUnit: {
                                 key: 'test.ts',
                                 mode: 'case',

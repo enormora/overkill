@@ -127,8 +127,8 @@ export const testNode = createOverkillSuite({
                     workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
                     fakeWorkerPoolRuntimeDependencies(),
                     {
-                        async finalizeResult(_resolvedRun, runResult) {
-                            return runResult;
+                        async finalizeResult(_resolvedRun, completion) {
+                            return completion.result;
                         },
                         timing: null
                     }
@@ -155,8 +155,8 @@ export const testNode = createOverkillSuite({
                         return workerPoolResolvedRun(collectionResult.collectedPlan);
                     },
                     {
-                        async finalizeResult(_resolvedRun, runResult) {
-                            return runResult;
+                        async finalizeResult(_resolvedRun, completion) {
+                            return completion.result;
                         },
                         timing: null
                     }
@@ -201,8 +201,8 @@ export const testNode = createOverkillSuite({
                         return workerPoolResolvedRun(collectionResult.collectedPlan);
                     },
                     {
-                        async finalizeResult(_resolvedRun, runResult) {
-                            return runResult;
+                        async finalizeResult(_resolvedRun, completion) {
+                            return completion.result;
                         },
                         timing: null
                     }
@@ -229,8 +229,8 @@ export const testNode = createOverkillSuite({
                         return workerPoolResolvedRun(collectionResult.collectedPlan);
                     },
                     {
-                        async finalizeResult(_resolvedRun, runResult) {
-                            return runResult;
+                        async finalizeResult(_resolvedRun, completion) {
+                            return completion.result;
                         },
                         timing
                     }

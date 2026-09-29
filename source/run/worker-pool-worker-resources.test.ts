@@ -200,6 +200,7 @@ function runTask(plan: CollectedWorkerPlan, lifecycle: WorkerPoolLifecycleIdenti
     return {
         assignedUnits: [
             {
+                attempt: 'attempt-1',
                 traceUnit: {
                     key: 'test.ts',
                     mode: 'case',

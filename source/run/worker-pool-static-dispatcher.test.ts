@@ -107,7 +107,11 @@ async function assertStaticRequeue(scope: OverkillScope): Promise<void> {
     const dispatcher = createWorkDispatcher(runtimeWithStaticDispatch(plan), plan);
     const firstLease = pullRequiredLease(dispatcher, firstLane(plan));
 
-    dispatcher.requeue({ traceUnit: firstLease.traceUnit, unit: firstLease.unit });
+    dispatcher.requeue({
+        previousAttempt: firstLease.members[0].attempt,
+        traceUnit: firstLease.traceUnit,
+        unit: firstLease.unit
+    });
     scope.assert.equal(pullRequiredLease(dispatcher, firstLane(plan)).unit.id.key, unit.id.key);
     dispatcher.clear();
     scope.assert.equal(dispatcher.pull(firstLane(plan)), null);
@@ -129,7 +133,11 @@ function assertStaticDispatcherRejectsUnknownUnits(scope: OverkillScope): void {
     }, { message: 'Placement assignment referenced an unknown work unit.' });
 
     scope.assert.throws(function requeueUnassignedStaticUnit() {
-        createStaticDispatcher({ ...plan, assignments: [] }).requeue({ traceUnit: unit.id, unit });
+        createStaticDispatcher({ ...plan, assignments: [] }).requeue({
+            previousAttempt: 'attempt-1',
+            traceUnit: unit.id,
+            unit
+        });
     }, { message: 'Static worker-pool dispatch cannot requeue an unassigned work unit.' });
 }
 

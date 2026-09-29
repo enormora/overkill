@@ -187,6 +187,10 @@ identity used for sharding and initial placement. Serial scheduling, group
 granularity, fresh-worker units, serial keys, and single-worker keys make a unit
 indivisible. `dispatchPolicy: 'static-assignment'` follows the frozen lane
 assignment without splitting.
+Execution records a complete attempt-centric placement trace for later run
+record persistence. Each attempt includes its exact `WorkId` subset, lane,
+opaque executor identity, completion duration, and explicit recovery outcome.
+Runner boundary and worker phase details remain in run timings.
 Worker-pool `execution.hedging` defaults to `{ mode: 'off' }`. `{ mode: 'on',
 minimumDelayMilliseconds, durationMultiplier }` duplicates only explicitly
 safe single-case stragglers under `dynamic-lease`; `static-assignment` rejects

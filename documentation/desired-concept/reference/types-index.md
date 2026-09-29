@@ -1237,25 +1237,59 @@ type PlacementTrace = {
 
 type WarmLaneAffinityKeyKind = 'file' | 'directory' | 'affinity' | 'runtime-workload';
 
+type PlacementAttemptId = string;
+type PlacementWorkerId = string;
+type PlacementAttemptReason =
+    | { readonly kind: 'initial'; }
+    | { readonly kind: 'recovery'; readonly previousAttempt: PlacementAttemptId; }
+    | { readonly kind: 'hedge'; readonly primaryAttempt: PlacementAttemptId; };
+type PlacementAttemptInterruptionCause =
+    | 'hard-timeout'
+    | 'hedge-cancelled'
+    | 'host-failure'
+    | 'run-stopped'
+    | 'runtime-policy'
+    | 'worker-crash';
+type PlacementRecoveryDecision =
+    | { readonly kind: 'retry'; readonly retryWork: NonEmptyReadonlyArray<WorkId>; }
+    | { readonly kind: 'abandon'; readonly abandonedWork: NonEmptyReadonlyArray<WorkId>; }
+    | {
+        readonly kind: 'partial';
+        readonly retryWork: NonEmptyReadonlyArray<WorkId>;
+        readonly abandonedWork: NonEmptyReadonlyArray<WorkId>;
+    };
+
 type PlacementTraceEntry =
     | {
-        readonly kind: 'unit-started';
+        readonly attempt: PlacementAttemptId;
+        readonly kind: 'attempt-assigned';
         readonly unit: TraceWorkUnitId;
         readonly lane: string;
-        readonly workerId: string;
+        readonly work: NonEmptyReadonlyArray<WorkId>;
+        readonly reason: PlacementAttemptReason;
     }
+    | { readonly attempt: PlacementAttemptId; readonly kind: 'attempt-started'; readonly workerId: PlacementWorkerId; }
     | {
-        readonly kind: 'unit-completed';
-        readonly unit: TraceWorkUnitId;
-        readonly workerId: string;
+        readonly attempt: PlacementAttemptId;
+        readonly kind: 'attempt-completed';
         readonly durationMicroseconds: number;
     }
-    | { readonly kind: 'worker-crashed'; readonly workerId: string; readonly activeUnit: TraceWorkUnitId | null; }
     | {
-        readonly kind: 'unit-reassigned';
-        readonly unit: TraceWorkUnitId;
-        readonly fromLane: string;
-        readonly toLane: string;
+        readonly attempt: PlacementAttemptId;
+        readonly cause: PlacementAttemptInterruptionCause;
+        readonly kind: 'attempt-interrupted';
+    }
+    | {
+        readonly attempt: PlacementAttemptId;
+        readonly cause: PlacementAttemptInterruptionCause;
+        readonly decision: PlacementRecoveryDecision;
+        readonly kind: 'recovery-decided';
+    }
+    | {
+        readonly activeAttempt: PlacementAttemptId | null;
+        readonly kind: 'worker-crashed';
+        readonly lane: string;
+        readonly workerId: PlacementWorkerId | null;
     }
     | {
         readonly children: NonEmptyReadonlyArray<DynamicWorkUnitId>;
@@ -1266,15 +1300,13 @@ type PlacementTraceEntry =
         readonly envelopeId: string;
         readonly kind: 'batch-started';
         readonly lane: string;
-        readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
-        readonly workerId: string;
+        readonly attempts: NonEmptyReadonlyArray<PlacementAttemptId>;
     }
     | {
         readonly envelopeId: string;
         readonly kind: 'batch-completed';
         readonly lane: string;
-        readonly units: NonEmptyReadonlyArray<TraceWorkUnitId>;
-        readonly workerId: string;
+        readonly attempts: NonEmptyReadonlyArray<PlacementAttemptId>;
     }
     | {
         readonly kind: 'warm-lane-affinity-selected';
@@ -1285,13 +1317,16 @@ type PlacementTraceEntry =
         readonly matchedWarmKeys: NonEmptyReadonlyArray<WarmLaneAffinityKeyKind>;
         readonly score: number;
     }
-    | { readonly kind: 'hedged-duplicate-started'; readonly unit: TraceWorkUnitId; readonly workerId: string; }
-    | { readonly kind: 'hedged-duplicate-discarded'; readonly unit: TraceWorkUnitId; readonly workerId: string; }
     | {
-        readonly kind: 'hedged-duplicate-conflict';
-        readonly authoritativeWorkerId: string;
-        readonly conflictingWorkerId: string;
-        readonly unit: TraceWorkUnitId;
+        readonly authoritativeAttempt: PlacementAttemptId;
+        readonly discardedAttempt: PlacementAttemptId;
+        readonly kind: 'hedge-resolved';
+        readonly outcome: 'cancelled' | 'matched';
+    }
+    | {
+        readonly authoritativeAttempt: PlacementAttemptId;
+        readonly conflictingAttempt: PlacementAttemptId;
+        readonly kind: 'hedge-conflict';
     };
 
 type CollectedRunCase = {

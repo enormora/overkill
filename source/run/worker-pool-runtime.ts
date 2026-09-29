@@ -13,7 +13,16 @@ import type {
     RunWorkerLifecycle,
     WorkUnit
 } from './run-types.ts';
-import type { PlacementTraceEntry, TraceWorkUnitId } from './placement-trace.ts';
+import {
+    createPlacementTraceRecorder,
+    type PlacementAttemptId,
+    type PlacementAttemptInterruptionCause,
+    type PlacementTrace,
+    type PlacementTraceEntry,
+    type PlacementTraceRecorder,
+    type PlacementWorkerId,
+    type TraceWorkUnitId
+} from './placement-trace.ts';
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies,
@@ -56,6 +65,11 @@ type WorkerPoolStartedCaseSet = {
     readonly size: number;
 };
 
+type WorkerPoolCompletedAttemptSet = {
+    readonly add: (attempt: PlacementAttemptId) => WorkerPoolCompletedAttemptSet;
+    readonly has: (attempt: PlacementAttemptId) => boolean;
+};
+
 type WorkerPoolReporterEventBuffer = {
     readonly [Symbol.iterator]: () => IterableIterator<ReporterEvent>;
     readonly clear: () => void;
@@ -63,17 +77,20 @@ type WorkerPoolReporterEventBuffer = {
 };
 
 type WorkerPoolTaskRunMember = {
+    readonly attempt: PlacementAttemptId;
     readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;
 };
 
 export type WorkerPoolTaskRun = {
-    readonly activeTraceUnit: StoredRunValue<TraceWorkUnitId | null>;
+    readonly activeAttempt: StoredRunValue<PlacementAttemptId | null>;
     readonly bufferedReporterEvents: WorkerPoolReporterEventBuffer;
+    readonly completedAttempts: WorkerPoolCompletedAttemptSet;
     readonly controller: AbortController;
     readonly endedByParent: StoredRunValue<boolean>;
     readonly envelopeId: StoredRunValue<string | null>;
     readonly includeArtifacts: StoredRunValue<boolean>;
+    readonly interruptionCause: StoredRunValue<PlacementAttemptInterruptionCause | null>;
     readonly leaseKind: 'hedged-duplicate' | 'primary';
     readonly lane: string;
     readonly members: readonly [WorkerPoolTaskRunMember, ...(readonly WorkerPoolTaskRunMember[])];
@@ -81,6 +98,7 @@ export type WorkerPoolTaskRun = {
     readonly requeuePendingCases: StoredRunValue<boolean>;
     readonly state: SupervisedRunState;
     readonly startedCases: WorkerPoolStartedCaseSet;
+    readonly workerId: StoredRunValue<PlacementWorkerId | null>;
     readonly timeout: StoredRunValue<ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null>;
     readonly traceUnit: TraceWorkUnitId;
     readonly unit: WorkUnit;
@@ -92,12 +110,12 @@ export type WorkerPoolRunRuntime = {
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly dependencies: RunOrchestratorDependencies;
     readonly destroyPool: boolean;
-    readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
+    readonly finalizeResult: (completion: WorkerPoolRunCompletion) => Promise<RunResult>;
     readonly pool: CreatedWorkerPool;
     readonly poolResourceUsageTracker: WorkerPoolResourceUsageTracker | null;
+    readonly placementTrace: PlacementTraceRecorder;
     readonly placementTraceEntries: readonly PlacementTraceEntry[];
     readonly previousPoolSample: StoredRunValue<ResourceUsageSnapshot | null>;
-    readonly recordPlacementTraceEntry: (entry: PlacementTraceEntry) => void;
     readonly reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>;
     readonly reporterEvents: ReporterEventQueue;
     readonly resolvedRun: ResolvedRun;
@@ -114,10 +132,25 @@ export type WorkerPoolRuntimeInput = {
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly createdPool: CreatedWorkerPool | null;
     readonly dependencies: RunOrchestratorDependencies;
-    readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
+    readonly finalizeResult: (completion: WorkerPoolRunCompletion) => Promise<RunResult>;
     readonly resolvedRun: ResolvedRun;
     readonly runState: SupervisedRunState;
     readonly timing?: RunTimingMeasurement | null;
+};
+
+export function workerPoolPlacementTrace(runtime: WorkerPoolRunRuntime): PlacementTraceRecorder {
+    return runtime.placementTrace;
+}
+
+export function createWorkerPoolPlacementTraceRecorder(): PlacementTraceRecorder {
+    const recorder = createPlacementTraceRecorder();
+
+    return recorder;
+}
+
+export type WorkerPoolRunCompletion = {
+    readonly placementTrace: PlacementTrace;
+    readonly result: RunResult;
 };
 
 type WorkerPoolExecutionPool = {
@@ -455,7 +488,7 @@ export async function createWorkerPoolRuntime(
     const taskResults: RunResult[] = [];
     const executionPool = createExecutionPool(input, placementPlan);
     const { destroyPool, pool } = executionPool;
-    const placementTraceEntries: PlacementTraceEntry[] = [];
+    const placementTrace = createPlacementTraceRecorder();
 
     pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
         if (execution.capture === 'live') {
@@ -476,11 +509,11 @@ export async function createWorkerPoolRuntime(
         finalizeResult,
         pool,
         poolResourceUsageTracker: createPoolResourceUsageTracker(pool, resolvedRun, dependencies),
-        placementTraceEntries,
-        previousPoolSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
-        recordPlacementTraceEntry(entry) {
-            placementTraceEntries.push(entry);
+        placementTrace,
+        get placementTraceEntries() {
+            return placementTrace.entries();
         },
+        previousPoolSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
         reporterDelivery: await createReporterDelivery(resolvedRun, dependencies),
         reporterEvents: createReporterEventQueue(),
         resolvedRun,

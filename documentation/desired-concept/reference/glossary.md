@@ -155,11 +155,11 @@ Source: [Runtime Behavior § Duration History](../architecture/runtime-behavior.
 
 ## PlacementTrace
 
-The run-record trace of realized worker assignment, crash recovery,
-reassignment, runtime reprioritization, pending-unit splitting, compatible
-batching, warm-lane affinity, straggler hedging, conflicts, and work-unit
-timings. It is diagnostic by default and becomes replay input for dynamic
-scheduling modes.
+The complete run-record log of realized assignment attempts, opaque executor
+identity, exact assigned work, interruption causes, explicit recovery
+decisions, pending-unit splitting, compatible batching, warm-lane affinity,
+straggler hedging, conflicts, and per-attempt duration. It is diagnostic by
+default and becomes replay input for dynamic scheduling modes.
 
 Source: [Runtime Behavior](../architecture/runtime-behavior.md), [Reproducibility](../architecture/reproducibility.md).
 
