@@ -41,6 +41,10 @@ function publishPermissionDiagnostic(
     channel.publish({ permission, resource });
 }
 
+function publishPermissionDropDiagnostic(channel: PermissionDiagnosticChannel): void {
+    channel.publish({ drop: true, permission: 'FileSystemRead', resource: '' });
+}
+
 function accessDeniedError(): Error {
     return Object.assign(new Error('read denied'), {
         code: 'ERR_ACCESS_DENIED',
@@ -87,6 +91,25 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(runnerErrorPhase(diagnostics.loadError), 'load');
                 scope.assert.equal(diagnostics.runError.attributedTo, null);
                 scope.assert.equal(runnerErrorPhase(diagnostics.runError), 'out-of-test');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'permission denial runtime policy ignores permission drop diagnostics',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const policy = createPermissionDenialRuntimePolicy();
+                const channel = await readPermissionDiagnosticChannel();
+
+                publishPermissionDropDiagnostic(channel);
+                const pendingErrors = policy.takePendingRunErrors();
+                const runErrors = policy.takeRunErrors();
+
+                scope.assert.deepEqual(pendingErrors, []);
+                scope.assert.deepEqual(runErrors, []);
 
                 return scope.assert.collect();
             }
