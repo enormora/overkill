@@ -519,6 +519,7 @@ Supported command-line surface:
 - `--file <path>`
 - `--filter <expr>`
 - `--order <seeded|lexical>`
+- `--runtime <runtime[:variant]|runtime.dimension=value>`
 - `--seed <n>`
 - `--title <text>`
 - `--profile <name>`
@@ -544,9 +545,20 @@ microtest profile and is invalid for other profile families.
 `--no-capture` applies to `run` only. It passes stdout and stderr through live
 for capture-capable profiles and is invalid for microtest profiles.
 
-`--filter`, `--title`, and `--file` apply the same run selection to `run` and
-`list`. `--filter` supports `=`, `~`, `:`, `!`, `|`, and parentheses over
-`tag`, `runtime`, `owner`, `stability`, `file`, `title`, `suite`, and `params`.
+`--filter`, `--runtime`, `--title`, and `--file` apply the same run selection to
+`run` and `list`. `--filter` supports `=`, `~`, `:`, `!`, `|`, and parentheses
+over `tag`, `owner`, `file`, `title`, `suite`, and `params`. Repeated
+`--runtime` flags combine with AND and select by public runtime key, matrix
+variant id, or runtime dimension:
+
+```sh
+overkill run --runtime browser
+overkill run --runtime browser:chromium
+overkill run --runtime browser.engine=chromium --runtime app
+```
+
+Runtime selectors use case-sensitive equality. Runner-visible scenarios remain
+programmatic filters.
 
 Runs use seeded ordering by default. Pass `--seed <n>` to reproduce a shuffle,
 or `--order lexical` to use deterministic source-stable order. `runIfMain(...)`

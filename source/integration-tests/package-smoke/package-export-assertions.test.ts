@@ -1,4 +1,99 @@
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { TestScope } from '@overkill-dev/engine';
+
+type PackagedFilters = {
+    readonly all: (filters: readonly [unknown, ...(readonly unknown[])]) => unknown;
+    readonly file: (pattern: string) => unknown;
+    readonly not: (filter: unknown) => unknown;
+    readonly parseRunFilterExpression: (expression: string) => unknown;
+    readonly runtime: (name: string) => unknown;
+    readonly runtimeDimension: (name: string, dimension: string, value: string) => unknown;
+    readonly runtimeVariant: (name: string, variantId: string) => unknown;
+    readonly tag: (value: string) => unknown;
+    readonly title: (value: string) => unknown;
+};
+
+const packagedFilterNames: readonly (keyof PackagedFilters)[] = [
+    'all',
+    'file',
+    'not',
+    'parseRunFilterExpression',
+    'runtime',
+    'runtimeDimension',
+    'runtimeVariant',
+    'tag',
+    'title'
+];
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isPackagedFilters(value: unknown): value is PackagedFilters {
+    return isRecord(value) && packagedFilterNames.every(function hasFilterExport(name) {
+        return typeof value[name] === 'function';
+    });
+}
+
+export async function importPackagedFilters(runPackageFolder: string): Promise<PackagedFilters> {
+    const modulePath = path.join(runPackageFolder, 'packages/run/filters.entry-point.js');
+    const filters: unknown = await import(pathToFileURL(modulePath).href);
+
+    if (!isPackagedFilters(filters)) {
+        throw new TypeError('Packaged run filters do not expose the expected contract.');
+    }
+
+    return filters;
+}
+
+export function assertPackagedFilters(scope: TestScope, filters: PackagedFilters): void {
+    const {
+        all,
+        file,
+        not,
+        parseRunFilterExpression,
+        runtime,
+        runtimeDimension,
+        runtimeVariant,
+        tag,
+        title
+    } = filters;
+
+    scope.assert.deepEqual(all([ tag('fast'), not(file('source/**')) ]), {
+        filters: [
+            { field: 'tag', kind: 'equals', value: 'fast' },
+            {
+                filter: { field: 'file', kind: 'glob', pattern: 'source/**' },
+                kind: 'not'
+            }
+        ],
+        kind: 'all'
+    });
+    scope.assert.deepEqual(title('smoke'), { field: 'title', kind: 'contains', value: 'smoke' });
+    scope.assert.deepEqual(parseRunFilterExpression('tag=fast !tag=flaky'), {
+        filters: [
+            { field: 'tag', kind: 'equals', value: 'fast' },
+            {
+                filter: { field: 'tag', kind: 'equals', value: 'flaky' },
+                kind: 'not'
+            }
+        ],
+        kind: 'all'
+    });
+    scope.assert.deepEqual(runtime('browser'), { kind: 'runtime', runtime: 'browser' });
+    scope.assert.deepEqual(runtimeVariant('browser', 'chromium'), {
+        kind: 'runtime-variant',
+        runtime: 'browser',
+        variantId: 'chromium'
+    });
+    scope.assert.deepEqual(runtimeDimension('browser', 'engine', 'chromium'), {
+        dimension: 'engine',
+        kind: 'runtime-dimension',
+        runtime: 'browser',
+        value: 'chromium'
+    });
+}
 
 export function assertResourcesPackageRootExport(
     scope: TestScope,

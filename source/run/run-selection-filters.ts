@@ -126,12 +126,33 @@ export function title(value: string): RunFilter {
     return contains('title', value);
 }
 
-export function runtimeScenario(runtime: string, scenario: string, value: string): RunFilter {
-    assertNonEmptyString(runtime, 'Runtime scenario filter runtime');
+export function runtime(name: string): RunFilter {
+    assertNonEmptyString(name, 'Runtime filter name');
+
+    return { kind: 'runtime', runtime: name };
+}
+
+export function runtimeVariant(name: string, variantId: string): RunFilter {
+    assertNonEmptyString(name, 'Runtime variant filter name');
+    assertNonEmptyString(variantId, 'Runtime variant filter variant id');
+
+    return { kind: 'runtime-variant', runtime: name, variantId };
+}
+
+export function runtimeDimension(name: string, dimension: string, value: string): RunFilter {
+    assertNonEmptyString(name, 'Runtime dimension filter name');
+    assertNonEmptyString(dimension, 'Runtime dimension filter dimension');
+    assertNonEmptyString(value, 'Runtime dimension filter value');
+
+    return { dimension, kind: 'runtime-dimension', runtime: name, value };
+}
+
+export function runtimeScenario(name: string, scenario: string, value: string): RunFilter {
+    assertNonEmptyString(name, 'Runtime scenario filter runtime');
     assertNonEmptyString(scenario, 'Runtime scenario filter scenario');
     assertNonEmptyString(value, 'Runtime scenario filter value');
 
-    return { kind: 'runtime-scenario', runtime, scenario, value };
+    return { kind: 'runtime-scenario', runtime: name, scenario, value };
 }
 
 function hasInvalidSuiteItem(value: unknown): boolean {
@@ -214,6 +235,30 @@ function invalidCompositeFilterMessage(filter: Readonly<Record<string, unknown>>
     return null;
 }
 
+const runtimeFilterLabels: Readonly<Record<string, string>> = {
+    runtime: 'Runtime filter',
+    'runtime-dimension': 'Runtime dimension filter',
+    'runtime-scenario': 'Runtime scenario filter',
+    'runtime-variant': 'Runtime variant filter'
+};
+
+function invalidRuntimeFieldsMessage(
+    filter: Readonly<Record<string, unknown>>,
+    fields: readonly string[]
+): string | null {
+    const label = typeof filter.kind === 'string' ? runtimeFilterLabels[filter.kind] : undefined;
+
+    for (const field of fields) {
+        const value = filter[field];
+
+        if (typeof value !== 'string' || value.trim().length === 0) {
+            return `${label ?? 'Runtime filter'} ${field} must be a non-empty string.`;
+        }
+    }
+
+    return null;
+}
+
 const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
     all: invalidCompositeFilterMessage,
     any: invalidCompositeFilterMessage,
@@ -232,14 +277,17 @@ const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
     not: function invalidNotFilter(filter) {
         return isRecord(filter.filter) ? null : 'Run filter must be an object.';
     },
+    runtime: function invalidRuntimeFilter(filter) {
+        return invalidRuntimeFieldsMessage(filter, [ 'runtime' ]);
+    },
+    'runtime-dimension': function invalidRuntimeDimensionFilter(filter) {
+        return invalidRuntimeFieldsMessage(filter, [ 'runtime', 'dimension', 'value' ]);
+    },
     'runtime-scenario': function invalidRuntimeScenarioFilter(filter) {
-        for (const field of [ 'runtime', 'scenario', 'value' ] as const) {
-            if (typeof filter[field] !== 'string' || filter[field].trim().length === 0) {
-                return `Runtime scenario filter ${field} must be a non-empty string.`;
-            }
-        }
-
-        return null;
+        return invalidRuntimeFieldsMessage(filter, [ 'runtime', 'scenario', 'value' ]);
+    },
+    'runtime-variant': function invalidRuntimeVariantFilter(filter) {
+        return invalidRuntimeFieldsMessage(filter, [ 'runtime', 'variantId' ]);
     }
 };
 
@@ -316,6 +364,36 @@ export function invalidRunSelectionMessage(selection: unknown): string | null {
 }
 
 type LeafRunFilter = Exclude<RunFilter, { readonly kind: 'all' | 'any' | 'not'; }>;
+type RuntimeRunFilter = Extract<
+    LeafRunFilter,
+    { readonly kind: 'runtime' | 'runtime-dimension' | 'runtime-scenario' | 'runtime-variant'; }
+>;
+const runtimeRunFilterKinds: ReadonlySet<string> = new Set([
+    'runtime',
+    'runtime-dimension',
+    'runtime-scenario',
+    'runtime-variant'
+]);
+
+function isRuntimeRunFilter(filter: LeafRunFilter): filter is RuntimeRunFilter {
+    return runtimeRunFilterKinds.has(filter.kind);
+}
+
+function copyRuntimeRunFilter(filter: RuntimeRunFilter): RunFilter {
+    if (filter.kind === 'runtime') {
+        return runtime(filter.runtime);
+    }
+
+    if (filter.kind === 'runtime-variant') {
+        return runtimeVariant(filter.runtime, filter.variantId);
+    }
+
+    if (filter.kind === 'runtime-dimension') {
+        return runtimeDimension(filter.runtime, filter.dimension, filter.value);
+    }
+
+    return runtimeScenario(filter.runtime, filter.scenario, filter.value);
+}
 
 function copyLeafRunFilter(filter: LeafRunFilter): RunFilter {
     if (filter.kind === 'case-id') {
@@ -326,8 +404,8 @@ function copyLeafRunFilter(filter: LeafRunFilter): RunFilter {
         return glob(filter.field, filter.pattern);
     }
 
-    if (filter.kind === 'runtime-scenario') {
-        return runtimeScenario(filter.runtime, filter.scenario, filter.value);
+    if (isRuntimeRunFilter(filter)) {
+        return copyRuntimeRunFilter(filter);
     }
 
     return {
@@ -441,15 +519,35 @@ function matchesTextFilter(filter: RunFilter, candidate: RunFilterCandidate): bo
     return false;
 }
 
+function matchesRuntimeRunFilter(filter: RuntimeRunFilter, candidate: RunFilterCandidate): boolean {
+    return candidate.workId.runtimes.some(function runtimeMatches(candidateRuntime) {
+        if (candidateRuntime.name !== filter.runtime) {
+            return false;
+        }
+
+        if (filter.kind === 'runtime') {
+            return true;
+        }
+
+        if (filter.kind === 'runtime-variant') {
+            return candidateRuntime.variantId === filter.variantId;
+        }
+
+        if (filter.kind === 'runtime-dimension') {
+            return candidateRuntime.dimensions[filter.dimension] === filter.value;
+        }
+
+        return candidateRuntime.scenarios[filter.scenario] === filter.value;
+    });
+}
+
 function matchesLeafRunFilter(filter: LeafRunFilter, candidate: RunFilterCandidate): boolean {
     if (filter.kind === 'case-id') {
         return caseIdentityKey(filter.id) === caseIdentityKey(candidate.id);
     }
 
-    if (filter.kind === 'runtime-scenario') {
-        return candidate.workId.runtimes.some(function runtimeMatches(runtime) {
-            return runtime.name === filter.runtime && runtime.scenarios[filter.scenario] === filter.value;
-        });
+    if (isRuntimeRunFilter(filter)) {
+        return matchesRuntimeRunFilter(filter, candidate);
     }
 
     return matchesTextFilter(filter, candidate);

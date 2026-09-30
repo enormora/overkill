@@ -15,7 +15,10 @@ type FilterPackageValueExport = keyof {
     readonly owner: true;
     readonly params: true;
     readonly parseRunFilterExpression: true;
+    readonly runtime: true;
+    readonly runtimeDimension: true;
     readonly runtimeScenario: true;
+    readonly runtimeVariant: true;
     readonly suite: true;
     readonly tag: true;
     readonly title: true;
@@ -44,6 +47,9 @@ describe('@overkill-dev/run/filters', function () {
             filters.suite('users'),
             filters.params('primary'),
             filters.caseId(id),
+            filters.runtime('browser'),
+            filters.runtimeVariant('browser', 'chromium'),
+            filters.runtimeDimension('browser', 'engine', 'chromium'),
             filters.runtimeScenario('api', 'api', 'payments-500')
         ]);
 
@@ -64,6 +70,13 @@ describe('@overkill-dev/run/filters', function () {
         expect<typeof filters.not>().type.toBe<(filter: RunFilter) => RunFilter>();
         expect<typeof filters.caseId>().type.toBe<(id: CaseId) => RunFilter>();
         expect<typeof filters.parseRunFilterExpression>().type.toBe<(expression: string) => RunFilter>();
+        expect<typeof filters.runtime>().type.toBe<(name: string) => RunFilter>();
+        expect<typeof filters.runtimeVariant>().type.toBe<
+            (name: string, variantId: string) => RunFilter
+        >();
+        expect<typeof filters.runtimeDimension>().type.toBe<
+            (name: string, dimensionName: string, value: string) => RunFilter
+        >();
         expect<typeof filters.runtimeScenario>().type.toBe<
             (runtime: string, scenario: string, value: string) => RunFilter
         >();
@@ -89,7 +102,6 @@ describe('@overkill-dev/run/filters', function () {
         expect<RunStringFilterField>().type.not.toBeAssignableFrom<'runtime'>();
         expect<RunStringFilterField>().type.not.toBeAssignableFrom<'stability'>();
         expect<keyof typeof filters>().type.not.toBeAssignableFrom<'kind'>();
-        expect<keyof typeof filters>().type.not.toBeAssignableFrom<'runtime'>();
         expect<keyof typeof filters>().type.not.toBeAssignableFrom<'stability'>();
         expect<typeof filters.equals>().type.not.toBeCallableWith('kind', 'microtest');
     });

@@ -986,6 +986,18 @@ type RunFilter =
     | { readonly field: RunStringFilterField; readonly kind: 'equals'; readonly value: string; }
     | { readonly field: RunStringFilterField; readonly kind: 'contains'; readonly value: string; }
     | { readonly field: RunStringFilterField; readonly kind: 'glob'; readonly pattern: string; }
+    | { readonly kind: 'runtime'; readonly runtime: string; }
+    | {
+        readonly kind: 'runtime-variant';
+        readonly runtime: string;
+        readonly variantId: string;
+    }
+    | {
+        readonly dimension: string;
+        readonly kind: 'runtime-dimension';
+        readonly runtime: string;
+        readonly value: string;
+    }
     | {
         readonly kind: 'runtime-scenario';
         readonly runtime: string;
@@ -993,6 +1005,9 @@ type RunFilter =
         readonly value: string;
     };
 
+declare function runtime(name: string): RunFilter;
+declare function runtimeVariant(name: string, variantId: string): RunFilter;
+declare function runtimeDimension(name: string, dimensionName: string, value: string): RunFilter;
 declare function runtimeScenario(runtime: string, scenario: string, value: string): RunFilter;
 
 type RunSelection =

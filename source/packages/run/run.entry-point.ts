@@ -162,7 +162,10 @@ export type {
 export type { RunEngineSelection } from '../../run/run-request-types.ts';
 export type {
     RunFilter,
+    RunRuntimeDimensionFilter,
+    RunRuntimeFilter,
     RunRuntimeScenarioFilter,
+    RunRuntimeVariantFilter,
     RunSelection,
     RunStringFilterField
 } from '../../run/run-request-types.ts';

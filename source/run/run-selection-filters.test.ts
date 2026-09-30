@@ -19,7 +19,10 @@ import {
     not,
     owner,
     params,
+    runtime,
+    runtimeDimension,
     runtimeScenario,
+    runtimeVariant,
     suite,
     tag,
     title
@@ -34,12 +37,20 @@ const candidate = {
     id: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR'),
     workId: {
         case: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR'),
-        runtimes: [ {
-            dimensions: {},
-            name: 'api',
-            scenarios: { api: 'payments-500' },
-            variantId: null
-        } ],
+        runtimes: [
+            {
+                dimensions: {},
+                name: 'api',
+                scenarios: { api: 'payments-500' },
+                variantId: null
+            },
+            {
+                dimensions: { engine: 'chromium', headless: 'true' },
+                name: 'browser',
+                scenarios: {},
+                variantId: 'chromium'
+            }
+        ],
         workload: null
     }
 };
@@ -56,6 +67,23 @@ function assertRuntimeScenarioMatches(scope: OverkillScope): void {
     scope.assert.equal(matchesRunFilter(runtimeScenario('API', 'api', 'payments-500'), candidate), false);
     scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'api', 'PAYMENTS-500'), candidate), false);
     scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'missing', 'payments-500'), candidate), false);
+}
+
+function assertRuntimeIdentityMatches(scope: OverkillScope): void {
+    scope.assert.equal(matchesRunFilter(runtime('browser'), candidate), true);
+    scope.assert.equal(matchesRunFilter(runtime('Browser'), candidate), false);
+    scope.assert.equal(matchesRunFilter(runtimeVariant('browser', 'chromium'), candidate), true);
+    scope.assert.equal(matchesRunFilter(runtimeVariant('browser', 'Chromium'), candidate), false);
+    scope.assert.equal(matchesRunFilter(runtimeDimension('browser', 'engine', 'chromium'), candidate), true);
+    scope.assert.equal(matchesRunFilter(runtimeDimension('browser', 'engine', 'Chromium'), candidate), false);
+    scope.assert.equal(matchesRunFilter(runtimeDimension('browser', 'missing', 'value'), candidate), false);
+}
+
+function assertCompositeFiltersMatch(scope: OverkillScope): void {
+    scope.assert.equal(matchesRunFilter(not(tag('slow')), candidate), true);
+    scope.assert.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true);
+    scope.assert.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true);
+    scope.assert.equal(matchesRunFilter(tag('slow'), candidate), false);
 }
 
 export const testNode = createOverkillSuite({
@@ -97,6 +125,21 @@ export const testNode = createOverkillSuite({
                     scenario: 'api',
                     value: 'payments-500'
                 });
+                scope.assert.deepEqual(runtime('browser'), {
+                    kind: 'runtime',
+                    runtime: 'browser'
+                });
+                scope.assert.deepEqual(runtimeVariant('browser', 'chromium'), {
+                    kind: 'runtime-variant',
+                    runtime: 'browser',
+                    variantId: 'chromium'
+                });
+                scope.assert.deepEqual(runtimeDimension('browser', 'engine', 'chromium'), {
+                    dimension: 'engine',
+                    kind: 'runtime-dimension',
+                    runtime: 'browser',
+                    value: 'chromium'
+                });
 
                 return scope.assert.collect();
             }
@@ -123,11 +166,9 @@ export const testNode = createOverkillSuite({
                     scope.assert.equal(matchesRunFilter(filter, candidate), true);
                 }
 
-                scope.assert.equal(matchesRunFilter(not(tag('slow')), candidate), true);
-                scope.assert.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true);
-                scope.assert.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true);
-                scope.assert.equal(matchesRunFilter(tag('slow'), candidate), false);
+                assertCompositeFiltersMatch(scope);
                 assertRuntimeScenarioMatches(scope);
+                assertRuntimeIdentityMatches(scope);
                 scope.assert.equal(matchesRunFilter({ kind: 'unknown' } as unknown as RunFilter, candidate), false);
 
                 return scope.assert.collect();
@@ -157,6 +198,9 @@ export const testNode = createOverkillSuite({
                     filter: all([
                         not(caseId(candidate.id)),
                         glob('file', 'source/**'),
+                        runtime('browser'),
+                        runtimeVariant('browser', 'chromium'),
+                        runtimeDimension('browser', 'engine', 'chromium'),
                         runtimeScenario('api', 'api', 'payments-500'),
                         any([ tag('fast'), equals('owner', '@payments') ])
                     ]),
@@ -195,6 +239,15 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createRuntimeScenarioFilterWithEmptyValue() {
                     runtimeScenario('api', 'api', ' ');
                 }, { message: 'Runtime scenario filter value must not be empty.' });
+                scope.assert.throws(function createEmptyRuntimeFilter() {
+                    runtime(' ');
+                }, { message: 'Runtime filter name must not be empty.' });
+                scope.assert.throws(function createRuntimeVariantFilterWithEmptyVariant() {
+                    runtimeVariant('browser', ' ');
+                }, { message: 'Runtime variant filter variant id must not be empty.' });
+                scope.assert.throws(function createRuntimeDimensionFilterWithEmptyDimension() {
+                    runtimeDimension('browser', ' ', 'chromium');
+                }, { message: 'Runtime dimension filter dimension must not be empty.' });
 
                 return scope.assert.collect();
             }
@@ -284,6 +337,36 @@ export const testNode = createOverkillSuite({
                     [
                         { filter: { field: 1, kind: 'equals', value: 'fast' }, kind: 'filter' },
                         'Run filter field is unknown.'
+                    ],
+                    [
+                        {
+                            filter: { kind: 'runtime', runtime: '' },
+                            kind: 'filter'
+                        },
+                        'Runtime filter runtime must be a non-empty string.'
+                    ],
+                    [
+                        {
+                            filter: {
+                                kind: 'runtime-variant',
+                                runtime: 'browser',
+                                variantId: ''
+                            },
+                            kind: 'filter'
+                        },
+                        'Runtime variant filter variantId must be a non-empty string.'
+                    ],
+                    [
+                        {
+                            filter: {
+                                dimension: '',
+                                kind: 'runtime-dimension',
+                                runtime: 'browser',
+                                value: 'chromium'
+                            },
+                            kind: 'filter'
+                        },
+                        'Runtime dimension filter dimension must be a non-empty string.'
                     ],
                     [
                         {
