@@ -4,7 +4,6 @@ import type {
 } from '../engine/test-data.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
-import type { ExecuteExecution } from '../engine/execution-options.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import type { RunProfileConfig } from './run-types.ts';
@@ -20,20 +19,6 @@ export type RunIfMainOptions = {
     readonly reporters?: readonly DefinedReporter[];
     readonly root?: RunIfMainRootOptions;
 };
-
-export type RunIfMainWarningSink = {
-    readonly write: (chunk: string) => unknown;
-};
-
-const supervisedDowngradeWarning = [
-    'Overkill warning: runIfMain() executes in the current process;',
-    'supervised-process isolation is unavailable for direct Node execution.'
-]
-    .join(' ');
-
-function stderrWarning(stderr: RunIfMainWarningSink, message: string): void {
-    stderr.write(`${message}\n`);
-}
 
 export async function selectedReporters(
     profile: RunProfileConfig,
@@ -72,19 +57,4 @@ export function rootControls(options: RunIfMainOptions | undefined): TestControl
 
 export function rootTitle(options: RunIfMainOptions | undefined, cwd: string): string {
     return options?.root?.title ?? cwd;
-}
-
-export function engineExecution(profile: RunProfileConfig): ExecuteExecution {
-    return profile.execution.scheduling === 'concurrent'
-        ? {
-            maxConcurrency: profile.execution.maxConcurrency,
-            mode: 'concurrent-in-process'
-        }
-        : { mode: 'serial-in-process' };
-}
-
-export function warnOnSupervisedDowngrade(profile: RunProfileConfig, stderr: RunIfMainWarningSink): void {
-    if (profile.execution.processModel === 'supervised-process') {
-        stderrWarning(stderr, supervisedDowngradeWarning);
-    }
 }

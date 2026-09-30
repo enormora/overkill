@@ -10,6 +10,7 @@ import type {
     RunRequest,
     RunMaxConcurrency,
     RunResourceBudgets,
+    RunCollectionRoot,
     RunScheduling,
     RunTestFamily
 } from './run-types.ts';
@@ -43,6 +44,7 @@ type SupervisedCommandBase = {
     readonly maxConcurrency: RunMaxConcurrency;
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly root: RunCollectionRoot;
     readonly scheduling: RunScheduling;
     readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;

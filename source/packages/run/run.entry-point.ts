@@ -1,11 +1,8 @@
 import { glob, realpath, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { createClock } from '@enormora/clock';
-import { createDirectRuntimePolicy } from '../../run/direct-runtime-policy.ts';
-import { defaultRunEngine } from '../../run/default-run-engine.ts';
 import { createRunIfMain } from '../../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../../run/run-if-main-profile.ts';
-import { createNodeResourceUsageTracker } from '../../run/resource-usage.ts';
+import { runDirectEntrypoint } from '../../run/run-orchestrator.entry-point.ts';
 import { loadRunConfig } from './config.entry-point.ts';
 
 const resolveDirectProfile = createDirectProfileResolver({
@@ -17,9 +14,6 @@ const resolveDirectProfile = createDirectProfileResolver({
 });
 
 export const runIfMain = createRunIfMain({
-    createResourceUsageTracker: createNodeResourceUsageTracker,
-    createRuntimePolicy: createDirectRuntimePolicy,
-    createClock,
     currentWorkingDirectory() {
         return process.cwd();
     },
@@ -27,7 +21,7 @@ export const runIfMain = createRunIfMain({
         return process.exitCode;
     },
     resolveDirectProfile,
-    runEngine: defaultRunEngine,
+    runDirectEntrypoint,
     setExitCode(exitCode) {
         process.exitCode = exitCode;
     },

@@ -27,7 +27,9 @@ function calls. `runIfMain(import.meta, testNode, options?)` is the narrow
 exception owned by `@overkill-dev/run` and lazily exposed by
 `@overkill-dev/test`, because direct-file execution needs config loading,
 profile matching, default reporters, and runner-owned facts. It loads config
-from `process.cwd()` only when `import.meta.main` is true.
+from `process.cwd()` only when `import.meta.main` is true. Profile matching does
+not select a reduced direct-execution mode. The matched profile remains the
+execution contract.
 
 ## Higher-Level Configuration
 

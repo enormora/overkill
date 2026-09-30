@@ -94,6 +94,7 @@ export async function createSupervisedChildTestPlan(
         engine,
         loadRunTestModules: dependencies.loadRunTestModules,
         paths: command.paths,
+        root: command.root,
         testFamily: command.testFamily
     });
 

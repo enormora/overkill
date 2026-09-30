@@ -8,7 +8,7 @@ import type {
     WorkloadId
 } from '../engine/identity.ts';
 import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+import type { TestPlan, TestPlanRootOptions } from '../engine/test-plan.ts';
 import type { RunEngineSelection, RunSelection } from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type {
@@ -19,8 +19,8 @@ import type {
 
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
+export type RunCollectionRoot = TestPlanRootOptions;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
-type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
 type RunReporters = RunExecuteOptions['reporters'];
 
 export type RunShard = {
@@ -251,7 +251,7 @@ export type RunProfilesConfig = Readonly<Record<string, RunProfileConfig>>;
 
 export type RunConfig = {
     readonly loader: RunLoaderConfig;
-    readonly outputRenderer: RunOutputRenderer;
+    readonly outputRenderer: NonNullable<RunExecuteOptions['outputRenderer']>;
     readonly profiles: RunProfilesConfig;
     readonly reporters: RunReporters;
     readonly runtimeStateDir: string;

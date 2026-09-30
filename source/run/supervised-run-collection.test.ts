@@ -38,6 +38,7 @@ function supervisedCollectCommand(): SupervisedCollectCommand {
             residentSetGrowthBytesPerSecond: null
         },
         resourceUsageSamplingIntervalMilliseconds: 1,
+        root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'microtest',
         timeoutMilliseconds: 1000

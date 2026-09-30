@@ -11,7 +11,7 @@ import {
     readResolvedRunInput,
     type ResolvedRunInput
 } from './run-input-resolution.ts';
-import { createLocalTestPlan } from './run-local-test-plan.ts';
+import { createLocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
 import { shardedLocalCases } from './run-local-sharding.ts';
 import {
     orderedTestPlan,
@@ -160,14 +160,16 @@ async function createShardedLocalResolvedRunFromTestPlan(
 export async function createLocalResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput
+    input: ResolvedRunInput,
+    source: LocalTestPlanInput['source']
 ): Promise<ResolvedRun> {
     const testPlan = await createLocalTestPlan({
         command,
         definitionLocationCapture: 'enabled',
         dependencies,
         files: input.files,
-        profile: input.profile
+        profile: input.profile,
+        source
     });
     const selectedPlan = selectedTestPlan(testPlan, input.request.selection);
 
@@ -181,7 +183,8 @@ export async function createLocalResolvedRun(
 
 export async function createLocalRunOrEmptySelectionResult(
     command: RunCommand,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    source: LocalTestPlanInput['source']
 ): Promise<ResolvedRun | RunResult> {
     const input = await readResolvedRunInput(command, dependencies);
 
@@ -194,7 +197,8 @@ export async function createLocalRunOrEmptySelectionResult(
         definitionLocationCapture: 'disabled',
         dependencies,
         files: input.files,
-        profile: input.profile
+        profile: input.profile,
+        source
     });
     const plannedCases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
 

@@ -14,6 +14,7 @@ import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './p
 import type {
     CollectedRunPlan,
     RunCommand,
+    RunCollectionRoot,
     RunHostProcess,
     RunMaxConcurrency,
     RunResourceBudgets,
@@ -40,6 +41,7 @@ export type WorkerPoolCommand = {
     readonly paths: readonly string[];
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly root: RunCollectionRoot;
     readonly scheduling: RunScheduling;
     readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;

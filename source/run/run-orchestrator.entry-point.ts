@@ -1,4 +1,4 @@
-import { createCurrentProcessRunOrchestrator } from './current-process-run-orchestrator.ts';
+import { createCurrentProcessRunCoordinator } from './current-process-run-orchestrator.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {
     loadRunEngineModule,
@@ -10,17 +10,17 @@ import {
     startWorkerPoolHost
 } from './node-child-process-starters.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunOrchestrator } from './run-types.ts';
+import type { NodeRunCoordinator } from './run-orchestrator.ts';
 
 type CommandLineOrchestratorDependencies = Pick<
     RunOrchestratorDependencies,
     'discoverRunFilesWithProjectRoot' | 'loadRunEngineModule' | 'loadRunTestModules'
 >;
 
-function createCommandLineOrchestrator(
+function createCommandLineCoordinator(
     dependencies: CommandLineOrchestratorDependencies
-): RunOrchestrator {
-    return createCurrentProcessRunOrchestrator(defaultRunEngine, {
+): NodeRunCoordinator {
+    return createCurrentProcessRunCoordinator(defaultRunEngine, {
         discoverRunFilesWithProjectRoot: dependencies.discoverRunFilesWithProjectRoot,
         loadRunEngineModule: dependencies.loadRunEngineModule,
         loadRunTestModules: dependencies.loadRunTestModules,
@@ -29,7 +29,10 @@ function createCommandLineOrchestrator(
     });
 }
 
-export const orchestrator = createCommandLineOrchestrator({
+export const {
+    orchestrator,
+    runDirectEntrypoint
+} = createCommandLineCoordinator({
     discoverRunFilesWithProjectRoot: runDiscovery.discoverRunFilesWithProjectRoot,
     loadRunEngineModule,
     loadRunTestModules

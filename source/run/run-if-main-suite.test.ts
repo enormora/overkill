@@ -3,6 +3,7 @@ import { testNode as runIfMainOptionsTestNode } from './run-if-main-options.test
 import { testNode as runIfMainProfileFileSetsTestNode } from './run-if-main-profile-file-sets.test.ts';
 import { testNode as runIfMainSelectionTestNode } from './run-if-main-selection.test.ts';
 import { testNode as runIfMainTestNode } from './run-if-main.test.ts';
+import { testNode as directEntrypointCollectionTestNode } from './direct-entrypoint-collection.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -10,6 +11,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        directEntrypointCollectionTestNode,
         runIfMainOptionsTestNode,
         runIfMainProfileFileSetsTestNode,
         runIfMainSelectionTestNode,

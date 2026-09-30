@@ -362,7 +362,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() rejects integration profiles selected by file match',
+            title: 'runIfMain() accepts integration profiles selected by file match',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -379,22 +379,16 @@ export const testNode = createOverkillSuite({
                     files: []
                 });
 
-                await scope.assert.rejects(async function runIntegrationFile() {
-                    await fixture.runIfMain(fixture.project.meta, passingCase(), { reporters: [] });
-                }, {
-                    message: [
-                        'runIfMain() does not support integration profile "integration" yet.',
-                        'Use the overkill CLI with --profile integration.'
-                    ]
-                        .join(' ')
-                });
+                await fixture.runIfMain(fixture.project.meta, integrationCase(), { reporters: [] });
+
+                scope.assert.equal(fixture.exitCode(), null);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'runIfMain() warns when direct execution downgrades supervised profiles',
+            title: 'runIfMain() does not warn for supervised profiles',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -406,14 +400,7 @@ export const testNode = createOverkillSuite({
 
                 await fixture.runIfMain(fixture.project.meta, passingCase(), { reporters: [] });
 
-                scope.assert.equal(
-                    fixture.stderr(),
-                    [
-                        'Overkill warning: runIfMain() executes in the current process;',
-                        'supervised-process isolation is unavailable for direct Node execution.\n'
-                    ]
-                        .join(' ')
-                );
+                scope.assert.equal(fixture.stderr(), '');
 
                 return scope.assert.collect();
             }

@@ -187,7 +187,19 @@ keep exporting composable `TestNode` values; `runIfMain(...)` wraps the chosen
 node in an execution root for direct Node runs. It uses the matching runner
 profile when the current file is covered by one profile's file policy, falls
 back to the configured `microtest` profile, and uses default reporters when no
-reporter is configured.
+reporter is configured. The selected profile keeps its configured process
+model, scheduling, worker lifecycle, runtime matrices, resources, and
+placement behavior.
+
+For isolated profiles, the coordinator treats the `runIfMain(...)` argument as
+the expected plan and re-imports the module in the configured child or worker.
+The module must conventionally export the same value as `testNode`. Collection
+fails before `run-start` if the normalized plans differ.
+
+Bare `node file.ts` must evaluate the entrypoint once before `runIfMain(...)`
+can delegate to the coordinator. Code before that call is outside supervised
+isolation. Use `overkill run file.ts` when the initial import must also occur
+inside the configured isolation boundary.
 
 ## Why This Is Better
 

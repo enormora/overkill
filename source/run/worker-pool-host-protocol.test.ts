@@ -64,6 +64,7 @@ function workerPoolCommand(): WorkerPoolCommand {
             residentSetGrowthBytesPerSecond: null
         },
         resourceUsageSamplingIntervalMilliseconds: 10,
+        root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'integration',
         timeoutMilliseconds: 100,

@@ -485,6 +485,9 @@ distribution, assignment policy, and in-worker scheduling.
 | `supervised-process` | A parent process supervises a disposable child | `microtest`, `property`, `integration`   |
 | `worker-pool`        | N bounded executor slots run assigned work     | `integration`, browser-oriented profiles |
 
+`runIfMain(...)` preserves this boundary. Direct-file invocation is an input
+mode, not a process model.
+
 `worker-per-file` is not a process model. It is a resolved execution shape:
 
 ```ts
@@ -793,6 +796,13 @@ The process that imports user modules depends on the boundary:
 - the coordinator maps that collected plan into assignments by stable
   `WorkId`, then the child reuses executable references inside its own
   process
+
+For `runIfMain(...)`, Node performs one unavoidable bootstrap evaluation of
+the entrypoint before the helper can start the coordinator. Isolated
+collection then re-imports the conventional exported `testNode` and compares
+its complete normalized plan with the plan supplied to the helper. A mismatch
+is a collection failure before `run-start`. `overkill run <file>` avoids the
+bootstrap evaluation in the coordinator.
 
 This has two important consequences:
 

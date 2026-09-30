@@ -1,8 +1,11 @@
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
+import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
+import { createLocalTestPlan, type LocalTestPlan } from './run-local-test-plan.ts';
 import { resolveResourceUsagePolicy } from './run-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type {
     RunCommand,
+    CollectedRunPlan,
     RunProfileConfig,
     RunRequest
 } from './run-types.ts';
@@ -11,6 +14,10 @@ import type {
     SupervisedRunCommand
 } from './supervised-protocol.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
+import { runCollectionRoot, type CollectionSource } from './run-collection-source.ts';
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+
+export type IsolatedRunCollectionSource = CollectionSource;
 
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
@@ -26,6 +33,7 @@ type SupervisedCommandBase = {
     readonly paths: readonly string[];
     readonly resourceBudgets: SupervisedRunCommand['resourceBudgets'];
     readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly root: SupervisedRunCommand['root'];
     readonly scheduling: SupervisedRunCommand['scheduling'];
     readonly testFamily: SupervisedRunCommand['testFamily'];
     readonly timeoutMilliseconds: number;
@@ -37,6 +45,15 @@ type SupervisedCommandBaseInput = {
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly files: ResolvedRunInput['files'];
     readonly profile: RunProfileConfig;
+    readonly source: IsolatedRunCollectionSource;
+};
+
+type WorkerPoolCommandInput = {
+    readonly command: RunCommand;
+    readonly definitionLocationCapture: DefinitionLocationCapture;
+    readonly files: ResolvedRunInput['files'];
+    readonly profile: RunProfileConfig;
+    readonly source: IsolatedRunCollectionSource;
 };
 
 function isolatedEngine(command: RunCommand): IsolatedCommandEngine {
@@ -45,6 +62,33 @@ function isolatedEngine(command: RunCommand): IsolatedCommandEngine {
     }
 
     return command.engine;
+}
+
+export async function createExpectedDirectEntrypointPlan(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    input: ResolvedRunInput,
+    source: IsolatedRunCollectionSource
+): Promise<LocalTestPlan | null> {
+    return source.kind === 'direct-entrypoint'
+        ? await createLocalTestPlan({
+            command,
+            definitionLocationCapture: 'enabled',
+            dependencies,
+            files: input.files,
+            profile: input.profile,
+            source
+        })
+        : null;
+}
+
+export function assertExpectedDirectEntrypointCollection(
+    expected: LocalTestPlan | null,
+    actual: CollectedRunPlan
+): void {
+    if (expected !== null) {
+        assertDirectEntrypointCollectionMatches(expected, actual);
+    }
 }
 
 function supervisedCapabilityRestrictions(
@@ -79,6 +123,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         paths: resolvedPaths(input.files),
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
+        root: runCollectionRoot(input.source, input.command.cwd),
         scheduling: input.profile.execution.scheduling,
         testFamily: input.profile.testFamily,
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds
@@ -88,7 +133,8 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
 export function createSupervisedCollectCommand(
     command: RunCommand,
     profile: RunProfileConfig,
-    files: ResolvedRunInput['files']
+    files: ResolvedRunInput['files'],
+    source: IsolatedRunCollectionSource
 ): SupervisedCollectCommand {
     return {
         ...createSupervisedCommandBase({
@@ -96,7 +142,8 @@ export function createSupervisedCollectCommand(
             command,
             definitionLocationCapture: 'enabled',
             files,
-            profile
+            profile,
+            source
         }),
         kind: 'collect'
     };
@@ -105,46 +152,46 @@ export function createSupervisedCollectCommand(
 export function createSupervisedRunCommand(
     command: RunCommand,
     profile: RunProfileConfig,
-    files: ResolvedRunInput['files']
+    files: ResolvedRunInput['files'],
+    source: IsolatedRunCollectionSource
 ): SupervisedRunCommand {
     return {
         ...createSupervisedCommandBase({
             capture: command.request.capture,
             command,
-            definitionLocationCapture: 'disabled',
+            definitionLocationCapture: source.kind === 'direct-entrypoint' ? 'enabled' : 'disabled',
             files,
-            profile
+            profile,
+            source
         }),
         kind: 'run'
     };
 }
 
 export function createWorkerPoolCommand(
-    command: RunCommand,
-    definitionLocationCapture: DefinitionLocationCapture,
-    profile: RunProfileConfig,
-    files: ResolvedRunInput['files']
+    input: WorkerPoolCommandInput
 ): WorkerPoolCommand {
-    const resourceUsagePolicy = resolveResourceUsagePolicy(command.request, profile);
+    const resourceUsagePolicy = resolveResourceUsagePolicy(input.command.request, input.profile);
 
     return {
-        collectionTimeoutMilliseconds: profile.timeouts.collectionMilliseconds,
-        cwd: command.cwd,
-        definitionLocationCapture,
-        engine: isolatedEngine(command),
-        hardTimeoutMilliseconds: profile.timeouts.hardMilliseconds,
-        hostProcess: profile.execution.processModel === 'worker-pool'
-            ? profile.execution.hostProcess
+        collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,
+        cwd: input.command.cwd,
+        definitionLocationCapture: input.definitionLocationCapture,
+        engine: isolatedEngine(input.command),
+        hardTimeoutMilliseconds: input.profile.timeouts.hardMilliseconds,
+        hostProcess: input.profile.execution.processModel === 'worker-pool'
+            ? input.profile.execution.hostProcess
             : { kind: 'direct' },
-        maxConcurrency: profile.execution.maxConcurrency,
-        paths: resolvedPaths(files),
+        maxConcurrency: input.profile.execution.maxConcurrency,
+        paths: resolvedPaths(input.files),
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
-        scheduling: profile.execution.scheduling,
-        testFamily: profile.testFamily,
-        timeoutMilliseconds: profile.timeouts.softMilliseconds,
-        workerLifecycle: profile.execution.processModel === 'worker-pool'
-            ? profile.execution.workerLifecycle
+        root: runCollectionRoot(input.source, input.command.cwd),
+        scheduling: input.profile.execution.scheduling,
+        testFamily: input.profile.testFamily,
+        timeoutMilliseconds: input.profile.timeouts.softMilliseconds,
+        workerLifecycle: input.profile.execution.processModel === 'worker-pool'
+            ? input.profile.execution.workerLifecycle
             : 'reuse'
     };
 }

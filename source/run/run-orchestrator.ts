@@ -7,7 +7,11 @@ import {
     createNodeDurationHistoryStore,
     createWorkerPoolWithHostProcess
 } from './node-worker-pool-factory.ts';
-import { createRunOrchestrator } from './run.ts';
+import {
+    createDirectEntrypointRunner,
+    createRunOrchestrator,
+    type DirectEntrypointRunner
+} from './run.ts';
 import { createRandomRunSeed } from './run-seed.ts';
 import type {
     RunOrchestratorDependencies,
@@ -43,7 +47,12 @@ export type NodeRunOrchestratorInput = {
     };
 };
 
-export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunOrchestrator {
+export type NodeRunCoordinator = {
+    readonly orchestrator: RunOrchestrator;
+    readonly runDirectEntrypoint: DirectEntrypointRunner;
+};
+
+export function createNodeRunCoordinator(input: NodeRunOrchestratorInput): NodeRunCoordinator {
     const wallClock = createClock();
     const reporterDispatcher = createReporterDispatcher({
         stderr: input.stderr,
@@ -51,7 +60,7 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
         wallClock
     });
 
-    return createRunOrchestrator({
+    const dependencies: RunOrchestratorDependencies = {
         availableParallelism: os.availableParallelism(),
         createSeed: createRandomRunSeed,
         createResourceUsageTracker(options) {
@@ -86,5 +95,14 @@ export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunO
             readStorage: input.readStorage
         },
         wallClock
-    });
+    };
+
+    return {
+        orchestrator: createRunOrchestrator(dependencies),
+        runDirectEntrypoint: createDirectEntrypointRunner(dependencies)
+    };
+}
+
+export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunOrchestrator {
+    return createNodeRunCoordinator(input).orchestrator;
 }

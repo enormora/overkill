@@ -28,7 +28,7 @@ type ResourceAttachedRunCase = {
 type ProfileControlledRunCase = {
     readonly controls: TestPlanCase['controls'];
 };
-type OrderedSeededTestPlan = {
+export type OrderedSeededTestPlan = {
     readonly seed: {
         readonly value: bigint;
     };

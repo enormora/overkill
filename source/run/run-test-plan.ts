@@ -9,7 +9,16 @@ import type { DiscoveredRunFile, RunDiscovery } from './run-discovery-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
-import type { RunTestFamily } from './run-types.ts';
+import type {
+    DirectEntrypointRunCollectionSource,
+    RunCollectionSource
+} from './run-collection-source-types.ts';
+import type {
+    RunCollectionRoot,
+    RunTestFamily
+} from './run-types.ts';
+
+export type RunTestPlanCollectionSource = RunCollectionSource;
 
 export type RunTestPlanInput = {
     readonly cwd: string;
@@ -18,6 +27,7 @@ export type RunTestPlanInput = {
     readonly engine: Engine;
     readonly loadRunTestModules: RunTestModuleLoader;
     readonly paths: readonly string[];
+    readonly root: RunCollectionRoot;
     readonly testFamily: RunTestFamily;
 };
 
@@ -27,8 +37,24 @@ export type RunTestPlanFromFilesInput = {
     readonly engine: Engine;
     readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
     readonly loadRunTestModules: RunTestModuleLoader;
+    readonly root: RunCollectionRoot;
     readonly testFamily: RunTestFamily;
 };
+
+export function createRunTestPlanFromDirectEntrypoint(
+    engine: Engine,
+    file: DiscoveredRunFile,
+    source: DirectEntrypointRunCollectionSource
+): TestPlan {
+    try {
+        return expandRuntimeMatrices(engine.createTestPlanFromTestFiles({
+            files: [ { file: file.file, testNode: source.testNode } ],
+            root: source.root
+        }));
+    } catch (error: unknown) {
+        throw new RunCollectionError('Failed to collect tests from runIfMain().', { cause: error }, 'loader');
+    }
+}
 
 async function createRunTestPlanFromDiscoveredFiles(input: RunTestPlanFromFilesInput): Promise<TestPlan> {
     return await withDefinitionLocationCapture(
@@ -39,11 +65,7 @@ async function createRunTestPlanFromDiscoveredFiles(input: RunTestPlanFromFilesI
             try {
                 return expandRuntimeMatrices(input.engine.createTestPlanFromTestFiles({
                     files: testFiles,
-                    root: {
-                        annotations: {},
-                        controls: {},
-                        title: input.cwd
-                    }
+                    root: input.root
                 }));
             } catch (error: unknown) {
                 throw new RunCollectionError('Failed to collect tests from run inputs.', { cause: error }, 'loader');
@@ -61,6 +83,7 @@ export async function createRunTestPlan(input: RunTestPlanInput): Promise<TestPl
         engine: input.engine,
         files,
         loadRunTestModules: input.loadRunTestModules,
+        root: input.root,
         testFamily: input.testFamily
     });
 }

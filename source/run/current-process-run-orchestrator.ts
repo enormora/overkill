@@ -5,7 +5,9 @@ import {
 } from './node-process-capability-restrictions.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import {
+    createNodeRunCoordinator,
     createNodeRunOrchestrator,
+    type NodeRunCoordinator,
     type NodeRunOrchestratorInput
 } from './run-orchestrator.ts';
 import type { RunOrchestrator } from './run-types.ts';
@@ -39,6 +41,39 @@ export function createCurrentProcessRunOrchestrator(
     dependencies: CurrentProcessRunOrchestratorDependencies
 ): RunOrchestrator {
     return createNodeRunOrchestrator({
+        defaultEngine,
+        discoverRunFilesWithProjectRoot: dependencies.discoverRunFilesWithProjectRoot,
+        loadRunEngineModule: dependencies.loadRunEngineModule,
+        loadRunTestModules: dependencies.loadRunTestModules,
+        startSupervisedChild: dependencies.startSupervisedChild,
+        startWorkerPoolHost: dependencies.startWorkerPoolHost,
+        installIpcRestriction(record) {
+            return installProcessIpcRestriction(process, record);
+        },
+        installProcessExecutionRestriction(record) {
+            return installNodeProcessExecutionRestriction(process, record);
+        },
+        node: {
+            arch: process.arch,
+            platform: process.platform,
+            version: process.versions.node
+        },
+        readEnvironment() {
+            return readProcessEnvironment(process);
+        },
+        readStorage(name) {
+            return readWebStorage(globalThis, name);
+        },
+        stderr: { write: writeStderr, writeLine: writeStderrLine },
+        stdout: { write: writeStdout, writeLine: writeStdoutLine }
+    });
+}
+
+export function createCurrentProcessRunCoordinator(
+    defaultEngine: Engine,
+    dependencies: CurrentProcessRunOrchestratorDependencies
+): NodeRunCoordinator {
+    return createNodeRunCoordinator({
         defaultEngine,
         discoverRunFilesWithProjectRoot: dependencies.discoverRunFilesWithProjectRoot,
         loadRunEngineModule: dependencies.loadRunEngineModule,

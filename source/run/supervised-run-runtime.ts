@@ -5,11 +5,8 @@ import type {
     ResourceUsageSnapshot,
     RunResult
 } from '../packages/engine/engine.entry-point.ts';
-import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
-import type {
-    CollectedRunPlan,
-    ResolvedRun
-} from './run-types.ts';
+import { createRunResultFromCollectedPlan, runCollectionRootFromResolvedPlan } from './collected-run-plan.ts';
+import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     createSupervisedHardTimeout,
@@ -260,6 +257,7 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
             .execution
             .resourceUsagePolicy
             .samplingIntervalMilliseconds,
+        root: runCollectionRootFromResolvedPlan(resolvedRun.plan),
         scheduling: resolvedRun.facts.execution.scheduling,
         testFamily: resolvedRun.facts.execution.testFamily,
         timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
