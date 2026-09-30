@@ -1,10 +1,10 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { RunnerError, RunResourceUsageTracker } from '../engine/run-result.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
-import { createRunConfigLoader } from '../run/run-config.ts';
+import { createRunConfigLoader, type RunConfigLoader } from '../run/run-config.ts';
 import { directRunFacts, finalizeDirectRunResult } from '../run/run-if-main-facts.ts';
 import {
     assertTestPlanCasesMatchProfilePolicy,
@@ -16,7 +16,6 @@ import type { DirectEntrypointRunner } from '../run/run.ts';
 
 type FixtureRunCommand = Parameters<DirectEntrypointRunner>[0];
 type FixtureCollectionSource = Parameters<DirectEntrypointRunner>[1];
-type FixtureProfile = FixtureRunCommand['config']['profiles'][string];
 
 type DirectRunProject = {
     readonly cwd: string;
@@ -29,6 +28,7 @@ export type DirectRunFixture = {
     readonly project: DirectRunProject;
     readonly runIfMain: RunIfMain;
     readonly setExitCode: (exitCode: number | string | null | undefined) => void;
+    readonly setUndeliveredRunnerErrors: (errors: readonly RunnerError[]) => void;
     readonly stderr: () => string;
 };
 
@@ -125,6 +125,23 @@ function createConfigModules(
     };
 }
 
+function createFixtureRunConfigLoader(cwd: string, config: DirectRunConfigFixture | null): RunConfigLoader {
+    const modules = createConfigModules(cwd, config);
+
+    return createRunConfigLoader({
+        async fileExists(filePath) {
+            return Object.hasOwn(modules, filePath);
+        },
+        async importModule(configPath) {
+            if (!Object.hasOwn(modules, configPath)) {
+                throw new Error(`Missing config fixture: ${configPath}`);
+            }
+
+            return modules[configPath];
+        }
+    });
+}
+
 function globPatterns(patterns: string | readonly string[]): readonly string[] {
     return typeof patterns === 'string' ? [ patterns ] : patterns;
 }
@@ -145,12 +162,6 @@ function fixtureTestPlan(
     }));
 }
 
-function fixtureExecutionMode(
-    profile: FixtureProfile
-): 'concurrent-in-process' | 'serial-in-process' {
-    return profile.execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
-}
-
 export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunFixture {
     const cwd = '/project';
     const file = resolve(cwd, input.fileName);
@@ -160,21 +171,10 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
             return resolve(cwd, fileName);
         })
     ]);
-    const modules = createConfigModules(cwd, input.config);
     let exitCode: number | string | null | undefined = null;
     let stderr = '';
-    const loadRunConfig = createRunConfigLoader({
-        async fileExists(filePath) {
-            return Object.hasOwn(modules, filePath);
-        },
-        async importModule(configPath) {
-            if (!Object.hasOwn(modules, configPath)) {
-                throw new Error(`Missing config fixture: ${configPath}`);
-            }
-
-            return modules[configPath];
-        }
-    });
+    let undeliveredRunnerErrors: readonly RunnerError[] = [];
+    const loadRunConfig = createFixtureRunConfigLoader(cwd, input.config);
     const resolveDirectProfile = createDirectProfileResolver({
         fileURLToPath,
         glob(pattern, options) {
@@ -229,7 +229,12 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         const startedAt = new Date(0);
 
         const result = await defaultRunEngine.execute(seeded.testPlan, {
-            execution: { mode: fixtureExecutionMode(profile) },
+            execution: profile.execution.scheduling === 'concurrent'
+                ? {
+                    maxConcurrency: profile.execution.maxConcurrency,
+                    mode: 'concurrent-in-process'
+                }
+                : { mode: 'serial-in-process' },
             async finalizeResult(runResult) {
                 return finalizeDirectRunResult(facts, runResult);
             },
@@ -249,7 +254,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         return {
             deliveredRunnerErrors: [],
             result,
-            undeliveredRunnerErrors: []
+            undeliveredRunnerErrors
         };
     };
 
@@ -282,6 +287,9 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         }),
         setExitCode(nextExitCode) {
             exitCode = nextExitCode;
+        },
+        setUndeliveredRunnerErrors(errors) {
+            undeliveredRunnerErrors = errors;
         },
         stderr() {
             return stderr;

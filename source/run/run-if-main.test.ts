@@ -504,6 +504,34 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runIfMain() writes runner errors not delivered by reporters',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const fixture = createDirectRunFixture({
+                    config: null,
+                    fileName: 'direct.test.ts',
+                    files: []
+                });
+
+                fixture.setUndeliveredRunnerErrors([
+                    {
+                        attributedTo: null,
+                        cause: null,
+                        diagnostics: [ { label: 'phase', value: 'collection' } ],
+                        message: 'Direct collection failed.',
+                        subtype: 'loader'
+                    }
+                ]);
+                await fixture.runIfMain(fixture.project.meta, passingCase(), { reporters: [] });
+
+                scope.assert.match(fixture.stderr(), /Direct collection failed\./u);
+
+                return scope.assert.collect();
+            }
         })
     ]
 });

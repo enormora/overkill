@@ -2,9 +2,11 @@ import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/run-result.ts';
 import {
-    createRunResultFromCollectedPlan
-} from '../run/collected-run-plan.ts';
-import { createRunOrchestrator } from '../run/run.ts';
+    createDirectEntrypointRunner,
+    createRunOrchestrator,
+    type DirectEntrypointRunner
+} from '../run/run.ts';
+import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import type { CollectedRunPlan, RunOrchestrator, WorkId } from '../run/run-types.ts';
 import { supervisedAssignedWork } from '../run/supervised-protocol.ts';
 import {
@@ -13,6 +15,7 @@ import {
 } from './fake-supervised-child-process.ts';
 import { createTestEngine } from './create-test-engine.ts';
 import {
+    createDeterministicRunResult,
     createDeterministicRunTestModuleLoader,
     deterministicCollectedRunPlan,
     deterministicRunCollection,
@@ -49,6 +52,28 @@ function installNoPolicyRestriction(): () => void {
 
 function createMissingWorkerPool(): never {
     throw new Error('Deterministic worker-pool execution is not configured.');
+}
+
+function createCollectionOnlyWorkerPool(
+    options: Parameters<RunOrchestratorDependencies['createWorkerPool']>[0]
+): ReturnType<RunOrchestratorDependencies['createWorkerPool']> {
+    return {
+        async destroy() {
+            return undefined;
+        },
+        options: {
+            isolateWorkers: options.workerLifecycle === 'fresh-worker-per-unit',
+            maxThreads: options.workerCount
+        },
+        async run() {
+            return {
+                collectedPlan: deterministicCollectedRunPlan(
+                    'source/integration-tests/run/fixtures/passing.test.ts'
+                ),
+                runnerErrors: []
+            };
+        }
+    };
 }
 
 function resourceUsageSample(
@@ -186,7 +211,7 @@ function completeDeterministicSupervisedChild(
     context: FakeSupervisedChildRunContext,
     alreadyReportedWorkCount: number
 ): void {
-    const collectedPlan = deterministicCollectedRunPlan(context.testFile);
+    const collectedPlan = deterministicCollectedRunPlan(context.testFile, context.command.root);
     const assignedWork = supervisedAssignedWork(context.assignment);
 
     for (const work of assignedWork.slice(alreadyReportedWorkCount)) {
@@ -195,26 +220,10 @@ function completeDeterministicSupervisedChild(
     }
     context.emitMessage({
         kind: 'result',
-        result: createRunResultFromCollectedPlan(
+        result: createDeterministicRunResult(
             collectedPlanForAssignedCases(collectedPlan, assignedWork),
-            assignedWork.map(function toPassingResult(work) {
-                return {
-                    definitionLocations: [ { kind: 'unknown' as const } ],
-                    id: work.case,
-                    outcome: { kind: 'pass' as const },
-                    verdict: 'pass' as const,
-                    workId: work,
-                    durationMicroseconds: 0
-                };
-            }),
-            [],
-            {
-                completedAtMicroseconds: 0,
-                planStatus: 'planned',
-                resourceUsage: deterministicResourceUsage(),
-                startedAtMicroseconds: 0,
-                testExecutionWallTimeMicroseconds: 0
-            }
+            assignedWork,
+            deterministicResourceUsage()
         )
     });
     context.emitExit();
@@ -263,7 +272,15 @@ function runDeterministicSupervisedChild(context: FakeSupervisedChildRunContext)
     completeStartedDeterministicRun(context, firstWork);
 }
 
-export function createDeterministicRunOrchestratorWithSeed(createSeed: () => bigint): RunOrchestrator {
+type DeterministicRunCoordinator = {
+    readonly orchestrator: RunOrchestrator;
+    readonly runDirectEntrypoint: DirectEntrypointRunner;
+};
+
+function createDeterministicRunCoordinatorWithDependencies(
+    createSeed: () => bigint,
+    createWorkerPool: RunOrchestratorDependencies['createWorkerPool']
+): DeterministicRunCoordinator {
     const engine = createTestEngine();
     const wallClock = createClock();
     const environment: Record<string, string | undefined> = {};
@@ -281,7 +298,7 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
         wallClock
     });
 
-    return createRunOrchestrator({
+    const dependencies: RunOrchestratorDependencies = {
         availableParallelism: 4,
         createResourceUsageTracker(): RunResourceUsageTracker {
             return {
@@ -315,7 +332,7 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
             };
         },
         createSeed,
-        createWorkerPool: createMissingWorkerPool,
+        createWorkerPool,
         defaultEngine: deterministicRunEngine(),
         durationHistoryStore: {
             async read() {
@@ -393,11 +410,41 @@ export function createDeterministicRunOrchestratorWithSeed(createSeed: () => big
             throw new Error('Deterministic worker-pool host execution is not configured.');
         },
         wallClock
-    });
+    };
+
+    return {
+        orchestrator: createRunOrchestrator(dependencies),
+        runDirectEntrypoint: createDirectEntrypointRunner(dependencies)
+    };
+}
+
+function createDeterministicRunCoordinatorWithSeed(
+    createSeed: () => bigint
+): DeterministicRunCoordinator {
+    return createDeterministicRunCoordinatorWithDependencies(createSeed, createMissingWorkerPool);
+}
+
+export function createDeterministicRunOrchestratorWithSeed(createSeed: () => bigint): RunOrchestrator {
+    return createDeterministicRunCoordinatorWithSeed(createSeed).orchestrator;
 }
 
 export function createDeterministicRunOrchestrator(): RunOrchestrator {
     return createDeterministicRunOrchestratorWithSeed(function createSeed() {
         return deterministicSeed;
     });
+}
+
+export function createDeterministicRunCoordinator(): DeterministicRunCoordinator {
+    return createDeterministicRunCoordinatorWithSeed(function createSeed() {
+        return deterministicSeed;
+    });
+}
+
+export function createDeterministicWorkerPoolCollectionCoordinator(): DeterministicRunCoordinator {
+    return createDeterministicRunCoordinatorWithDependencies(
+        function createSeed() {
+            return deterministicSeed;
+        },
+        createCollectionOnlyWorkerPool
+    );
 }
