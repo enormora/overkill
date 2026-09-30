@@ -157,6 +157,7 @@ export const testNode = createOverkillSuite({
                     filter: all([
                         not(caseId(candidate.id)),
                         glob('file', 'source/**'),
+                        runtimeScenario('api', 'api', 'payments-500'),
                         any([ tag('fast'), equals('owner', '@payments') ])
                     ]),
                     kind: 'filter' as const
@@ -188,6 +189,12 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createEmptyRuntimeScenarioFilter() {
                     runtimeScenario('api', ' ', 'default');
                 }, { message: 'Runtime scenario filter scenario must not be empty.' });
+                scope.assert.throws(function createRuntimeScenarioFilterWithEmptyRuntime() {
+                    runtimeScenario(' ', 'api', 'default');
+                }, { message: 'Runtime scenario filter runtime must not be empty.' });
+                scope.assert.throws(function createRuntimeScenarioFilterWithEmptyValue() {
+                    runtimeScenario('api', 'api', ' ');
+                }, { message: 'Runtime scenario filter value must not be empty.' });
 
                 return scope.assert.collect();
             }
@@ -277,6 +284,39 @@ export const testNode = createOverkillSuite({
                     [
                         { filter: { field: 1, kind: 'equals', value: 'fast' }, kind: 'filter' },
                         'Run filter field is unknown.'
+                    ],
+                    [
+                        {
+                            filter: { kind: 'runtime-scenario', runtime: 1, scenario: 'api', value: 'default' },
+                            kind: 'filter'
+                        },
+                        'Runtime scenario filter runtime must be a non-empty string.'
+                    ],
+                    [
+                        {
+                            filter: { kind: 'runtime-scenario', runtime: 'api', scenario: '', value: 'default' },
+                            kind: 'filter'
+                        },
+                        'Runtime scenario filter scenario must be a non-empty string.'
+                    ],
+                    [
+                        {
+                            filter: { kind: 'runtime-scenario', runtime: 'api', scenario: 'api', value: '' },
+                            kind: 'filter'
+                        },
+                        'Runtime scenario filter value must be a non-empty string.'
+                    ],
+                    [
+                        {
+                            filter: {
+                                kind: 'runtime-scenario',
+                                runtime: 'api',
+                                scenario: 'api',
+                                value: 'default'
+                            },
+                            kind: 'filter'
+                        },
+                        null
                     ]
                 ];
 

@@ -242,6 +242,37 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
+                const plainRuntime = {
+                    dimensions: {},
+                    name: 'api',
+                    scenarios: {},
+                    variantId: null
+                };
+
+                scope.assert.equal(
+                    contextPrefix([ plainRuntime ], [], { color: false, wrap: false }),
+                    '[api]'
+                );
+                scope.assert.equal(
+                    contextPrefix([ plainRuntime ], [], { color: true, wrap: false }),
+                    '[api]'
+                );
+                scope.assert.equal(
+                    contextPrefix(
+                        [ { ...plainRuntime, scenarios: { api: 'payments-500' } } ],
+                        [],
+                        { color: false, wrap: false }
+                    ),
+                    '[api:scenario.api=payments-500]'
+                );
+                scope.assert.equal(
+                    contextPrefix(
+                        [ { ...plainRuntime, variantId: 'node-26' } ],
+                        [],
+                        { color: false, wrap: false }
+                    ),
+                    '[api:node-26]'
+                );
                 scope.assert.equal(
                     contextPrefix(
                         [ {
