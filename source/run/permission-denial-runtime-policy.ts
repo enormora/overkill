@@ -38,6 +38,20 @@ function permissionDiagnosticsPhase(loadComplete: boolean): PermissionDeniedRunn
     return loadComplete ? 'out-of-test' : 'load';
 }
 
+function permissionWasDropped(message: unknown): boolean {
+    return typeof message === 'object' && message !== null && Reflect.get(message, 'drop') === true;
+}
+
+function ignorePermissionDropDiagnostics(
+    recordDiagnostic: (message: unknown) => void
+): (message: unknown) => void {
+    return function recordPermissionDenial(message): void {
+        if (!permissionWasDropped(message)) {
+            recordDiagnostic(message);
+        }
+    };
+}
+
 export function createPermissionDiagnosticsSubscriptions(
     activeCaseStorage: AsyncLocalStorage<PermissionRuntimeActiveCase>,
     phase: () => PermissionDeniedRunnerErrorPhase,
@@ -47,7 +61,7 @@ export function createPermissionDiagnosticsSubscriptions(
         [ name, capability ]
     ) {
         const channel = diagnosticsChannel.channel(name);
-        const listener = function recordDiagnostic(message: unknown): void {
+        const listener = ignorePermissionDropDiagnostics(function recordDiagnostic(message: unknown): void {
             const activeCase = activeCaseStorage.getStore();
 
             recordError(permissionDeniedRunnerErrorFromDiagnostic({
@@ -62,7 +76,7 @@ export function createPermissionDiagnosticsSubscriptions(
                 hook: null,
                 phase: activeCase === undefined ? phase() : 'body'
             }));
-        };
+        });
         channel.subscribe(listener);
 
         return {
