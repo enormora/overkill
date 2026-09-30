@@ -127,6 +127,7 @@ export type {
     RunIntegrationExecution,
     RunIntegrationProfileConfig,
     RunLoaderConfig,
+    RunMaxConcurrency,
     RunMicrotestExecution,
     RunMicrotestProfileConfig,
     RunOrder,

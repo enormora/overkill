@@ -427,9 +427,14 @@ Override surfaces:
 
 Soft-timeout mechanics:
 
+- the timeout starts after the executor admits the case and reports its start,
+  immediately before the body attempt; time spent waiting for a concurrency
+  slot is excluded from both timeout and duration
 - the test receives an `AbortSignal` linked to the run scope plus a
   per-test deadline; firing the signal is the runner's first
   cancellation step
+- elapsed monotonic time is checked after the body settles, so a synchronous
+  body that blocks timer delivery still fails when it reaches its deadline
 - a test body that does not respect the signal continues running
   until the hard timeout fires (when available) or the worker is
   abandoned at run completion
@@ -445,8 +450,10 @@ Hard-timeout mechanics:
 - only available in profiles that own a worker or subprocess
   boundary (supervised microtests, integration runs with workers,
   benchmark execution, or resource-backed simulation runs)
-- the watchdog terminates the worker after the hard timeout; the
-  test is recorded as `crashed`
+- the boundary watchdog tracks the earliest deadline among active cases and
+  is rescheduled as cases start and finish
+- the watchdog terminates the worker when that deadline is reached; active
+  tests are recorded as `crashed`
 - crash-budget rules (`Process Crash Handling`) apply
 
 In-process modes intentionally lack hard termination - see
@@ -598,10 +605,16 @@ by controlling which unit gets a fresh executor.
 `scheduling` describes how cases are started inside an executor or
 indivisible group:
 
-| Scheduling   | Description                               |
-| ------------ | ----------------------------------------- |
-| `concurrent` | Multiple tests' async work may interleave |
-| `serial`     | One selected case runs at a time          |
+| Scheduling   | Description                                                       |
+| ------------ | ----------------------------------------------------------------- |
+| `concurrent` | Admitted tests' async work may interleave through a sliding limit |
+| `serial`     | One selected case runs at a time                                  |
+
+`execution.maxConcurrency` controls the concurrent admission limit per
+executor. It defaults to `5`. A completed case immediately frees its slot for
+the next queued case. Set it to `'unlimited'` to admit every selected case
+without a bound. With a worker pool, the maximum number of active cases is the
+number of active executors multiplied by this per-executor limit.
 
 Default ordinary microtests use `supervised-process` with `concurrent`
 scheduling. `in-process` remains available for deliberately cheaper local

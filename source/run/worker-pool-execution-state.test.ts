@@ -220,6 +220,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
                 coverage: false,
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                maxConcurrency: 5,
                 dispatchPolicy: 'dynamic-lease',
                 hedging: { mode: 'off' },
                 hostProcess: { kind: 'direct' },
@@ -284,9 +285,7 @@ function testOnlyDependency(): never {
 
 function createFakePool(maxThreads: number, isolateWorkers: boolean): CreatedWorkerPool {
     return {
-        async destroy() {
-            return undefined;
-        },
+        destroy: Promise.resolve.bind(Promise),
         options: { isolateWorkers, maxThreads },
         async run() {
             throw new Error('Fake worker pool did not receive a task implementation.');

@@ -84,6 +84,12 @@ const root = createRoot({
 await execute(createTestPlan(root));
 ```
 
+Direct execution is serial by default. Concurrent execution requires an
+explicit admission policy, for example
+`execution: { mode: 'concurrent-in-process', maxConcurrency: 5 }`.
+Use `maxConcurrency: 'unlimited'` for unbounded admission. A case's timeout and
+duration start after admission, so time waiting for a slot is excluded.
+
 Runner-owned direct Node entrypoints are exposed by `@overkill-dev/run` and
 `@overkill-dev/test` through `runIfMain(import.meta, testNode, options?)`.
 Those entrypoints load runner config, match the direct file to a profile, and

@@ -69,6 +69,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
                 kind: 'child',
                 nodeArguments: Array.from(execution.hostProcess.nodeArguments)
             },
+        maxConcurrency: runtime.resolvedRun.facts.execution.maxConcurrency,
         paths: unitPaths(unit),
         resourceBudgets: runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: runtime

@@ -1,4 +1,5 @@
 import type {
+    RunMaxConcurrency,
     RunMicrotestExecution,
     RunResourceUsagePolicy,
     TimingProfilePolicy,
@@ -8,6 +9,15 @@ import type {
     RunWorkerPoolHedgingPolicy,
     RunWorkerLifecycle
 } from './run-types.ts';
+import type { RunProjectMicrotestExecution } from './run-config-schema.ts';
+
+const defaultMaxConcurrency = 5;
+
+export function normalizedMaxConcurrency(
+    execution: { readonly maxConcurrency?: RunMaxConcurrency | undefined; } | null | undefined
+): RunMaxConcurrency {
+    return execution?.maxConcurrency ?? defaultMaxConcurrency;
+}
 
 export const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
 export const defaultResourceUsageSamplingIntervalMilliseconds = 100;
@@ -17,6 +27,8 @@ const defaultMicrotestTimeoutMilliseconds = 500;
 const defaultIntegrationCollectionTimeoutMilliseconds = 5000;
 const defaultIntegrationHardTimeoutMilliseconds = 7000;
 const defaultIntegrationTimeoutMilliseconds = 5000;
+const defaultMicrotestProcessModel = 'supervised-process';
+const defaultMicrotestScheduling = 'concurrent';
 
 export const defaultLoader = {
     sourceMaps: false,
@@ -50,10 +62,15 @@ export const defaultIntegrationTimeoutPolicy: RunTimeoutPolicy = {
     softMilliseconds: defaultIntegrationTimeoutMilliseconds
 };
 
-export const defaultMicrotestExecution: RunMicrotestExecution = {
-    processModel: 'supervised-process',
-    scheduling: 'concurrent'
-};
+export function normalizeMicrotestExecution(
+    execution: RunProjectMicrotestExecution | undefined
+): RunMicrotestExecution {
+    return {
+        maxConcurrency: normalizedMaxConcurrency(execution),
+        processModel: execution?.processModel ?? defaultMicrotestProcessModel,
+        scheduling: execution?.scheduling ?? defaultMicrotestScheduling
+    };
+}
 
 export const defaultIntegrationProcessModel = 'worker-pool';
 export const defaultIntegrationScheduling = 'concurrent';

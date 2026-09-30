@@ -47,6 +47,7 @@ function workerPoolCommand(): WorkerPoolCommand {
         definitionLocationCapture: 'disabled',
         engine: { kind: 'default' },
         hardTimeoutMilliseconds: 1000,
+        maxConcurrency: 5,
         hostProcess: { kind: 'direct' },
         paths: [],
         resourceBudgets: {

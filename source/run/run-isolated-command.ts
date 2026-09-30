@@ -22,6 +22,7 @@ type SupervisedCommandBase = {
     readonly definitionLocationCapture: SupervisedRunCommand['definitionLocationCapture'];
     readonly engine: IsolatedCommandEngine;
     readonly hardTimeoutMilliseconds: number;
+    readonly maxConcurrency: SupervisedRunCommand['maxConcurrency'];
     readonly paths: readonly string[];
     readonly resourceBudgets: SupervisedRunCommand['resourceBudgets'];
     readonly resourceUsageSamplingIntervalMilliseconds: number;
@@ -74,6 +75,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         definitionLocationCapture: input.definitionLocationCapture,
         engine: isolatedEngine(input.command),
         hardTimeoutMilliseconds: input.profile.timeouts.hardMilliseconds,
+        maxConcurrency: input.profile.execution.maxConcurrency,
         paths: resolvedPaths(input.files),
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
@@ -134,6 +136,7 @@ export function createWorkerPoolCommand(
         hostProcess: profile.execution.processModel === 'worker-pool'
             ? profile.execution.hostProcess
             : { kind: 'direct' },
+        maxConcurrency: profile.execution.maxConcurrency,
         paths: resolvedPaths(files),
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,

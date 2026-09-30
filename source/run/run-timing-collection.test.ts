@@ -73,6 +73,7 @@ function inProcessConfig(profile = defaultMicrotestProfile()): RunConfig {
             microtest: {
                 ...profile,
                 execution: {
+                    maxConcurrency: profile.execution.maxConcurrency,
                     processModel: 'in-process',
                     scheduling: profile.execution.scheduling
                 }

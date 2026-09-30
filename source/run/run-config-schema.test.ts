@@ -220,6 +220,11 @@ export const testNode = createOverkillSuite({
                 for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
                     for (const scheduling of [ 'concurrent', 'serial' ] as const) {
                         assertValidationSuccess(scope, microtestExecutionSchema, { processModel, scheduling });
+                        assertValidationSuccess(scope, microtestExecutionSchema, { maxConcurrency: 3, processModel });
+                        assertValidationSuccess(scope, microtestExecutionSchema, {
+                            maxConcurrency: 'unlimited',
+                            processModel
+                        });
                     }
                 }
 

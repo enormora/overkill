@@ -21,31 +21,25 @@ import {
     type ResourceBudgetBreach
 } from './execution-resource-budget-breach.ts';
 import type { ExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
+import {
+    createExecutionSupervision as createExecutionSupervisionState,
+    type ActiveCase as SupervisedActiveCase,
+    type CaseCompletion,
+    type ExecutionConcurrentCase,
+    type ExecutionSupervision as ExecutionSupervisionState
+} from './execution-supervision-state.ts';
+
+const microsecondsPerMillisecond = 1000;
 
 export type ExecuteTimeoutPolicy = {
     readonly hardTimeoutMilliseconds: number;
     readonly timeoutMilliseconds: number;
 };
-export type ConcurrentCase = {
-    readonly result: PerTestResult;
-    readonly runnerErrors: readonly RunnerError[];
-    readonly durationMicroseconds: number;
-};
+export type ConcurrentCase = ExecutionConcurrentCase;
 export type ExecutionSupervisionDependencies = {
     readonly globalErrorObserver: ExecutionGlobalErrorObserver;
     readonly runtimePolicy?: TestRuntimePolicy | null;
     readonly wallClock: Clock;
-};
-type CaseCompletion = {
-    readonly complete: (executedCase: ConcurrentCase) => void;
-    readonly promise: Promise<ConcurrentCase>;
-};
-type ActiveCase = {
-    readonly abort: () => void;
-    readonly completion: CaseCompletion;
-    readonly hardTimeout: ReturnType<Clock['setTimeout']> | null;
-    readonly startedAtMicroseconds: number;
-    readonly testCase: TestPlanCase;
 };
 type TestFailures = readonly [TestFailure, ...TestFailure[]];
 
@@ -61,13 +55,7 @@ type CrashCause = {
     readonly reason: 'hard-timeout';
 };
 
-export type ExecutionSupervision = {
-    readonly activeCases: ReadonlyMap<string, ActiveCase>;
-    readonly addActiveCase: (key: string, activeCase: ActiveCase) => void;
-    readonly recordRunnerError: (error: RunnerError) => void;
-    readonly removeActiveCase: (key: string) => void;
-    readonly runnerErrors: readonly RunnerError[];
-};
+export type ExecutionSupervision = ExecutionSupervisionState;
 
 type SoftTimeoutResolution = {
     readonly failure: TestFailure;
@@ -87,7 +75,7 @@ type ActiveCaseInput = {
 };
 
 type CaseBodyInput = ActiveCaseInput & {
-    readonly activeCase: ActiveCase;
+    readonly activeCase: SupervisedActiveCase;
     readonly timeoutMilliseconds: number | null;
 };
 
@@ -99,24 +87,7 @@ type ResourceUsageSampleInput = {
     readonly supervision: ExecutionSupervision;
 };
 
-export function createExecutionSupervision(): ExecutionSupervision {
-    const activeCases = new Map<string, ActiveCase>();
-    const runnerErrors: RunnerError[] = [];
-
-    return {
-        activeCases,
-        addActiveCase(key, activeCase) {
-            activeCases.set(key, activeCase);
-        },
-        recordRunnerError(error) {
-            runnerErrors.push(error);
-        },
-        removeActiveCase(key) {
-            activeCases.delete(key);
-        },
-        runnerErrors
-    };
-}
+export const createExecutionSupervision: () => ExecutionSupervision = createExecutionSupervisionState;
 
 function createCaseCompletion(): CaseCompletion {
     const { promise, resolve } = Promise.withResolvers<ConcurrentCase>();
@@ -270,13 +241,13 @@ async function runTestCaseWithPolicy(
     return policyCheckedCase(testCase, executedCase, supervision, dependencies);
 }
 
-function activeCaseIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly TestPlanCase['id'][] {
+function activeCaseIds(activeCases: ReadonlyMap<string, SupervisedActiveCase>): readonly TestPlanCase['id'][] {
     return Array.from(activeCases.values(), function toCaseId(activeCase) {
         return activeCase.testCase.id;
     });
 }
 
-function activeWorkIds(activeCases: ReadonlyMap<string, ActiveCase>): readonly WorkId[] {
+function activeWorkIds(activeCases: ReadonlyMap<string, SupervisedActiveCase>): readonly WorkId[] {
     return Array.from(activeCases.values(), function toWorkId(activeCase) {
         return activeCase.testCase.workId;
     });
@@ -319,6 +290,8 @@ function completeActiveCasesAs(
     verdict: PerTestResult['verdict'],
     dependencies: ExecutionSupervisionDependencies
 ): void {
+    supervision.stopAcceptingCases();
+
     for (const [ key, activeCase ] of supervision.activeCases) {
         supervision.removeActiveCase(key);
         activeCase.abort();
@@ -351,6 +324,8 @@ function completeActiveCasesAfterGlobalError(
     supervision: ExecutionSupervision,
     dependencies: ExecutionSupervisionDependencies
 ): void {
+    supervision.stopAcceptingCases();
+
     if (supervision.activeCases.size > 0) {
         completeActiveCasesAs(supervision, 'crashed', dependencies);
     }
@@ -361,6 +336,8 @@ function completeActiveCasesWithResourceExhaustion(
     supervision: ExecutionSupervision,
     dependencies: ExecutionSupervisionDependencies
 ): void {
+    supervision.stopAcceptingCases();
+
     const cause: ResourceExhaustionCause = {
         ...breach,
         activeCases: activeCaseIds(supervision.activeCases),
@@ -401,8 +378,14 @@ async function runCaseWithSoftTimeout(
 
     clearTimer(input.dependencies.wallClock, softTimeout);
 
-    if (timing.timedOut) {
-        return resultWithTimeoutFailure(executedCase, input.timeoutMilliseconds, executedCase.durationMicroseconds);
+    const deadlineMicroseconds = input.timeoutMilliseconds * microsecondsPerMillisecond;
+
+    if (timing.timedOut || executedCase.durationMicroseconds >= deadlineMicroseconds) {
+        return resultWithTimeoutFailure(
+            executedCase,
+            input.timeoutMilliseconds,
+            executedCase.durationMicroseconds / microsecondsPerMillisecond
+        );
     }
 
     return executedCase;
@@ -416,7 +399,7 @@ function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): Concu
     };
 }
 
-function registerActiveCase(input: ActiveCaseInput): ActiveCase {
+function registerActiveCase(input: ActiveCaseInput): SupervisedActiveCase {
     const key = workIdentityKey(input.testCase.workId);
     const startedAtMicroseconds = Number(input.dependencies.wallClock.currentMonotonicMicroseconds);
     const hardTimeout = input.timeoutPolicy === null || input.timeoutPolicy === undefined
@@ -424,7 +407,7 @@ function registerActiveCase(input: ActiveCaseInput): ActiveCase {
         : input.dependencies.wallClock.setTimeout(function hardTimeoutActiveCases() {
             completeActiveCasesWithCrash(input.supervision, input.dependencies);
         }, input.timeoutPolicy.hardTimeoutMilliseconds);
-    const activeCase: ActiveCase = {
+    const activeCase: SupervisedActiveCase = {
         abort() {
             input.controller.abort();
         },

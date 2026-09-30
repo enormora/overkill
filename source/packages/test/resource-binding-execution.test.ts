@@ -397,7 +397,7 @@ async function assertConcurrentAcquireFailureRunnerError(scope: TestScope): Prom
                 return resourceScope.assert.collect();
             }
         ),
-        { mode: 'concurrent-in-process' }
+        { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' }
     );
     const error = assertInconclusiveFixture(scope, observed, 'Resource acquisition failed.');
 

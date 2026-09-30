@@ -4,6 +4,7 @@ import type {
 } from '../engine/test-data.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
+import type { ExecuteExecution } from '../engine/execution-options.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import type { LoadedRunConfig } from './run-config.ts';
 import type { RunProfileConfig } from './run-types.ts';
@@ -73,8 +74,13 @@ export function rootTitle(options: RunIfMainOptions | undefined, cwd: string): s
     return options?.root?.title ?? cwd;
 }
 
-export function executionMode(profile: RunProfileConfig): 'concurrent-in-process' | 'serial-in-process' {
-    return profile.execution.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
+export function engineExecution(profile: RunProfileConfig): ExecuteExecution {
+    return profile.execution.scheduling === 'concurrent'
+        ? {
+            maxConcurrency: profile.execution.maxConcurrency,
+            mode: 'concurrent-in-process'
+        }
+        : { mode: 'serial-in-process' };
 }
 
 export function warnOnSupervisedDowngrade(profile: RunProfileConfig, stderr: RunIfMainWarningSink): void {

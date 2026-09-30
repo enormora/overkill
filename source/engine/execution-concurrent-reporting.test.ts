@@ -32,6 +32,27 @@ type ReporterSerializationScenario = {
     readonly testPlan: TestPlan;
 };
 
+type LimitedConcurrencyState = {
+    readonly finish: () => void;
+    readonly maximumActiveCases: () => number;
+    readonly start: (title: string, signals: LimitedConcurrencySignals) => void;
+    readonly startedCases: () => readonly string[];
+};
+
+type LimitedConcurrencySignals = {
+    readonly initialCasesStarted: ReporterSignal;
+    readonly releaseFirst: ReporterSignal;
+    readonly releaseRemaining: ReporterSignal;
+    readonly thirdCaseStarted: ReporterSignal;
+};
+
+type LimitedConcurrencyScenario = LimitedConcurrencySignals & {
+    readonly admitThird: () => Promise<void>;
+    readonly execution: Promise<RunResult>;
+    readonly finish: () => Promise<RunResult>;
+    readonly state: LimitedConcurrencyState;
+};
+
 function createReporterSignal(): ReporterSignal {
     let notify: () => void = function notifyUnsetSignal(): void {
         return undefined;
@@ -111,7 +132,7 @@ async function executeConcurrentTestPlan(
     reporter: RealTimeReporter
 ): Promise<RunResult> {
     return await engine.execute(testPlan, {
-        execution: { mode: 'concurrent-in-process' },
+        execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
         reporters: [ defineFixedReporter(reporter) ],
         runFacts: {},
         startedAt: '2026-07-15T00:00:00.000Z'
@@ -164,6 +185,146 @@ function createReporterSerializationScenario(engine: Engine): ReporterSerializat
     };
 }
 
+function createLimitedConcurrencyState(): LimitedConcurrencyState {
+    let activeCases = 0;
+    let maximumActiveCases = 0;
+    const startedCases: string[] = [];
+
+    return {
+        finish() {
+            activeCases -= 1;
+        },
+        maximumActiveCases() {
+            return maximumActiveCases;
+        },
+        start(title, signals) {
+            activeCases += 1;
+            maximumActiveCases = Math.max(maximumActiveCases, activeCases);
+            startedCases.push(title);
+
+            if (startedCases.length === 2) {
+                signals.initialCasesStarted.notify();
+            }
+
+            if (title === 'third') {
+                signals.thirdCaseStarted.notify();
+            }
+        },
+        startedCases() {
+            return Array.from(startedCases);
+        }
+    };
+}
+
+function createLimitedCase(
+    engine: Engine,
+    title: string,
+    state: LimitedConcurrencyState,
+    signals: LimitedConcurrencySignals
+): TestCase {
+    return engine.createTestCase({
+        definitionLocations: [ { kind: 'unknown' as const } ],
+        async body(testScope) {
+            state.start(title, signals);
+            const release = title === 'first' ? signals.releaseFirst : signals.releaseRemaining;
+
+            await release.promise;
+            state.finish();
+            testScope.assert.true(true);
+
+            return testScope.assert.collect();
+        },
+        annotations: {},
+        controls: {},
+        title
+    });
+}
+
+function createLimitedConcurrencyScenario(): LimitedConcurrencyScenario {
+    const engine = createEngine();
+    const signals: LimitedConcurrencySignals = {
+        initialCasesStarted: createReporterSignal(),
+        releaseFirst: createReporterSignal(),
+        releaseRemaining: createReporterSignal(),
+        thirdCaseStarted: createReporterSignal()
+    };
+    const state = createLimitedConcurrencyState();
+    const cases = [ 'first', 'second', 'third' ].map(function createCase(title) {
+        return createLimitedCase(engine, title, state, signals);
+    });
+    const testPlan = engine.createTestPlan(engine.createRoot({
+        children: cases,
+        annotations: {},
+        controls: {},
+        title: 'root'
+    }));
+    const execution = engine.execute(testPlan, {
+        execution: { maxConcurrency: 2, mode: 'concurrent-in-process' },
+        reporters: [],
+        runFacts: {},
+        startedAt: '2026-07-15T00:00:00.000Z'
+    });
+
+    return {
+        ...signals,
+        async admitThird() {
+            signals.releaseFirst.notify();
+            await signals.thirdCaseStarted.promise;
+        },
+        execution,
+        async finish() {
+            signals.releaseRemaining.notify();
+            return await execution;
+        },
+        state
+    };
+}
+
+function assertLimitedResult(scope: OverkillScope, result: RunResult): void {
+    scope.assert.deepEqual(result.runnerErrors, []);
+    scope.assert.deepEqual(
+        result.perTest.map(function toTitle(testResult) {
+            return testResult.id.title;
+        }),
+        [ 'first', 'second', 'third' ]
+    );
+}
+
+async function executeFatalLimitedPlan(recordStart: (title: string) => void): Promise<RunResult> {
+    const engine = createEngine();
+    const cases = [ 'first', 'second' ].map(function createFatalCase(title) {
+        return engine.createTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            body(testScope) {
+                recordStart(title);
+
+                if (title === 'first') {
+                    process.emit('unhandledRejection', new Error('fatal case'), Promise.resolve());
+                }
+
+                testScope.assert.true(true);
+                return testScope.assert.collect();
+            },
+            annotations: {},
+            controls: {},
+            title
+        });
+    });
+    const testPlan = engine.createTestPlan(engine.createRoot({
+        children: cases,
+        annotations: {},
+        controls: {},
+        title: 'root'
+    }));
+
+    return await engine.execute(testPlan, {
+        execution: { maxConcurrency: 1, mode: 'concurrent-in-process' },
+        reporters: [],
+        runFacts: {},
+        startedAt: '2026-07-15T00:00:00.000Z'
+    });
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-concurrent-reporting.test.ts',
@@ -210,6 +371,44 @@ export const testNode = createOverkillSuite({
                 await execution;
 
                 scope.assert.equal(scenario.maximumActiveEndReports(), 1);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'execute() admits concurrent cases through a sliding limit',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const scenario = createLimitedConcurrencyScenario();
+
+                await scenario.initialCasesStarted.promise;
+                scope.assert.deepEqual(scenario.state.startedCases(), [ 'first', 'second' ]);
+                await scenario.admitThird();
+                scope.assert.deepEqual(scenario.state.startedCases(), [ 'first', 'second', 'third' ]);
+                const result = await scenario.finish();
+
+                scope.assert.equal(scenario.state.maximumActiveCases(), 2);
+                assertLimitedResult(scope, result);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'execute() does not start queued cases after a fatal error',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const startedCases: string[] = [];
+                const result = await executeFatalLimitedPlan(function recordStart(title) {
+                    startedCases.push(title);
+                });
+
+                scope.assert.deepEqual(startedCases, [ 'first' ]);
+                scope.assert.equal(result.runnerErrors[0]?.subtype, 'unhandled-rejection');
+                scope.assert.equal(result.perTest.length, 1);
 
                 return scope.assert.collect();
             }

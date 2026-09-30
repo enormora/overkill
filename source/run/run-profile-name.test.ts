@@ -9,7 +9,8 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { invalidRunProfileNameMessage, type RunCommand } from './run-types.ts';
+import { invalidRunProfileNameMessage } from './profile-file-glob.ts';
+import type { RunCommand } from './run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const validProjectProfileNames = [ 'backend-http', 'ui-browser', 'ui.browser', 'unit_fast' ];

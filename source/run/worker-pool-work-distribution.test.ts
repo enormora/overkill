@@ -498,6 +498,7 @@ export const testNode = createOverkillSuite({
                             dispatchPolicy: 'dynamic-lease',
                             hedging: { mode: 'off' },
                             hostProcess: { kind: 'direct' },
+                            maxConcurrency: 5,
                             maxWorkers: null,
                             processModel: 'worker-pool',
                             scheduling: 'concurrent',

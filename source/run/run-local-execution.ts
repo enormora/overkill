@@ -1,15 +1,15 @@
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
-    finalizeResultWithDurationHistory,
     createRunResourceRuntimePolicy,
+    engineExecution,
+    finalizeResultWithDurationHistory,
     type RunRuntimePolicy
 } from './run-support.ts';
 import type {
     ResolvedRun,
     RunOrchestrator,
-    RunResourceUsagePolicy,
-    RunScheduling
+    RunResourceUsagePolicy
 } from './run-types.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import { createResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
@@ -27,10 +27,6 @@ function currentRunStartTime(dependencies: RunOrchestratorDependencies): string 
     const startedAt = new Date(dependencies.wallClock.currentUnixEpochMilliseconds);
 
     return startedAt.toISOString();
-}
-
-function resolveEngineExecutionMode(scheduling: RunScheduling): 'concurrent-in-process' | 'serial-in-process' {
-    return scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
 function createExecutionResourceUsageTracker(
@@ -63,7 +59,10 @@ export async function executeLocalResolvedRun(
         });
 
     return await dependencies.execute(resolvedRun.plan.testPlan, {
-        execution: { mode: resolveEngineExecutionMode(resolvedRun.facts.execution.scheduling) },
+        execution: engineExecution(
+            resolvedRun.facts.execution.scheduling,
+            resolvedRun.facts.execution.maxConcurrency
+        ),
         outputRenderer: resolvedRun.config.outputRenderer,
         async finalizeResult(result) {
             return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result, timing);

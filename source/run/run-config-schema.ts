@@ -20,6 +20,8 @@ const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteg
     return Number.isSafeInteger(value) && value > 0;
 }, 'must be a positive safe integer');
 
+const maxConcurrencySchema = z.union([ positiveSafeIntegerSchema, z.literal('unlimited') ]);
+
 const fileGlobSchema = z.string();
 
 const profileFilePatternsSchema = z
@@ -94,12 +96,14 @@ export const timingProfilePolicySchema = z
 export const microtestExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
+            maxConcurrency: z.optional(maxConcurrencySchema),
             processModel: z.literal('in-process'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
         })
         .readonly(),
     z
         .strictObject({
+            maxConcurrency: z.optional(maxConcurrencySchema),
             processModel: z.literal('supervised-process'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
         })
@@ -196,6 +200,7 @@ const workDistributionSchema = z.discriminatedUnion('mode', [
 export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
+            maxConcurrency: z.optional(maxConcurrencySchema),
             processModel: z.literal('supervised-process'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
         })
@@ -205,6 +210,7 @@ export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
             assignmentPolicy: z.optional(workerPoolAssignmentPolicySchema),
             dispatchPolicy: z.optional(workerPoolDispatchPolicySchema),
             hedging: z.optional(workerPoolHedgingSchema),
+            maxConcurrency: z.optional(maxConcurrencySchema),
             maxWorkers: z.optional(positiveSafeIntegerSchema),
             processModel: z.literal('worker-pool'),
             scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ])),

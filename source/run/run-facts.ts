@@ -157,6 +157,7 @@ function createRunExecutionFacts(
         coverage: input.request.coverage,
         debug: input.request.debug,
         engine: runEngineFacts(input.engine),
+        maxConcurrency: profile.execution.maxConcurrency,
         order: input.request.order,
         placementPlan: input.placementPlan,
         profile: input.request.profile,

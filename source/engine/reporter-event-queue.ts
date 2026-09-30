@@ -4,8 +4,10 @@ import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type ReporterEventQueue = {
-    readonly report: (event: ReporterEvent) => Promise<readonly RunnerError[]>;
+    readonly reportEvent: (event: ReporterEvent) => Promise<readonly RunnerError[]>;
 };
+
+type ReporterEventTarget = Pick<ReporterDelivery, 'reportEvent'>;
 
 function commonSuitePrefixLength(
     firstSuitePath: TestPlanCase['suitePath'],
@@ -40,7 +42,7 @@ export function createReporterEventQueue(
     let previousReport = Promise.resolve<readonly RunnerError[]>([]);
 
     return {
-        async report(event) {
+        async reportEvent(event) {
             const report = (async function reportEventAfterPreviousReport() {
                 await waitForPreviousReport(previousReport);
 
@@ -54,7 +56,7 @@ export function createReporterEventQueue(
 }
 
 export async function reportSuiteTransition(
-    reporterDelivery: ReporterDelivery,
+    reporterDelivery: ReporterEventTarget,
     currentSuitePath: TestPlanCase['suitePath'],
     nextSuitePath: TestPlanCase['suitePath']
 ): Promise<readonly RunnerError[]> {

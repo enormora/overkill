@@ -33,7 +33,10 @@ import {
     type RunHostProcessReason,
     type RunInvocationTimingOptions,
     type runIfMain,
+    type RunIntegrationExecution,
     type RunIntegrationProfileConfig,
+    type RunMaxConcurrency,
+    type RunMicrotestExecution,
     type RunSelection,
     type RunMicrotestProfileConfig,
     type RunOrder,
@@ -43,8 +46,10 @@ import {
     type RunProfileFiles,
     type RunProjectConfig,
     type RunProjectIntegrationProfileConfig,
+    type RunProjectIntegrationExecution,
     type RunProjectProfileFiles,
     type RunProjectMicrotestProfileConfig,
+    type RunProjectMicrotestExecution,
     type RunProjectProfileConfig,
     type RunResourceBudgets,
     type RunResourceUsagePolicy,
@@ -248,6 +253,7 @@ describe('@overkill-dev/run', function () {
         expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
         expect<RunExecutionFacts['capture']>().type.toBe<'buffered' | 'live'>();
         expect<RunExecutionFacts['coverage']>().type.toBe<boolean>();
+        expect<RunExecutionFacts['maxConcurrency']>().type.toBe<RunMaxConcurrency>();
         expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
         expect<RunExecutionFacts['placementPlan']>().type.toBe<PlacementPlan | null>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
@@ -374,6 +380,20 @@ describe('@overkill-dev/run worker-pool placement', function () {
         }>();
     });
 
+    test('exposes per-executor concurrency limits', function () {
+        expect<RunMaxConcurrency>().type.toBe<number | 'unlimited'>();
+        expect<RunMicrotestExecution['maxConcurrency']>().type.toBe<RunMaxConcurrency>();
+        expect<RunIntegrationExecution['maxConcurrency']>().type.toBe<RunMaxConcurrency>();
+        expect<RunProjectMicrotestExecution>().type.toBeAssignableFrom<{
+            readonly maxConcurrency: 'unlimited';
+            readonly processModel: 'in-process';
+        }>();
+        expect<RunProjectIntegrationExecution>().type.toBeAssignableFrom<{
+            readonly maxConcurrency: 'unlimited';
+            readonly processModel: 'worker-pool';
+        }>();
+    });
+
     test('exposes worker-pool assignment policy facts', function () {
         expect<
             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['assignmentPolicy']
@@ -462,6 +482,7 @@ describe('@overkill-dev/run config', function () {
                 readonly assignmentPolicy: 'case-count-balanced';
                 readonly dispatchPolicy: 'dynamic-lease';
                 readonly hedging: { readonly mode: 'off'; };
+                readonly maxConcurrency: RunMaxConcurrency;
                 readonly maxWorkers: null;
                 readonly workDistribution: { readonly mode: 'file'; };
                 readonly workerLifecycle: 'reuse';

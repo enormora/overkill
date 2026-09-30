@@ -15,7 +15,7 @@ import {
     createSeededTestPlan
 } from './run-selection.ts';
 import {
-    executionMode,
+    engineExecution,
     rootAnnotations,
     rootControls,
     rootTitle,
@@ -113,7 +113,7 @@ async function executeDirectTestPlan(
     warnOnSupervisedDowngrade(context.profile, dependencies.stderr);
 
     return await dependencies.runEngine.execute(ordered.testPlan, {
-        execution: { mode: executionMode(context.profile) },
+        execution: engineExecution(context.profile),
         async finalizeResult(result) {
             return finalizeDirectRunResult(runFacts, result);
         },

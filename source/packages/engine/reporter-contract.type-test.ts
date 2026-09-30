@@ -39,6 +39,12 @@ type ExecuteOptionKeyByName = {
 };
 
 type ExpectedExecuteOptionKey = keyof ExecuteOptionKeyByName;
+type ExpectedConcurrentExecution = {
+    readonly maxConcurrency: number | 'unlimited';
+    readonly mode: 'concurrent-in-process';
+};
+type ExpectedSerialExecution = { readonly mode: 'serial-in-process'; };
+type ExpectedExecuteExecution = ExpectedConcurrentExecution | ExpectedSerialExecution;
 
 type SinkKindByName = {
     readonly directory: 'directory';
@@ -78,7 +84,7 @@ describe('Reporter contract', function () {
         expect<keyof ExecuteOptions>().type.toBe<ExpectedExecuteOptionKey>();
         expect<ExecuteOptions['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
         expect<ExecuteOptions['finalizeResult']>().type.toBe<ExecuteResultFinalizer | undefined>();
-        expect<ExecuteExecution['mode']>().type.toBe<'concurrent-in-process' | 'serial-in-process'>();
+        expect<ExecuteExecution>().type.toBe<ExpectedExecuteExecution>();
         expect<RunFacts>().type.toBe<Readonly<Record<string, unknown>>>();
         expect<RealTimeReporter['dispose']>().type.toBe<(() => Promise<void> | void) | null>();
         expect<RealTimeReporter['onEvent']>().type.toBe<(event: ReporterEvent) => Promise<void> | void>();

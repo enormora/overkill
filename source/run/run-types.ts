@@ -11,7 +11,11 @@ import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { RunEngineSelection, RunSelection } from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
-import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
+import type {
+    RunExecutionResourceOwnershipPlan,
+    RunIntegrationExecutionShape,
+    RunMicrotestExecutionShape
+} from './run-execution-config.ts';
 
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
@@ -55,12 +59,10 @@ export type TimingProfilePolicy = {
     readonly collection: TimingCollectionMode;
 };
 
-const runProfileNamePattern = /^[A-Za-z0-9._-]+$/u;
-const reservedBenchmarkProfileName = 'benchmark';
-
 export type RunTestFamily = 'integration' | 'microtest';
 export type RunProcessModel = 'in-process' | 'supervised-process' | 'worker-pool';
 export type RunMicrotestProcessModel = Exclude<RunProcessModel, 'worker-pool'>;
+export type RunMaxConcurrency = number | 'unlimited';
 export type RunScheduling = 'concurrent' | 'serial';
 export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
 export type RunWorkerPoolAssignmentPolicy = 'case-count-balanced' | 'duration-history-balanced' | 'stable';
@@ -174,33 +176,25 @@ export type PlacementAssignment = {
 export type PlacementPlan = {
     readonly assignments: readonly PlacementAssignment[];
     readonly lanes: readonly PlacementLane[];
-    readonly resourceOwnership: ResourceOwnershipPlan;
+    readonly resourceOwnership: RunExecutionResourceOwnershipPlan;
     readonly units: readonly WorkUnit[];
 };
 
-export type RunMicrotestExecution = {
-    readonly processModel: RunMicrotestProcessModel;
-    readonly scheduling: RunScheduling;
-};
-
-type RunSupervisedIntegrationExecution = {
-    readonly processModel: 'supervised-process';
-    readonly scheduling: RunScheduling;
-};
-
-type RunWorkerPoolExecution = {
-    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
-    readonly dispatchPolicy: RunWorkerPoolDispatchPolicy;
-    readonly hedging: RunWorkerPoolHedgingPolicy;
-    readonly hostProcess: RunHostProcess;
-    readonly maxWorkers: number | null;
-    readonly processModel: 'worker-pool';
-    readonly scheduling: RunScheduling;
-    readonly workDistribution: RunWorkDistribution;
-    readonly workerLifecycle: RunWorkerLifecycle;
-};
-
-export type RunIntegrationExecution = RunSupervisedIntegrationExecution | RunWorkerPoolExecution;
+export type RunMicrotestExecution = RunMicrotestExecutionShape<
+    RunMaxConcurrency,
+    RunMicrotestProcessModel,
+    RunScheduling
+>;
+export type RunIntegrationExecution = RunIntegrationExecutionShape<
+    RunWorkerPoolAssignmentPolicy,
+    RunWorkerPoolDispatchPolicy,
+    RunWorkerPoolHedgingPolicy,
+    RunHostProcess,
+    RunMaxConcurrency,
+    RunScheduling,
+    RunWorkerLifecycle,
+    RunWorkDistribution
+>;
 
 export type RunResourceUsagePolicy = {
     readonly budgets: RunResourceBudgets;
@@ -348,6 +342,7 @@ type RunExecutionBaseFacts = {
     readonly coverage: boolean;
     readonly debug: RunDebugRequest;
     readonly engine: RunEngineFacts;
+    readonly maxConcurrency: RunMaxConcurrency;
     readonly order: RunOrder;
     readonly placementPlan: PlacementPlan | null;
     readonly profile: string;
@@ -474,23 +469,3 @@ export type RunOrchestrator = {
         readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
     }>;
 };
-
-export function invalidRunProfileNameMessage(profileName: string): string | null {
-    if (!runProfileNamePattern.test(profileName)) {
-        return `Invalid profile name "${profileName}". ` +
-            'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
-    }
-
-    if (profileName === reservedBenchmarkProfileName) {
-        return 'Invalid profile name "benchmark". The "benchmark" profile name is reserved for benchmark commands.';
-    }
-
-    return null;
-}
-
-export function invalidRunProfileFileSetNameMessage(fileSetName: string): string | null {
-    return runProfileNamePattern.test(fileSetName)
-        ? null
-        : `Invalid profile file set name "${fileSetName}". ` +
-            'Profile file set names may only contain letters, numbers, dots, underscores, and hyphens.';
-}

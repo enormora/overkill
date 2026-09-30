@@ -95,7 +95,7 @@ function createRunConfig(
         }),
         profiles: {
             microtest: {
-                execution: { processModel, scheduling },
+                execution: { maxConcurrency: 5, processModel, scheduling },
                 files: null,
                 reporters: null,
                 resourceUsage: {
@@ -135,6 +135,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): RunConfig {
         profiles: {
             integration: {
                 execution: {
+                    maxConcurrency: 5,
                     processModel: 'supervised-process',
                     scheduling: 'concurrent'
                 },

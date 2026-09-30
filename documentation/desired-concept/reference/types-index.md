@@ -867,6 +867,7 @@ type ProfileFileSet = {
 };
 
 type MicrotestExecutionConfig = {
+    readonly maxConcurrency: RunMaxConcurrency;
     readonly processModel: 'in-process' | 'supervised-process';
     readonly scheduling: 'serial' | 'concurrent';
 };
@@ -876,12 +877,14 @@ type IntegrationExecutionConfig =
     | WorkerPoolIntegrationExecutionConfig;
 
 type SupervisedIntegrationExecutionConfig = {
+    readonly maxConcurrency: RunMaxConcurrency;
     readonly processModel: 'supervised-process';
     readonly scheduling: 'serial' | 'concurrent';
 };
 
 type WorkerPoolIntegrationExecutionConfig = {
     readonly hostProcess: HostProcess;
+    readonly maxConcurrency: RunMaxConcurrency;
     readonly maxWorkers: number | null;
     readonly processModel: 'worker-pool';
     readonly scheduling: 'serial' | 'concurrent';
@@ -891,6 +894,8 @@ type WorkerPoolIntegrationExecutionConfig = {
     readonly dispatchPolicy: WorkerPoolDispatchPolicy;
     readonly hedging: WorkerPoolHedgingPolicy;
 };
+
+type RunMaxConcurrency = number | 'unlimited';
 
 type WorkerPoolHedgingPolicy =
     | { readonly mode: 'off'; }
@@ -1082,6 +1087,7 @@ type RunExecutionBaseFacts = {
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly capture: 'buffered' | 'live';
     readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
+    readonly maxConcurrency: RunMaxConcurrency;
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly placementPlan: PlacementPlan | null;
     readonly profile: ProfileName;

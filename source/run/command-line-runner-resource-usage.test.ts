@@ -194,6 +194,7 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
     scope.require.defined(profile);
     scope.assert.deepEqual(profile, {
         execution: {
+            maxConcurrency: 5,
             processModel: 'supervised-process',
             scheduling: 'concurrent'
         },
