@@ -2,6 +2,33 @@ import { caseIdentityKey, createDefaultWorkId, type CaseId, type WorkId } from '
 import type { PerTestResult, RunArtifact, RunnerError } from '../engine/run-result.ts';
 import type { RunRequest } from './run-types.ts';
 
+const microsecondsPerMillisecond = 1000;
+
+type ActiveCaseTiming = {
+    readonly startedAtMicroseconds: number;
+};
+
+export function remainingHardTimeoutMilliseconds(
+    activeCases: Iterable<ActiveCaseTiming>,
+    nowMicroseconds: number,
+    hardTimeoutMilliseconds: number
+): number | null {
+    const starts = Array.from(activeCases, function toStart(activeCase) {
+        return activeCase.startedAtMicroseconds;
+    });
+
+    if (starts.length === 0) {
+        return null;
+    }
+
+    const elapsedMicroseconds = nowMicroseconds - Math.min(...starts);
+
+    return Math.max(
+        0,
+        hardTimeoutMilliseconds * microsecondsPerMillisecond - elapsedMicroseconds
+    ) / microsecondsPerMillisecond;
+}
+
 export type SupervisedCase = {
     readonly capture: RunRequest['capture'] | null;
     readonly definitionLocations?: PerTestResult['definitionLocations'];

@@ -47,6 +47,7 @@ export const testNode = createOverkillSuite({
                         dispatchPolicy: 'dynamic-lease',
                         hedging: { mode: 'off' },
                         hostProcess: { kind: 'direct' },
+                        maxConcurrency: 5,
                         maxWorkers: null,
                         processModel: 'worker-pool',
                         scheduling: 'concurrent',
@@ -122,6 +123,7 @@ export const testNode = createOverkillSuite({
                     dispatchPolicy: 'dynamic-lease',
                     hedging: { mode: 'off' },
                     hostProcess: { kind: 'direct' },
+                    maxConcurrency: 5,
                     maxWorkers: null,
                     processModel: 'worker-pool',
                     scheduling: 'serial',
@@ -133,6 +135,7 @@ export const testNode = createOverkillSuite({
                     dispatchPolicy: 'static-assignment',
                     hedging: { mode: 'off' },
                     hostProcess: { kind: 'direct' },
+                    maxConcurrency: 5,
                     maxWorkers: 4,
                     processModel: 'worker-pool',
                     scheduling: 'serial',
@@ -190,6 +193,7 @@ export const testNode = createOverkillSuite({
                         mode: 'on'
                     },
                     hostProcess: { kind: 'direct' },
+                    maxConcurrency: 5,
                     maxWorkers: null,
                     processModel: 'worker-pool',
                     scheduling: 'concurrent',
@@ -377,6 +381,7 @@ export const testNode = createOverkillSuite({
 
                 scope.require.defined(profile);
                 scope.assert.deepEqual(profile.execution, {
+                    maxConcurrency: 5,
                     processModel: 'supervised-process',
                     scheduling: 'serial'
                 });

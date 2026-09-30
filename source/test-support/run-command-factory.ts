@@ -28,6 +28,7 @@ import { resolveTimingCollection } from '../run/run-facts.ts';
 type WorkerPoolExecutionOverrides = Partial<
     Extract<RunIntegrationExecution, { readonly processModel: 'worker-pool'; }>
 >;
+const defaultMaxConcurrency = 5;
 
 type ResourceUsageOverrides = {
     readonly budgets?: Partial<RunResourceBudgets>;
@@ -102,6 +103,7 @@ function defaultRunTimeoutPolicy(overrides: Partial<RunTimeoutPolicy> = {}): Run
 
 function defaultMicrotestExecution(overrides: Partial<RunMicrotestExecution> = {}): RunMicrotestExecution {
     return {
+        maxConcurrency: overrides.maxConcurrency ?? defaultMaxConcurrency,
         processModel: overrides.processModel ?? 'supervised-process',
         scheduling: overrides.scheduling ?? 'concurrent'
     };
@@ -114,6 +116,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
         coverage: command.request.coverage,
         debug: command.request.debug,
         engine: { kind: 'default' as const },
+        maxConcurrency: profile.execution.maxConcurrency,
         order: command.request.order,
         placementPlan: null,
         profile: command.request.profile,
@@ -232,6 +235,7 @@ function defaultMaximumWorkers(overrides: Partial<RunIntegrationExecution>): num
 
 function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
     const processModel = overrides.processModel ?? 'worker-pool';
+    const maxConcurrency = overrides.maxConcurrency ?? defaultMaxConcurrency;
     const scheduling = overrides.scheduling ?? 'concurrent';
 
     if (processModel === 'worker-pool') {
@@ -239,6 +243,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
             assignmentPolicy: defaultAssignmentPolicy(overrides),
             dispatchPolicy: defaultDispatchPolicy(overrides),
             hedging: defaultHedging(overrides),
+            maxConcurrency,
             maxWorkers: defaultMaximumWorkers(overrides),
             processModel,
             scheduling,
@@ -248,7 +253,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
         };
     }
 
-    return { processModel, scheduling };
+    return { maxConcurrency, processModel, scheduling };
 }
 
 export function defaultMicrotestProfile(

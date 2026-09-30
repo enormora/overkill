@@ -89,6 +89,7 @@ function listProfile(profile: RunProfileConfig): RunProfileConfig {
     return {
         ...profile,
         execution: {
+            maxConcurrency: profile.execution.maxConcurrency,
             processModel: 'in-process',
             scheduling: profile.execution.scheduling
         }

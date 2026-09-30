@@ -42,6 +42,7 @@ function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): Worke
         definitionLocationCapture: 'disabled',
         engine: { kind: 'default' },
         hardTimeoutMilliseconds: 1000,
+        maxConcurrency: 5,
         hostProcess,
         paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
         resourceBudgets: {

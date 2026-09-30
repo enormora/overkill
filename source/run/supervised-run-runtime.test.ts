@@ -30,8 +30,10 @@ type ChildRecord = {
     readonly signals: () => readonly string[];
 };
 type TimeoutRuntimeRecord = {
+    readonly advanceTo: (microseconds: number) => void;
     readonly callbacks: () => readonly (() => void)[];
     readonly clears: () => number;
+    readonly delays: () => readonly number[];
     readonly runtime: SupervisedRunRuntimeSeed;
 };
 
@@ -81,15 +83,23 @@ function childProcess(state: ChildState): ChildRecord {
 
 function timeoutRuntime(child: SupervisedChildProcess): TimeoutRuntimeRecord {
     const callbacks: (() => void)[] = [];
+    const delays: number[] = [];
     const reports: Promise<void>[] = [];
     let clears = 0;
+    let currentMonotonicMicroseconds = 0;
 
     return {
+        advanceTo(microseconds) {
+            currentMonotonicMicroseconds = microseconds;
+        },
         callbacks() {
             return callbacks;
         },
         clears() {
             return clears;
+        },
+        delays() {
+            return delays;
         },
         runtime: {
             child,
@@ -101,8 +111,12 @@ function timeoutRuntime(child: SupervisedChildProcess): TimeoutRuntimeRecord {
                         clears += timeout === null ? 0 : 1;
                     },
                     currentUnixEpochMilliseconds: 0,
-                    setTimeout(callback: () => void) {
+                    get currentMonotonicMicroseconds() {
+                        return BigInt(currentMonotonicMicroseconds);
+                    },
+                    setTimeout(callback: () => void, delay: number) {
                         callbacks.push(callback);
+                        delays.push(delay);
                         return callbacks.length;
                     }
                 },
@@ -177,21 +191,33 @@ function collectionRuntime(
 }
 
 function timeoutCallback(scope: OverkillScope, callbacks: readonly (() => void)[]): () => void {
-    const [ callback ] = callbacks;
+    const callback = callbacks.at(-1);
     scope.require.defined(callback);
 
     return callback;
 }
 
-function startTimeoutForActiveCase(runtime: SupervisedRunRuntimeSeed): SupervisedHardTimeout {
-    const timeout = createHardTimeout(runtime);
+function scheduleOverlappingCases(
+    record: TimeoutRuntimeRecord,
+    timeout: SupervisedHardTimeout
+): void {
+    record.runtime.state.addActiveCase('first', { capture: null, id: caseId }, 0);
+    timeout.start();
+    record.advanceTo(500_000);
+    record.runtime.state.addActiveCase('second', { capture: null, id: caseId }, 500_000);
+    timeout.start();
+    record.runtime.state.removeActiveCase('first');
+    timeout.start();
+}
 
-    timeout.start();
-    runtime.state.addActiveCase('case', { capture: null, id: caseId }, 0);
-    timeout.start();
-    timeout.start();
-
-    return timeout;
+function assertTimedOutChild(
+    scope: OverkillScope,
+    record: TimeoutRuntimeRecord,
+    child: ChildRecord
+): void {
+    scope.assert.equal(record.clears(), 3);
+    scope.assert.equal(record.runtime.terminalFailure.read(), true);
+    scope.assert.deepEqual(child.signals(), [ 'SIGKILL' ]);
 }
 
 export const testNode = createOverkillSuite({
@@ -251,21 +277,20 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'createHardTimeout() starts once while cases are active',
+            title: 'createHardTimeout() reschedules for the oldest active case',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
-                const { callbacks, clears, runtime } = timeoutRuntime(live.child);
+                const record = timeoutRuntime(live.child);
+                const timeout = createHardTimeout(record.runtime);
 
-                const timeout = startTimeoutForActiveCase(runtime);
-                scope.assert.equal(callbacks().length, 1);
-                timeoutCallback(scope, callbacks())();
+                scheduleOverlappingCases(record, timeout);
+                scope.assert.deepEqual(record.delays(), [ 1000, 500, 1000 ]);
+                timeoutCallback(scope, record.callbacks())();
                 timeout.clear();
 
-                scope.assert.equal(clears(), 1);
-                scope.assert.equal(runtime.terminalFailure.read(), true);
-                scope.assert.deepEqual(live.signals(), [ 'SIGKILL' ]);
+                assertTimedOutChild(scope, record, live);
 
                 return scope.assert.collect();
             }

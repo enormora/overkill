@@ -12,8 +12,10 @@ import type {
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
+    createSupervisedHardTimeout,
     kill,
     observeSupervisedChildOutput,
+    type SupervisedChildHardTimeout,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
 import {
@@ -45,10 +47,7 @@ export type ReporterEventQueue = {
     readonly wait: () => Promise<void>;
 };
 
-export type SupervisedHardTimeout = {
-    readonly clear: () => void;
-    readonly start: () => void;
-};
+export type SupervisedHardTimeout = SupervisedChildHardTimeout;
 
 export type SupervisedRunRuntimeSeed = {
     readonly child: SupervisedChildProcess;
@@ -222,33 +221,8 @@ export function supervisedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunP
     return resolvedRun.plan.collectedPlan;
 }
 
-export function createHardTimeout(runtime: SupervisedRunRuntimeSeed): SupervisedHardTimeout {
-    let hardTimeout: ReturnType<RunOrchestratorDependencies['wallClock']['setTimeout']> | null = null;
-
-    return {
-        clear() {
-            if (hardTimeout !== null) {
-                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
-                hardTimeout = null;
-            }
-        },
-        start() {
-            if (hardTimeout !== null || runtime.state.activeCases.size === 0) {
-                return;
-            }
-
-            hardTimeout = runtime.dependencies.wallClock.setTimeout(function killHardTimedOutChild() {
-                runtime.terminalFailure.write(true);
-                runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
-                runtime.state.recordTerminalActiveCases(
-                    'crashed',
-                    Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
-                );
-                kill(runtime.child);
-            }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds);
-        }
-    };
-}
+export const createHardTimeout: (runtime: SupervisedRunRuntimeSeed) => SupervisedHardTimeout =
+    createSupervisedHardTimeout;
 
 function supervisedEngine(resolvedRun: ResolvedRun): SupervisedRunCommand['engine'] {
     if (resolvedRun.engine.kind === 'instance') {
@@ -278,6 +252,7 @@ function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
         engine: supervisedEngine(resolvedRun),
         hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
         kind: 'run',
+        maxConcurrency: resolvedRun.facts.execution.maxConcurrency,
         paths: resolvedRun.request.paths,
         resourceBudgets: resolvedRun.facts.execution.resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resolvedRun
@@ -325,10 +300,8 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
         );
     }
 
-    if (reportedEvent.kind === 'test-start') {
+    if (reportedEvent.kind === 'test-start' || reportedEvent.kind === 'test-end') {
         runtime.timeout.start();
-    } else if (reportedEvent.kind === 'test-end' && runtime.state.activeCases.size === 0) {
-        runtime.timeout.clear();
     }
 
     runtime.reporterEvents.add(recordReporterEventErrors(

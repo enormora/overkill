@@ -2,13 +2,13 @@ import { isAbsolute, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import {
-    invalidProfileFileGlobMessage
+    invalidProfileFileGlobMessage,
+    invalidRunProfileFileSetNameMessage
 } from './profile-file-glob.ts';
 import { invalidRequest, noTestsCollected } from './run-errors.ts';
-import {
-    invalidRunProfileFileSetNameMessage,
-    type RunProfileFileSet,
-    type RunProfileFiles
+import type {
+    RunProfileFileSet,
+    RunProfileFiles
 } from './run-types.ts';
 import type {
     DiscoveredRunFile,

@@ -15,6 +15,7 @@ import type {
     RunEngineFacts,
     RunHostProcess,
     RunIntegrationExecution,
+    RunMaxConcurrency,
     RunLoaderConfig,
     RunMicrotestExecution,
     RunProfileConfig,
@@ -23,6 +24,7 @@ import type {
     RunRequest,
     RunResourceBudgets,
     RunResourceUsagePolicy,
+    RunScheduling,
     ResolvedRun,
     RunShard,
     TimingProfilePolicy,
@@ -42,6 +44,22 @@ import {
 
 export type RunRuntimePolicy = TestRuntimePolicy;
 type RunEngineSelection = RunCommand['engine'];
+
+type ConcurrentEngineExecution = {
+    readonly maxConcurrency: RunMaxConcurrency;
+    readonly mode: 'concurrent-in-process';
+};
+type SerialEngineExecution = { readonly mode: 'serial-in-process'; };
+type EngineExecution = ConcurrentEngineExecution | SerialEngineExecution;
+
+export function engineExecution(
+    scheduling: RunScheduling,
+    maxConcurrency: RunMaxConcurrency
+): EngineExecution {
+    return scheduling === 'concurrent'
+        ? { maxConcurrency, mode: 'concurrent-in-process' as const }
+        : { mode: 'serial-in-process' as const };
+}
 
 export const createRunPermissionRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicy;
 
@@ -200,6 +218,7 @@ function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
 
 function copyMicrotestExecution(execution: RunMicrotestExecution): RunMicrotestExecution {
     return {
+        maxConcurrency: execution.maxConcurrency,
         processModel: execution.processModel,
         scheduling: execution.scheduling
     };
@@ -249,6 +268,7 @@ function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegr
             dispatchPolicy: execution.dispatchPolicy,
             hedging: execution.hedging,
             hostProcess: copyHostProcess(execution.hostProcess),
+            maxConcurrency: execution.maxConcurrency,
             maxWorkers: execution.maxWorkers,
             processModel: execution.processModel,
             scheduling: execution.scheduling,
@@ -258,6 +278,7 @@ function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegr
     }
 
     return {
+        maxConcurrency: execution.maxConcurrency,
         processModel: execution.processModel,
         scheduling: execution.scheduling
     };

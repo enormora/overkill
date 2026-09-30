@@ -2,7 +2,10 @@ import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/ide
 import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { applyEvent } from './supervised-run-runtime.ts';
-import type { SupervisedCase } from './supervised-run-state.ts';
+import {
+    remainingHardTimeoutMilliseconds,
+    type SupervisedCase
+} from './supervised-run-state.ts';
 import { crashError } from './supervised-run-resource-policy.ts';
 import type { PlacementRecoveryDecision } from './placement-trace.ts';
 import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
@@ -271,7 +274,15 @@ export function stopWorkerPoolTasks(
 }
 
 function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
-    if (taskRun.timeout.read() !== null) {
+    clearTaskTimeout(taskRun, runtime.dependencies);
+
+    const remainingMilliseconds = remainingHardTimeoutMilliseconds(
+        taskRun.state.activeCases.values(),
+        Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds),
+        runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds
+    );
+
+    if (remainingMilliseconds === null) {
         return;
     }
 
@@ -280,7 +291,7 @@ function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
         taskRun.requeuePendingCases.write(true);
         recordTaskCrash(taskRun, runtime, 'hard-timeout', 'Worker-pool work unit exceeded hard timeout.');
         taskRun.controller.abort();
-    }, runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds));
+    }, remainingMilliseconds));
 }
 
 function eventWithTaskArtifacts(
@@ -305,7 +316,6 @@ function handleWorkerEvent(
 ): void {
     if (event.kind === 'test-start') {
         taskRun.startedCases.add(workIdentityKey(event.workId ?? createDefaultWorkId(event.case)));
-        startTaskTimeout(taskRun, runtime);
     }
 
     const reportedEvent = eventWithTaskArtifacts(event, taskRun);
@@ -317,8 +327,8 @@ function handleWorkerEvent(
         Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
 
-    if (reportedEvent.kind === 'test-end' && taskRun.state.activeCases.size === 0) {
-        clearTaskTimeout(taskRun, runtime.dependencies);
+    if (reportedEvent.kind === 'test-start' || reportedEvent.kind === 'test-end') {
+        startTaskTimeout(taskRun, runtime);
     }
 
     if (taskRun.reporterEventsBuffered) {

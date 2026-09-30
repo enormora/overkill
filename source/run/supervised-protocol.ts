@@ -8,6 +8,7 @@ import type {
     CollectedRunPlan,
     RunCommand,
     RunRequest,
+    RunMaxConcurrency,
     RunResourceBudgets,
     RunScheduling,
     RunTestFamily
@@ -39,6 +40,7 @@ type SupervisedCommandBase = {
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly paths: readonly string[];
     readonly hardTimeoutMilliseconds: number;
+    readonly maxConcurrency: RunMaxConcurrency;
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly scheduling: RunScheduling;

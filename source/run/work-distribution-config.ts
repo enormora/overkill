@@ -1,10 +1,10 @@
 import type { RunProjectIntegrationExecution } from './run-config-schema.ts';
-import {
-    invalidRunProfileFileSetNameMessage,
-    type RunIntegrationExecution,
-    type RunProfileFiles,
-    type RunWorkDistribution,
-    type RunWorkGroup
+import { invalidRunProfileFileSetNameMessage } from './profile-file-glob.ts';
+import type {
+    RunIntegrationExecution,
+    RunProfileFiles,
+    RunWorkDistribution,
+    RunWorkGroup
 } from './run-types.ts';
 
 type NormalizedProfileFileSets = {

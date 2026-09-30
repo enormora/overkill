@@ -164,9 +164,12 @@ part of the microtest runtime model only.
 
 Microtest profile execution is modeled with two independent fields:
 `execution.processModel` is `in-process` or `supervised-process`, and
-`execution.scheduling` is `concurrent` or `serial`. The default `microtest`
-profile uses supervised concurrent execution. The selected values are recorded
-in `RunFacts.execution` and drive runner planning.
+`execution.scheduling` is `concurrent` or `serial`.
+`execution.maxConcurrency` is a positive safe integer or `'unlimited'` and
+limits active cases per executor. It defaults to `5`; serial scheduling still
+admits one case at a time. The default `microtest` profile uses supervised
+concurrent execution. The selected values are recorded in `RunFacts.execution`
+and drive runner planning.
 
 Integration profiles default to `worker-pool` with concurrent scheduling.
 `worker-pool` uses bounded Node worker threads, collects once in a worker,

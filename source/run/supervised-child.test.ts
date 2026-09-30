@@ -84,6 +84,7 @@ function command(kind: SupervisedChildCommand['kind'], path: string): Supervised
         definitionLocationCapture: 'enabled',
         engine: { kind: 'default' },
         hardTimeoutMilliseconds: 2000,
+        maxConcurrency: 5,
         kind,
         paths: [ path ],
         resourceBudgets: {

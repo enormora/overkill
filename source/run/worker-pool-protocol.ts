@@ -15,6 +15,7 @@ import type {
     CollectedRunPlan,
     RunCommand,
     RunHostProcess,
+    RunMaxConcurrency,
     RunResourceBudgets,
     RunScheduling,
     RunTestFamily
@@ -35,6 +36,7 @@ export type WorkerPoolCommand = {
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly hardTimeoutMilliseconds: number;
     readonly hostProcess: RunHostProcess;
+    readonly maxConcurrency: RunMaxConcurrency;
     readonly paths: readonly string[];
     readonly resourceBudgets: RunResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;

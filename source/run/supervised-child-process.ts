@@ -2,8 +2,13 @@ import { dirname, join } from 'node:path';
 import type { Clock } from '@enormora/clock';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
-import type { RunRequest, RunTestFamily } from './run-types.ts';
-import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
+import type { ResolvedRun, RunRequest, RunTestFamily } from './run-types.ts';
+import { crashError } from './supervised-run-resource-policy.ts';
+import {
+    remainingHardTimeoutMilliseconds,
+    type StoredRunValue,
+    type SupervisedRunState
+} from './supervised-run-state.ts';
 
 type SupervisedChildEventListener = {
     readonly error: (error: Error) => void;
@@ -37,6 +42,60 @@ export function kill(child: SupervisedChildProcess): void {
     if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
         child.kill('SIGKILL');
     }
+}
+
+export type SupervisedChildHardTimeout = {
+    readonly clear: () => void;
+    readonly start: () => void;
+};
+
+type SupervisedHardTimeoutRuntime = {
+    readonly child: SupervisedChildProcess;
+    readonly dependencies: { readonly wallClock: Clock; };
+    readonly resolvedRun: ResolvedRun;
+    readonly state: SupervisedRunState;
+    readonly terminalFailure: StoredRunValue<boolean>;
+};
+
+export function createSupervisedHardTimeout(
+    runtime: SupervisedHardTimeoutRuntime
+): SupervisedChildHardTimeout {
+    let hardTimeout: ReturnType<Clock['setTimeout']> | null = null;
+
+    return {
+        clear() {
+            if (hardTimeout !== null) {
+                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
+                hardTimeout = null;
+            }
+        },
+        start() {
+            if (hardTimeout !== null) {
+                runtime.dependencies.wallClock.clearTimeout(hardTimeout);
+                hardTimeout = null;
+            }
+
+            const remainingMilliseconds = remainingHardTimeoutMilliseconds(
+                runtime.state.activeCases.values(),
+                Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds),
+                runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds
+            );
+
+            if (remainingMilliseconds === null) {
+                return;
+            }
+
+            hardTimeout = runtime.dependencies.wallClock.setTimeout(function killHardTimedOutChild() {
+                runtime.terminalFailure.write(true);
+                runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
+                runtime.state.recordTerminalActiveCases(
+                    'crashed',
+                    Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
+                );
+                kill(runtime.child);
+            }, remainingMilliseconds);
+        }
+    };
 }
 
 type SupervisedChildStartOptions = {

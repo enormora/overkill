@@ -19,28 +19,27 @@ import {
     type RunProjectTimeoutConfig as ParsedRunProjectTimeoutConfig,
     type RunProjectUnmeasuredResourceUsage as ParsedRunProjectUnmeasuredResourceUsage
 } from './run-config-schema.ts';
-import {
-    invalidRunProfileNameMessage,
-    invalidRunProfileFileSetNameMessage,
-    type RunIntegrationExecution,
-    type RunIntegrationProfileConfig,
-    type RunLoaderConfig,
-    type RunMicrotestExecution,
-    type RunMicrotestProfileConfig,
-    type RunProfileFileSet,
-    type RunProfileFiles,
-    type RunProfileConfig,
-    type RunProfilesConfig,
-    type RunResourceBudgets,
-    type RunResourceUsagePolicy,
-    type TimingProfilePolicy,
-    type RunTimeoutPolicy,
-    type RunWorkerPoolAssignmentPolicy,
-    type RunWorkerPoolHedgingPolicy,
-    type RunWorkerLifecycle
+import type {
+    RunIntegrationExecution,
+    RunIntegrationProfileConfig,
+    RunLoaderConfig,
+    RunMicrotestProfileConfig,
+    RunProfileFileSet,
+    RunProfileFiles,
+    RunProfileConfig,
+    RunProfilesConfig,
+    RunResourceBudgets,
+    RunResourceUsagePolicy,
+    TimingProfilePolicy,
+    RunTimeoutPolicy,
+    RunWorkerPoolAssignmentPolicy,
+    RunWorkerPoolHedgingPolicy,
+    RunWorkerLifecycle
 } from './run-types.ts';
 import {
-    invalidProfileFileGlobConfigMessage
+    invalidProfileFileGlobConfigMessage,
+    invalidRunProfileFileSetNameMessage,
+    invalidRunProfileNameMessage
 } from './profile-file-glob.ts';
 import {
     invalidWorkDistributionConfigMessage,
@@ -52,7 +51,8 @@ import {
     defaultIntegrationScheduling,
     defaultIntegrationTimeoutPolicy,
     defaultLoader,
-    defaultMicrotestExecution,
+    normalizeMicrotestExecution,
+    normalizedMaxConcurrency,
     defaultResourceUsagePolicy,
     defaultResourceUsageSamplingIntervalMilliseconds,
     defaultTimingProfilePolicy,
@@ -398,13 +398,6 @@ function normalizeRequiredProfileFiles(files: RunProjectProfileFiles): RunProfil
     return normalizedFiles;
 }
 
-function normalizeMicrotestExecution(execution: RunProjectMicrotestExecution | undefined): RunMicrotestExecution {
-    return {
-        processModel: execution?.processModel ?? defaultMicrotestExecution.processModel,
-        scheduling: execution?.scheduling ?? defaultMicrotestExecution.scheduling
-    };
-}
-
 function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | undefined): RunWorkerLifecycle {
     if (execution?.processModel !== 'worker-pool') {
         return defaultWorkerLifecycle;
@@ -465,6 +458,7 @@ function normalizeWorkerPoolExecution(
         dispatchPolicy: workerPoolExecution?.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy,
         hedging: normalizeWorkerPoolHedgingPolicy(execution),
         hostProcess: { kind: 'direct' },
+        maxConcurrency: normalizedMaxConcurrency(workerPoolExecution),
         maxWorkers: workerPoolExecution?.maxWorkers ?? null,
         processModel: 'worker-pool',
         scheduling,
@@ -484,6 +478,7 @@ function normalizeIntegrationExecution(
     }
 
     return {
+        maxConcurrency: normalizedMaxConcurrency(execution),
         processModel,
         scheduling
     };

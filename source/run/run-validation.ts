@@ -3,16 +3,16 @@ import { invalidRequest } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
 import { validateHostProcess } from './run-host-process.ts';
 import { invalidRunSelectionMessage } from './run-selection-filters.ts';
-import {
-    invalidRunProfileNameMessage,
-    type RunCommand,
-    type RunConfig,
-    type RunProfileConfig,
-    type RunRequest,
-    type RunResourceBudgets,
-    type RunResourceUsagePolicy,
-    type RunTestFamily,
-    type RunTimeoutPolicy
+import { invalidRunProfileNameMessage } from './profile-file-glob.ts';
+import type {
+    RunCommand,
+    RunConfig,
+    RunProfileConfig,
+    RunRequest,
+    RunResourceBudgets,
+    RunResourceUsagePolicy,
+    RunTestFamily,
+    RunTimeoutPolicy
 } from './run-types.ts';
 
 const minimumSeedValue = 0n;

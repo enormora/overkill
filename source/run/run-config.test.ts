@@ -219,6 +219,7 @@ export const testNode = createOverkillSuite({
                         safe: {
                             testFamily: 'microtest',
                             execution: {
+                                maxConcurrency: 'unlimited',
                                 processModel: 'in-process',
                                 scheduling: 'serial'
                             },
@@ -237,6 +238,7 @@ export const testNode = createOverkillSuite({
                     profile,
                     defaultMicrotestProfile({
                         execution: {
+                            maxConcurrency: 'unlimited',
                             processModel: 'in-process',
                             scheduling: 'serial'
                         },

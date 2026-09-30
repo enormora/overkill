@@ -23,6 +23,7 @@ import {
 } from './capability-policy.ts';
 import {
     createRunResourceRuntimePolicy,
+    engineExecution,
     type RunRuntimePolicy
 } from './run-support.ts';
 import {
@@ -39,8 +40,6 @@ import {
     type SupervisedChildMessage,
     type SupervisedRunCommand
 } from './supervised-protocol.ts';
-
-type ChildExecutionMode = 'concurrent-in-process' | 'serial-in-process';
 
 type RuntimeCapabilityPolicyDependencies = CapabilityPolicyOptions['dependencies'];
 type SupervisedRuntimePolicy = RunRuntimePolicy;
@@ -165,10 +164,6 @@ function createForwardingResourceUsageTracker(
             });
         }
     };
-}
-
-function executionMode(command: SupervisedRunCommand): ChildExecutionMode {
-    return command.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
 }
 
 function createEmptyAssignmentResult(
@@ -317,7 +312,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
     return await execute(testPlan, {
-        execution: { mode: executionMode(input.command) },
+        execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
         outputRenderer: createPlainOutputRenderer(),
         reporters: [ createIpcReporter(input.host) ],
         resourceBudgets: input.command.resourceBudgets,

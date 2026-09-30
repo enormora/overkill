@@ -45,6 +45,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
 function createDefaultMicrotestProfile(): RunMicrotestProfileConfig {
     return {
         execution: {
+            maxConcurrency: 5,
             processModel: 'supervised-process',
             scheduling: 'concurrent'
         },
@@ -145,6 +146,7 @@ function createDiscoveryConfig(processModel: RunMicrotestProcessModel): RunConfi
             microtest: {
                 ...createDefaultMicrotestProfile(),
                 execution: {
+                    maxConcurrency: 5,
                     processModel,
                     scheduling: 'concurrent'
                 },
@@ -184,6 +186,7 @@ function listConfig(processModel: RunMicrotestProcessModel): RunConfig {
             microtest: {
                 ...createDefaultMicrotestProfile(),
                 execution: {
+                    maxConcurrency: 5,
                     processModel,
                     scheduling: 'concurrent'
                 }

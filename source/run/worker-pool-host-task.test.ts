@@ -45,6 +45,7 @@ function command(): WorkerPoolCommand {
         definitionLocationCapture: 'enabled',
         engine: { kind: 'default' },
         hardTimeoutMilliseconds: 200,
+        maxConcurrency: 5,
         hostProcess: { kind: 'child', nodeArguments: [] },
         paths: [ 'test.ts' ],
         resourceBudgets: {

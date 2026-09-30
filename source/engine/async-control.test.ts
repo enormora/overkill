@@ -484,7 +484,7 @@ export const testNode = createOverkillSuite({
                 );
                 const reporter = createInMemoryRealTimeReporter();
                 const result = await engine.execute(testPlan, {
-                    execution: { mode: 'concurrent-in-process' },
+                    execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [ reporter ],
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'

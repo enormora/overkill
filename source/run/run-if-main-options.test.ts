@@ -20,7 +20,7 @@ import {
     runConfig
 } from './run-if-main-facts.ts';
 import {
-    executionMode,
+    engineExecution,
     rootAnnotations,
     rootControls,
     rootTitle,
@@ -68,6 +68,7 @@ function directProfile(
 ): RunMicrotestProfileConfig {
     return {
         execution: {
+            maxConcurrency: 5,
             processModel: 'in-process',
             scheduling
         },
@@ -220,7 +221,7 @@ export const testNode = createOverkillSuite({
 
                 await assertReporterSelection(scope);
                 assertOutputAndRootOptions(scope);
-                scope.assert.equal(executionMode(profile), 'serial-in-process');
+                scope.assert.deepEqual(engineExecution(profile), { mode: 'serial-in-process' });
                 scope.assert.equal(stderr.read(), '');
 
                 return scope.assert.collect();

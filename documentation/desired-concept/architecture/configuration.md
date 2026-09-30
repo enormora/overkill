@@ -170,6 +170,7 @@ const config = defineConfig({
                 samplingIntervalMilliseconds: 100
             },
             execution: {
+                maxConcurrency: 5,
                 processModel: 'in-process',
                 scheduling: 'concurrent'
             },
@@ -301,6 +302,7 @@ export const config = defineConfig({
                 exclude: [ 'source/integration-tests/**/*.test.ts' ]
             },
             execution: {
+                maxConcurrency: 5,
                 processModel: 'in-process',
                 scheduling: 'concurrent'
             }
@@ -313,6 +315,7 @@ export const config = defineConfig({
             },
             execution: {
                 hostProcess: { kind: 'direct' },
+                maxConcurrency: 5,
                 maxWorkers: 4,
                 processModel: 'worker-pool',
                 scheduling: 'concurrent',
@@ -335,6 +338,10 @@ export const config = defineConfig({
     }
 });
 ```
+
+`execution.maxConcurrency` is a positive safe integer applied per executor.
+It defaults to `5`. Use `'unlimited'` to preserve unbounded concurrent
+admission. Serial scheduling always admits one case at a time.
 
 Benchmark configuration is a standard top-level configuration domain because
 benchmark execution uses `overkill bench`, not `overkill run --profile

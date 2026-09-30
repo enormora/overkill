@@ -3,7 +3,8 @@ import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createPlainOutputRenderer } from '../packages/engine/engine.entry-point.ts';
 import {
     composeRunRuntimePolicies,
-    createRunPermissionRuntimePolicy
+    createRunPermissionRuntimePolicy,
+    engineExecution
 } from './run-support.ts';
 import { resolvedTestPlanDefinitionLocations } from './collected-run-plan.ts';
 import {
@@ -51,13 +52,7 @@ import {
     type WorkerTimingClock
 } from './worker-pool-worker-timing.ts';
 
-type WorkerExecutionMode = 'concurrent-in-process' | 'serial-in-process';
-
 type TimedAssignmentPlanTask = WorkerPoolAcquireRunResourcesTask | WorkerPoolRunTask;
-
-function executionMode(command: WorkerPoolCommand): WorkerExecutionMode {
-    return command.scheduling === 'concurrent' ? 'concurrent-in-process' : 'serial-in-process';
-}
 
 function workerResourceBudgets(command: WorkerPoolCommand): WorkerPoolCommand['resourceBudgets'] {
     return {
@@ -136,7 +131,7 @@ async function runAssignment(
         'worker.assign-work',
         async function executeTimedWorkerAssignment() {
             return await execute(testPlan, {
-                execution: { mode: executionMode(task.command) },
+                execution: engineExecution(task.command.scheduling, task.command.maxConcurrency),
                 outputRenderer: createPlainOutputRenderer(),
                 reporters: [ createWorkerPoolReporter(task) ],
                 resourceBudgets: workerResourceBudgets(task.command),

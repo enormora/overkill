@@ -8,7 +8,10 @@ import type {
 import type { ExecuteResourceBudgets } from './execution-resource-budget-breach.ts';
 
 export type ExecuteExecution = {
-    readonly mode: 'concurrent-in-process' | 'serial-in-process';
+    readonly maxConcurrency: number | 'unlimited';
+    readonly mode: 'concurrent-in-process';
+} | {
+    readonly mode: 'serial-in-process';
 };
 
 export type ExecuteResultFinalizer = (result: RunResult) => Promise<RunResult>;

@@ -64,9 +64,9 @@ export const testNode = createOverkillSuite({
                 const queue = createReporterEventQueue(rejectingDispatcher.delivery);
 
                 await scope.assert.rejects(async function reportFirstEvent() {
-                    await queue.report(suitePath('first'));
+                    await queue.reportEvent(suitePath('first'));
                 }, { message: 'first report failed' });
-                await queue.report(suitePath('second'));
+                await queue.reportEvent(suitePath('second'));
 
                 scope.assert.deepEqual(
                     rejectingDispatcher.events().map(function toSuiteName(event) {

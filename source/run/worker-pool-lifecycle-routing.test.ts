@@ -88,6 +88,7 @@ function baseResolvedRun(): ResolvedRun {
                 coverage: false,
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
+                maxConcurrency: 5,
                 dispatchPolicy: 'dynamic-lease',
                 hedging: { mode: 'off' },
                 hostProcess: { kind: 'direct' },

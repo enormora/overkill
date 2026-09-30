@@ -112,6 +112,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             coverage: request.coverage,
             debug: request.debug,
             engine: { kind: 'default' },
+            maxConcurrency: profile.execution.maxConcurrency,
             order: request.order,
             placementPlan: null,
             processModel: 'in-process',
