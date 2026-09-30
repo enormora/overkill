@@ -230,6 +230,9 @@ inside a matrix. Exact `CaseId` selection is programmatic API-only.
   See [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 - Process model and scheduling come from the selected profile. There is no
   first-party request-level execution override in the current concept.
+- `--coverage` requests aggregate V8 coverage for this run. It preserves the
+  microtest profile's process model and scheduling, and is rejected for every
+  other test family before discovery starts.
 - `--measure-resource-usage` collects run-level resource usage diagnostics for
   this run. See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
 - `--resource-budget <name=value>` overrides one resource budget for this run

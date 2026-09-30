@@ -199,14 +199,14 @@ Why: instrumentation slows microtests and rarely matters per-iteration.
 
 Where: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md), [Coverage](../architecture/coverage.md).
 
-Alternative: explicit opt-in (`overkill run --coverage`) using
-external coverage tooling.
+Alternative: explicit opt-in through `overkill run --coverage`, backed by
+runner-owned V8 orchestration and an external reporting integration.
 
 ### No coverage outside microtest profiles
 
-Coverage is restricted to microtest profiles. Integration and browser
-profiles reject `--coverage`; benchmark commands reject coverage because
-instrumentation distorts measurements.
+Coverage is restricted to microtest profiles. Integration, property,
+type-test, and browser profiles reject `--coverage`; benchmark commands reject
+coverage because instrumentation distorts measurements.
 
 Why: integration tests broad-path through code (their coverage reads
 as "everything was hit," uninformative); benchmarks cannot be

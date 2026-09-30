@@ -440,8 +440,6 @@ numbers and identities, and the developer or CI gate interprets.
   how `discovered` behaves under `--shard`
 - [Reporters](./reporters.md) - reporter contract and event scope
   precedent
-- [Coverage](./coverage.md) - precedent for per-case data in
-  `RunRecord`
 - [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules):
   the `no-orphan-test-nodes` lint rule, the static-source
   counterpart to runtime orphan detection

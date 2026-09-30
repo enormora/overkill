@@ -990,6 +990,7 @@ type RunRequest = {
     readonly selection: RunSelection;
     readonly shard: { readonly index: number; readonly total: number; };
     readonly profile: ProfileName;
+    readonly coverage: boolean;
     readonly execution: { readonly mode: 'profile-default'; };
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly capture: 'buffered' | 'live';

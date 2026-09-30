@@ -285,7 +285,8 @@ Conceptually:
 - microtests remain side-effect-restricted
 - coverage output is a runner-owned escape hatch
 - writes are limited to a dedicated coverage artifact directory
-- the exception is explicit in configuration and diagnostics
+- the exception is activated by explicit run intent and recorded in run facts
+  and diagnostics
 
 Sources:
 
@@ -295,8 +296,9 @@ Sources:
 ## Microtest Profile Policy
 
 `microtest` is a `testFamily`, not a closed set of public profile names.
-Projects define named profiles such as `unit-fast`, `unit-covered`, or
-`mutation-smoke` and set `testFamily: 'microtest'` on each.
+Projects define named profiles such as `unit`, `unit-fast`, or
+`mutation-smoke` and set `testFamily: 'microtest'` on each. The same profile
+may run with or without coverage because `--coverage` owns activation.
 
 Microtest profile policy may include:
 
@@ -306,7 +308,8 @@ Microtest profile policy may include:
 - `resourceUsage.measure`, `resourceUsage.budgets`, and
   `resourceUsage.samplingIntervalMilliseconds`
 - `timeouts.softMilliseconds` and `timeouts.hardMilliseconds`
-- microtest-only `coverage` policy
+- microtest-only `coverage` policy, which customizes collection without
+  activating it
 - profile-specific reporters that replace global reporter defaults
 
 The no-config built-in `microtest` profile is only the small direct-run

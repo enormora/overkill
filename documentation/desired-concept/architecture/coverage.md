@@ -8,8 +8,8 @@ treats it as **explicit, off by default, and scoped to microtests**.
 Why microtests only:
 
 - coverage answers "what code do my unit-level tests exercise?" -
-  the question fits microtests, where individual case attribution
-  is meaningful
+  the question fits the focused source and selection boundaries of
+  microtest runs
 - integration tests broad-path through code; their coverage
   typically reads as "everything was hit," which tells you little
 - benchmarks must not be instrumented - instrumentation distorts
@@ -41,66 +41,69 @@ Why a first-class concept anyway:
 ## Settled Decisions
 
 - Coverage is restricted to microtest profiles. Integration, property,
-  type-test, and benchmark profiles reject coverage configuration.
-- Coverage runs single-threaded - one worker process executes all
-  selected microtests serially. Worker-pool parallel modes do not collect
-  coverage. Supervised microtest mode is
-  supported because supervision does not introduce parallelism.
-- Coverage is opt-in per profile; there is no global "always on"
-  default mode in any first-party profile.
+  type-test, and benchmark profiles reject coverage requests and coverage
+  configuration.
+- Coverage is aggregate run data. It follows the selected microtest profile's
+  process model, worker count, concurrency, and scheduling instead of changing
+  execution semantics to obtain per-case attribution.
+- Coverage is opt-in per run through `--coverage` or
+  `RunRequest.coverage`. Profile coverage configuration is policy only and
+  never activates collection.
 - Overkill does not ship its own instrumenter or coverage reporter
   package - it integrates with existing tools.
-- The runner-side surface is profile selection plus a Node permission grant
+- The runner-side surface is coverage run intent plus a Node permission grant
   scoping filesystem writes to the coverage artifact directory; no
   Overkill-specific authority abstraction.
 - Coverage data lives under `.overkill/runs/<run-id>/coverage/` by
   default and is garbage-collected with the rest of the run record.
 
-## Engine Choice
+## Instrumentation And Reporting Requirements
 
 Coverage uses **V8 native instrumentation only** (`NODE_V8_COVERAGE`
 plus `node --experimental-test-coverage` style hooks where they
 apply). No source rewriting, no Babel/Istanbul instrumenter, no
-transform step. Native speed wins; the cost of carrying a second
-engine is not justified.
+runtime transform step. Native speed wins; the cost of carrying a second
+instrumentation engine is not justified.
 
 V8 native coverage in 2026 produces line, function, and block
 coverage with source-map–accurate locations.
 
-`c8` does two jobs in this pipeline, both consequences of V8's
-shape:
+The reporting integration must handle two jobs that V8 does not:
 
 1. **All-files reporting.** V8 only emits coverage for files that
    were actually loaded by the process. To report 0% on files that
    were never loaded - typically the most useful signal in a
-   coverage report - `c8`'s `all: true` mode globs the source tree
-   using include/exclude patterns and synthesises empty coverage
-   records for files V8 didn't see. Without this, a brand-new file
-   with no tests would simply be invisible in the report.
-2. **Format emission.** `c8` post-processes V8 output into LCOV,
-   JSON, or HTML.
+   coverage report - the backend discovers matching source files and
+   synthesises empty coverage for runtime-bearing files V8 did not see.
+   Type-only TypeScript modules have no executable statements and must not
+   count as uncovered. The backend should provide the TypeScript transform
+   and parser support needed for this classification; Overkill should not
+   implement a coverage-only parser.
+2. **Format emission.** The backend converts raw V8 data into the configured
+   V8, LCOV, JSON, HTML, and text outputs, preserves source-map accuracy, and
+   evaluates thresholds.
 
-Overkill orchestrates the V8 engine and configures `c8` for both
-jobs. The include/exclude patterns that drive all-files reporting
-live in `overkill.config.ts` (project policy, not per-run intent -
-see [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer)).
+The integration aggregates raw coverage from the complete run process tree.
+It must support in-process, supervised, worker-pool, serial, and concurrent
+microtest execution.
 
-Format emission inside `c8` delegates to the `istanbul-lib-report`
-family. We could in principle bypass `c8` and call those libraries
-directly, but the all-files glob + V8-to-istanbul conversion is
-substantive enough that re-implementing it would duplicate effort
-`c8` already maintains. `c8` is the right pipeline wrapper as long as
-V8 doesn't ship all-files synthesis itself.
+The later V8 coverage integration work chooses the reporting backend after a
+direct comparison of the pinned `c8` integration and
+`monocart-coverage-reports`. `c8` remains a compatibility candidate rather
+than a settled architectural dependency. The include/exclude patterns that
+drive all-files reporting live in `overkill.config.ts` as project policy, not
+per-run intent (see [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer)).
 
-## Profile Configuration
+## Activation And Profile Policy
 
-Coverage is selected by choosing a profile whose `testFamily` is `microtest`
-and whose profile config includes `coverage`.
+Coverage is activated for one run with `--coverage`. The selected profile must
+have `testFamily: 'microtest'`. Its optional `coverage` configuration customizes
+policy but does not activate collection.
 
 ```ts
 export const config = defineConfig({
     profiles: {
-        'unit-covered': {
+        unit: {
             testFamily: 'microtest',
             files: {
                 include: [ 'source/**/*.test.ts' ],
@@ -112,8 +115,8 @@ export const config = defineConfig({
                 exclude: [ 'source/**/*.type-test.ts' ]
             },
             execution: {
-                processModel: 'supervised-process',
-                scheduling: 'serial'
+                processModel: 'in-process',
+                scheduling: 'concurrent'
             }
         }
     }
@@ -130,75 +133,64 @@ Coverage policy fields:
   branches
 - `coverage.outputDir`: override for `.overkill/runs/<run-id>/coverage/`
 
-There is no ordinary `overkill run --coverage` flag in the current concept.
-The CLI selects a profile:
+Omitting `coverage` uses the built-in coverage policy defaults. Presence of
+the field never enables collection. The same profile supports ordinary and
+coverage runs:
 
 ```text
-overkill run --profile unit-covered
+overkill run --profile unit
+overkill run --profile unit --coverage
 ```
 
-This keeps coverage behavior reviewable in configuration and avoids a second
-activation surface. Programmatic callers make the same choice by setting
-`request.profile`.
+Programmatic callers express the same intent with
+`request: { profile: 'unit', coverage: true, ... }`. `RunRequest.coverage`
+defaults to `false` in first-party callers.
+
+`--coverage` with a non-microtest profile is an invalid run request. The
+runner rejects it after loading configuration and resolving the selected
+profile, but before file discovery or user-module imports.
 
 ### Other Behaviour
 
-- coverage scope = the selected profile's `coverage.include` and
-  `coverage.exclude` source
-  set ∩ the executed-test set. A filtered or narrowed run does not
-  claim suite-wide coverage; the run record (see
-  [Test Data And Selection § Selection](./test-data-and-selection.md#selection)) records which
-  cases were actually executed so reports remain interpretable.
+- coverage scope uses the selected profile's `coverage.include` and
+  `coverage.exclude` source set. A filtered or narrowed run does not claim
+  suite-wide coverage; the run record (see
+  [Test Data And Selection § Selection](./test-data-and-selection.md#selection))
+  records which cases were executed so the aggregate report remains
+  interpretable.
 - the programmatic API in `@overkill-dev/run` records the selected profile
-  and resolved coverage policy in the run record so reports remain
+  plus the coverage request and resolved policy in the run record so reports remain
   reproducible.
 
-## Single-Process Execution Model
+## Aggregate Execution Model
 
-Coverage runs **single-threaded**: one Node worker process executes
-all selected microtests serially. Worker-pool parallel modes do not collect
-coverage, even when invoked under a microtest profile. A coverage-enabled
-microtest profile resolves to serial scheduling.
+Coverage follows the selected profile's ordinary execution model. In-process,
+supervised, and worker-pool profiles remain in their configured serial or
+concurrent mode. Coverage data from every instrumented process or worker is
+merged into one run-level report.
 
-Coverage attribution is **per-test**: each executed case has its
-own coverage record (keyed by `CaseId`) in the run-record coverage
-directory. Single-process collection makes that trivial - one
-timeline of test boundaries, one V8 slice - so per-case attribution
-falls out of the model without extra machinery.
-
-Why single-threaded:
-
-- V8 coverage is collected per Node process. Cross-worker
-  aggregation requires merging slices, mapping per-worker output
-  back to `CaseId` boundaries, and reconciling all-files
-  synthesis across slices. None of this is technically blocked,
-  but it adds machinery whose only justification is "coverage
-  runs faster."
-- Coverage is opt-in and typically run for audits or in CI, not
-  in the inner-loop microtest workflow. Trading parallelism for
-  simpler internals is a reasonable bargain.
-
-Supervised microtest execution (where the parent supervises the child
-process for crash recovery) still works because supervision does not
-introduce parallelism; the supervised process executes tests
-serially.
+Overkill does not promise per-`CaseId` coverage slices. V8 counters are local
+to an execution boundary, and concurrent cases overlap those counters. Source
+rewriting or case-level process isolation would change the instrumentation or
+execution model for an attribution feature that users can obtain when needed
+by filtering the run to one case.
 
 The runner is responsible for:
 
-- starting the worker subprocess with `NODE_V8_COVERAGE` set to
-  the run's coverage directory when profile coverage is active
-- adding `--allow-fs-write=<run-coverage-dir>/*` to the worker's
+- arranging V8 instrumentation before each relevant execution boundary starts
+- preserving and merging raw coverage across the run's process tree
+- adding `--allow-fs-write=<run-coverage-dir>/*` to each instrumented boundary's
   Node permission flags (see [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults) for the mechanism)
-- handing the V8 output to `c8` for all-files synthesis and format
-  emission once the run completes
+- handing the raw V8 output to the selected reporting integration for
+  all-files synthesis and format emission once the run completes
 
 Tests do not interact with coverage instrumentation directly.
 
 ## Permission Surface
 
-Microtest profiles deny filesystem writes by default. A coverage-enabled
-microtest profile grants `--allow-fs-write` scoped to the resolved coverage
-directory for the current run:
+Microtest profiles deny filesystem writes by default. A microtest run with
+coverage requested grants `--allow-fs-write` scoped to the resolved coverage
+directory for that run:
 
 ```text
 --allow-fs-write=<absolute-coverage-dir>/*
