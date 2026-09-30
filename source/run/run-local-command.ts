@@ -4,9 +4,8 @@ import {
 } from './run-collection-error-result.ts';
 import { coverageExecutionCompleted, startCoverageSession } from './run-coverage.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
-import {
-    executeNonLocalResolvedRun,
-    type RunCollectionSource
+import type {
+    RunCollectionSource
 } from './run-isolated-process.ts';
 import { readResolvedRunInput, type ResolvedRunInput } from './run-input-resolution.ts';
 import {
@@ -99,12 +98,6 @@ async function executeResolvedRun(
     timing: RunTimingMeasurement
 ): Promise<RunResult> {
     assertRunnableResourceUsagePolicy(resolvedRun.facts.execution.resourceUsagePolicy);
-
-    const nonLocalResult = await executeNonLocalResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
-
-    if (nonLocalResult !== null) {
-        return nonLocalResult;
-    }
 
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {
         async finalizeResult(run, result) {

@@ -19,15 +19,10 @@ import {
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     finalizeResultWithDurationHistory,
-    readRunDurationHistory,
-    type RunRuntimePolicy
+    readRunDurationHistory
 } from './run-support.ts';
 import {
-    executeSupervisedRun
-} from './supervised-run.ts';
-import {
     collectWorkerPoolRun,
-    executeWorkerPoolRun,
     runWorkerPoolCommand
 } from './worker-pool-run.ts';
 import type {
@@ -185,18 +180,6 @@ export function createIsolatedResolvedRun(
     return null;
 }
 
-function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['runnerErrors'][number][]): RunResult {
-    if (runnerErrors.length === 0) {
-        return result;
-    }
-
-    return {
-        ...result,
-        runnerErrors: [ ...runnerErrors, ...result.runnerErrors ],
-        status: 'failed'
-    };
-}
-
 type WorkerPoolRunResultInput = {
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
@@ -284,36 +267,6 @@ export function runIsolatedProcessCommand(
 
     if (processModel === 'worker-pool') {
         return createWorkerPoolRunResult(command, dependencies, options.timing, options.source);
-    }
-
-    return null;
-}
-
-export async function executeNonLocalResolvedRun(
-    resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    timing: RunTimingMeasurement | null = null
-): Promise<RunResult | null> {
-    if (resolvedRun.facts.execution.processModel === 'supervised-process') {
-        const result = await executeSupervisedRun(resolvedRun, dependencies, {
-            coverage: null,
-            async finalizeResult(supervisedRun, finalResult) {
-                return await finalizeResultWithDurationHistory(dependencies, supervisedRun, finalResult, timing);
-            },
-            timing
-        });
-
-        return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
-    }
-
-    if (resolvedRun.facts.execution.processModel === 'worker-pool') {
-        return await executeWorkerPoolRun(resolvedRun, dependencies, {
-            async finalizeResult(workerPoolRun, completion) {
-                return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, completion.result, timing);
-            },
-            timing
-        });
     }
 
     return null;

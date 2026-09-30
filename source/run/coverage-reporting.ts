@@ -46,11 +46,11 @@ const supportedSourceExtensions = new Set([ '.cjs', '.cts', '.js', '.mjs', '.mts
 const typeScriptSourceExtensions = new Set([ '.cts', '.mts', '.ts' ]);
 
 function entryFilePath(url: string): string | null {
-    if (url.startsWith('file:')) {
-        return path.resolve(fileURLToPath(url));
+    if (!url.startsWith('file:')) {
+        return null;
     }
 
-    return path.isAbsolute(url) ? path.resolve(url) : null;
+    return path.resolve(fileURLToPath(url));
 }
 
 function sourceFilePath(sourcePath: string, projectRoot: string): string {
@@ -118,9 +118,7 @@ function transformedTypeScript(source: string, filePath: string): TransformedSou
 
     return {
         source: result.code,
-        sourceMap: result.sourceMap === undefined
-            ? null
-            : { ...result.sourceMap, sourcesContent: [ source ] }
+        sourceMap: { ...result.sourceMap, sourcesContent: [ source ] }
     };
 }
 
@@ -147,13 +145,10 @@ async function isRuntimeSourceFile(filePath: string, request: CoverageReportRequ
     return hasRuntimeTypeScript(transformed.source);
 }
 
-async function allRuntimeFiles(request: CoverageReportRequest): Promise<ReadonlySet<string>> {
-    const { sourceScope } = request;
-
-    if (sourceScope.kind === 'loaded') {
-        return new Set();
-    }
-
+async function allRuntimeFiles(
+    request: CoverageReportRequest,
+    sourceScope: Extract<CoverageSourceScope, { readonly kind: 'all'; }>
+): Promise<ReadonlySet<string>> {
     const runtimeFiles = new Set<string>();
     const matchedFiles = glob(sourceScope.include, {
         cwd: request.projectRoot,
@@ -178,7 +173,7 @@ async function allFilesOptions(request: CoverageReportRequest): Promise<Coverage
         return null;
     }
 
-    const runtimeFiles = await allRuntimeFiles(request);
+    const runtimeFiles = await allRuntimeFiles(request, sourceScope);
 
     return {
         dir: request.projectRoot,

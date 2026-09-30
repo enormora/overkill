@@ -217,10 +217,6 @@ export async function createSupervisedRunResult(
 ): Promise<RunResult> {
     const input = await readResolvedRunInput(command, dependencies);
 
-    if (input.profile.execution.processModel !== 'supervised-process') {
-        throw new Error('Expected supervised-process profile.');
-    }
-
     try {
         return await runStartedSupervisedExecution({ command, dependencies, input, source, timing });
     } catch (error: unknown) {
