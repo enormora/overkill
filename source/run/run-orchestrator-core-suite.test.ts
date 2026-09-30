@@ -1,4 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as coverageTestNode } from './coverage-suite.test.ts';
 import { testNode as runEmptyShardTestNode } from './run-empty-shard.test.ts';
 import { testNode as runCoverageRequestTestNode } from './run-coverage-request.test.ts';
 import { testNode as runOrderingTestNode } from './run-ordering.test.ts';
@@ -13,6 +14,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        coverageTestNode,
         runCoverageRequestTestNode,
         runEmptyShardTestNode,
         runOrderingTestNode,

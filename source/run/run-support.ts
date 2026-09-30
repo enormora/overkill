@@ -61,6 +61,8 @@ export function engineExecution(
         : { mode: 'serial-in-process' as const };
 }
 
+export type ResolvedRunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
+
 export const createRunPermissionRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicy;
 
 export async function readRunDurationHistory(

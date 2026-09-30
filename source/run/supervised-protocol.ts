@@ -16,17 +16,12 @@ import type {
 } from './run-types.ts';
 import {
     childProcessEnvelope,
-    envelopeMessage,
     type ChildProcessEnvelope
 } from './child-process-protocol.ts';
 import {
     createResourceLifecycleTiming,
     type ResourceLifecycleTiming
 } from './resource-lifecycle-timing.ts';
-
-export type SupervisedTimingRecorder = {
-    readonly recordLocal: (span: RunTimingSpan) => void;
-};
 
 type RunEngineSelection = RunCommand['engine'];
 
@@ -123,8 +118,4 @@ export function supervisedChildEnvelope(
     message: SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage
 ): ChildProcessEnvelope<SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage> {
     return childProcessEnvelope(supervisedChildCorrelationId, message);
-}
-
-export function supervisedChildMessage(value: unknown): SupervisedChildMessage | null {
-    return envelopeMessage<SupervisedChildMessage>(value, supervisedChildCorrelationId);
 }

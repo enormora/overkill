@@ -68,6 +68,7 @@ type ArtifactSubtype =
     | 'performance-baseline'
     | 'witness'
     | 'log-capture'
+    | 'coverage'
     | 'trace';
 
 type ArtifactScope =
@@ -97,6 +98,29 @@ type CapturedOutputArtifact = {
         | { readonly confidence: 'active-case'; readonly activeCases: ReadonlyArray<CaseId>; }
         | { readonly confidence: 'concurrent-active'; readonly activeCases: ReadonlyArray<CaseId>; }
         | { readonly confidence: 'run-level'; readonly activeCases: readonly []; };
+};
+
+type CoverageArtifact = {
+    readonly id: ArtifactId & {
+        readonly scope: { readonly kind: 'run'; };
+        readonly subtype: 'coverage';
+    };
+    readonly source: 'v8-native';
+    readonly payload: {
+        readonly completeness: 'complete';
+        readonly directory: string;
+        readonly kind: 'coverage';
+        readonly rawDataDirectory: string;
+        readonly reports: NonEmptyReadonlyArray<{
+            readonly format: 'lcov' | 'v8';
+            readonly path: string;
+        }>;
+        readonly summary: {
+            readonly branches: { readonly covered: number; readonly total: number; };
+            readonly functions: { readonly covered: number; readonly total: number; };
+            readonly lines: { readonly covered: number; readonly total: number; };
+        };
+    };
 };
 ```
 
@@ -1526,7 +1550,7 @@ type RunResult = {
     readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
-    readonly artifacts: ReadonlyArray<ArtifactId | CapturedOutputArtifact>;
+    readonly artifacts: ReadonlyArray<ArtifactId | CapturedOutputArtifact | CoverageArtifact>;
     readonly resourceUsage: RunResourceUsage | null;
     readonly timings: RunTimings;
 };

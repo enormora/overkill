@@ -3,7 +3,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import {
     createRunResourceRuntimePolicy,
     engineExecution,
-    finalizeResultWithDurationHistory,
+    type ResolvedRunResultFinalizer,
     type RunRuntimePolicy
 } from './run-support.ts';
 import type {
@@ -21,6 +21,12 @@ type LocalResolvedRun = ResolvedRun & {
         readonly kind: 'local';
         readonly testPlan: TestPlan;
     };
+};
+
+export type LocalExecutionOptions = {
+    readonly finalizeResult: ResolvedRunResultFinalizer;
+    readonly runtimePolicy: RunRuntimePolicy | null;
+    readonly timing: RunTimingMeasurement | null;
 };
 
 function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
@@ -45,16 +51,15 @@ function createExecutionResourceUsageTracker(
 export async function executeLocalResolvedRun(
     resolvedRun: LocalResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    timing: RunTimingMeasurement | null = null
+    options: LocalExecutionOptions
 ): Promise<RunResult> {
     const { resourceUsagePolicy } = resolvedRun.facts.execution;
-    const resourceTiming = timing === null
+    const resourceTiming = options.timing === null
         ? null
         : createResourceLifecycleTiming({
             clock: dependencies.wallClock,
             processId: String(process.pid),
-            target: { kind: 'parent', record: timing.record },
+            target: { kind: 'parent', record: options.timing.record },
             workerId: null
         });
 
@@ -65,14 +70,14 @@ export async function executeLocalResolvedRun(
         ),
         outputRenderer: resolvedRun.config.outputRenderer,
         async finalizeResult(result) {
-            return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result, timing);
+            return await options.finalizeResult(resolvedRun, result);
         },
         reporters: resolvedRun.reporters,
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
         runtimePolicy: createRunResourceRuntimePolicy(
             resolvedRun.plan.testPlan.cases,
-            runtimePolicy,
+            options.runtimePolicy,
             resourceTiming
         ),
         runFacts: resolvedRun.facts,

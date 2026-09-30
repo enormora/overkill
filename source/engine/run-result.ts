@@ -6,6 +6,7 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type { CaseId, RuntimeId, WorkId, WorkloadId } from './identity.ts';
 import type { RunTimings } from './run-timings.ts';
+import type { CoverageArtifact } from './coverage-artifact.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly attributionDrift: 'attribution-drift';
@@ -478,7 +479,7 @@ export type RunArtifactId = {
     readonly runtimes: readonly RuntimeId[];
     readonly scope: RunArtifactScope;
     readonly sequence: number;
-    readonly subtype: 'hedged-conflict' | 'log-capture';
+    readonly subtype: 'coverage' | 'hedged-conflict' | 'log-capture';
     readonly workload: WorkloadId | null;
 };
 
@@ -504,18 +505,18 @@ export type HedgedConflictArtifactPayload = {
 };
 
 export type CapturedOutputArtifact = {
-    readonly id: RunArtifactId;
+    readonly id: RunArtifactId & { readonly subtype: 'log-capture'; };
     readonly payload: CapturedOutputArtifactPayload;
     readonly source: 'boundary-captured' | 'native';
 };
 
 export type HedgedConflictArtifact = {
-    readonly id: RunArtifactId;
+    readonly id: RunArtifactId & { readonly subtype: 'hedged-conflict'; };
     readonly payload: HedgedConflictArtifactPayload;
     readonly source: 'native';
 };
 
-export type RunArtifact = CapturedOutputArtifact | HedgedConflictArtifact;
+export type RunArtifact = CapturedOutputArtifact | CoverageArtifact | HedgedConflictArtifact;
 
 export type SuiteRunCounts = {
     readonly discovered: number;

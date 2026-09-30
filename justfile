@@ -32,6 +32,7 @@ test-unit:
     node source/overkill.test.ts
 
 test-runner-integration:
+    node source/integration-tests/run/runner-coverage.test.ts
     node source/integration-tests/run/runner-explicit-files.test.ts
     node source/integration-tests/run/runner-file-sets.test.ts
     node source/integration-tests/run/runner-command-line.test.ts

@@ -104,6 +104,12 @@ export type { Engine } from '../../engine/engine.ts';
 export type { Execute, ExecuteExecution, ExecuteOptions } from '../../engine/execution.ts';
 export type { ExecuteResultFinalizer } from '../../engine/execution-options.ts';
 export type {
+    CoverageArtifact,
+    CoverageArtifactPayload,
+    CoverageMetric,
+    CoverageReportFile
+} from '../../engine/coverage-artifact.ts';
+export type {
     TestPlanFromTestFilesFactory,
     TestPlanFromTestFilesOptions
 } from '../../engine/test-plan.ts';

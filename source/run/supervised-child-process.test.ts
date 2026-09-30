@@ -182,6 +182,7 @@ export const testNode = createOverkillSuite({
                 const fixture = createStarterFixture();
                 const child = await fixture.startSupervisedChild({
                     capabilityRestrictions: { mode: 'disabled' },
+                    coverage: null,
                     cwd: '/project/sub',
                     environmentVariables: {
                         KEEP: 'yes',
@@ -226,6 +227,7 @@ export const testNode = createOverkillSuite({
 
                 await fixture.startSupervisedChild({
                     capabilityRestrictions: { mode: 'disabled' },
+                    coverage: null,
                     cwd: '/project/sub',
                     environmentVariables: {
                         KEEP: 'yes',
@@ -263,6 +265,7 @@ export const testNode = createOverkillSuite({
 
                 await fixture.startSupervisedChild({
                     capabilityRestrictions: { mode: 'enabled' },
+                    coverage: null,
                     cwd: '/project/sub',
                     environmentVariables: {},
                     testFamily: 'microtest'
@@ -284,6 +287,46 @@ export const testNode = createOverkillSuite({
                     '--allow-fs-read=/real/shared/node_modules',
                     '--allow-fs-read=/package/root/node_modules',
                     '--allow-fs-read=/real/package/root/node_modules'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'startSupervisedChild() grants native coverage access when restrictions are enabled',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const fixture = createStarterFixture();
+
+                await fixture.startSupervisedChild({
+                    capabilityRestrictions: { mode: 'enabled' },
+                    coverage: {
+                        environment: {
+                            NODE_DISABLE_COMPILE_CACHE: '1',
+                            NODE_V8_COVERAGE: '/coverage/raw'
+                        },
+                        writablePath: '/coverage/raw/*'
+                    },
+                    cwd: '/project/sub',
+                    environmentVariables: { NODE_V8_COVERAGE: '/ambient' },
+                    testFamily: 'microtest'
+                });
+
+                const [ forkCall ] = fixture.forkCalls();
+                scope.require.defined(forkCall);
+                scope.assert.deepEqual(forkCall.options.env, {
+                    NODE_DISABLE_COMPILE_CACHE: '1',
+                    NODE_V8_COVERAGE: '/coverage/raw'
+                });
+                scope.assert.deepEqual(forkCall.options.execArgv.slice(0, 6), [
+                    '--permission',
+                    '--trace-env',
+                    '--trace-env-js-stack',
+                    '--allow-inspector',
+                    '--disable-warning=PERM0004',
+                    '--allow-fs-write=/coverage/raw/*'
                 ]);
 
                 return scope.assert.collect();

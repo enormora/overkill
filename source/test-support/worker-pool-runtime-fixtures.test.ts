@@ -84,6 +84,7 @@ async function assertUnsupportedFakes(scope: OverkillScope, dependencies: Fixtur
     await scope.assert.rejects(async function startSupervisedChild() {
         await dependencies.startSupervisedChild({
             capabilityRestrictions: { mode: 'disabled' },
+            coverage: null,
             cwd: '/project',
             environmentVariables: {},
             testFamily: 'integration'

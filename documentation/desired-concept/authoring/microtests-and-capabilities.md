@@ -285,6 +285,8 @@ Conceptually:
 - microtests remain side-effect-restricted
 - coverage output is a runner-owned escape hatch
 - writes are limited to a dedicated coverage artifact directory
+- supervised coverage processes receive Node's inspector permission because
+  Node gates its native coverage writer behind that permission
 - the exception is activated by explicit run intent and recorded in run facts
   and diagnostics
 

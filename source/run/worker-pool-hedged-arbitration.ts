@@ -1,5 +1,5 @@
 import { workIdentityKey } from '../engine/identity.ts';
-import type { PerTestResult, RunArtifact, RunResult } from '../engine/run-result.ts';
+import type { HedgedConflictArtifact, PerTestResult, RunArtifact, RunResult } from '../engine/run-result.ts';
 import type { WorkUnit } from './run-types.ts';
 import {
     workerPoolPlacementTrace,
@@ -155,7 +155,7 @@ async function finalizeAuthority(
     await flushBufferedReporterEvents(authority.taskRun, runtime);
 }
 
-function conflictArtifactId(result: PerTestResult, sequence: number): RunArtifact['id'] {
+function conflictArtifactId(result: PerTestResult, sequence: number): HedgedConflictArtifact['id'] {
     return {
         runtimes: result.workId.runtimes,
         scope: {

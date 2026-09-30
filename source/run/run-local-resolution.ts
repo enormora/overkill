@@ -181,13 +181,12 @@ export async function createLocalResolvedRun(
     );
 }
 
-export async function createLocalRunOrEmptySelectionResult(
+export async function createLocalRunOrEmptySelectionResultFromInput(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
+    input: ResolvedRunInput,
     source: LocalTestPlanInput['source']
 ): Promise<ResolvedRun | RunResult> {
-    const input = await readResolvedRunInput(command, dependencies);
-
     if (input.profile.execution.processModel !== 'in-process') {
         throw new Error('Expected in-process profile.');
     }
@@ -210,4 +209,14 @@ export async function createLocalRunOrEmptySelectionResult(
         ...testPlan,
         cases: plannedCases
     });
+}
+
+export async function createLocalRunOrEmptySelectionResult(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    source: LocalTestPlanInput['source']
+): Promise<ResolvedRun | RunResult> {
+    const input = await readResolvedRunInput(command, dependencies);
+
+    return await createLocalRunOrEmptySelectionResultFromInput(command, dependencies, input, source);
 }

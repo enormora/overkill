@@ -13,27 +13,16 @@ import {
 import {
     assertExpectedDirectEntrypointCollection,
     createExpectedDirectEntrypointPlan,
-    createSupervisedCollectCommand,
-    createSupervisedRunCommand,
     createWorkerPoolCommand,
     type IsolatedRunCollectionSource
 } from './run-isolated-command.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     finalizeResultWithDurationHistory,
-    readRunDurationHistory,
-    type RunRuntimePolicy
+    readRunDurationHistory
 } from './run-support.ts';
 import {
-    collectSupervisedRun
-} from './supervised-run-collection.ts';
-import {
-    executeSupervisedRun,
-    runSupervisedCommand
-} from './supervised-run.ts';
-import {
     collectWorkerPoolRun,
-    executeWorkerPoolRun,
     runWorkerPoolCommand
 } from './worker-pool-run.ts';
 import type {
@@ -42,9 +31,13 @@ import type {
     RunCommand,
     RunOrchestrator
 } from './run-types.ts';
+import {
+    createSupervisedResolvedRun,
+    createSupervisedRunResult
+} from './run-supervised-process.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
-type RunCollectionSource = IsolatedRunCollectionSource;
+export type RunCollectionSource = IsolatedRunCollectionSource;
 type RunTimingMeasurement = NonNullable<NonNullable<Parameters<RunOrchestrator['run']>[1]>['timing']>;
 type CollectedExecution = {
     readonly collectedPlan: CollectedRunPlan;
@@ -164,43 +157,6 @@ async function createWorkerPoolResolvedRun(
     });
 }
 
-async function createSupervisedResolvedRun(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    input: ResolvedRunInput,
-    options: IsolatedRunOptions
-): Promise<ResolvedRun> {
-    const expected = options.source.kind === 'direct-entrypoint'
-        ? await createExpectedDirectEntrypointPlan(command, dependencies, input, options.source)
-        : null;
-    const collection = await (options.timing?.measureAsync(
-        'collection.import',
-        emptyCollectionTimingMetadata,
-        async function collectTimedSupervisedRun() {
-            return await collectSupervisedRun(
-                createSupervisedCollectCommand(command, input.profile, input.files, options.source),
-                dependencies,
-                options.timing
-            );
-        }
-    ) ?? collectSupervisedRun(
-        createSupervisedCollectCommand(command, input.profile, input.files, options.source),
-        dependencies,
-        null
-    ));
-
-    return await createResolvedExecutionRun({
-        allowEmptySelection: false,
-        collection,
-        command,
-        dependencies,
-        durationHistoryIndex: null,
-        expectedDirectPlan: expected,
-        input,
-        planKind: 'supervised'
-    });
-}
-
 export function createIsolatedResolvedRun(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -208,7 +164,13 @@ export function createIsolatedResolvedRun(
     options: IsolatedRunOptions
 ): Promise<ResolvedRun> | null {
     if (input.profile.execution.processModel === 'supervised-process') {
-        return createSupervisedResolvedRun(command, dependencies, input, options);
+        return createSupervisedResolvedRun({
+            command,
+            dependencies,
+            input,
+            source: options.source,
+            timing: options.timing
+        });
     }
 
     if (input.profile.execution.processModel === 'worker-pool') {
@@ -216,80 +178,6 @@ export function createIsolatedResolvedRun(
     }
 
     return null;
-}
-
-function addRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['runnerErrors'][number][]): RunResult {
-    if (runnerErrors.length === 0) {
-        return result;
-    }
-
-    return {
-        ...result,
-        runnerErrors: [ ...runnerErrors, ...result.runnerErrors ],
-        status: 'failed'
-    };
-}
-
-type SupervisedRunResultInput = {
-    readonly command: RunCommand;
-    readonly dependencies: RunOrchestratorDependencies;
-    readonly input: ResolvedRunInput;
-    readonly source: RunCollectionSource;
-    readonly timing: RunTimingMeasurement | null;
-};
-
-async function executeSupervisedRunResult(options: SupervisedRunResultInput): Promise<RunResult> {
-    const { command, dependencies, input, source, timing } = options;
-    const expected = source.kind === 'direct-entrypoint'
-        ? await createExpectedDirectEntrypointPlan(command, dependencies, input, source)
-        : null;
-
-    return await runSupervisedCommand(
-        createSupervisedRunCommand(command, input.profile, input.files, source),
-        dependencies,
-        async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
-            return await createResolvedExecutionRun({
-                allowEmptySelection: true,
-                collection,
-                command,
-                dependencies,
-                durationHistoryIndex: null,
-                expectedDirectPlan: expected,
-                input,
-                planKind: 'supervised'
-            });
-        },
-        {
-            async finalizeResult(resolvedRun, result) {
-                return await finalizeResultWithDurationHistory(dependencies, resolvedRun, result, timing);
-            },
-            timing
-        }
-    );
-}
-
-async function createSupervisedRunResult(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    timing: RunTimingMeasurement | null,
-    source: RunCollectionSource
-): Promise<RunResult> {
-    const input = await readResolvedRunInput(command, dependencies);
-
-    if (input.profile.execution.processModel !== 'supervised-process') {
-        throw new Error('Expected supervised-process profile.');
-    }
-
-    try {
-        return await executeSupervisedRunResult({ command, dependencies, input, source, timing });
-    } catch (error: unknown) {
-        return await reportCollectionErrorResult(
-            command,
-            dependencies,
-            createResultFromResolutionError(error, null),
-            timing
-        );
-    }
 }
 
 type WorkerPoolRunResultInput = {
@@ -379,35 +267,6 @@ export function runIsolatedProcessCommand(
 
     if (processModel === 'worker-pool') {
         return createWorkerPoolRunResult(command, dependencies, options.timing, options.source);
-    }
-
-    return null;
-}
-
-export async function executeNonLocalResolvedRun(
-    resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    timing: RunTimingMeasurement | null = null
-): Promise<RunResult | null> {
-    if (resolvedRun.facts.execution.processModel === 'supervised-process') {
-        const result = await executeSupervisedRun(resolvedRun, dependencies, {
-            async finalizeResult(supervisedRun, finalResult) {
-                return await finalizeResultWithDurationHistory(dependencies, supervisedRun, finalResult, timing);
-            },
-            timing
-        });
-
-        return addRunnerErrors(result, runtimePolicy?.takeRunErrors() ?? []);
-    }
-
-    if (resolvedRun.facts.execution.processModel === 'worker-pool') {
-        return await executeWorkerPoolRun(resolvedRun, dependencies, {
-            async finalizeResult(workerPoolRun, completion) {
-                return await finalizeResultWithDurationHistory(dependencies, workerPoolRun, completion.result, timing);
-            },
-            timing
-        });
     }
 
     return null;

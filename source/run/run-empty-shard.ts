@@ -4,17 +4,13 @@ import {
 import {
     createReporterDelivery
 } from './supervised-run-runtime.ts';
-import {
-    resultWithResolvedTimingCollection,
-    type RunTimingMeasurement
-} from './run-timing-collection.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun,
     RunOrchestrator
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunRuntimePolicy } from './run-support.ts';
+import type { ResolvedRunResultFinalizer, RunRuntimePolicy } from './run-support.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 
@@ -35,8 +31,8 @@ function emptyShardCollectedPlan(resolvedRun: ResolvedRun): CollectedRunPlan {
 export async function executeEmptyShardRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    timing: RunTimingMeasurement | null = null
+    finalizeResult: ResolvedRunResultFinalizer,
+    runtimePolicy: RunRuntimePolicy | null
 ): Promise<RunResult> {
     const collectedPlan = emptyShardCollectedPlan(resolvedRun);
     const reporterDelivery = await createReporterDelivery(resolvedRun, dependencies);
@@ -50,7 +46,7 @@ export async function executeEmptyShardRun(
         },
         startedAt: currentRunStartTime(dependencies)
     });
-    const timedResult = resultWithResolvedTimingCollection(
+    const timedResult = await finalizeResult(
         resolvedRun,
         createRunResultFromCollectedPlan(
             collectedPlan,
@@ -63,8 +59,7 @@ export async function executeEmptyShardRun(
                 startedAtMicroseconds,
                 testExecutionWallTimeMicroseconds: 0
             }
-        ),
-        timing
+        )
     );
     const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result: timedResult });
     const resultForFinalReporting = {

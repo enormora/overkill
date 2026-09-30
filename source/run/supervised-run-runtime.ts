@@ -5,18 +5,16 @@ import type {
     ResourceUsageSnapshot,
     RunResult
 } from '../packages/engine/engine.entry-point.ts';
-import { createRunResultFromCollectedPlan, runCollectionRootFromResolvedPlan } from './collected-run-plan.ts';
+import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     createSupervisedHardTimeout,
     kill,
-    observeSupervisedChildOutput,
     type SupervisedChildHardTimeout,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
 import {
-    crashError,
     findResourceBudgetBreach,
     resourceExhaustionError,
     type ResourceBudgetBreach
@@ -28,13 +26,10 @@ import {
     type SupervisedCase,
     type SupervisedRunState
 } from './supervised-run-state.ts';
-import {
-    supervisedChildEnvelope,
-    supervisedChildMessage,
-    type SupervisedChildMessage,
-    type SupervisedCollectCommand,
-    type SupervisedRunCommand,
-    type SupervisedTimingRecorder
+import type {
+    SupervisedChildMessage,
+    SupervisedCollectCommand,
+    SupervisedRunCommand
 } from './supervised-protocol.ts';
 
 type NonTimingSupervisedChildMessage = Exclude<SupervisedChildMessage, { readonly kind: 'timing'; }>;
@@ -221,62 +216,6 @@ export function supervisedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunP
 export const createHardTimeout: (runtime: SupervisedRunRuntimeSeed) => SupervisedHardTimeout =
     createSupervisedHardTimeout;
 
-function supervisedEngine(resolvedRun: ResolvedRun): SupervisedRunCommand['engine'] {
-    if (resolvedRun.engine.kind === 'instance') {
-        throw new Error('Instance engines cannot run in supervised children.');
-    }
-
-    return resolvedRun.engine;
-}
-
-export function effectiveSupervisedCapabilityRestrictions(
-    resolvedRun: ResolvedRun
-): SupervisedRunCommand['capabilityRestrictions'] {
-    if (resolvedRun.facts.execution.testFamily === 'integration') {
-        return { mode: 'disabled' };
-    }
-
-    return resolvedRun.request.capabilityRestrictions;
-}
-
-function createRunCommand(resolvedRun: ResolvedRun): SupervisedRunCommand {
-    return {
-        capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
-        capture: resolvedRun.facts.execution.capture,
-        collectionTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
-        cwd: resolvedRun.cwd,
-        definitionLocationCapture: 'disabled',
-        engine: supervisedEngine(resolvedRun),
-        hardTimeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds,
-        kind: 'run',
-        maxConcurrency: resolvedRun.facts.execution.maxConcurrency,
-        paths: resolvedRun.request.paths,
-        resourceBudgets: resolvedRun.facts.execution.resourceUsagePolicy.budgets,
-        resourceUsageSamplingIntervalMilliseconds: resolvedRun
-            .facts
-            .execution
-            .resourceUsagePolicy
-            .samplingIntervalMilliseconds,
-        root: runCollectionRootFromResolvedPlan(resolvedRun.plan),
-        scheduling: resolvedRun.facts.execution.scheduling,
-        testFamily: resolvedRun.facts.execution.testFamily,
-        timeoutMilliseconds: resolvedRun.facts.execution.timeoutPolicy.softMilliseconds
-    };
-}
-
-export function sendRunCommand(runtime: SupervisedRunRuntime): void {
-    runtime.child.send(supervisedChildEnvelope(createRunCommand(runtime.resolvedRun)));
-}
-
-export function sendAssignment(runtime: SupervisedRunRuntime): void {
-    runtime.child.send(supervisedChildEnvelope({
-        assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
-            return testCase.workId;
-        }),
-        kind: 'assign'
-    }));
-}
-
 function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
     const collectedPlan = runtime.collectedPlan.read();
     const reportedEvent: ReporterEvent = event.kind === 'test-end'
@@ -394,45 +333,6 @@ export function handleCollectionSample<CollectionValue>(
         runtime.state.recordRunnerError(resourceExhaustionError(breach, runtime.state));
         kill(runtime.child);
     }
-}
-
-export async function observeChild(
-    runtime: SupervisedRunRuntime,
-    timing: SupervisedTimingRecorder | null
-): Promise<void> {
-    observeSupervisedChildOutput({
-        capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(runtime.resolvedRun),
-        capture: runtime.resolvedRun.facts.execution.capture,
-        child: runtime.child,
-        dependencies: runtime.dependencies,
-        state: runtime.state,
-        terminalFailure: runtime.terminalFailure
-    });
-
-    return new Promise(function waitForChild(resolve) {
-        runtime.child.on('message', function receiveMessage(message: unknown) {
-            const childMessage = supervisedChildMessage(message);
-
-            if (childMessage?.kind === 'timing') {
-                timing?.recordLocal(childMessage.span);
-            } else if (childMessage !== null) {
-                handleChildMessage(childMessage, runtime);
-            }
-        });
-        runtime.child.on('error', function recordChildError(error: Error) {
-            if (!runtime.terminalFailure.read()) {
-                runtime.terminalFailure.write(true);
-                runtime.state.recordRunnerError(crashError(runtime.state, error.message));
-                runtime.state.recordTerminalActiveCases(
-                    'crashed',
-                    Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
-                );
-            }
-        });
-        runtime.child.on('exit', function resolveExit() {
-            resolve();
-        });
-    });
 }
 
 export async function reportRunStart(
