@@ -200,6 +200,7 @@ export const testNode = createOverkillSuite({
                     execution: {
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
+                        coverage: false,
                         debug: { mode: 'off', selectors: [] },
                         engine: { kind: 'default' },
                         order: 'seeded',
@@ -411,6 +412,7 @@ export const testNode = createOverkillSuite({
                     execution: {
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
+                        coverage: false,
                         debug: { mode: 'off', selectors: [] },
                         engine: { kind: 'default' },
                         order: 'seeded',

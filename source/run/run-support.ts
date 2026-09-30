@@ -336,6 +336,7 @@ export function copyRunRequest(request: RunRequest): RunRequest {
         baselineUpdateMode: request.baselineUpdateMode,
         capabilityRestrictions: { mode: request.capabilityRestrictions.mode },
         capture: request.capture,
+        coverage: request.coverage,
         debug: {
             mode: request.debug.mode,
             selectors: []

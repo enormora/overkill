@@ -117,6 +117,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
+                coverage: false,
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 dispatchPolicy: 'dynamic-lease',
@@ -264,6 +265,7 @@ function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
     return {
         baselineUpdateMode: 'none',
         capture: 'buffered',
+        coverage: false,
         debug: { mode: 'off', selectors: [] },
         engine: { kind: 'default' },
         order: 'seeded',

@@ -78,9 +78,7 @@ type RunFilterByKind = {
 
 export type RunFilter = RunFilterByKind[keyof RunFilterByKind];
 
-type RunAllSelection = {
-    readonly kind: 'all';
-};
+type RunAllSelection = { readonly kind: 'all'; };
 
 type RunFilterSelection = {
     readonly filter: RunFilter;
@@ -108,17 +106,11 @@ export type RunShard = {
 
 export type RunShardHashAlgorithm = 'xxh3-64-canonical-json-v1';
 
-export type RunExecutionRequest = {
-    readonly mode: 'profile-default';
-};
+export type RunExecutionRequest = { readonly mode: 'profile-default'; };
 
-type RunCapabilityRestrictionsRequest = {
-    readonly mode: 'disabled' | 'enabled';
-};
+type RunCapabilityRestrictionsRequest = { readonly mode: 'disabled' | 'enabled'; };
 
-export type RunSeed = {
-    readonly value: bigint | null;
-};
+export type RunSeed = { readonly value: bigint | null; };
 
 export type RunDebugRequest = {
     readonly mode: 'off';
@@ -379,6 +371,7 @@ export type RunRequest = {
     readonly baselineUpdateMode: 'none';
     readonly capabilityRestrictions: RunCapabilityRestrictionsRequest;
     readonly capture: 'buffered' | 'live';
+    readonly coverage: boolean;
     readonly debug: RunDebugRequest;
     readonly execution: RunExecutionRequest;
     readonly measureResourceUsage: boolean | null;
@@ -432,6 +425,7 @@ export type RunEnvironmentFacts = {
 type RunExecutionBaseFacts = {
     readonly baselineUpdateMode: 'none';
     readonly capture: 'buffered' | 'live';
+    readonly coverage: boolean;
     readonly debug: RunDebugRequest;
     readonly engine: RunEngineFacts;
     readonly order: RunOrder;
