@@ -151,7 +151,7 @@ import { defineConfig } from '@overkill-dev/test/config';
 
 const config = defineConfig({
     profiles: {
-        'unit-covered': {
+        unit: {
             testFamily: 'microtest',
             files: {
                 include: [ 'source/**/*.test.ts' ]
@@ -170,8 +170,8 @@ const config = defineConfig({
                 samplingIntervalMilliseconds: 100
             },
             execution: {
-                processModel: 'supervised-process',
-                scheduling: 'serial'
+                processModel: 'in-process',
+                scheduling: 'concurrent'
             },
             timeouts: {
                 softMilliseconds: 500,
@@ -196,7 +196,12 @@ const config = defineConfig({
     }
 });
 
-await run({ config, cwd: process.cwd(), engine: { kind: 'default' }, request });
+await run({
+    config,
+    cwd: process.cwd(),
+    engine: { kind: 'default' },
+    request: { ...request, coverage: true, profile: 'unit' }
+});
 ```
 
 `resourceUsage.measure: true` enables run-level diagnostic measurement for the
@@ -220,6 +225,8 @@ Important ownership split:
 So, for example:
 
 - `--profile <name>` chooses which runner profile to use for this run
+- `--coverage` requests coverage for this run and is valid only with a
+  microtest profile
 - `--measure-resource-usage` chooses per-run diagnostic resource usage
   measurement
 - `--resource-budget <name=value>` chooses per-run resource-budget overrides
@@ -227,15 +234,16 @@ So, for example:
 - `--timings` requests precise runner timing collection for this run
 - `--record` requests a detailed run record and compact-history update for
   this run
-- `run({ profile: 'unit-covered' })` should express coverage intent through
-  profile selection
+- `run({ profile: 'unit', coverage: true })` expresses the same coverage
+  intent through `@overkill-dev/run`
 - an optional global assertion budget policy lives in configuration because
   it is centrally enforced suite policy rather than per-test authoring
 - resource-budget defaults live in configuration because they describe suite
   policy; per-run overrides are allowed for intentionally heavy runs and must
   be visible in failure messages
-- microtest `coverage` policy lives on the selected profile because coverage
-  is a microtest-only execution policy
+- microtest `coverage` policy lives on the selected profile because source
+  scope, formats, thresholds, and output are persistent project policy;
+  presence of that policy does not activate coverage
 
 Timing policy follows the same split. `profiles.<name>.timings.collection`
 sets the project default for that profile. `--timings` and programmatic
