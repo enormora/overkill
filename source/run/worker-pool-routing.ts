@@ -53,12 +53,32 @@ function isWorkerPoolTask(value: unknown): value is WorkerPoolTask {
         isWorkerPoolTaskKind(Reflect.get(value, 'kind'));
 }
 
+type LifecycleWorkerTask = Extract<WorkerPoolTask, {
+    readonly kind: 'complete-resource-owner-work' | 'dispose-lane-lifecycle' | 'dispose-run-resources';
+}>;
+
+function isCompletionTask(task: WorkerPoolTask): boolean {
+    return task.kind === 'complete-resource-owner-work';
+}
+
+function isLaneDisposalTask(task: WorkerPoolTask): boolean {
+    return task.kind === 'dispose-lane-lifecycle';
+}
+
+function isRunDisposalTask(task: WorkerPoolTask): boolean {
+    return task.kind === 'dispose-run-resources';
+}
+
+function isLifecycleWorkerTask(task: WorkerPoolTask): task is LifecycleWorkerTask {
+    return isCompletionTask(task) || isLaneDisposalTask(task) || isRunDisposalTask(task);
+}
+
 function taskWorkerLifecycle(task: unknown): RunWorkerLifecycle {
     if (!isWorkerPoolTask(task)) {
         throw new Error('Worker-pool received an invalid task.');
     }
 
-    if (task.kind === 'dispose-lane-lifecycle' || task.kind === 'dispose-run-resources') {
+    if (isLifecycleWorkerTask(task)) {
         return 'reuse';
     }
 

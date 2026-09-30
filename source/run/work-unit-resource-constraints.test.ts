@@ -51,6 +51,7 @@ function resource(
 ): CollectedRunCase['resourceAttachments']['resourceGraph'][number] {
     return {
         dependencies: [],
+        handleTransport: 'local',
         name,
         requirements,
         scenarios: [],

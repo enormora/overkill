@@ -22,9 +22,10 @@ type ScenarioCaseOptions = {
 function scenarioCase(title: string, scope: string, value: string, options: ScenarioCaseOptions = {}): TestPlanCase {
     const id = createCaseId('scenario.test.ts', [ 'suite' ], title, null);
     const timing = options.timing ?? 'acquire';
-    const resourceGraph = [
+    const resourceGraph: TestPlanCase['resourceAttachments']['resourceGraph'] = [
         {
             dependencies: [],
+            handleTransport: 'local' as const,
             name: 'database',
             requirements: [],
             scenarios: [ {
@@ -38,6 +39,7 @@ function scenarioCase(title: string, scope: string, value: string, options: Scen
         ...options.dependent === true
             ? [ {
                 dependencies: [ 'database' ],
+                handleTransport: 'local' as const,
                 name: 'server',
                 requirements: [],
                 scenarios: [],

@@ -10,6 +10,9 @@ export const workerPoolHostCorrelationId = 'worker-pool-host';
 type WorkerPoolCollectTask = Extract<WorkerPoolTask, { readonly kind: 'collect'; }>;
 type WorkerPoolRunTask = Extract<WorkerPoolTask, { readonly kind: 'run'; }>;
 type WorkerPoolAcquireRunResourcesTask = Extract<WorkerPoolTask, { readonly kind: 'acquire-run-resources'; }>;
+type WorkerPoolCompleteResourceOwnerWorkTask = Extract<WorkerPoolTask, {
+    readonly kind: 'complete-resource-owner-work';
+}>;
 type WorkerPoolDisposeRunResourcesTask = Extract<WorkerPoolTask, { readonly kind: 'dispose-run-resources'; }>;
 type WorkerPoolDisposeLaneLifecycleTask = Extract<WorkerPoolTask, { readonly kind: 'dispose-lane-lifecycle'; }>;
 type WorkerPoolCollectTaskWithoutPort = {
@@ -30,11 +33,18 @@ type WorkerPoolRunTaskWithoutPort = {
 };
 type WorkerPoolAcquireRunResourcesTaskWithoutPort = {
     readonly assignedWork: WorkerPoolAcquireRunResourcesTask['assignedWork'];
+    readonly boundaryKeys: WorkerPoolAcquireRunResourcesTask['boundaryKeys'];
     readonly boundaryUseCounts: WorkerPoolAcquireRunResourcesTask['boundaryUseCounts'];
     readonly command: WorkerPoolAcquireRunResourcesTask['command'];
     readonly kind: 'acquire-run-resources';
     readonly lane: WorkerPoolAcquireRunResourcesTask['lane'];
     readonly lifecycle: WorkerPoolAcquireRunResourcesTask['lifecycle'];
+};
+type WorkerPoolCompleteResourceOwnerWorkTaskWithoutPort = {
+    readonly boundaryKeys: WorkerPoolCompleteResourceOwnerWorkTask['boundaryKeys'];
+    readonly kind: 'complete-resource-owner-work';
+    readonly lane: WorkerPoolCompleteResourceOwnerWorkTask['lane'];
+    readonly lifecycle: WorkerPoolCompleteResourceOwnerWorkTask['lifecycle'];
 };
 type WorkerPoolDisposeRunResourcesTaskWithoutPort = {
     readonly kind: 'dispose-run-resources';
@@ -49,6 +59,7 @@ type WorkerPoolDisposeLaneLifecycleTaskWithoutPort = {
 type WorkerPoolTasksWithoutPortByKind = {
     readonly acquireRunResources: WorkerPoolAcquireRunResourcesTaskWithoutPort;
     readonly collect: WorkerPoolCollectTaskWithoutPort;
+    readonly completeResourceOwnerWork: WorkerPoolCompleteResourceOwnerWorkTaskWithoutPort;
     readonly disposeLaneLifecycle: WorkerPoolDisposeLaneLifecycleTaskWithoutPort;
     readonly disposeRunResources: WorkerPoolDisposeRunResourcesTaskWithoutPort;
     readonly run: WorkerPoolRunTaskWithoutPort;
@@ -70,6 +81,7 @@ type SerializedWorkerPoolEventMessagesByKind = {
     readonly timing: Extract<WorkerPoolMessage, { readonly kind: 'timing'; }>;
     readonly attemptCompleted: Extract<WorkerPoolMessage, { readonly kind: 'attempt-completed'; }>;
     readonly attemptStarted: Extract<WorkerPoolMessage, { readonly kind: 'attempt-started'; }>;
+    readonly taskMessagesCompleted: Extract<WorkerPoolMessage, { readonly kind: 'task-messages-completed'; }>;
 };
 type SerializedWorkerPoolEventMessage =
     SerializedWorkerPoolEventMessagesByKind[keyof SerializedWorkerPoolEventMessagesByKind];

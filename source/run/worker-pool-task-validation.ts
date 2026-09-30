@@ -3,6 +3,7 @@ import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 const workerPoolTaskKinds: ReadonlySet<string> = new Set([
     'acquire-run-resources',
     'collect',
+    'complete-resource-owner-work',
     'dispose-lane-lifecycle',
     'dispose-run-resources',
     'run'

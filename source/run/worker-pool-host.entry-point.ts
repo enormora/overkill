@@ -1,7 +1,4 @@
-import {
-    MessageChannel as NodeMessageChannel,
-    type MessagePort as NodeMessagePort
-} from 'node:worker_threads';
+import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import { createClock } from '@enormora/clock';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import type { RunResourceUsageTracker, RunnerError } from '../engine/run-result.ts';
@@ -24,11 +21,16 @@ import {
     workerPoolHostCorrelationId,
     type WorkerPoolHostMessage
 } from './worker-pool-host-protocol.ts';
-import type { WorkerPoolMessage, WorkerPoolTask } from './worker-pool-protocol.ts';
+import {
+    createWorkerPoolMessageChannel,
+    type WorkerPoolMessage,
+    type WorkerPoolMessageChannel,
+    type WorkerPoolTask
+} from './worker-pool-protocol.ts';
 
 type ActiveHostTask = {
+    readonly channel: WorkerPoolMessageChannel;
     readonly controller: AbortController;
-    readonly port: NodeMessagePort;
 };
 
 type StoredValue<Value> = {
@@ -51,8 +53,8 @@ type WorkerPoolHostState = {
 };
 
 type TaskWithHostPort = {
+    readonly channel: WorkerPoolMessageChannel;
     readonly controller: AbortController;
-    readonly port1: NodeMessagePort;
     readonly task: WorkerPoolTask;
 };
 
@@ -138,20 +140,18 @@ function forwardTaskMessage(taskId: string, message: WorkerPoolMessage): void {
 function taskWithHostPort(
     command: Extract<WorkerPoolHostCommand, { readonly kind: 'run-task'; }>
 ): TaskWithHostPort {
-    const { port1, port2 } = new NodeMessageChannel();
     const controller = new AbortController();
-
-    state.activeTasks.set(command.taskId, { controller, port: port2 });
-    port2.on('message', function receiveTaskMessage(message: WorkerPoolMessage) {
+    const channel = createWorkerPoolMessageChannel(function receiveTaskMessage(message: WorkerPoolMessage) {
         forwardTaskMessage(command.taskId, message);
     });
+    state.activeTasks.set(command.taskId, { channel, controller });
 
     return {
+        channel,
         controller,
-        port1,
         task: {
             ...command.task,
-            port: port1
+            port: channel.port
         }
     };
 }
@@ -160,13 +160,17 @@ async function runTask(command: Extract<WorkerPoolHostCommand, { readonly kind: 
     const task = taskWithHostPort(command);
 
     try {
+        const result = await configuredPool(state).run(task.task, {
+            name: 'runTask',
+            signal: task.controller.signal,
+            transferList: portTransferList(task.channel.port)
+        });
+
+        await task.channel.messagesCompleted;
+
         send({
             kind: 'task-result',
-            result: await configuredPool(state).run(task.task, {
-                name: 'runTask',
-                signal: task.controller.signal,
-                transferList: portTransferList(task.port1)
-            }),
+            result,
             taskId: command.taskId
         });
     } catch (error: unknown) {
@@ -176,8 +180,7 @@ async function runTask(command: Extract<WorkerPoolHostCommand, { readonly kind: 
             taskId: command.taskId
         });
     } finally {
-        task.port1.close();
-        state.activeTasks.get(command.taskId)?.port.close();
+        task.channel.close();
         state.activeTasks.delete(command.taskId);
     }
 }

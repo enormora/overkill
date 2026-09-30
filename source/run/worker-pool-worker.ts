@@ -14,6 +14,7 @@ import {
 } from './worker-pool-output.ts';
 import {
     acquireWorkerRunResources,
+    completeWorkerResourceOwnerWork,
     createWorkerResourceUsageTracker,
     disposeWorkerLaneLifecycle,
     disposeWorkerRunResources,
@@ -22,6 +23,7 @@ import {
 import type {
     WorkerPoolCollection,
     WorkerPoolCommand,
+    WorkerPoolCompleteResourceOwnerWorkTask,
     WorkerPoolAssignedUnit,
     WorkerPoolDisposeResourceOutput,
     WorkerPoolDisposeLaneLifecycleTask,
@@ -185,6 +187,12 @@ async function disposeRunResources(
     return await disposeWorkerRunResources(task);
 }
 
+async function completeResourceOwnerWork(
+    task: WorkerPoolCompleteResourceOwnerWorkTask
+): Promise<WorkerPoolDisposeResourceOutput> {
+    return await completeWorkerResourceOwnerWork(task);
+}
+
 async function disposeLaneLifecycle(
     task: WorkerPoolDisposeLaneLifecycleTask
 ): Promise<WorkerPoolDisposeResourceOutput> {
@@ -249,6 +257,7 @@ async function runCollectionTask(
             status: 'success',
             task
         });
+        task.port.postMessage({ kind: 'task-messages-completed' }, []);
         task.port.close();
     }
 }
@@ -295,6 +304,10 @@ async function runWorkerTask(
         return await disposeRunResources(task);
     }
 
+    if (task.kind === 'complete-resource-owner-work') {
+        return await completeResourceOwnerWork(task);
+    }
+
     if (task.kind === 'dispose-lane-lifecycle') {
         return await disposeLaneLifecycle(task);
     }
@@ -318,6 +331,7 @@ async function runClosableTask(
             status: 'success',
             task
         });
+        task.port.postMessage({ kind: 'task-messages-completed' }, []);
         task.port.close();
     }
 }

@@ -1,4 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as executionPlanCompatibilityTestNode } from './execution-plan-compatibility.test.ts';
+import { testNode as executionPlanResolutionTestNode } from './execution-plan-resolution.test.ts';
 import { testNode as workerPoolCollectionTestNode } from './worker-pool-collection.test.ts';
 import { testNode as workerPoolCoreTestNode } from './worker-pool-core-suite.test.ts';
 import { testNode as workerPoolHostTestNode } from './worker-pool-host-suite.test.ts';
@@ -11,6 +13,8 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/worker-pool-suite.test.ts',
     children: [
+        executionPlanCompatibilityTestNode,
+        executionPlanResolutionTestNode,
         workerPoolCollectionTestNode,
         workerPoolCoreTestNode,
         workerPoolHostTestNode,

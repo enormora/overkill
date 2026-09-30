@@ -35,6 +35,7 @@ import {
 } from './resource-lifecycle-error.ts';
 import { managedResourceSession } from './resource-lifecycle-managed-session.ts';
 import {
+    boundaryFor,
     caseResourceBoundaryKeys,
     resourceLifecycleBoundaryUseCounts,
     resourceScopes,
@@ -54,6 +55,7 @@ import {
 export type ManagedResourceLifecycleTiming = SessionResourceLifecycleTiming;
 
 export type ResourceLifecycleSession = {
+    readonly completeBoundaries: (boundaryKeys: readonly string[]) => Promise<readonly ManagedRunnerError[]>;
     readonly disposeAll: (signal: AbortSignal) => Promise<readonly ManagedRunnerError[]>;
     readonly projectionRecords: () => ResourceProjectionRecords;
     readonly runtimePolicy: TestRuntimePolicy;
@@ -87,6 +89,7 @@ type ManagedComposedResourcesRequest = ManagedLifecycleContext & {
 };
 
 type ManagedResourceScopesRequest = ManagedLifecycleContext & {
+    readonly boundaryKeys: ReadonlySet<string>;
     readonly scopes: ReadonlySet<string>;
     readonly signal: AbortSignal;
     readonly steps: readonly ResourceWrapperStep[];
@@ -99,6 +102,7 @@ type ManagedLifecycleStateCreation = {
 };
 
 export type ResourceLifecycleScopesRequest = {
+    readonly boundaryKeys: ReadonlySet<string>;
     readonly options: ResourceLifecycleOptions;
     readonly scopes: ReadonlySet<string>;
     readonly signal: AbortSignal;
@@ -286,7 +290,10 @@ async function acquireManagedResourceScopes(
     assertResourceDependencyScopes(combinedResources);
 
     for (const node of graph.order) {
-        if (request.scopes.has(node.descriptor.scope)) {
+        if (
+            request.scopes.has(node.descriptor.scope) &&
+            request.boundaryKeys.has(boundaryFor(node.descriptor, request.testCase).key)
+        ) {
             await acquirer.acquire(node.descriptor, request.testCase, request.signal);
         }
     }
@@ -317,6 +324,31 @@ async function disposeAllManagedResources(
     return errors;
 }
 
+async function completeManagedBoundaries(
+    stores: ManagedLifecycleStores,
+    boundaryKeys: readonly string[],
+    timing: ManagedResourceLifecycleTiming
+): Promise<readonly ManagedRunnerError[]> {
+    const errors: ManagedRunnerError[] = [];
+
+    for (const boundaryKey of boundaryKeys) {
+        try {
+            await disposeCompletedBoundary(stores, boundaryKey, timing);
+        } catch (error: unknown) {
+            errors.push({
+                attributedTo: null,
+                attributedToWork: null,
+                cause: error,
+                diagnostics: [],
+                message: 'Resource disposal failed.',
+                subtype: 'runtime-policy'
+            });
+        }
+    }
+
+    return errors;
+}
+
 function createManagedLifecycleState(options: ResourceLifecycleOptions): ManagedLifecycleStateCreation {
     const stores = createManagedStores(options);
     const context = { options, stores };
@@ -327,8 +359,8 @@ function createManagedLifecycleState(options: ResourceLifecycleOptions): Managed
             async acquireComposedResources(steps, signal, messages) {
                 return await acquireManagedComposedResources({ ...context, messages, signal, steps });
             },
-            async acquireResourceScopes(steps, testCase, signal, scopes) {
-                await acquireManagedResourceScopes({ ...context, scopes, signal, steps, testCase });
+            async acquireResourceScopes(request) {
+                await acquireManagedResourceScopes({ ...context, ...request });
             },
             async disposeAll(signal) {
                 return await disposeAllManagedResources(stores, signal, options.timing);
@@ -388,6 +420,9 @@ export function createResourceLifecycleSession(options: ResourceLifecycleOptions
     const { lifecycle, stores } = createManagedLifecycleState(options);
 
     return {
+        async completeBoundaries(boundaryKeys) {
+            return await completeManagedBoundaries(stores, boundaryKeys, options.timing);
+        },
         async disposeAll(signal) {
             return await lifecycle.disposeAll(signal);
         },
@@ -405,16 +440,20 @@ export async function acquireResourceLifecycleScopes(
 
     await runWithManagedLifecycle(lifecycle, async function acquireSelectedScopes() {
         for (const testCase of request.testCases) {
-            await lifecycle.acquireResourceScopes(
-                request.stepsForCase(testCase),
-                testCase,
-                request.signal,
-                request.scopes
-            );
+            await lifecycle.acquireResourceScopes({
+                boundaryKeys: request.boundaryKeys,
+                scopes: request.scopes,
+                signal: request.signal,
+                steps: request.stepsForCase(testCase),
+                testCase
+            });
         }
     });
 
     return {
+        async completeBoundaries(boundaryKeys) {
+            return await completeManagedBoundaries(stores, boundaryKeys, request.options.timing);
+        },
         async disposeAll(disposalSignal) {
             return await lifecycle.disposeAll(disposalSignal);
         },

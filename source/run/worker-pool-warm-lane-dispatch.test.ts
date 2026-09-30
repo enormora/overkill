@@ -104,6 +104,7 @@ function warmAffinityPlan(workerLifecycle: WorkUnit['workerLifecycle']): Placeme
             { lane: first.id, unit: warm.id }
         ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ warmup, cold, warm ]
     };
 }
@@ -124,6 +125,7 @@ function warmAffinityCrashPlan(): PlacementPlan {
             { lane: first.id, unit: warmAfterCrash.id }
         ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ warmup, warmCrash, cold, warmAfterCrash ]
     };
 }

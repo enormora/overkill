@@ -12,9 +12,10 @@ import {
     workerPoolHostRole
 } from './child-process-roles.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
-import type {
-    WorkerPoolCommand,
-    WorkerPoolMessage
+import {
+    createWorkerPoolMessageChannel,
+    type WorkerPoolCommand,
+    type WorkerPoolMessage
 } from './worker-pool-protocol.ts';
 import {
     deserializeError,
@@ -247,6 +248,34 @@ export const testNode = createOverkillSuite({
                 assertErrorProtocol(scope, fixture);
                 assertFallbackErrorProtocol(scope, fixture);
                 assertWorkerMessageProtocol(scope, fixture);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'worker-pool message channels deliver queued messages before completion',
+            async body(scope: OverkillScope) {
+                const receivedKinds: string[] = [];
+                const channel = createWorkerPoolMessageChannel(function recordMessage(message) {
+                    receivedKinds.push(message.kind);
+                });
+
+                try {
+                    channel.port.postMessage({
+                        capturedAtMicroseconds: 1,
+                        chunk: Buffer.from('output'),
+                        kind: 'output',
+                        stream: 'stdout'
+                    }, []);
+                    channel.port.postMessage({ kind: 'task-messages-completed' }, []);
+                    await channel.messagesCompleted;
+                    scope.assert.deepEqual(receivedKinds, [ 'output', 'task-messages-completed' ]);
+                } finally {
+                    channel.close();
+                }
 
                 return scope.assert.collect();
             }

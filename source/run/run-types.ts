@@ -11,11 +11,11 @@ import type {
 import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
+import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
-type RunCaseId = TestPlan['discoveredCases'][number]['id'];
 type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
 type RunReporters = RunExecuteOptions['reporters'];
 
@@ -39,7 +39,7 @@ type RunAnyFilter = {
 };
 
 type RunCaseIdFilter = {
-    readonly id: RunCaseId;
+    readonly id: TestPlan['discoveredCases'][number]['id'];
     readonly kind: 'case-id';
 };
 
@@ -262,6 +262,7 @@ export type PlacementAssignment = {
 export type PlacementPlan = {
     readonly assignments: readonly PlacementAssignment[];
     readonly lanes: readonly PlacementLane[];
+    readonly resourceOwnership: ResourceOwnershipPlan;
     readonly units: readonly WorkUnit[];
 };
 
@@ -574,10 +575,8 @@ export function invalidRunProfileNameMessage(profileName: string): string | null
 }
 
 export function invalidRunProfileFileSetNameMessage(fileSetName: string): string | null {
-    if (!runProfileNamePattern.test(fileSetName)) {
-        return `Invalid profile file set name "${fileSetName}". ` +
+    return runProfileNamePattern.test(fileSetName)
+        ? null
+        : `Invalid profile file set name "${fileSetName}". ` +
             'Profile file set names may only contain letters, numbers, dots, underscores, and hyphens.';
-    }
-
-    return null;
 }

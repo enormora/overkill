@@ -302,7 +302,7 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
             workDistribution: { mode: 'file' },
             workerLifecycle: 'reuse'
         }),
-        { assignments: [], lanes: [], units: [] }
+        { assignments: [], lanes: [], resourceOwnership: { owners: [] }, units: [] }
     );
     scope.assert.equal(singleWorkerPlan.lanes.length, 1);
     scope.assert.equal(cappedWorkerPlan.lanes.length, 8);

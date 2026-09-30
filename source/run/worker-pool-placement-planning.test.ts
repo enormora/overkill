@@ -28,7 +28,7 @@ import {
     workUnitsFromCollectedPlan
 } from './work-unit-planning.ts';
 
-const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
+export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
@@ -48,7 +48,7 @@ const shardBySecondPath = {
     }
 };
 
-function testFileHref(path: string): string {
+export function testFileHref(path: string): string {
     const url = new URL(path, import.meta.url);
 
     return url.href;
@@ -74,7 +74,7 @@ function collectedCase(
     };
 }
 
-function createCollectedPlan(): CollectedRunPlan {
+export function createCollectedPlan(): CollectedRunPlan {
     return {
         defined: 2,
         discoveredFiles: [],
@@ -123,6 +123,7 @@ function createConstrainedPlan(requirements: readonly TestBodyExecutionRequireme
                             resourceGraph: [
                                 {
                                     dependencies: [],
+                                    handleTransport: 'local',
                                     name: 'database',
                                     requirements,
                                     scenarios: [],
@@ -305,11 +306,12 @@ function expectedPlacementPlan(): PlacementPlan {
                 id: 'worker-2'
             }
         ],
+        resourceOwnership: { owners: [] },
         units: [ firstUnit, secondUnit ]
     };
 }
 
-function fileSetForFile(file: string): string | null {
+export function fileSetForFile(file: string): string | null {
     const files = new Map([
         [ integrationPath, 'fast' ],
         [ secondIntegrationPath, 'slow' ]

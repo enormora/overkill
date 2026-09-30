@@ -19,6 +19,7 @@ export type TestBodyRuntimeScenarioBindingSummary = TestBodyScenarioSlotSummary 
 
 export type TestBodyResourceSummary = {
     readonly dependencies: readonly string[];
+    readonly handleTransport: 'local' | 'projected';
     readonly name: string;
     readonly requirements: readonly TestBodyExecutionRequirementSummary[];
     readonly scenarios: readonly TestBodyScenarioSlotSummary[];
@@ -164,6 +165,7 @@ function freezeResourceGraph(resources: readonly TestBodyResourceSummary[]): rea
     return Object.freeze(resources.map(function freezeResource(resource) {
         return Object.freeze({
             dependencies: Object.freeze(Array.from(resource.dependencies)),
+            handleTransport: resource.handleTransport,
             name: resource.name,
             requirements: freezeRequirements(resource.requirements),
             scenarios: Object.freeze(resource.scenarios.map(function freezeScenario(scenario) {

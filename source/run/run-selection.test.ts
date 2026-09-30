@@ -77,6 +77,7 @@ function graphOnlyResourceAttachments(): TestBodyResourceAttachments {
         resourceGraph: [
             {
                 dependencies: [],
+                handleTransport: 'local',
                 name: 'database',
                 requirements: [],
                 scenarios: [],

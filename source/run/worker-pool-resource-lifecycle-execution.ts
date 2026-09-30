@@ -18,9 +18,8 @@ import {
     type WorkerPoolDisposeResourceOutput,
     type WorkerPoolRunResourceOutput
 } from './worker-pool-protocol.ts';
-import {
-    collectedPlanNeedsRunResourceOwner,
-    type WorkerPoolRunRuntime
+import type {
+    WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
 
 type WorkerPoolTaskChannel = {
@@ -32,11 +31,97 @@ type StartedCaseLedger = {
     readonly has: (caseKey: string) => boolean;
 };
 
+type CompletedWorkLedger = {
+    readonly add: (key: string) => unknown;
+    readonly has: (key: string) => boolean;
+};
+
 export type WorkerPoolResourceLifecycle = {
+    readonly completedWork: CompletedWorkLedger;
+    readonly ownerBoundaryKeysByWork: ReadonlyMap<string, readonly string[]>;
+    readonly ownerLane: string | null;
+    readonly projectionBoundaryKeysByWork: ReadonlyMap<string, readonly string[]>;
     readonly projectedResources: WorkerPoolRunResourceOutput['projectedResources'];
-    readonly runResourceOwner: boolean;
+    readonly resourceOwner: boolean;
     readonly runWork: ReturnType<typeof placementRunWork>;
 };
+
+function externallyOwnedResources(plan: PlacementPlan): PlacementPlan['resourceOwnership']['owners'] {
+    return plan.resourceOwnership.owners.filter(function hasExternalOwner(owner) {
+        return owner.scope === 'per-run' || owner.placement.kind === 'infrastructure-worker';
+    });
+}
+
+function resourceOwnerLane(plan: PlacementPlan): string | null {
+    const owners = externallyOwnedResources(plan);
+
+    if (owners.length === 0) {
+        return null;
+    }
+
+    if (
+        owners.some(function usesInfrastructureWorker(owner) {
+            return owner.placement.kind === 'infrastructure-worker';
+        })
+    ) {
+        return workerPoolRunResourceOwnerLane;
+    }
+
+    const placement = owners[0]?.placement;
+
+    return placement?.kind === 'executor-lane' ? placement.lane : null;
+}
+
+function ownerWork(plan: PlacementPlan): readonly WorkId[] {
+    const workByKey = new Map(
+        externallyOwnedResources(plan).flatMap(function ownerWorkEntries(owner) {
+            return owner.work.map(function ownerWorkEntry(work) {
+                return [ workIdentityKey(work), work ] as const;
+            });
+        })
+    );
+
+    return Array.from(workByKey.values());
+}
+
+function boundaryKeysByWork(
+    plan: PlacementPlan,
+    includePerRun: boolean
+): ReadonlyMap<string, readonly string[]> {
+    const keys = new Map<string, string[]>();
+
+    for (const owner of externallyOwnedResources(plan)) {
+        if (includePerRun || owner.scope !== 'per-run') {
+            for (const work of owner.work) {
+                const workKey = workIdentityKey(work);
+                const workKeys = keys.get(workKey) ?? [];
+
+                workKeys.push(owner.boundaryKey);
+                keys.set(workKey, workKeys);
+            }
+        }
+    }
+
+    return keys;
+}
+
+function ownerCommand(
+    runtime: WorkerPoolRunRuntime,
+    plan: PlacementPlan,
+    work: readonly WorkId[]
+): WorkerPoolCommand {
+    const command = createRunCommand(runtime, firstPlanUnit(plan));
+
+    return {
+        ...command,
+        paths: Array.from(
+            new Set(work.flatMap(function ownerWorkPath(item) {
+                return item.case.file === null ? [] : [ item.case.file ];
+            }))
+        ),
+        workerLifecycle: 'reuse' as const
+    };
+}
 
 function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
     return [ port ];
@@ -116,14 +201,22 @@ async function acquireRunResourceOutput(
     work: ReturnType<typeof placementRunWork>
 ): Promise<unknown> {
     const channel = resourceTaskChannel();
+    const lane = resourceOwnerLane(plan);
+
+    if (lane === null) {
+        throw new Error('Worker-pool resource owner requires a planned lane.');
+    }
 
     try {
         return await runtime.pool.run({
             assignedWork: work,
+            boundaryKeys: externallyOwnedResources(plan).map(function ownerBoundaryKey(owner) {
+                return owner.boundaryKey;
+            }),
             boundaryUseCounts: [],
-            command: createRunCommand(runtime, firstPlanUnit(plan)),
+            command: ownerCommand(runtime, plan, work),
             kind: 'acquire-run-resources',
-            lane: workerPoolRunResourceOwnerLane,
+            lane,
             lifecycle: runtime.lifecycle,
             port: channel.port
         }, {
@@ -140,7 +233,7 @@ async function acquireRunResources(
     runtime: WorkerPoolRunRuntime,
     plan: PlacementPlan
 ): Promise<WorkerPoolResourceLifecycle> {
-    const work = placementRunWork(plan);
+    const work = ownerWork(plan);
     const output = await acquireRunResourceOutput(runtime, plan, work);
 
     if (!isWorkerPoolRunResourceOutput(output)) {
@@ -149,7 +242,15 @@ async function acquireRunResources(
 
     recordResourceRunnerErrors(runtime, output.runnerErrors);
 
-    return { projectedResources: output.projectedResources, runResourceOwner: true, runWork: work };
+    return {
+        completedWork: new Set(),
+        ownerBoundaryKeysByWork: boundaryKeysByWork(plan, false),
+        ownerLane: resourceOwnerLane(plan),
+        projectionBoundaryKeysByWork: boundaryKeysByWork(plan, true),
+        projectedResources: output.projectedResources,
+        resourceOwner: true,
+        runWork: placementRunWork(plan)
+    };
 }
 
 async function runDisposalTaskOutput(
@@ -189,9 +290,9 @@ async function runDisposalTask(
     recordResourceRunnerErrors(runtime, output.runnerErrors);
 }
 
-async function disposeRunResources(runtime: WorkerPoolRunRuntime): Promise<void> {
+async function disposeRunResources(runtime: WorkerPoolRunRuntime, lane: string): Promise<void> {
     try {
-        await runDisposalTask(runtime, workerPoolRunResourceOwnerLane, 'dispose-run-resources');
+        await runDisposalTask(runtime, lane, 'dispose-run-resources');
     } catch (error: unknown) {
         recordResourceLifecycleFailure(runtime, 'Worker-pool run resource disposal failed.', error);
     }
@@ -221,9 +322,106 @@ export async function acquireWorkerPoolResourceLifecycle(
     runtime: WorkerPoolRunRuntime,
     placementPlan: PlacementPlan
 ): Promise<WorkerPoolResourceLifecycle> {
-    return collectedPlanNeedsRunResourceOwner(runtime.resolvedRun)
-        ? await acquireRunResources(runtime, placementPlan)
-        : { projectedResources: { resources: [] }, runResourceOwner: false, runWork: placementRunWork(placementPlan) };
+    return resourceOwnerLane(placementPlan) === null
+        ? {
+            completedWork: new Set(),
+            ownerBoundaryKeysByWork: new Map(),
+            ownerLane: null,
+            projectionBoundaryKeysByWork: new Map(),
+            projectedResources: { resources: [] },
+            resourceOwner: false,
+            runWork: placementRunWork(placementPlan)
+        }
+        : await acquireRunResources(runtime, placementPlan);
+}
+
+export function workerPoolProjectedResourcesForWork(
+    resourceLifecycle: WorkerPoolResourceLifecycle,
+    work: readonly WorkId[]
+): WorkerPoolRunResourceOutput['projectedResources'] {
+    const boundaryKeys = new Set(work.flatMap(function projectionKeys(item) {
+        return resourceLifecycle.projectionBoundaryKeysByWork.get(workIdentityKey(item)) ?? [];
+    }));
+
+    return {
+        resources: resourceLifecycle.projectedResources.resources.filter(function selectedProjection(resource) {
+            return boundaryKeys.has(resource.boundaryKey);
+        })
+    };
+}
+
+async function completeOwnerBoundaries(
+    runtime: WorkerPoolRunRuntime,
+    resourceLifecycle: WorkerPoolResourceLifecycle,
+    boundaryKeys: readonly string[]
+): Promise<void> {
+    if (resourceLifecycle.ownerLane === null || boundaryKeys.length === 0) {
+        return;
+    }
+
+    async function runCompletionTask(channel: WorkerPoolTaskChannel): Promise<void> {
+        const output: unknown = await runtime.pool.run({
+            boundaryKeys,
+            kind: 'complete-resource-owner-work',
+            lane: resourceLifecycle.ownerLane,
+            lifecycle: runtime.lifecycle,
+            port: channel.port
+        }, {
+            name: 'runTask',
+            signal: freshSignal(),
+            transferList: portTransferList(channel.port)
+        });
+
+        if (!isWorkerPoolDisposeResourceOutput(output)) {
+            throw new Error('Worker-pool resource owner completion returned an invalid result.');
+        }
+
+        recordResourceRunnerErrors(runtime, output.runnerErrors);
+    }
+
+    const channel = resourceTaskChannel();
+
+    try {
+        await runCompletionTask(channel);
+    } catch (error: unknown) {
+        recordResourceLifecycleFailure(runtime, 'Worker-pool resource owner completion failed.', error);
+        runtime.terminalFailure.write(true);
+    } finally {
+        channel.close();
+    }
+}
+
+async function completeWorkerPoolResourceWork(
+    runtime: WorkerPoolRunRuntime,
+    resourceLifecycle: WorkerPoolResourceLifecycle,
+    work: readonly WorkId[]
+): Promise<void> {
+    const boundaryKeys: string[] = [];
+
+    for (const item of work) {
+        const key = workIdentityKey(item);
+
+        if (!resourceLifecycle.completedWork.has(key)) {
+            resourceLifecycle.completedWork.add(key);
+            boundaryKeys.push(...resourceLifecycle.ownerBoundaryKeysByWork.get(key) ?? []);
+        }
+    }
+
+    await completeOwnerBoundaries(runtime, resourceLifecycle, boundaryKeys);
+}
+
+export async function completeWorkerPoolResourceMembers(
+    runtime: WorkerPoolRunRuntime,
+    resourceLifecycle: WorkerPoolResourceLifecycle,
+    members: readonly WorkerPoolLeaseMember[]
+): Promise<void> {
+    await completeWorkerPoolResourceWork(
+        runtime,
+        resourceLifecycle,
+        members.flatMap(function completedMemberWork(member) {
+            return member.unit.work;
+        })
+    );
 }
 
 export async function disposeWorkerPoolResourceLifecycles(
@@ -235,7 +433,7 @@ export async function disposeWorkerPoolResourceLifecycles(
         await disposeLaneLifecycles(runtime, placementPlan);
     }
 
-    if (resourceLifecycle.runResourceOwner) {
-        await disposeRunResources(runtime);
+    if (resourceLifecycle.resourceOwner && resourceLifecycle.ownerLane !== null) {
+        await disposeRunResources(runtime, resourceLifecycle.ownerLane);
     }
 }

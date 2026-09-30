@@ -1,15 +1,13 @@
-import {
-    MessageChannel as NodeMessageChannel,
-    type MessagePort as NodeMessagePort
-} from 'node:worker_threads';
+import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import {
     createStoredRunValue,
     createSupervisedRunState,
     type StoredRunValue
 } from './supervised-run-state.ts';
-import type {
-    WorkerPoolMessage,
-    WorkerPoolRunOutput
+import {
+    createWorkerPoolMessageChannel,
+    type WorkerPoolMessageChannel,
+    type WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
 import {
     workerPoolPlacementTrace,
@@ -44,16 +42,13 @@ import {
 } from './worker-pool-task-events.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
+    completeWorkerPoolResourceMembers,
     createWorkerPoolBatchRunCommand,
     disposeWorkerPoolResourceLifecycles,
+    workerPoolProjectedResourcesForWork,
     workerPoolWorkHasStarted,
     type WorkerPoolResourceLifecycle
 } from './worker-pool-resource-lifecycle-execution.ts';
-
-type WorkerPoolTaskChannel = {
-    readonly close: () => void;
-    readonly port: NodeMessagePort;
-};
 
 type CompletedTaskRuns = {
     readonly push: (taskRun: WorkerPoolTaskRun) => number;
@@ -75,11 +70,10 @@ type TaskExecutionContext = TaskFailureContext & {
 type WorkerLoopContext = TaskExecutionContext & {
     readonly completedTaskRuns: CompletedTaskRuns;
     readonly lane: PlacementLane;
-    readonly resourceLifecycle: WorkerPoolResourceLifecycle;
 };
 
 type WorkerTaskRunRequest = {
-    readonly channel: WorkerPoolTaskChannel;
+    readonly channel: WorkerPoolMessageChannel;
     readonly lane: PlacementLane;
     readonly resourceLifecycle: WorkerPoolResourceLifecycle;
     readonly runtime: WorkerPoolRunRuntime;
@@ -142,20 +136,10 @@ function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
     return [ port ];
 }
 
-function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): WorkerPoolTaskChannel {
-    const { port1, port2 } = new NodeMessageChannel();
-
-    port2.on('message', function receiveWorkerMessage(message: WorkerPoolMessage) {
+function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): WorkerPoolMessageChannel {
+    return createWorkerPoolMessageChannel(function receiveWorkerMessage(message) {
         handleWorkerMessage(message, taskRun, runtime);
     });
-
-    return {
-        close() {
-            port1.close();
-            port2.close();
-        },
-        port: port1
-    };
 }
 
 function isWorkerPoolRunOutput(value: unknown): value is WorkerPoolRunOutput {
@@ -179,7 +163,7 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
         lane: request.lane.id,
         lifecycle: request.runtime.lifecycle,
         port: request.channel.port,
-        projectedResources: request.resourceLifecycle.projectedResources,
+        projectedResources: workerPoolProjectedResourcesForWork(request.resourceLifecycle, assignedWork),
         runWork: request.resourceLifecycle.runWork,
         startedAtMilliseconds: request.startedAtMilliseconds
     }, {
@@ -199,7 +183,11 @@ async function runFileUnit(request: FileUnitRunRequest): Promise<WorkerPoolRunOu
     const channel = observeTaskMessages(request.taskRun, request.runtime);
 
     try {
-        return await runWorkerTask({ ...request, channel });
+        const output = await runWorkerTask({ ...request, channel });
+
+        await channel.messagesCompleted;
+
+        return output;
     } finally {
         channel.close();
     }
@@ -411,18 +399,17 @@ async function recordCompletedTaskRun(
     recordBatchCompleted(taskRun, context.runtime);
     finishCompletedLease(context.dispatcher, lease);
 
-    if (!taskRun.reporterEventsBuffered) {
+    if (taskRun.reporterEventsBuffered) {
+        const firstResult = output.results[0]?.result;
+
+        if (firstResult !== undefined) {
+            await recordCompletedHedgedTaskRun(context.authorities, firstResult, taskRun, context.runtime);
+        }
+    } else {
         context.runtime.taskResults.push(...output.results.map(function toResult(result) {
             return result.result;
         }));
-
-        return;
-    }
-
-    const firstResult = output.results[0]?.result;
-
-    if (firstResult !== undefined) {
-        await recordCompletedHedgedTaskRun(context.authorities, firstResult, taskRun, context.runtime);
+        await completeWorkerPoolResourceMembers(context.runtime, context.resourceLifecycle, taskRun.members);
     }
 }
 

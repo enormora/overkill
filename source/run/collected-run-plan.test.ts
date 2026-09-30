@@ -13,6 +13,7 @@ const attachments: TestBodyResourceAttachments = {
     resourceGraph: [
         {
             dependencies: [],
+            handleTransport: 'local',
             name: 'database',
             requirements: [ { kind: 'exclusive-resource', name: 'database' } ],
             scenarios: [],

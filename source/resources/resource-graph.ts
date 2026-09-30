@@ -74,7 +74,10 @@ function scopeRank(scope: ResourceScope): number {
     return perCaseScopeRank;
 }
 
-function dependencyScopeAllowed(resource: AnyResourceDefinition, dependency: AnyResourceDefinition): boolean {
+export function resourceDependencyScopeAllowed(
+    resource: Pick<AnyResourceDefinition, 'scope'>,
+    dependency: Pick<AnyResourceDefinition, 'scope'>
+): boolean {
     const resourceScope: ResourceScope = resource.scope;
     const dependencyScope: ResourceScope = dependency.scope;
 
@@ -216,7 +219,7 @@ export function assertResourceDependencyScopes(resources: ResourceDependencies):
 
     for (const node of graph.order) {
         for (const dependency of node.dependencies) {
-            if (!dependencyScopeAllowed(node.descriptor, dependency.descriptor)) {
+            if (!resourceDependencyScopeAllowed(node.descriptor, dependency.descriptor)) {
                 throw resourceLifecycleError(
                     [
                         `Resource "${node.descriptor.name}" uses ${node.descriptor.scope} scope and cannot depend on`,

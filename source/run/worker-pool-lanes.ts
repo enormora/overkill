@@ -91,27 +91,40 @@ function hardConstraintWorkerMaximum(units: readonly WorkUnit[]): number {
     return workUnitsShareHardConstraint(units) ? 1 : Number.POSITIVE_INFINITY;
 }
 
-export function resolveWorkerCount(input: WorkerPoolLaneInput): RunWorkerCountFacts {
+export type WorkerCountCapacity = {
+    readonly requiredLanes: number;
+    readonly workerCount: RunWorkerCountFacts;
+};
+
+export function resolveWorkerCountCapacity(input: WorkerPoolLaneInput): WorkerCountCapacity {
     assertPositiveSafeInteger(input.availableParallelism, 'Available parallelism');
-    const resolved = Math.min(
-        requestedWorkerCount(input),
-        input.availableParallelism,
-        configuredWorkerMaximum(input.profileMaximum),
-        hardConstraintWorkerMaximum(input.units),
-        input.units.length
-    );
-    const requiredLanes = requiredLifecycleLaneCount(input.units);
-
-    if (resolved < requiredLanes) {
-        invalidRequest(`Worker-pool execution requires at least ${requiredLanes} workers for its worker lifecycles.`);
-    }
-
-    return {
+    const workerCount = {
         hostMaximum: input.availableParallelism,
         profileMaximum: input.profileMaximum,
         requested: input.requestedWorkers,
-        resolved
+        resolved: Math.min(
+            requestedWorkerCount(input),
+            input.availableParallelism,
+            configuredWorkerMaximum(input.profileMaximum),
+            hardConstraintWorkerMaximum(input.units),
+            input.units.length
+        )
     };
+
+    return {
+        requiredLanes: requiredLifecycleLaneCount(input.units),
+        workerCount
+    };
+}
+
+export function resolveWorkerCount(input: WorkerPoolLaneInput): RunWorkerCountFacts {
+    const { requiredLanes, workerCount } = resolveWorkerCountCapacity(input);
+
+    if (workerCount.resolved < requiredLanes) {
+        invalidRequest(`Worker-pool execution requires at least ${requiredLanes} workers for its worker lifecycles.`);
+    }
+
+    return workerCount;
 }
 
 function placementLane(index: number): PlacementLane {
@@ -187,7 +200,17 @@ function firstFixedLane(
             return laneId !== null;
         });
 
-    return fixedLane === undefined ? null : laneById(lanes, fixedLane);
+    if (fixedLane === undefined) {
+        return null;
+    }
+
+    const lane = laneById(lanes, fixedLane);
+
+    if (lane === null) {
+        throw new Error('Resolved hard constraint referenced an incompatible worker lifecycle lane.');
+    }
+
+    return lane;
 }
 
 function affinityScore(

@@ -22,8 +22,7 @@ import {
 } from './worker-pool-runtime.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
-type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
-type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
+type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
 type WorkUnit = PlacementPlan['units'][number];
 type BufferedReporterEvent = ReturnType<
     WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
@@ -196,11 +195,12 @@ function placementPlan(): PlacementPlan {
                 id: 'worker-1'
             }
         ],
+        resourceOwnership: { owners: [] },
         units: [ firstWorkUnit() ]
     };
 }
 
-export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): ResolvedRun {
+export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPoolRunRuntime['resolvedRun'] {
     return {
         collectionRunnerErrors: [],
         config: defaultRunConfig(),

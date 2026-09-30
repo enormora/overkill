@@ -40,7 +40,12 @@ export {
     loadRunConfig,
     RunConfigError
 } from './config.entry-point.ts';
-export { RunResolutionError } from '../../run/run-errors.ts';
+export { RunExecutionPlanError, RunResolutionError } from '../../run/run-errors.ts';
+export type {
+    PlannedResourceOwner,
+    ResourceOwnerPlacement,
+    ResourceOwnershipPlan
+} from '../../run/resource-ownership-plan.ts';
 export type {
     LoadedRunConfig,
     RunConfigLoader,
@@ -73,7 +78,11 @@ export type {
     RunIfMainOptions,
     RunIfMainRootOptions
 } from '../../run/run-if-main-options.ts';
-export type { RunResolutionErrorCode } from '../../run/run-errors.ts';
+export type {
+    ExecutionPlanResourceFacts,
+    RunExecutionPlanConflict,
+    RunResolutionErrorCode
+} from '../../run/run-errors.ts';
 export type { RunInvocationTimingOptions } from '../../run/run-timing-collection.ts';
 export type { RuntimeDimensions, RuntimeId, WorkId, WorkloadId } from '../../engine/identity.ts';
 export type {

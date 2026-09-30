@@ -17,14 +17,9 @@ import {
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
 
-type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
-type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
-type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
+type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
 type WorkUnit = PlacementPlan['units'][number];
-type WorkerPoolOutputResult = { readonly result: RunResult; readonly traceUnit: WorkUnit['id']; };
-type WorkerPoolOutput = { readonly results: readonly WorkerPoolOutputResult[]; };
 export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const annotations = { ownership: [], tags: [] };
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 export const testCaseMetadata = {
     annotations: {},
@@ -54,7 +49,7 @@ function firstCaseId(): CaseId {
     };
 }
 
-function createCollectedPlan(): CollectedRunPlan {
+function createCollectedPlan(): WorkerPoolRunRuntime['collectedPlan'] {
     return {
         defined: 1,
         discoveredFiles: [],
@@ -63,7 +58,7 @@ function createCollectedPlan(): CollectedRunPlan {
                 file: integrationPath,
                 cases: [
                     {
-                        annotations,
+                        annotations: { ownership: [], tags: [] },
                         controls,
                         definitionLocations: [ { kind: 'unknown' as const } ],
                         params: null,
@@ -80,7 +75,7 @@ function createCollectedPlan(): CollectedRunPlan {
             }
         ],
         orphans: [],
-        root: { annotations, controls, title: 'worker pool' }
+        root: { annotations: { ownership: [], tags: [] }, controls, title: 'worker pool' }
     };
 }
 
@@ -120,6 +115,7 @@ export function placementPlan(): PlacementPlan {
                 id: 'worker-1'
             }
         ],
+        resourceOwnership: { owners: [] },
         units: [ unit ]
     };
 }
@@ -204,7 +200,7 @@ export function placementPlanWithUnitPolicy(): PlacementPlan {
     };
 }
 
-function workerPoolResolvedRun(placement: PlacementPlan): ResolvedRun {
+function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['resolvedRun'] {
     return {
         collectionRunnerErrors: [],
         config: defaultRunConfig(),
@@ -296,6 +292,7 @@ export type CapturedWorkerTask = {
         readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
     };
     readonly lane: string;
+    readonly port: { readonly postMessage: (message: unknown, transferList: readonly []) => void; };
 };
 
 export type AcceptingPool = {
@@ -303,7 +300,9 @@ export type AcceptingPool = {
     readonly pool: CreatedWorkerPool;
 };
 
-export function completedWorkerPoolOutput(): WorkerPoolOutput {
+export function completedWorkerPoolOutput(task: CapturedWorkerTask): unknown {
+    task.port.postMessage({ kind: 'task-messages-completed' }, []);
+
     return {
         results: [
             {
@@ -340,7 +339,7 @@ export function createAcceptingPool(): AcceptingPool {
 
                 capturedTasks.push(workerTask);
 
-                return completedWorkerPoolOutput();
+                return completedWorkerPoolOutput(workerTask);
             }
         }
     };

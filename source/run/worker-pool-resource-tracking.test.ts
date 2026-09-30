@@ -45,7 +45,12 @@ function runtimeWithEmptyPlacementPlan(): WorkerPoolRunRuntime {
                 ...runtime.resolvedRun.facts,
                 execution: {
                     ...execution,
-                    placementPlan: { assignments: [], lanes: [], units: [] }
+                    placementPlan: {
+                        assignments: [],
+                        lanes: [],
+                        resourceOwnership: { owners: [] },
+                        units: []
+                    }
                 }
             }
         }

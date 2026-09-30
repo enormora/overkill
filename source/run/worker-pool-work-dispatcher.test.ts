@@ -120,6 +120,7 @@ function twoLanePlan(unit: WorkUnit): PlacementPlan {
     return {
         assignments: [ { lane: first.id, unit: unit.id } ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ unit ]
     };
 }
@@ -151,6 +152,7 @@ function splitCandidatePlan(unit: WorkUnit): PlacementPlan {
             { lane: second.id, unit: filler.id }
         ],
         lanes: [ first, second ],
+        resourceOwnership: { owners: [] },
         units: [ unit, filler ]
     };
 }
@@ -161,6 +163,7 @@ function oneLanePlan(unit: WorkUnit): PlacementPlan {
     return {
         assignments: [ { lane: first.id, unit: unit.id } ],
         lanes: [ first ],
+        resourceOwnership: { owners: [] },
         units: [ unit ]
     };
 }
@@ -199,6 +202,7 @@ function batchingPlan(workerLifecycle: WorkUnit['workerLifecycle']): PlacementPl
             { lane: first.id, unit: secondUnitCandidate.id }
         ],
         lanes: [ first ],
+        resourceOwnership: { owners: [] },
         units: [ firstUnitCandidate, secondUnitCandidate ]
     };
 }
@@ -281,6 +285,7 @@ function retainedReservationPlan(): PlacementPlan {
     return {
         assignments: [ { lane: lane.id, unit: unit.id } ],
         lanes: [ lane, fallbackLane ],
+        resourceOwnership: { owners: [] },
         units: [ unit ]
     };
 }

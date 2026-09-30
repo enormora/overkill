@@ -353,22 +353,12 @@ export function workerPoolCollectedPlan(resolvedRun: ResolvedRun): CollectedRunP
     return resolvedRun.plan.collectedPlan;
 }
 
-export function collectedPlanNeedsRunResourceOwner(resolvedRun: ResolvedRun): boolean {
-    return workerPoolCollectedPlan(resolvedRun).files.some(function fileHasRunResource(file) {
-        return file.cases.some(function caseHasRunResource(testCase) {
-            return testCase.resourceAttachments.resourceGraph.some(function isRunResource(resource) {
-                return resource.scope === 'per-run';
-            });
-        });
-    });
-}
-
 function runResourceOwnerRoutes(
     input: WorkerPoolRuntimeInput,
     execution: WorkerPoolExecutionFacts,
-    needsRunResourceOwner: boolean
+    needsInfrastructureOwner: boolean
 ): readonly WorkerPoolRoute[] {
-    if (!needsRunResourceOwner) {
+    if (!needsInfrastructureOwner) {
         return [];
     }
 
@@ -384,7 +374,7 @@ function runResourceOwnerRoutes(
 function shareableSingleLaneLifecycle(
     placementPlan: PlacementPlan,
     laneLifecycles: ReadonlyMap<string, RunWorkerLifecycle>,
-    needsRunResourceOwner: boolean
+    needsInfrastructureOwner: boolean
 ): RunWorkerLifecycle | null {
     const [ lane ] = placementPlan.lanes;
 
@@ -394,9 +384,15 @@ function shareableSingleLaneLifecycle(
 
     const workerLifecycle = laneLifecycles.get(lane.id);
 
-    return workerLifecycle !== undefined && (!needsRunResourceOwner || workerLifecycle === 'reuse')
+    return workerLifecycle !== undefined && !needsInfrastructureOwner
         ? workerLifecycle
         : null;
+}
+
+function placementNeedsInfrastructureOwner(placementPlan: PlacementPlan): boolean {
+    return placementPlan.resourceOwnership.owners.some(function usesInfrastructureWorker(owner) {
+        return owner.placement.kind === 'infrastructure-worker';
+    });
 }
 
 function createLaneExecutionPool(
@@ -405,11 +401,11 @@ function createLaneExecutionPool(
     placementPlan: PlacementPlan
 ): WorkerPoolExecutionPool {
     const laneLifecycles = placementLaneLifecycles(placementPlan);
-    const needsRunResourceOwner = collectedPlanNeedsRunResourceOwner(input.resolvedRun);
+    const needsInfrastructureOwner = placementNeedsInfrastructureOwner(placementPlan);
     const singleLaneLifecycle = shareableSingleLaneLifecycle(
         placementPlan,
         laneLifecycles,
-        needsRunResourceOwner
+        needsInfrastructureOwner
     );
 
     if (singleLaneLifecycle !== null) {
@@ -432,7 +428,7 @@ function createLaneExecutionPool(
             workerLifecycle
         };
     });
-    const ownerRoutes = runResourceOwnerRoutes(input, execution, needsRunResourceOwner);
+    const ownerRoutes = runResourceOwnerRoutes(input, execution, needsInfrastructureOwner);
 
     return {
         destroyPool: true,

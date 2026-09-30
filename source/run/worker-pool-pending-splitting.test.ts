@@ -116,6 +116,7 @@ function twoLanePlacement(assignments: readonly PlacementAssignment[], units: re
     return {
         assignments,
         lanes: [ workerLane('worker-1'), workerLane('worker-2') ],
+        resourceOwnership: { owners: [] },
         units
     };
 }
@@ -140,6 +141,7 @@ function batchingPlacement(): PlacementPlan {
             { lane: lane.id, unit: second.id }
         ],
         lanes: [ lane ],
+        resourceOwnership: { owners: [] },
         units: [ first, second ]
     };
 }
@@ -181,12 +183,14 @@ function createControlledPool(): ControlledPool {
             },
             options: { isolateWorkers: false, maxThreads: 1 },
             async run(task) {
-                capturedTasks.push(task as CapturedWorkerTask);
+                const workerTask = task as CapturedWorkerTask;
+
+                capturedTasks.push(workerTask);
                 await new Promise<void>(function waitForFinish(resolve) {
                     pendingTasks = [ ...pendingTasks, resolve ];
                 });
 
-                return completedWorkerPoolOutput();
+                return completedWorkerPoolOutput(workerTask);
             }
         }
     };

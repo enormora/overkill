@@ -77,6 +77,7 @@ function resourceAttachedCase(): DirectTestNode {
             resourceGraph: [
                 {
                     dependencies: [],
+                    handleTransport: 'local',
                     name: 'database',
                     requirements: [],
                     scenarios: [],
