@@ -78,7 +78,7 @@ function scenarioCase(title: string, scope: string, value: string, options: Scen
         testFamily: 'integration',
         workId: {
             case: id,
-            runtimes: [ { dimensions: {}, name: 'api', variantId: null } ],
+            runtimes: [ { dimensions: {}, name: 'api', scenarios: { database: value }, variantId: null } ],
             workload: null
         }
     };

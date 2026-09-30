@@ -12,12 +12,14 @@ import type {
 const runtimeDefinitionBrand: unique symbol = Symbol('overkill.runtimeDefinition');
 
 export type RuntimeDimensions = Readonly<Record<string, string>>;
+type RuntimeScenarioBindings = Readonly<Record<string, string>>;
 
 export type RuntimeId<
     Name extends string = string,
     Dimensions extends RuntimeDimensions = RuntimeDimensions
 > = {
     readonly name: Name;
+    readonly scenarios: RuntimeScenarioBindings;
     readonly dimensions: Dimensions;
     readonly variantId: string | null;
 };
@@ -128,6 +130,7 @@ function createRuntimeDefinition(
         id: Object.freeze({
             name: definition.name,
             dimensions: definition.dimensions,
+            scenarios: ownerBindings(resolvedOwners),
             variantId: null
         }),
         kind: 'runtime',

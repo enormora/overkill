@@ -320,6 +320,7 @@ export type RuntimeDefinitionInput<
     Resources extends RuntimeResourceMap
 > = RuntimeDefinitionDescriptorInput<Name, Dimensions, Resources>;
 export type RuntimeDimensions = RuntimeDimensionMap;
+export type RuntimeScenarioBindings = Readonly<Record<string, string>>;
 export type RuntimeGraph = RuntimeGraphDescriptor;
 export type RuntimeGraphLeaf = RuntimeGraphLeafDescriptor;
 export type ComposedRuntimeGraph<

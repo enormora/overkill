@@ -71,6 +71,19 @@ function failResult(): PerTestResult {
     };
 }
 
+function assertConflictArtifactIdentity(
+    scope: OverkillScope,
+    runtime: WorkerPoolRunRuntime,
+    result: PerTestResult
+): void {
+    const artifact = runtime.runState.artifacts()[0];
+
+    scope.require.defined(artifact);
+    scope.assert.equal(artifact.payload.kind, 'hedged-conflict');
+    scope.assert.deepEqual(artifact.id.runtimes, result.workId.runtimes);
+    scope.assert.equal(artifact.id.workload, result.workId.workload);
+}
+
 function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
     return {
         artifacts: [],
@@ -344,7 +357,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.verdict, 'fail');
                 scope.require.defined(result.outcome);
                 scope.assert.equal(result.outcome.kind, 'fail');
-                scope.assert.equal(runtime.runState.artifacts()[0]?.payload.kind, 'hedged-conflict');
+                assertConflictArtifactIdentity(scope, runtime, result);
                 scope.assert.deepEqual(
                     runtime.placementTraceEntries.slice(2).map(function toKind(entry) {
                         return entry.kind;

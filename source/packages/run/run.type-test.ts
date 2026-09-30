@@ -164,6 +164,22 @@ type ExpectedRunHostProcessFacts = {
     readonly kind: 'direct';
 };
 
+function assertOrchestratorTypes(): void {
+    expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
+    expect<typeof orchestrator.resolve>().type.toBe<
+        (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
+    >();
+    expect<typeof orchestrator.run>().type.toBe<
+        (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>
+    >();
+}
+
+function assertWorkIdentityTypes(): void {
+    expect<RuntimeId['scenarios']>().type.toBe<Readonly<Record<string, string>>>();
+    expect<WorkId['runtimes']>().type.toBe<readonly RuntimeId[]>();
+    expect<WorkId['workload']>().type.toBe<WorkloadId | null>();
+}
+
 describe('@overkill-dev/run', function () {
     test('exposes the typed run command surface', function () {
         expect<keyof RunCommand>().type.toBe<'config' | 'cwd' | 'engine' | 'request'>();
@@ -171,13 +187,7 @@ describe('@overkill-dev/run', function () {
         expect<RunCommand['cwd']>().type.toBe<string>();
         expect<RunCommand['engine']>().type.toBe<RunEngineSelection>();
         expect<RunCommand['request']>().type.toBe<RunRequest>();
-        expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
-        expect<typeof orchestrator.resolve>().type.toBe<
-            (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
-        >();
-        expect<typeof orchestrator.run>().type.toBe<
-            (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>
-        >();
+        assertOrchestratorTypes();
     });
 
     test('exposes the direct-file execution companion', function () {
@@ -304,8 +314,7 @@ describe('@overkill-dev/run', function () {
     });
 
     test('exposes work-unit planning types', function () {
-        expect<WorkId['runtimes']>().type.toBe<readonly RuntimeId[]>();
-        expect<WorkId['workload']>().type.toBe<WorkloadId | null>();
+        assertWorkIdentityTypes();
         expect<WorkUnit['work']>().type.toBe<readonly [WorkId, ...readonly WorkId[]]>();
         expect<WorkUnit['id']['mode']>().type.toBe<WorkUnitMode>();
         expect<WorkUnit['order']>().type.toBe<RunOrder>();

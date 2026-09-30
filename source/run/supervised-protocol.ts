@@ -6,8 +6,8 @@ import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type {
     CollectedRunPlan,
+    RunCommand,
     RunRequest,
-    RunEngineSelection,
     RunResourceBudgets,
     RunScheduling,
     RunTestFamily
@@ -25,6 +25,8 @@ import {
 export type SupervisedTimingRecorder = {
     readonly recordLocal: (span: RunTimingSpan) => void;
 };
+
+type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
     readonly capabilityRestrictions: {

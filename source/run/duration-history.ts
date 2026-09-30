@@ -1,7 +1,10 @@
 import path from 'node:path';
-import { z } from 'zod';
 import type { PerTestResult, RunnerError, RunResult } from '../engine/run-result.ts';
 import { RunCollectionError } from './run-errors.ts';
+import {
+    durationHistoryIndexSchema,
+    durationHistoryIndexVersion
+} from './duration-history-schema.ts';
 import type {
     DurationHistoryInput,
     DurationHistoryObservation,
@@ -15,14 +18,12 @@ import {
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
 
-const indexVersion = 1;
 const maximumObservationCount = 8;
 const freshnessDays = 30;
 const hoursPerDay = 24;
 const minutesPerHour = 60;
 const secondsPerMinute = 60;
 const millisecondsPerSecond = 1000;
-const microsecondsPerMillisecond = 1000;
 const freshnessMilliseconds = freshnessDays *
     hoursPerDay *
     minutesPerHour *
@@ -35,7 +36,7 @@ const durationHistoryPathParts = [ 'duration-history', 'work-durations.json' ];
 export type DurationHistoryIndex = {
     readonly entries: readonly DurationHistoryEntry[];
     readonly updatedAt: string;
-    readonly version: typeof indexVersion;
+    readonly version: typeof durationHistoryIndexVersion;
 };
 
 type DurationHistoryEntry = {
@@ -58,94 +59,6 @@ export type DurationHistoryStore = {
 type DurationHistoryResult = {
     readonly perTest: readonly PerTestResult[];
 };
-
-const stringRecordSchema = z.record(z.string(), z.string()).readonly();
-
-const caseIdSchema = z
-    .strictObject({
-        file: z.string().nullable(),
-        params: z.string().nullable(),
-        suite: z.array(z.string()).readonly(),
-        title: z.string()
-    })
-    .readonly();
-
-const runtimeIdSchema = z
-    .strictObject({
-        dimensions: stringRecordSchema,
-        name: z.string(),
-        variantId: z.string().nullable()
-    })
-    .readonly();
-
-const workloadIdSchema = z
-    .strictObject({
-        name: z.string(),
-        params: stringRecordSchema
-    })
-    .readonly();
-
-const workIdSchema = z
-    .strictObject({
-        case: caseIdSchema,
-        runtimes: z.array(runtimeIdSchema).readonly(),
-        workload: workloadIdSchema.nullable()
-    })
-    .readonly();
-
-const metadataSchema = z
-    .strictObject({
-        processModel: z.union([
-            z.literal('in-process'),
-            z.literal('supervised-process'),
-            z.literal('worker-pool')
-        ]),
-        profile: z.string(),
-        scheduling: z.union([ z.literal('concurrent'), z.literal('serial') ]),
-        testFamily: z.union([ z.literal('integration'), z.literal('microtest') ]),
-        workerLifecycle: z.union([ z.literal('fresh-worker-per-unit'), z.literal('reuse') ]).nullable()
-    })
-    .readonly();
-
-const currentObservationSchema = z
-    .strictObject({
-        durationMicroseconds: z.number().check(z.nonnegative()),
-        metadata: metadataSchema,
-        observedAt: z.iso.datetime({ offset: true })
-    })
-    .readonly();
-
-const legacyObservationSchema = z
-    .strictObject({
-        durationMilliseconds: z.number().check(z.nonnegative()),
-        metadata: metadataSchema,
-        observedAt: z.iso.datetime({ offset: true })
-    })
-    .readonly()
-    .transform(function toMicrosecondObservation(observation) {
-        return {
-            durationMicroseconds: observation.durationMilliseconds * microsecondsPerMillisecond,
-            metadata: observation.metadata,
-            observedAt: observation.observedAt
-        };
-    });
-
-const observationSchema = z.union([ currentObservationSchema, legacyObservationSchema ]);
-
-const entrySchema = z
-    .strictObject({
-        observations: z.array(observationSchema).readonly(),
-        work: workIdSchema
-    })
-    .readonly();
-
-const indexSchema = z
-    .strictObject({
-        entries: z.array(entrySchema).readonly(),
-        updatedAt: z.iso.datetime({ offset: true }),
-        version: z.literal(indexVersion)
-    })
-    .readonly();
 
 function durationHistoryFilePath(projectRoot: string, runtimeStateDir: string): string {
     return path.join(
@@ -181,7 +94,7 @@ function parseJson(content: string, filePath: string): unknown {
 function parseDurationHistoryIndex(content: string, filePath: string): DurationHistoryIndex {
     const parsed = parseJson(content, filePath);
 
-    const result = indexSchema.safeParse(parsed);
+    const result = durationHistoryIndexSchema.safeParse(parsed);
 
     if (!result.success) {
         throw runtimeStateError(`Duration history at ${filePath} has an unsupported shape.`, result.error);
@@ -470,7 +383,7 @@ export function mergeDurationHistoryIndex(
             return workIdentityKey(left.work).localeCompare(workIdentityKey(right.work));
         }),
         updatedAt,
-        version: indexVersion
+        version: durationHistoryIndexVersion
     };
 }
 

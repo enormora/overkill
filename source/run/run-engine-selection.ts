@@ -1,6 +1,6 @@
 import type { Engine } from '../engine/engine.ts';
 import { invalidRequest, RunCollectionError } from './run-errors.ts';
-import type { RunEngineSelection } from './run-types.ts';
+import type { RunEngineSelection } from './run-request-types.ts';
 
 type ModuleNamespace = Readonly<Record<string, unknown>>;
 type EngineGetter = () => unknown;

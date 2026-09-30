@@ -8,12 +8,15 @@ import type {
     ResourceUsageSnapshot,
     RunResourceUsage,
     RunResourceUsageTracker,
+    RunArtifactId,
     RunPreciseTimingReport,
     RunResult,
     RunPlanStatus,
     RunSummary,
     RunTimings,
-    RunnerError
+    RunnerError,
+    RuntimeId,
+    WorkloadId
 } from './engine.entry-point.ts';
 
 type OutcomeKind = 'fail' | 'inconclusive' | 'pass' | 'skip';
@@ -100,6 +103,11 @@ describe('RunResult', function () {
         expect<keyof RunPreciseTimingReport>().type.toBe<ExpectedPreciseTimingKey>();
         expect<RunResourceUsage['start']>().type.toBe<ResourceUsageSnapshot>();
         expect<RunResourceUsageTracker['finish']>().type.toBe<() => RunResourceUsage>();
+    });
+
+    test('artifacts carry runtime and workload identity', function () {
+        expect<RunArtifactId['runtimes']>().type.toBe<readonly RuntimeId[]>();
+        expect<RunArtifactId['workload']>().type.toBe<WorkloadId | null>();
     });
 });
 

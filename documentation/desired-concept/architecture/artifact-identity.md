@@ -76,7 +76,9 @@ type CaseId = TestId & {
 
 type RuntimeId = {
     readonly name: string; // 'chromium', 'node', 'deterministic-api', etc.
-    readonly dimensions?: Record<string, string>; // os=linux, node=26, scenario=payments-500, ...
+    readonly dimensions: Readonly<Record<string, string>>; // os=linux, node=26, ...
+    readonly scenarios: Readonly<Record<string, string>>; // api=payments-500, database=empty, ...
+    readonly variantId: string | null;
 };
 
 type WorkloadId = {
@@ -117,8 +119,8 @@ type ArtifactSubtype =
 
 type ArtifactId = {
     readonly scope: ArtifactScope;
-    readonly runtimes?: readonly RuntimeId[];
-    readonly workload?: WorkloadId;
+    readonly runtimes: readonly RuntimeId[];
+    readonly workload: WorkloadId | null;
     readonly attempt?: AttemptId;
     readonly subtype: ArtifactSubtype;
 };

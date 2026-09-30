@@ -157,6 +157,7 @@ async function finalizeAuthority(
 
 function conflictArtifactId(result: PerTestResult, sequence: number): RunArtifact['id'] {
     return {
+        runtimes: result.workId.runtimes,
         scope: {
             activeCases: [ result.id ],
             case: result.id,
@@ -164,7 +165,8 @@ function conflictArtifactId(result: PerTestResult, sequence: number): RunArtifac
             kind: 'case'
         },
         sequence,
-        subtype: 'hedged-conflict'
+        subtype: 'hedged-conflict',
+        workload: result.workId.workload
     };
 }
 

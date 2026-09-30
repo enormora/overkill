@@ -134,6 +134,7 @@ function assertRuntimeMatrixDescriptor(scope: TestScope): void {
     scope.assert.deepEqual(matrix.variants['node-27'].runtime.id, {
         dimensions: { node: '27' },
         name: 'node-27',
+        scenarios: {},
         variantId: null
     });
 }
@@ -322,6 +323,7 @@ function assertRuntimeDescriptor(scope: TestScope): void {
     scope.assert.deepEqual(runtime.id, {
         name: 'node-browser',
         dimensions,
+        scenarios: {},
         variantId: null
     });
     scope.assert.deepEqual(runtime.requirements, [ { kind: 'single-worker' } ]);

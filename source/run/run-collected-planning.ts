@@ -5,7 +5,7 @@ import {
 } from './run-sharding.ts';
 import {
     orderedRunItems
-} from './run-selection.ts';
+} from './run-ordering.ts';
 import type {
     CollectedRunPlan,
     RunProfileConfig,

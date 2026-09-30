@@ -66,6 +66,7 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `owner(value)`
 - `params(value)`
 - `parseRunFilterExpression(expression)`
+- `runtimeScenario(runtime, scenario, value)`
 - `suite(value)`
 - `tag(value)`
 - `title(value)`
@@ -93,8 +94,10 @@ child process to load the engine without parent-side user-module execution.
 
 Programmatic selection filters are supported through `RunRequest.selection`.
 The current helpers select by stable case id, file, title, suite, table params,
-tag, and ownership. Test family matching is intentionally absent because one
-run is already bound to one profile test family.
+tag, ownership, and exact runner-visible runtime scenario bindings. Scenario
+filtering is programmatic and has no CLI grammar. Test family matching is
+intentionally absent because one run is already bound to one profile test
+family.
 `parseRunFilterExpression(expression)` parses the CLI filter grammar into the
 same `RunFilter` tree. Runs use seeded ordering by default. Pass
 `RunRequest.order: 'lexical'` for deterministic source-stable order, or
@@ -112,6 +115,10 @@ Coverage is explicit per run. `RunRequest.coverage` defaults to `false` in
 first-party callers, and the `@overkill-dev/test` binary maps `--coverage` to
 `true`. Coverage requests are valid only for microtest profiles and are
 recorded in `RunFacts.execution.coverage`.
+
+Resolved runtime identities contain selected scenario bindings. They flow into
+`RunFacts`, duration-history keys, reporter labels, and artifact IDs so replay
+metadata and captured evidence identify the selected scenario.
 
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`

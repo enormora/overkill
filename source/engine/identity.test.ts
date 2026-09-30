@@ -3,7 +3,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { formatCaseId, type CaseId } from './identity.ts';
+import { formatCaseId, runtimeIdentityKey, type CaseId } from './identity.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -43,6 +43,37 @@ export const testNode = createOverkillSuite({
                 };
 
                 scope.assert.equal(formatCaseId(caseId), 'source/users.test.ts: users > round-trip [seed=42]');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runtimeIdentityKey() canonicalizes and distinguishes scenario bindings',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const first = runtimeIdentityKey({
+                    dimensions: { node: '26' },
+                    name: 'api',
+                    scenarios: { database: 'empty', api: 'payments-500' },
+                    variantId: null
+                });
+                const reordered = runtimeIdentityKey({
+                    dimensions: { node: '26' },
+                    name: 'api',
+                    scenarios: { api: 'payments-500', database: 'empty' },
+                    variantId: null
+                });
+                const changed = runtimeIdentityKey({
+                    dimensions: { node: '26' },
+                    name: 'api',
+                    scenarios: { api: 'default', database: 'empty' },
+                    variantId: null
+                });
+
+                scope.assert.equal(first, reordered);
+                scope.assert.notEqual(first, changed);
 
                 return scope.assert.collect();
             }

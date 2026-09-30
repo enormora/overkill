@@ -146,6 +146,10 @@ their current value or declared default. Acquisition and disposal callbacks
 receive acquire-timed values through `context.scenarios`. Those values form
 part of the resource cache key.
 
+Every resolved slot, including a default, is recorded in `runtime.id.scenarios`.
+Catalogs do not expand into additional work. Only explicit `.scenario({...})`
+bindings select non-default values.
+
 Request-routed slots require `exposeHandle(handle, context)`. The callback
 receives only request-routed values and returns the handle view for that use.
 Different routed bindings reuse one acquired owner handle. A dependent

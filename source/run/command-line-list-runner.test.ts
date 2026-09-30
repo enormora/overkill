@@ -21,7 +21,8 @@ import {
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
 import type { LoadedRunConfig } from './run-config.ts';
-import type { ResolvedRun, RunCommand, RunProfileConfig, RunOrchestrator, RunSelection } from './run-types.ts';
+import type { RunSelection } from './run-request-types.ts';
+import type { ResolvedRun, RunCommand, RunProfileConfig, RunOrchestrator } from './run-types.ts';
 
 const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
     return {

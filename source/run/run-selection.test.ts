@@ -7,6 +7,7 @@ import {
     stampTestNodeFamily,
     type TestCase,
     type TestBodyResourceAttachments,
+    type TestPlan,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -15,13 +16,14 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
-import type { ResolvedRun, RunCommand, RunConfig, RunFilter, RunRequest } from './run-types.ts';
+import type { RunFilter } from './run-request-types.ts';
+import type { ResolvedRun, RunCommand, RunConfig, RunRequest } from './run-types.ts';
 import {
     caseId,
     file,
     owner,
     params,
+    runtimeScenario,
     suite,
     tag,
     title
@@ -29,8 +31,11 @@ import {
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import {
     assertCollectedRunPlanMatchesTestFamily,
-    assertTestPlanMatchesTestFamily
+    assertTestPlanMatchesTestFamily,
+    selectedCollectedRunPlan,
+    selectedTestPlan
 } from './run-selection.ts';
+import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 
 type RunCommandParts = {
     readonly config: RunConfig;
@@ -38,7 +43,6 @@ type RunCommandParts = {
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
 };
-
 type SelectionScenario = {
     readonly filter: RunFilter;
     readonly titles: readonly string[];
@@ -117,6 +121,27 @@ function pureRuntimeAttachments(): TestBodyResourceAttachments {
                 resources: []
             }
         ]
+    };
+}
+
+function scenarioRuntimeAttachments(value: string): TestBodyResourceAttachments {
+    return {
+        directResources: [],
+        resourceGraph: [],
+        runtimeGraphs: [ {
+            dimensions: {},
+            name: 'api',
+            requirements: [],
+            resources: [],
+            scenarioBindings: [ {
+                default: 'default',
+                name: 'api',
+                owner: { path: [ 'api' ], resourceName: 'api' },
+                timing: 'request-routed',
+                value,
+                values: [ 'default', 'payments-500' ]
+            } ]
+        } ]
     };
 }
 
@@ -319,6 +344,34 @@ export const testNode = createOverkillSuite({
                         kind: 'filter'
                     });
                 }
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'runtime scenario filters select expanded local and collected cases',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const expanded = expandRuntimeMatrices(testPlanWithAttachments(
+                    scenarioRuntimeAttachments('payments-500')
+                ));
+                const selection = {
+                    filter: runtimeScenario('api', 'api', 'payments-500'),
+                    kind: 'filter' as const
+                };
+                const local = selectedTestPlan(expanded, selection);
+                const collected = selectedCollectedRunPlan(collectedRunPlanFromTestPlan(expanded), selection);
+
+                scope.assert.equal(local.cases.length, 1);
+                scope.assert.equal(collected.files[0]?.cases.length, 1);
+                const selectedRuntime = local.cases[0].workId.runtimes[0];
+
+                scope.require.defined(selectedRuntime);
+                scope.assert.deepEqual(selectedRuntime.scenarios, {
+                    api: 'payments-500'
+                });
 
                 return scope.assert.collect();
             }

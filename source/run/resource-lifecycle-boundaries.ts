@@ -1,4 +1,4 @@
-import { runtimeIdentityKey, workIdentityKey, type RuntimeId } from '../engine/identity.ts';
+import { workIdentityKey, type RuntimeId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type {
     TestBodyLeafRuntimeSummary,
@@ -10,6 +10,7 @@ import type { AnyResourceDefinition, ResourceScope } from '../resources/resource
 import {
     resourceAcquisitionCacheIdentity,
     resourceDescriptorCacheIdentityNode,
+    runtimeResourceScopeIdentity,
     type ResourceCacheIdentityNode
 } from './resource-lifecycle-cache-identity.ts';
 
@@ -89,6 +90,12 @@ function resourceBoundary(
     return resourceBoundaryForCase(identifiedResourceName, scope, testCase);
 }
 
+function scenarioBindings(runtime: TestBodyLeafRuntimeSummary): Readonly<Record<string, string>> {
+    return Object.freeze(Object.fromEntries(runtime.scenarioBindings.map(function scenarioBinding(binding) {
+        return [ binding.name, binding.value ];
+    })));
+}
+
 function selectedRuntimeId(testCase: ResourceBoundaryCase, runtime: TestBodyRuntimeSummary): RuntimeId {
     const selected = testCase.workId.runtimes.find(function runtimeNameMatches(candidate) {
         return candidate.name === runtime.name;
@@ -105,10 +112,20 @@ function selectedRuntimeId(testCase: ResourceBoundaryCase, runtime: TestBodyRunt
             throw new TypeError(`Runtime matrix "${runtime.name}" has no selected variant.`);
         }
 
-        return { dimensions: variant.runtime.dimensions, name: runtime.name, variantId: variant.id };
+        return {
+            dimensions: variant.runtime.dimensions,
+            name: runtime.name,
+            scenarios: scenarioBindings(variant.runtime),
+            variantId: variant.id
+        };
     }
 
-    return { dimensions: runtime.dimensions, name: runtime.name, variantId: null };
+    return {
+        dimensions: runtime.dimensions,
+        name: runtime.name,
+        scenarios: scenarioBindings(runtime),
+        variantId: null
+    };
 }
 
 function selectedLeafRuntime(
@@ -243,7 +260,7 @@ export function caseResourceOwnershipBoundaries(testCase: ResourceBoundaryCase):
         new Map()
     );
     const runtimeBoundaries = testCase.resourceAttachments.runtimeGraphs.flatMap(function runtimeResources(runtime) {
-        const runtimeKey = runtimeIdentityKey(selectedRuntimeId(testCase, runtime));
+        const runtimeKey = runtimeResourceScopeIdentity(selectedRuntimeId(testCase, runtime));
         const selectedRuntime = selectedLeafRuntime(testCase, runtime);
 
         return resourceGraphBoundaries(

@@ -84,6 +84,7 @@ export type {
     RuntimeGraphLeaf,
     RuntimeGraphContext,
     RuntimeId,
+    RuntimeScenarioBindings,
     RuntimeMatrixDefinition,
     RuntimeMatrixDefinitionInput,
     RuntimeMatrixVariant,

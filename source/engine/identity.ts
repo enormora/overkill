@@ -9,10 +9,12 @@ export type CaseId = TestId & {
 };
 
 export type RuntimeDimensions = Readonly<Record<string, string>>;
+export type RuntimeScenarioBindings = Readonly<Record<string, string>>;
 
 export type RuntimeId = {
     readonly dimensions: RuntimeDimensions;
     readonly name: string;
+    readonly scenarios: RuntimeScenarioBindings;
     readonly variantId: string | null;
 };
 
@@ -55,7 +57,8 @@ function runtimeIdentityShape(runtime: RuntimeId): unknown {
     return [
         runtime.name,
         runtime.variantId,
-        orderedRecordEntries(runtime.dimensions)
+        orderedRecordEntries(runtime.dimensions),
+        orderedRecordEntries(runtime.scenarios)
     ];
 }
 

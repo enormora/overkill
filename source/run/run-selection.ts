@@ -1,12 +1,11 @@
-import { uniformInt } from 'pure-rand/distribution/uniformInt';
-import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
-
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { createCaseId, type CaseId } from '../engine/identity.ts';
+import { createCaseId, createDefaultWorkId, type CaseId } from '../engine/identity.ts';
 import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import { noTestsCollected, RunCollectionError } from './run-errors.ts';
+import { orderedRunItems } from './run-ordering.ts';
 import { matchesRunFilter } from './run-selection-filters.ts';
+import type { RunSelection } from './run-request-types.ts';
 import { createRandomRunSeed } from './run-seed.ts';
 import type {
     CollectedRunCase,
@@ -15,7 +14,6 @@ import type {
     RunOrder,
     RunProfileConfig,
     RunSeed,
-    RunSelection,
     RunTestFamily
 } from './run-types.ts';
 
@@ -41,63 +39,6 @@ type CollectedCaseInput = {
     readonly testCase: CollectedRunCase;
 };
 
-const randomSeedRange = 4_294_967_296n;
-
-function resolvedSeed(seed: RunSeed): bigint {
-    if (seed.value === null) {
-        throw new Error('Seeded ordering requires a resolved run seed.');
-    }
-
-    return seed.value;
-}
-
-function generatorSeed(seed: bigint): number {
-    const normalizedSeed = (seed % randomSeedRange + randomSeedRange) % randomSeedRange;
-
-    return Number(normalizedSeed);
-}
-
-function arrayEntry<Value>(values: readonly Value[], index: number): Value {
-    const value = values[index];
-
-    if (value === undefined) {
-        throw new Error('Seeded ordering selected an invalid case index.');
-    }
-
-    return value;
-}
-
-function seededOrder<Value>(values: NonEmptyReadonlyArray<Value>, seed: bigint): NonEmptyReadonlyArray<Value>;
-function seededOrder<Value>(values: readonly Value[], seed: bigint): readonly Value[];
-function seededOrder<Value>(values: readonly Value[], seed: bigint): readonly Value[] {
-    const random = xoroshiro128plus(generatorSeed(seed));
-    const ordered = Array.from(values);
-
-    for (let index = ordered.length - 1; index > 0; index -= 1) {
-        const swapIndex = uniformInt(random, 0, index);
-        const leftValue = arrayEntry(ordered, index);
-        const rightValue = arrayEntry(ordered, swapIndex);
-
-        ordered[index] = rightValue;
-        ordered[swapIndex] = leftValue;
-    }
-
-    return ordered;
-}
-
-export function orderedRunItems<Item>(
-    items: readonly Item[],
-    order: RunOrder,
-    seed: RunSeed
-): readonly Item[];
-export function orderedRunItems<Item>(
-    items: readonly Item[],
-    order: RunOrder,
-    seed: RunSeed
-): readonly Item[] {
-    return order === 'seeded' ? seededOrder(items, resolvedSeed(seed)) : items;
-}
-
 function orderedNonEmptyRunCases<Case>(
     cases: NonEmptyReadonlyArray<Case>,
     order: RunOrder,
@@ -116,10 +57,7 @@ function orderedNonEmptyRunCases<Case>(
 export function orderedTestPlan(testPlan: TestPlan, order: RunOrder, seed: RunSeed): TestPlan {
     const cases = orderedNonEmptyRunCases(testPlan.cases, order, seed);
 
-    return {
-        ...testPlan,
-        cases
-    };
+    return { ...testPlan, cases };
 }
 
 export function createSeededTestPlan(testPlan: TestPlan): OrderedSeededTestPlan {
@@ -257,7 +195,8 @@ function matchesTestPlanCase(selection: RunSelection): (testCase: TestPlanCase) 
     return function testPlanCaseMatches(testCase) {
         return matchesRunFilter(selection.filter, {
             annotations: testCase.annotations,
-            id: testCase.id
+            id: testCase.id,
+            workId: testCase.workId
         });
     };
 }
@@ -319,9 +258,12 @@ function matchesCollectedCase(selection: RunSelection): (input: CollectedCaseInp
     }
 
     return function collectedCaseMatches(input) {
+        const id = collectedCaseId(input.file, input.testCase);
+
         return matchesRunFilter(selection.filter, {
             annotations: input.testCase.annotations,
-            id: collectedCaseId(input.file, input.testCase)
+            id,
+            workId: input.testCase.workId ?? createDefaultWorkId(id)
         });
     };
 }

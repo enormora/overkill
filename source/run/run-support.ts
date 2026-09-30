@@ -11,8 +11,8 @@ import {
 } from './capability-policy.ts';
 import type {
     RunConfig,
+    RunCommand,
     RunEngineFacts,
-    RunEngineSelection,
     RunHostProcess,
     RunIntegrationExecution,
     RunLoaderConfig,
@@ -41,6 +41,7 @@ import {
 } from './duration-history.ts';
 
 export type RunRuntimePolicy = TestRuntimePolicy;
+type RunEngineSelection = RunCommand['engine'];
 
 export const createRunPermissionRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicy;
 

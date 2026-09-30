@@ -2,6 +2,7 @@ import {
     resolvedResourceScenarioBindings,
     type AnyResourceDefinition
 } from '../resources/resources.ts';
+import { runtimeIdentityKey, type RuntimeId } from '../engine/identity.ts';
 import { sourceResourceDefinition } from '../resources/resource-scenario-binding.ts';
 
 type ResourceCacheScenarioBinding = {
@@ -31,6 +32,10 @@ type ResourceIdentities = {
     readonly acquisition: AcquisitionIdentity | null;
     readonly handle: HandleIdentity | null;
 };
+
+export function runtimeResourceScopeIdentity(runtime: RuntimeId): string {
+    return runtimeIdentityKey({ ...runtime, scenarios: {} });
+}
 
 function compareText(left: string, right: string): number {
     return left.localeCompare(right);
