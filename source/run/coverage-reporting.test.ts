@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { V8CoverageEntry } from 'monocart-coverage-reports';
@@ -11,6 +12,10 @@ import { generateCoverageReports } from './coverage-reporting.ts';
 
 const sourcePath = 'source/integration-tests/run/fixtures/coverage-source.ts';
 const excludedSourcePath = 'source/integration-tests/run/fixtures/coverage-types.ts';
+
+async function createTemporaryCoverageRoot(): Promise<string> {
+    return await mkdtemp(path.join(tmpdir(), 'overkill-coverage-reporting-'));
+}
 
 function rawCoverageEntry(url: string, scriptId: string, sourceLength: number): V8CoverageEntry {
     return {
@@ -118,7 +123,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const temporaryRoot = await mkdtemp(path.resolve('target/coverage-reporting-'));
+                const temporaryRoot = await createTemporaryCoverageRoot();
 
                 try {
                     await assertLoadedReport(scope, temporaryRoot);
@@ -135,7 +140,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const temporaryRoot = await mkdtemp(path.resolve('target/coverage-reporting-'));
+                const temporaryRoot = await createTemporaryCoverageRoot();
 
                 try {
                     await assertAllFilesReport(scope, temporaryRoot);
@@ -152,7 +157,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const temporaryRoot = await mkdtemp(path.resolve('target/coverage-reporting-'));
+                const temporaryRoot = await createTemporaryCoverageRoot();
 
                 try {
                     await assertEmptyReportRejected(scope, temporaryRoot);
