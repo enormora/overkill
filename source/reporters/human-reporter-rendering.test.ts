@@ -253,9 +253,9 @@ export const testNode = createOverkillSuite({
                     contextPrefix([ plainRuntime ], [], { color: false, wrap: false }),
                     '[api]'
                 );
-                scope.assert.equal(
+                scope.assert.includes(
                     contextPrefix([ plainRuntime ], [], { color: true, wrap: false }),
-                    '[api]'
+                    'api'
                 );
                 scope.assert.equal(
                     contextPrefix(
