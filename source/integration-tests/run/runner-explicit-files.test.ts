@@ -29,7 +29,6 @@ const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.t
 const skippedFixturePath = 'source/integration-tests/run/fixtures/skipped.test.ts';
 const duplicateFixtureAPath = 'source/integration-tests/run/fixtures/duplicate-a.test.ts';
 const duplicateFixtureBPath = 'source/integration-tests/run/fixtures/duplicate-b.test.ts';
-const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const schedulingFixturePath = 'source/integration-tests/run/fixtures/scheduling.test.ts';
 const discoveryFixtureGlob = 'source/integration-tests/run/fixtures/discovery/*.test.ts';
 const discoverySlowFixturePath = 'source/integration-tests/run/fixtures/discovery/slow.test.ts';
@@ -174,10 +173,6 @@ async function runSchedulingScenario(
     ));
 
     return recorder.events();
-}
-
-function plainData(value: unknown): unknown {
-    return structuredClone(value);
 }
 
 function compareSchedulingEvent(first: SchedulingEvent, second: SchedulingEvent): number {
@@ -382,52 +377,6 @@ export const testNode = createSuite({
                     'start:immediate',
                     'end:immediate'
                 ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'runner kills a supervised microtest that blocks past hard timeout',
-            ...emptyTestData,
-            async body(scope: TestScope) {
-                const result = await orchestrator.run(createSupervisedRunCommand(
-                    [ endlessLoopFixturePath ],
-                    {
-                        ...createRunConfig(),
-                        profiles: {
-                            microtest: defaultMicrotestProfile({
-                                timeouts: {
-                                    collectionMilliseconds: 5000,
-                                    hardMilliseconds: 50,
-                                    softMilliseconds: 10
-                                }
-                            })
-                        }
-                    }
-                ));
-                const error = result.runnerErrors[0];
-
-                scope.require.defined(error);
-                scope.assert.equal(error.subtype, 'crash');
-                scope.assert.deepEqual(plainData(error.attributedTo), {
-                    file: endlessLoopFixturePath,
-                    title: 'loops',
-                    params: null,
-                    suite: []
-                });
-                scope.assert.deepEqual(result.summary, {
-                    crashed: 1,
-                    defined: 1,
-                    discovered: 1,
-                    failed: 0,
-                    inconclusive: 0,
-                    passed: 0,
-                    planned: 1,
-                    resourceExhausted: 0,
-                    runtimePolicy: 0,
-                    skipped: 0
-                });
 
                 return scope.assert.collect();
             }

@@ -542,6 +542,10 @@ selected profile must use `worker-pool` execution.
 `--coverage` applies to `run` only. It requests coverage for the selected
 microtest profile and is invalid for other profile families.
 
+External coverage wrappers cannot instrument restricted supervised children.
+Use `overkill run --coverage` when the selected profile uses
+`supervised-process` execution.
+
 `--no-capture` applies to `run` only. It passes stdout and stderr through live
 for capture-capable profiles and is invalid for microtest profiles.
 
