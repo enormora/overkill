@@ -355,18 +355,6 @@ async function configuredMicrotest(
     return { fileSet, name: 'microtest', profile };
 }
 
-function assertSupportedDirectProfile(context: SelectedDirectProfile): void {
-    if (context.profile.testFamily === 'integration') {
-        throw new RunConfigError(
-            [
-                `runIfMain() does not support integration profile "${context.name}" yet.`,
-                `Use the overkill CLI with --profile ${context.name}.`
-            ]
-                .join(' ')
-        );
-    }
-}
-
 async function selectDirectProfile(
     config: LoadedRunConfig,
     file: string,
@@ -400,8 +388,6 @@ export function createDirectProfileResolver(
         const file = await canonicalPath(directFilePath(meta, dependencies), dependencies);
         const config = await dependencies.loadRunConfig({ configPath: null, cwd: canonicalCwd });
         const selectedProfile = await selectDirectProfile(config, file, canonicalCwd, dependencies);
-
-        assertSupportedDirectProfile(selectedProfile);
 
         return {
             config,

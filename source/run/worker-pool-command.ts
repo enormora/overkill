@@ -1,4 +1,5 @@
 import type { WorkId } from '../engine/identity.ts';
+import { runCollectionRootFromResolvedPlan } from './collected-run-plan.ts';
 import type {
     PlacementPlan,
     WorkUnit
@@ -78,6 +79,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
             .execution
             .resourceUsagePolicy
             .samplingIntervalMilliseconds,
+        root: runCollectionRootFromResolvedPlan(runtime.resolvedRun.plan),
         scheduling: unit.scheduling,
         testFamily: runtime.resolvedRun.facts.execution.testFamily,
         timeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.softMilliseconds,

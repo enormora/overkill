@@ -79,6 +79,7 @@ async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<Tes
         engine: await selectedEngine(command),
         loadRunTestModules,
         paths: command.paths,
+        root: command.root,
         testFamily: command.testFamily
     });
 }

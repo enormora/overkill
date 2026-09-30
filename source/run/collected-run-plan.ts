@@ -21,9 +21,26 @@ import type {
     CollectedRunFile,
     CollectedOrphanedNode,
     CollectedRunPlan,
-    RunCaseFacts
+    ResolvedRunPlan,
+    RunCaseFacts,
+    RunCollectionRoot
 } from './run-types.ts';
 import type { RunCaseFileSet } from './run-facts.ts';
+
+export function runCollectionRootFromResolvedPlan(plan: ResolvedRunPlan): RunCollectionRoot {
+    const { root } = plan.kind === 'local' ? plan.testPlan : plan.collectedPlan;
+    const { capture, duplicateExecution, timeoutMilliseconds } = root.controls;
+
+    return {
+        annotations: root.annotations,
+        controls: {
+            ...capture === null ? {} : { capture },
+            ...duplicateExecution === null ? {} : { duplicateExecution },
+            ...timeoutMilliseconds === null ? {} : { timeoutMilliseconds }
+        },
+        title: root.title
+    };
+}
 
 function suiteTitles(suitePath: TestPlan['cases'][number]['suitePath']): readonly string[] {
     return suitePath.map(function toTitle(entry) {

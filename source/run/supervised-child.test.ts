@@ -94,6 +94,7 @@ function command(kind: SupervisedChildCommand['kind'], path: string): Supervised
             residentSetGrowthBytesPerSecond: null
         },
         resourceUsageSamplingIntervalMilliseconds: 10,
+        root: { annotations: {}, controls: {}, title: cwd },
         scheduling: 'concurrent',
         testFamily: 'microtest',
         timeoutMilliseconds: 1000

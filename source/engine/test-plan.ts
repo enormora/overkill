@@ -79,7 +79,7 @@ type TestPlanRoot = {
 
 export type TestPlanFactory = (root: TestRoot) => TestPlan;
 
-type TestPlanRootOptions = {
+export type TestPlanRootOptions = {
     readonly annotations: TestAnnotationsInput;
     readonly controls: TestControlsInput;
     readonly title: string;

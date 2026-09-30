@@ -20,22 +20,13 @@ import {
     runConfig
 } from './run-if-main-facts.ts';
 import {
-    engineExecution,
     rootAnnotations,
     rootControls,
     rootTitle,
     selectedOutputRenderer,
-    selectedReporters,
-    warnOnSupervisedDowngrade
+    selectedReporters
 } from './run-if-main-options.ts';
 import type { RunMicrotestProfileConfig } from './run-types.ts';
-
-type StderrCapture = {
-    readonly read: () => string;
-    readonly stderr: {
-        readonly write: (chunk: string) => void;
-    };
-};
 
 const outputRenderer = defineFixedOutputRenderer({
     render(): string {
@@ -127,21 +118,6 @@ function directTestPlan(): TestPlan {
     }));
 }
 
-function captureStderr(): StderrCapture {
-    let captured = '';
-
-    return {
-        read() {
-            return captured;
-        },
-        stderr: {
-            write(chunk) {
-                captured += chunk;
-            }
-        }
-    };
-}
-
 async function assertReporterSelection(scope: OverkillScope): Promise<void> {
     const optionReporter = createReporter('option');
     const profileReporter = createReporter('profile');
@@ -214,15 +190,8 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const profile = directProfile(null, 'serial');
-                const stderr = captureStderr();
-
-                warnOnSupervisedDowngrade(directProfile(null, 'concurrent'), stderr.stderr);
-
                 await assertReporterSelection(scope);
                 assertOutputAndRootOptions(scope);
-                scope.assert.deepEqual(engineExecution(profile), { mode: 'serial-in-process' });
-                scope.assert.equal(stderr.read(), '');
 
                 return scope.assert.collect();
             }

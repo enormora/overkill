@@ -7,21 +7,33 @@ import {
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { resolveRunEngine } from './run-engine-selection.ts';
-import { createRunTestPlanFromFiles } from './run-test-plan.ts';
+import {
+    createRunTestPlanFromDirectEntrypoint,
+    createRunTestPlanFromFiles,
+    type RunTestPlanCollectionSource
+} from './run-test-plan.ts';
 import type { DiscoveredRunFile } from './run-discovery-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunCommand, RunProfileConfig } from './run-types.ts';
 
-type LocalTestPlanInput = {
+export type LocalTestPlanInput = {
     readonly command: RunCommand;
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly dependencies: RunOrchestratorDependencies;
     readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
     readonly profile: RunProfileConfig;
+    readonly source: RunTestPlanCollectionSource;
 };
+export type LocalTestPlan = TestPlan;
 
 async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     const engine = await resolveRunEngine(input.command.engine, input.dependencies);
+
+    if (input.source.kind === 'direct-entrypoint') {
+        const [ file ] = input.files;
+
+        return createRunTestPlanFromDirectEntrypoint(engine, file, input.source);
+    }
 
     return await createRunTestPlanFromFiles({
         cwd: input.command.cwd,
@@ -29,6 +41,7 @@ async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
         engine,
         files: input.files,
         loadRunTestModules: input.dependencies.loadRunTestModules,
+        root: { annotations: {}, controls: {}, title: input.command.cwd },
         testFamily: input.profile.testFamily
     });
 }

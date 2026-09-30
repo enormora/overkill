@@ -381,7 +381,13 @@ export async function runSupervisedCommand(
     liveRun.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
     const collection = await readLiveCollection(liveRun);
 
-    return await continueLiveRun(liveRun, collection, createResolvedRun);
+    try {
+        return await continueLiveRun(liveRun, collection, createResolvedRun);
+    } catch (error: unknown) {
+        kill(liveRun.child);
+        await liveRun.finishedSignal.promise;
+        throw error;
+    }
 }
 
 async function createRuntime(

@@ -1,9 +1,21 @@
-import type { TestNode, TestScope } from '../packages/engine/engine.entry-point.ts';
-import { collectedRunPlanFromTestPlan } from '../run/collected-run-plan.ts';
+import type {
+    RunResourceUsage,
+    RunResult,
+    TestNode,
+    TestScope
+} from '../packages/engine/engine.entry-point.ts';
+import {
+    collectedRunPlanFromTestPlan,
+    createRunResultFromCollectedPlan
+} from '../run/collected-run-plan.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { RunCollectionError } from '../run/run-errors.ts';
 import { createRunTestModuleLoader, type RunTestModuleLoader } from '../run/run-test-modules.ts';
-import type { CollectedRunPlan } from '../run/run-types.ts';
+import type {
+    CollectedRunPlan,
+    RunCollectionRoot,
+    WorkId
+} from '../run/run-types.ts';
 import type { SupervisedChildCommand } from '../run/supervised-protocol.ts';
 
 const deterministicRunFixturePaths = {
@@ -245,15 +257,42 @@ export const loadDeterministicRunTestModules: RunTestModuleLoader = createDeterm
     }
 });
 
-export function deterministicCollectedRunPlan(file: string): CollectedRunPlan {
+export function deterministicCollectedRunPlan(
+    file: string,
+    root: RunCollectionRoot = { annotations: {}, controls: {}, title: '/project' }
+): CollectedRunPlan {
     return collectedRunPlanFromTestPlan(defaultRunEngine.createTestPlanFromTestFiles({
         files: [ { file, testNode: deterministicRunTestNode(file) } ],
-        root: {
-            annotations: {},
-            controls: {},
-            title: '/project'
-        }
+        root
     }));
+}
+
+export function createDeterministicRunResult(
+    collectedPlan: CollectedRunPlan,
+    work: readonly WorkId[],
+    resourceUsage: RunResourceUsage
+): RunResult {
+    return createRunResultFromCollectedPlan(
+        collectedPlan,
+        work.map(function toPassingResult(entry) {
+            return {
+                definitionLocations: [ { kind: 'unknown' as const } ],
+                durationMicroseconds: 0,
+                id: entry.case,
+                outcome: { kind: 'pass' as const },
+                verdict: 'pass' as const,
+                workId: entry
+            };
+        }),
+        [],
+        {
+            completedAtMicroseconds: 0,
+            planStatus: 'planned',
+            resourceUsage,
+            startedAtMicroseconds: 0,
+            testExecutionWallTimeMicroseconds: 0
+        }
+    );
 }
 
 export function deterministicRunCollection(input: DeterministicRunCollectionInput): DeterministicRunCollection {
@@ -274,7 +313,7 @@ export function deterministicRunCollection(input: DeterministicRunCollectionInpu
     }
 
     return {
-        collectedPlan: deterministicCollectedRunPlan(file),
+        collectedPlan: deterministicCollectedRunPlan(file, input.command.root),
         runnerErrors: []
     };
 }

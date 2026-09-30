@@ -11,6 +11,7 @@ import {
 } from '../test-support/run-command-factory.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { RunCommand } from './run-types.ts';
+import { configuredFilesRunCollectionSource } from './run-collection-source.ts';
 import {
     createSupervisedCollectCommand,
     createWorkerPoolCommand
@@ -81,13 +82,29 @@ export const testNode = createOverkillSuite({
                 const command = createRunCommand(profile);
 
                 scope.assert.deepEqual(
-                    createSupervisedCollectCommand(command, profile, discoveredFiles()).capabilityRestrictions,
+                    createSupervisedCollectCommand(
+                        command,
+                        profile,
+                        discoveredFiles(),
+                        configuredFilesRunCollectionSource
+                    )
+                        .capabilityRestrictions,
                     { mode: 'disabled' }
                 );
-                scope.assert.deepEqual(createWorkerPoolCommand(command, 'enabled', profile, discoveredFiles()).paths, [
-                    integrationPath,
-                    secondIntegrationPath
-                ]);
+                scope.assert.deepEqual(
+                    createWorkerPoolCommand({
+                        command,
+                        definitionLocationCapture: 'enabled',
+                        files: discoveredFiles(),
+                        profile,
+                        source: configuredFilesRunCollectionSource
+                    })
+                        .paths,
+                    [
+                        integrationPath,
+                        secondIntegrationPath
+                    ]
+                );
 
                 return scope.assert.collect();
             }
@@ -104,7 +121,13 @@ export const testNode = createOverkillSuite({
                     timeouts: { collectionMilliseconds: 17, hardMilliseconds: 23, softMilliseconds: 19 }
                 });
                 const command = createRunCommand(profile);
-                const workerCommand = createWorkerPoolCommand(command, 'disabled', profile, discoveredFiles());
+                const workerCommand = createWorkerPoolCommand({
+                    command,
+                    definitionLocationCapture: 'disabled',
+                    files: discoveredFiles(),
+                    profile,
+                    source: configuredFilesRunCollectionSource
+                });
 
                 scope.assert.deepEqual(workerCommand.hostProcess, { kind: 'direct' });
                 scope.assert.equal(workerCommand.workerLifecycle, 'reuse');
@@ -129,7 +152,13 @@ export const testNode = createOverkillSuite({
                 };
 
                 scope.assert.throws(function createCommandForInstanceEngine() {
-                    createWorkerPoolCommand(command, 'enabled', profile, discoveredFiles());
+                    createWorkerPoolCommand({
+                        command,
+                        definitionLocationCapture: 'enabled',
+                        files: discoveredFiles(),
+                        profile,
+                        source: configuredFilesRunCollectionSource
+                    });
                 }, {
                     message: 'Instance engines cannot run in supervised children.'
                 });

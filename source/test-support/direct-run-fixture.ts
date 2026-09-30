@@ -1,11 +1,21 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
-import type { RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { RunnerError, RunResourceUsageTracker } from '../engine/run-result.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
-import { createRunConfigLoader } from '../run/run-config.ts';
+import { createRunConfigLoader, type RunConfigLoader } from '../run/run-config.ts';
+import { directRunFacts, finalizeDirectRunResult } from '../run/run-if-main-facts.ts';
+import {
+    assertTestPlanCasesMatchProfilePolicy,
+    assertTestPlanMatchesTestFamily,
+    createSeededTestPlan,
+    type OrderedSeededTestPlan
+} from '../run/run-selection.ts';
+import type { DirectEntrypointRunner } from '../run/run.ts';
+
+type FixtureRunCommand = Parameters<DirectEntrypointRunner>[0];
+type FixtureCollectionSource = Parameters<DirectEntrypointRunner>[1];
 
 type DirectRunProject = {
     readonly cwd: string;
@@ -18,12 +28,9 @@ export type DirectRunFixture = {
     readonly project: DirectRunProject;
     readonly runIfMain: RunIfMain;
     readonly setExitCode: (exitCode: number | string | null | undefined) => void;
+    readonly setUndeliveredRunnerErrors: (errors: readonly RunnerError[]) => void;
     readonly stderr: () => string;
 };
-
-function createTestClock(): DeterministicClock {
-    return createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-}
 
 type DirectRunFixtureInput = {
     readonly config: DirectRunConfigFixture | null;
@@ -118,23 +125,10 @@ function createConfigModules(
     };
 }
 
-function globPatterns(patterns: string | readonly string[]): readonly string[] {
-    return typeof patterns === 'string' ? [ patterns ] : patterns;
-}
+function createFixtureRunConfigLoader(cwd: string, config: DirectRunConfigFixture | null): RunConfigLoader {
+    const modules = createConfigModules(cwd, config);
 
-export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunFixture {
-    const cwd = '/project';
-    const file = resolve(cwd, input.fileName);
-    const files = new Set([
-        file,
-        ...input.files.map(function toAbsoluteFile(fileName) {
-            return resolve(cwd, fileName);
-        })
-    ]);
-    const modules = createConfigModules(cwd, input.config);
-    let exitCode: number | string | null | undefined = null;
-    let stderr = '';
-    const loadRunConfig = createRunConfigLoader({
+    return createRunConfigLoader({
         async fileExists(filePath) {
             return Object.hasOwn(modules, filePath);
         },
@@ -146,6 +140,41 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
             return modules[configPath];
         }
     });
+}
+
+function globPatterns(patterns: string | readonly string[]): readonly string[] {
+    return typeof patterns === 'string' ? [ patterns ] : patterns;
+}
+
+function fixtureTestPlan(
+    command: FixtureRunCommand,
+    source: FixtureCollectionSource
+): OrderedSeededTestPlan {
+    const [ file ] = command.request.paths;
+
+    if (file === undefined) {
+        throw new Error('Expected a direct entrypoint path.');
+    }
+
+    return createSeededTestPlan(defaultRunEngine.createTestPlanFromTestFiles({
+        files: [ { file, testNode: source.testNode } ],
+        root: source.root
+    }));
+}
+
+export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunFixture {
+    const cwd = '/project';
+    const file = resolve(cwd, input.fileName);
+    const files = new Set([
+        file,
+        ...input.files.map(function toAbsoluteFile(fileName) {
+            return resolve(cwd, fileName);
+        })
+    ]);
+    let exitCode: number | string | null | undefined = null;
+    let stderr = '';
+    let undeliveredRunnerErrors: readonly RunnerError[] = [];
+    const loadRunConfig = createFixtureRunConfigLoader(cwd, input.config);
     const resolveDirectProfile = createDirectProfileResolver({
         fileURLToPath,
         glob(pattern, options) {
@@ -183,6 +212,52 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         }
     });
 
+    const runDirectEntrypoint: DirectEntrypointRunner = async function runFixtureDirectEntrypoint(command, source) {
+        const seeded = fixtureTestPlan(command, source);
+        const directProfile = await resolveDirectProfile(importMeta(file), cwd);
+        assertTestPlanMatchesTestFamily(seeded.testPlan, directProfile.profile.testFamily);
+        assertTestPlanCasesMatchProfilePolicy(seeded.testPlan, directProfile.profile);
+        const facts = directRunFacts({
+            config: command.config,
+            fileSet: directProfile.fileSet,
+            profileName: command.request.profile,
+            projectRoot: command.cwd,
+            seed: seeded.seed,
+            testPlan: seeded.testPlan
+        });
+        const { profile } = directProfile;
+        const startedAt = new Date(0);
+
+        const result = await defaultRunEngine.execute(seeded.testPlan, {
+            execution: profile.execution.scheduling === 'concurrent'
+                ? {
+                    maxConcurrency: profile.execution.maxConcurrency,
+                    mode: 'concurrent-in-process'
+                }
+                : { mode: 'serial-in-process' },
+            async finalizeResult(runResult) {
+                return finalizeDirectRunResult(facts, runResult);
+            },
+            outputRenderer: command.config.outputRenderer,
+            reporters: profile.reporters ?? command.config.reporters,
+            resourceBudgets: facts.execution.resourceUsagePolicy.budgets,
+            resourceUsageTracker: createResourceUsageTracker(),
+            runtimePolicy: null,
+            runFacts: facts,
+            startedAt: startedAt.toISOString(),
+            timeoutPolicy: {
+                hardTimeoutMilliseconds: facts.execution.timeoutPolicy.hardMilliseconds,
+                timeoutMilliseconds: facts.execution.timeoutPolicy.softMilliseconds
+            }
+        });
+
+        return {
+            deliveredRunnerErrors: [],
+            result,
+            undeliveredRunnerErrors
+        };
+    };
+
     return {
         exitCode() {
             return exitCode;
@@ -193,11 +268,6 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
             meta: importMeta(file)
         },
         runIfMain: createRunIfMain({
-            createResourceUsageTracker,
-            createRuntimePolicy() {
-                return null;
-            },
-            createClock: createTestClock,
             currentWorkingDirectory() {
                 return cwd;
             },
@@ -205,7 +275,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
                 return exitCode;
             },
             resolveDirectProfile,
-            runEngine: defaultRunEngine,
+            runDirectEntrypoint,
             setExitCode(nextExitCode) {
                 exitCode = nextExitCode;
             },
@@ -217,6 +287,9 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         }),
         setExitCode(nextExitCode) {
             exitCode = nextExitCode;
+        },
+        setUndeliveredRunnerErrors(errors) {
+            undeliveredRunnerErrors = errors;
         },
         stderr() {
             return stderr;

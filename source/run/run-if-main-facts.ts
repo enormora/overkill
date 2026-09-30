@@ -8,7 +8,6 @@ import {
     runCaseFactsFromTestPlan
 } from './run-facts.ts';
 import { resultWithTimingCollection } from './run-timing-collection.ts';
-import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import type {
     RunConfig,
     RunFacts,
@@ -79,13 +78,6 @@ function selectedProfile(config: RunConfig, profileName: string): RunProfileConf
     }
 
     return profile;
-}
-
-export function assertDirectTestPlanMatchesTestFamily(
-    testPlan: TestPlan,
-    testFamily: RunProfileConfig['testFamily']
-): void {
-    assertTestPlanMatchesTestFamily(testPlan, testFamily);
 }
 
 export function directRunFacts(input: DirectRunFactsInput): RunFacts {

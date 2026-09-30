@@ -52,6 +52,7 @@ function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): Worke
             residentSetGrowthBytesPerSecond: null
         },
         resourceUsageSamplingIntervalMilliseconds: 1,
+        root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'integration',
         timeoutMilliseconds: 1000,

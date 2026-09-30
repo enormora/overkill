@@ -206,6 +206,12 @@ That's it. No flag, no `--experimental-*`, no loader. Caveats:
   return before loading runner config or reporters. Entrypoint modules delegate
   to `@overkill-dev/run`, match the current file to a profile, and use default
   reporters when none are configured.
+- The matched profile keeps its configured process model. For supervised and
+  worker-pool profiles, the isolated import must export a `testNode` whose
+  normalized plan matches the value passed to `runIfMain(...)`.
+- Node evaluates the direct entrypoint once before `runIfMain(...)` can create
+  an isolation boundary. Use `overkill run <file>` when that bootstrap import
+  must also be isolated.
 - Files must use erasable syntax. Otherwise: `node --experimental-transform-types ./foo.test.ts`.
 - ESM extensions: `.ts` is treated as ESM by default if the nearest
   `package.json` has `"type": "module"`, otherwise as CJS. This mirrors `.js`
