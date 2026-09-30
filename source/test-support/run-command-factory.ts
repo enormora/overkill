@@ -111,6 +111,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
     const facts = {
         baselineUpdateMode: command.request.baselineUpdateMode,
         capture: command.request.capture,
+        coverage: command.request.coverage,
         debug: command.request.debug,
         engine: { kind: 'default' as const },
         order: command.request.order,
@@ -311,6 +312,7 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         baselineUpdateMode: 'none',
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
+        coverage: false,
         debug: {
             mode: 'off',
             selectors: []

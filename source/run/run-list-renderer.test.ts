@@ -136,6 +136,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
             execution: {
                 baselineUpdateMode: request.baselineUpdateMode,
                 capture: request.capture,
+                coverage: request.coverage,
                 debug: request.debug,
                 engine: { kind: 'default' },
                 order: request.order,

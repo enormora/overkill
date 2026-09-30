@@ -84,6 +84,7 @@ type RunRequestKeys = readonly [
     'baselineUpdateMode',
     'capabilityRestrictions',
     'capture',
+    'coverage',
     'debug',
     'execution',
     'measureResourceUsage',
@@ -214,8 +215,9 @@ describe('@overkill-dev/run', function () {
         expect<RunRequest['profile']>().type.toBe<string>();
         expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
         expect<RunRequest['timingCollection']>().type.toBe<TimingCollectionOverride>();
-        expect<Pick<RunRequest, 'capture' | 'order'>>().type.toBe<{
+        expect<Pick<RunRequest, 'capture' | 'coverage' | 'order'>>().type.toBe<{
             readonly capture: 'buffered' | 'live';
+            readonly coverage: boolean;
             readonly order: RunOrder;
         }>();
         expect<RunOrder>().type.toBe<'lexical' | 'plan' | 'seeded'>();
@@ -235,6 +237,7 @@ describe('@overkill-dev/run', function () {
     test('exposes serializable run execution facts', function () {
         expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
         expect<RunExecutionFacts['capture']>().type.toBe<'buffered' | 'live'>();
+        expect<RunExecutionFacts['coverage']>().type.toBe<boolean>();
         expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
         expect<RunExecutionFacts['placementPlan']>().type.toBe<PlacementPlan | null>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();

@@ -42,6 +42,18 @@ function assertWorkerCountSupported(request: RunRequest, profile: RunProfileConf
     }
 }
 
+function assertCoverageSupported(request: RunRequest, profile: RunProfileConfig): void {
+    if (request.coverage && profile.testFamily !== 'microtest') {
+        invalidRequest('Coverage can only be requested for microtest profiles.');
+    }
+}
+
+function assertProfileRequestSupported(request: RunRequest, profile: RunProfileConfig): void {
+    assertCoverageSupported(request, profile);
+    assertMicrotestCaptureSupported(request, profile);
+    assertWorkerCountSupported(request, profile);
+}
+
 export async function readResolvedRunInput(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies
@@ -50,8 +62,7 @@ export async function readResolvedRunInput(
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyRunConfig(command.config));
     const profile = selectedProfile(request, config);
-    assertMicrotestCaptureSupported(request, profile);
-    assertWorkerCountSupported(request, profile);
+    assertProfileRequestSupported(request, profile);
     assertSupportedProcessEngine(command, profile);
     const discovery = freezeValue(
         await dependencies.discoverRunFilesWithProjectRoot({

@@ -108,6 +108,11 @@ The command methods other than `runTests` and `listTests` are fixed first-party
 entrypoints and currently return argument errors until their command
 implementations land.
 
+Coverage is explicit per run. `RunRequest.coverage` defaults to `false` in
+first-party callers, and the `@overkill-dev/test` binary maps `--coverage` to
+`true`. Coverage requests are valid only for microtest profiles and are
+recorded in `RunFacts.execution.coverage`.
+
 Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`
 can override that policy for one run. `resourceUsage.budgets` are thresholds

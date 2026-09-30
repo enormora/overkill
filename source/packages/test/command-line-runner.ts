@@ -56,6 +56,7 @@ type ResourceBudgetOverride = {
 
 type RunCommandArguments = {
     readonly configPath: string | null;
+    readonly coverage: boolean;
     readonly file: string | null;
     readonly filter: RunFilter | null;
     readonly measureResourceUsage: boolean;
@@ -343,6 +344,7 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             baselineUpdateMode: 'none',
             capabilityRestrictions: { mode: 'enabled' },
             capture: readCapture(args),
+            coverage: args.coverage,
             debug: {
                 mode: 'off',
                 selectors: []
@@ -449,6 +451,7 @@ function createOverkillCommand(
         name: 'run',
         args: {
             ...sharedCommandArguments,
+            coverage: flag({ long: 'coverage' }),
             measureResourceUsage: flag({ long: 'measure-resource-usage' }),
             noCapture: flag({ long: 'no-capture' }),
             resourceBudgetOverrides: multioption({

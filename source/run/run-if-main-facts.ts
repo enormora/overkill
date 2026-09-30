@@ -34,6 +34,7 @@ function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunReque
         baselineUpdateMode: 'none',
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
+        coverage: false,
         debug: {
             mode: 'off',
             selectors: []
@@ -108,6 +109,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
         execution: {
             baselineUpdateMode: request.baselineUpdateMode,
             capture: request.capture,
+            coverage: request.coverage,
             debug: request.debug,
             engine: { kind: 'default' },
             order: request.order,

@@ -23,7 +23,6 @@ import {
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
-type WorkUnit = PlacementPlan['units'][number];
 type BufferedReporterEvent = ReturnType<
     WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
 > extends IterableIterator<infer Event> ? Event : never;
@@ -156,7 +155,7 @@ export function createCollectedPlanWithMissingResult(): CollectedRunPlan {
     };
 }
 
-function firstWorkUnit(): WorkUnit {
+function firstWorkUnit(): PlacementPlan['units'][number] {
     return {
         group: null,
         id: {
@@ -218,6 +217,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
+                coverage: false,
                 debug: { mode: 'off', selectors: [] },
                 engine: { kind: 'default' },
                 dispatchPolicy: 'dynamic-lease',

@@ -54,6 +54,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         baselineUpdateMode: 'none',
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
+        coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
         measureResourceUsage: null,

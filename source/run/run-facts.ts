@@ -154,6 +154,7 @@ function createRunExecutionFacts(
     const facts = {
         baselineUpdateMode: input.request.baselineUpdateMode,
         capture: input.request.capture,
+        coverage: input.request.coverage,
         debug: input.request.debug,
         engine: runEngineFacts(input.engine),
         order: input.request.order,

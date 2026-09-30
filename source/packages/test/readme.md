@@ -522,6 +522,7 @@ Supported command-line surface:
 - `--seed <n>`
 - `--title <text>`
 - `--profile <name>`
+- `--coverage`
 - `--no-capture`
 - `--measure-resource-usage`
 - `--resource-budget <name=value>`
@@ -536,6 +537,9 @@ resource usage measurement for that run.
 
 `--workers` applies to `run` only and accepts a positive safe integer. The
 selected profile must use `worker-pool` execution.
+
+`--coverage` applies to `run` only. It requests coverage for the selected
+microtest profile and is invalid for other profile families.
 
 `--no-capture` applies to `run` only. It passes stdout and stderr through live
 for capture-capable profiles and is invalid for microtest profiles.

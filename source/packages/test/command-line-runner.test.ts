@@ -180,6 +180,7 @@ export const testNode = createSuite({
                             baselineUpdateMode: 'none',
                             capabilityRestrictions: { mode: 'enabled' },
                             capture: 'buffered',
+                            coverage: false,
                             debug: {
                                 mode: 'off',
                                 selectors: []
