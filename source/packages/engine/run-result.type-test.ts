@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'tstyche';
 import type {
+    CoverageArtifact,
+    CoverageArtifactPayload,
+    CoverageMetric,
+    CoverageReportFile,
     isPermissionDeniedRunnerError,
     PermissionDeniedRunnerError,
     PermissionDeniedRunnerErrorCause,
@@ -10,6 +14,7 @@ import type {
     RunResourceUsageTracker,
     RunArtifactId,
     RunPreciseTimingReport,
+    RunArtifact,
     RunResult,
     RunPlanStatus,
     RunSummary,
@@ -108,6 +113,20 @@ describe('RunResult', function () {
     test('artifacts carry runtime and workload identity', function () {
         expect<RunArtifactId['runtimes']>().type.toBe<readonly RuntimeId[]>();
         expect<RunArtifactId['workload']>().type.toBe<WorkloadId | null>();
+    });
+});
+
+describe('coverage artifacts', function () {
+    test('are run-scoped V8-native artifacts', function () {
+        expect<Extract<RunArtifact, { readonly payload: { readonly kind: 'coverage'; }; }>>()
+            .type
+            .toBe<CoverageArtifact>();
+        expect<CoverageArtifact['id']['scope']>().type.toBe<{ readonly kind: 'run'; }>();
+        expect<CoverageArtifact['id']['subtype']>().type.toBe<'coverage'>();
+        expect<CoverageArtifact['source']>().type.toBe<'v8-native'>();
+        expect<CoverageArtifact['payload']>().type.toBe<CoverageArtifactPayload>();
+        expect<CoverageArtifactPayload['reports'][number]>().type.toBe<CoverageReportFile>();
+        expect<CoverageArtifactPayload['summary']['lines']>().type.toBe<CoverageMetric>();
     });
 });
 

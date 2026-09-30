@@ -125,6 +125,7 @@ async function startCollectionChild(
         async function startTimedSupervisedCollectionChild() {
             return await dependencies.startSupervisedChild({
                 capabilityRestrictions: command.capabilityRestrictions,
+                coverage: null,
                 cwd: command.cwd,
                 environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
                 testFamily: command.testFamily
@@ -132,6 +133,7 @@ async function startCollectionChild(
         }
     ) ?? dependencies.startSupervisedChild({
         capabilityRestrictions: command.capabilityRestrictions,
+        coverage: null,
         cwd: command.cwd,
         environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
         testFamily: command.testFamily

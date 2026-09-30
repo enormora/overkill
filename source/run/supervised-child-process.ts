@@ -10,6 +10,14 @@ import {
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
+export type SupervisedChildCoverage = {
+    readonly environment: {
+        readonly NODE_DISABLE_COMPILE_CACHE: '1';
+        readonly NODE_V8_COVERAGE: string;
+    };
+    readonly writablePath: string;
+};
+
 type SupervisedChildEventListener = {
     readonly error: (error: Error) => void;
     readonly exit: () => void;
@@ -103,6 +111,7 @@ type SupervisedChildStartOptions = {
         readonly mode: 'disabled' | 'enabled';
     };
     readonly cwd: string;
+    readonly coverage: SupervisedChildCoverage | null;
     readonly environmentVariables: RuntimeCapabilityPolicyEnvironment;
     readonly testFamily: RunTestFamily;
 };
@@ -263,6 +272,13 @@ async function supervisedChildExecArgv(
         '--permission',
         '--trace-env',
         '--trace-env-js-stack',
+        ...options.coverage === null
+            ? []
+            : [
+                '--allow-inspector',
+                '--disable-warning=PERM0004',
+                `--allow-fs-write=${options.coverage.writablePath}`
+            ],
         ...permissionRoots.map(function allowRead(root) {
             return `--allow-fs-read=${root}`;
         })
@@ -273,12 +289,16 @@ export function createSupervisedChildProcessStarter(
     dependencies: SupervisedChildProcessStarterDependencies
 ): SupervisedChildProcessStarter {
     return async function startSupervisedChild(options) {
+        const environment = sanitizedChildEnvironment(options.environmentVariables, options.testFamily);
+
         return dependencies.fork(
             dependencies.childProcessEntryPoint,
             [ childRoleArgument(supervisedChildRole) ],
             {
                 cwd: options.cwd,
-                env: sanitizedChildEnvironment(options.environmentVariables, options.testFamily),
+                env: options.coverage === null
+                    ? environment
+                    : { ...environment, ...options.coverage.environment },
                 execArgv: await supervisedChildExecArgv(options, dependencies),
                 stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ]
             }

@@ -463,7 +463,6 @@ Pros:
 
 Cons:
 
-- still needs direct hands-on evaluation in the Overkill context
 - broader than a minimal runner integration
 
 Freshness note:
@@ -472,7 +471,8 @@ Freshness note:
 
 Assessment:
 
-- strong candidate to evaluate
+- selected reporting backend
+- used directly for raw V8 merging, V8 and LCOV output, and all-files synthesis
 
 Source:
 
@@ -508,8 +508,8 @@ Recommended direction:
 
 - keep coverage off by default
 - make it easy to enable through explicit orchestration
-- support `c8` as a compatibility path
-- seriously evaluate newer V8-native reporting tools such as `monocart-coverage-reports`
+- use `monocart-coverage-reports` directly as the reporting backend
+- retain `c8` as a compatibility reference rather than a runtime dependency
 - treat Vitest’s current V8 remapping work as an important quality reference
 
 ## Deep Comparison, Formatting, And Diffs

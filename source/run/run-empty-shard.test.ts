@@ -96,6 +96,9 @@ export const testNode = createOverkillSuite({
                     await executeEmptyShardRun(
                         resolvedRun,
                         {} as unknown as RunOrchestratorDependencies,
+                        async function keepResult(_run, result) {
+                            return result;
+                        },
                         null
                     );
                 }, { message: 'Empty shard execution requires an empty-shard collected plan.' });

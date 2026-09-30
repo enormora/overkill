@@ -7,7 +7,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
-import type { RunArtifact } from '../engine/run-result.ts';
+import type { CapturedOutputArtifact, RunArtifact } from '../engine/run-result.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -15,6 +15,7 @@ type LogFunction = (...values: readonly unknown[]) => void;
 type Log = TestDouble<LogFunction>;
 
 const successSymbol = colors.green(figures.tick);
+const infoSymbol = colors.cyan(figures.info);
 const passingCaseId = { file: null, title: 'passes', params: null, suite: [] };
 const skippedCaseId = { file: null, title: 'skips', params: null, suite: [] };
 const definitionLocation = { kind: 'unknown' as const };
@@ -46,7 +47,7 @@ function suitePathFromTitles(
     });
 }
 
-function caseOutputArtifact(text: string): RunArtifact {
+function caseOutputArtifact(text: string): CapturedOutputArtifact {
     return {
         id: {
             runtimes: [],
@@ -107,12 +108,55 @@ function runOutputArtifact(text: string): RunArtifact {
     };
 }
 
+const coverageArtifact: RunArtifact = {
+    id: {
+        runtimes: [],
+        scope: { kind: 'run' },
+        sequence: 0,
+        subtype: 'coverage',
+        workload: null
+    },
+    payload: {
+        completeness: 'complete',
+        directory: '.overkill/runs/01/coverage',
+        kind: 'coverage',
+        rawDataDirectory: '.overkill/runs/01/coverage/raw',
+        reports: [ { format: 'lcov', path: '.overkill/runs/01/coverage/lcov.info' } ],
+        summary: {
+            branches: { covered: 1, total: 2 },
+            functions: { covered: 1, total: 2 },
+            lines: { covered: 2, total: 3 }
+        }
+    },
+    source: 'v8-native'
+};
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/line-reporter-artifacts.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'line reporter points to completed coverage output',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const log = testDouble<LogFunction>();
+                const reporter = lineReporterWithLog(log);
+
+                await reporter.onFinish?.(runResultFactory.build({ artifacts: [ coverageArtifact ] }));
+
+                scope.assert(
+                    doubleUsage.calledWith,
+                    log,
+                    [ infoSymbol, 'Coverage: .overkill/runs/01/coverage' ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line reporter suppresses captured output for passing tests by default',

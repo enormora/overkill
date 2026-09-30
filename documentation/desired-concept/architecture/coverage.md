@@ -49,8 +49,8 @@ Why a first-class concept anyway:
 - Coverage is opt-in per run through `--coverage` or
   `RunRequest.coverage`. Profile coverage configuration is policy only and
   never activates collection.
-- Overkill does not ship its own instrumenter or coverage reporter
-  package - it integrates with existing tools.
+- Overkill does not ship its own instrumenter. It uses
+  `monocart-coverage-reports` directly for report generation.
 - The runner-side surface is coverage run intent plus a Node permission grant
   scoping filesystem writes to the coverage artifact directory; no
   Overkill-specific authority abstraction.
@@ -84,14 +84,14 @@ The reporting integration must handle two jobs that V8 does not:
    evaluates thresholds.
 
 The integration aggregates raw coverage from the complete run process tree.
-It must support in-process, supervised, worker-pool, serial, and concurrent
-microtest execution.
+It supports every valid microtest process model. Today those models are
+in-process and supervised-process, with serial or concurrent scheduling.
 
-The later V8 coverage integration work chooses the reporting backend after a
-direct comparison of the pinned `c8` integration and
-`monocart-coverage-reports`. `c8` remains a compatibility candidate rather
-than a settled architectural dependency. The include/exclude patterns that
-drive all-files reporting live in `overkill.config.ts` as project policy, not
+`monocart-coverage-reports` is the reporting backend. It consumes raw V8 data,
+merges multiple process outputs, emits V8 and LCOV reports, and provides the
+all-files transform hook needed to classify TypeScript source. `c8` remains a
+compatibility reference, not a runtime dependency. Include and exclude patterns
+for all-files reporting live in `overkill.config.ts` as project policy, not
 per-run intent (see [Principles § One First-Party Path Per Layer](../decisions/principles.md#one-first-party-path-per-layer)).
 
 ## Activation And Profile Policy
@@ -127,8 +127,8 @@ Coverage policy fields:
 
 - `coverage.formats`: which report formats to emit (`v8`, `lcov`, `json`,
   `html`, `text`); default: `['lcov', 'v8']`
-- `coverage.include` and `coverage.exclude`: glob patterns driving `c8`'s
-  all-files reporting
+- `coverage.include` and `coverage.exclude`: glob patterns driving all-files
+  reporting
 - `coverage.thresholds`: pass/fail thresholds for lines, functions, and
   branches
 - `coverage.outputDir`: override for `.overkill/runs/<run-id>/coverage/`
@@ -164,10 +164,10 @@ profile, but before file discovery or user-module imports.
 
 ## Aggregate Execution Model
 
-Coverage follows the selected profile's ordinary execution model. In-process,
-supervised, and worker-pool profiles remain in their configured serial or
-concurrent mode. Coverage data from every instrumented process or worker is
-merged into one run-level report.
+Coverage follows the selected profile's ordinary execution model. In-process
+and supervised-process profiles remain in their configured serial or concurrent
+mode. Coverage data from every instrumented process is merged into one run-level
+report.
 
 Overkill does not promise per-`CaseId` coverage slices. V8 counters are local
 to an execution boundary, and concurrent cases overlap those counters. Source
@@ -181,6 +181,8 @@ The runner is responsible for:
 - preserving and merging raw coverage across the run's process tree
 - adding `--allow-fs-write=<run-coverage-dir>/*` to each instrumented boundary's
   Node permission flags (see [Microtests And Capabilities § Capability Defaults](../authoring/microtests-and-capabilities.md#capability-defaults) for the mechanism)
+- adding `--allow-inspector` to supervised coverage processes because Node's
+  native exit-time coverage writer is inspector-gated under the permission model
 - handing the raw V8 output to the selected reporting integration for
   all-files synthesis and format emission once the run completes
 
@@ -190,11 +192,16 @@ Tests do not interact with coverage instrumentation directly.
 
 Microtest profiles deny filesystem writes by default. A microtest run with
 coverage requested grants `--allow-fs-write` scoped to the resolved coverage
-directory for that run:
+directory and enables Node's inspector capability for that run:
 
 ```text
 --allow-fs-write=<absolute-coverage-dir>/*
+--allow-inspector
 ```
+
+The runner also disables Node's `PERM0004` warning for this deliberate grant.
+The inspector grant is process-level because Node uses that permission gate for
+native coverage output. Tests still receive no Overkill coverage API.
 
 The wildcard is required because the directory does not exist at
 spawn time (the run record is created just before workers start).

@@ -115,6 +115,7 @@ type ArtifactSubtype =
     | 'performance-baseline'
     | 'witness'
     | 'log-capture'
+    | 'coverage'
     | 'trace';
 
 type ArtifactId = {
@@ -165,6 +166,10 @@ run__<runtime?>__<workload?>__<attempt?>.<subtype>.<ext>
 Run-scoped captured output covers process output observed before collection
 has selected a case, after all cases have completed, or while the runner cannot
 attribute output to a specific case.
+
+Coverage is also run-scoped. Its artifact points to the run-owned raw data,
+generated reports, completeness, and aggregate line, function, and branch
+metrics.
 
 ## Canonicalisation Rules
 

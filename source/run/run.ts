@@ -1,33 +1,18 @@
 import {
-    createResultFromResolutionError,
-    reportCollectionErrorResult
-} from './run-collection-error-result.ts';
-import {
-    executeInProcessResolvedRun
-} from './run-in-process-execution.ts';
-import {
     readResolvedRunInput
 } from './run-input-resolution.ts';
 import {
     createIsolatedResolvedRun,
-    executeNonLocalResolvedRun,
     runIsolatedProcessCommand
 } from './run-isolated-process.ts';
-import {
-    createLocalResolvedRun,
-    createLocalRunOrEmptySelectionResult
-} from './run-local-resolution.ts';
+import { runLocalCommand } from './run-local-command.ts';
+import { createLocalResolvedRun } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     configuredFilesRunCollectionSource,
     type CollectionSource,
     type DirectEntrypointCollectionSource
 } from './run-collection-source.ts';
-import {
-    assertRunnableResourceUsagePolicy,
-    createRunRuntimePolicy,
-    type RunRuntimePolicy
-} from './run-support.ts';
 import {
     createRunTimingMeasurement,
     emptyTimingSpanMetadata,
@@ -42,12 +27,8 @@ import type {
 
 type RunCollectionSource = CollectionSource;
 type DirectEntrypointRunCollectionSource = DirectEntrypointCollectionSource;
-
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
-type LocalRunOptions = {
-    readonly source: RunCollectionSource;
-    readonly timing: RunTimingMeasurement | null;
-};
+
 export type DirectEntrypointRunner = (
     command: RunCommand,
     source: DirectEntrypointRunCollectionSource,
@@ -97,64 +78,6 @@ async function createResolvedRun(
     ) ?? createLocalResolvedRun(seededCommand, dependencies, input, source));
 }
 
-function isRunResult(value: ResolvedRun | RunResult): value is RunResult {
-    return Object.hasOwn(value, 'summary');
-}
-
-async function resolveRunWithRuntimePolicy<RunValue>(
-    resolveRun: () => Promise<RunValue>,
-    runtimePolicy: RunRuntimePolicy | null
-): Promise<RunValue> {
-    return runtimePolicy === null ? await resolveRun() : await runtimePolicy.runLoad(resolveRun);
-}
-
-async function createLocalRunResult(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    options: LocalRunOptions
-): Promise<ResolvedRun | RunResult> {
-    const resolveRun = async function resolveLocalRunInsidePolicy(): Promise<ResolvedRun | RunResult> {
-        return await (options.timing?.measureAsync(
-            'collection.resolve',
-            emptyTimingSpanMetadata(),
-            async function createTimedLocalRunOrEmptySelectionResult() {
-                return await createLocalRunOrEmptySelectionResult(command, dependencies, options.source);
-            }
-        ) ?? createLocalRunOrEmptySelectionResult(command, dependencies, options.source));
-    };
-
-    try {
-        return await resolveRunWithRuntimePolicy(resolveRun, runtimePolicy);
-    } catch (error: unknown) {
-        try {
-            return createResultFromResolutionError(error, runtimePolicy);
-        } catch {
-            runtimePolicy?.takeRunErrors();
-            throw error;
-        }
-    }
-}
-
-async function executeResolvedRun(
-    resolvedRun: ResolvedRun,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    timing: RunTimingMeasurement | null
-): Promise<RunResult> {
-    const { resourceUsagePolicy } = resolvedRun.facts.execution;
-
-    assertRunnableResourceUsagePolicy(resourceUsagePolicy);
-
-    const nonLocalResult = await executeNonLocalResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
-
-    if (nonLocalResult !== null) {
-        return nonLocalResult;
-    }
-
-    return await executeInProcessResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
-}
-
 function invocationTiming(
     options: RunInvocationTimingOptions | undefined,
     dependencies: RunOrchestratorDependencies
@@ -175,19 +98,7 @@ async function runCommand(
         return await isolatedResult;
     }
 
-    const runtimePolicy = createRunRuntimePolicy(seededCommand.request, dependencies);
-    const resolvedRun = await createLocalRunResult(
-        seededCommand,
-        dependencies,
-        runtimePolicy,
-        { source, timing }
-    );
-
-    if (isRunResult(resolvedRun)) {
-        return await reportCollectionErrorResult(seededCommand, dependencies, resolvedRun, timing);
-    }
-
-    return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
+    return await runLocalCommand(seededCommand, dependencies, timing, source);
 }
 
 export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {

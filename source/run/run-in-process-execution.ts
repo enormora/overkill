@@ -3,11 +3,10 @@ import {
     executeEmptyShardRun
 } from './run-empty-shard.ts';
 import {
-    executeLocalResolvedRun
+    executeLocalResolvedRun,
+    type LocalExecutionOptions
 } from './run-local-execution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunRuntimePolicy } from './run-support.ts';
-import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import type {
     ResolvedRun,
     RunOrchestrator
@@ -28,16 +27,20 @@ function isLocalResolvedRun(resolvedRun: ResolvedRun): resolvedRun is LocalResol
 export async function executeInProcessResolvedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    timing: RunTimingMeasurement | null = null
+    options: LocalExecutionOptions
 ): Promise<RunResult> {
     if (resolvedRun.plan.kind === 'empty-shard') {
-        return await executeEmptyShardRun(resolvedRun, dependencies, runtimePolicy, timing);
+        return await executeEmptyShardRun(
+            resolvedRun,
+            dependencies,
+            options.finalizeResult,
+            options.runtimePolicy
+        );
     }
 
     if (!isLocalResolvedRun(resolvedRun)) {
         throw new Error('In-process execution requires a local test plan.');
     }
 
-    return await executeLocalResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
+    return await executeLocalResolvedRun(resolvedRun, dependencies, options);
 }

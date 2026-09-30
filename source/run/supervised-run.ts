@@ -19,6 +19,7 @@ import {
 import {
     kill,
     observeSupervisedChildOutput,
+    type SupervisedChildCoverage,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
 import { RunCollectionError } from './run-errors.ts';
@@ -63,6 +64,7 @@ type CreateResolvedRunFromCollection = (
 ) => Promise<ResolvedRun>;
 
 type SupervisedExecutionOptions = {
+    readonly coverage: SupervisedChildCoverage | null;
     readonly finalizeResult: RunResultFinalizer;
     readonly timing: RunTimingMeasurement | null;
 };
@@ -148,6 +150,7 @@ async function createLiveRun(
         async function startTimedLiveSupervisedChild() {
             return await dependencies.startSupervisedChild({
                 capabilityRestrictions: command.capabilityRestrictions,
+                coverage: options.coverage,
                 cwd: command.cwd,
                 environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
                 testFamily: command.testFamily
@@ -155,6 +158,7 @@ async function createLiveRun(
         }
     ) ?? dependencies.startSupervisedChild({
         capabilityRestrictions: command.capabilityRestrictions,
+        coverage: options.coverage,
         cwd: command.cwd,
         environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
         testFamily: command.testFamily
@@ -403,6 +407,7 @@ async function createRuntime(
             async function startTimedSupervisedChild() {
                 return await dependencies.startSupervisedChild({
                     capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
+                    coverage: options.coverage,
                     cwd: resolvedRun.cwd,
                     environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
                     testFamily: resolvedRun.facts.execution.testFamily
@@ -410,6 +415,7 @@ async function createRuntime(
             }
         ) ?? dependencies.startSupervisedChild({
             capabilityRestrictions: effectiveSupervisedCapabilityRestrictions(resolvedRun),
+            coverage: options.coverage,
             cwd: resolvedRun.cwd,
             environmentVariables: dependencies.runtimeCapabilityPolicy.readEnvironment(),
             testFamily: resolvedRun.facts.execution.testFamily
@@ -492,7 +498,11 @@ async function finishTimedSupervisedRun(
 export async function executeSupervisedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
-    options: SupervisedExecutionOptions = { finalizeResult: keepRunResult, timing: null }
+    options: SupervisedExecutionOptions = {
+        coverage: null,
+        finalizeResult: keepRunResult,
+        timing: null
+    }
 ): Promise<RunResult> {
     const runtime = await createRuntime(resolvedRun, dependencies, options);
     const startedAt = supervisedRunStartTimes(dependencies);
