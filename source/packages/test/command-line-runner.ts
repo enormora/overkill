@@ -18,13 +18,13 @@ import type {
     CommandLineRunnerResult
 } from '../run/command-line.entry-point.ts';
 import {
-    all,
-    contains,
-    equals,
     parseRunFilterExpression,
-    type RunFilter,
-    type RunSelection
+    type RunFilter
 } from '../run/filters.entry-point.ts';
+import {
+    createCommandLineSelection,
+    runtimeSelectionFiltersType
+} from './command-line-selection.ts';
 import { parseRunSeed } from './run-seed-parser.ts';
 import { parseRunShard } from './run-shard-parser.ts';
 import { runWorkersType } from './run-workers-parser.ts';
@@ -65,6 +65,7 @@ type RunCommandArguments = {
     readonly paths: readonly string[];
     readonly profile: string;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
+    readonly runtimeFilters: readonly RunFilter[];
     readonly seed: RunSeed;
     readonly shard: RunShard;
     readonly timings: boolean;
@@ -79,6 +80,7 @@ type ListCommandArguments = {
     readonly order: RunOrder;
     readonly paths: readonly string[];
     readonly profile: string;
+    readonly runtimeFilters: readonly RunFilter[];
     readonly seed: RunSeed;
     readonly shard: RunShard;
     readonly title: string | null;
@@ -305,37 +307,6 @@ function readCapture(args: RunCommandArguments): CommandLineRunTestsRequest['run
     return args.noCapture ? 'live' : 'buffered';
 }
 
-function selectionFromFilters(filters: readonly RunFilter[]): RunSelection {
-    const [ firstFilter, ...remainingFilters ] = filters;
-
-    if (firstFilter === undefined) {
-        return { kind: 'all' };
-    }
-
-    return {
-        filter: remainingFilters.length === 0 ? firstFilter : all([ firstFilter, ...remainingFilters ]),
-        kind: 'filter'
-    };
-}
-
-function createSelection(args: Pick<RunCommandArguments, 'file' | 'filter' | 'title'>): RunSelection {
-    const filters: RunFilter[] = [];
-
-    if (args.filter !== null) {
-        filters.push(args.filter);
-    }
-
-    if (args.title !== null) {
-        filters.push(contains('title', args.title));
-    }
-
-    if (args.file !== null) {
-        filters.push(equals('file', args.file));
-    }
-
-    return selectionFromFilters(filters);
-}
-
 function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandLineRunTestsRequest {
     return {
         configPath: args.configPath,
@@ -357,7 +328,7 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
             resourceBudgetOverrides: args.resourceBudgetOverrides,
             resourceUsageSamplingIntervalMilliseconds: null,
             seed: args.seed,
-            selection: createSelection(args),
+            selection: createCommandLineSelection(args),
             shard: args.shard,
             timingCollection: args.timings ? 'precise' : 'profile-default',
             verbose: false,
@@ -376,7 +347,7 @@ function createListTestsRequest(args: ListCommandArguments, cwd: string): Comman
             profile: args.profile,
             seed: args.seed,
             shard: args.shard,
-            selection: createSelection(args),
+            selection: createCommandLineSelection(args),
             withLocations: args.withLocations,
             withOrphans: args.withOrphans
         }
@@ -439,6 +410,13 @@ const sharedCommandArguments = {
         type: string,
         defaultValue() {
             return 'microtest';
+        }
+    }),
+    runtimeFilters: multioption({
+        long: 'runtime',
+        type: runtimeSelectionFiltersType,
+        defaultValue() {
+            return [];
         }
     })
 };

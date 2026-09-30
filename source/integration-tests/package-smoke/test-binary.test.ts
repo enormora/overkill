@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import {
     createLineProgressReporter,
@@ -10,11 +10,13 @@ import {
     createLineTreeReporter
 } from '@overkill-dev/reporter-line';
 import {
+    assertPackagedFilters,
     assertResourcesPackageRootExport,
     assertRunConfigSubpathExport,
     assertRunResourceLifecycleSubpathExport,
     assertSimulationPackageExports,
-    assertTestStandardSubpathExports
+    assertTestStandardSubpathExports,
+    importPackagedFilters
 } from './package-export-assertions.test.ts';
 import { runIfMain } from './direct-launcher.test.ts';
 import {
@@ -47,15 +49,6 @@ type SpawnOutput = {
     readonly code: number | null;
     readonly stderr: string;
     readonly stdout: string;
-};
-
-type FiltersModule = {
-    readonly all: (filters: readonly [unknown, ...(readonly unknown[])]) => unknown;
-    readonly file: (pattern: string) => unknown;
-    readonly not: (filter: unknown) => unknown;
-    readonly parseRunFilterExpression: (expression: string) => unknown;
-    readonly tag: (value: string) => unknown;
-    readonly title: (value: string) => unknown;
 };
 
 const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
@@ -138,38 +131,6 @@ async function spawnCommand(command: string, args: readonly string[]): Promise<S
 
 async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
     return await spawnCommand(process.execPath, args);
-}
-
-async function importPackagedFilters(): Promise<FiltersModule> {
-    const modulePath = path.join(runPackageFolder, 'packages/run/filters.entry-point.js');
-
-    return await import(pathToFileURL(modulePath).href) as FiltersModule;
-}
-
-function assertPackagedFilters(scope: TestScope, filters: FiltersModule): void {
-    const { all, file, not, parseRunFilterExpression, tag, title } = filters;
-
-    scope.assert.deepEqual(all([ tag('fast'), not(file('source/**')) ]), {
-        filters: [
-            { field: 'tag', kind: 'equals', value: 'fast' },
-            {
-                filter: { field: 'file', kind: 'glob', pattern: 'source/**' },
-                kind: 'not'
-            }
-        ],
-        kind: 'all'
-    });
-    scope.assert.deepEqual(title('smoke'), { field: 'title', kind: 'contains', value: 'smoke' });
-    scope.assert.deepEqual(parseRunFilterExpression('tag=fast !tag=flaky'), {
-        filters: [
-            { field: 'tag', kind: 'equals', value: 'fast' },
-            {
-                filter: { field: 'tag', kind: 'equals', value: 'flaky' },
-                kind: 'not'
-            }
-        ],
-        kind: 'all'
-    });
 }
 
 function assertLineReporterVariants(scope: TestScope): void {
@@ -528,7 +489,7 @@ export const testNode = createSuite({
                     '--eval',
                     runSubpathImportScript
                 ]);
-                const filters = await importPackagedFilters();
+                const filters = await importPackagedFilters(runPackageFolder);
 
                 assertRunConfigSubpathExport(scope, packageExports);
                 assertRunResourceLifecycleSubpathExport(scope, packageExports);

@@ -30,6 +30,24 @@ export type RunRuntimeScenarioFilter = {
     readonly value: string;
 };
 
+export type RunRuntimeFilter = {
+    readonly kind: 'runtime';
+    readonly runtime: string;
+};
+
+export type RunRuntimeVariantFilter = {
+    readonly kind: 'runtime-variant';
+    readonly runtime: string;
+    readonly variantId: string;
+};
+
+export type RunRuntimeDimensionFilter = {
+    readonly dimension: string;
+    readonly kind: 'runtime-dimension';
+    readonly runtime: string;
+    readonly value: string;
+};
+
 type RunFilterByKind = {
     readonly all: {
         readonly filters: NonEmptyReadonlyArray<RunFilter>;
@@ -62,7 +80,10 @@ type RunFilterByKind = {
         readonly filter: RunFilter;
         readonly kind: 'not';
     };
+    readonly runtime: RunRuntimeFilter;
+    readonly 'runtime-dimension': RunRuntimeDimensionFilter;
     readonly 'runtime-scenario': RunRuntimeScenarioFilter;
+    readonly 'runtime-variant': RunRuntimeVariantFilter;
 };
 
 export type RunFilter = RunFilterByKind[keyof RunFilterByKind];

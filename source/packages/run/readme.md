@@ -66,7 +66,10 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `owner(value)`
 - `params(value)`
 - `parseRunFilterExpression(expression)`
+- `runtime(name)`
+- `runtimeDimension(name, dimensionName, value)`
 - `runtimeScenario(runtime, scenario, value)`
+- `runtimeVariant(name, variantId)`
 - `suite(value)`
 - `tag(value)`
 - `title(value)`
@@ -94,10 +97,11 @@ child process to load the engine without parent-side user-module execution.
 
 Programmatic selection filters are supported through `RunRequest.selection`.
 The current helpers select by stable case id, file, title, suite, table params,
-tag, ownership, and exact runner-visible runtime scenario bindings. Scenario
-filtering is programmatic and has no CLI grammar. Test family matching is
-intentionally absent because one run is already bound to one profile test
-family.
+tag, ownership, public runtime key, runtime matrix variant id, runtime
+dimension, and exact runner-visible runtime scenario bindings. Runtime identity
+filters use case-sensitive equality. Scenario filtering is programmatic and has
+no CLI grammar. Test family matching is intentionally absent because one run is
+already bound to one profile test family.
 `parseRunFilterExpression(expression)` parses the CLI filter grammar into the
 same `RunFilter` tree. Runs use seeded ordering by default. Pass
 `RunRequest.order: 'lexical'` for deterministic source-stable order, or
