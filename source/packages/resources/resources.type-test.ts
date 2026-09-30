@@ -431,6 +431,7 @@ describe('@overkill-dev/resources', function () {
         expect<RuntimeId<'api', { readonly node: '26'; }>>().type.toBe<{
             readonly name: 'api';
             readonly dimensions: { readonly node: '26'; };
+            readonly scenarios: Readonly<Record<string, string>>;
             readonly variantId: string | null;
         }>();
         expect(runtimeMatrix.name).type.toBe<'node'>();

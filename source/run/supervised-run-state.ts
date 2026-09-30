@@ -104,6 +104,22 @@ function capturedOutputScope(activeCaseIds: readonly CaseId[]): readonly RunArti
     });
 }
 
+function artifactWorkAttribution(
+    scope: RunArtifact['id']['scope'],
+    activeCases: ReadonlyMap<string, ActiveSupervisedCase>
+): Pick<RunArtifact['id'], 'runtimes' | 'workload'> {
+    if (scope.kind === 'run') {
+        return { runtimes: [], workload: null };
+    }
+
+    const activeCase = Array.from(activeCases.values()).find(function matchingActiveCase(testCase) {
+        return caseIdentityKey(testCase.id) === caseIdentityKey(scope.case);
+    });
+    const workId = activeCase?.workId ?? createDefaultWorkId(scope.case);
+
+    return { runtimes: workId.runtimes, workload: workId.workload };
+}
+
 function capturedOutputBytes(
     scope: RunArtifact['id']['scope'],
     capturedOutputByteCount: ReadonlyMap<string, number>,
@@ -293,6 +309,7 @@ export function createSupervisedRunState(): SupervisedRunState {
                 capturedOutputByteCounts.set(key, captured.usedBytes + captured.byteLength);
                 artifacts.push({
                     id: {
+                        ...artifactWorkAttribution(scope, activeCases),
                         scope,
                         sequence: artifactSequence,
                         subtype: 'log-capture'

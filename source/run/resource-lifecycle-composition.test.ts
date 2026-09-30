@@ -48,7 +48,7 @@ const runtime = defineRuntime({
     resources,
     requirements: []
 });
-const runtimeResourceKey = JSON.stringify([ 'api', null, [] ]);
+const runtimeResourceKey = JSON.stringify([ 'api', null, [], [] ]);
 const runtimeDatabaseResourceKey = `runtime:${runtimeResourceKey}:database`;
 const steps = [
     { kind: 'resources', resources },

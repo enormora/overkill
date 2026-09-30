@@ -13,7 +13,7 @@ import type { DefinitionLocationCapture } from './definition-location-capture.ts
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
 import type {
     CollectedRunPlan,
-    RunEngineSelection,
+    RunCommand,
     RunHostProcess,
     RunResourceBudgets,
     RunScheduling,
@@ -25,6 +25,8 @@ import type {
 import type {
     ResourceProjectionRecords
 } from './resource-lifecycle-projection.ts';
+
+type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
     readonly collectionTimeoutMilliseconds: number;

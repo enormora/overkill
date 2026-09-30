@@ -132,7 +132,7 @@ function identityConflictPlan(): CollectedRunPlan {
                         },
                         workId: {
                             case: { file: file.file, params: null, suite: [], title: testCase.title },
-                            runtimes: [ { dimensions: {}, name: 'runtime', variantId: null } ],
+                            runtimes: [ { dimensions: {}, name: 'runtime', scenarios: {}, variantId: null } ],
                             workload: null
                         }
                     };
@@ -388,7 +388,7 @@ const describedConflicts: readonly RunExecutionPlanConflict[] = [
     { file: 'other.test.ts', fileSet: 'other', kind: 'work-distribution', reason: 'unmatched-file-set' },
     {
         kind: 'runtime-definition',
-        runtime: { dimensions: {}, name: 'runtime', variantId: null },
+        runtime: { dimensions: {}, name: 'runtime', scenarios: {}, variantId: null },
         work: [ work ]
     },
     {

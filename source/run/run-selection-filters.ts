@@ -1,12 +1,13 @@
 import { posix as path } from 'node:path';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
+import { caseIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
-import type { RunFilter, RunSelection, RunStringFilterField } from './run-types.ts';
+import type { RunFilter, RunSelection, RunStringFilterField } from './run-request-types.ts';
 
 type RunFilterCandidate = {
     readonly annotations: TestPlanCase['annotations'];
     readonly id: CaseId;
+    readonly workId: WorkId;
 };
 
 type CandidateFieldReaders = Readonly<
@@ -125,6 +126,14 @@ export function title(value: string): RunFilter {
     return contains('title', value);
 }
 
+export function runtimeScenario(runtime: string, scenario: string, value: string): RunFilter {
+    assertNonEmptyString(runtime, 'Runtime scenario filter runtime');
+    assertNonEmptyString(scenario, 'Runtime scenario filter scenario');
+    assertNonEmptyString(value, 'Runtime scenario filter value');
+
+    return { kind: 'runtime-scenario', runtime, scenario, value };
+}
+
 function hasInvalidSuiteItem(value: unknown): boolean {
     return !Array.isArray(value) || value.some(function emptySuiteItem(item) {
         return typeof item !== 'string' || item.trim().length === 0;
@@ -222,6 +231,15 @@ const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
     },
     not: function invalidNotFilter(filter) {
         return isRecord(filter.filter) ? null : 'Run filter must be an object.';
+    },
+    'runtime-scenario': function invalidRuntimeScenarioFilter(filter) {
+        for (const field of [ 'runtime', 'scenario', 'value' ] as const) {
+            if (typeof filter[field] !== 'string' || filter[field].trim().length === 0) {
+                return `Runtime scenario filter ${field} must be a non-empty string.`;
+            }
+        }
+
+        return null;
     }
 };
 
@@ -297,6 +315,28 @@ export function invalidRunSelectionMessage(selection: unknown): string | null {
     return 'Run selection kind is unknown.';
 }
 
+type LeafRunFilter = Exclude<RunFilter, { readonly kind: 'all' | 'any' | 'not'; }>;
+
+function copyLeafRunFilter(filter: LeafRunFilter): RunFilter {
+    if (filter.kind === 'case-id') {
+        return caseId(filter.id);
+    }
+
+    if (filter.kind === 'glob') {
+        return glob(filter.field, filter.pattern);
+    }
+
+    if (filter.kind === 'runtime-scenario') {
+        return runtimeScenario(filter.runtime, filter.scenario, filter.value);
+    }
+
+    return {
+        field: filter.field,
+        kind: filter.kind,
+        value: filter.value
+    };
+}
+
 function copyRunFilter(filter: RunFilter): RunFilter {
     if (filter.kind === 'all' || filter.kind === 'any') {
         return {
@@ -312,19 +352,7 @@ function copyRunFilter(filter: RunFilter): RunFilter {
         };
     }
 
-    if (filter.kind === 'case-id') {
-        return caseId(filter.id);
-    }
-
-    if (filter.kind === 'glob') {
-        return glob(filter.field, filter.pattern);
-    }
-
-    return {
-        field: filter.field,
-        kind: filter.kind,
-        value: filter.value
-    };
+    return copyLeafRunFilter(filter);
 }
 
 export function copyRunSelection(selection: RunSelection): RunSelection {
@@ -413,6 +441,20 @@ function matchesTextFilter(filter: RunFilter, candidate: RunFilterCandidate): bo
     return false;
 }
 
+function matchesLeafRunFilter(filter: LeafRunFilter, candidate: RunFilterCandidate): boolean {
+    if (filter.kind === 'case-id') {
+        return caseIdentityKey(filter.id) === caseIdentityKey(candidate.id);
+    }
+
+    if (filter.kind === 'runtime-scenario') {
+        return candidate.workId.runtimes.some(function runtimeMatches(runtime) {
+            return runtime.name === filter.runtime && runtime.scenarios[filter.scenario] === filter.value;
+        });
+    }
+
+    return matchesTextFilter(filter, candidate);
+}
+
 export function matchesRunFilter(filter: RunFilter, candidate: RunFilterCandidate): boolean {
     if (filter.kind === 'all') {
         return filter.filters.every(function childMatches(childFilter) {
@@ -430,9 +472,5 @@ export function matchesRunFilter(filter: RunFilter, candidate: RunFilterCandidat
         return !matchesRunFilter(filter.filter, candidate);
     }
 
-    if (filter.kind === 'case-id') {
-        return caseIdentityKey(filter.id) === caseIdentityKey(candidate.id);
-    }
-
-    return matchesTextFilter(filter, candidate);
+    return matchesLeafRunFilter(filter, candidate);
 }

@@ -178,6 +178,38 @@ function sidecarRuntimeGraph(): TestPlanCase['resourceAttachments']['runtimeGrap
     };
 }
 
+function scenarioSidecarRuntimeGraph(value: string): TestPlanCase['resourceAttachments']['runtimeGraphs'][number] {
+    return {
+        dimensions: { service: 'sidecar' },
+        kind: 'runtime',
+        name: 'sidecar',
+        requirements: [],
+        resources: [ { key: 'server', resourceName: 'sidecar' } ],
+        scenarioBindings: [ {
+            default: 'default',
+            name: 'api',
+            owner: { path: [ 'api' ], resourceName: 'sidecar' },
+            timing: 'request-routed',
+            value,
+            values: [ 'default', 'payments-500' ]
+        } ]
+    };
+}
+
+function assertScenarioRuntimeIdentities(
+    scope: TestScope,
+    defaultExpansion: TestPlan,
+    selectedExpansion: TestPlan
+): void {
+    const defaultRuntime = defaultExpansion.cases[0].workId.runtimes[0];
+    const selectedRuntime = selectedExpansion.cases[0].workId.runtimes[0];
+
+    scope.require.defined(defaultRuntime);
+    scope.require.defined(selectedRuntime);
+    scope.assert.deepEqual(defaultRuntime.scenarios, { api: 'default' });
+    scope.assert.deepEqual(selectedRuntime.scenarios, { api: 'payments-500' });
+}
+
 export const testNode = createSuite({
     definitionLocations: [ definitionLocation ],
     title: 'source/run/runtime-matrix-expansion.test.ts',
@@ -268,6 +300,7 @@ export const testNode = createSuite({
                     {
                         dimensions: { service: 'sidecar' },
                         name: 'sidecar',
+                        scenarios: {},
                         variantId: null
                     }
                 ]);
@@ -319,6 +352,26 @@ export const testNode = createSuite({
                         [ 'scratch', 'scratch-root', 'database-27', 'browser-firefox' ]
                     ]
                 );
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ definitionLocation ],
+            title: 'records scenario bindings without expanding scenario catalogs',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                const defaultExpansion = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+                    scenarioSidecarRuntimeGraph('default')
+                ])));
+                const selectedExpansion = expandRuntimeMatrices(testPlan(testCaseWithRuntimeGraphs([
+                    scenarioSidecarRuntimeGraph('payments-500')
+                ])));
+
+                scope.assert.equal(defaultExpansion.cases.length, 1);
+                scope.assert.equal(selectedExpansion.cases.length, 1);
+                assertScenarioRuntimeIdentities(scope, defaultExpansion, selectedExpansion);
 
                 return scope.assert.collect();
             }

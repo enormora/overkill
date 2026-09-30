@@ -9,7 +9,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { orderedRunItems } from './run-selection.ts';
+import { orderedRunItems } from './run-ordering.ts';
 import type { ResolvedRun, RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 const selectionFixturePath = 'source/integration-tests/run/fixtures/selection.test.ts';

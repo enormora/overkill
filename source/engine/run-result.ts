@@ -4,7 +4,7 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import type { CaseId, WorkId } from './identity.ts';
+import type { CaseId, RuntimeId, WorkId, WorkloadId } from './identity.ts';
 import type { RunTimings } from './run-timings.ts';
 
 type RunnerErrorSubtypeByName = {
@@ -475,9 +475,11 @@ export type RunArtifactScope = {
 };
 
 export type RunArtifactId = {
+    readonly runtimes: readonly RuntimeId[];
     readonly scope: RunArtifactScope;
     readonly sequence: number;
     readonly subtype: 'hedged-conflict' | 'log-capture';
+    readonly workload: WorkloadId | null;
 };
 
 export type CapturedOutputArtifactPayload = {

@@ -25,10 +25,17 @@ function sortedRuntimeIds(runtimeIds: readonly RuntimeId[]): readonly RuntimeId[
     return runtimeIds.toSorted(compareRuntimeIdNames);
 }
 
+function scenarioBindings(runtime: TestBodyLeafRuntimeSummary): Readonly<Record<string, string>> {
+    return Object.freeze(Object.fromEntries(runtime.scenarioBindings.map(function scenarioBinding(binding) {
+        return [ binding.name, binding.value ];
+    })));
+}
+
 function runtimeId(runtime: TestBodyLeafRuntimeSummary): RuntimeId {
     return {
         dimensions: runtime.dimensions,
         name: runtime.name,
+        scenarios: scenarioBindings(runtime),
         variantId: null
     };
 }
@@ -58,6 +65,7 @@ function runtimeVariantId(
     return {
         dimensions: variant.runtime.dimensions,
         name: matrix.name,
+        scenarios: scenarioBindings(variant.runtime),
         variantId: variant.id
     };
 }

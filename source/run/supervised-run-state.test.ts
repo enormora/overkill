@@ -91,6 +91,8 @@ function assertRunCapturedOutput(
     }
 
     scope.assert.equal(artifact.id.scope.kind, 'run');
+    scope.assert.deepEqual(artifact.id.runtimes, []);
+    scope.assert.equal(artifact.id.workload, null);
     scope.assert.equal(artifact.payload.text, 'setup output');
     scope.assert.deepEqual(state.caseArtifacts(testCase), []);
 }
@@ -119,6 +121,38 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(artifacts.length, 2);
                 assertConcurrentArtifactScope(scope, artifacts, [ firstCase, secondCase ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'createSupervisedRunState() attributes captured output to runtime scenarios',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const state = createSupervisedRunState();
+                const testCase = caseId('scenario output');
+                const runtime = {
+                    dimensions: {},
+                    name: 'api',
+                    scenarios: { api: 'payments-500' },
+                    variantId: null
+                };
+
+                state.addActiveCase(caseIdentityKey(testCase), {
+                    capture: null,
+                    id: testCase,
+                    workId: { case: testCase, runtimes: [ runtime ], workload: null }
+                }, 0);
+                state.recordCapturedOutput('stdout', Buffer.from('scenario output'), 1);
+
+                const artifact = capturedOutputArtifact(scope, state.artifacts(), 0);
+
+                if (artifact !== null) {
+                    scope.assert.deepEqual(artifact.id.runtimes, [ runtime ]);
+                    scope.assert.equal(artifact.id.workload, null);
+                }
 
                 return scope.assert.collect();
             }

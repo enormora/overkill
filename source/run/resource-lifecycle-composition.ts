@@ -16,11 +16,12 @@ import {
     type ResolvedResourceScenarioBindings
 } from '../resources/resource-scenario-binding.ts';
 import { defaultScenarioBindings } from '../resources/resource-scenario.ts';
-import { runtimeIdentityKey, type WorkId } from '../engine/identity.ts';
+import type { WorkId } from '../engine/identity.ts';
 import type { ResourceSession } from '../resources/resource-session.ts';
 import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
 import {
     resourceHandleCacheIdentity,
+    runtimeResourceScopeIdentity,
     type ResourceCacheIdentityNode
 } from './resource-lifecycle-cache-identity.ts';
 
@@ -80,6 +81,7 @@ function runtimeId(graph: RuntimeGraphLeaf, runtime: RuntimeDefinition, variantI
     return {
         dimensions: runtime.dimensions,
         name: graph.name,
+        scenarios: runtime.id.scenarios,
         variantId
     };
 }
@@ -388,7 +390,7 @@ export function combinedResourceEntries(
     }
 
     for (const runtime of resolvedRuntimeGraphs(steps, workId)) {
-        const runtimeKey = runtimeIdentityKey(runtime.id);
+        const runtimeKey = runtimeResourceScopeIdentity(runtime.id);
         const bindingsByResource = runtimeScenarioBindings(runtime.runtime);
 
         for (const [ key, resource ] of entries(runtime.runtime.resources)) {
@@ -425,7 +427,7 @@ function runtimeContexts(
 ): ReadonlyMap<RuntimeGraph, RuntimeGraphContext<RuntimeGraph>> {
     return new Map(runtimes.map(function toRuntimeContext(runtime) {
         const context: Mutable<Record<string, unknown>> = {};
-        const runtimeKey = runtimeIdentityKey(runtime.id);
+        const runtimeKey = runtimeResourceScopeIdentity(runtime.id);
 
         for (const key of Object.keys(runtime.runtime.resources)) {
             context[key] = Reflect.get(

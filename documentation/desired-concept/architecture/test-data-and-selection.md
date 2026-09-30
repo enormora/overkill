@@ -135,6 +135,7 @@ Filterable dimensions:
 - public runtime key
 - runtime matrix variant id
 - runtime dimension
+- runner-visible runtime scenario slot and selected value
 
 Test family is not a filter dimension because the selected profile already
 binds one family. Stability is not a current filter dimension.

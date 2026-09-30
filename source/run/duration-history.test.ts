@@ -178,6 +178,18 @@ function expectedReadErrorMessage(): string {
     return `Failed to read duration history at ${process.cwd()}/.overkill/duration-history/work-durations.json.`;
 }
 
+function assertMigratedHistory(scope: OverkillScope, migrated: DurationHistoryIndex): void {
+    const migratedRuntime = migrated.entries[0]?.work.runtimes[0];
+
+    scope.require.defined(migratedRuntime);
+    scope.assert.deepEqual(migratedRuntime.scenarios, {});
+    const migratedWork = migrated.entries[0]?.work;
+    scope.require.defined(migratedWork);
+    const placement = selectDurationHistoryPlacement([ unit('legacy', [ migratedWork ]) ], migrated, now);
+
+    scope.assert.equal(placement.unitDuration?.(unit('legacy', [ migratedWork ])), 100);
+}
+
 function fallbackPlacements(): FallbackPlacements {
     const sampledWork = work('sampled');
     const unsampledWork = work('unsampled');
@@ -352,7 +364,7 @@ export const testNode = createOverkillSuite({
                     async read(filePath) {
                         requestedPath = filePath;
 
-                        return JSON.stringify({ entries: [], updatedAt: observedAt(now), version: 2 });
+                        return JSON.stringify({ entries: [], updatedAt: observedAt(now), version: 3 });
                     },
                     async write() {
                         return undefined;
@@ -403,6 +415,48 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(placement.facts?.samples[0]?.durationMicroseconds, 50);
                 scope.assert.equal(placement.unitDuration?.(selectedUnit), 50);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'duration history migrates version 1 runtime identities',
+            async body(scope: OverkillScope) {
+                const migrated = await readDurationHistoryIndex(
+                    {
+                        async read() {
+                            return JSON.stringify({
+                                entries: [ {
+                                    observations: [ observation(100, now) ],
+                                    work: {
+                                        case: {
+                                            file: 'source/legacy.test.ts',
+                                            params: null,
+                                            suite: [],
+                                            title: 'legacy'
+                                        },
+                                        runtimes: [ { dimensions: {}, name: 'api', variantId: null } ],
+                                        workload: null
+                                    }
+                                } ],
+                                updatedAt: observedAt(now),
+                                version: 1
+                            });
+                        },
+                        async write() {
+                            return undefined;
+                        }
+                    },
+                    process.cwd(),
+                    '.overkill'
+                );
+
+                scope.require.defined(migrated);
+                scope.assert.equal(migrated.version, 2);
+                assertMigratedHistory(scope, migrated);
 
                 return scope.assert.collect();
             }

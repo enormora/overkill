@@ -1,4 +1,4 @@
-import type { RunFilter, RunStringFilterField } from './run-types.ts';
+import type { RunFilter, RunStringFilterField } from './run-request-types.ts';
 import { all, any, contains, equals, glob, not } from './run-selection-filters.ts';
 
 type RunFilterOperator = ':' | '=' | '~';

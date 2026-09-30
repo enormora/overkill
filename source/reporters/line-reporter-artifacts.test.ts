@@ -49,6 +49,7 @@ function suitePathFromTitles(
 function caseOutputArtifact(text: string): RunArtifact {
     return {
         id: {
+            runtimes: [],
             scope: {
                 activeCases: [ passingCaseId ],
                 case: passingCaseId,
@@ -56,7 +57,8 @@ function caseOutputArtifact(text: string): RunArtifact {
                 kind: 'case'
             },
             sequence: 0,
-            subtype: 'log-capture'
+            subtype: 'log-capture',
+            workload: null
         },
         payload: {
             byteLength: Buffer.byteLength(text),
@@ -87,9 +89,11 @@ function truncatedEmptyCaseOutputArtifact(): RunArtifact {
 function runOutputArtifact(text: string): RunArtifact {
     return {
         id: {
+            runtimes: [],
             scope: { kind: 'run' },
             sequence: 0,
-            subtype: 'log-capture'
+            subtype: 'log-capture',
+            workload: null
         },
         payload: {
             byteLength: Buffer.byteLength(text),

@@ -11,7 +11,7 @@ import {
     type RunTimingSpan
 } from '../engine/run-timings.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { problemLines } from './human-reporter-rendering.ts';
+import { contextPrefix, problemLines } from './human-reporter-rendering.ts';
 import { formatTimingOffenderLines } from './run-summary-rendering.ts';
 
 const passingCaseId: CaseId = { file: null, params: null, suite: [], title: 'passes' };
@@ -20,6 +20,7 @@ const failingCaseId: CaseId = { file: 'source/fails.test.ts', params: null, suit
 function caseOutputArtifact(): RunArtifact {
     return {
         id: {
+            runtimes: [],
             scope: {
                 activeCases: [ passingCaseId ],
                 case: passingCaseId,
@@ -27,7 +28,8 @@ function caseOutputArtifact(): RunArtifact {
                 kind: 'case'
             },
             sequence: 0,
-            subtype: 'log-capture'
+            subtype: 'log-capture',
+            workload: null
         },
         payload: {
             byteLength: 13,
@@ -44,6 +46,7 @@ function caseOutputArtifact(): RunArtifact {
 function truncatedCaseOutputArtifact(): RunArtifact {
     return {
         id: {
+            runtimes: [],
             scope: {
                 activeCases: [ passingCaseId ],
                 case: passingCaseId,
@@ -51,7 +54,8 @@ function truncatedCaseOutputArtifact(): RunArtifact {
                 kind: 'case'
             },
             sequence: 1,
-            subtype: 'log-capture'
+            subtype: 'log-capture',
+            workload: null
         },
         payload: {
             byteLength: 0,
@@ -68,9 +72,11 @@ function truncatedCaseOutputArtifact(): RunArtifact {
 function ignoredRunArtifact(): RunArtifact {
     return {
         id: {
+            runtimes: [],
             scope: { kind: 'run' },
             sequence: 0,
-            subtype: 'hedged-conflict'
+            subtype: 'hedged-conflict',
+            workload: null
         },
         payload: {
             authoritative: { outcome: { kind: 'pass' }, verdict: 'pass' },
@@ -225,6 +231,29 @@ export const testNode = createOverkillSuite({
                         '  test: source/fails.test.ts: root > fails',
                         '  phase: teardown'
                     ]
+                );
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'human context prefixes render sorted runtime scenarios',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.equal(
+                    contextPrefix(
+                        [ {
+                            dimensions: { node: '26' },
+                            name: 'api',
+                            scenarios: { database: 'empty', api: 'payments-500' },
+                            variantId: null
+                        } ],
+                        [],
+                        { color: false, wrap: false }
+                    ),
+                    '[api:node=26,scenario.api=payments-500,scenario.database=empty]'
                 );
 
                 return scope.assert.collect();

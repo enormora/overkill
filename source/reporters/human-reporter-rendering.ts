@@ -73,7 +73,7 @@ function formatColoredLabel(value: string, options: HumanReporterFormatOptions):
     return paletteColor(value)(value);
 }
 
-function runtimeLabel(runtime: RuntimeId): string {
+function runtimeBaseLabel(runtime: RuntimeId): string {
     if (runtime.variantId !== null) {
         return `${runtime.name}:${runtime.variantId}`;
     }
@@ -88,6 +88,24 @@ function runtimeLabel(runtime: RuntimeId): string {
         });
 
     return dimensions.length === 0 ? runtime.name : `${runtime.name}:${dimensions.join(',')}`;
+}
+
+function runtimeLabel(runtime: RuntimeId): string {
+    const base = runtimeBaseLabel(runtime);
+    const scenarios = Object
+        .entries(runtime.scenarios)
+        .toSorted(function compareScenario([ left ], [ right ]) {
+            return left.localeCompare(right);
+        })
+        .map(function formatScenario([ key, value ]) {
+            return `scenario.${key}=${value}`;
+        });
+
+    if (scenarios.length === 0) {
+        return base;
+    }
+
+    return `${base}${base.includes(':') ? ',' : ':'}${scenarios.join(',')}`;
 }
 
 function runtimePrefixes(runtimes: readonly RuntimeId[], options: HumanReporterFormatOptions): string {

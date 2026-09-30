@@ -2,7 +2,6 @@ import type { Except } from 'type-fest';
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { Execute } from '../engine/execution.ts';
-import type { Engine } from '../engine/engine.ts';
 import type {
     WorkId as EngineWorkId,
     RuntimeId,
@@ -10,6 +9,7 @@ import type {
 } from '../engine/identity.ts';
 import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import type { RunEngineSelection, RunSelection } from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
@@ -18,86 +18,6 @@ export type WorkId = EngineWorkId;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
 type RunOutputRenderer = NonNullable<RunExecuteOptions['outputRenderer']>;
 type RunReporters = RunExecuteOptions['reporters'];
-
-export type RunStringFilterField = keyof {
-    readonly file: true;
-    readonly owner: true;
-    readonly params: true;
-    readonly suite: true;
-    readonly tag: true;
-    readonly title: true;
-};
-
-type RunAllFilter = {
-    readonly filters: NonEmptyReadonlyArray<RunFilter>;
-    readonly kind: 'all';
-};
-
-type RunAnyFilter = {
-    readonly filters: NonEmptyReadonlyArray<RunFilter>;
-    readonly kind: 'any';
-};
-
-type RunCaseIdFilter = {
-    readonly id: TestPlan['discoveredCases'][number]['id'];
-    readonly kind: 'case-id';
-};
-
-type RunContainsFilter = {
-    readonly field: RunStringFilterField;
-    readonly kind: 'contains';
-    readonly value: string;
-};
-
-type RunEqualsFilter = {
-    readonly field: RunStringFilterField;
-    readonly kind: 'equals';
-    readonly value: string;
-};
-
-type RunGlobFilter = {
-    readonly field: RunStringFilterField;
-    readonly kind: 'glob';
-    readonly pattern: string;
-};
-
-type RunNotFilter = {
-    readonly filter: RunFilter;
-    readonly kind: 'not';
-};
-
-type RunFilterByKind = {
-    readonly all: RunAllFilter;
-    readonly any: RunAnyFilter;
-    readonly 'case-id': RunCaseIdFilter;
-    readonly contains: RunContainsFilter;
-    readonly equals: RunEqualsFilter;
-    readonly glob: RunGlobFilter;
-    readonly not: RunNotFilter;
-};
-
-export type RunFilter = RunFilterByKind[keyof RunFilterByKind];
-
-type RunAllSelection = { readonly kind: 'all'; };
-
-type RunFilterSelection = {
-    readonly filter: RunFilter;
-    readonly kind: 'filter';
-};
-
-export type RunSelection = RunAllSelection | RunFilterSelection;
-
-export type RunEngineSelection = {
-    readonly engine: Engine;
-    readonly kind: 'instance';
-} | {
-    readonly exportKind: 'getter' | 'value';
-    readonly exportName: string;
-    readonly kind: 'module';
-    readonly moduleUrl: string;
-} | {
-    readonly kind: 'default';
-};
 
 export type RunShard = {
     readonly index: number;

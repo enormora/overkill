@@ -100,6 +100,7 @@ Programmatic filters should include:
 - `runtime(name)`: match planned cases that include a public runtime key
 - `runtimeVariant(name, variantId)`: match a matrix variant id
 - `runtimeDimension(name, dimensionName, value)`: match a runtime dimension
+- `runtimeScenario(name, scenarioName, value)`: match a resolved runner-visible scenario binding
 
 The CLI exposes the common cases through repeated `--runtime` flags:
 
@@ -113,6 +114,9 @@ Repeated runtime selectors combine with AND and compose with `--filter`.
 Selectors match public runtime keys, not inner runtime names reused inside a
 matrix. Filtering happens before acquisition, so unselected matrix variants and
 filtered cases do not start resources.
+
+Scenario filters are programmatic. Runtime CLI sugar does not currently encode
+scenario bindings.
 
 ## Exit Codes And `process.exit`
 

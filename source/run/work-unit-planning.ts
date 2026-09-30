@@ -11,7 +11,7 @@ import {
     type RunShardHasher,
     workUnitBelongsToShard
 } from './run-sharding.ts';
-import { orderedRunItems } from './run-selection.ts';
+import { orderedRunItems } from './run-ordering.ts';
 import {
     emptyWorkUnitResourceConstraints,
     type CollectedRunFile,

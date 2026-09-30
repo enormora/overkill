@@ -9,6 +9,7 @@ export {
     not,
     owner,
     params,
+    runtimeScenario,
     suite,
     tag,
     title
@@ -18,6 +19,7 @@ export {
 } from '../../run/run-filter-grammar.ts';
 export type {
     RunFilter,
+    RunRuntimeScenarioFilter,
     RunSelection,
     RunStringFilterField
-} from '../../run/run-types.ts';
+} from '../../run/run-request-types.ts';

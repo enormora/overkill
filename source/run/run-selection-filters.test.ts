@@ -3,7 +3,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { createCaseId } from '../engine/identity.ts';
+import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
 import {
     all,
@@ -19,24 +19,44 @@ import {
     not,
     owner,
     params,
+    runtimeScenario,
     suite,
     tag,
     title
 } from './run-selection-filters.ts';
-import type { RunFilter } from './run-types.ts';
+import type { RunFilter } from './run-request-types.ts';
 
 const candidate = {
     annotations: resolveRootTestAnnotations({
         ownership: [ '@Payments' ],
         tags: [ 'Fast' ]
     }),
-    id: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR')
+    id: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR'),
+    workId: {
+        case: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR'),
+        runtimes: [ {
+            dimensions: {},
+            name: 'api',
+            scenarios: { api: 'payments-500' },
+            variantId: null
+        } ],
+        workload: null
+    }
 };
 
+const anonymousCaseId = createCaseId(null, [], 'Anonymous Case', null);
 const anonymousCandidate = {
     annotations: resolveRootTestAnnotations({}),
-    id: createCaseId(null, [], 'Anonymous Case', null)
+    id: anonymousCaseId,
+    workId: createDefaultWorkId(anonymousCaseId)
 };
+
+function assertRuntimeScenarioMatches(scope: OverkillScope): void {
+    scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'api', 'payments-500'), candidate), true);
+    scope.assert.equal(matchesRunFilter(runtimeScenario('API', 'api', 'payments-500'), candidate), false);
+    scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'api', 'PAYMENTS-500'), candidate), false);
+    scope.assert.equal(matchesRunFilter(runtimeScenario('api', 'missing', 'payments-500'), candidate), false);
+}
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -71,6 +91,12 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(params('EUR'), { field: 'params', kind: 'contains', value: 'EUR' });
                 scope.assert.deepEqual(owner('@payments'), { field: 'owner', kind: 'equals', value: '@payments' });
                 scope.assert.deepEqual(suite('payments'), { field: 'suite', kind: 'contains', value: 'payments' });
+                scope.assert.deepEqual(runtimeScenario('api', 'api', 'payments-500'), {
+                    kind: 'runtime-scenario',
+                    runtime: 'api',
+                    scenario: 'api',
+                    value: 'payments-500'
+                });
 
                 return scope.assert.collect();
             }
@@ -101,6 +127,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(matchesRunFilter(all([ tag('FAST'), owner('@PAYMENTS') ]), candidate), true);
                 scope.assert.equal(matchesRunFilter(any([ tag('slow'), owner('@PAYMENTS') ]), candidate), true);
                 scope.assert.equal(matchesRunFilter(tag('slow'), candidate), false);
+                assertRuntimeScenarioMatches(scope);
                 scope.assert.equal(matchesRunFilter({ kind: 'unknown' } as unknown as RunFilter, candidate), false);
 
                 return scope.assert.collect();
@@ -158,6 +185,9 @@ export const testNode = createOverkillSuite({
                 scope.assert.throws(function createEmptyGlobFilter() {
                     glob('file', ' ');
                 }, { message: 'Run filter glob pattern must not be empty.' });
+                scope.assert.throws(function createEmptyRuntimeScenarioFilter() {
+                    runtimeScenario('api', ' ', 'default');
+                }, { message: 'Runtime scenario filter scenario must not be empty.' });
 
                 return scope.assert.collect();
             }

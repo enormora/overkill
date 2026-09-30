@@ -56,14 +56,17 @@ function assertRuntimeMatrixScenarios(scope: TestScope): void {
         });
     }, { message: 'Runtime matrix "scenario" variant "second" has different scenario slots.' });
 
-    const matrix = defineRuntimeMatrix({
+    const defaultMatrix = defineRuntimeMatrix({
         name: 'scenario',
         variants: {
             first: scenarioRuntime('first', 'first', firstResource),
             second: scenarioRuntime('second', 'second', firstResource)
         }
-    })
-        .scenario({ mode: 'alternate' });
+    });
+    const matrix = defaultMatrix.scenario({ mode: 'alternate' });
+
+    scope.assert.deepEqual(defaultMatrix.variants.first.runtime.id.scenarios, { mode: 'default' });
+    scope.assert.deepEqual(matrix.variants.first.runtime.id.scenarios, { mode: 'alternate' });
 
     scope.assert.equal(
         resolvedRuntimeScenarioOwners(matrix.variants.first.runtime).get('mode')?.value,

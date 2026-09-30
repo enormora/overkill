@@ -84,7 +84,13 @@ export type {
     RunResolutionErrorCode
 } from '../../run/run-errors.ts';
 export type { RunInvocationTimingOptions } from '../../run/run-timing-collection.ts';
-export type { RuntimeDimensions, RuntimeId, WorkId, WorkloadId } from '../../engine/identity.ts';
+export type {
+    RuntimeDimensions,
+    RuntimeId,
+    RuntimeScenarioBindings,
+    WorkId,
+    WorkloadId
+} from '../../engine/identity.ts';
 export type {
     DynamicWorkUnitId,
     PlacementAttemptId,
@@ -111,11 +117,9 @@ export type {
     RunConfig,
     RunDebugRequest,
     RunEngineFacts,
-    RunEngineSelection,
     RunEnvironmentFacts,
     RunExecutionRequest,
     RunFacts,
-    RunFilter,
     RunExecutionFacts,
     RunHostProcess,
     RunHostProcessFacts,
@@ -137,9 +141,7 @@ export type {
     RunRequest,
     RunScheduling,
     RunSeed,
-    RunSelection,
     RunShard,
-    RunStringFilterField,
     RunTestFamily,
     RunTimeoutPolicy,
     TimingCollectionMode,
@@ -162,3 +164,10 @@ export type {
     WorkUnit,
     WorkUnitMode
 } from '../../run/run-types.ts';
+export type { RunEngineSelection } from '../../run/run-request-types.ts';
+export type {
+    RunFilter,
+    RunRuntimeScenarioFilter,
+    RunSelection,
+    RunStringFilterField
+} from '../../run/run-request-types.ts';

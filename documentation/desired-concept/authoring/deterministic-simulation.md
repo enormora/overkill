@@ -150,6 +150,11 @@ states and failures. They also improve artifact identity and replay:
 - witness includes both `seed` and `scenario`
 - manual reproduction can launch the same scenario directly
 
+Each declared slot resolves to its default unless `.scenario({...})` selects a
+different value. Catalog declaration alone does not multiply planned work.
+Resolved defaults and overrides are both part of runtime, artifact, and replay
+identity.
+
 ## External Deterministic Services Are A Real Simulation Pattern
 
 Deterministic simulation should not be limited to in-process fake clocks or

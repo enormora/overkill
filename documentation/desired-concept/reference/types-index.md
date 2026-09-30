@@ -37,6 +37,7 @@ type RuntimeDimensions = Readonly<Record<string, string>>;
 type RuntimeId = {
     readonly name: string; // 'chromium', 'node', 'deterministic-api', ...
     readonly dimensions: RuntimeDimensions;
+    readonly scenarios: Readonly<Record<string, string>>;
     readonly variantId: string | null;
 };
 
@@ -75,8 +76,8 @@ type ArtifactScope =
 
 type ArtifactId = {
     readonly scope: ArtifactScope;
-    readonly runtimes?: readonly RuntimeId[];
-    readonly workload?: WorkloadId;
+    readonly runtimes: readonly RuntimeId[];
+    readonly workload: WorkloadId | null;
     readonly attempt?: AttemptId;
     readonly subtype: ArtifactSubtype;
 };
@@ -979,7 +980,15 @@ type RunFilter =
     | { readonly id: CaseId; readonly kind: 'case-id'; }
     | { readonly field: RunStringFilterField; readonly kind: 'equals'; readonly value: string; }
     | { readonly field: RunStringFilterField; readonly kind: 'contains'; readonly value: string; }
-    | { readonly field: RunStringFilterField; readonly kind: 'glob'; readonly pattern: string; };
+    | { readonly field: RunStringFilterField; readonly kind: 'glob'; readonly pattern: string; }
+    | {
+        readonly kind: 'runtime-scenario';
+        readonly runtime: string;
+        readonly scenario: string;
+        readonly value: string;
+    };
+
+declare function runtimeScenario(runtime: string, scenario: string, value: string): RunFilter;
 
 type RunSelection =
     | { readonly kind: 'all'; }

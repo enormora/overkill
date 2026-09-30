@@ -22,6 +22,7 @@ function workUnit(key: string, file: string | null, runtimeName: string): WorkUn
     const runtime = {
         dimensions: {},
         name: runtimeName,
+        scenarios: {},
         variantId: null
     };
 
