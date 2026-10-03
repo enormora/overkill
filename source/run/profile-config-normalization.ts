@@ -195,13 +195,9 @@ export function normalizeProfileFiles(files: RunProjectProfileFiles | undefined)
 }
 
 export function normalizeRequiredProfileFiles(files: RunProjectProfileFiles): RunProfileFiles {
-    const normalizedFiles = normalizeProfileFiles(files);
-
-    if (normalizedFiles === null) {
-        throw new RunConfigError('Integration profiles require files.');
-    }
-
-    return normalizedFiles;
+    return hasProfileFileSets(files)
+        ? normalizeProfileFileSets(files)
+        : normalizeProfileFilePatterns(files, null);
 }
 
 export function assertValidProfileName(profileName: string): void {
