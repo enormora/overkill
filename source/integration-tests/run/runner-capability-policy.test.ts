@@ -10,6 +10,7 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
 import type {
     RunCommand,
     RunConfig,
@@ -95,6 +96,7 @@ function createRunConfig(
         }),
         profiles: {
             microtest: {
+                coverage: defaultCoveragePolicy,
                 execution: { maxConcurrency: 5, processModel, scheduling },
                 files: null,
                 reporters: null,

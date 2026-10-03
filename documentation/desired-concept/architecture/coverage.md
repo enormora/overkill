@@ -40,9 +40,9 @@ Why a first-class concept anyway:
 
 ## Settled Decisions
 
-- Coverage is restricted to microtest profiles. Integration, property,
-  type-test, and benchmark profiles reject coverage requests and coverage
-  configuration.
+- Coverage is restricted to microtest profiles. Other profile configuration
+  types do not expose coverage policy. Coverage requests for non-microtest
+  profiles fail before collection.
 - Coverage is aggregate run data. It follows the selected microtest profile's
   process model, worker count, concurrency, and scheduling instead of changing
   execution semantics to obtain per-case attribution.
@@ -80,15 +80,15 @@ The reporting integration must handle two jobs that V8 does not:
    and parser support needed for this classification; Overkill should not
    implement a coverage-only parser.
 2. **Format emission.** The backend converts raw V8 data into the configured
-   V8, LCOV, JSON, HTML, and text outputs, preserves source-map accuracy, and
-   evaluates thresholds.
+   V8, LCOV, JSON, HTML, and text outputs and preserves source-map accuracy.
+   The runner evaluates configured thresholds from the resulting summary.
 
 The integration aggregates raw coverage from the complete run process tree.
 It supports every valid microtest process model. Today those models are
 in-process and supervised-process, with serial or concurrent scheduling.
 
 `monocart-coverage-reports` is the reporting backend. It consumes raw V8 data,
-merges multiple process outputs, emits V8 and LCOV reports, and provides the
+merges multiple process outputs, emits the configured reports, and provides the
 all-files transform hook needed to classify TypeScript source. `c8` remains a
 compatibility reference, not a runtime dependency. Include and exclude patterns
 for all-files reporting live in `overkill.config.ts` as project policy, not
@@ -110,9 +110,18 @@ export const config = defineConfig({
                 exclude: [ 'source/integration-tests/**/*.test.ts' ]
             },
             coverage: {
-                formats: [ 'text', 'lcov' ],
-                include: [ 'source/**/*.ts' ],
-                exclude: [ 'source/**/*.type-test.ts' ]
+                outputs: [ 'text', 'lcov' ],
+                sources: {
+                    mode: 'all',
+                    include: [ 'source/**/*.ts' ],
+                    exclude: [ 'source/**/*.type-test.ts' ]
+                },
+                thresholds: {
+                    branches: 80,
+                    functions: 90,
+                    lines: 90
+                },
+                outputDir: 'coverage'
             },
             execution: {
                 processModel: 'in-process',
@@ -125,13 +134,16 @@ export const config = defineConfig({
 
 Coverage policy fields:
 
-- `coverage.formats`: which report formats to emit (`v8`, `lcov`, `json`,
-  `html`, `text`); default: `['lcov', 'v8']`
-- `coverage.include` and `coverage.exclude`: glob patterns driving all-files
-  reporting
+- `coverage.outputs`: report formats to emit (`v8`, `lcov`, `json`, `html`,
+  `text`); default: `['v8', 'lcov']`. An empty array keeps raw data and emits no
+  rendered reports.
+- `coverage.sources`: source selection. `{ mode: 'loaded', exclude? }` reports
+  loaded runtime files, while `{ mode: 'all', include, exclude? }` also reports
+  matching unloaded runtime files. The default is `{ mode: 'loaded' }`.
 - `coverage.thresholds`: pass/fail thresholds for lines, functions, and
-  branches
-- `coverage.outputDir`: override for `.overkill/runs/<run-id>/coverage/`
+  branches, each from 0 through 100. Missing thresholds do not fail a run.
+- `coverage.outputDir`: config-file-relative override for
+  `.overkill/runs/<run-id>/coverage/`
 
 Omitting `coverage` uses the built-in coverage policy defaults. Presence of
 the field never enables collection. The same profile supports ordinary and
@@ -152,8 +164,8 @@ profile, but before file discovery or user-module imports.
 
 ### Other Behaviour
 
-- coverage scope uses the selected profile's `coverage.include` and
-  `coverage.exclude` source set. A filtered or narrowed run does not claim
+- coverage scope uses the selected profile's `coverage.sources` policy. A
+  filtered or narrowed run does not claim
   suite-wide coverage; the run record (see
   [Test Data And Selection § Selection](./test-data-and-selection.md#selection))
   records which cases were executed so the aggregate report remains
@@ -265,6 +277,6 @@ older records.
 
 ## Reporter Interaction
 
-The default reporter does not render coverage inline; it points at the
-report directory. Dedicated coverage reporters, if introduced, consume the
-structured coverage data alongside the rest of the run result.
+The line, brief, and dot reporters print line, function, and branch percentages
+plus the report directory. They consume the structured coverage artifact rather
+than parsing output files.

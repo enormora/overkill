@@ -146,6 +146,7 @@ async function startSupervisedCoverageSession(
     const coverage = await import('./run-coverage.ts');
 
     return await coverage.startCoverageSession({
+        coverage: coverage.microtestCoveragePolicy(input.profile),
         processModel: 'supervised-process',
         projectRoot: input.projectRoot,
         runtimeStateDir: input.config.runtimeStateDir,

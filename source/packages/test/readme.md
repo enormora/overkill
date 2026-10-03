@@ -540,7 +540,9 @@ resource usage measurement for that run.
 selected profile must use `worker-pool` execution.
 
 `--coverage` applies to `run` only. It requests coverage for the selected
-microtest profile and is invalid for other profile families.
+microtest profile and is invalid for other profile families. Configure report
+outputs, source scope, thresholds, and output location on that microtest
+profile's `coverage` field.
 
 External coverage wrappers cannot instrument restricted supervised children.
 Use `overkill run --coverage` when the selected profile uses

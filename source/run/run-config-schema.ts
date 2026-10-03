@@ -1,6 +1,13 @@
 import { z } from 'zod/v4';
 import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
+import {
+    coveragePolicySchema,
+    type RunProjectCoverageOutput as CoverageOutput,
+    type RunProjectCoveragePolicy as CoveragePolicy,
+    type RunProjectCoverageSources as CoverageSources,
+    type RunProjectCoverageThresholds as CoverageThresholds
+} from './coverage-config-schema.ts';
 
 const reporterSchema = z.custom<DefinedReporter>(isReporter, 'must be created with defineReporter(...)');
 
@@ -222,6 +229,7 @@ export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
 
 export const microtestProfileSchema = z
     .strictObject({
+        coverage: z.optional(coveragePolicySchema),
         execution: z.optional(microtestExecutionSchema),
         files: z.optional(profileFilesSchema),
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
@@ -262,6 +270,10 @@ export const projectConfigSchema = z
     .readonly();
 
 export type RunProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
+export type RunProjectCoverageOutput = CoverageOutput;
+export type RunProjectCoveragePolicy = CoveragePolicy;
+export type RunProjectCoverageSources = CoverageSources;
+export type RunProjectCoverageThresholds = CoverageThresholds;
 export type RunProjectProfileFiles = z.infer<typeof profileFilesSchema>;
 export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
 export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;

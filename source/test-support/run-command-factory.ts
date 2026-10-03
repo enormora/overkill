@@ -3,6 +3,7 @@ import type { DefinedReporter } from '../engine/reporter.ts';
 import type {
     RunCommand,
     RunConfig,
+    RunCoveragePolicy,
     RunExecutionFacts,
     RunHostProcess,
     RunIntegrationExecution,
@@ -37,6 +38,7 @@ type ResourceUsageOverrides = {
 };
 
 type MicrotestProfileOverrides = {
+    readonly coverage?: Partial<RunCoveragePolicy>;
     readonly execution?: Partial<RunMicrotestExecution>;
     readonly files?: RunProfileFiles | null;
     readonly reporters?: readonly DefinedReporter[] | null;
@@ -106,6 +108,19 @@ function defaultMicrotestExecution(overrides: Partial<RunMicrotestExecution> = {
         maxConcurrency: overrides.maxConcurrency ?? defaultMaxConcurrency,
         processModel: overrides.processModel ?? 'supervised-process',
         scheduling: overrides.scheduling ?? 'concurrent'
+    };
+}
+
+function defaultCoveragePolicy(overrides: Partial<RunCoveragePolicy> = {}): RunCoveragePolicy {
+    return {
+        outputDirectory: overrides.outputDirectory ?? null,
+        outputs: overrides.outputs ?? [ 'v8', 'lcov' ],
+        sources: overrides.sources ?? { exclude: [], mode: 'loaded' },
+        thresholds: overrides.thresholds ?? {
+            branches: null,
+            functions: null,
+            lines: null
+        }
     };
 }
 
@@ -260,6 +275,7 @@ export function defaultMicrotestProfile(
     overrides: MicrotestProfileOverrides = {}
 ): RunMicrotestProfileConfig {
     return {
+        coverage: defaultCoveragePolicy(overrides.coverage),
         execution: defaultMicrotestExecution(overrides.execution),
         files: overrides.files ?? null,
         reporters: overrides.reporters ?? null,

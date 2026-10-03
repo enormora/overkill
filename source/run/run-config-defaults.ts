@@ -1,4 +1,5 @@
 import type {
+    RunCoveragePolicy,
     RunMaxConcurrency,
     RunMicrotestExecution,
     RunResourceUsagePolicy,
@@ -48,6 +49,20 @@ export const defaultResourceUsagePolicy: RunResourceUsagePolicy = {
 
 export const defaultTimingProfilePolicy: TimingProfilePolicy = {
     collection: 'summary'
+};
+
+export const defaultCoveragePolicy: RunCoveragePolicy = {
+    outputDirectory: null,
+    outputs: [ 'v8', 'lcov' ],
+    sources: {
+        exclude: [],
+        mode: 'loaded'
+    },
+    thresholds: {
+        branches: null,
+        functions: null,
+        lines: null
+    }
 };
 
 export const defaultTimeoutPolicy: RunTimeoutPolicy = {

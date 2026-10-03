@@ -5,12 +5,15 @@ import {
     createSuite,
     createTestCase,
     type CoverageArtifact,
+    type CoverageRunnerError,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { generateCoverageReports } from '../../run/coverage-reporting.ts';
+import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type {
+    RunCoveragePolicy,
     RunConfig,
     RunMicrotestProcessModel,
     RunRequest
@@ -21,12 +24,17 @@ import { loadCoverageFixtures } from './fixtures/coverage-files.ts';
 const coverageFixturePath = 'source/integration-tests/run/fixtures/coverage.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 
-function coverageConfig(processModel: RunMicrotestProcessModel, hardTimeoutMilliseconds: number): RunConfig {
+function coverageConfig(
+    processModel: RunMicrotestProcessModel,
+    hardTimeoutMilliseconds: number,
+    coverage: RunCoveragePolicy
+): RunConfig {
     return {
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: createPlainOutputRenderer(),
         profiles: {
             microtest: {
+                coverage,
                 execution: { maxConcurrency: 5, processModel, scheduling: 'concurrent' },
                 files: null,
                 reporters: null,
@@ -121,7 +129,7 @@ async function assertCoverageRun(
     processModel: RunMicrotestProcessModel
 ): Promise<CoverageArtifact> {
     const result = await orchestrator.run({
-        config: coverageConfig(processModel, 10_000),
+        config: coverageConfig(processModel, 10_000, defaultCoveragePolicy),
         cwd: process.cwd(),
         engine: { kind: 'default' },
         request: coverageRequest()
@@ -158,7 +166,7 @@ async function latestCrashRawDirectory(): Promise<string> {
 async function assertCrashedCoverageRun(scope: TestScope): Promise<void> {
     const result = await orchestrator.run({
         config: {
-            ...coverageConfig('supervised-process', 100),
+            ...coverageConfig('supervised-process', 100, defaultCoveragePolicy),
             runtimeStateDir: 'target/coverage-crash-integration'
         },
         cwd: process.cwd(),
@@ -179,12 +187,48 @@ async function assertCrashedCoverageRun(scope: TestScope): Promise<void> {
     scope.assert.equal(rawDirectoryStat.isDirectory(), true);
 }
 
+async function assertCoverageThresholdFailure(scope: TestScope): Promise<void> {
+    const result = await orchestrator.run({
+        config: coverageConfig('in-process', 10_000, {
+            ...defaultCoveragePolicy,
+            thresholds: { branches: null, functions: 100, lines: null }
+        }),
+        cwd: process.cwd(),
+        engine: { kind: 'default' },
+        request: coverageRequest()
+    });
+    const coverageError = result.runnerErrors.find(function isCoverageError(error): error is CoverageRunnerError {
+        return error.subtype === 'coverage';
+    });
+
+    scope.assert.equal(result.status, 'failed');
+    scope.require.defined(coverageError);
+    scope.assert.equal(coverageError.cause.kind, 'coverage-threshold');
+    scope.assert.equal(
+        result.artifacts.some(function isCoverageArtifact(artifact) {
+            return artifact.payload.kind === 'coverage';
+        }),
+        true
+    );
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/run/runner-coverage.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'coverage threshold misses fail the run and retain the artifact',
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                await assertCoverageThresholdFailure(scope);
+
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'in-process microtests emit native coverage artifacts',
@@ -229,13 +273,14 @@ export const testNode = createSuite({
 
                 await generateCoverageReports({
                     coverageDirectory,
+                    outputs: [ 'lcov' ],
                     projectRoot: process.cwd(),
                     rawDataDirectory: path.resolve(artifact.payload.rawDataDirectory),
                     sourceScope: {
                         exclude: [ '**/*.test.ts' ],
                         excludedFiles: new Set([ path.resolve(coverageFixturePath) ]),
                         include: [ 'source/integration-tests/run/fixtures/coverage-*.ts' ],
-                        kind: 'all'
+                        mode: 'all'
                     }
                 });
 

@@ -1,8 +1,12 @@
-import { mkdir, realpath, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { Session, type Profiler } from 'node:inspector';
 import path from 'node:path';
-import { ulid } from 'ulid';
-import type { CoverageArtifact } from '../engine/coverage-artifact.ts';
+import type {
+    CoverageArtifact,
+    CoverageMetric,
+    CoverageRunnerErrorCause,
+    CoverageThresholdFailure
+} from '../engine/coverage-artifact.ts';
 import type {
     RunArtifact,
     RunnerError,
@@ -13,8 +17,13 @@ import {
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
 import type { SupervisedChildCoverage } from './supervised-child-process.ts';
-import { generateCoverageReports, type CoverageSourceScope } from './coverage-reporting.ts';
-import { isPathInside } from './path-containment.ts';
+import {
+    generateCoverageReports,
+    type CoverageReportResult,
+    type CoverageSourceScope
+} from './coverage-reporting.ts';
+import { createCoveragePaths, type CoveragePaths } from './coverage-paths.ts';
+import type { RunCoveragePolicy } from './run-types.ts';
 
 export type CoverageSession = {
     readonly childProcess: SupervisedChildCoverage | null;
@@ -24,17 +33,12 @@ export type CoverageSession = {
 };
 
 export type CoverageSessionRequest = {
+    readonly coverage: RunCoveragePolicy;
     readonly processModel: 'in-process' | 'supervised-process';
     readonly projectRoot: string;
     readonly runtimeStateDir: string;
     readonly testFiles: readonly string[];
     readonly timing: RunTimingMeasurement | null;
-};
-
-type CoveragePaths = {
-    readonly coverageDirectory: string;
-    readonly projectRoot: string;
-    readonly rawDataDirectory: string;
 };
 
 type AsyncOutcome<Value> = {
@@ -61,6 +65,9 @@ type CoverageSessionContext = {
     readonly previousCoverageEnvironment: string | undefined;
     readonly request: CoverageSessionRequest;
 };
+
+const percentageFactor = 100;
+const percentagePrecision = 2;
 
 async function attempt<Value>(work: () => Promise<Value>): Promise<AsyncOutcome<Value>> {
     try {
@@ -110,50 +117,6 @@ async function takePreciseCoverage(inspector: Session): Promise<Profiler.TakePre
     });
 }
 
-async function nearestExistingPath(candidate: string): Promise<string> {
-    try {
-        return await realpath(candidate);
-    } catch (error: unknown) {
-        const parentPath = path.dirname(candidate);
-
-        if (parentPath === candidate) {
-            throw error;
-        }
-
-        return await nearestExistingPath(parentPath);
-    }
-}
-
-async function validateCreatedCoverageDirectory(projectRoot: string, coverageDirectory: string): Promise<void> {
-    if (!isPathInside(projectRoot, await realpath(coverageDirectory))) {
-        throw new Error('Coverage output directory resolves outside the project root.');
-    }
-}
-
-async function createCoveragePaths(request: CoverageSessionRequest): Promise<CoveragePaths> {
-    const projectRoot = await realpath(request.projectRoot);
-    const runtimeStateRoot = path.isAbsolute(request.runtimeStateDir)
-        ? path.resolve(request.runtimeStateDir)
-        : path.resolve(projectRoot, request.runtimeStateDir);
-    const coverageDirectory = path.join(runtimeStateRoot, 'runs', ulid(), 'coverage');
-    const existingAncestor = await nearestExistingPath(coverageDirectory);
-
-    if (
-        [ coverageDirectory, existingAncestor ].some(function escapesProject(candidate) {
-            return !isPathInside(projectRoot, candidate);
-        })
-    ) {
-        throw new Error('Coverage output directory must remain inside the project root.');
-    }
-
-    const rawDataDirectory = path.join(coverageDirectory, 'raw');
-
-    await mkdir(rawDataDirectory, { recursive: true });
-    await validateCreatedCoverageDirectory(projectRoot, coverageDirectory);
-
-    return { coverageDirectory, projectRoot, rawDataDirectory };
-}
-
 function projectRelativePath(projectRoot: string, filePath: string): string {
     return path.relative(projectRoot, filePath).split(path.sep).join('/');
 }
@@ -167,7 +130,7 @@ function nextRunArtifactSequence(artifacts: readonly RunArtifact[]): number {
 function coverageArtifact(
     paths: CoveragePaths,
     artifacts: readonly RunArtifact[],
-    summary: CoverageArtifact['payload']['summary']
+    report: CoverageReportResult
 ): CoverageArtifact {
     return {
         id: {
@@ -182,26 +145,26 @@ function coverageArtifact(
             directory: projectRelativePath(paths.projectRoot, paths.coverageDirectory),
             kind: 'coverage',
             rawDataDirectory: projectRelativePath(paths.projectRoot, paths.rawDataDirectory),
-            reports: [
-                {
-                    format: 'lcov',
-                    path: projectRelativePath(paths.projectRoot, path.join(paths.coverageDirectory, 'lcov.info'))
-                },
-                {
-                    format: 'v8',
-                    path: projectRelativePath(paths.projectRoot, path.join(paths.coverageDirectory, 'v8', 'index.html'))
-                }
-            ],
-            summary
+            reports: report.reports.map(function relativeReportPath(file) {
+                return {
+                    format: file.format,
+                    path: projectRelativePath(paths.projectRoot, file.path)
+                };
+            }),
+            summary: report.summary
         },
         source: 'v8-native'
     };
 }
 
-function coverageRunnerError(error: unknown, paths: CoveragePaths, phase: string): RunnerError {
+function coverageRunnerError(
+    error: unknown,
+    paths: CoveragePaths,
+    phase: Extract<CoverageRunnerErrorCause, { readonly kind: 'coverage-operation'; }>['phase']
+): RunnerError {
     return {
         attributedTo: null,
-        cause: error,
+        cause: { error, kind: 'coverage-operation', phase },
         diagnostics: [
             { label: 'Coverage phase', value: phase },
             {
@@ -210,7 +173,7 @@ function coverageRunnerError(error: unknown, paths: CoveragePaths, phase: string
             }
         ],
         message: error instanceof Error ? `Coverage failed: ${error.message}` : 'Coverage failed.',
-        subtype: 'runtime-state'
+        subtype: 'coverage'
     };
 }
 
@@ -222,13 +185,95 @@ function resultWithCoverageError(result: RunResult, error: RunnerError): RunResu
     };
 }
 
-function loadedSourceScope(testFiles: readonly string[]): CoverageSourceScope {
+function coverageSourceScope(
+    policy: RunCoveragePolicy,
+    testFiles: readonly string[]
+): CoverageSourceScope {
+    const excludedFiles = new Set(testFiles.map(function resolveTestFile(filePath) {
+        return path.resolve(filePath);
+    }));
+
+    return policy.sources.mode === 'loaded'
+        ? {
+            exclude: Array.from(policy.sources.exclude),
+            excludedFiles,
+            mode: 'loaded'
+        }
+        : {
+            exclude: Array.from(policy.sources.exclude),
+            excludedFiles,
+            include: [ policy.sources.include[0], ...policy.sources.include.slice(1) ],
+            mode: 'all'
+        };
+}
+
+function coveragePercentage(metric: CoverageMetric): number {
+    return metric.total === 0 ? percentageFactor : metric.covered / metric.total * percentageFactor;
+}
+
+function coveragePercentageText(percentage: number): string {
+    return String(Number(percentage.toFixed(percentagePrecision)));
+}
+
+function thresholdFailures(
+    summary: CoverageArtifact['payload']['summary'],
+    policy: RunCoveragePolicy
+): readonly CoverageThresholdFailure[] {
+    const metrics = [ 'lines', 'functions', 'branches' ] as const;
+
+    return metrics.flatMap(function failedThreshold(metric) {
+        const requiredPercentage = policy.thresholds[metric];
+
+        if (requiredPercentage === null) {
+            return [];
+        }
+
+        const actualPercentage = coveragePercentage(summary[metric]);
+
+        return actualPercentage < requiredPercentage
+            ? [ { actualPercentage, metric, requiredPercentage } ]
+            : [];
+    });
+}
+
+function coverageThresholdError(failures: readonly CoverageThresholdFailure[]): RunnerError | null {
+    const [ firstFailure, ...remainingFailures ] = failures;
+
+    if (firstFailure === undefined) {
+        return null;
+    }
+
+    const allFailures = [ firstFailure, ...remainingFailures ] as const;
+
     return {
-        excludedFiles: new Set(testFiles.map(function resolveTestFile(filePath) {
-            return path.resolve(filePath);
-        })),
-        kind: 'loaded'
+        attributedTo: null,
+        cause: { failures: allFailures, kind: 'coverage-threshold' },
+        diagnostics: allFailures.map(function thresholdDiagnostic(failure) {
+            return {
+                label: `Coverage ${failure.metric}`,
+                value: `${coveragePercentageText(failure.actualPercentage)}% is below ${failure.requiredPercentage}%`
+            };
+        }),
+        message: 'Coverage thresholds were not met.',
+        subtype: 'coverage'
     };
+}
+
+function resultWithCoverageArtifact(
+    result: RunResult,
+    artifact: CoverageArtifact,
+    policy: RunCoveragePolicy
+): RunResult {
+    const thresholdError = coverageThresholdError(thresholdFailures(artifact.payload.summary, policy));
+
+    return thresholdError === null
+        ? { ...result, artifacts: [ ...result.artifacts, artifact ] }
+        : {
+            ...result,
+            artifacts: [ ...result.artifacts, artifact ],
+            runnerErrors: [ ...result.runnerErrors, thresholdError ],
+            status: 'failed'
+        };
 }
 
 async function measureAsync<Value>(
@@ -373,32 +418,28 @@ async function disposeCoverage(context: CoverageSessionContext): Promise<void> {
     }
 }
 
-async function completedCoverageResult(
-    context: CoverageSessionContext,
-    result: RunResult,
-    executionCompleted: boolean
-): Promise<RunResult> {
+async function completeCoverageCollection(context: CoverageSessionContext): Promise<void> {
     await stopInspectorCoverage(context);
     context.lifecycle.markDisposed();
     restoreCoverageEnvironment(context);
+}
 
-    if (!executionCompleted) {
-        return result;
-    }
-
-    const summary = await measureAsync(context.request.timing, 'coverage.report', async function reportCoverage() {
+async function completedCoverageResult(
+    context: CoverageSessionContext,
+    result: RunResult
+): Promise<RunResult> {
+    const report = await measureAsync(context.request.timing, 'coverage.report', async function reportCoverage() {
         return await generateCoverageReports({
             coverageDirectory: context.paths.coverageDirectory,
+            outputs: context.request.coverage.outputs,
             projectRoot: context.paths.projectRoot,
             rawDataDirectory: context.paths.rawDataDirectory,
-            sourceScope: loadedSourceScope(context.request.testFiles)
+            sourceScope: coverageSourceScope(context.request.coverage, context.request.testFiles)
         });
     });
+    const artifact = coverageArtifact(context.paths, result.artifacts, report);
 
-    return {
-        ...result,
-        artifacts: [ ...result.artifacts, coverageArtifact(context.paths, result.artifacts, summary) ]
-    };
+    return resultWithCoverageArtifact(result, artifact, context.request.coverage);
 }
 
 async function finalizeCoverage(
@@ -406,23 +447,32 @@ async function finalizeCoverage(
     result: RunResult,
     executionCompleted: boolean
 ): Promise<RunResult> {
-    const outcome = await attempt(async function completeCoverage() {
-        return await completedCoverageResult(context, result, executionCompleted);
+    const collection = await attempt(async function collectCoverage() {
+        await completeCoverageCollection(context);
     });
 
-    if (outcome.kind === 'success') {
-        return outcome.value;
+    if (collection.kind === 'failure') {
+        const disposal = await attempt(async function disposeFailedCoverage() {
+            await disposeCoverage(context);
+        });
+        const error = disposal.kind === 'failure'
+            ? coverageRunnerError(disposal.error, context.paths, 'dispose')
+            : coverageRunnerError(collection.error, context.paths, 'collect');
+
+        return resultWithCoverageError(result, error);
     }
 
-    const disposal = await attempt(async function disposeFailedCoverage() {
-        await disposeCoverage(context);
+    if (!executionCompleted) {
+        return result;
+    }
+
+    const report = await attempt(async function reportCoverage() {
+        return await completedCoverageResult(context, result);
     });
 
-    const error = disposal.kind === 'failure'
-        ? coverageRunnerError(disposal.error, context.paths, 'dispose')
-        : coverageRunnerError(outcome.error, context.paths, 'finalize');
-
-    return resultWithCoverageError(result, error);
+    return report.kind === 'success'
+        ? report.value
+        : resultWithCoverageError(result, coverageRunnerError(report.error, context.paths, 'report'));
 }
 
 export async function createCoverageSession(request: CoverageSessionRequest): Promise<CoverageSession> {

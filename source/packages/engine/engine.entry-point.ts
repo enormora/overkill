@@ -107,7 +107,9 @@ export type {
     CoverageArtifact,
     CoverageArtifactPayload,
     CoverageMetric,
-    CoverageReportFile
+    CoverageReportFile,
+    CoverageRunnerErrorCause,
+    CoverageThresholdFailure
 } from '../../engine/coverage-artifact.ts';
 export type {
     TestPlanFromTestFilesFactory,
@@ -266,6 +268,7 @@ export type {
     CaseRunnerErrorOptions,
     CapturedOutputArtifact,
     CapturedOutputArtifactPayload,
+    CoverageRunnerError,
     FailOutcome,
     HedgedConflictArtifact,
     HedgedConflictArtifactPayload,

@@ -1,10 +1,25 @@
 import type { RunFacts } from '../engine/reporter.ts';
+import type { CoverageMetric } from '../engine/coverage-artifact.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 
 const microsecondsPerMillisecond = 1000;
 const slowTimingThresholdMicroseconds = 500_000;
 const slowTimingLimit = 5;
+const percentageFactor = 100;
+const percentagePrecision = 2;
+
+function coveragePercentage(metric: CoverageMetric): number {
+    return metric.total === 0 ? percentageFactor : metric.covered / metric.total * percentageFactor;
+}
+
+function coveragePercentageText(metric: CoverageMetric): string {
+    return String(Number(coveragePercentage(metric).toFixed(percentagePrecision)));
+}
+
+function coverageMetricText(name: string, metric: CoverageMetric): string {
+    return `${name} ${coveragePercentageText(metric)}% (${metric.covered}/${metric.total})`;
+}
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null;
@@ -91,6 +106,23 @@ export function formatRunFactSummary(facts: RunFacts): string | null {
     }
 
     return `order=${order} seed=${seed}`;
+}
+
+export function formatCoverageSummaryLines(result: RunResult): readonly string[] {
+    const coverage = result.artifacts.find(function coverageArtifact(artifact) {
+        return artifact.payload.kind === 'coverage';
+    });
+
+    if (coverage?.payload.kind !== 'coverage') {
+        return [];
+    }
+
+    return [
+        `Coverage: ${coverageMetricText('lines', coverage.payload.summary.lines)}, ${
+            coverageMetricText('functions', coverage.payload.summary.functions)
+        }, ${coverageMetricText('branches', coverage.payload.summary.branches)}`,
+        `Coverage output: ${coverage.payload.directory}`
+    ];
 }
 
 export function formatTimingOffenderLines(result: RunResult): readonly string[] {

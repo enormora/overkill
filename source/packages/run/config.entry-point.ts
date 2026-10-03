@@ -22,14 +22,18 @@ export const loadRunConfig = createRunConfigLoader({
 });
 
 export {
-    defineConfig,
-    RunConfigError
+    defineConfig
 } from '../../run/run-config.ts';
+export { RunConfigError } from '../../run/run-errors.ts';
 export type {
     LoadedRunConfig,
     RunConfigLoader,
     RunConfigLoaderDependencies,
     RunConfigLoadRequest,
+    RunProjectCoverageOutput,
+    RunProjectCoveragePolicy,
+    RunProjectCoverageSources,
+    RunProjectCoverageThresholds,
     RunProjectConfig,
     RunProjectIntegrationExecution,
     RunProjectIntegrationProfileConfig,

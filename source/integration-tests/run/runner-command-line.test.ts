@@ -15,6 +15,7 @@ import {
 } from '../../run/command-line-runner.ts';
 import type { LoadedRunConfig } from '../../run/run-config.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
 import type {
     RunConfig,
     RunMicrotestProcessModel,
@@ -44,6 +45,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
 
 function createDefaultMicrotestProfile(): RunMicrotestProfileConfig {
     return {
+        coverage: defaultCoveragePolicy,
         execution: {
             maxConcurrency: 5,
             processModel: 'supervised-process',

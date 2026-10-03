@@ -1,9 +1,9 @@
 import { relative, resolve } from 'node:path';
-import {
-    RunConfigError,
-    type LoadedRunConfig,
-    type RunConfigLoader
+import type {
+    LoadedRunConfig,
+    RunConfigLoader
 } from './run-config.ts';
+import { RunConfigError } from './run-errors.ts';
 import type {
     RunProfileConfig,
     RunProfileFileSet,

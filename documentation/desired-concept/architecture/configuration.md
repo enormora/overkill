@@ -58,7 +58,7 @@ Configuration should mainly cover orchestration and package wiring:
 - reporter selection
 - baseline policy (paths, write directory, explicit update behavior,
   no environment-based write gate)
-- coverage policy (formats, thresholds, include/exclude, output paths)
+- microtest coverage policy (outputs, source scope, thresholds, output path)
 - resource usage policy and resource-budget thresholds (Node-first JavaScript
   engine heap, resident set, resident-set growth, and active-resource limits by
   profile)
@@ -159,7 +159,14 @@ const config = defineConfig({
                 include: [ 'source/**/*.test.ts' ]
             },
             coverage: {
-                formats: [ 'text', 'lcov' ]
+                outputs: [ 'text', 'lcov' ],
+                sources: {
+                    mode: 'all',
+                    include: [ 'source/**/*.ts' ],
+                    exclude: [ 'source/**/*.test.ts' ]
+                },
+                thresholds: { lines: 90 },
+                outputDir: 'coverage'
             },
             resourceUsage: {
                 measure: true,
@@ -225,6 +232,11 @@ Important ownership split:
 - programmatic APIs require an explicit `RunConfig` value; loading a file is a
   separate `loadRunConfig(...)` call
 
+Coverage policy is available only on `testFamily: 'microtest'` profiles. The
+configuration type rejects it on other profile families. `outputs` defaults to
+`['v8', 'lcov']`, `sources` defaults to loaded runtime files, thresholds default
+to disabled, and `outputDir` defaults to the per-run runtime-state directory.
+
 So, for example:
 
 - `--profile <name>` chooses which runner profile to use for this run
@@ -245,7 +257,7 @@ So, for example:
   policy; per-run overrides are allowed for intentionally heavy runs and must
   be visible in failure messages
 - microtest `coverage` policy lives on the selected profile because source
-  scope, formats, thresholds, and output are persistent project policy;
+  scope, outputs, thresholds, and output are persistent project policy;
   presence of that policy does not activate coverage
 
 Timing policy follows the same split. `profiles.<name>.timings.collection`

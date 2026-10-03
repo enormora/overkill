@@ -14,11 +14,11 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import {
-    RunConfigError,
-    type LoadedRunConfig,
-    type RunConfigLoader
+import type {
+    LoadedRunConfig,
+    RunConfigLoader
 } from './run-config.ts';
+import { RunConfigError } from './run-errors.ts';
 
 const configFileName = 'overkill.config.js';
 

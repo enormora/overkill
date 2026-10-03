@@ -14,6 +14,7 @@ import type {
 } from '../engine/run-result.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import {
+    formatCoverageSummaryLines,
     formatRunFactSummary,
     formatTimingOffenderLines,
     formatTimingSummary
@@ -216,16 +217,6 @@ function logSummary(terminal: TerminalLineLogger, result: RunResult): void {
     );
 }
 
-function logCoverageDirectory(terminal: TerminalLineLogger, result: RunResult): void {
-    const coverage = result.artifacts.find(function coverageArtifact(artifact) {
-        return artifact.payload.kind === 'coverage';
-    });
-
-    if (coverage?.payload.kind === 'coverage') {
-        terminal.line(infoSymbol, `Coverage: ${coverage.payload.directory}`);
-    }
-}
-
 function logOrphans(
     terminal: TerminalLineLogger,
     orphans: readonly OrphanedNode[],
@@ -305,7 +296,9 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
                     wrappedTerminal.line(line);
                 }
                 logSummary(wrappedTerminal, finalResult);
-                logCoverageDirectory(wrappedTerminal, finalResult);
+                for (const line of formatCoverageSummaryLines(finalResult)) {
+                    wrappedTerminal.line(infoSymbol, line);
+                }
                 for (const line of formatTimingOffenderLines(finalResult)) {
                     wrappedTerminal.line(line);
                 }

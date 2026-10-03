@@ -7,8 +7,23 @@ export type CoverageMetric = {
 };
 
 export type CoverageReportFile = {
-    readonly format: 'lcov' | 'v8';
+    readonly format: 'html' | 'json' | 'lcov' | 'text' | 'v8';
     readonly path: string;
+};
+
+export type CoverageThresholdFailure = {
+    readonly actualPercentage: number;
+    readonly metric: 'branches' | 'functions' | 'lines';
+    readonly requiredPercentage: number;
+};
+
+export type CoverageRunnerErrorCause = {
+    readonly error: unknown;
+    readonly kind: 'coverage-operation';
+    readonly phase: 'collect' | 'dispose' | 'report' | 'setup';
+} | {
+    readonly failures: NonEmptyReadonlyArray<CoverageThresholdFailure>;
+    readonly kind: 'coverage-threshold';
 };
 
 export type CoverageArtifactPayload = {
@@ -16,7 +31,7 @@ export type CoverageArtifactPayload = {
     readonly directory: string;
     readonly kind: 'coverage';
     readonly rawDataDirectory: string;
-    readonly reports: NonEmptyReadonlyArray<CoverageReportFile>;
+    readonly reports: readonly CoverageReportFile[];
     readonly summary: {
         readonly branches: CoverageMetric;
         readonly functions: CoverageMetric;

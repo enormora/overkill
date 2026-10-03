@@ -2,7 +2,11 @@ import {
     createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
-import { coverageExecutionCompleted, startCoverageSession } from './run-coverage.ts';
+import {
+    coverageExecutionCompleted,
+    microtestCoveragePolicy,
+    startCoverageSession
+} from './run-coverage.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
 import type {
     RunCollectionSource
@@ -168,6 +172,7 @@ async function startLocalCoverageSession(
 ): Promise<CoverageSessionStart> {
     try {
         const session = await startCoverageSession({
+            coverage: microtestCoveragePolicy(input.profile),
             processModel: 'in-process',
             projectRoot: input.projectRoot,
             runtimeStateDir: input.config.runtimeStateDir,

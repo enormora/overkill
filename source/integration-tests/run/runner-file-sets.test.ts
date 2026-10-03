@@ -9,6 +9,7 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { runIfMain } from '../direct-launcher.test.ts';
 import type { Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
 import type { RunCommand, RunConfig, RunRequest } from '../../run/run-types.ts';
 
 const integrationFixturePath = 'source/integration-tests/run/fixtures/discovery/integration.test.ts';
@@ -29,6 +30,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
 
 function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
     return {
+        coverage: defaultCoveragePolicy,
         execution: {
             maxConcurrency: 5,
             processModel: 'supervised-process',

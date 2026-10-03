@@ -1,6 +1,10 @@
 export { defineConfig } from '../run/config.entry-point.ts';
 export type {
     RunProjectConfig,
+    RunProjectCoverageOutput,
+    RunProjectCoveragePolicy,
+    RunProjectCoverageSources,
+    RunProjectCoverageThresholds,
     RunProjectIntegrationExecution,
     RunProjectIntegrationProfileConfig,
     RunProjectMeasuredResourceUsage,

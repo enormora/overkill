@@ -111,8 +111,8 @@ type CoverageArtifact = {
         readonly directory: string;
         readonly kind: 'coverage';
         readonly rawDataDirectory: string;
-        readonly reports: NonEmptyReadonlyArray<{
-            readonly format: 'lcov' | 'v8';
+        readonly reports: ReadonlyArray<{
+            readonly format: 'html' | 'json' | 'lcov' | 'text' | 'v8';
             readonly path: string;
         }>;
         readonly summary: {
@@ -973,9 +973,14 @@ type TimeoutPolicy = {
 };
 
 type MicrotestCoveragePolicy = {
-    readonly formats: ReadonlyArray<'text' | 'lcov' | 'json' | 'html' | 'v8'>;
-    readonly include: ReadonlyArray<string>;
-    readonly exclude: ReadonlyArray<string>;
+    readonly outputs?: ReadonlyArray<'html' | 'json' | 'lcov' | 'text' | 'v8'>;
+    readonly sources?:
+        | { readonly mode: 'loaded'; readonly exclude?: ReadonlyArray<string>; }
+        | {
+            readonly mode: 'all';
+            readonly include: NonEmptyReadonlyArray<string>;
+            readonly exclude?: ReadonlyArray<string>;
+        };
     readonly thresholds?: CoverageThresholds;
     readonly outputDir?: string;
 };
@@ -1656,6 +1661,7 @@ type RunTimingSpanKind =
 type RunnerError = {
     readonly subtype:
         | 'fixture'
+        | 'coverage'
         | 'crash'
         | 'unhandled-rejection'
         | 'uncaught-exception'
@@ -1670,6 +1676,21 @@ type RunnerError = {
     readonly message: string;
     readonly cause?: unknown;
 };
+
+type CoverageRunnerErrorCause =
+    | {
+        readonly error: unknown;
+        readonly kind: 'coverage-operation';
+        readonly phase: 'collect' | 'dispose' | 'report' | 'setup';
+    }
+    | {
+        readonly failures: NonEmptyReadonlyArray<{
+            readonly actualPercentage: number;
+            readonly metric: 'branches' | 'functions' | 'lines';
+            readonly requiredPercentage: number;
+        }>;
+        readonly kind: 'coverage-threshold';
+    };
 
 type PermissionDeniedRunnerErrorCause = {
     readonly boundary:

@@ -118,7 +118,11 @@ implementations land.
 Coverage is explicit per run. `RunRequest.coverage` defaults to `false` in
 first-party callers, and the `@overkill-dev/test` binary maps `--coverage` to
 `true`. Coverage requests are valid only for microtest profiles and are
-recorded in `RunFacts.execution.coverage`.
+recorded in `RunFacts.execution.coverage`. Microtest profiles may configure
+coverage `outputs`, loaded or all-files `sources`, line/function/branch
+`thresholds`, and a config-file-relative `outputDir`. The default outputs are
+V8 and LCOV. An empty `outputs` array keeps raw coverage without rendering
+reports.
 
 Resolved runtime identities contain selected scenario bindings. They flow into
 `RunFacts`, duration-history keys, reporter labels, and artifact IDs so replay
