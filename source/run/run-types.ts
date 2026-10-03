@@ -59,6 +59,30 @@ export type TimingProfilePolicy = {
     readonly collection: TimingCollectionMode;
 };
 
+export type CoverageOutput = 'html' | 'json' | 'lcov' | 'text' | 'v8';
+
+export type RunCoverageSourcePolicy = {
+    readonly exclude: readonly string[];
+    readonly include: NonEmptyReadonlyArray<string>;
+    readonly mode: 'all';
+} | {
+    readonly exclude: readonly string[];
+    readonly mode: 'loaded';
+};
+
+export type RunCoverageThresholds = {
+    readonly branches: number | null;
+    readonly functions: number | null;
+    readonly lines: number | null;
+};
+
+export type RunCoveragePolicy = {
+    readonly outputDirectory: string | null;
+    readonly outputs: readonly CoverageOutput[];
+    readonly sources: RunCoverageSourcePolicy;
+    readonly thresholds: RunCoverageThresholds;
+};
+
 export type RunTestFamily = 'integration' | 'microtest';
 export type RunProcessModel = 'in-process' | 'supervised-process' | 'worker-pool';
 export type RunMicrotestProcessModel = Exclude<RunProcessModel, 'worker-pool'>;
@@ -226,6 +250,7 @@ export type RunProfileFiles = RunProfileFilePatterns | {
 };
 
 export type RunMicrotestProfileConfig = {
+    readonly coverage: RunCoveragePolicy;
     readonly execution: RunMicrotestExecution;
     readonly files: RunProfileFiles | null;
     readonly reporters: RunReporters | null;

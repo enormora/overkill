@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -49,25 +49,68 @@ async function writeRawCoverage(rawDataDirectory: string, source: string): Promi
     );
 }
 
+async function assertConfiguredReportFiles(
+    scope: OverkillScope,
+    report: Awaited<ReturnType<typeof generateCoverageReports>>
+): Promise<void> {
+    const reportFiles = await Promise.all(report.reports.map(async function reportFile(file) {
+        return await stat(file.path);
+    }));
+
+    scope.assert.deepEqual(
+        report.reports.map(function reportFormat(file) {
+            return file.format;
+        }),
+        [ 'html', 'json', 'lcov', 'text', 'v8' ]
+    );
+    scope.assert.true(reportFiles.every(function isFile(file) {
+        return file.isFile();
+    }));
+}
+
 async function assertLoadedReport(scope: OverkillScope, temporaryRoot: string): Promise<void> {
     const coverageDirectory = path.join(temporaryRoot, 'report');
     const rawDataDirectory = path.join(temporaryRoot, 'raw');
     const source = await readFile(sourcePath, 'utf8');
 
     await writeRawCoverage(rawDataDirectory, source);
-    const summary = await generateCoverageReports({
+    const report = await generateCoverageReports({
         coverageDirectory,
+        outputs: [ 'html', 'json', 'lcov', 'text', 'v8' ],
         projectRoot: process.cwd(),
         rawDataDirectory,
         sourceScope: {
+            exclude: [],
             excludedFiles: new Set([ path.resolve(excludedSourcePath) ]),
-            kind: 'loaded'
+            mode: 'loaded'
         }
     });
     const lcov = await readFile(path.join(coverageDirectory, 'lcov.info'), 'utf8');
 
-    scope.assert.true(summary.lines.total > 0);
+    await assertConfiguredReportFiles(scope, report);
+    scope.assert.true(report.summary.lines.total > 0);
     scope.assert.true(lcov.includes('coverage-source.ts'));
+}
+
+async function assertRawOnlyReport(scope: OverkillScope, temporaryRoot: string): Promise<void> {
+    const coverageDirectory = path.join(temporaryRoot, 'report');
+    const rawDataDirectory = path.join(temporaryRoot, 'raw');
+
+    await writeRawCoverage(rawDataDirectory, await readFile(sourcePath, 'utf8'));
+    const report = await generateCoverageReports({
+        coverageDirectory,
+        outputs: [],
+        projectRoot: process.cwd(),
+        rawDataDirectory,
+        sourceScope: {
+            exclude: [],
+            excludedFiles: new Set([ path.resolve(excludedSourcePath) ]),
+            mode: 'loaded'
+        }
+    });
+
+    scope.assert.deepEqual(report.reports, []);
+    scope.assert.true(report.summary.lines.total > 0);
 }
 
 async function assertAllFilesReport(scope: OverkillScope, temporaryRoot: string): Promise<void> {
@@ -77,13 +120,14 @@ async function assertAllFilesReport(scope: OverkillScope, temporaryRoot: string)
     await writeRawCoverage(rawDataDirectory, await readFile(sourcePath, 'utf8'));
     await generateCoverageReports({
         coverageDirectory,
+        outputs: [ 'lcov' ],
         projectRoot: process.cwd(),
         rawDataDirectory,
         sourceScope: {
             exclude: [ '**/*.test.ts' ],
             excludedFiles: new Set([ path.resolve(excludedSourcePath) ]),
             include: [ 'package.json', 'source/integration-tests/run/fixtures/coverage-*' ],
-            kind: 'all'
+            mode: 'all'
         }
     });
     const lcov = await readFile(path.join(coverageDirectory, 'lcov.info'), 'utf8');
@@ -101,11 +145,13 @@ async function assertEmptyReportRejected(scope: OverkillScope, temporaryRoot: st
     await scope.assert.rejects(async function generateEmptyCoverageReport() {
         await generateCoverageReports({
             coverageDirectory,
+            outputs: [ 'lcov' ],
             projectRoot: process.cwd(),
             rawDataDirectory,
             sourceScope: {
+                exclude: [],
                 excludedFiles: new Set([ path.resolve(sourcePath), path.resolve(excludedSourcePath) ]),
-                kind: 'loaded'
+                mode: 'loaded'
             }
         });
     }, { message: 'Coverage backend produced no result.' });
@@ -119,7 +165,7 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'generateCoverageReports() emits V8 and LCOV reports from raw process data',
+            title: 'generateCoverageReports() emits every configured report format from raw process data',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -127,6 +173,23 @@ export const testNode = createOverkillSuite({
 
                 try {
                     await assertLoadedReport(scope, temporaryRoot);
+                } finally {
+                    await rm(temporaryRoot, { force: true, recursive: true });
+                }
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'generateCoverageReports() supports raw-only coverage',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const temporaryRoot = await createTemporaryCoverageRoot();
+
+                try {
+                    await assertRawOnlyReport(scope, temporaryRoot);
                 } finally {
                     await rm(temporaryRoot, { force: true, recursive: true });
                 }

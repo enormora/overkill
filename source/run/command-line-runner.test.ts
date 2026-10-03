@@ -19,8 +19,8 @@ import {
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
 import type { RunCommand, RunProfileConfig, RunOrchestrator } from './run-types.ts';
-import { RunResolutionError } from './run-errors.ts';
-import { RunConfigError, type LoadedRunConfig } from './run-config.ts';
+import { RunConfigError, RunResolutionError } from './run-errors.ts';
+import type { LoadedRunConfig } from './run-config.ts';
 
 const emptyTestData = { annotations: {}, controls: {} } as const;
 

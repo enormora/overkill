@@ -5,9 +5,9 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
-    createRunConfigLoader,
-    RunConfigError
+    createRunConfigLoader
 } from './run-config.ts';
+import { RunConfigError } from './run-errors.ts';
 
 const loadRunConfig = createRunConfigLoader({
     async fileExists() {

@@ -6,10 +6,11 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type { CaseId, RuntimeId, WorkId, WorkloadId } from './identity.ts';
 import type { RunTimings } from './run-timings.ts';
-import type { CoverageArtifact } from './coverage-artifact.ts';
+import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly attributionDrift: 'attribution-drift';
+    readonly coverage: 'coverage';
     readonly crash: 'crash';
     readonly fixture: 'fixture';
     readonly loader: 'loader';
@@ -141,6 +142,11 @@ export type RunnerError = {
     readonly diagnostics: readonly RunnerErrorDiagnostic[];
     readonly message: string;
     readonly subtype: RunnerErrorSubtype;
+};
+
+export type CoverageRunnerError = RunnerError & {
+    readonly cause: CoverageRunnerErrorCause;
+    readonly subtype: 'coverage';
 };
 
 type RunnerErrorDiagnostic = {

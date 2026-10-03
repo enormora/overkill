@@ -45,6 +45,10 @@ export type {
     RunConfigLoader,
     RunConfigLoaderDependencies,
     RunConfigLoadRequest,
+    RunProjectCoverageOutput,
+    RunProjectCoveragePolicy,
+    RunProjectCoverageSources,
+    RunProjectCoverageThresholds,
     RunProjectConfig,
     RunProjectIntegrationExecution,
     RunProjectIntegrationProfileConfig,
@@ -97,6 +101,7 @@ export type {
     TraceWorkUnitId
 } from '../../run/placement-trace.ts';
 export type {
+    CoverageOutput,
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,
@@ -109,6 +114,9 @@ export type {
     RunCaseFacts,
     RunCommand,
     RunConfig,
+    RunCoveragePolicy,
+    RunCoverageSourcePolicy,
+    RunCoverageThresholds,
     RunDebugRequest,
     RunEngineFacts,
     RunEnvironmentFacts,

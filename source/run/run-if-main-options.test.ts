@@ -58,6 +58,12 @@ function directProfile(
     scheduling: 'concurrent' | 'serial'
 ): RunMicrotestProfileConfig {
     return {
+        coverage: {
+            outputDirectory: null,
+            outputs: [ 'v8', 'lcov' ],
+            sources: { exclude: [], mode: 'loaded' },
+            thresholds: { branches: null, functions: null, lines: null }
+        },
         execution: {
             maxConcurrency: 5,
             processModel: 'in-process',

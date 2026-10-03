@@ -3,6 +3,7 @@ import colors from 'yoctocolors';
 import { defineReporter, type DefinedReporter, type RealTimeReporter, type ReporterEvent } from '../engine/reporter.ts';
 import type { RunResult, RunnerError, TestVerdict } from '../engine/run-result.ts';
 import {
+    formatCoverageSummaryLines,
     formatRunFactSummary,
     formatTimingOffenderLines,
     formatTimingSummary
@@ -111,6 +112,9 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
             async onFinish(result: RunResult) {
                 finishProgress();
                 writeLine(formatSummary(result));
+                for (const coverageLine of formatCoverageSummaryLines(result)) {
+                    writeLine(coverageLine);
+                }
                 for (const timingLine of formatTimingOffenderLines(result)) {
                     writeLine(timingLine);
                 }

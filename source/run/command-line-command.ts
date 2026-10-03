@@ -1,8 +1,8 @@
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
 import type { RunRequest } from './run-types.ts';
-import { RunCollectionError, RunResolutionError } from './run-errors.ts';
-import { RunConfigError, type RunConfigLoadRequest } from './run-config.ts';
+import { RunCollectionError, RunConfigError, RunResolutionError } from './run-errors.ts';
+import type { RunConfigLoadRequest } from './run-config.ts';
 
 type CommandLineRunOrder = Exclude<RunRequest['order'], 'plan'>;
 

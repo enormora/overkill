@@ -193,6 +193,12 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
 
     scope.require.defined(profile);
     scope.assert.deepEqual(profile, {
+        coverage: {
+            outputDirectory: null,
+            outputs: [ 'v8', 'lcov' ],
+            sources: { exclude: [], mode: 'loaded' },
+            thresholds: { branches: null, functions: null, lines: null }
+        },
         execution: {
             maxConcurrency: 5,
             processModel: 'supervised-process',

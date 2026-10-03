@@ -12,6 +12,7 @@ import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.t
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary } from './failure-summary.ts';
 import {
+    formatCoverageSummaryLines,
     formatRunFactSummary,
     formatTimingOffenderLines,
     formatTimingSummary
@@ -204,6 +205,9 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
             onFinish(result) {
                 return [
                     finishIntent(result),
+                    ...formatCoverageSummaryLines(result).map(function coverageIntent(line) {
+                        return stdout(line, null);
+                    }),
                     ...formatTimingOffenderLines(result).map(function timingIntent(line) {
                         return stdout(line, null);
                     })

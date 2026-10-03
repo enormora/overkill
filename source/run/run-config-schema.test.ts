@@ -49,12 +49,6 @@ function assertValidationFailure(scope: OverkillScope, testCase: SchemaValidatio
 
 const invalidMicrotestProfileFields: readonly SchemaValidationFailure[] = [
     {
-        data: { testFamily: 'microtest', coverage: { formats: [ 'text' ] } },
-        expectedIssues: [ 'unexpected additional property: "coverage"' ],
-        name: 'coverage',
-        schema: microtestProfileSchema
-    },
-    {
         data: { testFamily: 'microtest', retries: { attempts: 2 } },
         expectedIssues: [ 'unexpected additional property: "retries"' ],
         name: 'retries',
@@ -157,6 +151,7 @@ export const testNode = createOverkillSuite({
                 const reporter = createInMemoryRealTimeReporter();
 
                 assertValidationSuccess(scope, microtestProfileSchema, {
+                    coverage: { outputs: [] },
                     execution: {
                         processModel: 'in-process',
                         scheduling: 'serial'

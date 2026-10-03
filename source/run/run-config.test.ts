@@ -15,6 +15,7 @@ import {
     defineConfig,
     type LoadedRunConfig
 } from './run-config.ts';
+import type { RunMicrotestProfileConfig, RunProfileConfig } from './run-types.ts';
 
 type LoadedConfig = LoadedRunConfig;
 type ConfigModule = {
@@ -50,6 +51,19 @@ function assertProfileTiming(
 
     scope.require.defined(profile);
     scope.assert.deepEqual(profile.timings, { collection });
+}
+
+function requireMicrotestProfile(
+    scope: OverkillScope,
+    profile: RunProfileConfig | undefined
+): RunMicrotestProfileConfig {
+    scope.require.defined(profile);
+
+    if (profile.testFamily !== 'microtest') {
+        throw new TypeError('Expected a microtest profile.');
+    }
+
+    return profile;
 }
 
 export const testNode = createOverkillSuite({
@@ -90,6 +104,56 @@ export const testNode = createOverkillSuite({
                 });
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, '.overkill');
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'loadRunConfig() normalizes microtest coverage policy',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const config = await loadConfigValue({
+                    profiles: {
+                        microtest: {
+                            coverage: {
+                                outputDir: 'target/coverage',
+                                outputs: [ 'text', 'json', 'text' ],
+                                sources: {
+                                    exclude: [ '**/*.generated.ts' ],
+                                    include: [ 'source/**/*.ts' ],
+                                    mode: 'all'
+                                },
+                                thresholds: { branches: 70, functions: 80, lines: 90 }
+                            },
+                            testFamily: 'microtest'
+                        },
+                        raw: {
+                            coverage: { outputs: [] },
+                            testFamily: 'microtest'
+                        }
+                    }
+                });
+                const microtestProfile = requireMicrotestProfile(scope, config.profiles.microtest);
+                const rawProfile = requireMicrotestProfile(scope, config.profiles.raw);
+
+                scope.assert.deepEqual(microtestProfile.coverage, {
+                    outputDirectory: resolvedConfigFixturePath('target/coverage'),
+                    outputs: [ 'text', 'json' ],
+                    sources: {
+                        exclude: [ '**/*.generated.ts' ],
+                        include: [ 'source/**/*.ts' ],
+                        mode: 'all'
+                    },
+                    thresholds: { branches: 70, functions: 80, lines: 90 }
+                });
+                scope.assert.deepEqual(rawProfile.coverage, {
+                    outputDirectory: null,
+                    outputs: [],
+                    sources: { exclude: [], mode: 'loaded' },
+                    thresholds: { branches: null, functions: null, lines: null }
+                });
 
                 return scope.assert.collect();
             }

@@ -4,6 +4,8 @@ import type {
     CoverageArtifactPayload,
     CoverageMetric,
     CoverageReportFile,
+    CoverageRunnerError,
+    CoverageRunnerErrorCause,
     isPermissionDeniedRunnerError,
     PermissionDeniedRunnerError,
     PermissionDeniedRunnerErrorCause,
@@ -27,6 +29,7 @@ import type {
 type OutcomeKind = 'fail' | 'inconclusive' | 'pass' | 'skip';
 type ExpectedRunnerErrorSubtypeByName = {
     readonly attributionDrift: 'attribution-drift';
+    readonly coverage: 'coverage';
     readonly crash: 'crash';
     readonly fixture: 'fixture';
     readonly loader: 'loader';
@@ -141,5 +144,10 @@ describe('RunnerError', function () {
         expect<typeof isPermissionDeniedRunnerError>().type.toBe<
             (error: RunnerError) => error is PermissionDeniedRunnerError
         >();
+    });
+
+    test('coverage runner error cause is public', function () {
+        expect<CoverageRunnerError['subtype']>().type.toBe<'coverage'>();
+        expect<CoverageRunnerError['cause']>().type.toBe<CoverageRunnerErrorCause>();
     });
 });

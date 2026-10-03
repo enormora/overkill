@@ -10,6 +10,13 @@ import type {
 
 export type RunResolutionErrorCode = 'invalid-request' | 'no-tests-collected' | 'unsupported-request';
 
+export class RunConfigError extends Error {
+    public constructor(message: string, options?: Readonly<ErrorOptions>) {
+        super(message, options);
+        this.name = 'RunConfigError';
+    }
+}
+
 export class RunResolutionError extends Error {
     private readonly errorCode: RunResolutionErrorCode;
 

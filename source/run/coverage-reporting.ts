@@ -4,31 +4,34 @@ import { fileURLToPath } from 'node:url';
 import {
     CoverageReport,
     type CoverageResults,
+    type ReportDescription,
     type V8CoverageEntry
 } from 'monocart-coverage-reports';
 import { transform } from 'sucrase';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type {
     CoverageArtifactPayload,
-    CoverageMetric
+    CoverageMetric,
+    CoverageReportFile
 } from '../engine/coverage-artifact.ts';
 import { isPathInside } from './path-containment.ts';
+import type { CoverageOutput, RunCoverageSourcePolicy } from './run-types.ts';
 
-export type CoverageSourceScope = {
-    readonly exclude: readonly string[];
+export type CoverageSourceScope = RunCoverageSourcePolicy & {
     readonly excludedFiles: ReadonlySet<string>;
-    readonly include: NonEmptyReadonlyArray<string>;
-    readonly kind: 'all';
-} | {
-    readonly excludedFiles: ReadonlySet<string>;
-    readonly kind: 'loaded';
 };
 
 export type CoverageReportRequest = {
     readonly coverageDirectory: string;
+    readonly outputs: readonly CoverageOutput[];
     readonly projectRoot: string;
     readonly rawDataDirectory: string;
     readonly sourceScope: CoverageSourceScope;
+};
+
+export type CoverageReportResult = {
+    readonly reports: readonly CoverageReportFile[];
+    readonly summary: CoverageArtifactPayload['summary'];
 };
 
 type AllFileEntry = {
@@ -89,12 +92,20 @@ function includedSourceFile(filePath: string, request: CoverageReportRequest): b
         return false;
     }
 
-    return request.sourceScope.kind === 'loaded' || matchesSourcePatterns(
-        filePath,
-        request.projectRoot,
-        request.sourceScope.include,
-        request.sourceScope.exclude
-    );
+    if (request.sourceScope.mode === 'all') {
+        return matchesSourcePatterns(
+            filePath,
+            request.projectRoot,
+            request.sourceScope.include,
+            request.sourceScope.exclude
+        );
+    }
+
+    return request.sourceScope.exclude.every(function matchesExclude(pattern) {
+        const relativePath = path.relative(request.projectRoot, filePath).split(path.sep).join('/');
+
+        return !path.matchesGlob(relativePath, pattern);
+    });
 }
 
 function entryIncluded(entry: V8CoverageEntry, request: CoverageReportRequest): boolean {
@@ -147,7 +158,7 @@ async function isRuntimeSourceFile(filePath: string, request: CoverageReportRequ
 
 async function allRuntimeFiles(
     request: CoverageReportRequest,
-    sourceScope: Extract<CoverageSourceScope, { readonly kind: 'all'; }>
+    sourceScope: Extract<CoverageSourceScope, { readonly mode: 'all'; }>
 ): Promise<ReadonlySet<string>> {
     const runtimeFiles = new Set<string>();
     const matchedFiles = glob(sourceScope.include, {
@@ -169,7 +180,7 @@ async function allRuntimeFiles(
 async function allFilesOptions(request: CoverageReportRequest): Promise<CoverageAllOptions | null> {
     const { sourceScope } = request;
 
-    if (sourceScope.kind === 'loaded') {
+    if (sourceScope.mode === 'loaded') {
         return null;
     }
 
@@ -190,6 +201,61 @@ async function allFilesOptions(request: CoverageReportRequest): Promise<Coverage
     };
 }
 
+type ConfiguredCoverageReport = {
+    readonly backend: ReportDescription;
+    readonly file: CoverageReportFile;
+};
+
+function coverageReportBackend(
+    output: CoverageOutput,
+    relativePath: string,
+    projectRoot: string
+): ReportDescription {
+    if (output === 'html') {
+        return [ 'html', { subdir: 'html' } ];
+    }
+
+    if (output === 'json') {
+        return [ 'json', { file: relativePath } ];
+    }
+
+    if (output === 'lcov') {
+        return [ 'lcovonly', { file: relativePath, projectRoot } ];
+    }
+
+    return output === 'text'
+        ? [ 'text', { file: relativePath } ]
+        : [ 'v8', { inline: true, outputFile: relativePath } ];
+}
+
+function configuredCoverageReport(
+    output: CoverageOutput,
+    request: CoverageReportRequest
+): ConfiguredCoverageReport {
+    const relativePaths: Readonly<Record<CoverageOutput, string>> = {
+        html: 'html/index.html',
+        json: 'coverage-final.json',
+        lcov: 'lcov.info',
+        text: 'coverage.txt',
+        v8: 'v8/index.html'
+    };
+    const relativePath = relativePaths[output];
+
+    return {
+        backend: coverageReportBackend(output, relativePath, request.projectRoot),
+        file: {
+            format: output,
+            path: path.join(request.coverageDirectory, relativePath)
+        }
+    };
+}
+
+function configuredCoverageReports(request: CoverageReportRequest): readonly ConfiguredCoverageReport[] {
+    return request.outputs.map(function configureCoverageReport(output) {
+        return configuredCoverageReport(output, request);
+    });
+}
+
 function metric(results: CoverageResults, name: 'branches' | 'functions' | 'lines'): CoverageMetric {
     const value = results.summary[name];
 
@@ -198,8 +264,9 @@ function metric(results: CoverageResults, name: 'branches' | 'functions' | 'line
 
 export async function generateCoverageReports(
     request: CoverageReportRequest
-): Promise<CoverageArtifactPayload['summary']> {
+): Promise<CoverageReportResult> {
     const all = await allFilesOptions(request);
+    const configuredReports = configuredCoverageReports(request);
     const report = new CoverageReport({
         ...all === null ? {} : { all },
         baseDir: request.projectRoot,
@@ -209,10 +276,11 @@ export async function generateCoverageReports(
         },
         logging: 'off',
         outputDir: request.coverageDirectory,
-        reports: [
-            [ 'v8', { inline: true, outputFile: 'v8/index.html' } ],
-            [ 'lcovonly', { file: 'lcov.info', projectRoot: request.projectRoot } ]
-        ],
+        reports: configuredReports.length === 0
+            ? [ [ 'none' ] ]
+            : configuredReports.map(function backendReport(configuredReport) {
+                return configuredReport.backend;
+            }),
         sourceFilter(sourcePath) {
             return sourceIncluded(sourcePath, request);
         }
@@ -226,8 +294,13 @@ export async function generateCoverageReports(
     }
 
     return {
-        branches: metric(results, 'branches'),
-        functions: metric(results, 'functions'),
-        lines: metric(results, 'lines')
+        reports: configuredReports.map(function reportFile(configuredReport) {
+            return configuredReport.file;
+        }),
+        summary: {
+            branches: metric(results, 'branches'),
+            functions: metric(results, 'functions'),
+            lines: metric(results, 'lines')
+        }
     };
 }

@@ -7,6 +7,10 @@ import {
     projectConfigSchema,
     workerPoolProjectExecution,
     type RunProjectConfig as ParsedRunProjectConfig,
+    type RunProjectCoverageOutput as ParsedRunProjectCoverageOutput,
+    type RunProjectCoveragePolicy as ParsedRunProjectCoveragePolicy,
+    type RunProjectCoverageSources as ParsedRunProjectCoverageSources,
+    type RunProjectCoverageThresholds as ParsedRunProjectCoverageThresholds,
     type RunProjectIntegrationExecution as ParsedRunProjectIntegrationExecution,
     type RunProjectIntegrationProfileConfig as ParsedRunProjectIntegrationProfileConfig,
     type RunProjectMeasuredResourceUsage as ParsedRunProjectMeasuredResourceUsage,
@@ -24,8 +28,6 @@ import type {
     RunIntegrationProfileConfig,
     RunLoaderConfig,
     RunMicrotestProfileConfig,
-    RunProfileFileSet,
-    RunProfileFiles,
     RunProfileConfig,
     RunProfilesConfig,
     RunResourceBudgets,
@@ -37,14 +39,14 @@ import type {
     RunWorkerLifecycle
 } from './run-types.ts';
 import {
-    invalidProfileFileGlobConfigMessage,
-    invalidRunProfileFileSetNameMessage,
-    invalidRunProfileNameMessage
-} from './profile-file-glob.ts';
-import {
-    invalidWorkDistributionConfigMessage,
-    normalizeWorkDistribution
-} from './work-distribution-config.ts';
+    assertValidProfileName,
+    assertValidWorkDistribution,
+    normalizeCoveragePolicy,
+    normalizeProfileFiles,
+    normalizeRequiredProfileFiles,
+    normalizedWorkDistribution
+} from './profile-config-normalization.ts';
+import { RunConfigError } from './run-errors.ts';
 import {
     defaultConfigFileNames,
     defaultIntegrationProcessModel,
@@ -60,8 +62,7 @@ import {
     defaultWorkerLifecycle,
     defaultWorkerPoolAssignmentPolicy,
     defaultWorkerPoolDispatchPolicy,
-    defaultWorkerPoolHedgingPolicy,
-    defaultWorkDistribution
+    defaultWorkerPoolHedgingPolicy
 } from './run-config-defaults.ts';
 
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
@@ -77,6 +78,7 @@ export type LoadedRunConfig = {
 
 export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution & ProjectHostProcessGuard;
 export type RunProjectIntegrationProfileConfig = {
+    readonly coverage?: never;
     readonly execution?: RunProjectIntegrationExecution | undefined;
     readonly files: ParsedRunProjectIntegrationProfileConfig['files'];
     readonly reporters?: ParsedRunProjectIntegrationProfileConfig['reporters'];
@@ -87,6 +89,10 @@ export type RunProjectIntegrationProfileConfig = {
 };
 export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
 export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig;
+export type RunProjectCoverageOutput = ParsedRunProjectCoverageOutput;
+export type RunProjectCoveragePolicy = ParsedRunProjectCoveragePolicy;
+export type RunProjectCoverageSources = ParsedRunProjectCoverageSources;
+export type RunProjectCoverageThresholds = ParsedRunProjectCoverageThresholds;
 export type RunProjectProfileFiles = ParsedRunProjectProfileFiles;
 export type RunProjectProfileConfig = RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig;
 export type RunProjectProfilesConfig = Readonly<Record<string, RunProjectProfileConfig>>;
@@ -115,22 +121,6 @@ export type RunConfigLoaderDependencies = {
 };
 
 export type RunConfigLoader = (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>;
-
-export class RunConfigError extends Error {
-    public constructor(message: string, options?: Readonly<ErrorOptions>) {
-        super(message, options);
-        this.name = 'RunConfigError';
-    }
-}
-
-type ProjectProfileFilePatterns = {
-    readonly exclude?: readonly string[] | undefined;
-    readonly include: NonEmptyReadonlyArray<string>;
-};
-
-type ProjectProfileFileSets = {
-    readonly sets: Readonly<Record<string, ProjectProfileFilePatterns>>;
-};
 
 export function defineConfig(config: RunProjectConfig): RunProjectConfig {
     return config;
@@ -316,88 +306,6 @@ function assertValidTimeouts(timeouts: RunTimeoutPolicy): void {
     }
 }
 
-function assertValidProfileGlob(field: string, pattern: string): void {
-    const message = invalidProfileFileGlobConfigMessage(field, pattern);
-
-    if (message !== null) {
-        throw new RunConfigError(message);
-    }
-}
-
-function profileFileGlobField(fieldPrefix: string | null, field: 'exclude' | 'include'): string {
-    return fieldPrefix === null ? field : `${fieldPrefix}.${field}`;
-}
-
-function normalizeProfileFilePatterns(
-    files: ProjectProfileFilePatterns,
-    fieldPrefix: string | null
-): RunProfileFileSet {
-    for (const pattern of files.include) {
-        assertValidProfileGlob(profileFileGlobField(fieldPrefix, 'include'), pattern);
-    }
-
-    const excludePatterns = files.exclude ?? [];
-
-    for (const pattern of excludePatterns) {
-        assertValidProfileGlob(profileFileGlobField(fieldPrefix, 'exclude'), pattern);
-    }
-
-    return {
-        exclude: Array.from(excludePatterns),
-        include: [ files.include[0], ...files.include.slice(1) ]
-    };
-}
-
-function assertValidProfileFileSetName(name: string): void {
-    const message = invalidRunProfileFileSetNameMessage(name);
-
-    if (message !== null) {
-        throw new RunConfigError(message);
-    }
-}
-
-function normalizeProfileFileSets(files: ProjectProfileFileSets): RunProfileFiles {
-    const entries = Object.entries(files.sets);
-
-    if (entries.length === 0) {
-        throw new RunConfigError('Invalid profile files.sets: at least one file set is required.');
-    }
-
-    return {
-        sets: Object.fromEntries(entries.map(function normalizeProfileFileSet([ name, set ]) {
-            assertValidProfileFileSetName(name);
-
-            return [ name, normalizeProfileFilePatterns(set, `sets.${name}`) ];
-        }))
-    };
-}
-
-function hasProfileFileSets(files: RunProjectProfileFiles): files is ProjectProfileFileSets {
-    return files.sets !== undefined;
-}
-
-function normalizeProfileFiles(files: RunProjectProfileFiles | undefined): RunProfileFiles | null {
-    if (files === undefined) {
-        return null;
-    }
-
-    if (hasProfileFileSets(files)) {
-        return normalizeProfileFileSets(files);
-    }
-
-    return normalizeProfileFilePatterns(files, null);
-}
-
-function normalizeRequiredProfileFiles(files: RunProjectProfileFiles): RunProfileFiles {
-    const normalizedFiles = normalizeProfileFiles(files);
-
-    if (normalizedFiles === null) {
-        throw new RunConfigError('Integration profiles require files.');
-    }
-
-    return normalizedFiles;
-}
-
 function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | undefined): RunWorkerLifecycle {
     if (execution?.processModel !== 'worker-pool') {
         return defaultWorkerLifecycle;
@@ -436,17 +344,6 @@ function assertValidWorkerPoolHedging(execution: RunIntegrationExecution): void 
     }
 }
 
-function assertValidWorkDistribution(
-    execution: RunIntegrationExecution,
-    files: RunProfileFiles
-): void {
-    const message = invalidWorkDistributionConfigMessage(execution, files);
-
-    if (message !== null) {
-        throw new RunConfigError(message);
-    }
-}
-
 function normalizeWorkerPoolExecution(
     execution: RunProjectIntegrationExecution | undefined,
     scheduling: RunIntegrationExecution['scheduling']
@@ -462,7 +359,7 @@ function normalizeWorkerPoolExecution(
         maxWorkers: workerPoolExecution?.maxWorkers ?? null,
         processModel: 'worker-pool',
         scheduling,
-        workDistribution: normalizeWorkDistribution(execution, defaultWorkDistribution),
+        workDistribution: normalizedWorkDistribution(execution),
         workerLifecycle: normalizeWorkerLifecycle(execution)
     };
 }
@@ -484,12 +381,16 @@ function normalizeIntegrationExecution(
     };
 }
 
-function normalizeMicrotestProfile(profile: RunProjectMicrotestProfileConfig): RunMicrotestProfileConfig {
+function normalizeMicrotestProfile(
+    profile: RunProjectMicrotestProfileConfig,
+    configPath: string | null
+): RunMicrotestProfileConfig {
     const timeouts = normalizeTimeouts(profile.timeouts, defaultTimeoutPolicy);
 
     assertValidTimeouts(timeouts);
 
     return {
+        coverage: normalizeCoveragePolicy(profile.coverage, configPath),
         execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeProfileFiles(profile.files),
         reporters: normalizeReporters(profile.reporters),
@@ -520,33 +421,28 @@ function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig
     };
 }
 
-function normalizeProfile(profile: RunProjectProfileConfig): RunProfileConfig {
+function normalizeProfile(profile: RunProjectProfileConfig, configPath: string | null): RunProfileConfig {
     if (profile.testFamily === 'integration') {
         return normalizeIntegrationProfile(profile);
     }
 
-    return normalizeMicrotestProfile(profile);
-}
-
-function assertValidProfileName(profileName: string): void {
-    const message = invalidRunProfileNameMessage(profileName);
-
-    if (message !== null) {
-        throw new RunConfigError(message);
-    }
+    return normalizeMicrotestProfile(profile, configPath);
 }
 
 function defaultMicrotestProfile(): RunMicrotestProfileConfig {
-    return normalizeMicrotestProfile({ testFamily: 'microtest' });
+    return normalizeMicrotestProfile({ testFamily: 'microtest' }, null);
 }
 
-function normalizeConfiguredProfiles(profiles: RunProjectProfilesConfig | undefined): RunProfilesConfig {
+function normalizeConfiguredProfiles(
+    profiles: RunProjectProfilesConfig | undefined,
+    configPath: string | null
+): RunProfilesConfig {
     const normalizedProfiles: Record<string, RunProfileConfig> = {};
     const profileEntries = Object.entries(profiles ?? {});
 
     for (const [ profileName, profile ] of profileEntries) {
         assertValidProfileName(profileName);
-        normalizedProfiles[profileName] = normalizeProfile(profile);
+        normalizedProfiles[profileName] = normalizeProfile(profile, configPath);
     }
 
     if (normalizedProfiles.microtest === undefined) {
@@ -561,7 +457,7 @@ function normalizeConfig(parsedConfig: RunProjectConfig, configPath: string | nu
         configPath,
         loader: parsedConfig.loader ?? defaultLoader,
         outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
-        profiles: normalizeConfiguredProfiles(parsedConfig.profiles),
+        profiles: normalizeConfiguredProfiles(parsedConfig.profiles, configPath),
         reporters: normalizeReporters(parsedConfig.reporters),
         runtimeStateDir: parsedConfig.runtimeStateDir ?? '.overkill'
     };

@@ -12,6 +12,7 @@ import {
 import type {
     RunConfig,
     RunCommand,
+    RunCoveragePolicy,
     RunEngineFacts,
     RunHostProcess,
     RunIntegrationExecution,
@@ -317,6 +318,25 @@ function copyProfileFiles(files: RunProfileFiles | null): RunProfileFiles | null
     };
 }
 
+function copyCoveragePolicy(policy: RunCoveragePolicy): RunCoveragePolicy {
+    return {
+        outputDirectory: policy.outputDirectory,
+        outputs: Array.from(policy.outputs),
+        sources: policy.sources.mode === 'loaded'
+            ? { exclude: Array.from(policy.sources.exclude), mode: 'loaded' }
+            : {
+                exclude: Array.from(policy.sources.exclude),
+                include: [ policy.sources.include[0], ...policy.sources.include.slice(1) ],
+                mode: 'all'
+            },
+        thresholds: {
+            branches: policy.thresholds.branches,
+            functions: policy.thresholds.functions,
+            lines: policy.thresholds.lines
+        }
+    };
+}
+
 function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
     if (profile.testFamily === 'integration') {
         const files = copyProfileFiles(profile.files);
@@ -337,6 +357,7 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
     }
 
     return {
+        coverage: copyCoveragePolicy(profile.coverage),
         execution: copyMicrotestExecution(profile.execution),
         files: copyProfileFiles(profile.files),
         reporters: profile.reporters === null ? null : Array.from(profile.reporters),

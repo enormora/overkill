@@ -151,7 +151,12 @@ export const testNode = createOverkillSuite({
                 scope.assert(
                     doubleUsage.calledWith,
                     log,
-                    [ infoSymbol, 'Coverage: .overkill/runs/01/coverage' ]
+                    [ infoSymbol, 'Coverage: lines 66.67% (2/3), functions 50% (1/2), branches 50% (1/2)' ]
+                );
+                scope.assert(
+                    doubleUsage.calledWith,
+                    log,
+                    [ infoSymbol, 'Coverage output: .overkill/runs/01/coverage' ]
                 );
 
                 return scope.assert.collect();
