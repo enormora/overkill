@@ -1,4 +1,4 @@
-import type { RunResult } from '../packages/engine/engine.entry-point.ts';
+import type { RunResult } from './run-engine-primitives.ts';
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies

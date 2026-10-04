@@ -1,6 +1,27 @@
-import type { ResourceDefinition } from './resource-definition-types.ts';
+import type { Except } from 'type-fest';
+import type {
+    EmptyResourceDependencies,
+    ResourceDependencies,
+    ResourceProjectionPayload,
+    ResourceScope
+} from './resource-definition-shape.ts';
+import type {
+    LocalOnlyResourceDefinitionInput,
+    ProjectedResourceDefinitionInput,
+    ResourceDefinition,
+    ScenarioLocalInput,
+    ScenarioProjectedInput,
+    WithDependencies
+} from './resource-definition-types.ts';
 import { resourceDefinitionBrand } from './resource-definition-brand.ts';
-import { freezeResourceScenarioSlots, type ResourceScenarioSlots } from './resource-scenario.ts';
+import {
+    freezeResourceScenarioSlots,
+    type ResourceScenarioSlotInputs,
+    type ResourceScenarioSlots,
+    type ResourceScenarioSlotsFromInputs
+} from './resource-scenario.ts';
+
+type ProjectedResourceScope = 'per-file' | 'per-run' | 'per-suite';
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null;
@@ -46,6 +67,131 @@ function resourceHandleExposure(
     return declaredExposeHandle;
 }
 
+function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const Dependencies extends ResourceDependencies,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: WithDependencies<
+        ScenarioLocalInput<Name, Handle, Scope, Dependencies, ScenarioInputs>,
+        Dependencies
+    >
+): ResourceDefinition<Name, Handle, Dependencies, Handle, ResourceScenarioSlotsFromInputs<ScenarioInputs>>;
+function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    const Dependencies extends ResourceDependencies,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: WithDependencies<
+        ScenarioProjectedInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies, ScenarioInputs>,
+        Dependencies
+    >
+): ResourceDefinition<
+    Name,
+    OwnerHandle,
+    Dependencies,
+    ConsumerHandle,
+    ResourceScenarioSlotsFromInputs<ScenarioInputs>
+>;
+function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: Except<
+        ScenarioLocalInput<Name, Handle, Scope, EmptyResourceDependencies, ScenarioInputs>,
+        'dependencies'
+    >
+): ResourceDefinition<
+    Name,
+    Handle,
+    EmptyResourceDependencies,
+    Handle,
+    ResourceScenarioSlotsFromInputs<ScenarioInputs>
+>;
+function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    const ScenarioInputs extends ResourceScenarioSlotInputs
+>(
+    definition: Except<
+        ScenarioProjectedInput<
+            Name,
+            OwnerHandle,
+            Projection,
+            ConsumerHandle,
+            Scope,
+            EmptyResourceDependencies,
+            ScenarioInputs
+        >,
+        'dependencies'
+    >
+): ResourceDefinition<
+    Name,
+    OwnerHandle,
+    EmptyResourceDependencies,
+    ConsumerHandle,
+    ResourceScenarioSlotsFromInputs<ScenarioInputs>
+>;
+function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>
+>(definition: Except<LocalOnlyResourceDefinitionInput<Name, Handle, Scope>, 'scenarios'>): ResourceDefinition<
+    Name,
+    Handle,
+    EmptyResourceDependencies,
+    Handle
+>;
+function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope
+>(
+    definition: Except<
+        ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope>,
+        'scenarios'
+    >
+): ResourceDefinition<Name, OwnerHandle, EmptyResourceDependencies, ConsumerHandle>;
+function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const Dependencies extends ResourceDependencies
+>(
+    definition: WithDependencies<
+        Except<LocalOnlyResourceDefinitionInput<Name, Handle, Scope, Dependencies>, 'scenarios'>,
+        Dependencies
+    >
+): ResourceDefinition<Name, Handle, Dependencies, Handle>;
+function defineResource<
+    const Name extends string,
+    OwnerHandle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends ProjectedResourceScope,
+    const Dependencies extends ResourceDependencies
+>(
+    definition: WithDependencies<
+        Except<
+            ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies>,
+            'scenarios'
+        >,
+        Dependencies
+    >
+): ResourceDefinition<Name, OwnerHandle, Dependencies, ConsumerHandle>;
 function defineResource(definition: Readonly<Record<string, unknown>>): unknown {
     const scenarios = resourceScenarios(definition);
 

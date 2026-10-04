@@ -6,7 +6,7 @@ import type {
     RunResourceUsage,
     RunResult,
     RunnerError
-} from '../packages/engine/engine.entry-point.ts';
+} from './run-engine-primitives.ts';
 import {
     collectedRunCaseEntries,
     createRunResultFromCollectedPlan

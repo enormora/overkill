@@ -3,7 +3,8 @@ import {
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { RunnerError, TestPlan } from '../packages/engine/engine.entry-point.ts';
+import type { RunnerError } from '../engine/run-result.ts';
+import type { TestPlan } from '../engine/test-plan.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {

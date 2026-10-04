@@ -1,7 +1,7 @@
 import type {
     ResourceUsageSnapshot,
     RunResult
-} from '../packages/engine/engine.entry-point.ts';
+} from '../engine/run-result.ts';
 import {
     childProcessEnvelope,
     envelopeMessage

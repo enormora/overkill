@@ -2,7 +2,7 @@ import type { Clock } from '@enormora/clock';
 import {
     defineReporter,
     type DefinedReporter
-} from '../packages/engine/engine.entry-point.ts';
+} from '../engine/reporter.ts';
 import type {
     WorkerPoolMessage,
     WorkerPoolTask

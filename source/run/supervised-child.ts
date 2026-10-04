@@ -1,16 +1,12 @@
 import type { Clock } from '@enormora/clock';
 import { workIdentityKey, type WorkId } from '../engine/identity.ts';
-import { createExecute } from '../engine/execution.ts';
-import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import {
-    createPlainOutputRenderer,
-    defineReporter,
-    type DefinedReporter,
-    type RunResult,
-    type RunnerError,
-    type RunResourceUsageTracker,
-    type TestPlan
-} from '../packages/engine/engine.entry-point.ts';
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import type {
+    RunResult,
+    RunnerError,
+    RunResourceUsageTracker,
+    TestPlan
+} from './run-engine-primitives.ts';
 import {
     collectedRunPlanFromTestPlan,
     collectedRunPlanFromTestPlanCases,
@@ -32,6 +28,10 @@ import {
     runObservedSupervisedChildCommand,
     type SupervisedChildTestPlanDependencies
 } from './supervised-child-test-plan.ts';
+import {
+    createSupervisedChildExecute,
+    createSupervisedChildReporter
+} from './supervised-child-execution.ts';
 import {
     createSupervisedResourceLifecycleTiming,
     supervisedAssignedWork,
@@ -83,27 +83,6 @@ export type SupervisedChildDependencies = {
     ) => RunResourceUsageTracker;
     readonly createClock: () => Clock;
 };
-
-function ignoreLine(): void {
-    return undefined;
-}
-
-function createIpcReporter(host: SupervisedChildHost): DefinedReporter {
-    return defineReporter(function createIpcRuntimeReporter() {
-        return {
-            dispose: null,
-            kind: 'real-time',
-            name: 'supervised-child-ipc',
-            onEvent(event) {
-                if (event.kind !== 'run-start' && event.kind !== 'run-end') {
-                    host.send({ event, kind: 'event' });
-                }
-            },
-            onFinish: null,
-            sinks: [ { kind: 'memory' } ]
-        };
-    });
-}
 
 function casesByIdentity(testPlan: TestPlan): ReadonlyMap<string, TestPlan['cases'][number]> {
     return new Map(testPlan.cases.map(function toEntry(testCase) {
@@ -291,22 +270,9 @@ function startedAtIso(startedAtMs: number): string {
     return startedAt.toISOString();
 }
 
-function readActiveResourceTypes(): readonly string[] {
-    return process.getActiveResourcesInfo();
-}
-
 async function executeAssignment(input: SupervisedAssignmentExecution): Promise<RunResult> {
     const runtimePolicy = createRuntimePolicy(input.command, input.host);
-    const execute = createExecute({
-        asyncLeakDiagnostics: 'enabled',
-        readActiveResourceTypes,
-        reporterDispatcher: createReporterDispatcher({
-            stderr: { writeLine: ignoreLine },
-            stdout: { writeLine: ignoreLine },
-            wallClock: input.wallClock
-        }),
-        wallClock: input.wallClock
-    });
+    const execute = createSupervisedChildExecute(input.wallClock);
     input.host.dropBodyReadPermission(input.command);
     const testPlan = selectAssignedCases(input.collectedPlan.testPlan, supervisedAssignedWork(input.assignment));
     const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
@@ -314,7 +280,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     return await execute(testPlan, {
         execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
         outputRenderer: createPlainOutputRenderer(),
-        reporters: [ createIpcReporter(input.host) ],
+        reporters: [ createSupervisedChildReporter(input.host) ],
         resourceBudgets: input.command.resourceBudgets,
         resourceUsageTracker: createForwardingResourceUsageTracker(
             input.command,

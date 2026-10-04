@@ -1,7 +1,4 @@
 import { createClock } from '@enormora/clock';
-import type { TestPlanCase } from '../engine/test-plan.ts';
-import type { RunnerError } from '../engine/run-result.ts';
-import type { RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import {
     acquireResourceLifecycleScopes,
     createResourceLifecycleSession,
@@ -11,6 +8,7 @@ import {
 import { resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
 import type { ResourceWrapperStep } from './resource-lifecycle-composition.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
+import type { RunnerError, RunResourceUsageTracker, TestPlanCase } from './run-engine-primitives.ts';
 import type {
     WorkerPoolAcquireRunResourcesTask,
     WorkerPoolCommand,

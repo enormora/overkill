@@ -3,7 +3,7 @@ import type {
     ResourceUsageSnapshot,
     RunResult,
     RunnerError
-} from '../packages/engine/engine.entry-point.ts';
+} from './run-engine-primitives.ts';
 import type {
     CollectedRunPlan,
     PlacementPlan,

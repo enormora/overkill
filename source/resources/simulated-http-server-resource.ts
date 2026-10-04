@@ -1,11 +1,11 @@
 import {
     assertNoSimulatedHttpHandlerErrors,
     createSimulatedHttpListeningServer
-} from '../simulation/simulated-http-server.ts';
+} from '../packages/simulation/http.entry-point.ts';
 import type {
     SimulatedHttpServerDefinition,
     SimulationScenarioCatalog
-} from '../simulation/simulation.ts';
+} from '../packages/simulation/simulation.entry-point.ts';
 import {
     defineResource,
     type EmptyResourceDependencies,
