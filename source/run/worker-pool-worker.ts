@@ -1,6 +1,6 @@
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import { createPlainOutputRenderer } from '../packages/engine/engine.entry-point.ts';
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import {
     composeRunRuntimePolicies,
     createRunPermissionRuntimePolicy,

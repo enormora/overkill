@@ -1,10 +1,10 @@
-import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import type {
+    ReporterDelivery,
     ReporterEvent,
     ResourceUsageSnapshot,
     RunResult
-} from '../packages/engine/engine.entry-point.ts';
+} from './run-engine-primitives.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';

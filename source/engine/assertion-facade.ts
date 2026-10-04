@@ -2,7 +2,7 @@ import type {
     CompositeAssertionReference,
     CompositeAssertionReturn,
     NarrowingCompositeAssertionReference
-} from '../packages/engine/assertion-protocol.entry-point.ts';
+} from '../assertion-protocol/assertion-reference.ts';
 import type {
     AssertionOptions,
     DeepComparable,

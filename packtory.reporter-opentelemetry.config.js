@@ -11,7 +11,7 @@ export function reporterOpenTelemetryPackage(projectFolder, packageMetadata) {
             }
         },
         additionalFiles: [ {
-            sourceFilePath: path.join(projectFolder, 'source/packages/reporter-opentelemetry/readme.md'),
+            inputFilePath: path.join(projectFolder, 'source/packages/reporter-opentelemetry/readme.md'),
             targetFilePath: 'readme.md'
         } ],
         additionalPackageJsonAttributes: {

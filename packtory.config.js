@@ -67,7 +67,7 @@ export const config = {
             access: 'public',
             provenance: { type: 'auto' }
         },
-        additionalFiles: [ { sourceFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' } ]
+        additionalFiles: [ { inputFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' } ]
     },
     packages: selectPackages([
         {
@@ -89,7 +89,7 @@ export const config = {
             defaultModuleRoot: 'main',
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/engine/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/engine/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -109,7 +109,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/assert/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/assert/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -129,7 +129,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/doubles/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/doubles/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -164,7 +164,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/simulation/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/simulation/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -184,7 +184,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/resources/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/resources/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -248,7 +248,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/run/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/run/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -360,7 +360,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/test/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/test/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -380,7 +380,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-line/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/reporter-line/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -400,7 +400,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-brief/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/reporter-brief/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -420,7 +420,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(projectFolder, 'source/packages/reporter-dot/readme.md'),
+                    inputFilePath: path.join(projectFolder, 'source/packages/reporter-dot/readme.md'),
                     targetFilePath: 'readme.md'
                 }
             ],
@@ -442,7 +442,7 @@ export const config = {
             },
             additionalFiles: [
                 {
-                    sourceFilePath: path.join(
+                    inputFilePath: path.join(
                         projectFolder,
                         'source/packages/output-renderer-github-actions/readme.md'
                     ),

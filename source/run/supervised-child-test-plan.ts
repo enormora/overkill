@@ -2,8 +2,8 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
-import type { RunnerError, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
+import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { createRunTestPlan } from './run-test-plan.ts';
 import type { RunDiscovery } from './run-discovery-types.ts';
