@@ -21,6 +21,9 @@ Every simulation has a `default` scenario. Scenario descriptors require a
 `title` and may carry additional typed data for the simulator.
 
 Use `@overkill-dev/simulation/http` to launch a simulated HTTP server manually.
+The returned handle exposes a read-only `transcript` with one normalized entry
+per HTTP exchange, including the selected scenario. Request and response bodies
+are captured up to 16 KiB independently.
 Use `createSimulatedHttpServerResource(...)` from `@overkill-dev/resources`
 when a test runtime should own the server lifecycle. The resource adapter
 requires an explicit local address request, for example

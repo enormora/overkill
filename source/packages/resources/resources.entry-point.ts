@@ -110,8 +110,10 @@ export type {
     ProjectedLocalServiceResourceDefinitionInput
 } from '../../resources/local-service-resource.ts';
 export type {
+    LocalHttpResourceHandle,
     LocalHttpServiceHandle,
-    LocalHttpServiceResourceInput
+    LocalHttpServiceResourceInput,
+    LocalHttpTranscriptPolicy
 } from '../../resources/local-http-service-resource.ts';
 export type {
     LocalProcessCommand,
@@ -127,6 +129,22 @@ export type {
     SimulatedHttpServerResourceHandle,
     SimulatedHttpServerResourceOptions
 } from '../../resources/simulated-http-server-resource.ts';
+export type {
+    HttpHeadersSnapshot,
+    HttpInteraction,
+    HttpInteractionOutcome,
+    HttpRequestSnapshot,
+    HttpResponseSnapshot,
+    HttpTranscript,
+    HttpTranscriptEntry,
+    RecordedHttpBody,
+    RecordedHttpError,
+    TranscriptCaptureErrorEntry
+} from '../../transcript/http-transcript.ts';
+export type {
+    TranscriptEntry,
+    TranscriptView
+} from '../../transcript/transcript-store.ts';
 export type {
     RuntimeDefinition as Runtime,
     RuntimeResourceMap as ResourceMap

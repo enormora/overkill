@@ -1,6 +1,15 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { defineSimulatedHttpServer, defineSimulation } from './simulation.ts';
+import type { HttpTranscript, HttpTranscriptEntry } from '../transcript/http-transcript.ts';
+import {
+    defineSimulatedHttpServer,
+    defineSimulation,
+    type SimulatedHttpServerDefinition
+} from './simulation.ts';
 import { startSimulatedHttpServer } from './simulated-http-server.ts';
+
+type CompletionOrderScenarios = {
+    readonly default: { readonly title: 'standard responses'; };
+};
 
 function testSignal(): AbortSignal {
     const controller = new AbortController();
@@ -37,6 +46,22 @@ async function assertScenarioResponses(
     scope.assert.equal(unknownResponse.status, 400);
 }
 
+function assertScenarioTranscript(
+    scope: TestScope,
+    transcript: HttpTranscript<{ readonly scenario: string; }>,
+    baseUrl: string
+): void {
+    const failureEntry = transcript.nthEntry(1);
+
+    scope.require.defined(failureEntry);
+    scope.assert.equal(transcript.entryCount, 3);
+    scope.assert.equal(failureEntry[0], 'http');
+    if (failureEntry[0] === 'http') {
+        scope.assert.deepEqual(failureEntry[1].context, { scenario: 'payments-500' });
+        scope.assert.equal(failureEntry[1].request.url, `${baseUrl}/checkout?cart=full`);
+    }
+}
+
 async function assertScenarioRouting(scope: TestScope): Promise<void> {
     const requests: string[] = [];
     const simulation = defineSimulatedHttpServer({
@@ -66,6 +91,7 @@ async function assertScenarioRouting(scope: TestScope): Promise<void> {
         'default:/checkout?cart=full',
         'payments-500:/checkout?cart=full'
     ]);
+    assertScenarioTranscript(scope, server.transcript, server.baseUrl);
 }
 
 async function assertPostRequestBody(scope: TestScope): Promise<void> {
@@ -89,6 +115,70 @@ async function assertPostRequestBody(scope: TestScope): Promise<void> {
         body: 'checkout=true',
         method: 'POST'
     });
+}
+
+function completionOrderSimulation(
+    slowStarted: PromiseWithResolvers<undefined>,
+    releaseSlowResponse: PromiseWithResolvers<undefined>
+): SimulatedHttpServerDefinition<'api', CompletionOrderScenarios> {
+    return defineSimulatedHttpServer({
+        name: 'api',
+        scenarios: { default: { title: 'standard responses' } },
+        async handle(request) {
+            const url = new URL(request.url);
+
+            if (url.pathname === '/slow') {
+                slowStarted.resolve(undefined);
+                await releaseSlowResponse.promise;
+            }
+
+            return new Response('ready');
+        }
+    });
+}
+
+async function completionOrderedEntries(
+    simulation: SimulatedHttpServerDefinition<'api', CompletionOrderScenarios>,
+    slowStarted: PromiseWithResolvers<undefined>,
+    releaseSlowResponse: PromiseWithResolvers<undefined>
+): Promise<readonly HttpTranscriptEntry<{ readonly scenario: string; }>[]> {
+    await using server = await startSimulatedHttpServer({ simulation });
+    const slowRequest = fetch(`${server.baseUrl}/slow`);
+
+    await slowStarted.promise;
+    const fastRequest = fetch(`${server.baseUrl}/fast`);
+
+    await fastRequest;
+    releaseSlowResponse.resolve(undefined);
+    await slowRequest;
+
+    return server.transcript.entries.filter(function isHttpEntry(
+        entry
+    ): entry is HttpTranscriptEntry<{ readonly scenario: string; }> {
+        return entry[0] === 'http';
+    });
+}
+
+async function assertCompletionOrder(scope: TestScope): Promise<void> {
+    const slowStarted = Promise.withResolvers<undefined>();
+    const releaseSlowResponse = Promise.withResolvers<undefined>();
+    const simulation = completionOrderSimulation(slowStarted, releaseSlowResponse);
+    const entries = await completionOrderedEntries(simulation, slowStarted, releaseSlowResponse);
+
+    scope.assert.deepEqual(
+        entries.map(function requestPath(entry) {
+            const url = new URL(entry[1].request.url);
+
+            return url.pathname;
+        }),
+        [ '/fast', '/slow' ]
+    );
+    scope.assert.deepEqual(
+        entries.map(function (entry) {
+            return entry[1].sequence;
+        }),
+        [ 1, 0 ]
+    );
 }
 
 async function assertDisposalClosesServer(scope: TestScope): Promise<void> {
@@ -178,6 +268,17 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 await assertScenarioRouting(scope);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'simulated HTTP transcripts append by completion with request-start sequence numbers',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await assertCompletionOrder(scope);
 
                 return scope.assert.collect();
             }

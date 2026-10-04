@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
+import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 import type {
     ComposedResourceSession,
     LifecycleMessages,
@@ -53,5 +54,7 @@ export async function runWithLifecycleCase<Value>(
     testCase: TestPlanCase,
     run: () => Promise<Value>
 ): Promise<Value> {
-    return await runningCase.run(testCase, run);
+    return await runningCase.run(testCase, async function runScopedCase() {
+        return await runWithTranscriptScope(testCase, run);
+    });
 }

@@ -8,6 +8,7 @@ import {
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
+import { runWithTranscriptScope } from '../../transcript/transcript-store.ts';
 import {
     createTranscript,
     doubleUsage,
@@ -354,6 +355,34 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             title: 'transcriptUsage snapshots entries when the assertion is recorded'
+        }),
+        createTestCase({
+            async body(scope: OverkillScope) {
+                const transcript = createTranscript<StateEntry>();
+                const firstCase = {};
+                const secondCase = {};
+
+                transcript.record('state', 0);
+                await runWithTranscriptScope(firstCase, async function recordFirstCase() {
+                    transcript.record('state', 1);
+                    scope.assert.deepEqual(transcript.entries, [ [ 'state', 1 ] ]);
+                });
+                await runWithTranscriptScope(secondCase, async function recordSecondCase() {
+                    transcript.record('state', 2);
+                    scope.assert.deepEqual(transcript.entries, [ [ 'state', 2 ] ]);
+                });
+                scope.assert.deepEqual(transcript.entries, [
+                    [ 'state', 0 ],
+                    [ 'state', 1 ],
+                    [ 'state', 2 ]
+                ]);
+
+                return scope.assert.collect();
+            },
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'transcripts show the active case or the full resource lifetime'
         })
     ],
     definitionLocations: [ { kind: 'unknown' } ],

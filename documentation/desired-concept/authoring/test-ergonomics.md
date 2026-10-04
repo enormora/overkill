@@ -208,6 +208,25 @@ The concept should be:
 - manual recording, test-double recording, and generic subscription adapters
 - no assumption that every source is a Node `EventEmitter`
 
+### Resource-Owned HTTP Recording
+
+HTTP resource handles expose a branded read-only transcript view. Local HTTP
+resources record automatically unless their transcript policy disables or
+replaces recording. Simulated servers use their direct request and response
+hooks, so entries also carry the routed scenario and hide the internal scenario
+query parameter.
+
+Each completed exchange appends one `http` entry. Entries append in completion
+order and retain a request-start `sequence` for concurrency assertions. Headers
+use lowercase names. Request and response bodies have independent 16 KiB limits
+and report their original size when truncated. A transport that cannot observe
+a body records why it is unavailable. Capture failures append `capture-error`
+entries and do not alter the HTTP operation.
+
+Runner-managed transcripts show entries from the active test case, including
+when the resource is shared. Direct resource and runtime sessions expose the
+resource's complete lifetime transcript.
+
 ## Reusable Multi-Case Macros
 
 Overkill already prefers macros. Ordinary macros are already powerful enough

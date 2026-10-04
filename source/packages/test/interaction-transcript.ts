@@ -9,8 +9,14 @@ import {
     type TestDouble
 } from '../doubles/doubles.entry-point.ts';
 import { comparePartially } from '../../compare/raw-comparison.ts';
+import {
+    brandTranscriptView,
+    createTranscriptStore,
+    isTranscriptView,
+    type TranscriptEntry as SharedTranscriptEntry,
+    type TranscriptView as SharedTranscriptView
+} from '../../transcript/transcript-store.ts';
 
-const transcriptIdentity: unique symbol = Symbol('OverkillTranscript');
 const symbolWithDisposal: SymbolConstructorWithDisposal = Symbol;
 const disposeSymbol: typeof Symbol.dispose = symbolWithDisposal.dispose;
 const asyncDisposeSymbol: typeof Symbol.asyncDispose = symbolWithDisposal.asyncDispose;
@@ -35,14 +41,10 @@ type TranscriptUsageReference<Arguments extends readonly unknown[]> = CompositeA
     AssertionResult
 >;
 
-export type TranscriptEntry = readonly [kind: string, ...values: readonly unknown[]];
+export type TranscriptEntry = SharedTranscriptEntry;
+export type TranscriptView<Entry extends TranscriptEntry = TranscriptEntry> = SharedTranscriptView<Entry>;
 
-export type Transcript<Entry extends TranscriptEntry = TranscriptEntry> = {
-    readonly entryCount: number;
-    readonly entries: readonly Entry[];
-    readonly firstEntry: Entry | null;
-    readonly lastEntry: Entry | null;
-    readonly nthEntry: (index: number) => Entry | null;
+export type Transcript<Entry extends TranscriptEntry = TranscriptEntry> = TranscriptView<Entry> & {
     readonly record: (...entry: Entry) => void;
     readonly reset: () => void;
     readonly sink: <Kind extends Entry[0]>(kind: SinkKind<Entry, Kind>) => TestDouble<TranscriptSink>;
@@ -72,10 +74,6 @@ export type TranscriptUsageAssertions = {
     >;
 };
 
-type RuntimeTranscript = Transcript & {
-    readonly [transcriptIdentity]: true;
-};
-
 type TranscriptInspection = {
     readonly entries: readonly TranscriptEntry[];
     readonly valid: true;
@@ -84,21 +82,11 @@ type TranscriptInspection = {
     readonly valid: false;
 };
 
-function validIndex(index: number): boolean {
-    return Number.isSafeInteger(index) && index >= 0;
-}
-
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
     return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'then') === 'function';
 }
 
-function isTranscript(value: unknown): value is RuntimeTranscript {
-    return typeof value === 'object' && value !== null &&
-        Object.hasOwn(value, transcriptIdentity) &&
-        Reflect.get(value, transcriptIdentity) === true;
-}
-
-function entriesSnapshot(transcript: RuntimeTranscript): readonly TranscriptEntry[] {
+function entriesSnapshot(transcript: TranscriptView): readonly TranscriptEntry[] {
     return transcript.entries.map(function copyEntry(entry) {
         const [ kind, ...values ] = entry;
 
@@ -113,7 +101,7 @@ function invalidTranscriptFailure(check: AssertionCheck): AssertionResult {
 }
 
 function inspectTranscript(check: AssertionCheck, subject: unknown): TranscriptInspection {
-    return isTranscript(subject)
+    return isTranscriptView(subject)
         ? { entries: entriesSnapshot(subject), valid: true }
         : { failure: invalidTranscriptFailure(check), valid: false };
 }
@@ -202,39 +190,30 @@ function transcriptInOrderAssertion(
     return check.annotated('transcript ordered entries').true(containsEntriesInOrder(entries, expected));
 }
 
-function freezeTranscript<Entry extends TranscriptEntry, Subject extends Transcript<Entry>>(subject: Subject): Subject {
-    Object.defineProperty(subject, transcriptIdentity, {
-        enumerable: false,
-        value: true
-    });
-
-    return Object.freeze(subject);
-}
-
 function createTranscriptBase<Entry extends TranscriptEntry>(): Transcript<Entry> {
-    const entries: Entry[] = [];
+    const store = createTranscriptStore<Entry>();
 
     const transcript: Transcript<Entry> = {
         get entries() {
-            return entries;
+            return store.view.entries;
         },
         get entryCount() {
-            return entries.length;
+            return store.view.entryCount;
         },
         get firstEntry() {
-            return entries[0] ?? null;
+            return store.view.firstEntry;
         },
         get lastEntry() {
-            return entries.at(-1) ?? null;
+            return store.view.lastEntry;
         },
         nthEntry(index) {
-            return validIndex(index) ? entries[index] ?? null : null;
+            return store.view.nthEntry(index);
         },
         record(...entry) {
-            entries.push(entry);
+            store.record(...entry);
         },
         reset() {
-            entries.length = 0;
+            store.reset();
         },
         sink<Kind extends Entry[0]>(kind: SinkKind<Entry, Kind>) {
             return testDouble<TranscriptSink>({
@@ -246,7 +225,7 @@ function createTranscriptBase<Entry extends TranscriptEntry>(): Transcript<Entry
         }
     };
 
-    return freezeTranscript<Entry, typeof transcript>(transcript);
+    return brandTranscriptView(transcript);
 }
 
 function disposableTranscript<Entry extends TranscriptEntry>(
@@ -282,7 +261,7 @@ function disposableTranscript<Entry extends TranscriptEntry>(
         }
     };
 
-    return freezeTranscript<Entry, typeof subject>(subject);
+    return brandTranscriptView(subject);
 }
 
 function asyncDisposableTranscript<Entry extends TranscriptEntry>(
@@ -318,7 +297,7 @@ function asyncDisposableTranscript<Entry extends TranscriptEntry>(
         }
     };
 
-    return freezeTranscript<Entry, typeof subject>(subject);
+    return brandTranscriptView(subject);
 }
 
 export const createTranscript: <Entry extends TranscriptEntry = TranscriptEntry>() => Transcript<Entry> =

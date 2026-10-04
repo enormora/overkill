@@ -40,6 +40,7 @@ export type {
     DisposableTranscript,
     Transcript,
     TranscriptEntry,
+    TranscriptView,
     TranscriptUsageAssertions
 } from './interaction-transcript.ts';
 

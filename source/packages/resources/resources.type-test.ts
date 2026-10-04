@@ -30,8 +30,11 @@ import {
     type RuntimeId,
     type RuntimeScopeContext,
     type RuntimeSession,
+    type LocalHttpResourceHandle,
+    type LocalHttpServiceHandle,
     type SimulatedHttpServerResourceHandle,
-    type TemporaryDirectoryHandle
+    type TemporaryDirectoryHandle,
+    type TranscriptView
 } from './resources.entry-point.ts';
 
 type ExpectedLocalResourceDefinitionInput = {
@@ -336,15 +339,17 @@ describe('@overkill-dev/resources', function () {
     test('infers built-in temporary directory resources', function () {
         expect<ResourceHandle<typeof temporaryDirectory>>().type.toBe<TemporaryDirectoryHandle>();
         expect(temporaryDirectory.name).type.toBe<'scratch'>();
-        expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
+        expect<TemporaryDirectoryHandle>().type.toBe<{
+            readonly path: string;
+            readonly transcript: TranscriptView<never>;
+        }>();
     });
 
     test('infers local-service and simulated HTTP resource handles', function () {
         expect<ResourceHandle<typeof localService>>().type.toBe<{ readonly url: `http://${string}:${number}`; }>();
-        expect<ResourceHandle<typeof localHttpService>>().type.toBe<{
-            readonly baseUrl: string;
-            readonly endpoint: { readonly host: string; readonly port: number; };
-        }>();
+        expect<ResourceHandle<typeof localHttpService>>().type.toBe<
+            LocalHttpResourceHandle<LocalHttpServiceHandle>
+        >();
         expect<ResourceHandle<typeof localProcessService>>().type.toBe<{ readonly output: string; }>();
         expect(localService.name).type.toBe<'local-service'>();
         expect(localHttpService.name).type.toBe<'http-service'>();

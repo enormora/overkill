@@ -82,6 +82,17 @@ export type {
     SimulatedHttpServerResource,
     SimulatedHttpServerResourceHandle,
     SimulatedHttpServerResourceOptions,
+    HttpHeadersSnapshot,
+    HttpInteraction,
+    HttpInteractionOutcome,
+    HttpRequestSnapshot,
+    HttpResponseSnapshot,
+    HttpTranscript,
+    HttpTranscriptEntry,
+    RecordedHttpBody,
+    RecordedHttpError,
+    TranscriptCaptureErrorEntry,
+    TranscriptView,
     TemporaryDirectoryHandle
 } from '../resources/resources.entry-point.ts';
 export type {
@@ -98,6 +109,8 @@ export type {
 export type {
     LocalHttpServiceHandle,
     LocalHttpServiceResourceInput,
+    LocalHttpResourceHandle,
+    LocalHttpTranscriptPolicy,
     LocalProcessCommand,
     LocalProcessOutput,
     LocalProcessOutputBuffer,
