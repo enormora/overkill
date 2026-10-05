@@ -7,6 +7,7 @@
         "source/**/*.type-test.ts",
         "source/packages/**/*.ts",
         "source/run/node-command-line-runner.ts",
+        "source/run/worker-pool-worker.ts",
         "source/reporters/null-reporter.ts",
         "dependency-cruiser.config.js",
         "packtory.config.js",
