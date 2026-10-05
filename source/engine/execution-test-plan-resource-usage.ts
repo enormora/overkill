@@ -7,11 +7,11 @@ import { createExecutionSupervision } from './execution-supervision.ts';
 import {
     executeTestPlanCasesWithMode,
     type ExecutedTestPlan,
-    type ExecutionCaseDependencies,
     type ExecuteTestPlanCasesInput
 } from './execution-test-plan-cases.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { TestPlan } from './test-plan.ts';
+import type { ExecutionCaseDependencies } from './case-attempt-execution.ts';
 
 export async function executeTestPlanCasesAndMeasureResourceUsage(
     testPlan: TestPlan,

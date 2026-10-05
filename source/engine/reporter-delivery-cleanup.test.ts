@@ -253,6 +253,7 @@ export const testNode = createOverkillSuite({
                 };
 
                 const execution = engine.execute(createPassingPlan(engine), {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ defineRuntimeReporter(hangingReporter) ],
                     runFacts: {},
@@ -306,6 +307,7 @@ export const testNode = createOverkillSuite({
 
                 await scope.assert.rejects(async function executeWithInvalidReporterSinks() {
                     await engine.execute(createPassingPlan(engine), {
+                        retryPolicy: null,
                         execution: { mode: 'serial-in-process' },
                         reporters: [ defineRuntimeReporter(firstReporter), defineRuntimeReporter(secondReporter) ],
                         runFacts: {},
@@ -348,6 +350,7 @@ export const testNode = createOverkillSuite({
                 };
 
                 const execution = engine.execute(createPassingPlan(engine), {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ defineRuntimeReporter(firstReporter), defineRuntimeReporter(secondReporter) ],
                     runFacts: {},
@@ -412,6 +415,7 @@ export const testNode = createOverkillSuite({
 
                 await scope.assert.rejects(async function executeWithThrowingDisposal() {
                     await execute(createPassingPlan(engine), {
+                        retryPolicy: null,
                         execution: { mode: 'serial-in-process' },
                         reporters: [],
                         runFacts: {},
@@ -434,6 +438,7 @@ export const testNode = createOverkillSuite({
                 const finishReporter = createInMemoryRealTimeReporter();
 
                 const result = await engine.execute(createPassingPlan(engine), {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ defineRuntimeReporter(createRunEndFailingReporter()), finalReporter, finishReporter ],
                     runFacts: {},
@@ -468,6 +473,7 @@ export const testNode = createOverkillSuite({
                 };
 
                 const result = await engine.execute(createPassingPlan(engine), {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ defineRuntimeReporter(failingReporter), observer ],
                     runFacts: {},
@@ -494,6 +500,7 @@ export const testNode = createOverkillSuite({
                 const fixture = createConcurrentFinishFixture();
 
                 const execution = fixture.engine.execute(createPassingPlan(fixture.engine), {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [
                         defineRuntimeReporter(fixture.realTimeReporter),

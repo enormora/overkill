@@ -10,8 +10,8 @@ import type { DiffPathSegment } from '../diff/diff-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import {
     runStatusFromPlan,
+    singleAttemptResult,
     type OrphanedNode,
-    type RunResourceUsage,
     type RunnerError,
     type RunResult,
     type RunSummary,
@@ -20,6 +20,7 @@ import {
     type TestOutcome,
     type TestVerdict
 } from '../engine/run-result.ts';
+import type { RunResourceUsage } from '../engine/resource-usage.ts';
 import { summaryRunTimings, type RunTimings } from '../engine/run-timings.ts';
 
 type FailedCheckOverrides = {
@@ -345,14 +346,14 @@ function buildPerTestResult(overrides: PerTestResultOverrides = {}): RunResult['
     const outcome = buildPerTestOutcome(overrides);
     const id = overrides.id ?? defaultCaseId;
 
-    return {
+    return singleAttemptResult({
         definitionLocations: overrides.definitionLocations ?? [ defaultLocation ],
         id,
         outcome,
         verdict: buildPerTestVerdict(overrides, outcome),
         workId: overrides.workId ?? createDefaultWorkId(id),
         durationMicroseconds: overrides.durationMicroseconds ?? 0
-    };
+    }, { index: 0 });
 }
 
 function buildOrphanedNode(overrides: OrphanedNodeOverrides = {}): OrphanedNode {
@@ -366,9 +367,10 @@ function buildOrphanedNode(overrides: OrphanedNodeOverrides = {}): OrphanedNode 
 
 function buildRunnerErrorAttribution(overrides: RunnerErrorOverrides): Pick<
     RunnerError,
-    'attributedTo' | 'attributedToWork'
+    'attributedTo' | 'attributedToAttempt' | 'attributedToWork'
 > {
     return {
+        attributedToAttempt: overrides.attributedToAttempt ?? null,
         attributedTo: overrides.attributedTo ?? null,
         attributedToWork: overrides.attributedToWork ?? null
     };

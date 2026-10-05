@@ -1,5 +1,4 @@
 import { workIdentityKey } from '../engine/identity.ts';
-import { appendRunnerErrors } from '../engine/execution-result.ts';
 import type {
     PerTestResult,
     RunArtifact,
@@ -7,6 +6,7 @@ import type {
     RunResult,
     RunnerError
 } from './run-engine-primitives.ts';
+import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
 import {
     collectedRunCaseEntries,
     createRunResultFromCollectedPlan
@@ -123,20 +123,20 @@ async function reportEmptyShardRunStart(
     });
 }
 
-async function reportResultWithDelivery(
-    result: RunResult,
-    reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>
-): Promise<RunResult> {
-    const runEndErrors = await reporterDelivery.reportEvent({ kind: 'run-end', result });
-    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
-    const finalReporterErrors = await reporterDelivery.reportResult(resultForFinalReporting);
-    const disposeErrors = await reporterDelivery.disposeReporters();
-
-    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
-}
-
 async function reportFinalResult(result: RunResult, runtime: WorkerPoolRunRuntime): Promise<RunResult> {
-    return await reportResultWithDelivery(result, runtime.reporterDelivery);
+    return await reportResultWithDelivery(
+        resultWithRetainedArtifacts(
+            result,
+            [],
+            runtime
+                .resolvedRun
+                .facts
+                .execution
+                .retries
+                ?.artifacts ?? 'first-failure-and-final'
+        ),
+        runtime.reporterDelivery
+    );
 }
 
 export async function finishWorkerPoolRun(

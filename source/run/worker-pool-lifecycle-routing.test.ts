@@ -83,6 +83,7 @@ function baseResolvedRun(): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
@@ -406,7 +407,7 @@ export const testNode = createOverkillSuite({
                         return completion.result;
                     },
                     resolvedRun: mixedLifecycleResolvedRun(),
-                    runState: createSupervisedRunState()
+                    runState: createSupervisedRunState('first-failure-and-final')
                 });
 
                 await assertRoutedLifecycleRuns(scope, runtime, routedLifecycles, routedHostOutputSinks);

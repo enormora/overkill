@@ -75,6 +75,7 @@ function runtimeStateError(message: string, cause: unknown): RunCollectionError 
 
 function durationHistoryWriteError(cause: unknown): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         cause,
         diagnostics: [],

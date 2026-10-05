@@ -120,6 +120,7 @@ export const config = defineConfig({
         },
         'backend-http': {
             testFamily: 'integration',
+            retries: { maxAttempts: 3, artifacts: 'first-failure-and-final' },
             files: {
                 include: [ 'source/integration-tests/http/**/*.test.ts' ]
             }
@@ -127,6 +128,12 @@ export const config = defineConfig({
     }
 });
 ```
+
+`retries` is integration-only. `maxAttempts` must be a positive safe integer
+and counts the initial attempt. Omitted retry policy normalizes to `null`.
+Artifact retention defaults to `first-failure-and-final`; alternatives are
+`last-failure-and-final` and `all`. The resolved policy is frozen in
+`RunFacts.execution.retries`, including direct-file execution.
 
 This should be a thin typed wrapper, not a mandatory DSL.
 

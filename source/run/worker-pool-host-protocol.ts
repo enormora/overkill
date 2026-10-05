@@ -1,4 +1,5 @@
-import type { ResourceUsageSnapshot, RunResourceUsage, RunnerError } from '../engine/run-result.ts';
+import type { RunnerError } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource-usage.ts';
 import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
 import type {
     WorkerPoolMessage,

@@ -275,6 +275,7 @@ export const testNode = createOverkillSuite({
 
                 const errors = await reportEvent(dispatcher, [ failingReporter ], {
                     error: {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         cause: new Error('original'),
                         diagnostics: [],

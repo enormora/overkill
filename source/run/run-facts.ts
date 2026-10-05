@@ -161,6 +161,7 @@ function createRunExecutionFacts(
         order: input.request.order,
         placementPlan: input.placementPlan,
         profile: input.request.profile,
+        retries: profile.testFamily === 'integration' ? profile.retries : null,
         resourceUsagePolicy: resolveResourceUsagePolicy(input.request, profile),
         scheduling: input.scheduling,
         testFamily: profile.testFamily,

@@ -41,6 +41,7 @@ export type CoverageArtifactPayload = {
 
 export type CoverageArtifact = {
     readonly id: {
+        readonly attempt: null;
         readonly runtimes: readonly RuntimeId[];
         readonly scope: { readonly kind: 'run'; };
         readonly sequence: number;

@@ -1,5 +1,5 @@
 import { workIdentityKey } from '../engine/identity.ts';
-import type { HedgedConflictArtifact, PerTestResult, RunArtifact, RunResult } from '../engine/run-result.ts';
+import type { PerTestResult, RunResult, HedgedConflictArtifact, RunArtifact } from '../engine/run-result.ts';
 import type { WorkUnit } from './run-types.ts';
 import {
     workerPoolPlacementTrace,
@@ -157,6 +157,7 @@ async function finalizeAuthority(
 
 function conflictArtifactId(result: PerTestResult, sequence: number): HedgedConflictArtifact['id'] {
     return {
+        attempt: result.attempts.at(-1)?.attempt ?? result.attempts[0].attempt,
         runtimes: result.workId.runtimes,
         scope: {
             activeCases: [ result.id ],
@@ -181,10 +182,12 @@ function conflictArtifact(
         id: artifactId,
         payload: {
             authoritative: {
+                attempts: authoritativeResult.attempts,
                 outcome: authoritativeResult.outcome,
                 verdict: authoritativeResult.verdict
             },
             conflicting: {
+                attempts: conflictingResult.attempts,
                 outcome: conflictingResult.outcome,
                 verdict: conflictingResult.verdict
             },
@@ -201,6 +204,7 @@ function conflictPerTestResult(
 ): PerTestResult {
     return {
         ...authoritativeResult,
+        retried: authoritativeResult.retried === null ? null : { ...authoritativeResult.retried, finalVerdict: 'fail' },
         outcome: {
             failures: [ {
                 artifact: artifact.id,

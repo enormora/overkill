@@ -1,4 +1,4 @@
-import type { ResourceUsageSnapshot } from './run-result.ts';
+import type { ResourceUsageSnapshot } from './resource-usage.ts';
 import { observedGrowthBytesPerSecond } from './resource-usage-growth.ts';
 
 export type ExecuteResourceBudgets = {

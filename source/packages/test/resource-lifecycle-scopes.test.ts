@@ -83,6 +83,7 @@ async function executeObservedPlan(testPlan: TestPlan): Promise<ObservedExecutio
         workerId: null
     });
     const result = await execute(testPlan, {
+        retryPolicy: null,
         execution: { mode: 'serial-in-process' },
         reporters: [ eventReporter() ],
         resourceUsageTracker: null,

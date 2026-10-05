@@ -104,6 +104,7 @@ function runtimeWithPoolRun(
 
 function runnerError(message: string): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause: null,

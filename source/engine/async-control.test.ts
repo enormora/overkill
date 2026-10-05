@@ -375,6 +375,7 @@ export const testNode = createOverkillSuite({
                 );
                 const reporter = createInMemoryRealTimeReporter();
                 const result = await engine.execute(testPlan, {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ reporter ],
                     runFacts: {},
@@ -430,6 +431,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const result = await engine.execute(testPlan, {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [],
                     runFacts: {},
@@ -484,6 +486,7 @@ export const testNode = createOverkillSuite({
                 );
                 const reporter = createInMemoryRealTimeReporter();
                 const result = await engine.execute(testPlan, {
+                    retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [ reporter ],
                     runFacts: {},

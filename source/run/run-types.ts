@@ -12,6 +12,7 @@ import type { TestPlan, TestPlanRootOptions } from '../engine/test-plan.ts';
 import type { RunEngineSelection, RunSelection } from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type {
+    IntegrationRetryPolicy,
     RunExecutionResourceOwnershipPlan,
     RunIntegrationExecutionShape,
     RunMicrotestExecutionShape
@@ -261,6 +262,7 @@ export type RunMicrotestProfileConfig = {
 };
 
 export type RunIntegrationProfileConfig = {
+    readonly retries: IntegrationRetryPolicy | null;
     readonly execution: RunIntegrationExecution;
     readonly files: RunProfileFiles;
     readonly reporters: RunReporters | null;
@@ -363,6 +365,7 @@ export type RunEnvironmentFacts = {
 };
 
 type RunExecutionBaseFacts = {
+    readonly retries: IntegrationRetryPolicy | null;
     readonly baselineUpdateMode: 'none';
     readonly capture: 'buffered' | 'live';
     readonly coverage: boolean;

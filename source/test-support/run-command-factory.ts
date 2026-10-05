@@ -126,6 +126,7 @@ function defaultCoveragePolicy(overrides: Partial<RunCoveragePolicy> = {}): RunC
 
 export function testRunExecutionFacts(command: RunCommand, profile: RunProfileConfig): RunExecutionFacts {
     const facts = {
+        retries: null,
         baselineUpdateMode: command.request.baselineUpdateMode,
         capture: command.request.capture,
         coverage: command.request.coverage,
@@ -290,6 +291,7 @@ export function defaultIntegrationProfile(
     overrides: IntegrationProfileOverrides
 ): RunIntegrationProfileConfig {
     return {
+        retries: null,
         execution: defaultIntegrationExecution(overrides.execution),
         files: overrides.files ?? {
             exclude: [],

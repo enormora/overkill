@@ -1,7 +1,7 @@
 import colors from 'yoctocolors';
 import { formatCaseId, type CaseId, type RuntimeId } from '../engine/identity.ts';
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
-import type { RunArtifact, RunResult, RunnerError } from '../engine/run-result.ts';
+import type { RunResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { formatTimingSummary as formatRunTimingSummary } from './run-summary-rendering.ts';
 
@@ -24,6 +24,17 @@ export type ProblemDetailOptions = {
     readonly verbose: boolean;
 };
 
+export const formatTimingSummary: TimingSummaryFormatter = formatRunTimingSummary;
+
+type KnownOutcomeProblemInput = {
+    readonly context: ReportingContext;
+    readonly heading: string;
+    readonly options: ProblemDetailOptions;
+    readonly outcome: NonNullable<RunResult['perTest'][number]['outcome']>;
+    readonly result: RunResult;
+    readonly testResult: RunResult['perTest'][number];
+};
+
 function executedCount(result: RunResult): number {
     const { summary } = result;
 
@@ -31,7 +42,15 @@ function executedCount(result: RunResult): number {
         summary.resourceExhausted + summary.crashed + summary.runtimePolicy;
 }
 
-export const formatTimingSummary: TimingSummaryFormatter = formatRunTimingSummary;
+function formatRetrySummary(result: RunResult): string {
+    const retried = result
+        .perTest
+        .filter(function wasRetried(testResult) {
+            return testResult.retried !== null;
+        })
+        .length;
+    return retried === 0 ? '' : `, ${retried} retried`;
+}
 
 export function formatCountSummary(result: RunResult): string {
     const { summary } = result;
@@ -46,9 +65,8 @@ export function formatCountSummary(result: RunResult): string {
     ]
         .join(', ');
     const orphanSummary = result.orphans.length === 0 ? '' : `, ${result.orphans.length} orphaned`;
-
     return `${summary.discovered} discovered, ${summary.planned} planned, ${executedCount(result)} executed ` +
-        `(${outcomes})${orphanSummary}`;
+        `(${outcomes})${orphanSummary}${formatRetrySummary(result)}`;
 }
 
 function hashText(value: string): number {
@@ -240,15 +258,6 @@ function testProblemHeading(testResult: RunResult['perTest'][number], context: R
 
     return `${formatCaseId(testResult.id)}${locationText}`;
 }
-
-type KnownOutcomeProblemInput = {
-    readonly context: ReportingContext;
-    readonly heading: string;
-    readonly options: ProblemDetailOptions;
-    readonly outcome: NonNullable<RunResult['perTest'][number]['outcome']>;
-    readonly result: RunResult;
-    readonly testResult: RunResult['perTest'][number];
-};
 
 function knownOutcomeProblemLines(input: KnownOutcomeProblemInput): readonly string[] {
     const { context, heading, options, outcome, result, testResult } = input;

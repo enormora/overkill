@@ -276,6 +276,13 @@ export function createDeterministicRunResult(
         collectedPlan,
         work.map(function toPassingResult(entry) {
             return {
+                attempts: [ {
+                    attempt: { index: 0 },
+                    durationMicroseconds: 0,
+                    outcome: { kind: 'pass' as const },
+                    verdict: 'pass' as const
+                } ],
+                retried: null,
                 definitionLocations: [ { kind: 'unknown' as const } ],
                 durationMicroseconds: 0,
                 id: entry.case,

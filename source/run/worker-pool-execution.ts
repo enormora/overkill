@@ -210,7 +210,9 @@ function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime
         members: lease.members,
         reporterEventsBuffered: lease.members.length === 1 && unitCanUseBufferedHedging(runtime, lease.unit),
         requeuePendingCases: createStoredRunValue(false),
-        state: createSupervisedRunState(),
+        state: createSupervisedRunState(
+            runtime.resolvedRun.facts.execution.retries?.artifacts ?? 'first-failure-and-final'
+        ),
         startedCases: new Set(),
         timeout: createStoredRunValue<
             ReturnType<WorkerPoolRunRuntime['dependencies']['wallClock']['setTimeout']> | null
@@ -249,6 +251,7 @@ function pendingMembers(taskRun: WorkerPoolTaskRun): readonly WorkerPoolLeaseMem
 
 function recordRunCrash(runtime: WorkerPoolRunRuntime, message: string, cause: unknown): void {
     runtime.runState.recordRunnerError({
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause,

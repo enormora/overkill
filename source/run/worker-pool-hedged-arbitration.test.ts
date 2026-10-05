@@ -2,6 +2,8 @@ import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type PerTestResult,
+    type HedgedConflictArtifactPayload,
+    type TestOutcome,
     type RunResult,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
@@ -41,6 +43,8 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
+        attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: { kind: 'pass' }, verdict: 'pass' } ],
+        retried: null,
         definitionLocations: [ { kind: 'unknown' as const } ],
         id,
         outcome: { kind: 'pass' },
@@ -52,22 +56,27 @@ function passResult(): PerTestResult {
 
 function failResult(): PerTestResult {
     const result = passResult();
+    const outcome: TestOutcome = {
+        failures: [ {
+            error: {
+                message: 'duplicate failed',
+                name: 'Error',
+                stack: null,
+                thrown: new Error('duplicate failed')
+            },
+            kind: 'body-error'
+        } ],
+        kind: 'fail'
+    };
+    return { ...result, outcome, verdict: 'fail', attempts: [ { ...result.attempts[0], outcome, verdict: 'fail' } ] };
+}
 
+function retriedResult(first: PerTestResult, final: PerTestResult): PerTestResult {
     return {
-        ...result,
-        outcome: {
-            failures: [ {
-                error: {
-                    message: 'duplicate failed',
-                    name: 'Error',
-                    stack: null,
-                    thrown: new Error('duplicate failed')
-                },
-                kind: 'body-error'
-            } ],
-            kind: 'fail'
-        },
-        verdict: 'fail'
+        ...final,
+        attempts: [ first.attempts[0], { ...final.attempts[0], attempt: { index: 1 } } ],
+        retried: { attempts: 2, finalVerdict: final.verdict },
+        durationMicroseconds: first.durationMicroseconds + final.durationMicroseconds
     };
 }
 
@@ -118,7 +127,7 @@ function runResult(perTest: PerTestResult): RunResult {
 }
 
 function taskRunWithLane(lane: string, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
-    const taskRun = createTaskRun(createSupervisedRunState());
+    const taskRun = createTaskRun(createSupervisedRunState('first-failure-and-final'));
     const member = taskRun.members[0];
     const attempt = runtime.placementTrace.assignAttempt(member.traceUnit, member.unit.work, lane, { kind: 'initial' });
 
@@ -239,14 +248,17 @@ async function matchingHedgedDuplicateResult(): Promise<{
     return { duplicateTask, runtime };
 }
 
-async function conflictingHedgedResult(): Promise<WorkerPoolRunRuntime> {
+async function conflictingHedgedResult(
+    authority: PerTestResult,
+    conflicting: PerTestResult
+): Promise<WorkerPoolRunRuntime> {
     const runtime = hedgedRuntime();
     const authorityTask = taskRunWithLane('worker-1', runtime);
     const conflictingTask = taskRunWithLane('worker-2', runtime);
 
     await recordCompletedHedgedTaskRun(
-        authorityMap(authorityTask, runResult(passResult())),
-        runResult(failResult()),
+        authorityMap(authorityTask, runResult(authority)),
+        runResult(conflicting),
         conflictingTask,
         runtime
     );
@@ -323,10 +335,58 @@ function disposableIsolatedUnit(taskRun: WorkerPoolTaskRun): WorkerPoolTaskRun['
     };
 }
 
+function assertConflictChains(scope: OverkillScope, payload: HedgedConflictArtifactPayload): void {
+    scope.assert.deepEqual(
+        payload.authoritative.attempts.map(function verdict(attempt) {
+            return attempt.verdict;
+        }),
+        [ 'fail', 'pass' ]
+    );
+    scope.assert.deepEqual(
+        payload.conflicting.attempts.map(function verdict(attempt) {
+            return attempt.verdict;
+        }),
+        [ 'fail', 'fail' ]
+    );
+}
+
+function assertRetriedConflict(scope: OverkillScope, runtime: WorkerPoolRunRuntime): void {
+    const result = flattenPerTest(runtime)[0];
+    scope.require.defined(result);
+    const artifact = runtime.runState.artifacts()[0];
+    scope.require.defined(artifact);
+    if (artifact.payload.kind !== 'hedged-conflict') {
+        throw new Error('Expected hedged conflict evidence.');
+    }
+    scope.assert.deepEqual([ result.verdict, result.retried?.finalVerdict, artifact.id.attempt?.index ], [
+        'fail',
+        'fail',
+        1
+    ]);
+    scope.assert.deepEqual(
+        result.attempts.map(function verdict(attempt) {
+            return attempt.verdict;
+        }),
+        [ 'fail', 'pass' ]
+    );
+    assertConflictChains(scope, artifact.payload);
+    assertConflictArtifactIdentity(scope, runtime, result);
+}
+
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-hedged-arbitration.test.ts',
     children: [
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'hedged conflicts preserve both retry chains while overriding the logical verdict',
+            async body(scope: OverkillScope) {
+                const recovered = retriedResult(failResult(), passResult());
+                const exhausted = retriedResult(failResult(), failResult());
+                assertRetriedConflict(scope, await conflictingHedgedResult(recovered, exhausted));
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration finalizes the winner after cancelling a peer',
@@ -350,7 +410,7 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'worker-pool hedged arbitration fails conflicting duplicate outcomes',
             async body(scope: OverkillScope) {
-                const runtime = await conflictingHedgedResult();
+                const runtime = await conflictingHedgedResult(passResult(), failResult());
                 const result = flattenPerTest(runtime)[0];
 
                 scope.require.defined(result);

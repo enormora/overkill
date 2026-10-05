@@ -77,7 +77,7 @@ function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): 
 
     context.emitMessage({
         event: {
-            attempt: 1,
+            attempt: 0,
             case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],
             kind: 'test-start',
@@ -90,7 +90,8 @@ function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): 
     context.stderr.emit('case stderr\n');
     context.emitMessage({
         event: {
-            attempt: 1,
+            completion: 'final',
+            attempt: 0,
             artifacts: [],
             case: work.case,
             definitionLocations: [ { kind: 'unknown' } ],

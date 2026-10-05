@@ -37,24 +37,18 @@ function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'
     const events: BufferedReporterEvent[] = [];
 
     return {
-        [Symbol.iterator]() {
-            return events[Symbol.iterator]();
-        },
+        [Symbol.iterator]: events[Symbol.iterator].bind(events),
         clear() {
             events.length = 0;
         },
-        push(...nextEvents) {
-            events.push(...nextEvents);
-
-            return events.length;
-        }
+        push: events.push.bind(events)
     };
 }
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const testCaseMetadata = {
     annotations: {},
     controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ]
+    definitionLocations: [ { kind: 'unknown' } ]
 } as const;
 const defaultUnitPolicy = {
     order: 'plan',
@@ -215,6 +209,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
@@ -397,7 +392,7 @@ export function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRu
             }
         },
         resolvedRun: workerPoolResolvedRun(collectedPlan),
-        runState: createSupervisedRunState(),
+        runState: createSupervisedRunState('first-failure-and-final'),
         taskResults,
         terminalFailure: createStoredRunValue(false),
         lifecycle: { token: 'fake-worker-runtime' }
@@ -512,10 +507,12 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'worker-pool resource tracking stops active tasks on pool budget breach',
             async body(scope: OverkillScope) {
-                const activeTask = createTaskRun(createSupervisedRunState());
+                const activeTask = createTaskRun(createSupervisedRunState('first-failure-and-final'));
                 const runtime = budgetedRuntime(activeTask);
 
-                activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0);
+                activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0, {
+                    index: 0
+                });
                 activeTask.timeout.write(runtime.dependencies.wallClock.setTimeout(
                     activeTask.controller.abort.bind(activeTask.controller),
                     100

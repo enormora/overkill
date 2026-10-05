@@ -117,6 +117,8 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
+        attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: { kind: 'pass' }, verdict: 'pass' } ],
+        retried: null,
         definitionLocations: [ { kind: 'unknown' as const } ],
         id,
         outcome: { kind: 'pass' },
@@ -230,8 +232,8 @@ async function workerPoolFinalizationResults(): Promise<{
     readonly result: RunResult;
 }> {
     const { placementTraces, runtime } = traceCapturingRuntime();
-    const activeState = createSupervisedRunState();
-    const completedState = createSupervisedRunState();
+    const activeState = createSupervisedRunState('first-failure-and-final');
+    const completedState = createSupervisedRunState('first-failure-and-final');
 
     prepareFinalizationRuntime(runtime, activeState, completedState);
 
@@ -239,7 +241,7 @@ async function workerPoolFinalizationResults(): Promise<{
     const emptyResult = await createEmptyWorkerPoolResult(
         workerPoolResolvedRun(createCollectedPlan()),
         runtime.dependencies,
-        createSupervisedRunState()
+        createSupervisedRunState('first-failure-and-final')
     );
 
     const placementTrace = placementTraces[0];
@@ -291,7 +293,7 @@ export const testNode = createOverkillSuite({
                             events.push(event);
                         }
                     }),
-                    createSupervisedRunState()
+                    createSupervisedRunState('first-failure-and-final')
                 );
 
                 scope.assert.equal(result.planStatus, 'empty-shard');

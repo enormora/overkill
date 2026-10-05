@@ -115,6 +115,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
@@ -265,6 +266,7 @@ function childHostResolvedRun(): ResolvedRun {
 
 function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
     return {
+        retries: null,
         baselineUpdateMode: 'none',
         capture: 'buffered',
         coverage: false,
@@ -336,7 +338,7 @@ async function createRuntime(
             return completion.result;
         },
         resolvedRun,
-        runState: createSupervisedRunState()
+        runState: createSupervisedRunState('first-failure-and-final')
     });
 }
 
@@ -493,7 +495,7 @@ export const testNode = createOverkillSuite({
                             return completion.result;
                         },
                         resolvedRun: workerPoolPlanWithSupervisedFacts(),
-                        runState: createSupervisedRunState()
+                        runState: createSupervisedRunState('first-failure-and-final')
                     });
                 }, {
                     message: 'Worker-pool execution requires worker-pool execution facts.'

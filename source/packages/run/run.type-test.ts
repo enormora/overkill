@@ -464,6 +464,7 @@ describe('@overkill-dev/run config', function () {
             readonly testFamily: 'integration';
         }>();
         expect<RunIntegrationProfileConfig>().type.toBeAssignableFrom<{
+            readonly retries: null;
             readonly execution: {
                 readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
                 readonly processModel: 'worker-pool';

@@ -49,6 +49,8 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
+        attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: { kind: 'pass' }, verdict: 'pass' } ],
+        retried: null,
         definitionLocations: [ { kind: 'unknown' as const } ],
         id,
         outcome: { kind: 'pass' },
@@ -81,6 +83,7 @@ function startEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'tes
 
 function endEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
+        completion: 'final',
         ...startEventWithoutWorkId(),
         artifacts: [],
         kind: 'test-end',
@@ -95,7 +98,7 @@ function eventMessage(event: ReporterEvent): WorkerPoolMessage {
 }
 
 function taskRunWithLane(lane: string, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
-    const taskRun = createTaskRun(createSupervisedRunState());
+    const taskRun = createTaskRun(createSupervisedRunState('first-failure-and-final'));
     const member = taskRun.members[0];
     const attempt = runtime.placementTrace.assignAttempt(member.traceUnit, member.unit.work, lane, { kind: 'initial' });
 
@@ -113,6 +116,7 @@ function hedgedRuntime(): WorkerPoolRunRuntime {
 
 function reporterError(): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         cause: new Error('reporter failed'),
         diagnostics: [],
@@ -220,7 +224,7 @@ async function reportedWorkerEventErrors(): Promise<WorkerPoolRunRuntime> {
 
     handleWorkerMessage(
         eventMessage({ kind: 'suite-start', suitePath: [] }),
-        createTaskRun(createSupervisedRunState()),
+        createTaskRun(createSupervisedRunState('first-failure-and-final')),
         runtime
     );
     await runtime.reporterEvents.wait();
@@ -339,7 +343,7 @@ export const testNode = createOverkillSuite({
                 const taskRun = taskRunWithLane('worker-1', runtime);
                 const activeCase = firstCaseId();
 
-                taskRun.state.addActiveCase('active', { capture: null, id: activeCase }, 0);
+                taskRun.state.addActiveCase('active', { capture: null, id: activeCase }, 0, { index: 0 });
                 scope.assert.equal(recordPermissionFailureForTask(taskRun, runtime), true);
                 scope.assert.equal(
                     JSON.stringify(taskRun.state.runnerErrors()[0]?.attributedToWork),

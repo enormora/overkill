@@ -12,6 +12,8 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createDotReporter, type DotReporterDependencies } from './dot-reporter.ts';
 import type { TerminalOutput } from './terminal.ts';
 
+const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 type FakeTerminal = {
     readonly listenerCount: () => number;
     readonly output: TerminalOutput;
@@ -75,6 +77,7 @@ async function reportTestEnd(
     outcome: RunResult['perTest'][number]['outcome']
 ): Promise<void> {
     await reporter.onEvent({
+        completion: 'final',
         attempt: 0,
         case: id,
         definitionLocations: [ definitionLocation ],
@@ -140,16 +143,14 @@ function createFailureDetailResult(): RunResult {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/dot-reporter.test.ts',
-    annotations: {},
-    controls: {},
+    ...testMetadata,
+
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter declares raw stdout',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -163,10 +164,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter maps outcomes and runner errors to compact marks',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -204,6 +204,7 @@ export const testNode = createOverkillSuite({
                 await reportTestEnd(reporter, inconclusiveCaseId, { kind: 'inconclusive', reason: 'unknown' });
                 await reporter.onEvent({
                     error: {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         cause: new Error('boom'),
                         diagnostics: [],
@@ -229,10 +230,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter wraps progress marks by terminal width',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(2);
                 const reporter = createDotRuntimeReporter({
@@ -253,10 +253,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints summary and short details on finish',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -333,10 +332,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints assertion failure source locations on finish',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotReporter({
@@ -432,10 +430,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints body-error and contract failure details',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -484,10 +481,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'dot reporter prints post-finish runner errors below the summary',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const terminal = createFakeTerminal(80);
                 const reporter = createDotRuntimeReporter({
@@ -503,6 +499,7 @@ export const testNode = createOverkillSuite({
                 await onFinish(runResultFactory.build());
                 await reporter.onEvent({
                     error: {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         cause: new Error('late'),
                         diagnostics: [],

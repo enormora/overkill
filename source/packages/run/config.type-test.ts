@@ -15,6 +15,17 @@ import {
 } from './config.entry-point.ts';
 
 describe('@overkill-dev/run/config', function () {
+    test('retries are integration-only and retain an explicit artifact policy', function () {
+        expect<RunProjectIntegrationProfileConfig>().type.toBeAssignableFrom<{
+            readonly testFamily: 'integration';
+            readonly files: { readonly include: readonly ['source/**/*.integration.test.ts']; };
+            readonly retries: { readonly maxAttempts: number; readonly artifacts: 'all'; };
+        }>();
+        expect<RunProjectMicrotestProfileConfig>().type.not.toBeAssignableFrom<{
+            readonly testFamily: 'microtest';
+            readonly retries: { readonly maxAttempts: number; };
+        }>();
+    });
     test('exposes configuration loading and authoring types', function () {
         expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
         expect<typeof loadRunConfig>().type.toBe<

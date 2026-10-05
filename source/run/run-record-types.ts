@@ -2,7 +2,7 @@ import type { Except } from 'type-fest';
 import type { RuntimeId, WorkId } from '../engine/identity.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
-import type { RunRecordArtifact, RunRecordTestOutcome } from './run-record-outcomes.ts';
+import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type {
     RunCoveragePolicy,
@@ -34,7 +34,8 @@ export type ResolvedRuntime = {
     readonly os: string | null;
 };
 
-type RecordedTestResult = Except<RunResult['perTest'][number], 'outcome'> & {
+type RecordedTestResult = Except<RunResult['perTest'][number], 'attempts' | 'outcome'> & {
+    readonly attempts: readonly [RunRecordTestAttempt, ...readonly RunRecordTestAttempt[]];
     readonly outcome: RunRecordTestOutcome | null;
 };
 

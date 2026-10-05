@@ -519,6 +519,7 @@ export const testNode = createOverkillSuite({
 
                 fixture.setUndeliveredRunnerErrors([
                     {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         cause: null,
                         diagnostics: [ { label: 'phase', value: 'collection' } ],

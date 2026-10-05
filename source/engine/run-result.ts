@@ -4,8 +4,10 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import type { CaseId, RuntimeId, WorkId, WorkloadId } from './identity.ts';
+import type { AttemptId, CaseId, WorkId } from './identity.ts';
+import type { CapturedOutputArtifact, RunArtifactId } from './run-artifact.ts';
 import type { RunTimings } from './run-timings.ts';
+import type { RunResourceUsage } from './resource-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 
 type RunnerErrorSubtypeByName = {
@@ -136,6 +138,7 @@ export type TestOutcome = FailOutcome | InconclusiveOutcome | PassOutcome | Skip
 export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
 
 export type RunnerError = {
+    readonly attributedToAttempt: AttemptId | null;
     readonly attributedTo: CaseId | null;
     readonly attributedToWork?: WorkId | null;
     readonly cause: unknown;
@@ -307,6 +310,7 @@ function permissionDeniedRunnerError(
     cause: PermissionDeniedRunnerErrorCause
 ): PermissionDeniedRunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: context.attributedTo,
         attributedToWork: context.attributedToWork,
         cause,
@@ -390,6 +394,7 @@ export class CaseRunnerError extends Error {
 
     public runnerError(attributedTo: CaseId, attributedToWork: WorkId): RunnerError {
         return {
+            attributedToAttempt: null,
             attributedTo,
             attributedToWork,
             cause: this.runnerErrorCause,
@@ -463,7 +468,21 @@ export function runStatusFromPlan(
     return runStatusFromSummary(summary, runnerErrors);
 }
 
+export type TestAttemptResult = {
+    readonly attempt: AttemptId;
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
+    readonly durationMicroseconds: number;
+};
+
+export type RetrySummary = {
+    readonly attempts: number;
+    readonly finalVerdict: TestVerdict;
+};
+
 export type PerTestResult = {
+    readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
+    readonly retried: RetrySummary | null;
     readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
     readonly id: CaseId;
     readonly outcome: TestOutcome | null;
@@ -472,33 +491,27 @@ export type PerTestResult = {
     readonly durationMicroseconds: number;
 };
 
-export type RunArtifactScope = {
-    readonly activeCases: readonly CaseId[];
-    readonly case: CaseId;
-    readonly confidence: 'active-case' | 'concurrent-active';
-    readonly kind: 'case';
-} | {
-    readonly kind: 'run';
-};
-
-export type RunArtifactId = {
-    readonly runtimes: readonly RuntimeId[];
-    readonly scope: RunArtifactScope;
-    readonly sequence: number;
-    readonly subtype: 'coverage' | 'hedged-conflict' | 'log-capture';
-    readonly workload: WorkloadId | null;
-};
-
-export type CapturedOutputArtifactPayload = {
-    readonly byteLength: number;
-    readonly capturedAtMicroseconds: number;
-    readonly kind: 'captured-output';
-    readonly stream: 'stderr' | 'stdout';
-    readonly text: string;
-    readonly truncated: boolean;
-};
+export function singleAttemptResult(
+    result: Pick<
+        PerTestResult,
+        'definitionLocations' | 'durationMicroseconds' | 'id' | 'outcome' | 'verdict' | 'workId'
+    >,
+    attempt: AttemptId
+): PerTestResult {
+    return {
+        ...result,
+        attempts: [ {
+            attempt,
+            durationMicroseconds: result.durationMicroseconds,
+            outcome: result.outcome,
+            verdict: result.verdict
+        } ],
+        retried: null
+    };
+}
 
 export type HedgedConflictEvidence = {
+    readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;
 };
@@ -508,12 +521,6 @@ export type HedgedConflictArtifactPayload = {
     readonly conflicting: HedgedConflictEvidence;
     readonly kind: 'hedged-conflict';
     readonly work: WorkId;
-};
-
-export type CapturedOutputArtifact = {
-    readonly id: RunArtifactId & { readonly subtype: 'log-capture'; };
-    readonly payload: CapturedOutputArtifactPayload;
-    readonly source: 'boundary-captured' | 'native';
 };
 
 export type HedgedConflictArtifact = {
@@ -528,30 +535,6 @@ export type SuiteRunCounts = {
     readonly discovered: number;
     readonly executed: number;
     readonly planned: number;
-};
-
-export type ResourceUsageSnapshot = {
-    readonly activeResourceCount: number;
-    readonly activeResourceTypes: readonly string[];
-    readonly capturedAtMicroseconds: number;
-    readonly javaScriptEngineHeapBytes: number;
-    readonly residentSetBytes: number;
-};
-
-export type RunResourceUsage = {
-    readonly activeResourceTypes: readonly string[];
-    readonly end: ResourceUsageSnapshot;
-    readonly peakActiveResourceCount: number;
-    readonly peakJavaScriptEngineHeapBytes: number;
-    readonly peakResidentSetBytes: number;
-    readonly peakResidentSetGrowthBytesPerSecond: number;
-    readonly sampleCount: number;
-    readonly start: ResourceUsageSnapshot;
-};
-
-export type RunResourceUsageTracker = {
-    readonly finish: () => RunResourceUsage;
-    readonly start: (onSample?: (snapshot: ResourceUsageSnapshot) => void) => void;
 };
 
 export type OrphanedNode = {

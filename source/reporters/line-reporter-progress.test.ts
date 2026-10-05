@@ -73,6 +73,7 @@ async function reportLongCase(reporter: RealTimeReporter): Promise<void> {
     const id = longCaseId();
 
     await reporter.onEvent({
+        completion: 'final',
         attempt: 0,
         case: id,
         definitionLocations: [ definitionLocation ],
@@ -144,6 +145,7 @@ export const testNode = createOverkillSuite({
 
                 await reporter.onEvent({
                     error: {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         cause: new Error('cannot render'),
                         diagnostics: [],

@@ -42,6 +42,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(profile);
                 scope.require.defined(microtestProfile);
                 scope.assert.deepEqual(profile, {
+                    retries: null,
                     execution: {
                         assignmentPolicy: 'case-count-balanced',
                         dispatchPolicy: 'dynamic-lease',

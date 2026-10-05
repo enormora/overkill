@@ -136,9 +136,10 @@ export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<
 
 function prepareExecution(
     dependencies: ExecuteDependencies,
-    options: ExecuteOptions | undefined
+    options: ExecuteOptions | undefined,
+    testPlan: TestPlan
 ): PreparedExecution {
-    const executeOptions = executeOptionsWithDefaults(options);
+    const executeOptions = executeOptionsWithDefaults(options, testPlan);
     const asyncLeakMonitor = createExecutionAsyncLeakMonitor(dependencies.asyncLeakDiagnostics);
     const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
 
@@ -157,7 +158,7 @@ function prepareExecution(
 
 export function createExecute(dependencies: ExecuteDependencies): Execute {
     return async function execute(testPlan, options) {
-        const prepared = prepareExecution(dependencies, options);
+        const prepared = prepareExecution(dependencies, options, testPlan);
         const reporterDelivery = await dependencies.reporterDispatcher.createDelivery(
             prepared.options.reporters,
             prepared.options.outputRenderer

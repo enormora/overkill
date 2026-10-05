@@ -128,7 +128,7 @@ async function routedResourceUsage(): Promise<{
             return completion.result;
         },
         resolvedRun: measuredMixedLifecycleResolvedRun(),
-        runState: createSupervisedRunState()
+        runState: createSupervisedRunState('first-failure-and-final')
     });
 
     if (runtime.poolResourceUsageTracker === null) {

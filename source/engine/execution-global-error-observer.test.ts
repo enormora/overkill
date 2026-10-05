@@ -125,6 +125,7 @@ function assertPlainRejectionCause(scope: OverkillScope, error: RunnerError): vo
         boundary: 'in-process',
         hook: 'unhandledRejection',
         origin: {
+            attempt: null,
             case: null,
             work: null
         },
@@ -242,6 +243,36 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             annotations: {},
             controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'late errors from a previous attempt are not attributed to its replacement',
+            async body(scope: OverkillScope) {
+                const observer = createExecutionGlobalErrorObserver('in-process');
+                const testCase = createPlanCase('retried case');
+                await observer.runBoundary(async function runRetriedBoundary() {
+                    await observer.runCase(testCase, { index: 0 }, async function failedAttempt() {
+                        scheduleImmediate(function lateRejection() {
+                            emitUnhandledRejection('old attempt');
+                        });
+                    });
+                    await observer.runCase(testCase, { index: 1 }, yieldToImmediate);
+                });
+                const error = firstError(observer.takeErrors());
+                scope.assert.equal(error.subtype, 'attribution-drift');
+                scope.assert.equal(error.attributedTo, null);
+                scope.assert.equal(error.attributedToAttempt, null);
+                scope.assert.partialDeepEqual(error.cause, {
+                    origin: {
+                        attempt: { index: 0 },
+                        case: testCase.id,
+                        work: testCase.workId
+                    }
+                });
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'observer attributes unhandled rejections to the active case',
             async body(scope: OverkillScope) {
@@ -249,7 +280,7 @@ export const testNode = createOverkillSuite({
                 const testCase = createPlanCase('rejects globally');
 
                 await observer.runBoundary(async function runObservedBoundary() {
-                    await observer.runCase(testCase, async function runObservedCase() {
+                    await observer.runCase(testCase, { index: 0 }, async function runObservedCase() {
                         emitUnhandledRejection('background rejected');
                     });
                 });
@@ -273,7 +304,7 @@ export const testNode = createOverkillSuite({
                 const testCase = createPlanCase('throws globally');
 
                 await observer.runBoundary(async function runObservedBoundary() {
-                    await observer.runCase(testCase, async function runObservedCase() {
+                    await observer.runCase(testCase, { index: 0 }, async function runObservedCase() {
                         emitUncaughtException('timer exploded');
                     });
                 });
@@ -296,7 +327,7 @@ export const testNode = createOverkillSuite({
                 const testCase = createPlanCase('finished before rejection');
 
                 await observer.runBoundary(async function runObservedBoundary() {
-                    await observer.runCase(testCase, async function runObservedCase() {
+                    await observer.runCase(testCase, { index: 0 }, async function runObservedCase() {
                         scheduleImmediate(function rejectAfterCase() {
                             emitUnhandledRejection('late rejection');
                         });
@@ -346,7 +377,7 @@ export const testNode = createOverkillSuite({
                 const testCase = createPlanCase('denies fs access');
 
                 await observer.runBoundary(async function runObservedBoundary() {
-                    await observer.runCase(testCase, async function runObservedCase() {
+                    await observer.runCase(testCase, { index: 0 }, async function runObservedCase() {
                         emitUnhandledRejectionReason(createPermissionError('FileSystemRead', '/project/input.txt'));
                     });
                 });
@@ -470,7 +501,7 @@ export const testNode = createOverkillSuite({
 
                 const value = await observer.runBoundary(async function runDisabledBoundary() {
                     return await observer.runPhase('collection', async function runDisabledCollection() {
-                        return await observer.runCase(testCase, async function runDisabledCase() {
+                        return await observer.runCase(testCase, { index: 0 }, async function runDisabledCase() {
                             return 'complete';
                         });
                     });

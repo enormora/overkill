@@ -1,9 +1,7 @@
-import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
+import { createDefaultWorkId, type AttemptId, type CaseId, type WorkId } from '../engine/identity.ts';
 import { observedGrowthBytesPerSecond } from '../engine/resource-usage-growth.ts';
-import type {
-    ResourceUsageSnapshot,
-    RunnerError
-} from '../engine/run-result.ts';
+import type { RunnerError } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
 import type { RunResourceBudgets } from './run-types.ts';
 import type { SupervisedRunState } from './supervised-run-state.ts';
 
@@ -81,6 +79,18 @@ function activeWorkIds(state: SupervisedRunState): readonly WorkId[] {
     });
 }
 
+function soleActiveAttempt(state: SupervisedRunState): AttemptId | null {
+    return state.activeCases.size === 1 ? Array.from(state.activeCases.values())[0]?.attempt ?? null : null;
+}
+
+function activeAttemptEvidence(
+    state: SupervisedRunState
+): readonly { readonly work: WorkId; readonly attempt: AttemptId; }[] {
+    return Array.from(state.activeCases.values(), function attemptEvidence(active) {
+        return { work: active.workId ?? createDefaultWorkId(active.id), attempt: active.attempt };
+    });
+}
+
 export function resourceExhaustionError(breach: ResourceBudgetBreach, state: SupervisedRunState): RunnerError {
     const activeCases = activeCaseIds(state);
     const activeWork = activeWorkIds(state);
@@ -88,12 +98,14 @@ export function resourceExhaustionError(breach: ResourceBudgetBreach, state: Sup
     const [ activeWorkItem = null ] = activeWork;
 
     return {
+        attributedToAttempt: soleActiveAttempt(state),
         attributedTo: activeCases.length === 1 ? activeCase : null,
         attributedToWork: activeWork.length === 1 ? activeWorkItem : null,
         cause: {
             ...breach,
             activeCases,
             activeWork,
+            activeAttempts: activeAttemptEvidence(state),
             enforcement: activeCases.length === 0 ? 'post-test-diagnostic' : 'sampled'
         },
         diagnostics: [
@@ -113,9 +125,10 @@ export function crashError(state: SupervisedRunState, reason: string): RunnerErr
     const [ activeWorkItem = null ] = activeWork;
 
     return {
+        attributedToAttempt: soleActiveAttempt(state),
         attributedTo: activeCases.length === 1 ? activeCase : null,
         attributedToWork: activeWork.length === 1 ? activeWorkItem : null,
-        cause: { activeCases, activeWork, reason },
+        cause: { activeCases, activeWork, activeAttempts: activeAttemptEvidence(state), reason },
         diagnostics: [ { label: 'reason', value: reason } ],
         message: reason,
         subtype: 'crash'

@@ -8,7 +8,7 @@ import {
     formatTimingOffenderLines,
     formatTimingSummary
 } from './run-summary-rendering.ts';
-import { createTerminalProgressRenderer, type TerminalOutput } from './terminal.ts';
+import { createTerminalProgressRenderer, type TerminalOutput, type TerminalProgressRenderer } from './terminal.ts';
 import {
     formatCountSummary,
     problemLines
@@ -20,23 +20,16 @@ export type DotReporterDependencies = {
 };
 
 const passMark = colors.green(figures.tick);
+
 const failMark = colors.red(figures.cross);
+
 const skipMark = colors.cyan('°');
+
 const inconclusiveMark = colors.cyan('?');
+
 const runnerErrorMark = colors.red(figures.warning);
+
 const microsecondsPerMillisecond = 1000;
-
-function formatDuration(durationMicroseconds: number): string {
-    return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
-}
-
-function formatSummary(result: RunResult): string {
-    const statusMark = result.status === 'failed' ? failMark : passMark;
-
-    return `${statusMark} ${formatCountSummary(result)} in ${
-        formatDuration(result.timings.summary.totalWallTimeMicroseconds)
-    } (${formatTimingSummary(result)})`;
-}
 
 function markForVerdict(verdict: TestVerdict): string {
     if (verdict === 'resource-exhausted' || verdict === 'crashed') {
@@ -56,6 +49,27 @@ function markForVerdict(verdict: TestVerdict): string {
     }
 
     return inconclusiveMark;
+}
+
+function reportCaseCompletion(
+    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
+    progress: TerminalProgressRenderer
+): void {
+    if (event.completion === 'final') {
+        progress.writeMark(markForVerdict(event.verdict));
+    }
+}
+
+function formatDuration(durationMicroseconds: number): string {
+    return `${durationMicroseconds / microsecondsPerMillisecond} ms`;
+}
+
+function formatSummary(result: RunResult): string {
+    const statusMark = result.status === 'failed' ? failMark : passMark;
+
+    return `${statusMark} ${formatCountSummary(result)} in ${
+        formatDuration(result.timings.summary.totalWallTimeMicroseconds)
+    } (${formatTimingSummary(result)})`;
 }
 
 function formatRunnerError(error: RunnerError): string {
@@ -99,7 +113,7 @@ export function createDotReporter(dependencies: DotReporterDependencies): Define
                         writeLine(summary);
                     }
                 } else if (event.kind === 'test-end') {
-                    progress.writeMark(markForVerdict(event.verdict));
+                    reportCaseCompletion(event, progress);
                 } else if (event.kind === 'runner-error') {
                     if (finished) {
                         writeLine(formatRunnerError(event.error));

@@ -36,6 +36,11 @@ export {
 } from './config.entry-point.ts';
 export { RunExecutionPlanError, RunResolutionError } from '../../run/run-errors.ts';
 export type {
+    IntegrationRetryPolicy,
+    RetryArtifactPolicy,
+    RunProjectIntegrationRetryPolicy
+} from './config.entry-point.ts';
+export type {
     PlannedResourceOwner,
     ResourceOwnerPlacement,
     ResourceOwnershipPlan

@@ -1,4 +1,8 @@
+import type { TestRetryPolicy } from '../engine/retry-policy.ts';
 import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
+
+export type RetryArtifactPolicy = 'all' | 'first-failure-and-final' | 'last-failure-and-final';
+export type IntegrationRetryPolicy = TestRetryPolicy & { readonly artifacts: RetryArtifactPolicy; };
 
 export type RunExecutionResourceOwnershipPlan = ResourceOwnershipPlan;
 type Either<First, Second> = First | Second;

@@ -52,6 +52,7 @@ export const testNode = createSuite({
                                     ...coverageResult,
                                     status: 'failed',
                                     runnerErrors: [ {
+                                        attributedToAttempt: null,
                                         attributedTo: null,
                                         cause: null,
                                         diagnostics: [],

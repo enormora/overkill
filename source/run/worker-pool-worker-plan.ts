@@ -28,6 +28,7 @@ export type CollectedWorkerPoolTestPlan = {
 type AssignedWork = readonly WorkId[];
 type SelectedWorkerPoolEngine = Awaited<ReturnType<typeof loadRunEngineModule>>;
 const missingObservedWorkerError: RunnerError = {
+    attributedToAttempt: null,
     attributedTo: null,
     attributedToWork: null,
     cause: null,

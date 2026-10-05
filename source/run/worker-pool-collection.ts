@@ -87,6 +87,7 @@ function startCollectionTimeout(
     return context.dependencies.wallClock.setTimeout(function abortCollection() {
         context.terminalFailure.write(true);
         context.runState.recordRunnerError({
+            attributedToAttempt: null,
             attributedTo: null,
             attributedToWork: null,
             cause: { reason: 'Worker-pool collection exceeded collection timeout.' },

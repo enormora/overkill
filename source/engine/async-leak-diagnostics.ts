@@ -1,16 +1,14 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
-import { caseIdentityKey, type CaseId, type WorkId } from './identity.ts';
+import type { CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type ActiveCase = {
-    readonly id: CaseId;
-    readonly key: string;
+    readonly testCase: TestPlanCase;
 };
 
 type TrackedPromise = {
-    readonly caseId: CaseId;
-    readonly caseKey: string;
+    readonly activeCase: ActiveCase;
     readonly consume: () => void;
     readonly consumed: () => boolean;
     readonly settle: () => void;
@@ -120,6 +118,7 @@ export function activeResourceLeakError(input: ActiveResourceLeakInput): RunnerE
     };
 
     return {
+        attributedToAttempt: null,
         attributedTo: input.attributedTo,
         attributedToWork: input.attributedToWork,
         cause,
@@ -143,6 +142,7 @@ function promiseLeakError(testCase: TestPlanCase, pendingPromiseCount: number): 
     };
 
     return {
+        attributedToAttempt: null,
         attributedTo: testCase.id,
         attributedToWork: testCase.workId,
         cause,
@@ -161,8 +161,7 @@ function createTrackedPromise(activeCase: ActiveCase): TrackedPromise {
     let settled = false;
 
     return {
-        caseId: activeCase.id,
-        caseKey: activeCase.key,
+        activeCase,
         consume() {
             consumed = true;
         },
@@ -180,6 +179,7 @@ function createTrackedPromise(activeCase: ActiveCase): TrackedPromise {
 
 export function createAsyncLeakMonitor(): AsyncLeakMonitor {
     const promises = new Map<number, TrackedPromise>();
+    const attempts = new WeakMap<TestPlanCase, ActiveCase>();
     const createHookKey = 'createHook';
     const hook = asyncHooks[createHookKey]({
         destroy(asyncId) {
@@ -215,11 +215,11 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
 
     return {
         casePromiseLeakError(testCase) {
-            const key = caseIdentityKey(testCase.id);
+            const activeCase = attempts.get(testCase);
             const pendingPromiseCount = Array
                 .from(promises.values())
                 .filter(function pendingCasePromise(promise) {
-                    return promise.caseKey === key && !promise.settled() && !promise.consumed();
+                    return promise.activeCase === activeCase && !promise.settled() && !promise.consumed();
                 })
                 .length;
 
@@ -230,10 +230,9 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
             return promiseLeakError(testCase, pendingPromiseCount);
         },
         async runCase(testCase, run) {
-            return await activeCaseStorage.run({
-                id: testCase.id,
-                key: caseIdentityKey(testCase.id)
-            }, run);
+            const activeCase = { testCase };
+            attempts.set(testCase, activeCase);
+            return await activeCaseStorage.run(activeCase, run);
         },
         stop() {
             hook.disable();

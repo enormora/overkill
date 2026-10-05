@@ -25,13 +25,15 @@ import {
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
+const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 type RunCommandParts = {
     readonly config: RunConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
 };
-type PolicyTestCase = Parameters<RuntimeCapabilityPolicy['runCase']>[0];
+type PolicyTestCase = Parameters<RuntimeCapabilityPolicy['runAttempt']>[0];
 type ExpectedPermissionDiagnosticError = {
     readonly capability: string;
     readonly message: string | null;
@@ -219,16 +221,14 @@ function createSparseStorage(): WebStorageLike {
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-capability-policy.test.ts',
-    annotations: {},
-    controls: {},
+    ...testMetadata,
+
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() reports load-time capability restrictions outside a test case',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
@@ -258,10 +258,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy host readers reject invalid host values',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             body(scope: OverkillScope) {
                 const invalidProcess = { env: { NUMBER: 1 } };
                 const invalidHost = { sessionStorage: { length: '1' } };
@@ -275,10 +274,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() preserves profile-level reporter lists',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const profileReporter: RunConfig['reporters'][number] = defineReporter(
@@ -315,10 +313,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy attributes observed case side effects',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const environment: Record<string, string | undefined> = { BEFORE: 'yes' };
                 const sessionStorageValues = new Map([ [ 'before', 'yes' ] ]);
@@ -338,7 +335,7 @@ export const testNode = createOverkillSuite({
                     observedStdout: false
                 });
 
-                await policy.runCase(policyTestCase, async function createObservedSideEffects() {
+                await policy.runAttempt(policyTestCase, { index: 0 }, async function createObservedSideEffects() {
                     environment.AFTER = 'yes';
                     sessionStorageValues.set('after', 'yes');
                     localStorageValues.set('after', 'yes');
@@ -348,7 +345,7 @@ export const testNode = createOverkillSuite({
                         'observed'
                     );
                 });
-                const caseErrors = policy.takeCaseErrors(policyTestCase);
+                const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
                 policy.takeRunErrors();
 
                 scope.assert.deepEqual(caseErrors.map(errorCapability).toSorted(compareNullableStrings), [
@@ -368,18 +365,17 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'permission denial runtime policy attributes Node permission diagnostics',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const policy = createPermissionDenialRuntimePolicy();
                 const channel = await readPermissionDiagnosticChannel();
 
-                await policy.runCase(policyTestCase, async function publishCasePermissionDiagnostic() {
+                await policy.runAttempt(policyTestCase, { index: 0 }, async function publishCasePermissionDiagnostic() {
                     publishPermissionDiagnostic(channel, 'FileSystemWrite', '/project/output.txt');
                 });
-                const error = firstRunnerError(policy.takeCaseErrors(policyTestCase));
+                const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
                 const runErrors = policy.takeRunErrors();
 
                 assertPermissionDiagnosticError(scope, error, {
@@ -395,10 +391,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy reports Node permission diagnostics as permission errors',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
                 const channel = await readPermissionDiagnosticChannel();
@@ -417,10 +412,14 @@ export const testNode = createOverkillSuite({
                     observedStdout: false
                 });
 
-                await policy.runCase(policyTestCase, async function publishStrictPermissionDiagnostic() {
-                    publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/input.txt');
-                });
-                const error = firstRunnerError(policy.takeCaseErrors(policyTestCase));
+                await policy.runAttempt(
+                    policyTestCase,
+                    { index: 0 },
+                    async function publishStrictPermissionDiagnostic() {
+                        publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/input.txt');
+                    }
+                );
+                const error = firstRunnerError(policy.takeAttemptErrors(policyTestCase, { index: 0 }));
                 const runErrors = policy.takeRunErrors();
 
                 assertPermissionDiagnosticError(scope, error, {
@@ -435,10 +434,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy accepts sparse unchanged storage snapshots',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
                 const sparseStorage = createSparseStorage();
@@ -457,10 +455,10 @@ export const testNode = createOverkillSuite({
                     observedStdout: false
                 });
 
-                await policy.runCase(policyTestCase, async function leaveStorageUnchanged() {
+                await policy.runAttempt(policyTestCase, { index: 0 }, async function leaveStorageUnchanged() {
                     return undefined;
                 });
-                const caseErrors = policy.takeCaseErrors(policyTestCase);
+                const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
                 const runErrors = policy.takeRunErrors();
 
                 scope.assert.deepEqual(caseErrors, []);
@@ -470,10 +468,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy reports process.env identity drift',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 let environment: RuntimeCapabilityPolicyEnvironment = {};
                 const policy = createRuntimeCapabilityPolicy({
@@ -491,10 +488,10 @@ export const testNode = createOverkillSuite({
                     observedStdout: false
                 });
 
-                await policy.runCase(policyTestCase, async function replaceEnvironmentObject() {
+                await policy.runAttempt(policyTestCase, { index: 0 }, async function replaceEnvironmentObject() {
                     environment = {};
                 });
-                const caseErrors = policy.takeCaseErrors(policyTestCase);
+                const caseErrors = policy.takeAttemptErrors(policyTestCase, { index: 0 });
                 policy.takeRunErrors();
 
                 scope.assert.deepEqual(caseErrors.map(errorCapability), [ 'process-env' ]);
@@ -503,10 +500,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runtime capability policy records injected strictness and raw output',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
                 const policy = createRuntimeCapabilityPolicy({

@@ -4,7 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, type CaseId } from '../engine/identity.ts';
-import type { RunArtifact, RunResult } from '../engine/run-result.ts';
+import type { RunResult, RunArtifact } from '../engine/run-result.ts';
 import {
     preciseTimingReport,
     runTimingSummary,
@@ -20,6 +20,7 @@ const failingCaseId: CaseId = { file: 'source/fails.test.ts', params: null, suit
 function caseOutputArtifact(): RunArtifact {
     return {
         id: {
+            attempt: { index: 0 },
             runtimes: [],
             scope: {
                 activeCases: [ passingCaseId ],
@@ -46,6 +47,7 @@ function caseOutputArtifact(): RunArtifact {
 function truncatedCaseOutputArtifact(): RunArtifact {
     return {
         id: {
+            attempt: { index: 0 },
             runtimes: [],
             scope: {
                 activeCases: [ passingCaseId ],
@@ -72,6 +74,7 @@ function truncatedCaseOutputArtifact(): RunArtifact {
 function ignoredRunArtifact(): RunArtifact {
     return {
         id: {
+            attempt: null,
             runtimes: [],
             scope: { kind: 'run' },
             sequence: 0,
@@ -79,8 +82,21 @@ function ignoredRunArtifact(): RunArtifact {
             workload: null
         },
         payload: {
-            authoritative: { outcome: { kind: 'pass' }, verdict: 'pass' },
-            conflicting: { outcome: null, verdict: 'crashed' },
+            authoritative: {
+                attempts: [ {
+                    attempt: { index: 0 },
+                    durationMicroseconds: 0,
+                    outcome: { kind: 'pass' },
+                    verdict: 'pass'
+                } ],
+                outcome: { kind: 'pass' },
+                verdict: 'pass'
+            },
+            conflicting: {
+                attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: null, verdict: 'crashed' } ],
+                outcome: null,
+                verdict: 'crashed'
+            },
             kind: 'hedged-conflict',
             work: createDefaultWorkId(passingCaseId)
         },

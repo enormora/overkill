@@ -23,7 +23,10 @@ import type {
     RunTimings,
     RunnerError,
     RuntimeId,
-    WorkloadId
+    WorkloadId,
+    AttemptId,
+    TestAttemptResult,
+    RetrySummary
 } from './engine.entry-point.ts';
 
 type OutcomeKind = 'fail' | 'inconclusive' | 'pass' | 'skip';
@@ -84,6 +87,41 @@ type ExpectedPreciseTimingKey = PreciseTimingKeys[number];
 type TestEndReporterEvent = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 
 describe('run result verdicts', function () {
+    test('attempt history and completion are required and attribution is nullable', function () {
+        expect<PerTestResult['attempts']>().type.toBe<readonly [TestAttemptResult, ...TestAttemptResult[]]>();
+        expect<PerTestResult['retried']>().type.toBe<RetrySummary | null>();
+        expect<RunnerError['attributedToAttempt']>().type.toBe<AttemptId | null>();
+        expect<TestEndReporterEvent['completion']>().type.toBe<'final' | 'retry'>();
+    });
+
+    test('artifact attempt identity follows its scope', function () {
+        expect<RunArtifactId>().type.toBeAssignableFrom<{
+            readonly attempt: AttemptId;
+            readonly runtimes: readonly [];
+            readonly workload: null;
+            readonly sequence: 0;
+            readonly subtype: 'log-capture';
+            readonly scope: {
+                readonly kind: 'case';
+                readonly case: PerTestResult['id'];
+                readonly activeCases: readonly [];
+                readonly confidence: 'active-case';
+            };
+        }>();
+        expect<RunArtifactId>().type.not.toBeAssignableFrom<{
+            readonly attempt: null;
+            readonly runtimes: readonly [];
+            readonly workload: null;
+            readonly sequence: 0;
+            readonly subtype: 'log-capture';
+            readonly scope: {
+                readonly kind: 'case';
+                readonly case: PerTestResult['id'];
+                readonly activeCases: readonly [];
+                readonly confidence: 'active-case';
+            };
+        }>();
+    });
     test('per-test and reporter verdicts accept outcomes and terminal runner verdicts', function () {
         expect<PerTestResult['verdict']>().type.toBe<
             OutcomeKind | 'crashed' | 'resource-exhausted' | 'runtime-policy'

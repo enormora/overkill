@@ -25,6 +25,8 @@ export {
     defineConfig
 } from '../../run/run-config.ts';
 export { RunConfigError } from '../../run/run-errors.ts';
+export type { IntegrationRetryPolicy, RetryArtifactPolicy } from '../../run/run-execution-config.ts';
+export type { RunProjectIntegrationRetryPolicy } from '../../run/run-config-schema.ts';
 export type {
     LoadedRunConfig,
     RunConfigLoader,

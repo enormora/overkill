@@ -1,6 +1,7 @@
 import type { Clock } from '@enormora/clock';
 import type { PerTestResult, RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
+import type { AttemptId } from './identity.ts';
 
 export type ExecutionConcurrentCase = {
     readonly result: PerTestResult;
@@ -14,6 +15,7 @@ export type CaseCompletion = {
 };
 
 export type ActiveCase = {
+    readonly attempt: AttemptId;
     readonly abort: () => void;
     readonly completion: CaseCompletion;
     readonly hardTimeout: ReturnType<Clock['setTimeout']> | null;

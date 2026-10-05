@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { caseIdentityKey, type CaseId, type WorkId } from './identity.ts';
+import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
@@ -11,8 +11,8 @@ type FatalErrorHandler = (error: RunnerError) => unknown;
 type FatalErrorHandlerDisposer = () => unknown;
 
 type ActiveCaseContext = {
+    readonly attempt: AttemptId;
     readonly id: CaseId;
-    readonly key: string;
     readonly scope: RunErrorScope;
     readonly workId: WorkId;
 };
@@ -27,6 +27,7 @@ type HookRunnerErrorCause = {
     readonly boundary: ExecutionBoundary;
     readonly hook: HookKind;
     readonly origin: {
+        readonly attempt: AttemptId | null;
         readonly case: CaseId | null;
         readonly work: WorkId | null;
     };
@@ -61,11 +62,11 @@ type ProcessHookListeners = {
 };
 
 type RunErrorScope = {
-    readonly activeCaseStarted: (key: string) => unknown;
-    readonly activeCaseStopped: (key: string) => unknown;
+    readonly activeCaseStarted: (key: ActiveCaseContext) => unknown;
+    readonly activeCaseStopped: (key: ActiveCaseContext) => unknown;
     readonly boundary: ExecutionBoundary;
     readonly fatalSignal: () => Promise<void>;
-    readonly hasActiveCase: (key: string) => boolean;
+    readonly hasActiveCase: (key: ActiveCaseContext) => boolean;
     readonly hasFatalError: () => boolean;
     readonly onFatalError: (handler: FatalErrorHandler) => FatalErrorHandlerDisposer;
     readonly phase: () => ExecutionPhase;
@@ -80,11 +81,15 @@ export type ExecutionGlobalErrorObserver = {
     readonly hasFatalError: () => boolean;
     readonly onFatalError: (handler: FatalErrorHandler) => FatalErrorHandlerDisposer;
     readonly runBoundary: <Value>(run: () => Promise<Value>) => Promise<Value>;
-    readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
+    readonly runCase: <Value>(testCase: TestPlanCase, attempt: AttemptId, run: () => Promise<Value>) => Promise<Value>;
     readonly runPhase: <Value>(phase: ExecutionPhase, run: () => Promise<Value>) => Promise<Value>;
     readonly stop: () => unknown;
     readonly takeErrors: () => readonly RunnerError[];
 };
+
+const runScopeStorage = new AsyncLocalStorage<RunErrorScope>();
+
+const activeCaseStorage = new AsyncLocalStorage<ActiveCaseContext>();
 
 function createStoredValue<Value>(initialValue: Value): StoredValue<Value> {
     let currentValue = initialValue;
@@ -100,7 +105,7 @@ function createStoredValue<Value>(initialValue: Value): StoredValue<Value> {
 }
 
 function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
-    const activeCaseKeys = new Set<string>();
+    const activeCaseKeys = new Set<ActiveCaseContext>();
     const errors: RunnerError[] = [];
     const fatal = createStoredValue(false);
     const fatalHandlers = new Set<FatalErrorHandler>();
@@ -230,7 +235,7 @@ export function createDisabledExecutionGlobalErrorObserver(): ExecutionGlobalErr
         async runBoundary(run) {
             return await run();
         },
-        async runCase(_testCase, run) {
+        async runCase(_testCase, _attempt, run) {
             return await run();
         },
         async runPhase(_phase, run) {
@@ -244,11 +249,6 @@ export function createDisabledExecutionGlobalErrorObserver(): ExecutionGlobalErr
         }
     };
 }
-
-const runScopeStorage = new AsyncLocalStorage<RunErrorScope>();
-const activeCaseStorage = new AsyncLocalStorage<ActiveCaseContext>();
-const activeScopes = createActiveScopes();
-const listenersInstalled = createStoredValue(false);
 
 function serializedReason(reason: unknown): SerializedHookReason {
     if (reason instanceof Error) {
@@ -276,6 +276,12 @@ function hookMessage(hook: HookKind, reason: SerializedHookReason): string {
     return `${label}: ${reason.message}`;
 }
 
+function hookOrigin(activeCase: ActiveCaseContext | null): HookRunnerErrorCause['origin'] {
+    return activeCase === null
+        ? { attempt: null, case: null, work: null }
+        : { attempt: activeCase.attempt, case: activeCase.id, work: activeCase.workId };
+}
+
 function hookCause(
     scope: RunErrorScope,
     hook: HookKind,
@@ -285,10 +291,7 @@ function hookCause(
     return {
         boundary: scope.boundary,
         hook,
-        origin: {
-            case: activeCase?.id ?? null,
-            work: activeCase?.workId ?? null
-        },
+        origin: hookOrigin(activeCase),
         phase: activeCase === null ? scope.phase() : 'body',
         reason: serializedReason(reason)
     };
@@ -303,6 +306,7 @@ function attributedError(
     const cause = hookCause(scope, hook, reason, activeCase);
 
     return {
+        attributedToAttempt: activeCase.attempt,
         attributedTo: activeCase.id,
         attributedToWork: activeCase.workId,
         cause,
@@ -316,6 +320,7 @@ function runLevelHookError(scope: RunErrorScope, hook: HookKind, reason: unknown
     const cause = hookCause(scope, hook, reason, null);
 
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause,
@@ -334,6 +339,7 @@ function attributionDriftError(
     const cause = hookCause(scope, hook, reason, activeCase);
 
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause,
@@ -355,7 +361,7 @@ function activePermissionCase(input: HookFailureInput): ActiveCaseContext | null
         return null;
     }
 
-    return input.scope.hasActiveCase(input.activeCase.key) ? input.activeCase : null;
+    return input.scope.hasActiveCase(input.activeCase) ? input.activeCase : null;
 }
 
 function permissionErrorForScope(input: HookFailureInput): RunnerError | null {
@@ -391,12 +397,15 @@ function errorForScope(input: HookFailureInput): RunnerError {
         return runLevelHookError(input.scope, input.hook, input.reason);
     }
 
-    if (input.scope.hasActiveCase(input.activeCase.key)) {
+    if (input.scope.hasActiveCase(input.activeCase)) {
         return attributedError(input.scope, input.hook, input.reason, input.activeCase);
     }
 
     return attributionDriftError(input.scope, input.hook, input.reason, input.activeCase);
 }
+
+const activeScopes = createActiveScopes();
+const listenersInstalled = createStoredValue(false);
 
 function currentTargetScopes(): readonly RunErrorScope[] {
     const currentScope = runScopeStorage.getStore();
@@ -472,20 +481,20 @@ export function createExecutionGlobalErrorObserver(boundary: ExecutionBoundary):
                 processHookListeners.removeWhenIdle();
             }
         },
-        async runCase(testCase, run) {
+        async runCase(testCase, attempt, run) {
             const activeCase = {
+                attempt,
                 id: testCase.id,
-                key: caseIdentityKey(testCase.id),
                 scope,
                 workId: testCase.workId
             };
 
-            scope.activeCaseStarted(activeCase.key);
+            scope.activeCaseStarted(activeCase);
 
             try {
                 return await activeCaseStorage.run(activeCase, run);
             } finally {
-                scope.activeCaseStopped(activeCase.key);
+                scope.activeCaseStopped(activeCase);
             }
         },
         async runPhase(phase, run) {

@@ -268,7 +268,7 @@ Every test gets its own splittable PRNG derived from
   test identity, not the full run record
 - parallel execution does not perturb per-test randomness (each test
   has its own splittable child)
-- rerunning one test under `--retry` produces identical inputs to the
+- rerunning one test under an integration retry policy produces identical inputs to the
   failing run
 
 The PRNG is SplitMix-based (see [Capability Handles § Splittable Random For Determinism Under Parallelism](../authoring/capability-handles.md#splittable-random-for-determinism-under-parallelism)).

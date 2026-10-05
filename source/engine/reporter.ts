@@ -1,7 +1,7 @@
 import type { CaseId, WorkId } from './identity.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
 import type { ReportingContext } from './reporting-context.ts';
-import type { RunArtifact, RunResult, RunnerError, TestOutcome, TestVerdict } from './run-result.ts';
+import type { RunResult, RunnerError, TestOutcome, TestVerdict, RunArtifact } from './run-result.ts';
 import type { TestAnnotations } from './test-data.ts';
 import type { TestPlanCase, TestPlanSuitePathEntry } from './test-plan.ts';
 
@@ -150,6 +150,7 @@ type TestProgressReporterEvent = {
 };
 
 type TestEndReporterEvent = {
+    readonly completion: 'final' | 'retry';
     readonly attempt: number;
     readonly artifacts: readonly RunArtifact[];
     readonly case: CaseId;

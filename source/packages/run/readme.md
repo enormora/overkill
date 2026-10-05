@@ -184,6 +184,22 @@ Configured integration profiles require a `files` policy. Integration tests
 are not governed by `RunRequest.capabilityRestrictions`; that request field is
 part of the microtest runtime model only.
 
+Integration profiles can opt into `retries: { maxAttempts: 3 }`. The limit
+includes the initial attempt; omission or `maxAttempts: 1` runs once.
+`retries.artifacts` accepts `first-failure-and-final` (default),
+`last-failure-and-final`, or `all`. Microtest profiles reject this setting.
+Only completed assertion failures, ordinary body errors, and cooperative soft
+timeouts can retry. Cleanup, contract, resource, runtime-policy, and crash
+failures are terminal. Each attempt gets fresh per-case resources and timeout
+state; shared resources and the selected work identity stay unchanged.
+
+Results retain every attempt's outcome, verdict, and duration. `retried` is
+`null` for one attempt and otherwise records the actual attempt count and final
+verdict. Counts and duration history record one logical case, with durations
+summed across attempts. Case artifacts carry a zero-based `AttemptId`;
+run-scoped artifacts carry `null`. Captured output remains capped at 1 MiB per
+logical work item across all attempts.
+
 Microtest profile execution is modeled with two independent fields:
 `execution.processModel` is `in-process` or `supervised-process`, and
 `execution.scheduling` is `concurrent` or `serial`.

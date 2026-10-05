@@ -1,6 +1,6 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { RunnerError, RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { RunnerError, RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
@@ -229,6 +229,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         const startedAt = new Date(0);
 
         const result = await defaultRunEngine.execute(seeded.testPlan, {
+            retryPolicy: null,
             execution: profile.execution.scheduling === 'concurrent'
                 ? {
                     maxConcurrency: profile.execution.maxConcurrency,

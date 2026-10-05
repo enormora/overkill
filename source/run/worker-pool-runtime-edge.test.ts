@@ -48,7 +48,7 @@ async function createRuntime(resolvedRun: ResolvedRun): Promise<void> {
             return completion.result;
         },
         resolvedRun,
-        runState: createSupervisedRunState()
+        runState: createSupervisedRunState('first-failure-and-final')
     });
 }
 

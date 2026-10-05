@@ -48,11 +48,11 @@ function poolResourceBudgets(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['
 }
 
 function createActiveCaseState(runtime: WorkerPoolRunRuntime): SupervisedRunState {
-    const activeState = createSupervisedRunState();
+    const activeState = createSupervisedRunState('first-failure-and-final');
 
     for (const taskRun of runtime.activeTasks) {
         for (const [ key, activeCase ] of taskRun.state.activeCases) {
-            activeState.addActiveCase(key, activeCase, activeCase.startedAtMicroseconds);
+            activeState.addActiveCase(key, activeCase, activeCase.startedAtMicroseconds, activeCase.attempt);
         }
     }
 

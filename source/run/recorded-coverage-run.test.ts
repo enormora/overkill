@@ -1,6 +1,12 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { createSuite, createTestCase, type TestScope, type RunResult } from '../packages/engine/engine.entry-point.ts';
+import {
+    createSuite,
+    createTestCase,
+    type TestScope,
+    type RunResult,
+    type RunArtifactId
+} from '../packages/engine/engine.entry-point.ts';
 import { withCoverageRecordFixture, type CoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -41,18 +47,25 @@ function assertFinalArtifacts(scope: TestScope, fixture: CoverageRecordFixture, 
 
 function capturedArtifacts(): RunResult['artifacts'] {
     const testCase = { file: 'fixture.ts', params: null, suite: [], title: 'passes' };
-    const scopes = [
-        { kind: 'run' as const },
+    const identities: readonly RunArtifactId[] = [
+        { attempt: null, runtimes: [], scope: { kind: 'run' }, sequence: 3, subtype: 'log-capture', workload: null },
         {
-            activeCases: [ { ...testCase, suite: [] } ],
-            case: testCase,
-            confidence: 'active-case' as const,
-            kind: 'case' as const
+            attempt: { index: 0 },
+            runtimes: [],
+            sequence: 3,
+            subtype: 'log-capture',
+            workload: null,
+            scope: {
+                activeCases: [ { ...testCase, suite: [] } ],
+                case: testCase,
+                confidence: 'active-case' as const,
+                kind: 'case' as const
+            }
         }
     ];
-    return scopes.map(function capturedArtifact(artifactScope) {
+    return identities.map(function capturedArtifact(id) {
         return {
-            id: { runtimes: [], scope: artifactScope, sequence: 3, subtype: 'log-capture' as const, workload: null },
+            id: { ...id, subtype: 'log-capture' as const },
             payload: {
                 byteLength: 3,
                 capturedAtMicroseconds: 0,

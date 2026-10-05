@@ -4,10 +4,10 @@ import {
     runStatusFromSummary,
     type PerTestResult,
     type RunPlanStatus,
-    type RunResourceUsage,
     type RunResult,
     type RunnerError
 } from './run-result.ts';
+import type { RunResourceUsage } from './resource-usage.ts';
 import { summaryRunTimings } from './run-timings.ts';
 import type { TestPlan } from './test-plan.ts';
 

@@ -203,7 +203,12 @@ async function disposeCompletedBoundaries(
     options: ResourceLifecycleOptions,
     testCase: TestPlanCase
 ): Promise<void> {
-    for (const boundary of caseResourceBoundaryKeys(testCase, options.caseDisposalScopes)) {
+    const sharedScopes = new Set(
+        Array.from(options.caseDisposalScopes).filter(function isShared(scope) {
+            return scope !== 'per-case';
+        })
+    );
+    for (const boundary of caseResourceBoundaryKeys(testCase, sharedScopes).toReversed()) {
         try {
             await disposeCompletedBoundary(stores, boundary, options.timing);
         } catch (error: unknown) {
@@ -311,6 +316,7 @@ async function disposeAllManagedResources(
             await disposeBoundary(stores, record.boundary.key, signal, timing);
         } catch (error: unknown) {
             errors.push({
+                attributedToAttempt: null,
                 attributedTo: null,
                 attributedToWork: null,
                 cause: error,
@@ -336,6 +342,7 @@ async function completeManagedBoundaries(
             await disposeCompletedBoundary(stores, boundaryKey, timing);
         } catch (error: unknown) {
             errors.push({
+                attributedToAttempt: null,
                 attributedTo: null,
                 attributedToWork: null,
                 cause: error,
@@ -347,6 +354,21 @@ async function completeManagedBoundaries(
     }
 
     return errors;
+}
+
+async function disposeCaseResources(
+    stores: ManagedLifecycleStores,
+    options: ResourceLifecycleOptions,
+    testCase: TestPlanCase
+): Promise<void> {
+    const boundaries = caseResourceBoundaryKeys(testCase, new Set<ResourceScope>([ 'per-case' ])).toReversed();
+    for (const boundary of boundaries) {
+        try {
+            await disposeBoundary(stores, boundary, freshDisposalSignal(), options.timing);
+        } catch (error: unknown) {
+            stores.recordCaseError(testCase, 'Resource disposal failed.', error);
+        }
+    }
 }
 
 function createManagedLifecycleState(options: ResourceLifecycleOptions): ManagedLifecycleStateCreation {
@@ -365,15 +387,22 @@ function createManagedLifecycleState(options: ResourceLifecycleOptions): Managed
             async disposeAll(signal) {
                 return await disposeAllManagedResources(stores, signal, options.timing);
             },
-            async runCase<Value>(testCase: TestPlanCase, run: () => Promise<Value>): Promise<Value> {
-                try {
-                    return await runWithLifecycleCase(testCase, run);
-                } finally {
+            async completeCase(testCase, attempt) {
+                await runWithLifecycleCase(testCase, attempt, async function completeLogicalCase() {
                     await disposeCompletedBoundaries(stores, options, testCase);
+                });
+            },
+            async runAttempt(testCase, attempt, run) {
+                try {
+                    return await runWithLifecycleCase(testCase, attempt, run);
+                } finally {
+                    await runWithLifecycleCase(testCase, attempt, async function disposeAttemptResources() {
+                        await disposeCaseResources(stores, options, testCase);
+                    });
                 }
             },
-            takeCaseErrors(testCase: TestPlanCase) {
-                return stores.takeCaseErrors(testCase);
+            takeAttemptErrors(testCase, attempt) {
+                return stores.takeAttemptErrors(testCase, attempt);
             },
             takePendingRunErrors() {
                 return stores.takePendingRunErrors();
@@ -387,16 +416,19 @@ function createManagedLifecycleState(options: ResourceLifecycleOptions): Managed
 
 function createRuntimePolicyFromLifecycle(lifecycle: ManagedLifecycleState): TestRuntimePolicy {
     return {
-        async runCase<Value>(testCase: TestPlanCase, run: () => Promise<Value>): Promise<Value> {
+        async completeCase(testCase, attempt) {
+            await lifecycle.completeCase(testCase, attempt);
+        },
+        async runAttempt(testCase, attempt, run) {
             return await runWithManagedLifecycle(lifecycle, async function runWithResourceLifecycle() {
-                return await lifecycle.runCase(testCase, run);
+                return await lifecycle.runAttempt(testCase, attempt, run);
             });
         },
         async runLoad<Value>(run: () => Promise<Value>): Promise<Value> {
             return await run();
         },
-        takeCaseErrors(testCase) {
-            return lifecycle.takeCaseErrors(testCase);
+        takeAttemptErrors(testCase, attempt) {
+            return lifecycle.takeAttemptErrors(testCase, attempt);
         },
         takePendingRunErrors() {
             return lifecycle.takePendingRunErrors();

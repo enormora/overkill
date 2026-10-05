@@ -266,24 +266,15 @@ export type {
     AssertionTestFailure,
     BodyErrorTestFailure,
     CaseRunnerErrorOptions,
-    CapturedOutputArtifact,
-    CapturedOutputArtifactPayload,
     CoverageRunnerError,
     FailOutcome,
-    HedgedConflictArtifact,
-    HedgedConflictArtifactPayload,
-    HedgedConflictEvidence,
     HedgedDuplicateConflictFailure,
     InconclusiveOutcome,
     OrphanedNode,
     PassOutcome,
     PerTestResult,
-    ResourceUsageSnapshot,
-    RunArtifact,
-    RunArtifactId,
-    RunArtifactScope,
-    RunResourceUsage,
-    RunResourceUsageTracker,
+    TestAttemptResult,
+    RetrySummary,
     RunPlanStatus,
     RunResult,
     RunnerError,
@@ -295,6 +286,21 @@ export type {
     TestFailure,
     TestOutcome
 } from '../../engine/run-result.ts';
+export type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../../engine/resource-usage.ts';
+export type {
+    CapturedOutputArtifact,
+    CapturedOutputArtifactPayload,
+    RunArtifactId,
+    RunArtifactScope
+} from '../../engine/run-artifact.ts';
+export type {
+    HedgedConflictArtifact,
+    HedgedConflictArtifactPayload,
+    HedgedConflictEvidence,
+    RunArtifact
+} from '../../engine/run-result.ts';
+export type { AttemptId } from '../../engine/identity.ts';
+export type { TestRetryPolicy } from '../../engine/retry-policy.ts';
 export type {
     AmbientNoiseEstimate,
     ResourceScope,

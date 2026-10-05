@@ -22,6 +22,7 @@ export type IsolatedRunCollectionSource = CollectionSource;
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
 type SupervisedCommandBase = {
+    readonly retryPolicy: SupervisedRunCommand['retryPolicy'];
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
     readonly capture: SupervisedRunCommand['capture'];
     readonly collectionTimeoutMilliseconds: number;
@@ -126,6 +127,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         root: runCollectionRoot(input.source, input.command.cwd),
         scheduling: input.profile.execution.scheduling,
         testFamily: input.profile.testFamily,
+        retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds
     };
 }
@@ -174,6 +176,7 @@ export function createWorkerPoolCommand(
     const resourceUsagePolicy = resolveResourceUsagePolicy(input.command.request, input.profile);
 
     return {
+        retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,
         cwd: input.command.cwd,
         definitionLocationCapture: input.definitionLocationCapture,

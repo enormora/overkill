@@ -86,7 +86,13 @@ async function executeTimedCase(
     wallClock: DeterministicClock,
     supervision = createExecutionSupervision()
 ): ReturnType<typeof executeCaseBody> {
-    return executeCaseBody(testCase, softTimeoutPolicy, supervision, executionDependencies(wallClock));
+    return executeCaseBody({
+        testCase,
+        timeoutPolicy: softTimeoutPolicy,
+        supervision,
+        dependencies: executionDependencies(wallClock),
+        attempt: { index: 0 }
+    });
 }
 
 async function finishSoftTimedCase(
@@ -111,15 +117,16 @@ async function executeHardTimedCase(
         return testScope.assert.collect();
     });
 
-    return executeCaseBody(
+    return executeCaseBody({
         testCase,
-        {
+        timeoutPolicy: {
             hardTimeoutMilliseconds: 10,
             timeoutMilliseconds: 100
         },
         supervision,
-        executionDependencies(wallClock)
-    );
+        dependencies: executionDependencies(wallClock),
+        attempt: { index: 0 }
+    });
 }
 
 function assertHardTimeoutResult(

@@ -287,6 +287,7 @@ export const testNode = createOverkillSuite({
                         async disposeReporters() {
                             return [
                                 {
+                                    attributedToAttempt: null,
                                     attributedTo: null,
                                     cause: null,
                                     diagnostics: [],
@@ -299,6 +300,7 @@ export const testNode = createOverkillSuite({
                             return event.kind === 'runner-error'
                                 ? [
                                     {
+                                        attributedToAttempt: null,
                                         attributedTo: null,
                                         cause: null,
                                         diagnostics: [],
@@ -311,6 +313,7 @@ export const testNode = createOverkillSuite({
                         async reportResult() {
                             return [
                                 {
+                                    attributedToAttempt: null,
                                     attributedTo: null,
                                     cause: null,
                                     diagnostics: [],
@@ -353,6 +356,7 @@ export const testNode = createOverkillSuite({
                             async disposeReporters() {
                                 return [
                                     {
+                                        attributedToAttempt: null,
                                         attributedTo: null,
                                         cause: null,
                                         diagnostics: [],

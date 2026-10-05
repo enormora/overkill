@@ -141,6 +141,7 @@ function formatReporterError(reporter: Reporter, cause: unknown): RunnerError {
     const reason = cause instanceof Error ? cause.message : String(cause);
 
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause,

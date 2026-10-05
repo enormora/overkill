@@ -69,6 +69,7 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
         startedAt: '2026-07-15T00:00:00.000Z'
     });
     await reporter.onEvent({
+        completion: 'final',
         attempt: 0,
         artifacts: [],
         case: passingCaseId,
@@ -80,6 +81,7 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
         verdict: 'pass'
     });
     await reporter.onEvent({
+        completion: 'final',
         attempt: 0,
         artifacts: [],
         case: failingCaseId,
@@ -172,6 +174,7 @@ export const testNode = createOverkillSuite({
 
                 await reporter.onEvent({
                     error: {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         cause: null,
                         diagnostics: [],
@@ -238,6 +241,7 @@ export const testNode = createOverkillSuite({
                 });
                 await reporter.onEvent({
                     error: {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         cause: null,
                         diagnostics: [],

@@ -2,11 +2,13 @@ import type { Clock } from '@enormora/clock';
 import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
-import type { ResourceUsageSnapshot, RunResult } from '../engine/run-result.ts';
+import type { RunResult } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type {
     CollectedRunPlan,
     RunCommand,
+    RunIntegrationProfileConfig,
     RunRequest,
     RunMaxConcurrency,
     RunResourceBudgets,
@@ -26,6 +28,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly retryPolicy: RunIntegrationProfileConfig['retries'];
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };

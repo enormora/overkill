@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import type { RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { RunResourceUsageTracker } from '../engine/resource-usage.ts';
 import type { WorkerPoolHostOutputSink } from './run-orchestrator-dependencies.ts';
 
 type TinypoolFilledOptions = {

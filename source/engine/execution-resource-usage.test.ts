@@ -2,6 +2,9 @@ import { createDeterministicClock, type DeterministicClock } from '@enormora/clo
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    type RunResult,
+    type ResourceUsageSnapshot,
+    type RunResourceUsageTracker,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -18,7 +21,6 @@ import {
 } from './execution-supervision.ts';
 import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
-import type { ResourceUsageSnapshot, RunResourceUsageTracker, RunResult } from './run-result.ts';
 
 const sample = {
     activeResourceCount: 1,
@@ -181,6 +183,7 @@ async function executeSampledResourceExhaustion(): Promise<SampledResourceExhaus
         })
     );
     const result = await engine.execute(testPlan, {
+        retryPolicy: null,
         execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
         reporters: [ reporter ],
         resourceBudgets: {
@@ -231,6 +234,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const result = await engine.execute(testPlan, {
+                    retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [ reporter ],
                     resourceUsageTracker: createFinishedResourceUsageTracker(),
@@ -336,6 +340,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const result = await engine.execute(testPlan, {
+                    retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [],
                     runFacts: {},
@@ -378,6 +383,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const result = await engine.execute(testPlan, {
+                    retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [],
                     runFacts: {},
@@ -420,6 +426,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(error.subtype, 'resource-exhaustion');
                 scope.assert.equal(error.attributedTo, null);
                 scope.assert.deepEqual(plainDataShape(error.cause), {
+                    activeAttempts: [],
                     activeCases: [],
                     activeWork: [],
                     budget: 1,

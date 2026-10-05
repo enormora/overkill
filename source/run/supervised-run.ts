@@ -1,7 +1,7 @@
 import type {
     ResourceUsageSnapshot,
     RunResult
-} from '../engine/run-result.ts';
+} from './run-engine-primitives.ts';
 import {
     childProcessEnvelope,
     envelopeMessage
@@ -120,6 +120,7 @@ function recordCollectionTimeout(
 ): void {
     terminalFailure.write(true);
     state.recordRunnerError({
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause: { reason: 'Supervised collection exceeded collection timeout.' },
@@ -156,7 +157,7 @@ async function createLiveRun(
         testFamily: command.testFamily
     }));
     const collectedSignal = createSignal();
-    const state = createSupervisedRunState();
+    const state = createSupervisedRunState(command.retryPolicy?.artifacts ?? 'first-failure-and-final');
     const terminalFailure = createStoredRunValue(false);
     const collectionTimeout = dependencies.wallClock.setTimeout(function killTimedOutCollection() {
         recordCollectionTimeout(child, state, terminalFailure, collectedSignal);
@@ -261,6 +262,7 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
     liveRun.child.on('error', function recordChildError(error: Error) {
         liveRun.terminalFailure.write(true);
         liveRun.state.recordRunnerError({
+            attributedToAttempt: null,
             attributedTo: null,
             attributedToWork: null,
             cause: error,

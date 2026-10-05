@@ -213,6 +213,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(error.subtype, 'resource-exhaustion');
                 scope.assert.equal(error.attributedTo, null);
                 scope.assert.deepEqual(plainData(error.cause), {
+                    activeAttempts: [],
                     activeCases: [],
                     activeWork: [],
                     budget: 1,

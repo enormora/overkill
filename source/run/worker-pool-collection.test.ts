@@ -42,6 +42,7 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        retryPolicy: null,
         collectionTimeoutMilliseconds: 100,
         cwd: process.cwd(),
         definitionLocationCapture: 'disabled',
@@ -166,7 +167,7 @@ async function collectInvalidOwnedPool(timing: RunTimingMeasurement): Promise<In
                     }
                 });
             }),
-            runState: createSupervisedRunState(),
+            runState: createSupervisedRunState('first-failure-and-final'),
             timing
         });
     } catch (error: unknown) {
@@ -189,7 +190,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 let destroyed = false;
-                const runState = createSupervisedRunState();
+                const runState = createSupervisedRunState('first-failure-and-final');
                 const pool = createTestPool({
                     async destroy() {
                         destroyed = true;
@@ -263,7 +264,7 @@ export const testNode = createOverkillSuite({
                             }
                         });
                     }),
-                    runState: createSupervisedRunState(),
+                    runState: createSupervisedRunState('first-failure-and-final'),
                     timing: null
                 });
 
@@ -283,7 +284,7 @@ export const testNode = createOverkillSuite({
                 let timeoutCallback: TimeoutCallback = function missingTimeoutCallback() {
                     throw new Error('Expected collection timeout.');
                 };
-                const runState = createSupervisedRunState();
+                const runState = createSupervisedRunState('first-failure-and-final');
                 let thrownError: unknown = null;
 
                 try {

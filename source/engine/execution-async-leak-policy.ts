@@ -41,16 +41,9 @@ export function createExecutionAsyncLeakMonitor(diagnostics: AsyncLeakDiagnostic
         : createDisabledAsyncLeakMonitor();
 }
 
-function runtimePolicyCase(testCase: TestPlanCase, executedCase: ConcurrentCase): ConcurrentCase {
+function runtimePolicyCase(executedCase: ConcurrentCase): ConcurrentCase {
     return {
-        result: {
-            definitionLocations: testCase.definitionLocations,
-            id: testCase.id,
-            outcome: null,
-            verdict: 'runtime-policy',
-            workId: testCase.workId,
-            durationMicroseconds: executedCase.durationMicroseconds
-        },
+        result: { ...executedCase.result, outcome: null, verdict: 'runtime-policy' },
         runnerErrors: executedCase.runnerErrors,
         durationMicroseconds: executedCase.durationMicroseconds
     };
@@ -97,7 +90,7 @@ export async function caseWithAsyncLeakPolicy(input: CaseAsyncLeakPolicyInput): 
     return {
         executedCase: runnerErrors.length === 0
             ? input.executedCase
-            : runtimePolicyCase(input.testCase, input.executedCase),
+            : runtimePolicyCase(input.executedCase),
         runnerErrors
     };
 }

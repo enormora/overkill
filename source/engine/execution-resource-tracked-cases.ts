@@ -6,11 +6,8 @@ import type { ExecuteResourceBudgets } from './execution-resource-budget-breach.
 import type { ExecutionSupervision, ExecutionSupervisionDependencies } from './execution-supervision.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import { reportRunnerErrors } from './runner-error-reporting.ts';
-import type {
-    RunResourceUsageTracker,
-    RunResult,
-    RunnerError
-} from './run-result.ts';
+import type { RunResult, RunnerError } from './run-result.ts';
+import type { RunResourceUsageTracker } from './resource-usage.ts';
 
 type ExecutedTestPlan = {
     readonly reporterErrors: readonly RunnerError[];

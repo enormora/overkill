@@ -1,14 +1,16 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey, type AttemptId, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
     permissionDeniedRunnerErrorFromDiagnostic,
     type PermissionDeniedRunnerErrorPhase,
+    type PermissionDeniedRunnerErrorContext,
     type RunnerError
 } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
 
 export type PermissionRuntimeActiveCase = {
+    readonly attempt: AttemptId;
     readonly id: CaseId;
     readonly key: string;
     readonly workId: WorkId;
@@ -52,6 +54,21 @@ function ignorePermissionDropDiagnostics(
     };
 }
 
+function diagnosticContext(
+    activeCase: PermissionRuntimeActiveCase | undefined,
+    name: string,
+    phase: () => PermissionDeniedRunnerErrorPhase
+): PermissionDeniedRunnerErrorContext {
+    return {
+        attributedTo: activeCase?.id ?? null,
+        attributedToWork: activeCase?.workId ?? null,
+        boundary: null,
+        diagnosticChannel: name,
+        hook: null,
+        phase: activeCase === undefined ? phase() : 'body'
+    };
+}
+
 export function createPermissionDiagnosticsSubscriptions(
     activeCaseStorage: AsyncLocalStorage<PermissionRuntimeActiveCase>,
     phase: () => PermissionDeniedRunnerErrorPhase,
@@ -64,18 +81,12 @@ export function createPermissionDiagnosticsSubscriptions(
         const listener = ignorePermissionDropDiagnostics(function recordDiagnostic(message: unknown): void {
             const activeCase = activeCaseStorage.getStore();
 
-            recordError(permissionDeniedRunnerErrorFromDiagnostic({
+            const error = permissionDeniedRunnerErrorFromDiagnostic({
                 channel: name,
                 fallbackCapability: capability,
                 message
-            }, {
-                attributedTo: activeCase?.id ?? null,
-                attributedToWork: activeCase?.workId ?? null,
-                boundary: null,
-                diagnosticChannel: name,
-                hook: null,
-                phase: activeCase === undefined ? phase() : 'body'
-            }));
+            }, diagnosticContext(activeCase, name, phase));
+            recordError({ ...error, attributedToAttempt: activeCase?.attempt ?? null });
         });
         channel.subscribe(listener);
 
@@ -136,12 +147,16 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
     );
 
     return {
-        async runCase(testCase, run) {
+        async completeCase() {
+            return undefined;
+        },
+        async runAttempt(testCase, attempt, run) {
             loadComplete = true;
 
             return await activeCaseStorage.run({
+                attempt,
                 id: testCase.id,
-                key: workIdentityKey(testCase.workId),
+                key: `${workIdentityKey(testCase.workId)}:${attempt.index}`,
                 workId: testCase.workId
             }, run);
         },
@@ -152,8 +167,8 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
                 loadComplete = true;
             }
         },
-        takeCaseErrors(testCase) {
-            const key = workIdentityKey(testCase.workId);
+        takeAttemptErrors(testCase, attempt) {
+            const key = `${workIdentityKey(testCase.workId)}:${attempt.index}`;
             const errors = caseErrors.get(key) ?? [];
             caseErrors.delete(key);
 

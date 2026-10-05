@@ -4,7 +4,8 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import { applyEvent } from './supervised-run-runtime.ts';
 import {
     remainingHardTimeoutMilliseconds,
-    type SupervisedCase
+    type SupervisedCase,
+    type ActiveSupervisedCase
 } from './supervised-run-state.ts';
 import { crashError } from './supervised-run-resource-policy.ts';
 import type { PlacementRecoveryDecision } from './placement-trace.ts';
@@ -70,7 +71,7 @@ function casesByKey(taskRun: WorkerPoolTaskRun): ReadonlyMap<string, SupervisedC
     );
 }
 
-function singleActiveCase(taskRun: WorkerPoolTaskRun): SupervisedCase | null {
+function singleActiveCase(taskRun: WorkerPoolTaskRun): ActiveSupervisedCase | null {
     const activeCases = Array.from(taskRun.state.activeCases.values());
     const [ activeCase ] = activeCases;
 
@@ -179,6 +180,10 @@ function recordPermissionFailure(
     context.stopActiveTasks(taskRun);
 }
 
+function activeAttempt(activeCase: ActiveSupervisedCase | null): RunnerError['attributedToAttempt'] {
+    return activeCase === null ? null : activeCase.attempt;
+}
+
 export function recordTaskPermissionFailure(
     error: unknown,
     taskRun: WorkerPoolTaskRun,
@@ -198,7 +203,7 @@ export function recordTaskPermissionFailure(
         return false;
     }
 
-    recordPermissionFailure(runnerError, taskRun, context);
+    recordPermissionFailure({ ...runnerError, attributedToAttempt: activeAttempt(activeCase) }, taskRun, context);
 
     return true;
 }
@@ -303,7 +308,9 @@ function eventWithTaskArtifacts(
             ...event,
             artifacts: [
                 ...event.artifacts,
-                ...taskRun.state.caseArtifacts(event.case)
+                ...taskRun.state.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
+                    index: event.attempt
+                })
             ]
         }
         : event;

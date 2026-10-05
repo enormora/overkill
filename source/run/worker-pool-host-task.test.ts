@@ -40,6 +40,7 @@ function workId(): TestWorkId {
 
 function command(): WorkerPoolCommand {
     return {
+        retryPolicy: null,
         collectionTimeoutMilliseconds: 100,
         cwd: '/project',
         definitionLocationCapture: 'enabled',

@@ -28,6 +28,7 @@ export const testNode = createOverkillSuite({
                     createListDependencies(async function resolveCommand(command) {
                         return createResolvedRun(command, [
                             {
+                                attributedToAttempt: null,
                                 attributedTo: null,
                                 cause: null,
                                 diagnostics: [],

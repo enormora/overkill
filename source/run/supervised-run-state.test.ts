@@ -5,10 +5,10 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
 import {
-    capturedOutputLimitBytes,
     createSupervisedRunState,
     type SupervisedRunState
 } from './supervised-run-state.ts';
+import { capturedOutputLimitBytes } from './supervised-output-capture.ts';
 
 type RunArtifact = ReturnType<SupervisedRunState['artifacts']>[number];
 type CapturedOutputPayload = Extract<RunArtifact['payload'], { readonly kind: 'captured-output'; }>;
@@ -24,7 +24,7 @@ function caseId(title: string): CaseId {
 }
 
 function addActiveCase(state: SupervisedRunState, testCase: CaseId): void {
-    state.addActiveCase(caseIdentityKey(testCase), { capture: null, id: testCase }, 0);
+    state.addActiveCase(caseIdentityKey(testCase), { capture: null, id: testCase }, 0, { index: 0 });
 }
 
 function isCapturedOutputArtifact(artifact: RunArtifact): artifact is CapturedOutputArtifact {
@@ -94,7 +94,7 @@ function assertRunCapturedOutput(
     scope.assert.deepEqual(artifact.id.runtimes, []);
     scope.assert.equal(artifact.id.workload, null);
     scope.assert.equal(artifact.payload.text, 'setup output');
-    scope.assert.deepEqual(state.caseArtifacts(testCase), []);
+    scope.assert.deepEqual(state.caseArtifacts({ case: testCase, runtimes: [], workload: null }, { index: 0 }), []);
 }
 
 export const testNode = createOverkillSuite({
@@ -109,7 +109,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const state = createSupervisedRunState();
+                const state = createSupervisedRunState('first-failure-and-final');
                 const firstCase = caseId('first');
                 const secondCase = caseId('second');
 
@@ -131,7 +131,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const state = createSupervisedRunState();
+                const state = createSupervisedRunState('first-failure-and-final');
                 const testCase = caseId('scenario output');
                 const runtime = {
                     dimensions: {},
@@ -140,11 +140,16 @@ export const testNode = createOverkillSuite({
                     variantId: null
                 };
 
-                state.addActiveCase(caseIdentityKey(testCase), {
-                    capture: null,
-                    id: testCase,
-                    workId: { case: testCase, runtimes: [ runtime ], workload: null }
-                }, 0);
+                state.addActiveCase(
+                    caseIdentityKey(testCase),
+                    {
+                        capture: null,
+                        id: testCase,
+                        workId: { case: testCase, runtimes: [ runtime ], workload: null }
+                    },
+                    0,
+                    { index: 0 }
+                );
                 state.recordCapturedOutput('stdout', Buffer.from('scenario output'), 1);
 
                 const artifact = capturedOutputArtifact(scope, state.artifacts(), 0);
@@ -163,7 +168,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const state = createSupervisedRunState();
+                const state = createSupervisedRunState('first-failure-and-final');
                 const testCase = caseId('unrelated');
 
                 state.recordCapturedOutput('stderr', Buffer.from('setup output'), 1);
@@ -179,7 +184,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const state = createSupervisedRunState();
+                const state = createSupervisedRunState('first-failure-and-final');
                 const testCase = caseId('capped');
 
                 addActiveCase(state, testCase);

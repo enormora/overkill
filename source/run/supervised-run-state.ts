@@ -1,6 +1,17 @@
-import { caseIdentityKey, createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { PerTestResult, RunArtifact, RunnerError } from '../engine/run-result.ts';
+import {
+    caseIdentityKey,
+    createDefaultWorkId,
+    workIdentityKey,
+    type AttemptId,
+    type CaseId,
+    type WorkId
+} from '../engine/identity.ts';
+import type { PerTestResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
+import { caseAttemptHistory } from '../engine/test-attempt-history.ts';
 import type { RunRequest } from './run-types.ts';
+import { createSupervisedOutputCapture } from './supervised-output-capture.ts';
+import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
+import type { RetryArtifactPolicy } from './run-execution-config.ts';
 
 const microsecondsPerMillisecond = 1000;
 
@@ -36,7 +47,8 @@ export type SupervisedCase = {
     readonly workId?: WorkId;
 };
 
-type ActiveSupervisedCase = SupervisedCase & {
+export type ActiveSupervisedCase = SupervisedCase & {
+    readonly attempt: AttemptId;
     readonly startedAtMicroseconds: number;
 };
 
@@ -52,9 +64,20 @@ export type StoredRunValue<Value> = {
 
 export type SupervisedRunState = {
     readonly activeCases: ReadonlyMap<string, ActiveSupervisedCase>;
-    readonly addActiveCase: (key: string, testCase: SupervisedCase, startedAtMicroseconds: number) => void;
+    readonly addActiveCase: (
+        key: string,
+        testCase: SupervisedCase,
+        startedAtMicroseconds: number,
+        attempt: AttemptId
+    ) => void;
     readonly artifacts: () => readonly RunArtifact[];
-    readonly caseArtifacts: (testCase: CaseId) => readonly RunArtifact[];
+    readonly caseArtifacts: (work: WorkId, attempt: AttemptId) => readonly RunArtifact[];
+    readonly recordTestAttemptResult: (
+        key: string,
+        result: PerTestResult,
+        completion: 'final' | 'retry',
+        completedAtMicroseconds: number
+    ) => void;
     readonly perTestResults: () => readonly PerTestResult[];
     readonly recordCapturedOutput: (
         stream: 'stderr' | 'stdout',
@@ -76,13 +99,6 @@ export type SupervisedRunState = {
     readonly testExecutionWallTimeMicroseconds: () => number;
 };
 
-type CapturedOutputByteSpan = {
-    readonly byteLength: number;
-    readonly truncated: boolean;
-    readonly usedBytes: number;
-};
-
-export const capturedOutputLimitBytes = Number('1048576');
 const runArtifactScopeKey = 'run';
 
 function terminalResult(
@@ -91,6 +107,13 @@ function terminalResult(
     completedAtMicroseconds: number
 ): PerTestResult {
     return {
+        attempts: [ {
+            attempt: testCase.attempt,
+            durationMicroseconds: Math.max(0, completedAtMicroseconds - testCase.startedAtMicroseconds),
+            outcome: null,
+            verdict
+        } ],
+        retried: null,
         definitionLocations: testCase.definitionLocations ?? [ { kind: 'unknown' } ],
         id: testCase.id,
         outcome: null,
@@ -105,63 +128,20 @@ function artifactScopeKey(artifact: RunArtifact): string {
         return runArtifactScopeKey;
     }
 
-    return caseIdentityKey(artifact.id.scope.case);
+    return workIdentityKey({
+        case: artifact.id.scope.case,
+        runtimes: artifact.id.runtimes,
+        workload: artifact.id.workload
+    });
 }
 
-function caseArtifact(testCase: CaseId, artifacts: readonly RunArtifact[]): readonly RunArtifact[] {
-    const key = caseIdentityKey(testCase);
+function caseArtifact(work: WorkId, attempt: AttemptId, artifacts: readonly RunArtifact[]): readonly RunArtifact[] {
+    const key = workIdentityKey(work);
 
     return artifacts.filter(function belongsToCase(artifact) {
-        return artifact.id.scope.kind === 'case' && artifactScopeKey(artifact) === key;
+        return artifact.id.scope.kind === 'case' && artifactScopeKey(artifact) === key &&
+            artifact.id.attempt?.index === attempt.index;
     });
-}
-
-function capturedOutputScope(activeCaseIds: readonly CaseId[]): readonly RunArtifact['id']['scope'][] {
-    if (activeCaseIds.length === 0) {
-        return [ { kind: 'run' } ];
-    }
-
-    return activeCaseIds.map(function toCaseScope(testCase) {
-        return {
-            activeCases: activeCaseIds,
-            case: testCase,
-            confidence: activeCaseIds.length === 1 ? 'active-case' : 'concurrent-active',
-            kind: 'case'
-        };
-    });
-}
-
-function artifactWorkAttribution(
-    scope: RunArtifact['id']['scope'],
-    activeCases: ReadonlyMap<string, ActiveSupervisedCase>
-): Pick<RunArtifact['id'], 'runtimes' | 'workload'> {
-    if (scope.kind === 'run') {
-        return { runtimes: [], workload: null };
-    }
-
-    const activeCase = Array.from(activeCases.values()).find(function matchingActiveCase(testCase) {
-        return caseIdentityKey(testCase.id) === caseIdentityKey(scope.case);
-    });
-    const workId = activeCase?.workId ?? createDefaultWorkId(scope.case);
-
-    return { runtimes: workId.runtimes, workload: workId.workload };
-}
-
-function capturedOutputBytes(
-    scope: RunArtifact['id']['scope'],
-    capturedOutputByteCount: ReadonlyMap<string, number>,
-    chunk: Uint8Array
-): CapturedOutputByteSpan {
-    const key = scope.kind === 'run' ? runArtifactScopeKey : caseIdentityKey(scope.case);
-    const usedBytes = capturedOutputByteCount.get(key) ?? 0;
-    const availableBytes = Math.max(0, capturedOutputLimitBytes - usedBytes);
-    const byteLength = Math.min(availableBytes, chunk.length);
-
-    return {
-        byteLength,
-        truncated: byteLength < chunk.length,
-        usedBytes
-    };
 }
 
 function singleAttribution<Value>(values: readonly Value[]): Value | null {
@@ -175,7 +155,7 @@ function runtimePolicyPhase(activeCaseCount: number): 'body' | 'out-of-test' {
 }
 
 function createRuntimePolicyError(
-    activeCases: ReadonlyMap<string, SupervisedCase>,
+    activeCases: ReadonlyMap<string, ActiveSupervisedCase>,
     capability: string,
     message: string
 ): RunnerError {
@@ -188,6 +168,9 @@ function createRuntimePolicyError(
     const phase = runtimePolicyPhase(policyActiveCaseIds.length);
 
     return {
+        attributedToAttempt: singleAttribution(Array.from(activeCases.values(), function attempt(testCase) {
+            return testCase.attempt;
+        })),
         attributedTo: singleAttribution(policyActiveCaseIds),
         attributedToWork: singleAttribution(policyActiveWorkIds),
         cause: {
@@ -286,20 +269,27 @@ export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue
     };
 }
 
-export function createSupervisedRunState(): SupervisedRunState {
+export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): SupervisedRunState {
     const activeCases = new Map<string, ActiveSupervisedCase>();
     const artifacts: RunArtifact[] = [];
-    const capturedOutputByteCounts = new Map<string, number>();
+    const outputCapture = createSupervisedOutputCapture();
     const perTest = new Map<string, PerTestResult>();
+    const attemptResults = new Map<string, PerTestResult[]>();
     const runnerErrors: RunnerError[] = [];
     const timingWindows: TimingWindow[] = [];
-    let artifactSequence = 0;
     const recordTerminalActiveCases = function recordTerminalActiveCases(
         verdict: PerTestResult['verdict'],
         completedAtMicroseconds: number
     ): void {
         for (const [ key, testCase ] of activeCases) {
-            perTest.set(key, terminalResult(testCase, verdict, completedAtMicroseconds));
+            const previous = attemptResults.get(key) ?? [];
+            perTest.set(
+                key,
+                caseAttemptHistory(terminalResult(testCase, verdict, completedAtMicroseconds), [
+                    ...previous,
+                    terminalResult(testCase, verdict, completedAtMicroseconds)
+                ])
+            );
             timingWindows.push({
                 endedAtMicroseconds: completedAtMicroseconds,
                 startedAtMicroseconds: testCase.startedAtMicroseconds
@@ -311,51 +301,50 @@ export function createSupervisedRunState(): SupervisedRunState {
 
     return {
         activeCases,
-        addActiveCase(key, testCase, startedAtMicroseconds) {
-            activeCases.set(key, { ...testCase, startedAtMicroseconds });
+        addActiveCase(key, testCase, startedAtMicroseconds, attempt) {
+            activeCases.set(key, { ...testCase, attempt, startedAtMicroseconds });
         },
         artifacts() {
             return artifacts;
         },
-        caseArtifacts(testCase) {
-            return caseArtifact(testCase, artifacts);
+        caseArtifacts(work, attempt) {
+            return caseArtifact(work, attempt, artifacts);
         },
         perTestResults() {
-            return Array.from(perTest.values());
+            const results = new Map(perTest);
+            for (const [ key, attempts ] of attemptResults) {
+                const last = attempts.at(-1);
+                if (!results.has(key) && last !== undefined) {
+                    results.set(key, caseAttemptHistory(last, attempts));
+                }
+            }
+            return Array.from(results.values());
         },
         recordCapturedOutput(stream, chunk, capturedAtMicroseconds) {
-            const activeCaseIds = Array.from(activeCases.values(), function toCaseId(testCase) {
-                return testCase.id;
+            const activeWork = Array.from(activeCases.values(), function capturedWork(testCase) {
+                return { attempt: testCase.attempt, work: testCase.workId ?? createDefaultWorkId(testCase.id) };
             });
-            const scopes = capturedOutputScope(activeCaseIds);
-
-            for (const scope of scopes) {
-                const key = scope.kind === 'run' ? runArtifactScopeKey : caseIdentityKey(scope.case);
-                const captured = capturedOutputBytes(scope, capturedOutputByteCounts, chunk);
-
-                capturedOutputByteCounts.set(key, captured.usedBytes + captured.byteLength);
-                artifacts.push({
-                    id: {
-                        ...artifactWorkAttribution(scope, activeCases),
-                        scope,
-                        sequence: artifactSequence,
-                        subtype: 'log-capture'
-                    },
-                    payload: {
-                        byteLength: captured.byteLength,
-                        capturedAtMicroseconds,
-                        kind: 'captured-output',
-                        stream,
-                        text: Buffer.from(chunk.subarray(0, captured.byteLength)).toString('utf8'),
-                        truncated: captured.truncated
-                    },
-                    source: 'boundary-captured'
-                });
-                artifactSequence += 1;
-            }
+            artifacts.push(...outputCapture.record(activeWork, stream, chunk, capturedAtMicroseconds));
         },
         recordArtifact(artifact) {
             artifacts.push(artifact);
+        },
+        recordTestAttemptResult(key, result, completion, completedAtMicroseconds) {
+            const previous = attemptResults.get(key) ?? [];
+            const results = [ ...previous, result ];
+            attemptResults.set(key, results);
+            const retained = retainedRetryArtifacts(artifacts, [ caseAttemptHistory(result, results) ], artifactPolicy);
+            artifacts.splice(0, artifacts.length, ...retained);
+            const activeCase = activeCases.get(key);
+            if (activeCase !== undefined) {
+                timingWindows.push({
+                    endedAtMicroseconds: completedAtMicroseconds,
+                    startedAtMicroseconds: activeCase.startedAtMicroseconds
+                });
+            }
+            if (completion === 'final') {
+                perTest.set(key, caseAttemptHistory(result, results));
+            }
         },
         recordPerTestResult(key, result, completedAtMicroseconds) {
             const activeCase = activeCases.get(key);

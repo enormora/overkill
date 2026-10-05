@@ -103,7 +103,8 @@ test execution window and never affects verdicts.
 
 Unwinding happens in reverse, innermost first:
 
-1. Body returns, throws, or rejects.
+1. Body returns, throws, or rejects. Scope cleanup completes before per-case
+   resources are disposed. A new attempt starts only after both succeed.
 2. Debug recording ends; `TestDebugArtifact` is written.
 3. Timeout watchdog cancels its timer.
 4. Resource budget supervision records final samples or cancels
@@ -113,6 +114,13 @@ Unwinding happens in reverse, innermost first:
    On final-result, falls through.
 6. Worker boundary remains; the runner moves to the next test in
    this worker.
+
+Shared resource scopes span the logical case's retry chain. Their consumer
+counts decrement once at logical completion, not once per attempt. The
+engine owns retry iteration; the runner owns integration admission and
+artifact retention. Retries do not recollect modules, change executor
+placement, or reseed inputs. Low-level family-neutral engine plans can opt in
+explicitly; named non-integration families reject the policy.
 
 ## Why Two Phases (And What It Costs)
 
@@ -195,8 +203,8 @@ the order isn't explicit:
   debug artifact (sibling files: `attempt=0`, `attempt=1`);
   debug is _inside_ the retry loop, not outside.
 - **Timeout fires per attempt, not per test.** A 5 s soft timeout
-  on an integration test with 3 retries means up to 15 s of total
-  real time, not 5 s.
+  with `maxAttempts: 3` grants three 5 s soft-timeout windows. This is
+  not a 15 s wall-clock cap: cooperative completion and cleanup can take longer.
 - **Resource budgets are outside timeout.** A resource breach is
   reported as `resource-exhausted`, not as a timeout, even if the
   same test would later exceed its time budget.

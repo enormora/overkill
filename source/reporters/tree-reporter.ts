@@ -55,9 +55,10 @@ function resultVisible(testResult: RunResult['perTest'][number], options: TreeRe
 
 function caseLine(testResult: RunResult['perTest'][number]): string {
     const params = testResult.id.params === null ? '' : ` [${testResult.id.params}]`;
+    const retry = testResult.retried === null ? '' : ` [${testResult.retried.attempts} attempts]`;
 
     return `${symbolFor(testResult)} ${testResult.id.title}${params} ` +
-        `(${formatDuration(testResult.durationMicroseconds)})`;
+        `(${formatDuration(testResult.durationMicroseconds)})${retry}`;
 }
 
 function indent(depth: number): string {

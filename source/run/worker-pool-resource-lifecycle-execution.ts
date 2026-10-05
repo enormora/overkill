@@ -170,6 +170,7 @@ function recordResourceLifecycleFailure(runtime: WorkerPoolRunRuntime, message: 
     }
 
     runtime.runState.recordRunnerError({
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause,

@@ -5,7 +5,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
-import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import { kill, type SupervisedChildProcess } from './supervised-child-process.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
@@ -147,7 +147,7 @@ function timeoutRuntime(child: SupervisedChildProcess): TimeoutRuntimeRecord {
                     }
                 }
             },
-            state: createSupervisedRunState(),
+            state: createSupervisedRunState('first-failure-and-final'),
             terminalFailure: createStoredRunValue(false)
         } as unknown as SupervisedRunRuntimeSeed
     };
@@ -185,7 +185,7 @@ function collectionRuntime(
         },
         dependencies: {},
         previousSample: createStoredRunValue(null),
-        state: createSupervisedRunState(),
+        state: createSupervisedRunState('first-failure-and-final'),
         terminalFailure: createStoredRunValue(terminalFailure)
     } as unknown as SupervisedCollectionRuntime<CollectedRunPlan | null>;
 }
@@ -201,10 +201,10 @@ function scheduleOverlappingCases(
     record: TimeoutRuntimeRecord,
     timeout: SupervisedHardTimeout
 ): void {
-    record.runtime.state.addActiveCase('first', { capture: null, id: caseId }, 0);
+    record.runtime.state.addActiveCase('first', { capture: null, id: caseId }, 0, { index: 0 });
     timeout.start();
     record.advanceTo(500_000);
-    record.runtime.state.addActiveCase('second', { capture: null, id: caseId }, 500_000);
+    record.runtime.state.addActiveCase('second', { capture: null, id: caseId }, 500_000, { index: 0 });
     timeout.start();
     record.runtime.state.removeActiveCase('first');
     timeout.start();

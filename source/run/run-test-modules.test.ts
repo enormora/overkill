@@ -136,6 +136,7 @@ export const testNode = createOverkillSuite({
                     }
 
                     scope.assert.deepEqual(error.runnerError(), {
+                        attributedToAttempt: null,
                         attributedTo: null,
                         attributedToWork: null,
                         cause: error.cause,

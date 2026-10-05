@@ -51,6 +51,11 @@ the standard run summary, not behind a debug flag.
 
 ## Scope
 
+Retries do not add discovered, planned, or executed cases. One logical
+`WorkId` contributes its final verdict once, while `PerTestResult.attempts`
+retains each attempt. Duration history similarly records one observation,
+using the sum of attempt durations.
+
 Run counts cover two related questions:
 
 - **Reachability-bounded counts** - how many cases are reachable
