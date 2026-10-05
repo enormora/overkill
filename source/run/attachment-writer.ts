@@ -99,7 +99,8 @@ async function attachmentStreamCloseOnce(
     const { operations, failure } = state;
 
     await attachmentStreamSettleWrite(state);
-    const response = await operations.send({ kind: 'close', reason, writer: state.writer });
+    const completion = failure.read() !== null && reason === 'complete' ? 'write-error' : reason;
+    const response = await operations.send({ kind: 'close', reason: completion, writer: state.writer });
     operations.release();
     if (response.kind !== 'closed') {
         throw operations.fail('Attachment close returned an invalid reply.', 'protocol');
