@@ -140,6 +140,14 @@ calibration, and performance budgets remain owned by the benchmark family.
 
 ## Benchmark Definition Model
 
+The initial `@overkill-dev/bench` package facade reuses ordinary `test`,
+`skippedTest`, `suite`, `table`, `defineMacro`, and
+`defineParameterizedTestBody` authoring. These constructors remain
+family-neutral and do not measure performance. Benchmark-specific authoring
+arrives with its workload, measurement, and budget contracts. Standard
+distribution integration is a separate milestone; `@overkill-dev/test/bench`
+remains reserved until that integration.
+
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”
 
 A benchmark definition should be able to describe:

@@ -166,6 +166,16 @@ export const config = {
             }
         },
         {
+            name: 'bench',
+            description: 'Ordinary test-node authoring for Overkill benchmark suites.',
+            bundlePeerDependencies: [
+                '@overkill-dev/engine',
+                '@overkill-dev/simulation',
+                '@overkill-dev/resources',
+                '@overkill-dev/run'
+            ]
+        },
+        {
             name: 'test',
             description: 'Standard Overkill distribution and command-line binary.',
             bundleDependencies: [

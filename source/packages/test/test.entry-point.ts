@@ -1,13 +1,12 @@
 export {
-    createTestFacade,
     defineMacro,
     defineParameterizedTestBody,
-    runIfMain,
     skippedTest,
     suite,
     table,
     test
-} from './test-authoring.ts';
+} from '../../authoring/test-node-authoring.ts';
+export { createTestFacade, runIfMain } from './test-authoring.ts';
 export type { TestFacade } from './test-authoring.ts';
 export type {
     RunIfMain,

@@ -1,5 +1,5 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
-package-smoke-packages := '@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+package-smoke-packages := '@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
 
 default:
     @just --list
@@ -56,6 +56,7 @@ test-package-smoke: compile
     PACKTORY_INCLUDED_PACKAGES={{package-smoke-packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
+    node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
