@@ -1,4 +1,4 @@
-import { emptyTranscriptView, type TranscriptView } from '../packages/simulation/http.entry-point.ts';
+import { emptyTranscriptView, type TranscriptView } from '../packages/simulation/transcript.entry-point.ts';
 import {
     defineRuntime as createRuntimeDefinition,
     isDefinedRuntime as isRuntimeDefinition,

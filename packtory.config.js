@@ -148,6 +148,10 @@ export const config = {
                 main: {
                     js: 'packages/simulation/simulation.entry-point.js',
                     declarationFile: 'packages/simulation/simulation.entry-point.d.ts'
+                },
+                transcript: {
+                    js: 'packages/simulation/transcript.entry-point.js',
+                    declarationFile: 'packages/simulation/transcript.entry-point.d.ts'
                 }
             },
             packageInterface: {
@@ -159,6 +163,10 @@ export const config = {
                     {
                         export: './http',
                         root: 'http'
+                    },
+                    {
+                        export: './transcript',
+                        root: 'transcript'
                     }
                 ]
             },

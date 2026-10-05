@@ -11,7 +11,7 @@ export {
     httpTranscriptBodyByteLimit,
     recordedHttpBody,
     recordedHttpError
-} from '../../transcript/http-transcript.ts';
+} from './transcript.entry-point.ts';
 export type {
     SimulatedHttpListeningServer,
     SimulatedHttpServerHandle,
@@ -32,4 +32,4 @@ export type {
     TranscriptEntry,
     TranscriptView,
     TranscriptCaptureErrorEntry
-} from '../../transcript/http-transcript.ts';
+} from './transcript.entry-point.ts';
