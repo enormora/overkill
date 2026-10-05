@@ -1,12 +1,12 @@
 import {
     assertNoSimulatedHttpHandlerErrors,
-    createSimulatedHttpListeningServer
+    createSimulatedHttpListeningServer,
+    type HttpTranscript
 } from '../packages/simulation/http.entry-point.ts';
 import type {
     SimulatedHttpServerDefinition,
     SimulationScenarioCatalog
 } from '../packages/simulation/simulation.entry-point.ts';
-import type { HttpTranscript } from '../transcript/http-transcript.ts';
 import {
     defineResource,
     type EmptyResourceDependencies,

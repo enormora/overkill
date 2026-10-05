@@ -142,7 +142,7 @@ export type {
     TranscriptEntry,
     TranscriptView,
     TranscriptCaptureErrorEntry
-} from '../../transcript/http-transcript.ts';
+} from '../simulation/http.entry-point.ts';
 export type {
     RuntimeDefinition as Runtime,
     RuntimeResourceMap as ResourceMap

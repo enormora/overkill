@@ -25,8 +25,10 @@ export type {
     HttpResponseSnapshot,
     HttpTranscript,
     HttpTranscriptEntry,
+    HttpTranscriptRecorder,
     RecordedHttpBody,
     RecordedHttpError,
+    TranscriptScope,
     TranscriptEntry,
     TranscriptView,
     TranscriptCaptureErrorEntry

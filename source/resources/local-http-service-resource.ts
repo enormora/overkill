@@ -2,7 +2,7 @@ import {
     captureErrorHttpTranscript,
     emptyTranscriptView,
     type HttpTranscript
-} from '../transcript/http-transcript.ts';
+} from '../packages/simulation/http.entry-point.ts';
 import type {
     Awaitable,
     ExecutionRequirement,

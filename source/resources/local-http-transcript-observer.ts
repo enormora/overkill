@@ -13,7 +13,7 @@ import {
     type HttpTranscriptRecorder,
     type RecordedHttpBody,
     type TranscriptScope
-} from '../transcript/http-transcript.ts';
+} from '../packages/simulation/http.entry-point.ts';
 
 type UndiciRequest = Readonly<Record<string, unknown>>;
 type UndiciResponse = Readonly<Record<string, unknown>>;
