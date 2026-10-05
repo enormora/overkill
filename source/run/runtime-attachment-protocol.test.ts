@@ -4,7 +4,7 @@ import { createSuite, createTestCase, type TestScope } from '../packages/engine/
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentFixture, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
-import { createAttachmentServer } from './attachment-server.ts';
+import { createAttachmentServer, type AttachmentServer } from './attachment-server.ts';
 import { createAttachmentConnection, type AttachmentConnection } from './attachment-connection.ts';
 import {
     attachmentMaxFrameBytes,
@@ -51,6 +51,9 @@ async function assertChannelInterruption(
 async function assertOversizedRequest(scope: TestScope): Promise<void> {
     const { store } = await attachmentFixture(scope, defaultAttachmentLimits);
     const server = await createAttachmentServer(store, defaultAttachmentLimits);
+    scope.cleanup(async function finishOversizedRequestServer() {
+        await server.finish();
+    });
     const socket = connect({ host: '127.0.0.1', port: server.endpoint.port });
     await once(socket, 'connect');
     const disconnected = once(socket, 'close');
@@ -59,7 +62,43 @@ async function assertOversizedRequest(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(await server.finish(), []);
     scope.assert.deepEqual(store.artifacts(), []);
 }
+async function assertBoundedServerArtifacts(
+    scope: TestScope,
+    server: AttachmentServer,
+    store: AttachmentFixture['store']
+): Promise<void> {
+    await server.finish();
+    scope.assert.equal(store.artifacts().length, 1);
+    const content = store.artifacts()[0]?.payload.content;
+    scope.require.defined(content);
+    scope.assert.deepEqual(content, {
+        kind: 'text',
+        text: '',
+        byteLength: 0,
+        completion: { kind: 'incomplete', reason: 'interrupted' }
+    });
+}
 
+async function assertServerQueueLimit(scope: TestScope): Promise<void> {
+    const limits = { ...defaultAttachmentLimits, maxScopeAttachments: 1 };
+    const { store } = await attachmentFixture(scope, limits);
+    const server = await createAttachmentServer(store, limits);
+    scope.cleanup(async function finishFloodedServer() {
+        await server.finish();
+    });
+    const socket = connect({ host: '127.0.0.1', port: server.endpoint.port });
+    await once(socket, 'connect');
+    const disconnected = once(socket, 'close');
+    socket.write(
+        Array
+            .from({ length: attachmentMaxPendingRequests + 1 }, function queuedRequest(_value, request) {
+                return `${JSON.stringify({ request, token: server.endpoint.token, operation: open })}\n`;
+            })
+            .join('')
+    );
+    await disconnected;
+    await assertBoundedServerArtifacts(scope, server, store);
+}
 async function assertWriterIsolation(scope: TestScope): Promise<void> {
     const { store } = await attachmentFixture(scope, defaultAttachmentLimits);
     const response = await store.exchange('first', open);
@@ -142,10 +181,12 @@ async function assertPendingDisconnect(
         return connection.exchange(open);
     });
     const settled = Promise.allSettled(pending);
-    await scope.assert.rejects(async function exceedPendingLimit() {
+    const overflow = scope.assert.rejects(async function exceedPendingLimit() {
         await connection.exchange(open);
     }, { message: 'Attachment transport request limit exceeded.' });
+    await Promise.resolve();
     socket.destroy();
+    await overflow;
     const results = await settled;
     scope.assert.equal(
         results
@@ -214,6 +255,7 @@ export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-protocol.test.ts',
     children: ([
+        [ 'server request floods disconnect and keep allocation bounded', assertServerQueueLimit ],
         [ 'oversized request frames disconnect without creating artifacts', assertOversizedRequest ],
         [ 'writer channels isolate ownership and interruption', assertWriterIsolation ],
         [ 'unknown owners and incompatible operations are rejected', assertOwnerValidation ],

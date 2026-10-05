@@ -1,6 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as runtimeAttachmentOwnershipTestNode } from './runtime-attachment-ownership.test.ts';
-import { testNode as runtimeAttachmentsTestNode } from './runtime-attachments.test.ts';
+import { testNode as runtimeAttachmentsTestNode } from './runtime-attachment-lifecycle.test.ts';
 import { testNode as resourceLifecycleCompositionTestNode } from './resource-lifecycle-composition.test.ts';
 import { testNode as resourceLifecycleBoundariesTestNode } from './resource-lifecycle-boundaries.test.ts';
 import { testNode as resourceLifecycleProjectionTestNode } from './resource-lifecycle-projection.test.ts';

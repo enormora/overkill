@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import type { TestScope } from '../engine/test-node.ts';
-import { createDefaultWorkId } from '../engine/identity.ts';
+import { createDefaultWorkId, type WorkId } from '../engine/identity.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createAttachmentStore, type AttachmentStore } from '../run/attachment-store.ts';
 import { createAttachmentExecution, type AttachmentExecution } from '../run/attachment-execution.ts';
@@ -22,7 +22,11 @@ export type AttachmentFixture = {
     readonly execution: AttachmentExecution;
     readonly store: AttachmentStore;
 };
-export async function attachmentFixture(scope: TestScope, limits: AttachmentLimits): Promise<AttachmentFixture> {
+export async function attachmentFixtureForWork(
+    scope: TestScope,
+    limits: AttachmentLimits,
+    work: readonly WorkId[]
+): Promise<AttachmentFixture> {
     await mkdir('target/attachment-tests', { recursive: true });
     const directory = await mkdtemp('target/attachment-tests/run-');
     scope.cleanup(async function removeAttachmentRun() {
@@ -38,10 +42,13 @@ export async function attachmentFixture(scope: TestScope, limits: AttachmentLimi
         directory,
         limits,
         projectRoot: process.cwd(),
-        work: [ attachmentWork, attachmentPeerWork ]
+        work
     });
     const execution = createAttachmentExecution(async function exchangeAttachment(operation) {
         return await store.exchange('test', operation);
     }, limits.maxInlineBytes);
     return { directory, execution, store };
+}
+export async function attachmentFixture(scope: TestScope, limits: AttachmentLimits): Promise<AttachmentFixture> {
+    return attachmentFixtureForWork(scope, limits, [ attachmentWork, attachmentPeerWork ]);
 }

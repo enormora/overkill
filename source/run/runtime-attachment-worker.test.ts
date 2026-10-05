@@ -60,11 +60,31 @@ async function assertSharedLifecycleAttachments(scope: TestScope): Promise<void>
         });
     }
 }
+async function assertTokenScopedAttachments(scope: TestScope): Promise<void> {
+    const { store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const server = await createAttachmentServer(store, defaultAttachmentLimits);
+    await runWithWorkerAttachments(server.endpoint, null, async function attachWithoutSharedLifecycle() {
+        await resourceAttachments('service').json({ name: 'setup', mediaType: 'application/json' }, true);
+    });
+    await server.finish();
+    scope.assert.equal(store.artifacts().length, 1);
+    const artifact = store.artifacts()[0];
+    scope.require.defined(artifact);
+    scope.assert.deepEqual(artifact.payload.producer, { kind: 'resource', name: 'service' });
+}
 
 export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-worker.test.ts',
     children: [
+        createTestCase({
+            ...definition,
+            title: 'workers without a shared lifecycle use their execution token for attachments',
+            async body(scope: TestScope) {
+                await assertTokenScopedAttachments(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...definition,
             title: 'separate package module instances share the active attachment context',
