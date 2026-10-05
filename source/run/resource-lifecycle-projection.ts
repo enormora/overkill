@@ -1,4 +1,4 @@
-import { resourceAttachments } from '../attachments/attachment-context.ts';
+import { resourceAttachments } from '../packages/resources/attachment-context.entry-point.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,

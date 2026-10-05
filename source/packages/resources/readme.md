@@ -188,6 +188,9 @@ run. Text truncates; oversized JSON produces an omission record.
 
 Attachments require runner-managed integration execution. Standalone
 `startResources(...)` and `startRuntime(...)` sessions reject attachment calls.
+
+`@overkill-dev/resources/attachment-context` exposes the shared context bridge
+for runner and authoring integrations. Test authors should use `scope.attachments`.
 Service transcripts and logs are retained only when explicitly attached.
 
 Resources may declare finite scenario slots with a default, timing, and allowed

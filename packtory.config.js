@@ -136,6 +136,13 @@ export const config = {
         {
             name: 'resources',
             description: 'Typed Overkill resource and runtime descriptors.',
+            roots: {
+                main: moduleRoot('packages/resources/resources.entry-point'),
+                attachmentContext: moduleRoot('packages/resources/attachment-context.entry-point')
+            },
+            packageInterface: {
+                modules: packageModules({ '.': 'main', './attachment-context': 'attachmentContext' })
+            },
             bundlePeerDependencies: [ '@overkill-dev/simulation' ]
         },
         {

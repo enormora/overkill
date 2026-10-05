@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { RunnerError } from '../engine/run-result.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
 import type { AttachmentMetadata, AttachmentProducer, RuntimeAttachments } from '../engine/runtime-attachment.ts';
-import type { AttachmentContext } from '../attachments/attachment-context.ts';
+import type { AttachmentContext } from '../packages/resources/attachment-context.entry-point.ts';
 import { AttachmentOperationError, createAttachmentFailure, type AttachmentRejection } from './attachment-failure.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import type {

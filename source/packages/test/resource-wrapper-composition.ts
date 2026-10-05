@@ -1,4 +1,4 @@
-import { attachmentsForProducer } from '../../attachments/attachment-context.ts';
+import { attachmentsForProducer } from '../resources/attachment-context.entry-point.ts';
 import {
     type RuntimeAttachments,
     attachTestBodyResourceAttachments,

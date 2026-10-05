@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { runWithAttachmentContext } from '../attachments/attachment-context.ts';
+import { runWithAttachmentContext } from '../packages/resources/attachment-context.entry-point.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { AttemptId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
