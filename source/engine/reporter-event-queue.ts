@@ -37,7 +37,7 @@ async function waitForPreviousReport(previousReport: Promise<readonly RunnerErro
 }
 
 export function createReporterEventQueue(
-    reporterDelivery: ReporterDelivery
+    reporterDelivery: ReporterEventTarget
 ): ReporterEventQueue {
     let previousReport = Promise.resolve<readonly RunnerError[]>([]);
 

@@ -1,10 +1,6 @@
 import { getHeapStatistics } from 'node:v8';
 import type { Clock } from '@enormora/clock';
-import type {
-    ResourceUsageSnapshot,
-    RunResourceUsage,
-    RunResourceUsageTracker
-} from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/resource-usage.ts';
 
 const microsecondsPerSecond = 1_000_000;
 

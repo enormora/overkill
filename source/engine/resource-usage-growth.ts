@@ -1,4 +1,4 @@
-import type { ResourceUsageSnapshot } from './run-result.ts';
+import type { ResourceUsageSnapshot } from './resource-usage.ts';
 
 const microsecondsPerSecond = 1_000_000;
 

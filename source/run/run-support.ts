@@ -102,9 +102,16 @@ export function composeRunRuntimePolicies(
     }
 
     return {
-        async runCase<Value>(testCase: TestPlanCase, run: () => Promise<Value>): Promise<Value> {
-            return await firstPolicy.runCase(testCase, async function runSecondPolicy() {
-                return await secondPolicy.runCase(testCase, run);
+        async completeCase(testCase, attempt) {
+            try {
+                await secondPolicy.completeCase(testCase, attempt);
+            } finally {
+                await firstPolicy.completeCase(testCase, attempt);
+            }
+        },
+        async runAttempt(testCase, attempt, run) {
+            return await firstPolicy.runAttempt(testCase, attempt, async function runSecondPolicy() {
+                return await secondPolicy.runAttempt(testCase, attempt, run);
             });
         },
         async runLoad<Value>(run: () => Promise<Value>): Promise<Value> {
@@ -112,10 +119,10 @@ export function composeRunRuntimePolicies(
                 return await secondPolicy.runLoad(run);
             });
         },
-        takeCaseErrors(testCase) {
+        takeAttemptErrors(testCase, attempt) {
             return [
-                ...firstPolicy.takeCaseErrors(testCase),
-                ...secondPolicy.takeCaseErrors(testCase)
+                ...firstPolicy.takeAttemptErrors(testCase, attempt),
+                ...secondPolicy.takeAttemptErrors(testCase, attempt)
             ];
         },
         takePendingRunErrors() {
@@ -349,6 +356,7 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
             execution: copyIntegrationExecution(profile.execution),
             files,
             reporters: profile.reporters === null ? null : Array.from(profile.reporters),
+            retries: profile.retries === null ? null : { ...profile.retries },
             resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
             testFamily: profile.testFamily,
             timings: copyTimingProfilePolicy(profile.timings),

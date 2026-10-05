@@ -4,6 +4,7 @@ import { testNode as resourceLifecycleBoundariesTestNode } from './resource-life
 import { testNode as resourceLifecycleProjectionTestNode } from './resource-lifecycle-projection.test.ts';
 import { testNode as resourceLifecycleStartupBudgetTestNode } from './resource-lifecycle-startup-budget.test.ts';
 import { testNode as resourceLifecycleTimingTestNode } from './resource-lifecycle-timing.test.ts';
+import { testNode as retryResourceLifecycleTestNode } from './retry-resource-lifecycle.test.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},
@@ -11,6 +12,7 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/resource-lifecycle-run-suite.test.ts',
     children: [
+        retryResourceLifecycleTestNode,
         resourceLifecycleBoundariesTestNode,
         resourceLifecycleCompositionTestNode,
         resourceLifecycleProjectionTestNode,

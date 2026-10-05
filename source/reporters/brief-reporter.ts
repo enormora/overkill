@@ -27,6 +27,15 @@ type BriefReporterState = {
     readonly planned: number | null;
 };
 
+type BriefReporterUpdate = {
+    readonly intents: readonly OutputLineIntent[];
+    readonly state: BriefReporterState;
+};
+
+export type BriefReporterSinks = readonly [{ readonly kind: 'stdout-managed-primary'; }];
+
+const briefReporterSinks: BriefReporterSinks = [ { kind: 'stdout-managed-primary' } ];
+
 function stdout(text: string, annotation: OutputLineIntent['annotation']): OutputLineIntent {
     return {
         annotation,
@@ -89,6 +98,16 @@ function executedCount(result: RunResult): number {
         summary.resourceExhausted + summary.crashed;
 }
 
+function retryCountSummary(result: RunResult): string {
+    const count = result
+        .perTest
+        .filter(function retried(testResult) {
+            return testResult.retried !== null;
+        })
+        .length;
+    return count === 0 ? '' : `retried=${count} `;
+}
+
 function finishIntent(result: RunResult): OutputLineIntent {
     const { summary } = result;
     const discoveryCounts = `done status=${result.status} discovered=${summary.discovered} planned=${summary.planned}`;
@@ -100,7 +119,9 @@ function finishIntent(result: RunResult): OutputLineIntent {
         `ms=${totalMicroseconds / microsecondsPerMillisecond}`;
 
     return stdout(
-        `${discoveryCounts} ${executionCounts} ${remainingCounts} timing="${formatTimingSummary(result)}"`,
+        `${discoveryCounts} ${executionCounts} ${retryCountSummary(result)}${remainingCounts} timing="${
+            formatTimingSummary(result)
+        }"`,
         null
     );
 }
@@ -112,14 +133,6 @@ function runnerErrorIntent(error: RunnerError): OutputLineIntent {
         title: 'Runner error'
     });
 }
-
-type BriefReporterUpdate = {
-    readonly intents: readonly OutputLineIntent[];
-    readonly state: BriefReporterState;
-};
-
-export type BriefReporterSinks = readonly [{ readonly kind: 'stdout-managed-primary'; }];
-const briefReporterSinks: BriefReporterSinks = [ { kind: 'stdout-managed-primary' } ];
 
 function updateForCompletedTest(state: BriefReporterState, failed: boolean): BriefReporterState {
     return {
@@ -134,6 +147,9 @@ function testEndUpdate(
     event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
     context: ReportingContext
 ): BriefReporterUpdate {
+    if (event.completion === 'retry') {
+        return { intents: [ stdout(`retry ${event.attempt + 1}: ${event.case.title}`, null) ], state };
+    }
     const nextState = updateForCompletedTest(state, event.verdict === 'fail');
 
     if (event.outcome?.kind !== 'fail') {

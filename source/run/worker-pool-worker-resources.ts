@@ -71,6 +71,7 @@ function freshSignal(): AbortSignal {
 
 function runnerError(message: string, cause: unknown): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause,

@@ -199,6 +199,7 @@ export const testNode = createOverkillSuite({
                         runtimeStateDir: '.overkill'
                     },
                     execution: {
+                        retries: null,
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
                         coverage: false,
@@ -413,6 +414,7 @@ export const testNode = createOverkillSuite({
                         runtimeStateDir: '.overkill'
                     },
                     execution: {
+                        retries: null,
                         baselineUpdateMode: 'none',
                         capture: 'buffered',
                         coverage: false,

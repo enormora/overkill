@@ -90,6 +90,20 @@ explicit admission policy, for example
 Use `maxConcurrency: 'unlimited'` for unbounded admission. A case's timeout and
 duration start after admission, so time waiting for a slot is excluded.
 
+`ExecuteOptions.retryPolicy` is `null` by default. Set `{ maxAttempts: 3 }`
+to allow up to three completed attempts, including the first. Explicit
+non-integration test families reject this policy; family-neutral plans can
+opt in directly. Assertion failures, ordinary body errors, and cooperative
+soft timeouts can retry after cleanup succeeds. Infrastructure, contract, and
+cleanup failures cannot retry. Reporter failures still fail the run, but do
+not change retry eligibility.
+
+`PerTestResult.attempts` preserves each attempt and `retried` records actual
+retries, or is `null` when the case ran once. The top-level verdict is the
+logical result, and duration sums all attempts. Real-time `test-end` events
+have `completion: 'retry' | 'final'`; only final completions count as completed
+cases. Event attempt numbers and artifact `AttemptId.index` are zero-based.
+
 Runner-owned direct Node entrypoints are exposed by `@overkill-dev/run` and
 `@overkill-dev/test` through `runIfMain(import.meta, testNode, options?)`.
 Those entrypoints load runner config, match the direct file to a profile, and

@@ -101,6 +101,7 @@ function runnerError(
     subtype: RunResult['runnerErrors'][number]['subtype']
 ): RunResult['runnerErrors'][number] {
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         cause: null,
         diagnostics: [],

@@ -4,6 +4,7 @@ import { testNode as dotReporterOrderingTestNode } from './dot-reporter-ordering
 import { testNode as dotReporterTerminalTestNode } from './dot-reporter-terminal.test.ts';
 import { testNode as dotReporterTimingTestNode } from './dot-reporter-timing.test.ts';
 import { testNode as dotReporterTestNode } from './dot-reporter.test.ts';
+import { testNode as retryReportingTestNode } from './retry-reporting.test.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
@@ -11,6 +12,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        retryReportingTestNode,
         dotReporterInterruptedSummaryTestNode,
         dotReporterOrderingTestNode,
         dotReporterTerminalTestNode,

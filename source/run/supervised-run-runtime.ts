@@ -1,10 +1,10 @@
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import type {
-    ReporterDelivery,
     ReporterEvent,
     ResourceUsageSnapshot,
     RunResult
 } from './run-engine-primitives.ts';
+import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -48,7 +48,7 @@ export type SupervisedRunRuntimeSeed = {
     readonly dependencies: RunOrchestratorDependencies;
     readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
     readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
-    readonly reporterDelivery: ReporterDelivery;
+    readonly reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>;
     readonly reporterEvents: ReporterEventQueue;
     readonly resolvedRun: ResolvedRun;
     readonly state: SupervisedRunState;
@@ -93,7 +93,7 @@ export function createReporterEventQueue(): ReporterEventQueue {
 async function recordReporterEventErrors(
     event: ReporterEvent,
     state: SupervisedRunState,
-    reporterDelivery: ReporterDelivery
+    reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>
 ): Promise<void> {
     const errors = await reporterDelivery.reportEvent(event);
 
@@ -140,7 +140,7 @@ function applyTestStartEvent(
     const testCase = cases.get(key);
 
     if (testCase !== undefined) {
-        state.addActiveCase(key, testCase, observedAtMicroseconds);
+        state.addActiveCase(key, testCase, observedAtMicroseconds, { index: event.attempt });
     }
 }
 
@@ -152,14 +152,26 @@ function applyTestEndEvent(
     const workId = event.workId ?? createDefaultWorkId(event.case);
     const key = workIdentityKey(workId);
 
-    state.recordPerTestResult(key, {
-        definitionLocations: event.definitionLocations,
-        id: event.case,
-        outcome: event.outcome,
-        verdict: event.verdict,
-        workId,
-        durationMicroseconds: event.durationMicroseconds
-    }, observedAtMicroseconds);
+    state.recordTestAttemptResult(
+        key,
+        {
+            attempts: [ {
+                attempt: { index: event.attempt },
+                durationMicroseconds: event.durationMicroseconds,
+                outcome: event.outcome,
+                verdict: event.verdict
+            } ],
+            retried: null,
+            definitionLocations: event.definitionLocations,
+            id: event.case,
+            outcome: event.outcome,
+            verdict: event.verdict,
+            workId,
+            durationMicroseconds: event.durationMicroseconds
+        },
+        event.completion,
+        observedAtMicroseconds
+    );
     state.removeActiveCase(key);
 }
 
@@ -198,7 +210,7 @@ function createPartialRunResult(input: PartialRunResultInput): RunResult {
 export async function createReporterDelivery(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies
-): Promise<ReporterDelivery> {
+): ReturnType<RunOrchestratorDependencies['reporterDispatcher']['createDelivery']> {
     return await dependencies.reporterDispatcher.createDelivery(
         resolvedRun.reporters,
         resolvedRun.config.outputRenderer
@@ -223,7 +235,9 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
             ...event,
             artifacts: [
                 ...event.artifacts,
-                ...runtime.state.caseArtifacts(event.case)
+                ...runtime.state.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
+                    index: event.attempt
+                })
             ]
         }
         : event;
@@ -358,28 +372,11 @@ export async function reportRunStart(
 }
 
 function resultWithSupervisedArtifacts(result: RunResult, runtime: SupervisedRunRuntime): RunResult {
-    const artifacts = runtime.state.artifacts();
-
-    if (artifacts.length === 0) {
-        return result;
-    }
-
-    return {
-        ...result,
-        artifacts: [ ...result.artifacts, ...artifacts ]
-    };
-}
-
-function appendRunnerErrors(result: RunResult, runnerErrors: readonly RunResult['runnerErrors'][number][]): RunResult {
-    if (runnerErrors.length === 0) {
-        return result;
-    }
-
-    return {
-        ...result,
-        runnerErrors: [ ...result.runnerErrors, ...runnerErrors ],
-        status: 'failed'
-    };
+    return resultWithRetainedArtifacts(
+        result,
+        runtime.state.artifacts(),
+        runtime.resolvedRun.facts.execution.retries?.artifacts ?? 'first-failure-and-final'
+    );
 }
 
 function parentTimedResult(runtime: SupervisedRunRuntime, startedAtMicroseconds: number): RunResult {
@@ -420,12 +417,7 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMicroseconds: n
 }
 
 async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntime): Promise<RunResult> {
-    const runEndErrors = await runtime.reporterDelivery.reportEvent({ kind: 'run-end', result });
-    const resultForFinalReporting = appendRunnerErrors(result, runEndErrors);
-    const finalReporterErrors = await runtime.reporterDelivery.reportResult(resultForFinalReporting);
-    const disposeErrors = await runtime.reporterDelivery.disposeReporters();
-
-    return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
+    return await reportResultWithDelivery(result, runtime.reporterDelivery);
 }
 
 export async function finishSupervisedRuntime(

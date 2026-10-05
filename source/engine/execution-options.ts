@@ -1,11 +1,14 @@
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporter-output.ts';
 import type { DefinedReporter, RunFacts } from './reporter.ts';
-import type { RunResourceUsageTracker, RunResult } from './run-result.ts';
+import type { RunResult } from './run-result.ts';
+import type { RunResourceUsageTracker } from './resource-usage.ts';
 import type {
     ExecuteTimeoutPolicy,
     ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
 import type { ExecuteResourceBudgets } from './execution-resource-budget-breach.ts';
+import { assertRetryPolicy, assertRetryFamily, type TestRetryPolicy } from './retry-policy.ts';
+import type { TestPlan } from './test-plan.ts';
 
 export type ExecuteExecution = {
     readonly maxConcurrency: number | 'unlimited';
@@ -17,6 +20,7 @@ export type ExecuteExecution = {
 export type ExecuteResultFinalizer = (result: RunResult) => Promise<RunResult>;
 
 export type ExecuteOptions = {
+    readonly retryPolicy: TestRetryPolicy | null;
     readonly execution: ExecuteExecution;
     readonly finalizeResult?: ExecuteResultFinalizer;
     readonly outputRenderer?: DefinedOutputRenderer;
@@ -48,6 +52,7 @@ function defaultExecuteOptions(): NormalizedExecuteOptions {
         finalizeResult: keepResult,
         outputRenderer: createPlainOutputRenderer(),
         reporters: [],
+        retryPolicy: null,
         resourceBudgets: null,
         resourceUsageTracker: null,
         runtimePolicy: null,
@@ -58,6 +63,7 @@ function defaultExecuteOptions(): NormalizedExecuteOptions {
 }
 
 function executeOptionsWithProvidedDefaults(options: ExecuteOptions): NormalizedExecuteOptions {
+    assertRetryPolicy(options.retryPolicy);
     return {
         ...options,
         finalizeResult: options.finalizeResult ?? keepResult,
@@ -68,6 +74,11 @@ function executeOptionsWithProvidedDefaults(options: ExecuteOptions): Normalized
     };
 }
 
-export function executeOptionsWithDefaults(options: ExecuteOptions | undefined): NormalizedExecuteOptions {
-    return options === undefined ? defaultExecuteOptions() : executeOptionsWithProvidedDefaults(options);
+export function executeOptionsWithDefaults(
+    options: ExecuteOptions | undefined,
+    testPlan: TestPlan
+): NormalizedExecuteOptions {
+    const normalized = options === undefined ? defaultExecuteOptions() : executeOptionsWithProvidedDefaults(options);
+    assertRetryFamily(normalized.retryPolicy, testPlan);
+    return normalized;
 }

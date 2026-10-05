@@ -77,6 +77,7 @@ function supervisedChildDependencies(): SupervisedChildDependencies {
 
 function command(kind: SupervisedChildCommand['kind'], path: string): SupervisedChildCommand {
     return {
+        retryPolicy: null,
         capabilityRestrictions: { mode: 'disabled' },
         capture: 'buffered',
         collectionTimeoutMilliseconds: 1000,

@@ -189,6 +189,7 @@ export class RunCollectionError extends Error {
         }
 
         return {
+            attributedToAttempt: null,
             attributedTo: null,
             attributedToWork: null,
             cause: this.cause,

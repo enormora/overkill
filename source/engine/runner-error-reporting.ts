@@ -2,7 +2,7 @@ import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { RunnerError } from './run-result.ts';
 
 export async function reportRunnerErrorEvents(
-    reporterDelivery: ReporterDelivery,
+    reporterDelivery: Pick<ReporterDelivery, 'reportEvent'>,
     runnerErrors: readonly RunnerError[]
 ): Promise<readonly RunnerError[]> {
     let reporterErrors: readonly RunnerError[] = [];

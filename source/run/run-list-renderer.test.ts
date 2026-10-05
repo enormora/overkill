@@ -135,6 +135,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                 runtimeStateDir: config.runtimeStateDir
             },
             execution: {
+                retries: null,
                 baselineUpdateMode: request.baselineUpdateMode,
                 capture: request.capture,
                 coverage: request.coverage,

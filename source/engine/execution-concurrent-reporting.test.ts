@@ -132,6 +132,7 @@ async function executeConcurrentTestPlan(
     reporter: RealTimeReporter
 ): Promise<RunResult> {
     return await engine.execute(testPlan, {
+        retryPolicy: null,
         execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
         reporters: [ defineFixedReporter(reporter) ],
         runFacts: {},
@@ -259,6 +260,7 @@ function createLimitedConcurrencyScenario(): LimitedConcurrencyScenario {
         title: 'root'
     }));
     const execution = engine.execute(testPlan, {
+        retryPolicy: null,
         execution: { maxConcurrency: 2, mode: 'concurrent-in-process' },
         reporters: [],
         runFacts: {},
@@ -318,6 +320,7 @@ async function executeFatalLimitedPlan(recordStart: (title: string) => void): Pr
     }));
 
     return await engine.execute(testPlan, {
+        retryPolicy: null,
         execution: { maxConcurrency: 1, mode: 'concurrent-in-process' },
         reporters: [],
         runFacts: {},

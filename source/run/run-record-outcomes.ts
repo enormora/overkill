@@ -1,6 +1,7 @@
 import type { Except } from 'type-fest';
 import type { SerializedValue } from '../compare/serialized-value.ts';
-import type { CapturedOutputArtifact, HedgedConflictArtifact, TestFailure, TestOutcome } from '../engine/run-result.ts';
+import type { HedgedConflictArtifact, TestAttemptResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
+import type { CapturedOutputArtifact } from '../engine/run-artifact.ts';
 import type { CoverageArtifact } from '../engine/coverage-artifact.ts';
 
 type RecordedThrownError = {
@@ -25,8 +26,12 @@ export type RunRecordTestOutcome = Exclude<TestOutcome, { readonly kind: 'fail';
 };
 
 type RecordedConflictEvidence = {
+    readonly attempts: readonly [RunRecordTestAttempt, ...readonly RunRecordTestAttempt[]];
     readonly outcome: RunRecordTestOutcome | null;
     readonly verdict: TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
+};
+export type RunRecordTestAttempt = Except<TestAttemptResult, 'outcome'> & {
+    readonly outcome: RunRecordTestOutcome | null;
 };
 type RecordedConflictArtifact = Except<HedgedConflictArtifact, 'payload'> & {
     readonly payload: Except<HedgedConflictArtifact['payload'], 'authoritative' | 'conflicting'> & {

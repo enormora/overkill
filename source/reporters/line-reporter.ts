@@ -264,13 +264,18 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
         };
 
         function logTestEnd(event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>): void {
+            if (event.completion === 'retry') {
+                wrappedTerminal.line(infoSymbol, `Retry after attempt ${event.attempt + 1}: ${event.case.title}`);
+                return;
+            }
             const prefix = contextPrefix(event.workId?.runtimes ?? [], event.case.suite, formatOptions);
             const [ symbol, message ] = event.outcome === null
                 ? formatTerminalTestResult(event.case, event.verdict, event.durationMicroseconds, prefix)
                 : formatTestResult(event.case, event.outcome, event.durationMicroseconds, prefix);
             const definitionLocations = formatDefinitionLocations(event.definitionLocations, context);
 
-            wrappedTerminal.line(symbol, `${message}${failureLocation(event, definitionLocations)}`);
+            const retried = event.attempt === 0 ? '' : ` [${event.attempt + 1} attempts]`;
+            wrappedTerminal.line(symbol, `${message}${retried}${failureLocation(event, definitionLocations)}`);
         }
 
         return {

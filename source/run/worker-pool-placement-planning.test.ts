@@ -178,6 +178,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',

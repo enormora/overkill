@@ -49,7 +49,7 @@ function assertValidationFailure(scope: OverkillScope, testCase: SchemaValidatio
 
 const invalidMicrotestProfileFields: readonly SchemaValidationFailure[] = [
     {
-        data: { testFamily: 'microtest', retries: { attempts: 2 } },
+        data: { testFamily: 'microtest', retries: { maxAttempts: 2 } },
         expectedIssues: [ 'unexpected additional property: "retries"' ],
         name: 'retries',
         schema: microtestProfileSchema

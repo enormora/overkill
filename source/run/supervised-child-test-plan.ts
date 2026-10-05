@@ -20,6 +20,7 @@ export type SupervisedChildTestPlanDependencies = {
 
 type SelectedSupervisedEngine = Awaited<ReturnType<SupervisedChildTestPlanDependencies['loadRunEngineModule']>>;
 const missingObservedChildError: RunnerError = {
+    attributedToAttempt: null,
     attributedTo: null,
     attributedToWork: null,
     cause: null,
@@ -56,6 +57,7 @@ export function runnerErrorFromSupervisedChildFailure(error: unknown): RunnerErr
     }
 
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
         cause: error,

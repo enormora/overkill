@@ -113,6 +113,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             resourceUsagePolicy: resolveResourceUsagePolicy(request, profile),
             scheduling: profile.execution.scheduling,
             testFamily: profile.testFamily,
+            retries: profile.testFamily === 'integration' ? profile.retries : null,
             timingCollection: resolveTimingCollection(request, profile),
             timeoutPolicy: profile.timeouts,
             verbose: request.verbose

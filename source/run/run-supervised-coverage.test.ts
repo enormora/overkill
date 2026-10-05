@@ -32,6 +32,7 @@ function completeAssignedRun(context: FakeSupervisedChildRunContext): void {
             event: {
                 attempt: 1,
                 artifacts: [],
+                completion: 'final',
                 case: workId.case,
                 definitionLocations: [ { kind: 'unknown' } ],
                 durationMicroseconds: 0,

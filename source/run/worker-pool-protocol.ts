@@ -16,6 +16,7 @@ import type {
     RunCommand,
     RunCollectionRoot,
     RunHostProcess,
+    RunIntegrationProfileConfig,
     RunMaxConcurrency,
     RunResourceBudgets,
     RunScheduling,
@@ -31,6 +32,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly retryPolicy: RunIntegrationProfileConfig['retries'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
     readonly definitionLocationCapture: DefinitionLocationCapture;

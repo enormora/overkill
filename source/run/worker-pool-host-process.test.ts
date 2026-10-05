@@ -1,8 +1,5 @@
 import type { MessagePort as WorkerMessagePort } from 'node:worker_threads';
-import type {
-    ResourceUsageSnapshot,
-    RunResourceUsage
-} from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource-usage.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -31,6 +28,8 @@ import {
     type WorkerPoolHostMessage
 } from './worker-pool-host-protocol.ts';
 import { createHostedWorkerPool } from './worker-pool-host-process.ts';
+
+const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type ChildOutput = NonNullable<SupervisedChildProcess['stdout']> & {
     readonly emit: (text: string) => void;
@@ -182,6 +181,7 @@ function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): 
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        retryPolicy: null,
         collectionTimeoutMilliseconds: 100,
         cwd: '/project',
         definitionLocationCapture: 'enabled',
@@ -434,15 +434,13 @@ async function startTrackingWithOneSample(
 }
 
 export const testNode = createOverkillSuite({
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ],
+    ...testMetadata,
+
     title: 'source/run/worker-pool-host-process.test.ts',
     children: [
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testMetadata,
+
             title: 'createHostedWorkerPool() reports a missing host resource sample',
             body(scope: OverkillScope) {
                 const { pool } = createPoolFixture(workerPoolOptions(), ignoreStartOptions);
@@ -459,9 +457,8 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testMetadata,
+
             title: 'createHostedWorkerPool() rejects task errors from the child host',
             async body(scope: OverkillScope) {
                 const fixture = await startRunTask(createPoolFixture(
@@ -489,9 +486,8 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testMetadata,
+
             title: 'createHostedWorkerPool() forwards tasks, output, messages, and aborts',
             async body(scope: OverkillScope) {
                 const fixture = createForwardingFixture(scope);
@@ -507,9 +503,8 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testMetadata,
+
             title: 'createHostedWorkerPool() exposes host resource usage samples',
             async body(scope: OverkillScope) {
                 const fixture = createTrackingFixture();
@@ -528,9 +523,8 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testMetadata,
+
             title: 'createHostedWorkerPool() rejects pending tasks when the host errors',
             async body(scope: OverkillScope) {
                 const fixture = await startRunTask(createPoolFixture(workerPoolOptions(), ignoreStartOptions));
@@ -545,9 +539,8 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testMetadata,
+
             title: 'createHostedWorkerPool() destroys an active host and ignores idle destroy',
             async body(scope: OverkillScope) {
                 const fixture = createPoolFixture(workerPoolOptions(), ignoreStartOptions);

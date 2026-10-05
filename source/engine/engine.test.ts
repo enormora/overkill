@@ -54,6 +54,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const options: ExecuteOptions = {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     outputRenderer: createPlainOutputRenderer(),
                     reporters: [],

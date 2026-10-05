@@ -73,6 +73,7 @@ export async function executeLocalResolvedRun(
             return await options.finalizeResult(resolvedRun, result);
         },
         reporters: resolvedRun.reporters,
+        retryPolicy: resolvedRun.facts.execution.retries,
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
         runtimePolicy: createRunResourceRuntimePolicy(

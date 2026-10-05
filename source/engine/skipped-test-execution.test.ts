@@ -59,7 +59,10 @@ function createRuntimePolicyProbe(): RuntimePolicyProbe {
             return caseRuns;
         },
         runtimePolicy: {
-            async runCase<Value>(_testCase: unknown, run: () => Promise<Value>): Promise<Value> {
+            async completeCase() {
+                return undefined;
+            },
+            async runAttempt<Value>(_testCase: unknown, _attempt: unknown, run: () => Promise<Value>): Promise<Value> {
                 caseRuns += 1;
 
                 return await run();
@@ -67,7 +70,7 @@ function createRuntimePolicyProbe(): RuntimePolicyProbe {
             async runLoad<Value>(run: () => Promise<Value>): Promise<Value> {
                 return await run();
             },
-            takeCaseErrors() {
+            takeAttemptErrors() {
                 caseErrorReads += 1;
 
                 return [];
@@ -108,6 +111,7 @@ function createSkippedExecutionPlan(engine: Engine): ReturnType<Engine['createTe
 }
 
 function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): void {
+    const outcome = { kind: 'skip' as const, reason: 'unsupported platform' };
     const skippedCaseId = {
         file: null,
         params: null,
@@ -117,9 +121,11 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
 
     scope.assert.deepEqual(result.perTest, [
         {
+            attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome, verdict: 'skip' } ],
+            retried: null,
             definitionLocations: [ { kind: 'unknown' as const } ],
             id: skippedCaseId,
-            outcome: { kind: 'skip', reason: 'unsupported platform' },
+            outcome,
             verdict: 'skip',
             workId: {
                 case: skippedCaseId,
@@ -160,6 +166,7 @@ export const testNode = createOverkillSuite({
                 const probe = createRuntimePolicyProbe();
                 const testPlan = createSkippedExecutionPlan(engine);
                 const result = await engine.execute(testPlan, {
+                    retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ lifecycle.reporter ],
                     runFacts: {},

@@ -1,9 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type {
-    RunResourceUsage,
-    RunResourceUsageTracker,
-    ResourceUsageSnapshot
-} from '../engine/run-result.ts';
+import type { RunResourceUsage, RunResourceUsageTracker, ResourceUsageSnapshot } from '../engine/resource-usage.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import {
     childProcessEnvelope,

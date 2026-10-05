@@ -45,6 +45,7 @@ export async function runIfMain(
             title: meta.url
         })),
         {
+            retryPolicy: null,
             execution: { mode: 'serial-in-process' },
             outputRenderer: createPlainOutputRenderer(),
             reporters,

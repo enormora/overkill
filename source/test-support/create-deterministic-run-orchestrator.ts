@@ -1,6 +1,6 @@
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/resource-usage.ts';
 import {
     createDirectEntrypointRunner,
     createRunOrchestrator,
@@ -124,6 +124,7 @@ function emitTestEnd(
 ): void {
     context.emitMessage({
         event: {
+            completion: 'final',
             attempt: 1,
             artifacts: [],
             case: work.case,
@@ -149,6 +150,7 @@ function emitProcessEnvironmentPolicyError(context: FakeSupervisedChildRunContex
     context.emitMessage({
         event: {
             error: {
+                attributedToAttempt: null,
                 attributedTo: work.case,
                 attributedToWork: work,
                 cause: { capability: 'process-env' },

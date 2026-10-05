@@ -15,6 +15,7 @@ import {
 } from './assertion-recorder.ts';
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
+    singleAttemptResult,
     isCaseRunnerError,
     permissionDeniedRunnerErrorFromThrown,
     type PerTestResult,
@@ -28,6 +29,8 @@ import {
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 import { createThrowingTestScope } from './throwing-test-scope.ts';
 import type { TestPlanCase } from './test-plan.ts';
+
+type AttemptId = PerTestResult['attempts'][number]['attempt'];
 
 type BodyErrorRecord = ThrownErrorRecord;
 
@@ -74,14 +77,20 @@ type FinishedScope = {
 };
 
 export type RunTestCaseOptions = {
+    readonly attempt: AttemptId;
     readonly controller: AbortController;
     readonly runtimePolicy: TestRuntimePolicy | null;
 };
 
 export type TestRuntimePolicy = {
-    readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
+    readonly runAttempt: <Value>(
+        testCase: TestPlanCase,
+        attempt: AttemptId,
+        run: () => Promise<Value>
+    ) => Promise<Value>;
+    readonly completeCase: (testCase: TestPlanCase, attempt: AttemptId) => Promise<void>;
     readonly runLoad: <Value>(run: () => Promise<Value>) => Promise<Value>;
-    readonly takeCaseErrors: (testCase: TestPlanCase) => readonly RunnerError[];
+    readonly takeAttemptErrors: (testCase: TestPlanCase, attempt: AttemptId) => readonly RunnerError[];
     readonly takePendingRunErrors: () => readonly RunnerError[];
     readonly takeRunErrors: () => readonly RunnerError[];
 };
@@ -347,26 +356,25 @@ async function runBuilderCaseBody(
 
         return await lifecycle.runBody(options.controller.signal, testCase.execution.body);
     };
-    const runPolicyCheckedBody = async function runPolicyCheckedUserBody(): Promise<AssertionResult> {
-        return options.runtimePolicy === null
-            ? await runBody()
-            : await options.runtimePolicy.runCase(testCase, runBody);
+    const runAndCleanUp = async function runBodyAndScopeCleanup(): Promise<ExecutedBody> {
+        try {
+            const assertionResult = await runBody();
+            return completedBody({
+                assertionResult,
+                context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller))
+            });
+        } catch (error: unknown) {
+            return failedBody({
+                context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller)),
+                error,
+                testCase
+            });
+        }
     };
 
-    try {
-        const assertionResult = await runPolicyCheckedBody();
-
-        return completedBody({
-            assertionResult,
-            context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller))
-        });
-    } catch (error: unknown) {
-        return failedBody({
-            context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller)),
-            error,
-            testCase
-        });
-    }
+    return options.runtimePolicy === null
+        ? await runAndCleanUp()
+        : await options.runtimePolicy.runAttempt(testCase, options.attempt, runAndCleanUp);
 }
 
 async function runThrowingCaseBody(
@@ -388,7 +396,7 @@ async function runThrowingCaseBody(
             return;
         }
 
-        await options.runtimePolicy.runCase(testCase, runBody);
+        await options.runtimePolicy.runAttempt(testCase, options.attempt, runBody);
     };
 
     try {
@@ -496,6 +504,7 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
     const controller = new AbortController();
 
     return {
+        attempt: { index: 0 },
         controller,
         runtimePolicy: null
     };
@@ -527,14 +536,14 @@ function skippedCase(
     const outcome: TestOutcome = { kind: 'skip', reason };
 
     return {
-        result: {
+        result: singleAttemptResult({
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome,
             verdict: verdictFromOutcome(outcome),
             workId: testCase.workId,
             durationMicroseconds
-        },
+        }, { index: 0 }),
         runnerErrors: [],
         durationMicroseconds
     };
@@ -563,14 +572,14 @@ export async function runTestCase(
     const durationMicroseconds = Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
 
     return {
-        result: {
+        result: singleAttemptResult({
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome,
             verdict,
             workId: testCase.workId,
             durationMicroseconds
-        },
+        }, { index: 0 }),
         runnerErrors: executedBody.runnerErrors,
         durationMicroseconds
     };

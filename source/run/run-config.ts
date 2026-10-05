@@ -66,6 +66,7 @@ import {
 } from './run-config-defaults.ts';
 
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
+type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
 
 export type LoadedRunConfig = {
     readonly configPath: string | null;
@@ -77,7 +78,7 @@ export type LoadedRunConfig = {
 };
 
 export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution & ProjectHostProcessGuard;
-export type RunProjectIntegrationProfileConfig = {
+export type RunProjectIntegrationProfileConfig = Pick<ParsedRunProjectIntegrationProfileConfig, 'retries'> & {
     readonly coverage?: never;
     readonly execution?: RunProjectIntegrationExecution | undefined;
     readonly files: ParsedRunProjectIntegrationProfileConfig['files'];
@@ -88,7 +89,7 @@ export type RunProjectIntegrationProfileConfig = {
     readonly timeouts?: ParsedRunProjectIntegrationProfileConfig['timeouts'];
 };
 export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
-export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig;
+export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig & ProjectRetryPolicyGuard;
 export type RunProjectCoverageOutput = ParsedRunProjectCoverageOutput;
 export type RunProjectCoveragePolicy = ParsedRunProjectCoveragePolicy;
 export type RunProjectCoverageSources = ParsedRunProjectCoverageSources;
@@ -414,6 +415,10 @@ function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig
         execution,
         files,
         reporters: normalizeReporters(profile.reporters),
+        retries: profile.retries === undefined ? null : {
+            artifacts: profile.retries.artifacts ?? 'first-failure-and-final',
+            maxAttempts: profile.retries.maxAttempts
+        },
         resourceUsage: normalizeResourceUsage(profile.resourceUsage),
         testFamily: 'integration',
         timings: normalizeTimings(profile.timings),

@@ -1,7 +1,7 @@
 import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import { createClock } from '@enormora/clock';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
-import type { RunResourceUsageTracker, RunnerError } from '../engine/run-result.ts';
+import type { RunnerError, RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import {
     childProcessEnvelope,
     envelopeMessage

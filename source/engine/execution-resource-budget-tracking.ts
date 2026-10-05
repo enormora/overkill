@@ -1,9 +1,5 @@
-import type {
-    ResourceUsageSnapshot,
-    RunResourceUsageTracker,
-    RunResult,
-    RunnerError
-} from './run-result.ts';
+import type { RunResult, RunnerError } from './run-result.ts';
+import type { ResourceUsageSnapshot, RunResourceUsageTracker } from './resource-usage.ts';
 import {
     recordResourceUsageSample,
     type ExecutionSupervision,

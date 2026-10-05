@@ -118,17 +118,25 @@ type ArtifactSubtype =
     | 'coverage'
     | 'trace';
 
-type ArtifactId = {
-    readonly scope: ArtifactScope;
-    readonly runtimes: readonly RuntimeId[];
-    readonly workload: WorkloadId | null;
-    readonly attempt?: AttemptId;
-    readonly subtype: ArtifactSubtype;
-};
+type ArtifactId =
+    & {
+        readonly runtimes: readonly RuntimeId[];
+        readonly workload: WorkloadId | null;
+        readonly subtype: ArtifactSubtype;
+    }
+    & (
+        | { readonly scope: { readonly kind: 'run'; }; readonly attempt: null; }
+        | { readonly scope: Extract<ArtifactScope, { readonly kind: 'case'; }>; readonly attempt: AttemptId; }
+    );
 ```
 
 These are values. They are compared structurally. They are serialised to
 disk paths only as a derivation, never the canonical form.
+
+`AttemptId` is zero-based within one logical `WorkId`. It is distinct from
+placement-attempt identity used by hedging. Late async errors retain their
+originating attempt in diagnostic evidence; they cannot be attributed to a
+later attempt of the same work item.
 
 ## Path Derivation
 

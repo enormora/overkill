@@ -2,6 +2,7 @@ import { createSuite as createOverkillSuite } from '../packages/engine/engine.en
 import { testNode as runConfigIntegrationProfileTestNode } from './run-config-integration-profile.test.ts';
 import { testNode as runConfigTestNode } from './run-config.test.ts';
 import { testNode as runConfigTimeoutsTestNode } from './run-config-timeouts.test.ts';
+import { testNode as runConfigRetriesTestNode } from './run-config-retries.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -9,6 +10,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        runConfigRetriesTestNode,
         runConfigTestNode,
         runConfigIntegrationProfileTestNode,
         runConfigTimeoutsTestNode

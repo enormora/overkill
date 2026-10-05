@@ -4,7 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { RunResourceUsageTracker } from '../engine/run-result.ts';
+import type { RunResourceUsageTracker } from '../engine/resource-usage.ts';
 import { createResourceUsageTracker } from './resource-usage.ts';
 
 function readSequence(values: readonly number[]): () => number {

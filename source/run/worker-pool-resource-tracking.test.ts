@@ -21,6 +21,7 @@ const testCaseMetadata = {
     definitionLocations: [ { kind: 'unknown' as const } ]
 } as const;
 const reporterDeliveryError: RunnerError = {
+    attributedToAttempt: null,
     attributedTo: null,
     attributedToWork: null,
     cause: null,

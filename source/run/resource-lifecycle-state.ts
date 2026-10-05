@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { RunnerError } from '../engine/run-result.ts';
+import type { AttemptId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 import type {
@@ -19,6 +20,7 @@ type ManagedResourceScopeAcquisition = {
 };
 
 export type ManagedLifecycleState = {
+    readonly completeCase: (testCase: TestPlanCase, attempt: AttemptId) => Promise<void>;
     readonly acquireComposedResources: (
         steps: readonly ResourceWrapperStep[],
         signal: AbortSignal,
@@ -26,14 +28,18 @@ export type ManagedLifecycleState = {
     ) => Promise<ComposedResourceSession>;
     readonly acquireResourceScopes: (request: ManagedResourceScopeAcquisition) => Promise<void>;
     readonly disposeAll: (signal: AbortSignal) => Promise<readonly ManagedRunnerError[]>;
-    readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
-    readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
+    readonly runAttempt: <Value>(
+        testCase: TestPlanCase,
+        attempt: AttemptId,
+        run: () => Promise<Value>
+    ) => Promise<Value>;
+    readonly takeAttemptErrors: (testCase: TestPlanCase, attempt: AttemptId) => readonly ManagedRunnerError[];
     readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
     readonly takeRunErrors: () => readonly ManagedRunnerError[];
 };
 
 const activeLifecycle = new AsyncLocalStorage<ManagedLifecycleState>();
-const runningCase = new AsyncLocalStorage<TestPlanCase>();
+const runningCase = new AsyncLocalStorage<{ readonly testCase: TestPlanCase; readonly attempt: AttemptId; }>();
 
 export function activeManagedLifecycle(): ManagedLifecycleState | null {
     return activeLifecycle.getStore() ?? null;
@@ -47,14 +53,19 @@ export async function runWithManagedLifecycle<Value>(
 }
 
 export function currentLifecycleCase(): TestPlanCase | null {
-    return runningCase.getStore() ?? null;
+    return runningCase.getStore()?.testCase ?? null;
+}
+
+export function currentLifecycleAttempt(): AttemptId | null {
+    return runningCase.getStore()?.attempt ?? null;
 }
 
 export async function runWithLifecycleCase<Value>(
     testCase: TestPlanCase,
+    attempt: AttemptId,
     run: () => Promise<Value>
 ): Promise<Value> {
-    return await runningCase.run(testCase, async function runScopedCase() {
+    return await runningCase.run({ testCase, attempt }, async function runScopedCase() {
         return await runWithTranscriptScope(testCase, run);
     });
 }

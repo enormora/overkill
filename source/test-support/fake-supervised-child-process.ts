@@ -1,5 +1,5 @@
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
-import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
 import {
     childProcessEnvelope,
     type ChildProcessEnvelope,
@@ -130,6 +130,7 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
         state.emitMessage({
             event: {
                 error: {
+                    attributedToAttempt: null,
                     attributedTo: null,
                     cause: error,
                     diagnostics: [],

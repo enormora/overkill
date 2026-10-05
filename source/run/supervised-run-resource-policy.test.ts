@@ -4,7 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
-import type { ResourceUsageSnapshot } from '../engine/run-result.ts';
+import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
 import {
     crashError,
     findResourceBudgetBreach,
@@ -66,14 +66,14 @@ function assertBreach(
 }
 
 function activeCaseStates(): readonly [SupervisedRunState, SupervisedRunState, SupervisedRunState] {
-    const singleState = createSupervisedRunState();
-    const multiState = createSupervisedRunState();
+    const singleState = createSupervisedRunState('first-failure-and-final');
+    const multiState = createSupervisedRunState('first-failure-and-final');
 
-    singleState.addActiveCase('first', { capture: null, id: firstCaseId }, 0);
-    multiState.addActiveCase('first', { capture: null, id: firstCaseId }, 0);
-    multiState.addActiveCase('second', { capture: null, id: secondCaseId }, 0);
+    singleState.addActiveCase('first', { capture: null, id: firstCaseId }, 0, { index: 0 });
+    multiState.addActiveCase('first', { capture: null, id: firstCaseId }, 0, { index: 0 });
+    multiState.addActiveCase('second', { capture: null, id: secondCaseId }, 0, { index: 0 });
 
-    return [ createSupervisedRunState(), singleState, multiState ];
+    return [ createSupervisedRunState('first-failure-and-final'), singleState, multiState ];
 }
 
 function assertCaseId(scope: OverkillScope, actual: CaseId | null, expected: CaseId): void {
@@ -138,11 +138,13 @@ export const testNode = createOverkillSuite({
                 };
 
                 scope.assert.deepEqual(resourceExhaustionError(breach, emptyState), {
+                    attributedToAttempt: null,
                     attributedTo: null,
                     attributedToWork: null,
                     cause: {
                         ...breach,
                         activeCases: [],
+                        activeAttempts: [],
                         activeWork: [],
                         enforcement: 'post-test-diagnostic'
                     },
@@ -158,6 +160,10 @@ export const testNode = createOverkillSuite({
                 assertCaseId(scope, crashError(singleState, 'Crashed.').attributedTo, firstCaseId);
                 scope.assert.equal(resourceExhaustionError(breach, multiState).attributedTo, null);
                 scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
+                    activeAttempts: [
+                        { work: { case: firstCaseId, runtimes: [], workload: null }, attempt: { index: 0 } },
+                        { work: { case: secondCaseId, runtimes: [], workload: null }, attempt: { index: 0 } }
+                    ],
                     activeCases: [ firstCaseId, secondCaseId ],
                     activeWork: [
                         { case: firstCaseId, runtimes: [], workload: null },

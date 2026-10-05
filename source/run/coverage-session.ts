@@ -7,11 +7,7 @@ import type {
     CoverageRunnerErrorCause,
     CoverageThresholdFailure
 } from '../engine/coverage-artifact.ts';
-import type {
-    RunArtifact,
-    RunnerError,
-    RunResult
-} from '../engine/run-result.ts';
+import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import {
     emptyTimingSpanMetadata,
     type RunTimingMeasurement
@@ -120,7 +116,7 @@ function projectRelativePath(projectRoot: string, filePath: string): string {
     return path.relative(projectRoot, filePath).split(path.sep).join('/');
 }
 
-function nextRunArtifactSequence(artifacts: readonly RunArtifact[]): number {
+function nextRunArtifactSequence(artifacts: RunResult['artifacts']): number {
     return artifacts.reduce(function nextSequence(sequence, artifact) {
         return artifact.id.scope.kind === 'run' ? Math.max(sequence, artifact.id.sequence + 1) : sequence;
     }, 0);
@@ -128,11 +124,12 @@ function nextRunArtifactSequence(artifacts: readonly RunArtifact[]): number {
 
 function coverageArtifact(
     paths: CoveragePaths,
-    artifacts: readonly RunArtifact[],
+    artifacts: RunResult['artifacts'],
     report: CoverageReportResult
 ): CoverageArtifact {
     return {
         id: {
+            attempt: null,
             runtimes: [],
             scope: { kind: 'run' },
             sequence: nextRunArtifactSequence(artifacts),
@@ -162,6 +159,7 @@ function coverageRunnerError(
     phase: Extract<CoverageRunnerErrorCause, { readonly kind: 'coverage-operation'; }>['phase']
 ): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         cause: { error, kind: 'coverage-operation', phase },
         diagnostics: [
@@ -245,6 +243,7 @@ function coverageThresholdError(failures: readonly CoverageThresholdFailure[]): 
     const allFailures = [ firstFailure, ...remainingFailures ] as const;
 
     return {
+        attributedToAttempt: null,
         attributedTo: null,
         cause: { failures: allFailures, kind: 'coverage-threshold' },
         diagnostics: allFailures.map(function thresholdDiagnostic(failure) {

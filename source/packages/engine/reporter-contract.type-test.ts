@@ -30,6 +30,7 @@ type ExecuteOptionKeyByName = {
     readonly finalizeResult: true;
     readonly outputRenderer: true;
     readonly reporters: true;
+    readonly retryPolicy: true;
     readonly resourceBudgets: true;
     readonly resourceUsageTracker: true;
     readonly runtimePolicy: true;

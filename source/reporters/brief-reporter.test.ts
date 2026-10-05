@@ -12,6 +12,8 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createBriefReporter, type BriefReporterSinks } from './brief-reporter.ts';
 import { formatRunFactSummary } from './run-summary-rendering.ts';
 
+const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const caseId = {
     file: 'source/users.test.ts',
     title: 'creates profile',
@@ -41,6 +43,7 @@ async function readOutput(output: unknown): Promise<readonly OutputLineIntent[]>
 
 function passEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
+        completion: 'final',
         attempt: 0,
         case: caseId,
         definitionLocations: [ definitionLocation ],
@@ -55,6 +58,7 @@ function passEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
 
 function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
+        completion: 'final',
         attempt: 0,
         case: caseId,
         definitionLocations: [ definitionLocation ],
@@ -122,6 +126,7 @@ function assertFailureAnnotations(scope: OverkillScope, failureOutput: readonly 
 function runnerErrorEvent(): Extract<ReporterEvent, { readonly kind: 'runner-error'; }> {
     return {
         error: {
+            attributedToAttempt: null,
             attributedTo: null,
             cause: new Error('cannot collect tests'),
             diagnostics: [],
@@ -150,16 +155,41 @@ function assertRunnerErrorOutput(scope: OverkillScope, errorOutput: readonly Out
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/reporters/brief-reporter.test.ts',
-    annotations: {},
-    controls: {},
+    ...testMetadata,
+
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testMetadata,
+
+            title: 'retry failures do not create annotations or increment completion counts',
+            async body(scope: OverkillScope) {
+                const reporter = createBriefRuntimeReporter();
+                const output = await readOutput(reporter.onEvent({ ...failEvent(), completion: 'retry' }));
+                scope.assert.equal(output[0]?.annotation, null);
+                scope.assert.deepEqual(
+                    output.map(function text(intent) {
+                        return intent.text;
+                    }),
+                    [ 'retry 1: creates profile' ]
+                );
+                for (let index = 0; index < 99; index += 1) {
+                    await reporter.onEvent(passEvent());
+                }
+                const final = await readOutput(reporter.onEvent({ ...passEvent(), attempt: 1 }));
+                scope.assert.deepEqual(
+                    final.map(function text(intent) {
+                        return intent.text;
+                    }),
+                    [ 'progress 100/? failed=0' ]
+                );
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             title: 'brief reporter declares managed primary stdout',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
@@ -169,10 +199,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints run start and omits passing test lines',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const startOutput = await readOutput(reporter.onEvent({
@@ -195,10 +224,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter includes order and seed on run start',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const startOutput = await readOutput(reporter.onEvent({
@@ -223,10 +251,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter ignores incomplete ordering facts',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const missingSeed = await readOutput(reporter.onEvent({
@@ -279,10 +306,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief run fact summary rejects malformed ordering facts',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             body(scope: OverkillScope) {
                 scope.assert.equal(formatRunFactSummary(runFacts(null, { seed: '123' })), null);
                 scope.assert.equal(formatRunFactSummary(runFacts({ order: 'seeded' }, null)), null);
@@ -293,10 +319,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints progress every one hundred completed tests',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
@@ -324,10 +349,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter uses an unknown progress denominator without run facts',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
@@ -348,10 +372,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter suppresses final progress at the planned count',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
 
@@ -374,10 +397,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints one diagnostic line per failure cause',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const failureOutput = await readOutput(reporter.onEvent(failEvent()));
@@ -397,10 +419,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints runner errors and ignores suite events',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 const suiteOutput = await readOutput(reporter.onEvent({
@@ -416,10 +437,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter emits slow runner overhead as managed output',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 scope.require.notNull(reporter.onFinish);
@@ -481,10 +501,9 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'brief reporter prints final counts',
-            annotations: {},
-            controls: {},
+            ...testMetadata,
+
             async body(scope: OverkillScope) {
                 const reporter = createBriefRuntimeReporter();
                 scope.require.notNull(reporter.onFinish);

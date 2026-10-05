@@ -3,6 +3,7 @@ import { testNode as supervisedRunCollectionTestNode } from './supervised-run-co
 import { testNode as supervisedRunArtifactsTestNode } from './supervised-run-artifacts.test.ts';
 import { testNode as supervisedRunStateTestNode } from './supervised-run-state.test.ts';
 import { testNode as supervisedRunTestNode } from './supervised-run.test.ts';
+import { testNode as retryAttributionTestNode } from './retry-attribution.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -10,6 +11,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        retryAttributionTestNode,
         supervisedRunTestNode,
         supervisedRunCollectionTestNode,
         supervisedRunArtifactsTestNode,

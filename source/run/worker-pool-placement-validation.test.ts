@@ -17,14 +17,14 @@ import {
     type WorkerPoolRunRuntime
 } from './worker-pool-runtime.ts';
 
+const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
 type WorkUnit = PlacementPlan['units'][number];
 export const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 export const testCaseMetadata = {
-    annotations: {},
-    controls: {},
-    definitionLocations: [ { kind: 'unknown' as const } ]
+    ...testMetadata
 } as const;
 const defaultUnitPolicy = {
     order: 'plan',
@@ -216,6 +216,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
                 capture: 'buffered',
@@ -399,7 +400,7 @@ export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntim
             }
         },
         resolvedRun: workerPoolResolvedRun(placement),
-        runState: createSupervisedRunState(),
+        runState: createSupervisedRunState('first-failure-and-final'),
         taskResults,
         terminalFailure: createStoredRunValue(false),
         lifecycle: { token: 'fake-worker-runtime' }

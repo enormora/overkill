@@ -29,6 +29,15 @@ const positiveSafeIntegerSchema = z.number().refine(function isPositiveSafeInteg
 
 const maxConcurrencySchema = z.union([ positiveSafeIntegerSchema, z.literal('unlimited') ]);
 
+const integrationRetryPolicySchema = z
+    .strictObject({
+        artifacts: z.optional(z.enum([ 'first-failure-and-final', 'last-failure-and-final', 'all' ])),
+        maxAttempts: positiveSafeIntegerSchema
+    })
+    .readonly();
+
+export type RunProjectIntegrationRetryPolicy = z.infer<typeof integrationRetryPolicySchema>;
+
 const fileGlobSchema = z.string();
 
 const profileFilePatternsSchema = z
@@ -245,6 +254,7 @@ export const integrationProfileSchema = z
         execution: z.optional(integrationExecutionSchema),
         files: profileFilesSchema,
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        retries: z.optional(integrationRetryPolicySchema),
         resourceUsage: z.optional(resourceUsageSchema),
         testFamily: z.literal('integration'),
         timings: z.optional(timingProfilePolicySchema),

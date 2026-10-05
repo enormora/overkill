@@ -281,6 +281,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
         execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
         outputRenderer: createPlainOutputRenderer(),
         reporters: [ createSupervisedChildReporter(input.host) ],
+        retryPolicy: input.command.retryPolicy,
         resourceBudgets: input.command.resourceBudgets,
         resourceUsageTracker: createForwardingResourceUsageTracker(
             input.command,

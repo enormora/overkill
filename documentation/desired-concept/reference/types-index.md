@@ -1139,6 +1139,7 @@ type RunExecutionBaseFacts = {
     readonly placementPlan: PlacementPlan | null;
     readonly profile: ProfileName;
     readonly resourceUsagePolicy: ResourceUsagePolicy;
+    readonly retries: IntegrationRetryPolicy | null;
     readonly runRecords: RunRecordPersistenceFacts;
     readonly scheduling: 'serial' | 'concurrent';
     readonly testFamily: TestFamily;
@@ -1575,7 +1576,7 @@ type RunResult = {
         inconclusive: number;
         resourceExhausted: number;
     };
-    readonly perTest: ReadonlyArray<{ id: CaseId; outcome: TestOutcome | null; verdict: TestVerdict; }>;
+    readonly perTest: ReadonlyArray<PerTestResult>;
     readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
@@ -1697,8 +1698,30 @@ type RunnerError = {
         | 'attribution-drift'
         | 'resource-exhaustion';
     readonly attributedTo: CaseId | null; // null when run-level
+    readonly attributedToWork: WorkId | null;
+    readonly attributedToAttempt: AttemptId | null;
     readonly message: string;
     readonly cause?: unknown;
+};
+
+type TestRetryPolicy = { readonly maxAttempts: number; };
+type RetryArtifactPolicy = 'first-failure-and-final' | 'last-failure-and-final' | 'all';
+type IntegrationRetryPolicy = TestRetryPolicy & { readonly artifacts: RetryArtifactPolicy; };
+type TestAttemptResult = {
+    readonly attempt: AttemptId;
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
+    readonly durationMicroseconds: number;
+};
+type PerTestResult = {
+    readonly id: CaseId;
+    readonly workId: WorkId;
+    readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
+    readonly durationMicroseconds: number;
+    readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
+    readonly retried: { readonly attempts: number; readonly finalVerdict: TestVerdict; } | null;
 };
 
 type CoverageRunnerErrorCause =

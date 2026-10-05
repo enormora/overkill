@@ -122,6 +122,7 @@ export function createTestSupportRunIfMain(dependencies: TestSupportRunIfMainDep
             wallClock
         });
         const result = await execute(testPlan(meta, testNode, options), {
+            retryPolicy: null,
             execution: { mode: 'serial-in-process' },
             outputRenderer: selectedOutputRenderer(options),
             reporters: selectedReporters(options),

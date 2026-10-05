@@ -21,6 +21,7 @@ type SupervisedChildMessageListener = (message: unknown) => void;
 
 function supervisedCollectCommand(): SupervisedCollectCommand {
     return {
+        retryPolicy: null,
         capabilityRestrictions: { mode: 'disabled' },
         capture: 'buffered',
         collectionTimeoutMilliseconds: 100,
@@ -112,6 +113,7 @@ async function createEventChild(): Promise<SupervisedChildProcess> {
                 listener(supervisedChildEnvelope({
                     event: {
                         error: {
+                            attributedToAttempt: null,
                             attributedTo: null,
                             attributedToWork: null,
                             cause: null,

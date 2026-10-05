@@ -115,3 +115,6 @@ export function formatCaseId(caseId: CaseId): string {
 
     return `${originPath} [${caseId.params}]`;
 }
+export type AttemptId = {
+    readonly index: number;
+};

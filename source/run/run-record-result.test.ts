@@ -38,8 +38,13 @@ function resultWithOpaqueEvidence(): RunResult {
     const outcome = opaqueFailure();
     return {
         ...result,
-        perTest: [ { ...test, outcome }, { ...test, outcome: null } ],
+        perTest: [ {
+            ...test,
+            attempts: [ { attempt: { index: 0 }, durationMicroseconds: 1, outcome, verdict: 'fail' } ],
+            outcome
+        }, { ...test, outcome: null } ],
         runnerErrors: [ {
+            attributedToAttempt: null,
             attributedTo: null,
             cause: new Map([ [ 'seed', 42n ] ]),
             diagnostics: [],
@@ -47,16 +52,43 @@ function resultWithOpaqueEvidence(): RunResult {
             subtype: 'crash'
         } ],
         artifacts: [ {
-            id: { runtimes: [], scope: { kind: 'run' }, sequence: 1, subtype: 'hedged-conflict', workload: null },
+            id: {
+                attempt: null,
+                runtimes: [],
+                scope: { kind: 'run' },
+                sequence: 1,
+                subtype: 'hedged-conflict',
+                workload: null
+            },
             payload: {
-                authoritative: { outcome, verdict: 'fail' },
-                conflicting: { outcome: null, verdict: 'crashed' },
+                authoritative: {
+                    attempts: [ { attempt: { index: 0 }, durationMicroseconds: 1, outcome, verdict: 'fail' } ],
+                    outcome,
+                    verdict: 'fail'
+                },
+                conflicting: {
+                    attempts: [ {
+                        attempt: { index: 0 },
+                        durationMicroseconds: 1,
+                        outcome: null,
+                        verdict: 'crashed'
+                    } ],
+                    outcome: null,
+                    verdict: 'crashed'
+                },
                 kind: 'hedged-conflict',
                 work: test.workId
             },
             source: 'native'
         }, {
-            id: { runtimes: [], scope: { kind: 'run' }, sequence: 2, subtype: 'log-capture', workload: null },
+            id: {
+                attempt: null,
+                runtimes: [],
+                scope: { kind: 'run' },
+                sequence: 2,
+                subtype: 'log-capture',
+                workload: null
+            },
             payload: {
                 byteLength: 3,
                 capturedAtMicroseconds: 0,
@@ -75,31 +107,47 @@ export const testNode = createSuite({
     title: 'source/run/run-record-result.test.ts',
     annotations: {},
     controls: {},
-    children: [ createTestCase({
-        definitionLocations: [ { kind: 'unknown' } ],
-        title: 'projects cyclic and bigint diagnostics without changing live outcomes or artifact identities',
-        annotations: {},
-        controls: {},
-        body(scope) {
-            const live = resultWithOpaqueEvidence();
-            const recorded = recordedRunResult(live);
-            const json = JSON.stringify(recorded);
-            scope.assert.includes(json, '"kind":"bigint","value":"42"');
-            scope.assert.includes(json, '"kind":"circular"');
-            scope.assert.equal(recorded.perTest[1]?.outcome, null);
-            scope.assert.deepEqual(
-                recorded.artifacts.map(function identity(artifact) {
-                    return artifact.id;
-                }),
-                live.artifacts.map(function identity(artifact) {
-                    return artifact.id;
-                })
-            );
-            scope.assert.equal(recorded.artifacts[1], live.artifacts[1]);
-            scope.assert.equal(live.perTest[0]?.outcome?.kind, 'fail');
-            return scope.assert.collect();
-        }
-    }) ]
+    children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'projects cyclic and bigint diagnostics without changing live outcomes or artifact identities',
+            annotations: {},
+            controls: {},
+            body(scope) {
+                const live = resultWithOpaqueEvidence();
+                const recorded = recordedRunResult(live);
+                const json = JSON.stringify(recorded);
+                scope.assert.includes(json, '"kind":"bigint","value":"42"');
+                scope.assert.includes(json, '"kind":"circular"');
+                scope.assert.equal(recorded.perTest[1]?.outcome, null);
+                scope.assert.deepEqual(
+                    recorded.artifacts.map(function identity(artifact) {
+                        return artifact.id;
+                    }),
+                    live.artifacts.map(function identity(artifact) {
+                        return artifact.id;
+                    })
+                );
+                scope.assert.equal(recorded.artifacts[1], live.artifacts[1]);
+                scope.assert.equal(live.perTest[0]?.outcome?.kind, 'fail');
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'serializes opaque attempt histories without mutating live evidence',
+            annotations: {},
+            controls: {},
+            body(scope) {
+                const live = resultWithOpaqueEvidence();
+                const recorded = recordedRunResult(live);
+                scope.assert.includes(JSON.stringify(recorded.perTest[0]?.attempts), '"kind":"bigint","value":"42"');
+                scope.assert.includes(JSON.stringify(recorded.artifacts[0]), '"kind":"circular"');
+                scope.assert.equal(live.perTest[0]?.attempts[0].outcome?.kind, 'fail');
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
 const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

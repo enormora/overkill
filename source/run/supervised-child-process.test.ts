@@ -362,7 +362,7 @@ export const testNode = createOverkillSuite({
             body(scope: OverkillScope) {
                 const stdout = createOutputRecord();
                 const stderr = createOutputRecord();
-                const state = createSupervisedRunState();
+                const state = createSupervisedRunState('first-failure-and-final');
                 const terminalFailure = createStoredRunValue(false);
 
                 observeRestrictedOutput(stdout, stderr, state, terminalFailure);

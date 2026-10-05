@@ -82,6 +82,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
         root: runCollectionRootFromResolvedPlan(runtime.resolvedRun.plan),
         scheduling: unit.scheduling,
         testFamily: runtime.resolvedRun.facts.execution.testFamily,
+        retryPolicy: runtime.resolvedRun.facts.execution.retries,
         timeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.softMilliseconds,
         workerLifecycle: unit.workerLifecycle
     };

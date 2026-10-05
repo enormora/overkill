@@ -1,4 +1,4 @@
-import { workIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey, type AttemptId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type {
     AnyResourceDefinition,
@@ -24,7 +24,7 @@ import {
     serializeProjectedHandle,
     type ResourceProjectionRecords
 } from './resource-lifecycle-projection.ts';
-import type { ManagedRunnerError } from './resource-lifecycle-state.ts';
+import { currentLifecycleAttempt, type ManagedRunnerError } from './resource-lifecycle-state.ts';
 import type { ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
 export type ManagedResourceLifecycleTiming = ResourceLifecycleTiming | null;
@@ -49,7 +49,7 @@ export type ManagedLifecycleStores = {
     readonly remainingBoundaryUses: (boundaryKey: string) => number;
     readonly rememberAcquisition: (boundaryKey: string, acquisition: ManagedResourceAcquisition) => void;
     readonly rememberRecord: (boundaryKey: string, record: ManagedResourceRecord) => void;
-    readonly takeCaseErrors: (testCase: TestPlanCase) => readonly ManagedRunnerError[];
+    readonly takeAttemptErrors: (testCase: TestPlanCase, attempt: AttemptId) => readonly ManagedRunnerError[];
     readonly takePendingRunErrors: () => readonly ManagedRunnerError[];
     readonly takeRunErrors: () => readonly ManagedRunnerError[];
     readonly records: () => readonly ManagedResourceRecord[];
@@ -72,8 +72,8 @@ type ResourceLifecycleStoreOptions = {
     readonly timing: ManagedResourceLifecycleTiming;
 };
 
-function caseKey(testCase: TestPlanCase): string {
-    return workIdentityKey(testCase.workId);
+function caseKey(testCase: TestPlanCase, attempt: AttemptId): string {
+    return `${workIdentityKey(testCase.workId)}:${attempt.index}`;
 }
 
 function mutableDependencyContext(): Record<string, unknown> {
@@ -101,10 +101,14 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
             return records.get(boundaryKey);
         },
         recordCaseError(testCase, message, cause) {
-            const key = caseKey(testCase);
+            const attempt = currentLifecycleAttempt() ?? { index: 0 };
+            const key = caseKey(testCase, attempt);
             const errors = errorsByCase.get(key) ?? [];
 
-            errors.push(resourceWrapperLifecycleError(message, cause).runnerError(testCase.id, testCase.workId));
+            errors.push({
+                ...resourceWrapperLifecycleError(message, cause).runnerError(testCase.id, testCase.workId),
+                attributedToAttempt: attempt
+            });
             errorsByCase.set(key, errors);
         },
         remainingBoundaryUses(boundaryKey) {
@@ -123,8 +127,8 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
         records() {
             return Array.from(records.values());
         },
-        takeCaseErrors(testCase) {
-            const key = caseKey(testCase);
+        takeAttemptErrors(testCase, attempt) {
+            const key = caseKey(testCase, attempt);
             const errors = errorsByCase.get(key) ?? [];
 
             errorsByCase.delete(key);

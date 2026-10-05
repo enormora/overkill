@@ -7,7 +7,8 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { RealTimeReporter } from '../engine/reporter.ts';
-import type { CapturedOutputArtifact, RunArtifact } from '../engine/run-result.ts';
+import type { CapturedOutputArtifact } from '../engine/run-artifact.ts';
+import type { RunArtifact } from '../engine/run-result.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createLineReporter, type LineReporterDependencies } from './line-reporter.ts';
 
@@ -50,6 +51,7 @@ function suitePathFromTitles(
 function caseOutputArtifact(text: string): CapturedOutputArtifact {
     return {
         id: {
+            attempt: { index: 0 },
             runtimes: [],
             scope: {
                 activeCases: [ passingCaseId ],
@@ -90,6 +92,7 @@ function truncatedEmptyCaseOutputArtifact(): RunArtifact {
 function runOutputArtifact(text: string): RunArtifact {
     return {
         id: {
+            attempt: null,
             runtimes: [],
             scope: { kind: 'run' },
             sequence: 0,
@@ -110,6 +113,7 @@ function runOutputArtifact(text: string): RunArtifact {
 
 const coverageArtifact: RunArtifact = {
     id: {
+        attempt: null,
         runtimes: [],
         scope: { kind: 'run' },
         sequence: 0,
@@ -172,6 +176,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     artifacts: [ caseOutputArtifact('hidden output\n') ],
                     case: passingCaseId,
@@ -199,6 +204,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithOptions(log, true);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     artifacts: [ caseOutputArtifact('visible output\n') ],
                     case: passingCaseId,
@@ -225,6 +231,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithOptions(log, true);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     artifacts: [ truncatedEmptyCaseOutputArtifact() ],
                     case: passingCaseId,
@@ -251,6 +258,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     artifacts: [ caseOutputArtifact('skip output\n') ],
                     case: skippedCaseId,

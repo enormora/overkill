@@ -89,6 +89,9 @@ run; others want them to count alongside test failures).
 
 ## Attribution Rules
 
+An ordinary exception or rejected promise awaited by the test body is a
+`body-error` test failure. Global hook errors are separate runner failures.
+
 Async errors and out-of-band events need a clear owner. The default
 attribution policy:
 
@@ -315,7 +318,14 @@ bounded before delivery. Human reporter truncation is a separate display cap.
 
 Retries are not a microtest concept.
 
-For integration-style tests, retries may exist. Failure artifacts preserve:
+Integration profiles opt in through `retries: { maxAttempts: 3 }`. The limit
+includes the initial attempt. Omission or a limit of one runs once. Only
+completed assertion failures, ordinary body errors, and cooperative soft
+timeouts retry after cleanup succeeds. Contract, cleanup, fixture, permission,
+runtime-policy, leak, crash, resource-exhaustion, and hedged-conflict failures
+are terminal. Reporter failures independently fail the run.
+
+Failure artifacts preserve:
 
 - which attempt failed (`AttemptId`)
 - which attempt finally passed or failed
@@ -328,6 +338,19 @@ For integration-style tests, retries may exist. Failure artifacts preserve:
 This prevents retries from hiding useful debugging evidence. The default
 configuration is conservative: keep the first failure (often the most
 diagnostic) plus the final outcome.
+
+`retries.artifacts` selects `first-failure-and-final` (default),
+`last-failure-and-final`, or `all`. Every result keeps a non-empty `attempts`
+history regardless of retention. `retried` is `null` unless another attempt
+actually ran. Durations sum across attempts; counts remain per logical work.
+The top-level verdict remains authoritative after coordinator arbitration.
+Case artifact IDs require `AttemptId`; run-scoped IDs require `attempt: null`.
+Output capture shares its byte budget across the whole attempt chain.
+
+Retries stay inside one placement attempt without recollection or reseeding.
+Hedging retains the winner's chain, and conflicts preserve both chains. Retry
+metadata does not add attachment APIs, records, replay, or debug transcripts;
+those remain owned by their respective features.
 
 ## Process Crash Artifacts
 

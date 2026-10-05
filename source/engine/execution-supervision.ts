@@ -5,15 +5,16 @@ import {
     timeoutFailure,
     type TestRuntimePolicy
 } from './case-execution.ts';
-import { workIdentityKey, type WorkId } from './identity.ts';
+import { workIdentityKey, type AttemptId, type WorkId } from './identity.ts';
 import {
+    singleAttemptResult,
     isPermissionDeniedRunnerError,
     verdictFromOutcome,
     type PerTestResult,
-    type ResourceUsageSnapshot,
     type RunnerError,
     type TestFailure
 } from './run-result.ts';
+import type { ResourceUsageSnapshot } from './resource-usage.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import {
     findResourceBudgetBreach,
@@ -44,12 +45,14 @@ export type ExecutionSupervisionDependencies = {
 type TestFailures = readonly [TestFailure, ...TestFailure[]];
 
 type ResourceExhaustionCause = ResourceBudgetBreach & {
+    readonly activeAttempts: readonly AttemptId[];
     readonly activeCases: readonly TestPlanCase['id'][];
     readonly activeWork: readonly WorkId[];
     readonly enforcement: 'post-test-diagnostic' | 'sampled';
 };
 
 type CrashCause = {
+    readonly activeAttempts: readonly AttemptId[];
     readonly activeCases: readonly TestPlanCase['id'][];
     readonly activeWork: readonly WorkId[];
     readonly reason: 'hard-timeout';
@@ -66,6 +69,7 @@ type SoftTimeoutResolution = {
 };
 
 type ActiveCaseInput = {
+    readonly attempt: AttemptId;
     readonly completion: CaseCompletion;
     readonly controller: AbortController;
     readonly dependencies: ExecutionSupervisionDependencies;
@@ -104,14 +108,14 @@ function createTerminalCase(
     durationMicroseconds: number
 ): ConcurrentCase {
     return {
-        result: {
+        result: singleAttemptResult({
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome: null,
             verdict,
             workId: testCase.workId,
             durationMicroseconds
-        },
+        }, { index: 0 }),
         runnerErrors: [],
         durationMicroseconds
     };
@@ -126,14 +130,14 @@ function failCase(
         kind: 'fail'
     } as const;
 
-    return {
+    return singleAttemptResult({
         definitionLocations: testCase.definitionLocations,
         id: testCase.id,
         outcome,
         verdict: verdictFromOutcome(outcome),
         workId: testCase.workId,
         durationMicroseconds
-    };
+    }, { index: 0 });
 }
 function timeoutControlValue(testCase: TestPlanCase): unknown {
     return testCase.controls.timeoutMilliseconds;
@@ -205,40 +209,33 @@ function clearTimer(wallClock: Clock, timer: ReturnType<Clock['setTimeout']> | n
 }
 
 function policyCheckedCase(
-    testCase: TestPlanCase,
-    executedCase: ConcurrentCase,
-    supervision: ExecutionSupervision,
-    dependencies: ExecutionSupervisionDependencies
+    input: ActiveCaseInput,
+    executedCase: ConcurrentCase
 ): ConcurrentCase {
-    const errors = dependencies.runtimePolicy?.takeCaseErrors(testCase) ?? [];
+    const errors = input.dependencies.runtimePolicy?.takeAttemptErrors(input.testCase, input.attempt) ?? [];
     const hasCasePermissionError = executedCase.runnerErrors.some(isPermissionDeniedRunnerError);
 
     if (errors.length === 0 && !hasCasePermissionError) {
         return executedCase;
     }
 
-    for (const error of errors) {
-        supervision.recordRunnerError(error);
-    }
-
     return {
-        ...createTerminalCase(testCase, 'runtime-policy', executedCase.durationMicroseconds),
-        runnerErrors: executedCase.runnerErrors
+        ...executedCase,
+        result: { ...executedCase.result, outcome: null, verdict: 'runtime-policy' },
+        runnerErrors: [ ...executedCase.runnerErrors, ...errors ]
     };
 }
 
 async function runTestCaseWithPolicy(
-    testCase: TestPlanCase,
-    controller: AbortController,
-    supervision: ExecutionSupervision,
-    dependencies: ExecutionSupervisionDependencies
+    input: ActiveCaseInput
 ): Promise<ConcurrentCase> {
-    const executedCase = await runTestCase(testCase, dependencies.wallClock, {
-        controller,
-        runtimePolicy: dependencies.runtimePolicy ?? null
+    const executedCase = await runTestCase(input.testCase, input.dependencies.wallClock, {
+        attempt: input.attempt,
+        controller: input.controller,
+        runtimePolicy: input.dependencies.runtimePolicy ?? null
     });
 
-    return policyCheckedCase(testCase, executedCase, supervision, dependencies);
+    return policyCheckedCase(input, executedCase);
 }
 
 function activeCaseIds(activeCases: ReadonlyMap<string, SupervisedActiveCase>): readonly TestPlanCase['id'][] {
@@ -253,11 +250,16 @@ function activeWorkIds(activeCases: ReadonlyMap<string, SupervisedActiveCase>): 
     });
 }
 
+function soleActiveAttempt(attempts: readonly AttemptId[]): AttemptId | null {
+    return attempts.length === 1 ? attempts[0] ?? null : null;
+}
+
 function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
     const [ activeCase = null ] = cause.activeCases;
     const [ activeWork = null ] = cause.activeWork;
 
     return {
+        attributedToAttempt: soleActiveAttempt(cause.activeAttempts),
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
         attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
@@ -276,6 +278,7 @@ function crashError(cause: CrashCause): RunnerError {
     const [ activeWork = null ] = cause.activeWork;
 
     return {
+        attributedToAttempt: soleActiveAttempt(cause.activeAttempts),
         attributedTo: cause.activeCases.length === 1 ? activeCase : null,
         attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
         cause,
@@ -309,6 +312,9 @@ function completeActiveCasesWithCrash(
     dependencies: ExecutionSupervisionDependencies
 ): void {
     const cause: CrashCause = {
+        activeAttempts: Array.from(supervision.activeCases.values(), function attempt(active) {
+            return active.attempt;
+        }),
         activeCases: activeCaseIds(supervision.activeCases),
         activeWork: activeWorkIds(supervision.activeCases),
         reason: 'hard-timeout'
@@ -340,6 +346,9 @@ function completeActiveCasesWithResourceExhaustion(
 
     const cause: ResourceExhaustionCause = {
         ...breach,
+        activeAttempts: Array.from(supervision.activeCases.values(), function attempt(active) {
+            return active.attempt;
+        }),
         activeCases: activeCaseIds(supervision.activeCases),
         activeWork: activeWorkIds(supervision.activeCases),
         enforcement: 'sampled'
@@ -361,7 +370,7 @@ async function runCaseWithSoftTimeout(
     input: CaseBodyInput
 ): Promise<ConcurrentCase> {
     if (input.timeoutMilliseconds === null) {
-        return await runTestCaseWithPolicy(input.testCase, input.controller, input.supervision, input.dependencies);
+        return await runTestCaseWithPolicy(input);
     }
 
     const timing = { timedOut: false };
@@ -369,12 +378,7 @@ async function runCaseWithSoftTimeout(
         timing.timedOut = true;
         input.controller.abort();
     }, input.timeoutMilliseconds);
-    const executedCase = await runTestCaseWithPolicy(
-        input.testCase,
-        input.controller,
-        input.supervision,
-        input.dependencies
-    );
+    const executedCase = await runTestCaseWithPolicy(input);
 
     clearTimer(input.dependencies.wallClock, softTimeout);
 
@@ -408,6 +412,7 @@ function registerActiveCase(input: ActiveCaseInput): SupervisedActiveCase {
             completeActiveCasesWithCrash(input.supervision, input.dependencies);
         }, input.timeoutPolicy.hardTimeoutMilliseconds);
     const activeCase: SupervisedActiveCase = {
+        attempt: input.attempt,
         abort() {
             input.controller.abort();
         },
@@ -443,14 +448,14 @@ function createInconclusiveCaseResult(
         reason: `Test execution failed before producing a result: ${reason}`
     } as const;
 
-    return {
+    return singleAttemptResult({
         definitionLocations: testCase.definitionLocations,
         id: testCase.id,
         outcome,
         verdict: verdictFromOutcome(outcome),
         workId: testCase.workId,
         durationMicroseconds
-    };
+    }, { index: 0 });
 }
 function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void {
     const durationMicroseconds = Number(input.dependencies.wallClock.currentMonotonicMicroseconds) -
@@ -499,18 +504,12 @@ function registerCaseBodyInput(input: ActiveCaseInput, timeoutMilliseconds: numb
 }
 
 function createActiveCaseInput(
-    testCase: TestPlanCase,
-    timeoutPolicy: ExecuteTimeoutPolicy | null | undefined,
-    supervision: ExecutionSupervision,
-    dependencies: ExecutionSupervisionDependencies
+    input: CaseExecutionInput
 ): ActiveCaseInput {
     return {
+        ...input,
         completion: createCaseCompletion(),
-        controller: new AbortController(),
-        dependencies,
-        supervision,
-        testCase,
-        timeoutPolicy
+        controller: new AbortController()
     };
 }
 
@@ -526,24 +525,34 @@ export function recordResourceUsageSample(input: ResourceUsageSampleInput): bool
     return true;
 }
 
-export async function executeCaseBody(
-    testCase: TestPlanCase,
-    timeoutPolicy: ExecuteTimeoutPolicy | null | undefined,
-    supervision: ExecutionSupervision,
-    dependencies: ExecutionSupervisionDependencies
-): Promise<ConcurrentCase> {
-    if (testCase.execution.kind === 'skip') {
-        return await runTestCase(testCase, dependencies.wallClock);
+type CaseExecutionInput = Pick<
+    ActiveCaseInput,
+    'attempt' | 'dependencies' | 'supervision' | 'testCase' | 'timeoutPolicy'
+>;
+
+function closedBoundaryVerdict(supervision: ExecutionSupervision): PerTestResult['verdict'] {
+    const exhausted = supervision.runnerErrors.some(function resourceExhausted(error) {
+        return error.subtype === 'resource-exhaustion';
+    });
+    return exhausted ? 'resource-exhausted' : 'crashed';
+}
+
+export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {
+    if (input.dependencies.globalErrorObserver.hasFatalError() || !input.supervision.acceptsNewCases()) {
+        return createTerminalCase(input.testCase, closedBoundaryVerdict(input.supervision), 0);
+    }
+    if (input.testCase.execution.kind === 'skip') {
+        return await runTestCase(input.testCase, input.dependencies.wallClock);
     }
 
-    const timeoutResolution = resolveSoftTimeout(testCase, timeoutPolicy);
+    const timeoutResolution = resolveSoftTimeout(input.testCase, input.timeoutPolicy);
 
     if (timeoutResolution.kind === 'failure') {
-        return invalidTimeoutCase(testCase, timeoutResolution.failure);
+        return invalidTimeoutCase(input.testCase, timeoutResolution.failure);
     }
 
     return await runCaseBodyUnderSupervision(registerCaseBodyInput(
-        createActiveCaseInput(testCase, timeoutPolicy, supervision, dependencies),
+        createActiveCaseInput(input),
         timeoutResolution.milliseconds
     ));
 }

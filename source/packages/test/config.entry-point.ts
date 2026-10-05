@@ -1,5 +1,10 @@
 export { defineConfig } from '../run/config.entry-point.ts';
 export type {
+    IntegrationRetryPolicy,
+    RetryArtifactPolicy,
+    RunProjectIntegrationRetryPolicy
+} from '../run/config.entry-point.ts';
+export type {
     RunProjectConfig,
     RunProjectCoverageOutput,
     RunProjectCoveragePolicy,

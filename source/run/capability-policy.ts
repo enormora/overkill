@@ -1,6 +1,6 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey, type AttemptId, type CaseId, type WorkId } from '../engine/identity.ts';
 import { recordReporterConsoleDiagnostic } from '../engine/reporter-output-scope.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
@@ -57,6 +57,7 @@ export type CapabilityPolicyOptions = {
 };
 
 type ActiveCase = {
+    readonly attempt: AttemptId;
     readonly id: CaseId;
     readonly key: string;
     readonly workId: WorkId;
@@ -179,6 +180,7 @@ function createAsyncResourceHook(
 
 function runtimePolicyError(violation: RuntimePolicyViolation): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: violation.caseId,
         attributedToWork: violation.workId,
         cause: violation,
@@ -380,7 +382,7 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         }
 
         const completedViolation = completedRuntimePolicyViolation(violation, activeCase, loadComplete);
-        const error = runtimePolicyError(completedViolation);
+        const error = { ...runtimePolicyError(completedViolation), attributedToAttempt: activeCase?.attempt ?? null };
 
         if (activeCase === undefined) {
             runErrors.push(error);
@@ -426,11 +428,15 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         recordViolation(capability, message, strictness) {
             record({ capability, message, strictness });
         },
-        async runCase(testCase, run) {
+        async completeCase() {
+            return undefined;
+        },
+        async runAttempt(testCase, attempt, run) {
             loadComplete = true;
             const activeCase = {
+                attempt,
                 id: testCase.id,
-                key: workIdentityKey(testCase.workId),
+                key: `${workIdentityKey(testCase.workId)}:${attempt.index}`,
                 workId: testCase.workId
             };
             const before = takeSnapshots(options.dependencies);
@@ -453,8 +459,8 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
                 loadComplete = true;
             }
         },
-        takeCaseErrors(testCase) {
-            const key = workIdentityKey(testCase.workId);
+        takeAttemptErrors(testCase, attempt) {
+            const key = `${workIdentityKey(testCase.workId)}:${attempt.index}`;
             const errors = caseErrors.get(key) ?? [];
             caseErrors.delete(key);
 

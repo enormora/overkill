@@ -19,6 +19,7 @@ const caseId: CaseId = {
 
 function runtimePolicyError(message: string, attributedTo: CaseId | null, capability: string): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo,
         cause: { capability },
         diagnostics: [ { label: 'capability', value: capability } ],
@@ -29,6 +30,7 @@ function runtimePolicyError(message: string, attributedTo: CaseId | null, capabi
 
 function reporterError(): RunnerError {
     return {
+        attributedToAttempt: null,
         attributedTo: caseId,
         cause: {},
         diagnostics: [],

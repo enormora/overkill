@@ -79,6 +79,7 @@ async function observeCollection(
         const collectionTimeout = runtime.dependencies.wallClock.setTimeout(function killTimedOutCollection() {
             runtime.terminalFailure.write(true);
             runtime.state.recordRunnerError({
+                attributedToAttempt: null,
                 attributedTo: null,
                 attributedToWork: null,
                 cause: { reason: 'Supervised collection exceeded collection timeout.' },
@@ -99,6 +100,7 @@ async function observeCollection(
         runtime.child.on('error', function recordChildError(error: Error) {
             runtime.terminalFailure.write(true);
             runtime.state.recordRunnerError({
+                attributedToAttempt: null,
                 attributedTo: null,
                 attributedToWork: null,
                 cause: error,
@@ -151,7 +153,7 @@ async function createCollectionRuntime(
         collected: createStoredRunValue<SupervisedCollectionResult | null>(null),
         dependencies,
         previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
-        state: createSupervisedRunState(),
+        state: createSupervisedRunState('first-failure-and-final'),
         terminalFailure: createStoredRunValue(false)
     };
 }

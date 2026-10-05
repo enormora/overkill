@@ -136,6 +136,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): RunConfig {
         }),
         profiles: {
             integration: {
+                retries: null,
                 execution: {
                     maxConcurrency: 5,
                     processModel: 'supervised-process',

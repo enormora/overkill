@@ -10,13 +10,15 @@ import type {
 } from '../engine/reporter.ts';
 import type {
     PerTestResult as PerTestResultDefinition,
-    ResourceUsageSnapshot as ResourceUsageSnapshotDefinition,
     RunArtifact as RunArtifactDefinition,
-    RunResourceUsage as RunResourceUsageDefinition,
-    RunResourceUsageTracker as RunResourceUsageTrackerDefinition,
     RunResult as RunResultDefinition,
     RunnerError as RunnerErrorDefinition
 } from '../engine/run-result.ts';
+import type {
+    ResourceUsageSnapshot as ResourceUsageSnapshotDefinition,
+    RunResourceUsage as RunResourceUsageDefinition,
+    RunResourceUsageTracker as RunResourceUsageTrackerDefinition
+} from '../engine/resource-usage.ts';
 import type {
     TestPlan as TestPlanDefinition,
     TestPlanCase as TestPlanCaseDefinition

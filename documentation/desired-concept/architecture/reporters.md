@@ -127,10 +127,11 @@ type ReporterEvent =
     | { kind: 'test-progress'; case: CaseId; attempt: number; note: string; }
     | {
         kind: 'test-end';
+        completion: 'retry' | 'final';
         case: CaseId;
         attempt: number;
-        outcome: TestOutcome;
-        verdict: TestOutcome['kind'];
+        outcome: TestOutcome | null;
+        verdict: TestVerdict;
         durationMicroseconds: number;
     }
     | { kind: 'suite-end'; suitePath: ReadonlyArray<string>; }
@@ -141,6 +142,12 @@ type ReporterEvent =
 Each event carries enough structured data that a reporter never has
 to parse another reporter's output. Event identity is via `kind`;
 new event variants are an additive change.
+
+Attempt numbers are zero-based within one logical work item. A retry completion
+is diagnostic, not a completed case: it must not advance final counts or emit
+a final failure annotation. Only `completion: 'final'` contributes to final
+progress. Recovered cases remain visible through attempt history and retry
+summaries; reporter errors still independently fail the run.
 
 `run-start.root` carries the execution root name and resolved annotations for display.
 The root is not a suite path segment. `suite-start` and `suite-end` identify

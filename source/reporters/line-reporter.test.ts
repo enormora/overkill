@@ -58,6 +58,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
 
     await reporter.onEvent({ kind: 'suite-start', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
+        completion: 'final',
         attempt: 0,
         case: rowCaseId,
         definitionLocations: [ definitionLocation ],
@@ -70,6 +71,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
     });
     await reporter.onEvent({ kind: 'suite-end', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
+        completion: 'final',
         attempt: 0,
         case: passingCaseId,
         definitionLocations: [ definitionLocation ],
@@ -156,6 +158,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ knownDefinitionLocation ],
@@ -211,6 +214,7 @@ export const testNode = createOverkillSuite({
                 const [ composedName, decomposedName ] = [ 'Ad\u{00E4}le', 'Ada\u{0308}le' ];
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
@@ -274,6 +278,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
@@ -313,6 +318,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
@@ -353,6 +359,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     case: failingCaseId,
                     definitionLocations: [ definitionLocation ],
@@ -422,6 +429,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     case: passingCaseId,
                     definitionLocations: [ definitionLocation ],
@@ -449,6 +457,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 0,
                     case: skippedCaseId,
                     definitionLocations: [ definitionLocation ],
@@ -460,6 +469,7 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 4000
                 });
                 await reporter.onEvent({
+                    completion: 'final',
                     attempt: 1,
                     case: inconclusiveCaseId,
                     definitionLocations: [ definitionLocation ],
@@ -475,7 +485,7 @@ export const testNode = createOverkillSuite({
                 scope.assert(doubleUsage.nthCallWithExactly, log, 0, [ infoSymbol, 'skips: not supported (4 ms)' ]);
                 scope.assert(doubleUsage.nthCallWithExactly, log, 1, [
                     infoSymbol,
-                    'inconclusive: missing signal (5 ms)'
+                    'inconclusive: missing signal (5 ms) [2 attempts]'
                 ]);
 
                 return scope.assert.collect();
