@@ -1,7 +1,7 @@
 import type { Transform } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
-import { createInterface } from 'node:readline';
+import { createInterface, type Interface } from 'node:readline';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import type { AttachmentStore } from './attachment-store.ts';
@@ -84,8 +84,11 @@ async function attachmentServerChannelsInterrupt(
     await previous;
     abandoned.push(...await store.finish(channel));
 }
-function observeAttachmentChannelFailures(socket: Socket, frames: Transform): void {
+function observeAttachmentChannelFailures(socket: Socket, frames: Transform, lines: Interface): void {
     frames.on('error', function () {
+        socket.destroy();
+    });
+    lines.on('error', function () {
         socket.destroy();
     });
     socket.on('error', function () {
@@ -101,7 +104,7 @@ function attachmentServerChannelsAccept(state: AttachmentServerChannelsState, so
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
     let queue = Promise.resolve();
     const queued = createStoredRunValue(0);
-    observeAttachmentChannelFailures(socket, frames);
+    observeAttachmentChannelFailures(socket, frames, lines);
     lines.on('line', function receiveAttachmentLine(line) {
         if (queued.read() >= attachmentMaxPendingRequests) {
             socket.destroy();

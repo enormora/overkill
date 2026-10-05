@@ -69,6 +69,10 @@ function attachmentChannelObserve(state: AttachmentChannelState): void {
         attachmentChannelFail(state, error);
         socket.destroy();
     });
+    lines.on('error', function (error: Error) {
+        attachmentChannelFail(state, error);
+        socket.destroy();
+    });
     socket.on('error', function (error: Error) {
         attachmentChannelFail(state, error);
     });
