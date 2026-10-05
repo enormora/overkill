@@ -10,9 +10,9 @@ import { runIfMain } from './direct-launcher.test.ts';
 const directory = fileURLToPath(new URL('.', import.meta.url));
 async function executeNode(nodeArguments: readonly string[]): Promise<string> {
     return new Promise(function runPackagedCli(resolve, reject) {
-        execFile(process.execPath, nodeArguments, { cwd: directory }, function cliCompleted(error, stdout) {
+        execFile(process.execPath, nodeArguments, { cwd: directory }, function cliCompleted(error, stdout, stderr) {
             if (error instanceof Error) {
-                reject(error);
+                reject(new Error([ error.message, stdout, stderr ].join('\n'), { cause: error }));
             } else {
                 resolve(stdout);
             }
@@ -25,6 +25,7 @@ const configuration = 'attachment-overkill.config.js';
 const reportSchema = z.object({
     status: z.literal('passed'),
     artifacts: z.array(z.object({
+        id: z.object({ runtimes: z.array(z.object({ name: z.string() })) }),
         payload: z.object({
             kind: z.literal('runtime-attachment'),
             name: z.string(),
@@ -38,8 +39,8 @@ const reportSchema = z.object({
 });
 type PackagedAttachmentReport = { readonly artifacts: readonly z.infer<typeof reportSchema>['artifacts'][number][]; };
 const fixtureScript = [
-    "import { test } from '@overkill-dev/test';",
-    "import { defineResource, withResource } from '@overkill-dev/test/resources';",
+    "import { suite, test } from '@overkill-dev/test';",
+    "import { defineResource, defineRuntime, withResource, withRuntime } from '@overkill-dev/test/resources';",
     'const resource = defineResource({',
     "    name: 'fixture', scope: 'per-case', requirements: [], dispose: null,",
     '    async acquire({ attachments }) {',
@@ -47,7 +48,8 @@ const fixtureScript = [
     '        return {};',
     '    }',
     '});',
-    "export const testNode = test('package attachments', withResource(resource, async (scope) => {",
+    "const runtime = defineRuntime({ name: 'runtime', dimensions: {}, requirements: [], resources: { fixture: resource } });",
+    'async function capture(scope) {',
     "    const log = await scope.attachments.open({ kind: 'text', name: 'log', mediaType: 'text/plain' });",
     "    await log.write('packaged service ready');",
     '    await log.close();',
@@ -56,7 +58,11 @@ const fixtureScript = [
     '    const screenshotArtifact = await screenshot.close();',
     "    scope.assert.equal(screenshotArtifact.payload.content.kind, 'file');",
     '    return scope.assert.collect();',
-    '}));'
+    '}',
+    "export const testNode = suite('package attachments', [",
+    "    test('fixture', withResource(resource, capture)),",
+    "    test('runtime', withRuntime(runtime, capture))",
+    ']);'
 ]
     .join('\n');
 const configScript = [
@@ -67,7 +73,10 @@ const configScript = [
     "    profiles: { attachments: { testFamily: 'integration', files: { include: ['attachment-smoke.test.mjs'] } } },",
     '    reporters: [defineReporter(function() { return {',
     "        kind: 'final-result', name: 'attachment-observer', dispose: null, sinks: [{kind: 'stdout-raw-primary'}],",
-    '        onResult(result) { process.stdout.write(JSON.stringify({status: result.status, artifacts: result.artifacts})); }',
+    '        onResult(result) {',
+    "            if (result.status !== 'passed') process.stderr.write(JSON.stringify(result));",
+    '            process.stdout.write(JSON.stringify({status: result.status, artifacts: result.artifacts}));',
+    '        }',
     '    }; })]',
     '});'
 ]
@@ -97,7 +106,18 @@ async function assertPackagedAttachments(scope: TestScope): Promise<void> {
     ]);
     const value: unknown = JSON.parse(output);
     const report = reportSchema.parse(value);
-    scope.assert.equal(report.artifacts.length, 3);
+    scope.assert.equal(report.artifacts.length, 6);
+    scope.assert.equal(
+        report
+            .artifacts
+            .filter(function belongsToRuntime(artifact) {
+                return artifact.id.runtimes.some(function isFixtureRuntime(runtime) {
+                    return runtime.name === 'runtime';
+                });
+            })
+            .length,
+        3
+    );
     await assertPackagedContent(scope, report);
 }
 export const testNode = createSuite({

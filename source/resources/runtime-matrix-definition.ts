@@ -10,8 +10,8 @@ import type {
     ScenarioBindingInput
 } from './resource-scenario.ts';
 
-const runtimeMatrixDefinitionBrand: unique symbol = Symbol('overkill.runtimeMatrixDefinition');
-const composedRuntimeGraphBrand: unique symbol = Symbol('overkill.composedRuntimeGraph');
+const runtimeMatrixDefinitionBrand: unique symbol = Symbol.for('overkill.runtimeMatrixDefinition');
+const composedRuntimeGraphBrand: unique symbol = Symbol.for('overkill.composedRuntimeGraph');
 
 type RuntimeMatrixVariantValue<
     Shared,

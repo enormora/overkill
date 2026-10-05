@@ -218,6 +218,7 @@ export const config = {
                 overkill: { js: 'packages/test/overkill.entry-point.js' },
                 reporters: moduleRoot('packages/test/reporters.entry-point'),
                 resources: moduleRoot('packages/test/resources.entry-point'),
+                resourceWrapperSession: { js: 'packages/test/resource-wrapper-session.js' },
                 simulation: moduleRoot('packages/test/simulation.entry-point')
             },
             packageInterface: {
@@ -237,7 +238,8 @@ export const config = {
                         name: 'overkill',
                         root: 'overkill'
                     }
-                ]
+                ],
+                privateRoots: [ 'resourceWrapperSession' ]
             }
         },
         {
