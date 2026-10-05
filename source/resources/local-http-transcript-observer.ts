@@ -1,5 +1,5 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { IncomingMessage, type IncomingHttpHeaders, type OutgoingHttpHeaders } from 'node:http';
+import { IncomingMessage, STATUS_CODES, type IncomingHttpHeaders, type OutgoingHttpHeaders } from 'node:http';
 import {
     createHttpTranscriptRecorder,
     httpTranscriptBodyByteLimit,
@@ -11,12 +11,9 @@ import {
     type HttpResponseSnapshot,
     type HttpTranscript,
     type HttpTranscriptRecorder,
-    type RecordedHttpBody
-} from '../transcript/http-transcript.ts';
-import {
-    currentTranscriptScope,
+    type RecordedHttpBody,
     type TranscriptScope
-} from '../transcript/transcript-store.ts';
+} from '../transcript/http-transcript.ts';
 
 type UndiciRequest = Readonly<Record<string, unknown>>;
 type UndiciResponse = Readonly<Record<string, unknown>>;
@@ -49,7 +46,7 @@ type UndiciCompletion = {
 type ObservedServerResponse = {
     readonly getHeaders: () => OutgoingHttpHeaders;
     readonly statusCode: number;
-    readonly statusMessage: string;
+    readonly statusMessage: string | undefined;
 };
 type ServerDiagnostic = {
     readonly request: IncomingMessage;
@@ -160,7 +157,8 @@ function requestUrl(request: IncomingMessage, baseUrl: string): string {
 
 function isObservedServerResponse(value: unknown): value is ObservedServerResponse {
     return isRecord(value) && typeof value.getHeaders === 'function' &&
-        typeof value.statusCode === 'number' && typeof value.statusMessage === 'string';
+        typeof value.statusCode === 'number' &&
+        (value.statusMessage === undefined || typeof value.statusMessage === 'string');
 }
 
 function serverMessage(message: unknown, server: unknown): ServerDiagnostic | null {
@@ -219,32 +217,41 @@ function undiciRequestIdentity(request: UndiciRequest, url: string): string {
     return requestIdentity(request.method, url);
 }
 
-function decodedHeader(entry: unknown): readonly [string, string] | null {
-    const pair: readonly unknown[] = Array.isArray(entry) ? entry : [];
-    const name = pair[0];
-    const value = pair[1];
+function responseHeader(name: unknown, value: unknown): readonly [string, string] {
+    if (!(name instanceof Uint8Array) || !(value instanceof Uint8Array)) {
+        throw new TypeError('Undici diagnostics response headers are unavailable.');
+    }
 
-    return pair.length >= headerPairLength && name instanceof Uint8Array && value instanceof Uint8Array
-        ? Object.freeze([ Buffer.from(name).toString().toLowerCase(), Buffer.from(value).toString() ])
-        : null;
+    return Object.freeze([
+        Buffer.from(name).toString().toLowerCase(),
+        Buffer.from(value).toString()
+    ]);
 }
 
 function responseHeaders(value: unknown): HttpHeadersSnapshot {
-    if (!Array.isArray(value)) {
+    if (!Array.isArray(value) || value.length % headerPairLength !== 0) {
         throw new TypeError('Undici diagnostics response headers are unavailable.');
     }
 
     const headerValues: readonly unknown[] = value;
+    const entries: (readonly [string, string])[] = [];
 
-    return Object.freeze(headerValues.flatMap(function decodeHeader(entry) {
-        const decoded = decodedHeader(entry);
+    for (let index = 0; index < headerValues.length; index += headerPairLength) {
+        entries.push(responseHeader(headerValues[index], headerValues[index + 1]));
+    }
 
-        return decoded === null ? [] : [ decoded ];
-    }));
+    return Object.freeze(entries);
+}
+
+function responseStatusText(status: number, statusText: string | undefined): string {
+    return statusText ?? STATUS_CODES[status] ?? '';
 }
 
 function responseSnapshot(response: UndiciResponse, body: RecordedHttpBody): HttpResponseSnapshot {
-    if (typeof response.statusCode !== 'number' || typeof response.statusText !== 'string') {
+    if (
+        typeof response.statusCode !== 'number' ||
+        response.statusText !== undefined && typeof response.statusText !== 'string'
+    ) {
         throw new TypeError('Undici diagnostics response metadata is unavailable.');
     }
 
@@ -252,7 +259,7 @@ function responseSnapshot(response: UndiciResponse, body: RecordedHttpBody): Htt
         body,
         headers: responseHeaders(response.headers),
         status: response.statusCode,
-        statusText: response.statusText
+        statusText: responseStatusText(response.statusCode, response.statusText)
     };
 }
 
@@ -292,7 +299,7 @@ function observeUndiciCreate(state: ObserverState, message: unknown): void {
 
     state.expectedByRequest.set(identity, [
         ...state.expectedByRequest.get(identity) ?? [],
-        { scope: currentTranscriptScope(), undiciRequest: diagnostic.request }
+        { scope: state.recorder.currentScope(), undiciRequest: diagnostic.request }
     ]);
 }
 
@@ -311,7 +318,7 @@ function observeNodeClientStart(state: ObserverState, message: unknown): void {
 
     state.expectedByRequest.set(identity, [
         ...state.expectedByRequest.get(identity) ?? [],
-        { scope: currentTranscriptScope(), undiciRequest: null }
+        { scope: state.recorder.currentScope(), undiciRequest: null }
     ]);
 }
 
@@ -332,7 +339,7 @@ function pairUndiciRequest(
     const expected = takeExpectedRequest(state, requestIdentity(serverRequest.method ?? 'GET', url));
 
     if (expected === null) {
-        return currentTranscriptScope();
+        return state.recorder.currentScope();
     }
 
     if (expected.undiciRequest === null) {
@@ -342,7 +349,7 @@ function pairUndiciRequest(
     const observation = state.undici.get(expected.undiciRequest);
 
     if (observation === undefined) {
-        return currentTranscriptScope();
+        return state.recorder.currentScope();
     }
 
     state.undici.set(expected.undiciRequest, { ...observation, serverRequest });
@@ -400,7 +407,10 @@ function observeServerFinish(state: ObserverState, message: unknown): void {
                     body: { kind: 'unavailable', reason: 'transport-does-not-expose-body' },
                     headers: outgoingHeaders(diagnostic.response.getHeaders()),
                     status: diagnostic.response.statusCode,
-                    statusText: diagnostic.response.statusMessage
+                    statusText: responseStatusText(
+                        diagnostic.response.statusCode,
+                        diagnostic.response.statusMessage
+                    )
                 }
             },
             request: { ...observation.request, body: observation.body.body() },
@@ -453,7 +463,11 @@ function undiciCompletion(
 
     if (serverObservation === undefined || response === undefined) {
         forgetUndiciRequest(state, diagnostic.request);
-        throw new TypeError('Undici diagnostics response lifecycle is incomplete.');
+        throw new TypeError(
+            `Undici diagnostics response lifecycle is missing ${
+                serverObservation === undefined ? 'server' : 'client'
+            } data.`
+        );
     }
 
     return { response, serverObservation };
@@ -520,7 +534,7 @@ function guardedObserver(
         try {
             observer(message);
         } catch (error: unknown) {
-            state.recorder.recordCaptureError(source, error, currentTranscriptScope());
+            state.recorder.recordCaptureError(source, error, state.recorder.currentScope());
         }
     };
 }

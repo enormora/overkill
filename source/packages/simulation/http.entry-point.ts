@@ -3,6 +3,15 @@ export {
     createSimulatedHttpListeningServer,
     startSimulatedHttpServer
 } from '../../simulation/simulated-http-server.ts';
+export {
+    captureErrorHttpTranscript,
+    createHttpTranscriptRecorder,
+    emptyTranscriptView,
+    httpHeadersSnapshot,
+    httpTranscriptBodyByteLimit,
+    recordedHttpBody,
+    recordedHttpError
+} from '../../transcript/http-transcript.ts';
 export type {
     SimulatedHttpListeningServer,
     SimulatedHttpServerHandle,
@@ -18,6 +27,7 @@ export type {
     HttpTranscriptEntry,
     RecordedHttpBody,
     RecordedHttpError,
+    TranscriptEntry,
+    TranscriptView,
     TranscriptCaptureErrorEntry
 } from '../../transcript/http-transcript.ts';
-export type { TranscriptEntry, TranscriptView } from '../../transcript/transcript-store.ts';

@@ -109,12 +109,6 @@ export function createTranscriptStore<Entry extends TranscriptEntry>(): Transcri
     });
 }
 
-export function emptyTranscriptView<Entry extends TranscriptEntry = never>(): TranscriptView<Entry> {
-    return brandedView(function () {
-        return noEntries;
-    });
-}
-
 export function isTranscriptView(value: unknown): value is RuntimeTranscriptView {
     return typeof value === 'object' && value !== null && Reflect.get(value, transcriptIdentity) === true;
 }

@@ -139,12 +139,10 @@ export type {
     HttpTranscriptEntry,
     RecordedHttpBody,
     RecordedHttpError,
+    TranscriptEntry,
+    TranscriptView,
     TranscriptCaptureErrorEntry
 } from '../../transcript/http-transcript.ts';
-export type {
-    TranscriptEntry,
-    TranscriptView
-} from '../../transcript/transcript-store.ts';
 export type {
     RuntimeDefinition as Runtime,
     RuntimeResourceMap as ResourceMap

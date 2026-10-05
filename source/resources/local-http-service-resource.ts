@@ -1,10 +1,7 @@
 import {
-    createTranscriptStore,
-    emptyTranscriptView
-} from '../transcript/transcript-store.ts';
-import type {
-    HttpTranscript,
-    TranscriptCaptureErrorEntry
+    captureErrorHttpTranscript,
+    emptyTranscriptView,
+    type HttpTranscript
 } from '../transcript/http-transcript.ts';
 import type {
     Awaitable,
@@ -266,17 +263,6 @@ function withTranscript<Handle extends LocalServiceConsumerHandle, Context>(
     return Object.freeze({ ...handle, transcript });
 }
 
-function captureErrorTranscript(error: unknown): HttpTranscript<unknown> {
-    const store = createTranscriptStore<TranscriptCaptureErrorEntry>();
-
-    store.record('capture-error', {
-        message: error instanceof Error ? error.message : String(error),
-        source: 'custom'
-    });
-
-    return store.view;
-}
-
 function customTranscript(policy: LocalHttpTranscriptPolicy, server: LocalHttpServer): HttpTranscript<unknown> {
     if (policy.kind === 'disabled') {
         return emptyTranscriptView();
@@ -285,7 +271,7 @@ function customTranscript(policy: LocalHttpTranscriptPolicy, server: LocalHttpSe
     try {
         return policy.transcript(server);
     } catch (error: unknown) {
-        return captureErrorTranscript(error);
+        return captureErrorHttpTranscript(error);
     }
 }
 

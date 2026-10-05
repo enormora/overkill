@@ -1,9 +1,15 @@
 import {
     createTranscriptStore,
-    type TranscriptScope,
+    currentTranscriptScope,
+    type TranscriptEntry as SharedTranscriptEntry,
+    type TranscriptScope as SharedTranscriptScope,
     type TranscriptStore,
-    type TranscriptView
+    type TranscriptView as SharedTranscriptView
 } from './transcript-store.ts';
+
+export type TranscriptEntry = SharedTranscriptEntry;
+export type TranscriptScope = SharedTranscriptScope;
+export type TranscriptView<Entry extends TranscriptEntry = TranscriptEntry> = SharedTranscriptView<Entry>;
 
 export const httpTranscriptBodyByteLimit = Number('16384');
 
@@ -67,6 +73,7 @@ export type HttpTranscript<Context = null> = TranscriptView<
 >;
 
 export type HttpTranscriptRecorder<Context> = {
+    readonly currentScope: () => TranscriptScope | null;
     readonly nextSequence: () => number;
     readonly record: (interaction: HttpInteraction<Context>, scope: TranscriptScope | null) => void;
     readonly recordCaptureError: (
@@ -76,6 +83,21 @@ export type HttpTranscriptRecorder<Context> = {
     ) => void;
     readonly transcript: HttpTranscript<Context>;
 };
+
+export function emptyTranscriptView<Entry extends TranscriptEntry = never>(): TranscriptView<Entry> {
+    return createTranscriptStore<Entry>().view;
+}
+
+export function captureErrorHttpTranscript(error: unknown): HttpTranscript<never> {
+    const store = createTranscriptStore<TranscriptCaptureErrorEntry>();
+
+    store.record('capture-error', {
+        message: error instanceof Error ? error.message : String(error),
+        source: 'custom'
+    });
+
+    return store.view;
+}
 
 export function recordedHttpBody(body: Uint8Array | null): RecordedHttpBody {
     if (body === null || body.byteLength === 0) {
@@ -110,6 +132,7 @@ export function createHttpTranscriptRecorder<Context>(): HttpTranscriptRecorder<
     let sequence = 0;
 
     return Object.freeze({
+        currentScope: currentTranscriptScope,
         nextSequence() {
             const current = sequence;
 

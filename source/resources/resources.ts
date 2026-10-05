@@ -1,4 +1,4 @@
-import { emptyTranscriptView, type TranscriptView } from '../transcript/transcript-store.ts';
+import { emptyTranscriptView, type TranscriptView } from '../transcript/http-transcript.ts';
 import {
     defineRuntime as createRuntimeDefinition,
     isDefinedRuntime as isRuntimeDefinition,
@@ -54,9 +54,6 @@ import { resolvedResourceScenarioBindings as readResourceScenarioBindings } from
 const composeRuntimeGraphs = runtimeMatrixDefinitionApi.composeRuntimes;
 const createRuntimeMatrixDefinition = runtimeMatrixDefinitionApi.defineRuntimeMatrix;
 const { isComposedRuntimeGraph } = runtimeMatrixDefinitionApi;
-const isRuntimeMatrixDefinition = runtimeMatrixDefinitionApi.isDefinedRuntimeMatrix;
-const runtimeGraphLeafDescriptors = runtimeMatrixDefinitionApi.runtimeGraphLeaves;
-const isResourceDefinition = resourceDefinitionApi.isDefinedResource;
 
 export const {
     isDefinedResource,
