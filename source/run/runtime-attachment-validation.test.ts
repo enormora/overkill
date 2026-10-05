@@ -149,7 +149,7 @@ function assertJsonDescriptors(scope: TestScope): void {
         }
     });
     for (const value of [ accessor, { [Symbol('key')]: true } ]) {
-        scope.assert.throws(function rejectUnrepresentableJson() {
+        scope.assert.throws(function rejectInvalidJson() {
             snapshotAttachmentJson(value, 1024);
         }, { name: 'TypeError' });
     }
