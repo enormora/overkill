@@ -100,7 +100,8 @@ Standard subpaths:
   `createLocalHttpServiceResource(...)`, `createLocalProcessServiceResource(...)`,
   and `createSimulatedHttpServerResource(...)`. It also adds
   `withRuntime(...)`, `withResource(...)`, and `withResources(...)` for
-  runner-aware binding.
+  runner-aware binding. HTTP resource handles expose the same normalized,
+  read-only interaction transcripts as `@overkill-dev/resources`.
 - `@overkill-dev/test/simulation` re-exports simulation descriptors from
   `@overkill-dev/simulation`. Import `@overkill-dev/simulation/http` directly
   for the standalone HTTP launcher.

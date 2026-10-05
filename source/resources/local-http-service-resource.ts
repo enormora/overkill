@@ -1,3 +1,8 @@
+import {
+    captureErrorHttpTranscript,
+    emptyTranscriptView,
+    type HttpTranscript
+} from '../packages/simulation/transcript.entry-point.ts';
 import type {
     Awaitable,
     ExecutionRequirement,
@@ -18,11 +23,35 @@ import {
     type ProjectedLocalServiceResourceDefinitionInput,
     type ProjectedLocalServiceScope
 } from './local-service-resource.ts';
+import { observeLocalHttpServer, type LocalHttpTranscriptObserver } from './local-http-transcript-observer.ts';
 
 export type LocalHttpServiceHandle = {
     readonly baseUrl: string;
     readonly endpoint: LocalServiceAddress;
+    readonly transcript: HttpTranscript<unknown>;
 };
+
+type CustomLocalHttpTranscriptPolicy<Context> = {
+    readonly kind: 'custom';
+    readonly transcript: (server: LocalHttpServer) => HttpTranscript<Context>;
+};
+type DisabledLocalHttpTranscriptPolicy = { readonly kind: 'disabled'; };
+type LocalHttpTranscriptPolicies<Context> = {
+    readonly custom: CustomLocalHttpTranscriptPolicy<Context>;
+    readonly disabled: DisabledLocalHttpTranscriptPolicy;
+};
+
+export type LocalHttpTranscriptPolicy<Context = unknown> = LocalHttpTranscriptPolicies<Context>[
+    keyof LocalHttpTranscriptPolicies<Context>
+];
+
+export type LocalHttpResourceHandle<Handle extends LocalServiceConsumerHandle, Context = null> = Handle & {
+    readonly transcript: HttpTranscript<Context>;
+};
+
+type TranscriptPolicyInput = readonly [] | readonly [LocalHttpTranscriptPolicy];
+type PolicyContext<Policy> = Policy extends CustomLocalHttpTranscriptPolicy<infer Value> ? Value : null;
+type TranscriptContext<Input extends TranscriptPolicyInput> = PolicyContext<Input[0]>;
 
 type LocalHttpServerAddress = {
     readonly port: number;
@@ -138,7 +167,7 @@ type MaybeProjectedHttpServiceInput<
     Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Projection extends ResourceProjectionPayload,
-    ProjectedConsumerHandle,
+    ProjectedConsumerHandle extends LocalServiceConsumerHandle,
     Dependencies extends ResourceDependencies
 > = {
     readonly address: LocalServiceAddressRequest;
@@ -216,11 +245,34 @@ async function closeServer(server: LocalHttpServer): Promise<void> {
     });
 }
 
-function localHttpServiceHandle(endpoint: LocalServiceAddress): LocalHttpServiceHandle {
+function localHttpServiceHandle(
+    endpoint: LocalServiceAddress,
+    transcript: HttpTranscript<unknown>
+): LocalHttpServiceHandle {
     return Object.freeze({
         endpoint,
-        baseUrl: `http://${endpoint.host}:${endpoint.port}`
+        baseUrl: `http://${endpoint.host}:${endpoint.port}`,
+        transcript
     });
+}
+
+function withTranscript<Handle extends LocalServiceConsumerHandle, Context>(
+    handle: Handle,
+    transcript: HttpTranscript<Context>
+): LocalHttpResourceHandle<Handle, Context> {
+    return Object.freeze({ ...handle, transcript });
+}
+
+function customTranscript(policy: LocalHttpTranscriptPolicy, server: LocalHttpServer): HttpTranscript<unknown> {
+    if (policy.kind === 'disabled') {
+        return emptyTranscriptView();
+    }
+
+    try {
+        return policy.transcript(server);
+    } catch (error: unknown) {
+        return captureErrorHttpTranscript(error);
+    }
 }
 
 function localHttpDefinition<
@@ -229,8 +281,11 @@ function localHttpDefinition<
     Scope extends ResourceScope,
     const Dependencies extends ResourceDependencies
 >(
-    input: LocalHttpServiceResourceInput<Name, ConsumerHandle, Scope, Dependencies>
-): LocalHttpDefinition<Name, ConsumerHandle, Scope, Dependencies> {
+    input: LocalHttpServiceResourceInput<Name, ConsumerHandle, Scope, Dependencies>,
+    policy: LocalHttpTranscriptPolicy | null
+): LocalHttpDefinition<Name, LocalHttpResourceHandle<ConsumerHandle, unknown>, Scope, Dependencies> {
+    const observers = new WeakMap<LocalHttpServer, LocalHttpTranscriptObserver>();
+
     return {
         name: input.name,
         scope: input.scope,
@@ -242,15 +297,34 @@ function localHttpDefinition<
         },
         async ready(server: LocalHttpServer, context: LocalServiceCreationContext<Dependencies>) {
             await listen(server, context.address);
+            const endpoint = serverEndpoint(server, context.address.host);
+            const baseUrl = `http://${endpoint.host}:${endpoint.port}`;
+            const transcript = policy === null
+                ? observeLocalHttpServer(server, baseUrl)
+                : null;
 
-            return input.handle(
-                localHttpServiceHandle(serverEndpoint(server, context.address.host)),
-                server,
-                context
+            if (transcript !== null) {
+                observers.set(server, transcript);
+            }
+
+            const view = transcript?.transcript ?? customTranscript(policy ?? { kind: 'disabled' }, server);
+
+            return withTranscript(
+                input.handle(
+                    localHttpServiceHandle(endpoint, view),
+                    server,
+                    context
+                ),
+                view
             );
         },
         async dispose(server: LocalHttpServer, context: LocalServiceDisposalContext<Dependencies>) {
-            await closeServer(server);
+            try {
+                await closeServer(server);
+            } finally {
+                observers.get(server)?.dispose();
+                observers.delete(server);
+            }
             await input.dispose(server, context);
         }
     };
@@ -260,7 +334,7 @@ function projectedHttpDefinition<
     const Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Projection extends ResourceProjectionPayload,
-    ProjectedConsumerHandle,
+    ProjectedConsumerHandle extends LocalServiceConsumerHandle,
     const Dependencies extends ResourceDependencies
 >(
     input: ProjectedHttpServiceInput<
@@ -269,27 +343,30 @@ function projectedHttpDefinition<
         Projection,
         ProjectedConsumerHandle,
         Dependencies
-    >
+    >,
+    policy: LocalHttpTranscriptPolicy | null
 ): ProjectedLocalServiceResourceDefinitionInput<
     Name,
     LocalHttpServer,
-    ConsumerHandle,
+    LocalHttpResourceHandle<ConsumerHandle, unknown>,
     Projection,
-    ProjectedConsumerHandle,
+    LocalHttpResourceHandle<ProjectedConsumerHandle, unknown>,
     ProjectedLocalServiceScope,
     Dependencies
 > {
     return {
-        ...localHttpDefinition(input),
+        ...localHttpDefinition(input, policy),
         serializeHandle: input.serializeHandle,
-        deserializeHandle: input.deserializeHandle
+        deserializeHandle(payload, context) {
+            return withTranscript(input.deserializeHandle(payload, context), emptyTranscriptView());
+        }
     };
 }
 
 function assertProjectedHttpService<
     ConsumerHandle extends LocalServiceConsumerHandle,
     Projection extends ResourceProjectionPayload,
-    ProjectedConsumerHandle,
+    ProjectedConsumerHandle extends LocalServiceConsumerHandle,
     Dependencies extends ResourceDependencies
 >(
     input: MaybeProjectedHttpServiceInput<
@@ -315,16 +392,23 @@ export function createLocalHttpServiceResource<
     const Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Scope extends Exclude<ResourceScope, 'per-run'>,
-    const Dependencies extends ResourceDependencies
+    const Dependencies extends ResourceDependencies,
+    const PolicyInput extends readonly [] | readonly [LocalHttpTranscriptPolicy]
 >(
-    input: LocalHttpServiceResourceInput<Name, ConsumerHandle, Scope, Dependencies>
-): ResourceDefinition<Name, ConsumerHandle, Dependencies>;
+    input: LocalHttpServiceResourceInput<Name, ConsumerHandle, Scope, Dependencies>,
+    ...policyInput: PolicyInput
+): ResourceDefinition<
+    Name,
+    LocalHttpResourceHandle<ConsumerHandle, TranscriptContext<PolicyInput>>,
+    Dependencies
+>;
 export function createLocalHttpServiceResource<
     const Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Projection extends ResourceProjectionPayload,
-    ProjectedConsumerHandle,
-    const Dependencies extends ResourceDependencies
+    ProjectedConsumerHandle extends LocalServiceConsumerHandle,
+    const Dependencies extends ResourceDependencies,
+    const PolicyInput extends readonly [] | readonly [LocalHttpTranscriptPolicy]
 >(
     input: ProjectedHttpServiceInput<
         Name,
@@ -332,14 +416,20 @@ export function createLocalHttpServiceResource<
         Projection,
         ProjectedConsumerHandle,
         Dependencies
-    >
-): ResourceDefinition<Name, ConsumerHandle, Dependencies, ProjectedConsumerHandle>;
+    >,
+    ...policyInput: PolicyInput
+): ResourceDefinition<
+    Name,
+    LocalHttpResourceHandle<ConsumerHandle, TranscriptContext<PolicyInput>>,
+    Dependencies,
+    LocalHttpResourceHandle<ProjectedConsumerHandle, TranscriptContext<PolicyInput>>
+>;
 export function createLocalHttpServiceResource<
     const Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
     const Dependencies extends ResourceDependencies,
     Projection extends ResourceProjectionPayload,
-    ProjectedConsumerHandle
+    ProjectedConsumerHandle extends LocalServiceConsumerHandle
 >(
     input: MaybeProjectedHttpServiceInput<
         Name,
@@ -347,16 +437,19 @@ export function createLocalHttpServiceResource<
         Projection,
         ProjectedConsumerHandle,
         Dependencies
-    >
+    >,
+    ...policyInput: readonly [] | readonly [LocalHttpTranscriptPolicy]
 ): unknown {
+    const policy = policyInput[0] ?? null;
+
     if (isProjectedLocalServiceScope(input.scope)) {
         assertProjectedHttpService(input);
 
-        return defineLocalServiceResource(projectedHttpDefinition(input));
+        return defineLocalServiceResource(projectedHttpDefinition(input, policy));
     }
 
     return defineLocalServiceResource({
-        ...localHttpDefinition(input),
+        ...localHttpDefinition(input, policy),
         scope: input.scope
     });
 }

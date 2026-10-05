@@ -148,6 +148,10 @@ export const config = {
                 main: {
                     js: 'packages/simulation/simulation.entry-point.js',
                     declarationFile: 'packages/simulation/simulation.entry-point.d.ts'
+                },
+                transcript: {
+                    js: 'packages/simulation/transcript.entry-point.js',
+                    declarationFile: 'packages/simulation/transcript.entry-point.d.ts'
                 }
             },
             packageInterface: {
@@ -159,6 +163,10 @@ export const config = {
                     {
                         export: './http',
                         root: 'http'
+                    },
+                    {
+                        export: './transcript',
+                        root: 'transcript'
                     }
                 ]
             },
@@ -219,6 +227,10 @@ export const config = {
                 resourceLifecycle: {
                     js: 'packages/run/resource-lifecycle.entry-point.js',
                     declarationFile: 'packages/run/resource-lifecycle.entry-point.d.ts'
+                },
+                transcriptStore: {
+                    js: 'packages/run/transcript-store.entry-point.js',
+                    declarationFile: 'packages/run/transcript-store.entry-point.d.ts'
                 }
             },
             packageInterface: {
@@ -242,6 +254,10 @@ export const config = {
                     {
                         export: './resource-lifecycle',
                         root: 'resourceLifecycle'
+                    },
+                    {
+                        export: './transcript-store',
+                        root: 'transcriptStore'
                     }
                 ],
                 privateRoots: [ 'nodeCommandLineRunner' ]

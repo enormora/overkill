@@ -78,6 +78,10 @@ Resource wrapper lifecycle coordination is exposed through
 `@overkill-dev/run/resource-lifecycle` for packages that compose
 runner-managed resource scopes with test-body authoring wrappers.
 
+Scoped transcript storage is exposed through
+`@overkill-dev/run/transcript-store` for runner and test integrations. Test
+authors should use the higher-level transcript API from `@overkill-dev/test`.
+
 The current runner accepts explicit file paths through `RunRequest.paths` and
 profile file discovery through `profiles.<name>.files`. Profile files may use
 top-level `include` and `exclude`, or mutually exclusive named `sets` whose

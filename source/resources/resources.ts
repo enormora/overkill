@@ -1,3 +1,4 @@
+import { emptyTranscriptView, type TranscriptView } from '../packages/simulation/transcript.entry-point.ts';
 import {
     defineRuntime as createRuntimeDefinition,
     isDefinedRuntime as isRuntimeDefinition,
@@ -53,16 +54,13 @@ import { resolvedResourceScenarioBindings as readResourceScenarioBindings } from
 const composeRuntimeGraphs = runtimeMatrixDefinitionApi.composeRuntimes;
 const createRuntimeMatrixDefinition = runtimeMatrixDefinitionApi.defineRuntimeMatrix;
 const { isComposedRuntimeGraph } = runtimeMatrixDefinitionApi;
-const isRuntimeMatrixDefinition = runtimeMatrixDefinitionApi.isDefinedRuntimeMatrix;
-const runtimeGraphLeafDescriptors = runtimeMatrixDefinitionApi.runtimeGraphLeaves;
-const isResourceDefinition = resourceDefinitionApi.isDefinedResource;
 
 export const {
     isDefinedResource,
     resolvedResourceScenarioBindings,
     resolvedRuntimeScenarioOwners
 } = Object.freeze({
-    isDefinedResource: isResourceDefinition,
+    isDefinedResource: resourceDefinitionApi.isDefinedResource,
     resolvedResourceScenarioBindings: readResourceScenarioBindings,
     resolvedRuntimeScenarioOwners: readRuntimeScenarioOwners
 });
@@ -117,7 +115,7 @@ export type ResourceProjectionContext<
 > = ResourceProjectionContextShape<Dependencies>;
 export const defineRuntime = createRuntimeDefinition;
 export const isDefinedRuntime = isRuntimeDefinition;
-export const isDefinedRuntimeMatrix = isRuntimeMatrixDefinition;
+export const { isDefinedRuntimeMatrix } = runtimeMatrixDefinitionApi;
 export const composeRuntimes = composeRuntimeGraphs;
 
 export type RuntimeDefinition<
@@ -238,6 +236,7 @@ function runtimeContextHandles(
 
 export type TemporaryDirectoryHandle = {
     readonly path: string;
+    readonly transcript: TranscriptView<never>;
 };
 
 export type ResourcesModuleDependencies = {
@@ -271,7 +270,8 @@ function createTemporaryDirectoryResource<const Name extends string>(
             context.signal.throwIfAborted();
 
             return Object.freeze({
-                path: await dependencies.createTemporaryDirectory(dependencies.temporaryDirectoryPathPrefix)
+                path: await dependencies.createTemporaryDirectory(dependencies.temporaryDirectoryPathPrefix),
+                transcript: emptyTranscriptView()
             });
         },
         async dispose(handle) {
@@ -337,7 +337,7 @@ export function isDefinedRuntimeGraph(runtime: unknown): runtime is RuntimeGraph
 }
 
 export function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraphLeaf[] {
-    const leaves = runtimeGraphLeafDescriptors(runtime);
+    const leaves = runtimeMatrixDefinitionApi.runtimeGraphLeaves(runtime);
 
     return leaves;
 }

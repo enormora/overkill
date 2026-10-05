@@ -6,6 +6,7 @@ import type {
     SimulatedHttpServerDefinition,
     SimulationScenarioCatalog
 } from '../packages/simulation/simulation.entry-point.ts';
+import type { HttpTranscript } from '../packages/simulation/transcript.entry-point.ts';
 import {
     defineResource,
     type EmptyResourceDependencies,
@@ -37,6 +38,11 @@ export type SimulatedHttpServerResourceHandle<
     readonly baseUrl: string;
     readonly endpoint: LocalHttpServiceHandle['endpoint'];
     readonly scenarioUrl: (scenario: string & keyof Simulation['scenarios'], path: string) => string;
+    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
+};
+
+type SimulatedHttpLocalService = LocalHttpServiceHandle & {
+    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
 };
 
 export type SimulatedHttpServerResource<
@@ -72,12 +78,13 @@ function simulatedHttpServerResourceHandle<
         readonly scenarios: SimulationScenarioCatalog;
     }
 >(
-    service: LocalHttpServiceHandle,
+    service: SimulatedHttpLocalService,
     scenario: string & keyof Simulation['scenarios']
 ): SimulatedHttpServerResourceHandle<Simulation> {
     return Object.freeze({
         baseUrl: scenario === 'default' ? service.baseUrl : scenarioUrl(service.baseUrl, scenario, '/'),
         endpoint: service.endpoint,
+        transcript: service.transcript,
         scenarioUrl(requestedScenario: string & keyof Simulation['scenarios'], path: string) {
             return scenarioUrl(service.baseUrl, requestedScenario, path);
         }
@@ -129,9 +136,10 @@ export function createSimulatedHttpServerResource<
     options: SimulatedHttpServerResourceOptions<Name, Scenarios>
 ): SimulatedHttpServerResource<SimulatedHttpServerDefinition<Name, Scenarios>> {
     const handlerErrors = new WeakMap<LocalHttpServer, readonly unknown[]>();
+    const transcripts = new WeakMap<LocalHttpServer, SimulatedHttpLocalService['transcript']>();
     const acquiredServices = new WeakMap<
         SimulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>,
-        LocalHttpServiceHandle
+        SimulatedHttpLocalService
     >();
     const service = createLocalHttpServiceResource({
         name: options.simulation.name,
@@ -147,14 +155,32 @@ export function createSimulatedHttpServerResource<
             );
 
             handlerErrors.set(listeningServer.server, listeningServer.errors);
+            transcripts.set(listeningServer.server, listeningServer.transcript);
 
             return listeningServer.server;
         },
-        handle(localService) {
-            return localService;
+        handle(localService, server): SimulatedHttpLocalService {
+            const transcript = transcripts.get(server);
+
+            if (transcript === undefined) {
+                throw new TypeError('Simulated HTTP server transcript is unavailable.');
+            }
+
+            return Object.freeze({ ...localService, transcript });
         },
         dispose(server) {
             assertNoSimulatedHttpHandlerErrors(handlerErrors.get(server) ?? []);
+        }
+    }, {
+        kind: 'custom',
+        transcript(server) {
+            const transcript = transcripts.get(server);
+
+            if (transcript === undefined) {
+                throw new TypeError('Simulated HTTP server transcript is unavailable.');
+            }
+
+            return transcript;
         }
     });
     const scenarios = simulatedHttpScenarioSlots(options.simulation.name, options.simulation.scenarios);

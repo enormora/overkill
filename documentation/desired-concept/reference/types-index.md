@@ -663,12 +663,15 @@ type TranscriptEntryForKind<Entry extends TranscriptEntry, Kind extends Entry[0]
 
 type TranscriptSinkSignature = (...parameters: readonly unknown[]) => undefined;
 
-type Transcript<Entry extends TranscriptEntry = TranscriptEntry> = {
+type TranscriptView<Entry extends TranscriptEntry = TranscriptEntry> = {
     readonly entryCount: number;
     readonly entries: readonly Entry[];
     readonly firstEntry: Entry | null;
     readonly lastEntry: Entry | null;
     readonly nthEntry: (index: number) => Entry | null;
+};
+
+type Transcript<Entry extends TranscriptEntry = TranscriptEntry> = TranscriptView<Entry> & {
     readonly record: (...entry: Entry) => void;
     readonly reset: () => void;
     readonly sink: <Kind extends Entry[0]>(
@@ -1989,8 +1992,23 @@ type SimulatedHttpServerHandle<Scenario extends string> = {
     readonly baseUrl: string;
     readonly dispose: () => Promise<void>;
     readonly scenarioUrl: (scenario: Scenario, path: string) => string;
+    readonly transcript: HttpTranscript<{ readonly scenario: string; }>;
     readonly [Symbol.asyncDispose]: () => Promise<void>;
 };
+
+type RecordedHttpBody =
+    | { readonly kind: 'absent'; }
+    | { readonly bytes: Uint8Array; readonly kind: 'complete'; }
+    | { readonly bytes: Uint8Array; readonly kind: 'truncated'; readonly originalByteLength: number; }
+    | {
+        readonly kind: 'unavailable';
+        readonly reason: 'body-not-observed' | 'transport-does-not-expose-body';
+    };
+
+type HttpTranscript<Context = null> = TranscriptView<
+    | readonly ['http', HttpInteraction<Context>]
+    | readonly ['capture-error', { readonly message: string; readonly source: string; }]
+>;
 
 type ExecutionRequirement =
     | { kind: 'serial'; }

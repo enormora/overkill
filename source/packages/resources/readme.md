@@ -119,8 +119,9 @@ Omitting `dependencies` is accepted for compatibility and produces
 `dependencies: {}` on the returned descriptor.
 
 `createTemporaryDirectoryResource(name)` returns a per-case resource descriptor
-whose handle is `{ readonly path: string }`. Each acquisition creates a unique
-directory with an Overkill prefix. Disposal removes that directory recursively.
+whose handle exposes `path` and an empty `transcript`. Each acquisition creates
+a unique directory with an Overkill prefix. Disposal removes that directory
+recursively.
 
 `defineLocalServiceResource(...)` models owned local services with explicit
 `start`, `ready`, and `dispose` phases. Callers declare scope, requirements,
@@ -133,11 +134,22 @@ ordinary resources.
 
 `createLocalHttpServiceResource(...)` owns HTTP `listen` and `close`, exposes
 the actual loopback endpoint and `baseUrl`, and lets callers map that into a
-typed object handle. `createLocalProcessServiceResource(...)` starts a child
-process, drains bounded stdout/stderr lifecycle buffers, waits for explicit
-readiness, and terminates then force-kills during disposal according to the
-declared shutdown contract. Output buffers are lifecycle diagnostics, not
-artifacts.
+typed object handle. Its handle also exposes a read-only `transcript`. Recording
+is enabled by default and stores one normalized `http` entry per completed
+exchange. Request and response bodies are captured up to 16 KiB independently.
+External clients still produce request metadata and a response whose body is
+marked unavailable. Pass `{ kind: 'disabled' }` as the second argument to turn
+recording off, or `{ kind: 'custom', transcript(server) { ... } }` to supply a
+protocol-specific transcript.
+
+Runner-managed handles show transcript entries from the active test case.
+Handles returned by `startResources(...)` and `startRuntime(...)` show the full
+resource lifetime.
+
+`createLocalProcessServiceResource(...)` starts a child process, drains bounded
+stdout/stderr lifecycle buffers, waits for explicit readiness, and terminates
+then force-kills during disposal according to the declared shutdown contract.
+Output buffers are lifecycle diagnostics, not artifacts.
 
 Resources may declare finite scenario slots with a default, timing, and allowed
 values. `defineRuntime(...)` lifts slots from its complete dependency graph.
@@ -159,7 +171,8 @@ resource still acquires separately when those views differ.
 HTTP server from `@overkill-dev/simulation` as a per-case resource. Its
 request-routed scenario slot uses the simulation name. A runtime binding makes
 `baseUrl` select that scenario, while `scenarioUrl(...)` remains available for
-explicit URL selection.
+explicit URL selection. Its transcript records the selected scenario and omits
+the internal scenario query parameter from the request URL.
 
 `startRuntime(...)` acquires dependencies before dependents, shares one handle
 per descriptor inside the session, and disposes acquired resources once in

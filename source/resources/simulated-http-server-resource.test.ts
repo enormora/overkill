@@ -1,5 +1,6 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defineSimulatedHttpServer } from '../simulation/simulation.ts';
+import type { HttpTranscript } from '../transcript/http-transcript.ts';
 import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
 import { startResources } from './resource-session.ts';
 import { defineRuntime } from './resources.ts';
@@ -50,6 +51,20 @@ async function assertSimulatedHttpResourceResponses(
     scope.assert.deepEqual(await outageResponse.json(), { key: 'outage' });
 }
 
+function assertSimulatedHttpTranscript(
+    scope: TestScope,
+    transcript: HttpTranscript<{ readonly scenario: string; }>
+): void {
+    const outageEntry = transcript.lastEntry;
+
+    scope.require.defined(outageEntry);
+    scope.assert.equal(transcript.entryCount, 2);
+    scope.assert.equal(outageEntry[0], 'http');
+    if (outageEntry[0] === 'http') {
+        scope.assert.deepEqual(outageEntry[1].context, { scenario: 'outage' });
+    }
+}
+
 async function assertSimulatedHttpResource(scope: TestScope): Promise<void> {
     const simulation = defineSimulatedHttpServer({
         name: 'api',
@@ -71,6 +86,7 @@ async function assertSimulatedHttpResource(scope: TestScope): Promise<void> {
 
     assertSimulatedHttpResourceDescriptor(scope, resource);
     await assertSimulatedHttpResourceResponses(scope, defaultResponse, outageResponse);
+    assertSimulatedHttpTranscript(scope, session.context.api.transcript);
 
     await session.disposeOnce({ signal: testSignal() });
 }

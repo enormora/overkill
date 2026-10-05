@@ -68,7 +68,8 @@ import {
     type RuntimeScopeContext,
     type RuntimeTestScope,
     type RuntimeWrappedTestBody,
-    type TemporaryDirectoryHandle
+    type TemporaryDirectoryHandle,
+    type TranscriptView
 } from './resources.entry-point.ts';
 import {
     createTestFacade,
@@ -240,7 +241,10 @@ describe('@overkill-dev/test standard subpaths', function () {
                 readonly dir: TemporaryDirectoryHandle;
             }>();
             expect(temporaryDirectory.name).type.toBe<'scratch'>();
-            expect<TemporaryDirectoryHandle>().type.toBe<{ readonly path: string; }>();
+            expect<TemporaryDirectoryHandle>().type.toBe<{
+                readonly path: string;
+                readonly transcript: TranscriptView<never>;
+            }>();
         });
 
         test('exposes runtime descriptor types through the standard distribution', function () {

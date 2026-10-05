@@ -2,7 +2,9 @@ import { createServer } from 'node:http';
 import { setTimeout as wait } from 'node:timers/promises';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
-    createLocalHttpServiceResource
+    createLocalHttpServiceResource,
+    type LocalHttpResourceHandle,
+    type LocalHttpServiceHandle
 } from './local-http-service-resource.ts';
 import {
     createLocalProcessServiceResource,
@@ -25,6 +27,7 @@ type Database = {
 
 const testController = new AbortController();
 const testSignal = testController.signal;
+const textEncoder = new TextEncoder();
 
 function testDatabase(): ResourceDefinition<'database', Database, EmptyResourceDependencies> {
     return defineResource({
@@ -229,6 +232,25 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
     );
 }
 
+function assertLocalHttpTranscript(
+    scope: TestScope,
+    handle: LocalHttpResourceHandle<LocalHttpServiceHandle>
+): void {
+    const entry = handle.transcript.firstEntry;
+
+    scope.require.defined(entry);
+    scope.assert.equal(handle.transcript.entryCount, 1);
+    scope.assert.equal(entry[0], 'http');
+    if (entry[0] === 'http' && entry[1].outcome.kind === 'response') {
+        scope.assert.equal(entry[1].request.method, 'GET');
+        scope.assert.equal(entry[1].request.url, `${handle.baseUrl}/`);
+        scope.assert.deepEqual(entry[1].outcome.response.body, {
+            bytes: textEncoder.encode('ready'),
+            kind: 'complete'
+        });
+    }
+}
+
 async function assertLocalHttpService(scope: TestScope): Promise<void> {
     const service = createLocalHttpServiceResource({
         name: 'app',
@@ -250,10 +272,12 @@ async function assertLocalHttpService(scope: TestScope): Promise<void> {
     });
     const session = await startResources({ resources: { app: service }, signal: testSignal });
     const response = await fetch(session.context.app.baseUrl);
+    const responseBody = await response.text();
 
     scope.assert.equal(session.context.app.endpoint.host, '127.0.0.1');
     scope.assert.equal(session.context.app.endpoint.port > 0, true);
-    scope.assert.equal(await response.text(), 'ready');
+    scope.assert.equal(responseBody, 'ready');
+    assertLocalHttpTranscript(scope, session.context.app);
 
     await session.disposeOnce({ signal: testSignal });
     scope.assert.equal(await rejectedValue(fetch(session.context.app.baseUrl)) instanceof Error, true);
