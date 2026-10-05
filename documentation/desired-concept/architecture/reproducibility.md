@@ -59,15 +59,23 @@ it is an optimization, not the required cross-CI baseline.
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
+    readonly version: 1;
+    readonly cwd: string;
+    readonly request: RunRecordRequest;
+    readonly engine: RunExecutionFacts['engine'];
+    readonly environment: RunFacts['environment'];
+    readonly execution: RunProfileConfig['execution'];
+    readonly loader: RunFacts['loader'];
+    readonly coverage: RunRecordCoverage | null;
     readonly status: 'started' | 'completed' | 'interrupted';
     readonly seed: string;
-    readonly facts: RunFacts;
+    readonly facts: RunFacts | null;
     readonly identities: ReadonlyArray<WorkId>;
     readonly placementTrace: PlacementTrace | null;
-    readonly runtime: ResolvedRuntime; // see types-index.md
-    readonly versions: { engine: string; node: string; packages: Readonly<Record<string, string>>; };
+    readonly runtime: ResolvedRuntime | null; // see types-index.md
+    readonly versions: { engine: string | null; node: string; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
-    readonly result: RunResult | null;
+    readonly result: RunRecordResult | null;
 };
 
 type MergedRunRecord = {
@@ -84,6 +92,21 @@ type MergedRunRecord = {
 
 type RunRecord = SingleRunRecord | MergedRunRecord;
 ```
+
+Completed single records require a result. Started and interrupted attempts may
+have no result. `RunRecordRequest` preserves the request with a decimal string
+seed. `RunRecordResult` preserves result fields while projecting opaque thrown
+values and error causes through bounded diagnostic serialization.
+`RunRecordCoverage` stores the resolved policy and project-relative report and
+raw directories. Microtests without declared runtimes use `runtime: null`;
+unavailable engine versions use `null`.
+
+An attempt starts before coverage setup or module imports. Until full resolution,
+`facts` is `null`, and that attempt cannot be replayed. Known empty selections
+have complete empty facts. The result is checkpointed before final reporting,
+then completed after reporters and coverage cleanup finish. An escaping exception
+marks the attempt interrupted; a supervised crash with a returned parent result
+is a completed failed run.
 
 `RunRecord.id` identifies one persisted record. For `kind: 'single'`, it
 identifies one concrete run instance. For `kind: 'merged'`, it identifies a

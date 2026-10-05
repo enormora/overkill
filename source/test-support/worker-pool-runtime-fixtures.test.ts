@@ -60,9 +60,9 @@ async function assertReporterFakes(scope: OverkillScope, dependencies: FixtureDe
 async function assertStorageAndOutputFakes(scope: OverkillScope, dependencies: FixtureDependencies): Promise<void> {
     dependencies.liveOutput.stderr.write(Buffer.from('stderr'));
     dependencies.liveOutput.stdout.write(Buffer.from('stdout'));
-    await dependencies.durationHistoryStore.write('/history', '{}');
+    await dependencies.runtimeStateStore.write('/history', '{}');
 
-    scope.assert.equal(await dependencies.durationHistoryStore.read('/history') === null, true);
+    scope.assert.equal(await dependencies.runtimeStateStore.read('/history') === null, true);
 }
 
 function assertRuntimePolicyFakes(scope: OverkillScope, dependencies: FixtureDependencies): void {

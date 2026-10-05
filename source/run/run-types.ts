@@ -335,6 +335,7 @@ export type RunCommand = {
 };
 
 export type RunFacts = {
+    readonly coveragePolicy: RunCoveragePolicy | null;
     readonly cases: readonly RunCaseFacts[];
     readonly durationHistory: DurationHistoryInput | null;
     readonly environment: RunEnvironmentFacts;

@@ -74,6 +74,7 @@ function baseResolvedRun(): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            coveragePolicy: null,
             durationHistory: null,
             cases: [],
             environment: {
@@ -249,7 +250,7 @@ export function fakeDependencies(
             return fakePool(options, routedLifecycles, routedHostOutputSinks);
         },
         defaultEngine: defaultRunEngine,
-        durationHistoryStore: {
+        runtimeStateStore: {
             async read() {
                 return null;
             },

@@ -27,6 +27,7 @@ import {
 import type {
     ResolvedRun,
     RunCommand,
+    RunFacts,
     RunOrchestrator
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -186,7 +187,7 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput,
     source: LocalTestPlanInput['source']
-): Promise<ResolvedRun | RunResult> {
+): Promise<{ readonly facts: RunFacts; readonly run: ResolvedRun | RunResult; }> {
     if (input.profile.execution.processModel !== 'in-process') {
         throw new Error('Expected in-process profile.');
     }
@@ -202,13 +203,17 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
     const plannedCases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
 
     if (plannedCases === null) {
-        return createEmptySelectionResult(testPlan, dependencies);
+        const resolvedRun = createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, testPlan);
+
+        return { facts: resolvedRun.facts, run: createEmptySelectionResult(testPlan, dependencies) };
     }
 
-    return await createShardedLocalResolvedRunFromTestPlan(command, dependencies, input, {
+    const run = await createShardedLocalResolvedRunFromTestPlan(command, dependencies, input, {
         ...testPlan,
         cases: plannedCases
     });
+
+    return { facts: run.facts, run };
 }
 
 export async function createLocalRunOrEmptySelectionResult(
@@ -218,5 +223,7 @@ export async function createLocalRunOrEmptySelectionResult(
 ): Promise<ResolvedRun | RunResult> {
     const input = await readResolvedRunInput(command, dependencies);
 
-    return await createLocalRunOrEmptySelectionResultFromInput(command, dependencies, input, source);
+    const resolved = await createLocalRunOrEmptySelectionResultFromInput(command, dependencies, input, source);
+
+    return resolved.run;
 }

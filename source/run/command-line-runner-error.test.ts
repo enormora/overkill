@@ -104,6 +104,7 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
         config: command.config,
         cwd: command.cwd,
         facts: {
+            coveragePolicy: null,
             durationHistory: null,
             cases: [],
             environment: {

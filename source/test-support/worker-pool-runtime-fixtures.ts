@@ -41,7 +41,7 @@ export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['depen
         },
         createWorkerPool: createFakeWorkerPool,
         defaultEngine: defaultRunEngine,
-        durationHistoryStore: {
+        runtimeStateStore: {
             async read() {
                 return null;
             },

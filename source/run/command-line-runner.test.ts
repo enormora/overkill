@@ -112,6 +112,7 @@ async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrato
         config: command.config,
         cwd: command.cwd,
         facts: {
+            coveragePolicy: null,
             durationHistory: null,
             cases: [],
             environment: {

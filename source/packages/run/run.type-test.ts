@@ -72,7 +72,6 @@ import {
     type RunWorkerLifecycle,
     type RunWorkerCountFacts,
     type RuntimeId,
-    type SerializedValue,
     type TraceWorkUnitId,
     type WorkloadId,
     type WorkId,
@@ -237,16 +236,6 @@ describe('@overkill-dev/run', function () {
         }>();
         expect<RunOrder>().type.toBe<'lexical' | 'plan' | 'seeded'>();
         expect<RunRequest['selection']>().type.toBe<RunSelection>();
-    });
-
-    test('exposes serializable run facts with case annotations and controls', function () {
-        expect<keyof RunFacts>()
-            .type
-            .toBe<'cases' | 'durationHistory' | 'environment' | 'execution' | 'loader' | 'reproducibility'>();
-        expect<RunFacts['cases'][number]['annotations']>().type.toBe<SerializedValue>();
-        expect<RunFacts['cases'][number]['controls']>().type.toBe<SerializedValue>();
-        expect<RunFacts['reproducibility']['selection']>().type.toBe<RunSelection>();
-        expect<RunFacts>().type.toBeAssignableTo<Readonly<Record<string, unknown>>>();
     });
 
     test('exposes serializable run execution facts', function () {

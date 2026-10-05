@@ -334,7 +334,7 @@ function createDeterministicRunCoordinatorWithDependencies(
         createSeed,
         createWorkerPool,
         defaultEngine: deterministicRunEngine(),
-        durationHistoryStore: {
+        runtimeStateStore: {
             async read() {
                 return null;
             },

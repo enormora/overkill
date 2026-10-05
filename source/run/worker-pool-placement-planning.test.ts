@@ -169,6 +169,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            coveragePolicy: null,
             durationHistory: null,
             cases: [],
             environment: {

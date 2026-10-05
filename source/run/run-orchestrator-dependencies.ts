@@ -101,7 +101,7 @@ export type RunOrchestratorDependencies = {
     readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;
     readonly defaultEngine: Engine;
     readonly discoverRunFilesWithProjectRoot: RunDiscovery['discoverRunFilesWithProjectRoot'];
-    readonly durationHistoryStore: DurationHistoryStore;
+    readonly runtimeStateStore: DurationHistoryStore;
     readonly execute: Execute;
     readonly loadRunEngineModule: RunEngineModuleLoader;
     readonly loadRunTestModules: RunTestModuleLoader;

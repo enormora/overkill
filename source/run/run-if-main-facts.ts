@@ -88,6 +88,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
         cases: runCaseFactsFromTestPlan(input.testPlan, function directRunFileSet() {
             return input.fileSet;
         }),
+        coveragePolicy: null,
         durationHistory: null,
         environment: {
             node: {

@@ -35,8 +35,7 @@ export type CoverageSession = {
 export type CoverageSessionRequest = {
     readonly coverage: RunCoveragePolicy;
     readonly processModel: 'in-process' | 'supervised-process';
-    readonly projectRoot: string;
-    readonly runtimeStateDir: string;
+    readonly paths: CoveragePaths;
     readonly testFiles: readonly string[];
     readonly timing: RunTimingMeasurement | null;
 };
@@ -476,7 +475,7 @@ async function finalizeCoverage(
 }
 
 export async function createCoverageSession(request: CoverageSessionRequest): Promise<CoverageSession> {
-    const paths = await createCoveragePaths(request);
+    const paths = await createCoveragePaths(request.paths);
     const context = createCoverageSessionContext(request, paths);
 
     return {

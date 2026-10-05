@@ -177,3 +177,11 @@ export type {
     RunSelection,
     RunStringFilterField
 } from '../../run/run-request-types.ts';
+export type {
+    ResolvedRuntime,
+    RunRecord,
+    RunRecordCoverage,
+    RunRecordRequest,
+    RunRecordResult,
+    RunRecordVersions
+} from '../../run/run-record-types.ts';
