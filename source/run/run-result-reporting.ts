@@ -1,6 +1,5 @@
 import { appendRunnerErrors } from '../engine/execution-result.ts';
-import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
-import type { RunResult, RunArtifact } from '../engine/run-result.ts';
+import type { ReporterDelivery, RunResult, RunArtifact } from './run-engine-primitives.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
 import type { RetryArtifactPolicy } from './run-execution-config.ts';
 
