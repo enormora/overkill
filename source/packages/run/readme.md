@@ -129,6 +129,27 @@ coverage `outputs`, loaded or all-files `sources`, line/function/branch
 V8 and LCOV. An empty `outputs` array keeps raw coverage without rendering
 reports.
 
+Integration runs with resource or runtime wrappers also persist a `RunRecord`.
+The record starts after collection and before resource acquisition. Attachment
+files are copied under `<runtimeStateDir>/runs/<id>/artifacts/`; artifact paths
+are relative to the project root. Completed and interrupted records retain
+attachment metadata and available content. Reporter completion events include
+attachments from their case attempt.
+
+Integration profiles accept `attachments` with these default limits:
+
+| Setting               | Default |
+| --------------------- | ------: |
+| `maxInlineBytes`      |   1 MiB |
+| `maxArtifactBytes`    |  10 MiB |
+| `maxScopeBytes`       |  10 MiB |
+| `maxScopeAttachments` |     100 |
+
+Scope budgets cover the full retry chain. Retry artifact policy also determines
+which attachment files remain. Cancelled or matching hedged peers are discarded;
+conflicting executions retain their attachments in the conflict evidence.
+Microtest profiles reject attachment configuration.
+
 Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
 The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
 directory. Configured output directories keep raw data under `raw/<id>`.

@@ -83,6 +83,7 @@ function ignoredRunArtifact(): RunArtifact {
         },
         payload: {
             authoritative: {
+                attachments: [],
                 attempts: [ {
                     attempt: { index: 0 },
                     durationMicroseconds: 0,
@@ -93,6 +94,7 @@ function ignoredRunArtifact(): RunArtifact {
                 verdict: 'pass'
             },
             conflicting: {
+                attachments: [],
                 attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: null, verdict: 'crashed' } ],
                 outcome: null,
                 verdict: 'crashed'

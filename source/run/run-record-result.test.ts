@@ -62,11 +62,13 @@ function resultWithOpaqueEvidence(): RunResult {
             },
             payload: {
                 authoritative: {
+                    attachments: [],
                     attempts: [ { attempt: { index: 0 }, durationMicroseconds: 1, outcome, verdict: 'fail' } ],
                     outcome,
                     verdict: 'fail'
                 },
                 conflicting: {
+                    attachments: [],
                     attempts: [ {
                         attempt: { index: 0 },
                         durationMicroseconds: 1,

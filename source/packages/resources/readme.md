@@ -149,7 +149,46 @@ resource lifetime.
 `createLocalProcessServiceResource(...)` starts a child process, drains bounded
 stdout/stderr lifecycle buffers, waits for explicit readiness, and terminates
 then force-kills during disposal according to the declared shutdown contract.
-Output buffers are lifecycle diagnostics, not artifacts.
+Output buffers are lifecycle diagnostics. Attach them explicitly when a run
+should retain them as artifacts.
+
+Runner-managed acquisition, disposal, handle projection, and scenario exposure
+contexts include `attachments`. Resource and runtime test wrappers also expose
+`scope.attachments`:
+
+```typescript
+const log = await scope.attachments.open({
+    kind: 'text',
+    name: 'service-log',
+    mediaType: 'text/plain'
+});
+await log.write('Service ready\n');
+await log.close();
+await scope.attachments.json(
+    { name: 'accessibility', mediaType: 'application/json' },
+    { violations: [] }
+);
+await scope.attachments.file(
+    { name: 'screenshot', mediaType: 'image/png' },
+    screenshotPath
+);
+```
+
+Await each write and close every writer. Binary writers accept `Uint8Array`.
+Text byte chunks must contain valid UTF-8.
+`file(...)` copies a file before resolving, so resource teardown may remove the
+original. Text and JSON remain inline; binary data lives in runner-owned files.
+JSON preserves the supplied schema and rejects values that JSON serialization
+would silently change, including cycles, accessors, and non-finite numbers.
+
+Opening a writer fixes its case and attempt owner. Calls outside an active case
+produce run artifacts. Setup and teardown outside a case therefore remain run scoped. A call from an expired attempt fails with `attribution-drift`.
+Unclosed writers and binary overflow retain their available prefix and fail the
+run. Text truncates; oversized JSON produces an omission record.
+
+Attachments require runner-managed integration execution. Standalone
+`startResources(...)` and `startRuntime(...)` sessions reject attachment calls.
+Service transcripts and logs are retained only when explicitly attached.
 
 Resources may declare finite scenario slots with a default, timing, and allowed
 values. `defineRuntime(...)` lifts slots from its complete dependency graph.

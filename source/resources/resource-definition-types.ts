@@ -1,4 +1,5 @@
 import type { Except, Merge } from 'type-fest';
+import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
 import type {
     AnyResourceDefinition,
     Awaitable,
@@ -34,12 +35,14 @@ type WithScenarios<
 >;
 
 export type ResourceProjectionContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
+    readonly attachments: RuntimeAttachments;
     readonly dependencies: ResourceContext<Dependencies>;
 };
 
 export type ResourceHandleExposureContext<
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
 > = {
+    readonly attachments: RuntimeAttachments;
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'request-routed'>;
 };
 
@@ -56,6 +59,7 @@ export type ResourceCreationContext<
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
 > = {
+    readonly attachments: RuntimeAttachments;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
@@ -65,6 +69,7 @@ export type ResourceDisposalContext<
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
     Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
 > = {
+    readonly attachments: RuntimeAttachments;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;

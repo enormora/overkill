@@ -3,6 +3,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createResourcesModule, type ResourcesModule } from '../../resources/resources.ts';
 
+export type {
+    AttachmentMetadata,
+    AttachmentWriter,
+    AttachmentLimits,
+    RuntimeAttachments,
+    RuntimeAttachmentArtifact
+} from '../../engine/runtime-attachment.ts';
+
 export {
     defineLocalServiceResource
 } from '../../resources/local-service-resource.ts';

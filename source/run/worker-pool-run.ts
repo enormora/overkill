@@ -1,4 +1,4 @@
-import type { RunResult } from './run-engine-primitives.ts';
+import { activeRuntimeAttachments, executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies
@@ -31,6 +31,8 @@ import {
     type WorkerPoolRunCompletion,
     type WorkerPoolRuntimeInput
 } from './worker-pool-runtime.ts';
+
+type RunResult = WorkerPoolRunCompletion['result'];
 
 type RunResultFinalizer = (resolvedRun: ResolvedRun, completion: WorkerPoolRunCompletion) => Promise<RunResult>;
 type RunTimingMeasurement = NonNullable<NonNullable<WorkerPoolRuntimeInput['timing']>>;
@@ -116,6 +118,7 @@ async function createRuntime(
     state: WorkerPoolExecutionState
 ): Promise<WorkerPoolRunRuntime> {
     return await createWorkerPoolRuntime({
+        attachments: activeRuntimeAttachments(),
         collectionRunnerErrors: resolvedRun.collectionRunnerErrors,
         createdPool: state.createdPool,
         dependencies,
@@ -149,7 +152,7 @@ async function finishExecutionWithRuntime(
     return await finishExecution(runtime, resolvedRun, startedAtMilliseconds, startedAtMicroseconds);
 }
 
-async function executeWorkerPoolRunWithState(
+async function executeWorkerPoolRunWithoutAttachments(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
     state: WorkerPoolExecutionState
@@ -169,6 +172,16 @@ async function executeWorkerPoolRunWithState(
     } finally {
         await releaseTimedRuntimePool(runtime, state.timing);
     }
+}
+
+async function executeWorkerPoolRunWithState(
+    resolvedRun: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    state: WorkerPoolExecutionState
+): Promise<RunResult> {
+    return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentWorkers() {
+        return await executeWorkerPoolRunWithoutAttachments(resolvedRun, dependencies, state);
+    });
 }
 
 export async function executeWorkerPoolRun(

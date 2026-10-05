@@ -42,6 +42,7 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        attachmentEndpoint: null,
         retryPolicy: null,
         collectionTimeoutMilliseconds: 100,
         cwd: process.cwd(),

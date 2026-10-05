@@ -1,4 +1,5 @@
 import type {
+    RuntimeAttachments,
     ResourceAttachedTestBody,
     TestBody,
     TestScope
@@ -20,6 +21,14 @@ import {
     resourceWrapperStep,
     runtimeWrapperStep
 } from './resource-wrapper-data.ts';
+
+export type {
+    AttachmentMetadata,
+    AttachmentWriter,
+    AttachmentLimits,
+    RuntimeAttachments,
+    RuntimeAttachmentArtifact
+} from '../engine/engine.entry-point.ts';
 
 export {
     composeRuntimeContext,
@@ -133,6 +142,7 @@ export type RuntimeTestScope<
     Graph extends RuntimeGraph,
     Scope extends TestScope = TestScope
 > = Scope & {
+    readonly attachments: RuntimeAttachments;
     readonly runtimes: RuntimeScopeContext<Graph>;
 };
 
@@ -147,6 +157,7 @@ export type ResourceTestScope<
     Resources extends ResourceMap,
     Scope extends TestScope = TestScope
 > = Scope & {
+    readonly attachments: RuntimeAttachments;
     readonly resources: ResourceScopeContext<Resources>;
 };
 

@@ -1,5 +1,5 @@
+import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { workIdentityKey, type AttemptId } from '../engine/identity.ts';
-import type { TestPlanCase } from '../engine/test-plan.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
@@ -24,8 +24,14 @@ import {
     serializeProjectedHandle,
     type ResourceProjectionRecords
 } from './resource-lifecycle-projection.ts';
-import { currentLifecycleAttempt, type ManagedRunnerError } from './resource-lifecycle-state.ts';
+import {
+    currentLifecycleAttempt,
+    type ManagedLifecycleState,
+    type ManagedRunnerError
+} from './resource-lifecycle-state.ts';
 import type { ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
+
+type TestPlanCase = Parameters<ManagedLifecycleState['completeCase']>[0];
 
 export type ManagedResourceLifecycleTiming = ResourceLifecycleTiming | null;
 
@@ -227,6 +233,7 @@ export function createManagedResourceAcquirer(
         const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
         const acquireHandle = async function acquireResourceHandle(): Promise<unknown> {
             return await acquireResourceWithStartupBudget(resource, {
+                attachments: resourceAttachments(resource.name),
                 dependencies: dependencyContext,
                 scenarios: acquisitionResourceScenarioBindings(resource),
                 signal

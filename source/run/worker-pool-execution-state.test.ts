@@ -4,6 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type CaseId,
     type RunResult,
+    type ReporterEvent as BufferedReporterEvent,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -23,9 +24,6 @@ import {
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
-type BufferedReporterEvent = ReturnType<
-    WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
-> extends IterableIterator<infer Event> ? Event : never;
 type ActiveAttempt = ReturnType<WorkerPoolTaskRun['activeAttempt']['read']>;
 type BatchEnvelopeId = ReturnType<WorkerPoolTaskRun['envelopeId']['read']>;
 
@@ -209,6 +207,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
@@ -365,6 +364,7 @@ export function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRu
     const taskResults: RunResult[] = [];
     const placementTrace = createWorkerPoolPlacementTraceRecorder();
     return {
+        attachments: null,
         activeTasks: new Set(),
         collectedPlan,
         collectionRunnerErrors: [],
@@ -446,6 +446,7 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
 
     return {
         ...runtime,
+        attachments: null,
         activeTasks: new Set([ taskRun ]),
         poolResourceUsageTracker: {
             finish: testOnlyDependency,
@@ -531,5 +532,4 @@ export const testNode = createOverkillSuite({
 });
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
 await runTestFileIfMain(import.meta, testNode);

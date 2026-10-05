@@ -13,7 +13,7 @@ export type RunRecordDependencies = {
 
 export function initialRecord(
     cwd: string,
-    input: ResolvedRunInput,
+    input: Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>,
     dependencies: RunRecordDependencies
 ): RunRecord {
     if (input.request.seed.value === null) {

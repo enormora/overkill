@@ -1,3 +1,4 @@
+import { resourceAttachments } from '../attachments/attachment-context.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
@@ -68,7 +69,10 @@ export function deserializeProjectedHandle(
         );
     }
 
-    return resource.deserializeHandle(payload, { dependencies: dependencyContext });
+    return resource.deserializeHandle(payload, {
+        attachments: resourceAttachments(resource.name),
+        dependencies: dependencyContext
+    });
 }
 
 export function serializeProjectedHandle(
@@ -80,7 +84,7 @@ export function serializeProjectedHandle(
         return null;
     }
 
-    const context = { dependencies: dependencyContext };
+    const context = { attachments: resourceAttachments(resource.name), dependencies: dependencyContext };
     const payload = resource.serializeHandle(ownerHandle, context);
 
     if (!isProjectionPayload(payload)) {

@@ -37,6 +37,7 @@ type RecordedPoolDependencies = {
 
 function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): WorkerPoolCommand {
     return {
+        attachmentEndpoint: null,
         retryPolicy: null,
         collectionTimeoutMilliseconds: 100,
         cwd: process.cwd(),

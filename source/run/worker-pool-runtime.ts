@@ -5,6 +5,7 @@ import type {
     RunnerError
 } from './run-engine-primitives.ts';
 import type {
+    RunRuntimeAttachments,
     CollectedRunPlan,
     PlacementPlan,
     RunExecutionFacts,
@@ -105,6 +106,7 @@ export type WorkerPoolTaskRun = {
 };
 
 export type WorkerPoolRunRuntime = {
+    readonly attachments: RunRuntimeAttachments;
     readonly activeTasks: WorkerPoolTaskRuns;
     readonly collectedPlan: CollectedRunPlan;
     readonly collectionRunnerErrors: readonly RunnerError[];
@@ -129,6 +131,7 @@ export type WorkerPoolRunRuntime = {
 };
 
 export type WorkerPoolRuntimeInput = {
+    readonly attachments: RunRuntimeAttachments;
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly createdPool: CreatedWorkerPool | null;
     readonly dependencies: RunOrchestratorDependencies;
@@ -497,6 +500,7 @@ export async function createWorkerPoolRuntime(
     });
 
     return {
+        attachments: input.attachments,
         activeTasks: new Set(),
         collectedPlan: workerPoolCollectedPlan(resolvedRun),
         collectionRunnerErrors,

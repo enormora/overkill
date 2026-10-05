@@ -1,4 +1,4 @@
-import type { TestScope } from '../engine/engine.entry-point.ts';
+import type { RuntimeAttachments, TestScope } from '../engine/engine.entry-point.ts';
 import type {
     RuntimeGraph,
     RuntimeGraphContext,
@@ -10,6 +10,7 @@ type RuntimeTestScope<
     Graph extends RuntimeGraph,
     Scope extends TestScope = TestScope
 > = Scope & {
+    readonly attachments: RuntimeAttachments;
     readonly runtimes: RuntimeScopeContext<Graph>;
 };
 

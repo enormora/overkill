@@ -1,3 +1,4 @@
+import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     createResourcesModule,
@@ -277,19 +278,30 @@ function assertDatabaseResourceDescriptor(scope: TestScope): void {
 }
 
 async function assertDatabaseResourceCallbacks(scope: TestScope): Promise<void> {
-    const database = await databaseResource.acquire({ dependencies: {}, scenarios: {}, signal: disposalSignal });
+    const database = await databaseResource.acquire({
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: disposalSignal
+    });
 
     scope.assert.deepEqual(database.query('select 1'), [ 'select 1' ]);
     if (databaseResource.dispose === null) {
         throw new Error('Expected resource disposal.');
     }
 
-    await databaseResource.dispose(database, { dependencies: {}, scenarios: {}, signal: disposalSignal });
+    await databaseResource.dispose(database, {
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: disposalSignal
+    });
 }
 
 async function assertServerResourceCallbacks(scope: TestScope): Promise<void> {
     const database = createDatabase();
     const server = await serverResource.acquire({
+        attachments: resourceAttachments('test'),
         dependencies: { database },
         scenarios: {},
         signal: disposalSignal
@@ -301,6 +313,7 @@ async function assertServerResourceCallbacks(scope: TestScope): Promise<void> {
     }
 
     await serverResource.dispose(server, {
+        attachments: resourceAttachments('test'),
         dependencies: { database },
         scenarios: {},
         signal: disposalSignal
@@ -438,10 +451,20 @@ async function assertTemporaryDirectoryLifecycle(
         throw new Error('Expected temporary directory disposal.');
     }
 
-    const handle = await resource.acquire({ dependencies: {}, scenarios: {}, signal: disposalSignal });
+    const handle = await resource.acquire({
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: disposalSignal
+    });
 
     assertTemporaryDirectoryHandle(scope, handle);
-    await resource.dispose(handle, { dependencies: {}, scenarios: {}, signal: disposalSignal });
+    await resource.dispose(handle, {
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: disposalSignal
+    });
     scope.assert.deepEqual(recordedTemporaryDirectoryDependencies.createdPathPrefixes, [
         '/virtual/overkill-temporary-directory-'
     ]);
@@ -458,7 +481,12 @@ async function assertTemporaryDirectoryAcquireAbort(
 
     controller.abort();
     await scope.assert.rejects(async function acquireAfterAbort() {
-        await resource.acquire({ dependencies: {}, scenarios: {}, signal: controller.signal });
+        await resource.acquire({
+            attachments: resourceAttachments('test'),
+            dependencies: {},
+            scenarios: {},
+            signal: controller.signal
+        });
     }, {
         name: 'AbortError'
     });

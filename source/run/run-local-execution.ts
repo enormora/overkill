@@ -1,4 +1,5 @@
 import type { TestPlan } from '../engine/test-plan.ts';
+import { reporterWithAttachments } from './attachment-reporter.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     createRunResourceRuntimePolicy,
@@ -72,7 +73,7 @@ export async function executeLocalResolvedRun(
         async finalizeResult(result) {
             return await options.finalizeResult(resolvedRun, result);
         },
-        reporters: resolvedRun.reporters,
+        reporters: resolvedRun.reporters.map(reporterWithAttachments),
         retryPolicy: resolvedRun.facts.execution.retries,
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),

@@ -1,3 +1,5 @@
+import { resourceAttachments } from '../attachments/attachment-context.ts';
+import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -7,6 +9,7 @@ import { defineResource, type AnyResourceDefinition, type ExecutionRequirement }
 import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
 
 type ResourceCreationContext = {
+    readonly attachments: RuntimeAttachments;
     readonly dependencies: Readonly<Record<string, never>>;
     readonly scenarios: Readonly<Record<string, string>>;
     readonly signal: AbortSignal;
@@ -41,7 +44,7 @@ function resource(
 }
 
 function creationContext(signal: AbortSignal): ResourceCreationContext {
-    return { dependencies: {}, scenarios: {}, signal };
+    return { attachments: resourceAttachments('test'), dependencies: {}, scenarios: {}, signal };
 }
 
 async function neverResolvingResource(context: ResourceCreationContext): Promise<never> {
