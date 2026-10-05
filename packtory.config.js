@@ -204,9 +204,15 @@ export const config = {
                     js: 'packages/run/config.entry-point.js',
                     declarationFile: 'packages/run/config.entry-point.d.ts'
                 },
+                coverageSession: {
+                    js: 'run/coverage-session.js'
+                },
                 filters: {
                     js: 'packages/run/filters.entry-point.js',
                     declarationFile: 'packages/run/filters.entry-point.d.ts'
+                },
+                localCoverage: {
+                    js: 'run/run-local-coverage.js'
                 },
                 main: {
                     js: 'packages/run/run.entry-point.js',
@@ -215,6 +221,9 @@ export const config = {
                 nodeCommandLineRunner: {
                     js: 'run/node-command-line-runner.js',
                     declarationFile: 'run/node-command-line-runner.d.ts'
+                },
+                recordedCoverage: {
+                    js: 'run/recorded-coverage-run.js'
                 },
                 resourceLifecycle: {
                     js: 'packages/run/resource-lifecycle.entry-point.js',
@@ -244,7 +253,7 @@ export const config = {
                         root: 'resourceLifecycle'
                     }
                 ],
-                privateRoots: [ 'nodeCommandLineRunner' ]
+                privateRoots: [ 'coverageSession', 'localCoverage', 'nodeCommandLineRunner', 'recordedCoverage' ]
             },
             additionalFiles: [
                 {
