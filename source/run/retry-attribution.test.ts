@@ -87,6 +87,54 @@ export const testNode = createSuite({
     ...metadata,
     title: 'source/run/retry-attribution.test.ts',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'runtime violations between attempts stay unattributed to completed attempts',
+            body(scope: TestScope) {
+                const state = createSupervisedRunState('all');
+                startAttempt(state, work, 0);
+                finishAttempt(state, 0, 'fail');
+                state.recordRuntimePolicyViolation('network', 'late violation');
+                const error = state.runnerErrors()[0];
+                scope.require.defined(error);
+                scope.assert.deepEqual(
+                    [ error.attributedTo, error.attributedToAttempt, error.attributedToWork ],
+                    [ null, null, null ]
+                );
+                scope.assert.equal(state.perTestResults()[0]?.attempts.length, 1);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
+            title: 'pruning a completed work retains captures from an unfinished concurrent work',
+            body(scope: TestScope) {
+                const state = createSupervisedRunState('first-failure-and-final');
+                const other = { ...work, case: { ...work.case, title: 'unfinished' } };
+                startAttempt(state, work, 0);
+                startAttempt(state, other, 0);
+                state.recordCapturedOutput('stdout', Buffer.from('concurrent'), 0);
+                finishAttempt(state, 0, 'pass');
+                scope.assert.equal(state.caseArtifacts(other, { index: 0 }).length, 1);
+                scope.assert.equal(state.caseArtifacts(work, { index: 0 }).length, 1);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
+            title: 'captures without a completed result retain attempt attribution',
+            body(scope: TestScope) {
+                const state = createSupervisedRunState('first-failure-and-final');
+                startAttempt(state, work, 0);
+                state.recordCapturedOutput('stdout', Buffer.from('unfinished'), 0);
+                scope.assert.equal(state.artifacts().length, 1);
+                const attempt = state.artifacts()[0]?.id.attempt;
+                scope.require.defined(attempt);
+                scope.assert.deepEqual(attempt, { index: 0 });
+                scope.assert.equal(state.perTestResults().length, 0);
+                return scope.assert.collect();
+            }
+        }),
         ...policies.map(function retentionPolicy(policy) {
             return createTestCase({
                 ...metadata,

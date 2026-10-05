@@ -99,8 +99,6 @@ export type SupervisedRunState = {
     readonly testExecutionWallTimeMicroseconds: () => number;
 };
 
-const runArtifactScopeKey = 'run';
-
 function terminalResult(
     testCase: ActiveSupervisedCase,
     verdict: PerTestResult['verdict'],
@@ -123,24 +121,18 @@ function terminalResult(
     };
 }
 
-function artifactScopeKey(artifact: RunArtifact): string {
-    if (artifact.id.scope.kind === 'run') {
-        return runArtifactScopeKey;
-    }
-
-    return workIdentityKey({
-        case: artifact.id.scope.case,
-        runtimes: artifact.id.runtimes,
-        workload: artifact.id.workload
-    });
-}
-
 function caseArtifact(work: WorkId, attempt: AttemptId, artifacts: readonly RunArtifact[]): readonly RunArtifact[] {
     const key = workIdentityKey(work);
 
     return artifacts.filter(function belongsToCase(artifact) {
-        return artifact.id.scope.kind === 'case' && artifactScopeKey(artifact) === key &&
-            artifact.id.attempt?.index === attempt.index;
+        if (artifact.id.scope.kind !== 'case' || artifact.id.attempt?.index !== attempt.index) {
+            return false;
+        }
+        return workIdentityKey({
+            case: artifact.id.scope.case,
+            runtimes: artifact.id.runtimes,
+            workload: artifact.id.workload
+        }) === key;
     });
 }
 

@@ -1,4 +1,10 @@
-import { createSuite, createTestCase, type TestScope, type RunResult } from '../packages/engine/engine.entry-point.ts';
+import {
+    createSuite,
+    createTestCase,
+    type TestScope,
+    type ThrowingTestScope,
+    type RunResult
+} from '../packages/engine/engine.entry-point.ts';
 import { defineResource, withResources, type ResourceDefinition } from '../packages/test/resources.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createResourceLifecycleRuntimePolicy } from './resource-lifecycle.ts';
@@ -88,6 +94,111 @@ export const testNode = createSuite({
     ...metadata,
     title: 'source/run/retry-resource-lifecycle.test.ts',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'throwing bodies retry within resource runtime policies with fresh attempt attribution',
+            async body(scope: TestScope) {
+                const engine = createTestEngine();
+                let runs = 0;
+                const plan = engine.createTestPlan(engine.createRoot({
+                    annotations: {},
+                    controls: {},
+                    title: 'throwing retry',
+                    children: [ engine.createThrowingTestCase({
+                        ...metadata,
+                        title: 'case',
+                        body(attemptScope) {
+                            runs += 1;
+                            attemptScope.assert.equal(runs, 2);
+                        }
+                    }) ]
+                }));
+                const result = await engine.execute(plan, {
+                    execution: { mode: 'serial-in-process' },
+                    reporters: [],
+                    retryPolicy: { maxAttempts: 3 },
+                    runFacts: {},
+                    startedAt: '1970-01-01T00:00:00.000Z',
+                    runtimePolicy: createResourceLifecycleRuntimePolicy(plan.cases, null)
+                });
+                scope.assert.equal(runs, 2);
+                scope.assert.equal(result.summary.passed, 1);
+                scope.assert.equal(result.perTest[0]?.attempts.length, 2);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
+            title: 'caught throwing requirements still fail and retry instead of becoming passes',
+            async body(scope: TestScope) {
+                const engine = createTestEngine();
+                let runs = 0;
+                const plan = engine.createTestPlan(engine.createRoot({
+                    annotations: {},
+                    controls: {},
+                    title: 'caught requirement',
+                    children: [ engine.createThrowingTestCase({
+                        ...metadata,
+                        title: 'case',
+                        body(attemptScope: ThrowingTestScope) {
+                            runs += 1;
+                            const readiness = runs === 2 ? 'ready' : 0;
+                            try {
+                                attemptScope.require.string(readiness);
+                            } catch {
+                                attemptScope.assert.true(true);
+                            }
+                        }
+                    }) ]
+                }));
+                const result = await engine.execute(plan, {
+                    execution: { mode: 'serial-in-process' },
+                    reporters: [],
+                    retryPolicy: { maxAttempts: 3 },
+                    runFacts: {},
+                    startedAt: '1970-01-01T00:00:00.000Z'
+                });
+                scope.assert.equal(runs, 2);
+                scope.assert.equal(result.summary.passed, 1);
+                scope.assert.equal(result.perTest[0]?.attempts[0].verdict, 'fail');
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
+            title: 'shared disposal failures are terminal after a recovered retry',
+            async body(scope: TestScope) {
+                const engine = createTestEngine();
+                let runs = 0;
+                const { shared } = retryResources(function failSharedDisposal(event) {
+                    if (event === 'shared disposed') {
+                        throw new Error('shared disposal failed');
+                    }
+                });
+                const body = withResources({ shared }, function (attemptScope) {
+                    runs += 1;
+                    attemptScope.assert.equal(runs, 2);
+                    return attemptScope.assert.collect();
+                });
+                const plan = engine.createTestPlan(engine.createRoot({
+                    annotations: {},
+                    controls: {},
+                    title: 'shared disposal',
+                    children: [ engine.createTestCase({ ...metadata, title: 'case', body }) ]
+                }));
+                const result = await engine.execute(plan, {
+                    execution: { mode: 'serial-in-process' },
+                    reporters: [],
+                    retryPolicy: { maxAttempts: 3 },
+                    runFacts: {},
+                    startedAt: '1970-01-01T00:00:00.000Z',
+                    runtimePolicy: createResourceLifecycleRuntimePolicy(plan.cases, null)
+                });
+                scope.assert.deepEqual([ runs, result.summary.runtimePolicy, result.runnerErrors.length ], [ 2, 1, 1 ]);
+                scope.assert.equal(result.perTest[0]?.attempts.at(-1)?.outcome?.kind, 'pass');
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'per-case disposal failures prevent retries and preserve the body outcome',
