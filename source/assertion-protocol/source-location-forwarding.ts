@@ -4,10 +4,29 @@ import type {
     ResolvableSourceLocation
 } from './assertion-node-shape.ts';
 
-const assertionSourceLocationStorage = new AsyncLocalStorage<readonly ResolvableSourceLocation[]>();
+const assertionSourceLocationStorageKey = Symbol.for('@overkill-dev/assertion-source-location-storage');
+
+function isAssertionSourceLocationStorage(
+    value: unknown
+): value is AsyncLocalStorage<readonly ResolvableSourceLocation[]> {
+    return value instanceof AsyncLocalStorage;
+}
+
+function assertionSourceLocationStorage(): AsyncLocalStorage<readonly ResolvableSourceLocation[]> {
+    const existing: unknown = Reflect.get(globalThis, assertionSourceLocationStorageKey);
+
+    if (isAssertionSourceLocationStorage(existing)) {
+        return existing;
+    }
+
+    const storage = new AsyncLocalStorage<readonly ResolvableSourceLocation[]>();
+    Reflect.set(globalThis, assertionSourceLocationStorageKey, storage);
+
+    return storage;
+}
 
 function readActiveSourceLocations(): readonly ResolvableSourceLocation[] {
-    return assertionSourceLocationStorage.getStore() ?? [];
+    return assertionSourceLocationStorage().getStore() ?? [];
 }
 
 function assertNonEmptySourceLocations(
@@ -37,7 +56,7 @@ export function forwardAssertionSourceLocations<Result>(
 ): Result {
     assertNonEmptySourceLocations(sourceLocations);
 
-    return assertionSourceLocationStorage.run([
+    return assertionSourceLocationStorage().run([
         ...readActiveSourceLocations(),
         ...sourceLocations
     ], body);

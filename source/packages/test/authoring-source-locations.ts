@@ -19,8 +19,53 @@ type ParameterizedTestBody<Data> = (
     data: Data
 ) => ReturnType<TestBody>;
 
-const activeMacroDefinitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>[] = [];
+type MacroDefinitionContext = {
+    readonly locations: () => readonly ResolvableSourceLocation[];
+    readonly run: <Result>(
+        locations: NonEmptyReadonlyArray<ResolvableSourceLocation>,
+        body: () => Result
+    ) => Result;
+};
+
+const macroDefinitionContextKey = Symbol.for('@overkill-dev/macro-definition-context');
 const definitionLocationCaptureStackKey = Symbol.for('@overkill-dev/definition-location-capture-stack');
+
+function isMacroDefinitionContext(value: unknown): value is MacroDefinitionContext {
+    return typeof value === 'object' && value !== null &&
+        Object.hasOwn(value, 'locations') && typeof Reflect.get(value, 'locations') === 'function' &&
+        Object.hasOwn(value, 'run') && typeof Reflect.get(value, 'run') === 'function';
+}
+
+function createMacroDefinitionContext(): MacroDefinitionContext {
+    const locations: NonEmptyReadonlyArray<ResolvableSourceLocation>[] = [];
+
+    return {
+        locations() {
+            return locations.at(-1) ?? [];
+        },
+        run(sourceLocations, body) {
+            locations.push(sourceLocations);
+            try {
+                return body();
+            } finally {
+                locations.pop();
+            }
+        }
+    };
+}
+
+function macroDefinitionContext(): MacroDefinitionContext {
+    const existing: unknown = Reflect.get(globalThis, macroDefinitionContextKey);
+
+    if (isMacroDefinitionContext(existing)) {
+        return existing;
+    }
+
+    const context = createMacroDefinitionContext();
+    Reflect.set(globalThis, macroDefinitionContextKey, context);
+
+    return context;
+}
 
 function isDefinitionLocationCapture(value: unknown): value is DefinitionLocationCapture {
     return value === 'disabled' || value === 'enabled';
@@ -45,7 +90,7 @@ function captureDefinitionLocation(): ResolvableSourceLocation {
 }
 
 export function activeMacroSourceLocations(): readonly ResolvableSourceLocation[] {
-    return activeMacroDefinitionLocations.at(-1) ?? [];
+    return macroDefinitionContext().locations();
 }
 
 function sourceLocationsWithTrailingLocation<Location>(
@@ -115,14 +160,7 @@ export function throwingBodyForActiveMacro(body: ThrowingTestBody): ThrowingTest
 }
 
 export function runMacroWithDefinitionLocations<Result>(body: () => Result): Result {
-    const definitionLocations = definitionLocationsForAuthoringCall();
-
-    activeMacroDefinitionLocations.push(definitionLocations);
-    try {
-        return body();
-    } finally {
-        activeMacroDefinitionLocations.pop();
-    }
+    return macroDefinitionContext().run(definitionLocationsForAuthoringCall(), body);
 }
 
 export function defineParameterizedTestBodyFactory<Data>(

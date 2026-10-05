@@ -23,6 +23,7 @@ const commandLineLazyModuleBoundaries = [
     '^source/.*/coverage'
 ];
 const testRootAuthoringFiles = [
+    '^source/authoring/test-node-authoring\\.ts$',
     '^source/packages/test/authoring-input\\.ts$',
     '^source/packages/test/authoring-source-locations\\.ts$',
     '^source/packages/test/authoring-test-data\\.ts$',
