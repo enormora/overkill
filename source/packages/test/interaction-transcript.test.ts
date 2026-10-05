@@ -8,7 +8,7 @@ import {
     type TestScope,
     type TestScope as OverkillScope
 } from '../engine/engine.entry-point.ts';
-import { runWithTranscriptScope } from '../../transcript/transcript-store.ts';
+import { runWithTranscriptScope } from '../run/transcript-store.entry-point.ts';
 import {
     createTranscript,
     doubleUsage,

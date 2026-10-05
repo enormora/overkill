@@ -15,7 +15,7 @@ import {
     isTranscriptView,
     type TranscriptEntry as SharedTranscriptEntry,
     type TranscriptView as SharedTranscriptView
-} from '../../transcript/transcript-store.ts';
+} from '../run/transcript-store.entry-point.ts';
 
 const symbolWithDisposal: SymbolConstructorWithDisposal = Symbol;
 const disposeSymbol: typeof Symbol.dispose = symbolWithDisposal.dispose;

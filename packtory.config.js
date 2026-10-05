@@ -219,6 +219,10 @@ export const config = {
                 resourceLifecycle: {
                     js: 'packages/run/resource-lifecycle.entry-point.js',
                     declarationFile: 'packages/run/resource-lifecycle.entry-point.d.ts'
+                },
+                transcriptStore: {
+                    js: 'packages/run/transcript-store.entry-point.js',
+                    declarationFile: 'packages/run/transcript-store.entry-point.d.ts'
                 }
             },
             packageInterface: {
@@ -242,6 +246,10 @@ export const config = {
                     {
                         export: './resource-lifecycle',
                         root: 'resourceLifecycle'
+                    },
+                    {
+                        export: './transcript-store',
+                        root: 'transcriptStore'
                     }
                 ],
                 privateRoots: [ 'nodeCommandLineRunner' ]
