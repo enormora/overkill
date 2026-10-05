@@ -149,6 +149,7 @@ export const config = {
             name: 'run',
             description: 'Overkill run resolution and orchestration.',
             roots: {
+                attachmentRun: { js: 'run/attachment-run.js' },
                 commandLine: moduleRoot('packages/run/command-line.entry-point'),
                 config: moduleRoot('packages/run/config.entry-point'),
                 coverageSession: { js: 'run/coverage-session.js' },
@@ -158,7 +159,8 @@ export const config = {
                 nodeCommandLineRunner: moduleRoot('run/node-command-line-runner'),
                 recordedCoverage: { js: 'run/recorded-coverage-run.js' },
                 resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
-                transcriptStore: moduleRoot('packages/run/transcript-store.entry-point')
+                transcriptStore: moduleRoot('packages/run/transcript-store.entry-point'),
+                workerPoolWorker: { js: 'run/worker-pool-worker.js' }
             },
             packageInterface: {
                 modules: packageModules({
@@ -169,7 +171,14 @@ export const config = {
                     './resource-lifecycle': 'resourceLifecycle',
                     './transcript-store': 'transcriptStore'
                 }),
-                privateRoots: [ 'coverageSession', 'localCoverage', 'nodeCommandLineRunner', 'recordedCoverage' ]
+                privateRoots: [
+                    'attachmentRun',
+                    'coverageSession',
+                    'localCoverage',
+                    'nodeCommandLineRunner',
+                    'recordedCoverage',
+                    'workerPoolWorker'
+                ]
             }
         },
         {

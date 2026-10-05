@@ -343,6 +343,8 @@ function attachmentTaskCommand(task: WorkerPoolTask): WorkerPoolCommand | null {
     return taskHasAttachmentCommand(task) ? task.command : null;
 }
 
+export const workerPoolEntryPointUrl = import.meta.url;
+
 export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolTaskOutput> {
     const wallClock = createWorkerTimingClock();
 

@@ -33,7 +33,7 @@ import type {
 import { createReporterDelivery, createReporterEventQueue, type ReporterEventQueue } from './supervised-run-runtime.ts';
 import { createStoredRunValue, type StoredRunValue, type SupervisedRunState } from './supervised-run-state.ts';
 import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
-import { runTask as workerPoolWorkerEntryPoint } from './worker-pool-worker.ts';
+import { workerPoolEntryPointUrl } from './worker-pool-worker.ts';
 import { createRoutedPool, type WorkerPoolRoute } from './worker-pool-routing.ts';
 import {
     emptyTimingSpanMetadata,
@@ -161,14 +161,7 @@ type WorkerPoolExecutionPool = {
     readonly pool: CreatedWorkerPool;
 };
 
-function workerPoolEntryPointHref(worker: typeof workerPoolWorkerEntryPoint): string {
-    const entryPointWorkerName = worker.name;
-    const workerPoolEntryPointUrl = new URL('./worker-pool-worker.ts', import.meta.url);
-
-    return workerPoolEntryPointUrl.href + entryPointWorkerName.slice(0, 0);
-}
-
-export const workerPoolEntryPoint = workerPoolEntryPointHref(workerPoolWorkerEntryPoint);
+export const workerPoolEntryPoint = workerPoolEntryPointUrl;
 
 export function runStartTimeFromMilliseconds(milliseconds: number): string {
     const startedAt = new Date(milliseconds);
