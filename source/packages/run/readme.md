@@ -108,7 +108,7 @@ same `RunFilter` tree. Runs use seeded ordering by default. Pass
 `RunRequest.order: 'plan'` for programmatic callers that need an already
 materialized order. `RunRequest.shard` uses one-based `{ index, total }`
 values and partitions the filtered work-unit set by stable identity hash.
-Records, replay, and `--last-failed` are separate runner milestones. Direct
+General recording, replay, and `--last-failed` are separate runner milestones. Direct
 prebuilt `TestPlan` execution belongs to `@overkill-dev/engine` through
 `execute(testPlan)`.
 The command methods other than `runTests` and `listTests` are fixed first-party
@@ -118,11 +118,21 @@ implementations land.
 Coverage is explicit per run. `RunRequest.coverage` defaults to `false` in
 first-party callers, and the `@overkill-dev/test` binary maps `--coverage` to
 `true`. Coverage requests are valid only for microtest profiles and are
-recorded in `RunFacts.execution.coverage`. Microtest profiles may configure
+recorded in `RunFacts.execution.coverage`, with the resolved policy in
+`RunFacts.coveragePolicy`. Microtest profiles may configure
 coverage `outputs`, loaded or all-files `sources`, line/function/branch
 `thresholds`, and a config-file-relative `outputDir`. The default outputs are
 V8 and LCOV. An empty `outputs` array keeps raw coverage without rendering
 reports.
+
+Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
+The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
+directory. Configured output directories keep raw data under `raw/<id>`.
+Records preserve the request, decimal seed, resolved facts, execution policy,
+project-relative coverage paths, and result artifacts. The started record
+precedes coverage setup and imports; early failures may have `facts: null`.
+Completion includes reporter and cleanup errors. Required persistence failures
+fail the run. Ordinary runs and `orchestrator.resolve()` do not create records.
 
 Resolved runtime identities contain selected scenario bindings. They flow into
 `RunFacts`, duration-history keys, reporter labels, and artifact IDs so replay

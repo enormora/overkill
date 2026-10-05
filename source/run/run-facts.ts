@@ -213,6 +213,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
 
     return {
         cases: input.cases,
+        coveragePolicy: input.request.coverage && profile.testFamily === 'microtest' ? profile.coverage : null,
         durationHistory: input.durationHistory,
         environment: {
             node: {

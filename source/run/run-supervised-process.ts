@@ -14,8 +14,8 @@ import {
     createSupervisedRunCommand,
     type IsolatedRunCollectionSource
 } from './run-isolated-command.ts';
+import { finalizeSupervisedResult, type SupervisedCoverageExecution } from './run-supervised-finalization.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { finalizeResultWithDurationHistory } from './run-support.ts';
 import { collectSupervisedRun } from './supervised-run-collection.ts';
 import {
     runSupervisedCommand
@@ -29,20 +29,8 @@ import type {
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type RunTimingMeasurement = NonNullable<NonNullable<Parameters<RunOrchestrator['run']>[1]>['timing']>;
-type SupervisedCoverageSession = {
-    readonly childProcess: {
-        readonly environment: {
-            readonly NODE_DISABLE_COMPILE_CACHE: '1';
-            readonly NODE_V8_COVERAGE: string;
-        };
-        readonly writablePath: string;
-    } | null;
-    readonly dispose: () => Promise<void>;
-    readonly finalize: (result: RunResult, executionCompleted: boolean) => Promise<RunResult>;
-};
-type SupervisedExecution = {
+type SupervisedExecution = SupervisedCoverageExecution & {
     readonly command: RunCommand;
-    readonly coverageSession: SupervisedCoverageSession | null;
     readonly dependencies: RunOrchestratorDependencies;
     readonly input: ResolvedRunInput;
     readonly source: IsolatedRunCollectionSource;
@@ -134,44 +122,15 @@ export async function createSupervisedResolvedRun(
     });
 }
 
-async function startSupervisedCoverageSession(
-    command: RunCommand,
-    input: ResolvedRunInput,
-    timing: RunTimingMeasurement | null
-): Promise<SupervisedCoverageSession | null> {
-    if (!command.request.coverage) {
-        return null;
-    }
-
-    const coverage = await import('./run-coverage.ts');
-
-    return await coverage.startCoverageSession({
-        coverage: coverage.microtestCoveragePolicy(input.profile),
-        processModel: 'supervised-process',
-        projectRoot: input.projectRoot,
-        runtimeStateDir: input.config.runtimeStateDir,
-        testFiles: input.files.map(function testFilePath(file) {
-            return file.file;
-        }),
-        timing
-    });
-}
-
-async function coveredResult(session: SupervisedCoverageSession, result: RunResult): Promise<RunResult> {
-    const coverage = await import('./run-coverage.ts');
-
-    return await session.finalize(result, coverage.coverageExecutionCompleted(result));
-}
-
 async function runSupervisedExecution(execution: SupervisedExecution): Promise<RunResult> {
-    const { command, coverageSession, dependencies, input, source, timing } = execution;
+    const { command, coverageSession, dependencies, input, record, source, timing } = execution;
     const expectedDirectPlan = await createExpectedDirectEntrypointPlan(command, dependencies, input, source);
 
     return await runSupervisedCommand(
         createSupervisedRunCommand(command, input.profile, input.files, source),
         dependencies,
         async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
-            return await resolvedSupervisedExecution({
+            const run = await resolvedSupervisedExecution({
                 allowEmptySelection: true,
                 collection,
                 command,
@@ -179,20 +138,14 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
                 expectedDirectPlan,
                 input
             });
+            await record?.recordFacts(run.facts);
+
+            return run;
         },
         {
             coverage: coverageSession?.childProcess ?? null,
             async finalizeResult(resolvedRun, result) {
-                const coverageResult = coverageSession === null
-                    ? result
-                    : await coveredResult(coverageSession, result);
-
-                return await finalizeResultWithDurationHistory(
-                    dependencies,
-                    resolvedRun,
-                    coverageResult,
-                    timing
-                );
+                return await finalizeSupervisedResult(resolvedRun, result, execution);
             },
             timing
         }
@@ -201,13 +154,37 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
 
 async function runStartedSupervisedExecution(execution: StartedSupervisedExecution): Promise<RunResult> {
     const { command, dependencies, input, source, timing } = execution;
-    const coverageSession = await startSupervisedCoverageSession(command, input, timing);
-
-    try {
-        return await runSupervisedExecution({ command, coverageSession, dependencies, input, source, timing });
-    } finally {
-        await coverageSession?.dispose();
+    if (!command.request.coverage) {
+        return await runSupervisedExecution({
+            command,
+            coverageSession: null,
+            dependencies,
+            input,
+            record: null,
+            source,
+            timing
+        });
     }
+
+    const { runRecordedCoverage } = await import('./recorded-coverage-run.ts');
+
+    return await runRecordedCoverage({
+        command,
+        dependencies,
+        async execute({ record, session }) {
+            return await runSupervisedExecution({
+                command,
+                coverageSession: session,
+                dependencies,
+                input,
+                record,
+                source,
+                timing
+            });
+        },
+        input,
+        timing
+    });
 }
 
 export async function createSupervisedRunResult(

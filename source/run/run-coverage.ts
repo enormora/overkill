@@ -37,14 +37,17 @@ function coverageSetupError(error: unknown): RunCollectionError {
 }
 
 export async function startCoverageSession(request: CoverageSessionRequest): Promise<CoverageSession> {
-    const session = await loadCoverageSession(request);
+    let session: CoverageSession | null = null;
 
     try {
+        session = await loadCoverageSession(request);
         await session.start();
 
         return session;
     } catch (error: unknown) {
-        await ignoreCoverageDisposalFailure(session);
+        if (session !== null) {
+            await ignoreCoverageDisposalFailure(session);
+        }
 
         throw coverageSetupError(error);
     }

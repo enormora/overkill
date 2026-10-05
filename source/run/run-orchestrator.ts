@@ -1,12 +1,7 @@
 import os from 'node:os';
 import { createClock } from '@enormora/clock';
-import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import { createNodeResourceUsageTracker } from './resource-usage.ts';
-import {
-    createNodeDurationHistoryStore,
-    createWorkerPoolWithHostProcess
-} from './node-worker-pool-factory.ts';
+import { createNodeExecutionDependencies } from './node-run-execution.ts';
 import {
     createDirectEntrypointRunner,
     createRunOrchestrator,
@@ -18,10 +13,6 @@ import type {
     WorkerPoolHostProcessStarter
 } from './run-orchestrator-dependencies.ts';
 import type { RunOrchestrator } from './run-types.ts';
-
-function readActiveResourceTypes(): readonly string[] {
-    return process.getActiveResourcesInfo();
-}
 
 type RuntimeCapabilityPolicyInput = RunOrchestratorDependencies['runtimeCapabilityPolicy'];
 
@@ -63,21 +54,14 @@ export function createNodeRunCoordinator(input: NodeRunOrchestratorInput): NodeR
     const dependencies: RunOrchestratorDependencies = {
         availableParallelism: os.availableParallelism(),
         createSeed: createRandomRunSeed,
-        createResourceUsageTracker(options) {
-            return createNodeResourceUsageTracker(wallClock, options);
-        },
-        defaultEngine: input.defaultEngine,
-        durationHistoryStore: createNodeDurationHistoryStore(),
-        createWorkerPool(options) {
-            return createWorkerPoolWithHostProcess(options, input.readEnvironment(), input.startWorkerPoolHost);
-        },
-        discoverRunFilesWithProjectRoot: input.discoverRunFilesWithProjectRoot,
-        execute: createExecute({
-            asyncLeakDiagnostics: 'enabled',
-            readActiveResourceTypes,
+        ...createNodeExecutionDependencies({
+            readEnvironment: input.readEnvironment,
             reporterDispatcher,
+            startWorkerPoolHost: input.startWorkerPoolHost,
             wallClock
         }),
+        defaultEngine: input.defaultEngine,
+        discoverRunFilesWithProjectRoot: input.discoverRunFilesWithProjectRoot,
         loadRunEngineModule: input.loadRunEngineModule,
         loadRunTestModules: input.loadRunTestModules,
         liveOutput: {

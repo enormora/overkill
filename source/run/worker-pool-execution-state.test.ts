@@ -206,6 +206,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            coveragePolicy: null,
             durationHistory: null,
             cases: [],
             environment: {
@@ -306,7 +307,7 @@ export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
         },
         createWorkerPool: createFakeWorkerPool,
         defaultEngine: defaultRunEngine,
-        durationHistoryStore: {
+        runtimeStateStore: {
             async read() {
                 return null;
             },

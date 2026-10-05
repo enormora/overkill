@@ -71,7 +71,7 @@ export async function readRunDurationHistory(
     projectRoot: string,
     runtimeStateDir: string
 ): Promise<DurationHistoryIndex | null> {
-    return await readDurationHistoryIndex(dependencies.durationHistoryStore, projectRoot, runtimeStateDir);
+    return await readDurationHistoryIndex(dependencies.runtimeStateStore, projectRoot, runtimeStateDir);
 }
 
 export async function finalizeResultWithDurationHistory(
@@ -84,7 +84,7 @@ export async function finalizeResultWithDurationHistory(
         completedAtMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
         resolvedRun,
         result,
-        store: dependencies.durationHistoryStore,
+        store: dependencies.runtimeStateStore,
         timing
     });
 }

@@ -33,6 +33,7 @@ test-unit:
 
 test-runner-integration:
     node source/integration-tests/run/runner-coverage.test.ts
+    node source/integration-tests/run/runner-coverage-records.test.ts
     node source/integration-tests/run/runner-explicit-files.test.ts
     node source/integration-tests/run/runner-supervised-timeouts.test.ts
     node source/integration-tests/run/runner-file-sets.test.ts

@@ -1195,6 +1195,7 @@ type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecution
 
 type RunFacts = {
     readonly cases: ReadonlyArray<RunCaseFacts>;
+    readonly coveragePolicy: MicrotestCoveragePolicy | null;
     readonly durationHistory: DurationHistoryInput | null;
     readonly environment: {
         readonly node: { readonly arch: string; readonly platform: string; readonly version: string; };
@@ -1458,18 +1459,38 @@ type RunRecordLineage = {
 
 type RunRecordStatus = 'started' | 'completed' | 'interrupted';
 
+type RunRecordRequest = Omit<RunRequest, 'seed'> & {
+    readonly seed: { readonly value: string; };
+};
+
+type RunRecordCoverage = {
+    readonly directory: string;
+    readonly policy: MicrotestCoveragePolicy;
+    readonly rawDataDirectory: string;
+};
+
+type RunRecordResult = import('@overkill-dev/run').RunRecordResult;
+
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
+    readonly version: 1;
+    readonly cwd: string;
+    readonly request: RunRecordRequest;
+    readonly engine: RunExecutionFacts['engine'];
+    readonly environment: RunFacts['environment'];
+    readonly execution: RunProfileConfig['execution'];
+    readonly loader: RunFacts['loader'];
+    readonly coverage: RunRecordCoverage | null;
     readonly status: RunRecordStatus;
-    readonly seed: bigint;
-    readonly facts: RunFacts;
+    readonly seed: string;
+    readonly facts: RunFacts | null;
     readonly identities: ReadonlyArray<WorkId>;
     readonly placementTrace: PlacementTrace | null;
-    readonly runtime: ResolvedRuntime;
-    readonly versions: { engine: string; node: string; packages: ReadonlyMap<string, string>; };
+    readonly runtime: ResolvedRuntime | null;
+    readonly versions: { engine: string | null; node: string; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
-    readonly result: RunResult | null;
+    readonly result: RunRecordResult | null;
 };
 
 type MergedRunRecord = {

@@ -6,9 +6,10 @@ import {
     createTestCase,
     type CoverageArtifact,
     type CoverageRunnerError,
+    type RunResult,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
-import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+import { orchestrator, type RunRecord } from '../../packages/run/run.entry-point.ts';
 import { generateCoverageReports } from '../../run/coverage-reporting.ts';
 import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -16,6 +17,7 @@ import type {
     RunCoveragePolicy,
     RunConfig,
     RunMicrotestProcessModel,
+    RunScheduling,
     RunRequest
 } from '../../run/run-types.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
@@ -27,7 +29,8 @@ const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-lo
 function coverageConfig(
     processModel: RunMicrotestProcessModel,
     hardTimeoutMilliseconds: number,
-    coverage: RunCoveragePolicy
+    coverage: RunCoveragePolicy,
+    scheduling: RunScheduling
 ): RunConfig {
     return {
         loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -35,7 +38,7 @@ function coverageConfig(
         profiles: {
             microtest: {
                 coverage,
-                execution: { maxConcurrency: 5, processModel, scheduling: 'concurrent' },
+                execution: { maxConcurrency: 5, processModel, scheduling },
                 files: null,
                 reporters: null,
                 resourceUsage: {
@@ -124,12 +127,53 @@ async function assertCoverageFiles(scope: TestScope, artifact: CoverageArtifact)
     scope.assert.false(lcov.includes('coverage.test.ts'));
 }
 
+type CoverageExecution = { readonly processModel: RunMicrotestProcessModel; readonly scheduling: RunScheduling; };
+
+async function assertCoverageRecord(
+    scope: TestScope,
+    artifact: CoverageArtifact,
+    result: RunResult,
+    execution: CoverageExecution
+): Promise<void> {
+    const recordPath = `${path.dirname(path.resolve(artifact.payload.directory))}.json`;
+    const record = JSON.parse(await readFile(recordPath, 'utf8')) as RunRecord;
+    scope.require.defined(record.facts);
+    scope.assert.deepEqual({
+        coverage: record.request.coverage,
+        id: record.id,
+        maxConcurrency: record.facts.execution.maxConcurrency,
+        processModel: record.facts.execution.processModel,
+        scheduling: record.facts.execution.scheduling,
+        seed: record.request.seed,
+        status: record.status
+    }, {
+        coverage: true,
+        id: path.basename(recordPath, '.json'),
+        maxConcurrency: 5,
+        ...execution,
+        seed: { value: '42' },
+        status: 'completed'
+    });
+    scope.assert.deepEqual<unknown, unknown>(record.coverage?.policy, defaultCoveragePolicy);
+    scope.assert.equal(record.coverage?.directory, artifact.payload.directory);
+    scope.assert.equal(record.coverage?.rawDataDirectory, artifact.payload.rawDataDirectory);
+    scope.assert.deepEqual(
+        record.identities,
+        result.perTest.map(function workIdentity(test) {
+            return test.workId;
+        })
+    );
+    scope.assert.deepEqual<unknown, unknown>(record.result?.artifacts, result.artifacts);
+    scope.assert.equal(record.result?.status, result.status);
+}
+
 async function assertCoverageRun(
     scope: TestScope,
-    processModel: RunMicrotestProcessModel
+    processModel: RunMicrotestProcessModel,
+    scheduling: RunScheduling
 ): Promise<CoverageArtifact> {
     const result = await orchestrator.run({
-        config: coverageConfig(processModel, 10_000, defaultCoveragePolicy),
+        config: coverageConfig(processModel, 10_000, defaultCoveragePolicy, scheduling),
         cwd: process.cwd(),
         engine: { kind: 'default' },
         request: coverageRequest()
@@ -144,12 +188,38 @@ async function assertCoverageRun(
     const artifact = coverageArtifact(scope, artifacts);
 
     await assertCoverageFiles(scope, artifact);
+    await assertCoverageRecord(scope, artifact, result, { processModel, scheduling });
 
     return artifact;
 }
 
+async function assertNoCoverageState(scope: TestScope): Promise<void> {
+    const config = {
+        ...coverageConfig('in-process', 10_000, defaultCoveragePolicy, 'serial'),
+        runtimeStateDir: 'target/coverage-disabled-integration'
+    };
+    const command = { config, cwd: process.cwd(), engine: { kind: 'default' as const }, request: coverageRequest() };
+    const resolved = await orchestrator.resolve(command);
+    scope.assert.deepEqual<unknown, unknown>(resolved.facts.coveragePolicy, defaultCoveragePolicy);
+    await scope.assert.rejects(async function readResolveState() {
+        await stat(path.join(config.runtimeStateDir, 'runs'));
+    }, { code: 'ENOENT' });
+    const result = await orchestrator.run({ ...command, request: { ...command.request, coverage: false } });
+    scope.assert.equal(result.status, 'passed');
+    await scope.assert.rejects(async function readOrdinaryState() {
+        await stat(path.join(config.runtimeStateDir, 'runs'));
+    }, { code: 'ENOENT' });
+}
+
 async function latestCrashRawDirectory(): Promise<string> {
-    const runDirectories = await readdir('target/coverage-crash-integration/runs');
+    const entries = await readdir('target/coverage-crash-integration/runs', { withFileTypes: true });
+    const runDirectories = entries
+        .filter(function isDirectory(entry) {
+            return entry.isDirectory();
+        })
+        .map(function directoryName(entry) {
+            return entry.name;
+        });
     const latestRunDirectory = runDirectories
         .toSorted(function orderRunDirectories(first, second) {
             return first.localeCompare(second);
@@ -163,10 +233,20 @@ async function latestCrashRawDirectory(): Promise<string> {
     return path.join('target/coverage-crash-integration/runs', latestRunDirectory, 'coverage/raw');
 }
 
+async function assertCompletedCrashRecord(scope: TestScope, rawDirectory: string): Promise<void> {
+    const recordPath = `${path.resolve(rawDirectory, '../..')}.json`;
+    const record = JSON.parse(await readFile(recordPath, 'utf8')) as RunRecord;
+    scope.assert.equal(record.status, 'completed');
+    scope.assert.equal(record.result?.status, 'failed');
+    scope.assert.equal(record.result?.summary.crashed, 1);
+    scope.assert.deepEqual<unknown, unknown>(record.result?.artifacts, []);
+    scope.assert.equal(path.resolve(record.coverage?.rawDataDirectory ?? 'missing'), path.resolve(rawDirectory));
+}
+
 async function assertCrashedCoverageRun(scope: TestScope): Promise<void> {
     const result = await orchestrator.run({
         config: {
-            ...coverageConfig('supervised-process', 100, defaultCoveragePolicy),
+            ...coverageConfig('supervised-process', 100, defaultCoveragePolicy, 'concurrent'),
             runtimeStateDir: 'target/coverage-crash-integration'
         },
         cwd: process.cwd(),
@@ -179,7 +259,9 @@ async function assertCrashedCoverageRun(scope: TestScope): Promise<void> {
     const coverageArtifacts = result.artifacts.filter(function isCoverageArtifact(artifact) {
         return artifact.payload.kind === 'coverage';
     });
-    const rawDirectoryStat = await stat(await latestCrashRawDirectory());
+    const rawDirectory = await latestCrashRawDirectory();
+    const rawDirectoryStat = await stat(rawDirectory);
+    await assertCompletedCrashRecord(scope, rawDirectory);
 
     scope.assert.equal(result.status, 'failed');
     scope.assert.equal(result.summary.crashed, 1);
@@ -192,7 +274,7 @@ async function assertCoverageThresholdFailure(scope: TestScope): Promise<void> {
         config: coverageConfig('in-process', 10_000, {
             ...defaultCoveragePolicy,
             thresholds: { branches: null, functions: 100, lines: null }
-        }),
+        }, 'concurrent'),
         cwd: process.cwd(),
         engine: { kind: 'default' },
         request: coverageRequest()
@@ -220,6 +302,32 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            title: 'ordinary runs and coverage resolution create no run records',
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                await assertNoCoverageState(scope);
+                return scope.assert.collect();
+            }
+        }),
+        ...[ 'in-process', 'supervised-process' ].map(function serialCoverageTest(processModel) {
+            return createTestCase({
+                definitionLocations: [ { kind: 'unknown' } ],
+                title: `${processModel} serial coverage preserves scheduling in its record`,
+                annotations: {},
+                controls: {},
+                async body(scope) {
+                    await assertCoverageRun(
+                        scope,
+                        processModel === 'in-process' ? 'in-process' : 'supervised-process',
+                        'serial'
+                    );
+                    return scope.assert.collect();
+                }
+            });
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'coverage threshold misses fail the run and retain the artifact',
             annotations: {},
             controls: {},
@@ -235,7 +343,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope) {
-                await assertCoverageRun(scope, 'in-process');
+                await assertCoverageRun(scope, 'in-process', 'concurrent');
 
                 return scope.assert.collect();
             }
@@ -257,7 +365,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope) {
-                await assertCoverageRun(scope, 'supervised-process');
+                await assertCoverageRun(scope, 'supervised-process', 'concurrent');
 
                 return scope.assert.collect();
             }
@@ -268,7 +376,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope) {
-                const artifact = await assertCoverageRun(scope, 'in-process');
+                const artifact = await assertCoverageRun(scope, 'in-process', 'concurrent');
                 const coverageDirectory = path.join(path.resolve(artifact.payload.directory), 'all-files');
 
                 await generateCoverageReports({

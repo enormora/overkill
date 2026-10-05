@@ -144,6 +144,7 @@ export function createResolvedRun(
         cwd: command.cwd,
         engine: command.engine,
         facts: {
+            coveragePolicy: null,
             durationHistory: null,
             cases: caseFactsFromPlan(testPlan),
             environment: {

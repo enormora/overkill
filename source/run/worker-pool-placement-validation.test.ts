@@ -1,4 +1,4 @@
-import { createDeterministicClock } from '@enormora/clock';
+import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -207,6 +207,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            coveragePolicy: null,
             durationHistory: null,
             cases: [],
             environment: {
@@ -264,10 +265,6 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
         reporters: [],
         request: defaultRunRequest({ paths: [ integrationPath ], profile: 'integration' })
     };
-}
-
-function testOnlyDependency(): never {
-    throw new Error('Test fixture dependency is not configured.');
 }
 
 function createFakePool(): CreatedWorkerPool {
@@ -358,72 +355,16 @@ const fakeReporterDelivery: WorkerPoolRunRuntime['reporterDelivery'] = {
 };
 
 function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
+    const dependencies = fakeWorkerPoolRuntimeDependencies();
     return {
-        availableParallelism: 2,
-        createResourceUsageTracker: testOnlyDependency,
-        createSeed() {
-            return 42n;
-        },
+        ...dependencies,
         createWorkerPool: createFakePool,
-        defaultEngine: defaultRunEngine,
-        durationHistoryStore: {
-            async read() {
-                return null;
-            },
-            async write() {
-                return undefined;
-            }
-        },
-        discoverRunFilesWithProjectRoot: testOnlyDependency,
-        execute: defaultRunEngine.execute,
-        liveOutput: {
-            stderr: {
-                write() {
-                    return undefined;
-                }
-            },
-            stdout: {
-                write() {
-                    return undefined;
-                }
-            }
-        },
-        loadRunEngineModule: testOnlyDependency,
-        loadRunTestModules: testOnlyDependency,
-        node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
         reporterDispatcher: {
+            ...dependencies.reporterDispatcher,
             async createDelivery() {
                 return fakeReporterDelivery;
-            },
-            async trackRunnerErrorDelivery(work) {
-                return {
-                    deliveredRunnerErrors: [],
-                    result: await work(),
-                    undeliveredRunnerErrors: []
-                };
             }
-        },
-        runtimeCapabilityPolicy: {
-            installIpcRestriction() {
-                return function restoreIpcRestriction() {
-                    return undefined;
-                };
-            },
-            installProcessExecutionRestriction() {
-                return function restoreProcessExecutionRestriction() {
-                    return undefined;
-                };
-            },
-            readEnvironment() {
-                return {};
-            },
-            readStorage() {
-                return null;
-            }
-        },
-        startSupervisedChild: testOnlyDependency,
-        startWorkerPoolHost: testOnlyDependency,
-        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+        }
     };
 }
 
