@@ -1,4 +1,18 @@
-export function createCoverageConfigScript(processModel: 'in-process' | 'supervised-process'): string {
+import { fromObject } from 'convert-source-map';
+import { transform } from 'sucrase';
+
+export type CoverageSourceKind = 'javascript' | 'mapped' | 'unloaded';
+
+export function coverageSourceFile(sourceKind: CoverageSourceKind): string {
+    const files = { javascript: 'coverage-source.mjs', mapped: 'coverage-source.ts', unloaded: 'coverage-unloaded.ts' };
+
+    return files[sourceKind];
+}
+
+export function createCoverageConfigScript(
+    processModel: 'in-process' | 'supervised-process',
+    sourceKind: CoverageSourceKind
+): string {
     return [
         "import { defineConfig } from '@overkill-dev/test/config';",
         '',
@@ -6,7 +20,9 @@ export function createCoverageConfigScript(processModel: 'in-process' | 'supervi
         '    profiles: {',
         '        microtest: {',
         "            testFamily: 'microtest',",
-        "            coverage: { outputDir: 'coverage-smoke' },",
+        `            coverage: { outputDir: 'coverage-smoke', sources: { mode: 'all', include: ${
+            JSON.stringify([ coverageSourceFile(sourceKind), 'coverage-types.ts' ])
+        } } },`,
         '            execution: {',
         `                processModel: '${processModel}',`,
         "                scheduling: 'serial'",
@@ -26,6 +42,28 @@ export const coverageSourceScript = [
     ''
 ]
     .join('\n');
+
+export const coverageTypeScriptSource = [
+    'export function double(value: number): number {',
+    '    return value * 2;',
+    '}',
+    ''
+]
+    .join('\n');
+
+export function coverageGeneratedScript(sourceKind: CoverageSourceKind): string {
+    if (sourceKind !== 'mapped') {
+        return coverageSourceScript;
+    }
+    const compiled = transform(coverageTypeScriptSource, {
+        filePath: 'coverage-source.ts',
+        sourceMapOptions: { compiledFilename: 'coverage-source.mjs' },
+        transforms: [ 'typescript' ]
+    });
+    const map = { ...compiled.sourceMap, sourcesContent: [ coverageTypeScriptSource ] };
+
+    return `${compiled.code}\n${fromObject(map).toComment()}\n`;
+}
 
 export const coverageSmokeScript = [
     "import { test } from '@overkill-dev/test';",

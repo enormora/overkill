@@ -11,6 +11,7 @@ import type {
 } from '../engine/coverage-artifact.ts';
 import { prepareCoverageSources, type CoverageSourceScope } from './coverage-source-selection.ts';
 import type { CoverageOutput } from './run-types.ts';
+import type { CoverageNativeBatch } from './coverage-native-data.ts';
 
 export type CoverageReportRequest = {
     readonly coverageDirectory: string;
@@ -86,6 +87,41 @@ function metric(results: CoverageResults, name: 'branches' | 'functions' | 'line
     return { covered: value.covered, total: value.total };
 }
 
+async function initializeFilteredCoverage(
+    report: CoverageReport,
+    batches: readonly CoverageNativeBatch[]
+): Promise<void> {
+    if (report.hasCache()) {
+        return;
+    }
+    const batch = batches.find(function hasNativeEntries(candidate) {
+        return candidate.entries.length > 0;
+    });
+
+    if (batch === undefined) {
+        throw new Error('Coverage collection produced no native V8 data.');
+    }
+    await report.add(Array.from(batch.entries));
+}
+
+function hasExecutableCoverage(results: CoverageResults): boolean {
+    return ([ 'branches', 'functions', 'lines' ] as const).some(function hasExecutableMetric(name) {
+        return results.summary[name].total > 0;
+    });
+}
+
+async function generateExecutableCoverageReport(report: CoverageReport): Promise<CoverageResults> {
+    const results = await report.generate();
+
+    if (results === undefined) {
+        throw new Error('Coverage backend produced no result.');
+    }
+    if (!hasExecutableCoverage(results)) {
+        throw new Error('Coverage source selection contains no executable sources.');
+    }
+    return results;
+}
+
 export async function generateCoverageReports(
     request: CoverageReportRequest
 ): Promise<CoverageReportResult> {
@@ -95,6 +131,7 @@ export async function generateCoverageReports(
         ...sources.all === null ? {} : { all: sources.all },
         baseDir: request.projectRoot,
         clean: false,
+        cleanCache: true,
         entryFilter: sources.entryIncluded,
         logging: 'off',
         onEntry: sources.onEntry,
@@ -109,11 +146,8 @@ export async function generateCoverageReports(
     });
 
     await report.addFromDir(request.rawDataDirectory);
-    const results = await report.generate();
-
-    if (results === undefined) {
-        throw new Error('Coverage backend produced no result.');
-    }
+    await initializeFilteredCoverage(report, sources.batches);
+    const results = await generateExecutableCoverageReport(report);
 
     return {
         reports: configuredReports.map(function reportFile(configuredReport) {

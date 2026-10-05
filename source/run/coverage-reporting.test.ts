@@ -155,7 +155,7 @@ async function assertEmptyReportRejected(scope: OverkillScope, temporaryRoot: st
                 mode: 'loaded'
             }
         });
-    }, { message: 'Coverage backend produced no result.' });
+    }, { message: 'Coverage source selection contains no executable sources.' });
 }
 
 export const testNode = createOverkillSuite({
@@ -218,7 +218,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'generateCoverageReports() rejects empty backend results',
+            title: 'generateCoverageReports() rejects scopes without executable sources',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {

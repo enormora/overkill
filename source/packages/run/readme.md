@@ -139,6 +139,11 @@ maps or references fail coverage; scripts without declarations use JavaScript
 coverage. Known test sources are excluded automatically. Mixed test bundles
 use `coverage.sources.exclude` to exclude their test originals.
 
+All-files reporting emits 0% when selected runtime sources were never loaded.
+A scope containing no executable sources fails, including scopes matching only
+types or no files. Native data is retained on reporting failures. Replay and
+automatic coverage cleanup await the replay and record-retention workflows.
+
 Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
 The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
 directory. Configured output directories keep raw data under `raw/<id>`.
