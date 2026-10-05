@@ -83,6 +83,16 @@ The reporting integration must handle two jobs that V8 does not:
    V8, LCOV, JSON, HTML, and text outputs and preserves source-map accuracy.
    The runner evaluates configured thresholds from the resulting summary.
 
+Source include/exclude rules apply to original files when source maps are
+present. A generated script does not need to match the original-source patterns.
+Originals still follow project containment and dependency exclusions. Known
+test modules and the single original of a compiled test module are excluded;
+mixed test bundles use `coverage.sources.exclude` for their test originals.
+
+Scripts without declared source maps use ordinary JavaScript coverage. A broken
+declared map or reference fails coverage rather than falling back to generated
+locations. Native raw data remains available in the run record's coverage directory.
+
 The integration aggregates raw coverage from the complete run process tree.
 It supports every valid microtest process model. Today those models are
 in-process and supervised-process, with serial or concurrent scheduling.
@@ -144,6 +154,11 @@ Coverage policy fields:
   branches, each from 0 through 100. Missing thresholds do not fail a run.
 - `coverage.outputDir`: config-file-relative override for
   `.overkill/runs/<run-id>/coverage/`
+
+All-files reporting emits 0% for selected runtime files even when none were
+loaded. A source scope containing no executable files fails with a coverage
+diagnostic, including scopes matching only types or no files. Missing or corrupt
+native V8 data also fails rather than producing a successful report.
 
 Omitting `coverage` uses the built-in coverage policy defaults. Presence of
 the field never enables collection. The same profile supports ordinary and
@@ -269,6 +284,10 @@ the result:
   extra weight because the path is user-supplied
 
 ### Replay
+
+Coverage replay and garbage collection depend on the replay and run-record
+retention workflows. Their implementation remains deferred; current coverage
+runs persist the paths and raw data needed by those workflows.
 
 The path used for a run is recorded in the run record alongside the
 V8 output. `overkill replay` reads from that recorded path, not the

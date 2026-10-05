@@ -61,7 +61,41 @@ export function createEngine(): Engine {
     return createEngineWithOwner(createEngineDependencies(), createTestNodeOwner());
 }
 
-const defaultEngine = createEngineWithOwner(createEngineDependencies(), defaultTestNodeOwner());
+const defaultEngineKey = Symbol.for('@overkill-dev/engine/defaultEngine');
+const engineMethods: readonly (keyof Engine)[] = [
+    'createRoot',
+    'createSuite',
+    'createSkippedTestCase',
+    'createTable',
+    'createTestCase',
+    'createThrowingTestCase',
+    'createTestPlan',
+    'createTestPlanFromTestFiles',
+    'execute',
+    'formatCaseId',
+    'ownsTestNode'
+];
+
+function isEngine(value: unknown): value is Engine {
+    return typeof value === 'object' && value !== null && engineMethods.every(function (name) {
+        return typeof Reflect.get(value, name) === 'function';
+    });
+}
+
+function sharedDefaultEngine(): Engine {
+    const existing: unknown = Reflect.get(globalThis, defaultEngineKey);
+
+    if (isEngine(existing)) {
+        return existing;
+    }
+
+    const engine = createEngineWithOwner(createEngineDependencies(), defaultTestNodeOwner());
+    Reflect.set(globalThis, defaultEngineKey, engine);
+
+    return engine;
+}
+
+const defaultEngine = sharedDefaultEngine();
 
 export function createRoot(options: RootOptions): ReturnType<Engine['createRoot']> {
     return defaultEngine.createRoot(options);

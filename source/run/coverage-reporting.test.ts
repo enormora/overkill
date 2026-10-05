@@ -9,6 +9,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { generateCoverageReports } from './coverage-reporting.ts';
+import { testNode as sourcesTestNode } from './coverage-sources.test.ts';
 
 const sourcePath = 'source/integration-tests/run/fixtures/coverage-source.ts';
 const excludedSourcePath = 'source/integration-tests/run/fixtures/coverage-types.ts';
@@ -154,7 +155,7 @@ async function assertEmptyReportRejected(scope: OverkillScope, temporaryRoot: st
                 mode: 'loaded'
             }
         });
-    }, { message: 'Coverage backend produced no result.' });
+    }, { message: 'Coverage source selection contains no executable sources.' });
 }
 
 export const testNode = createOverkillSuite({
@@ -163,6 +164,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        sourcesTestNode,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'generateCoverageReports() emits every configured report format from raw process data',
@@ -216,7 +218,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'generateCoverageReports() rejects empty backend results',
+            title: 'generateCoverageReports() rejects scopes without executable sources',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {

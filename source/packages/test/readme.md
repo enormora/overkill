@@ -107,6 +107,9 @@ Standard subpaths:
   for the standalone HTTP launcher.
 - `@overkill-dev/test/bench` and `@overkill-dev/test/baselines` are reserved.
   They currently export only `unavailable()`.
+  The standalone [`@overkill-dev/bench`](../bench/readme.md) package exposes
+  ordinary node-authoring helpers; standard distribution integration follows
+  separately.
 
 Implemented root authoring forms:
 

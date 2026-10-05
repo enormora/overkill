@@ -7,7 +7,7 @@ source/
 |-- engine/                  # current engine-owned runtime, contracts, core execution code
 |-- integration-tests/       # integration tests outside the unit-test suite
 |-- reporters/               # current concrete reporter implementations
-|-- authoring/               # future shared test-authoring code
+|-- authoring/               # shared ordinary test-node constructors
 |-- runtimes/                # future shared resource/runtime code
 |-- feature-a/               # generic example of a reusable feature folder
 `-- packages/

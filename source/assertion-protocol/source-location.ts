@@ -13,6 +13,7 @@ export const unknownSourceLocation: SourceLocation = {
 const stackFramePattern = /^\s*at (?:.+? \()?(?<file>.+):(?<line>\d+):(?<column>\d+)\)?$/u;
 
 const internalModulePatterns = [
+    /\/authoring\/test-node-authoring\.[cm]?[jt]s$/u,
     /\/assertion-protocol\/source-location\.[cm]?[jt]s$/u,
     /\/assertion-protocol\/source-location-forwarding\.[cm]?[jt]s$/u,
     /\/assertion-protocol\/assertion-reference\.[cm]?[jt]s$/u,

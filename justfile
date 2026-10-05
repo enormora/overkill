@@ -1,5 +1,5 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
-package-smoke-packages := '@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+package-smoke-packages := '@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
 
 default:
     @just --list
@@ -37,6 +37,7 @@ test-runner-integration:
     node source/integration-tests/run/runner-retries.test.ts
     node source/integration-tests/run/runner-coverage.test.ts
     node source/integration-tests/run/runner-coverage-records.test.ts
+    node source/integration-tests/run/runner-coverage-sources.test.ts
     node source/integration-tests/run/runner-explicit-files.test.ts
     node source/integration-tests/run/runner-supervised-timeouts.test.ts
     node source/integration-tests/run/runner-file-sets.test.ts
@@ -57,6 +58,7 @@ test-package-smoke: compile
     PACKTORY_INCLUDED_PACKAGES={{package-smoke-packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
+    node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js

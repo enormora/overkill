@@ -129,6 +129,21 @@ coverage `outputs`, loaded or all-files `sources`, line/function/branch
 V8 and LCOV. An empty `outputs` array keeps raw coverage without rendering
 reports.
 
+Type-only TypeScript files, including modules containing documentation comments
+or empty export markers, do not contribute to coverage totals. Executable
+imports and runtime declarations remain covered.
+
+Source patterns apply to original files when scripts declare source maps.
+Generated script paths do not need to match those patterns. Broken declared
+maps or references fail coverage; scripts without declarations use JavaScript
+coverage. Known test sources are excluded automatically. Mixed test bundles
+use `coverage.sources.exclude` to exclude their test originals.
+
+All-files reporting emits 0% when selected runtime sources were never loaded.
+A scope containing no executable sources fails, including scopes matching only
+types or no files. Native data is retained on reporting failures. Replay and
+automatic coverage cleanup await the replay and record-retention workflows.
+
 Integration runs with resource or runtime wrappers also persist a `RunRecord`.
 The record starts after collection and before resource acquisition. Attachment
 files are copied under `<runtimeStateDir>/runs/<id>/artifacts/`; artifact paths
@@ -157,7 +172,8 @@ Records preserve the request, decimal seed, resolved facts, execution policy,
 project-relative coverage paths, and result artifacts. The started record
 precedes coverage setup and imports; early failures may have `facts: null`.
 Completion includes reporter and cleanup errors. Required persistence failures
-fail the run. Ordinary runs and `orchestrator.resolve()` do not create records.
+fail the run. Bare integration runs, microtest runs without coverage, and
+`orchestrator.resolve()` do not create records.
 
 Resolved runtime identities contain selected scenario bindings. They flow into
 `RunFacts`, duration-history keys, reporter labels, and artifact IDs so replay

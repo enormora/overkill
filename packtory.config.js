@@ -1,6 +1,5 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { reporterOpenTelemetryPackage } from './packtory.reporter-opentelemetry.config.js';
 
 const projectFolder = process.cwd();
 const rootPackageJson = JSON.parse(await fs.readFile(path.join(projectFolder, 'package.json'), 'utf8'));
@@ -46,6 +45,34 @@ function selectPackages(packages) {
     });
 }
 
+function moduleRoot(sourcePath) {
+    return {
+        js: `${sourcePath}.js`,
+        declarationFile: `${sourcePath}.d.ts`
+    };
+}
+
+function packageModules(exports) {
+    return Object.entries(exports).map(function packageModule([ exportPath, root ]) {
+        return { export: exportPath, root };
+    });
+}
+
+function packageDefinition(packageSettings) {
+    const { name, description, ...settings } = packageSettings;
+
+    return {
+        name: `@overkill-dev/${name}`,
+        roots: { main: moduleRoot(`packages/${name}/${name}.entry-point`) },
+        additionalFiles: [ {
+            inputFilePath: path.join(projectFolder, `source/packages/${name}/readme.md`),
+            targetFilePath: 'readme.md'
+        } ],
+        additionalPackageJsonAttributes: { ...packageMetadata, description },
+        ...settings
+    };
+}
+
 export const config = {
     registrySettings: {
         auth: {
@@ -71,219 +98,86 @@ export const config = {
     },
     packages: selectPackages([
         {
-            name: '@overkill-dev/engine',
+            name: 'engine',
+            description: 'Core Overkill engine primitives and execution model.',
             roots: {
-                assertionProtocol: {
-                    js: 'packages/engine/assertion-protocol.entry-point.js',
-                    declarationFile: 'packages/engine/assertion-protocol.entry-point.d.ts'
-                },
-                main: {
-                    js: 'packages/engine/engine.entry-point.js',
-                    declarationFile: 'packages/engine/engine.entry-point.d.ts'
-                },
-                rawComparison: {
-                    js: 'compare/raw-comparison.js',
-                    declarationFile: 'compare/raw-comparison.d.ts'
-                }
+                assertionProtocol: moduleRoot('packages/engine/assertion-protocol.entry-point'),
+                main: moduleRoot('packages/engine/engine.entry-point'),
+                rawComparison: moduleRoot('compare/raw-comparison')
             },
-            defaultModuleRoot: 'main',
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/engine/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Core Overkill engine primitives and execution model.'
-            }
+            defaultModuleRoot: 'main'
         },
         {
-            name: '@overkill-dev/assert',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/assert/assert.entry-point.js',
-                    declarationFile: 'packages/assert/assert.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/assert/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Reusable Overkill assertion-extension helpers.'
-            }
+            name: 'assert',
+            description: 'Reusable Overkill assertion-extension helpers.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
-            name: '@overkill-dev/doubles',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/doubles/doubles.entry-point.js',
-                    declarationFile: 'packages/doubles/doubles.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/doubles/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Explicit Overkill test doubles.'
-            }
+            name: 'doubles',
+            description: 'Explicit Overkill test doubles.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
-            name: '@overkill-dev/simulation',
+            name: 'simulation',
+            description: 'Finite simulation descriptors and simulated server launchers for Overkill.',
             roots: {
-                http: {
-                    js: 'packages/simulation/http.entry-point.js',
-                    declarationFile: 'packages/simulation/http.entry-point.d.ts'
-                },
-                main: {
-                    js: 'packages/simulation/simulation.entry-point.js',
-                    declarationFile: 'packages/simulation/simulation.entry-point.d.ts'
-                },
-                transcript: {
-                    js: 'packages/simulation/transcript.entry-point.js',
-                    declarationFile: 'packages/simulation/transcript.entry-point.d.ts'
-                }
+                http: moduleRoot('packages/simulation/http.entry-point'),
+                main: moduleRoot('packages/simulation/simulation.entry-point'),
+                transcript: moduleRoot('packages/simulation/transcript.entry-point')
             },
             packageInterface: {
-                modules: [
-                    {
-                        export: '.',
-                        root: 'main'
-                    },
-                    {
-                        export: './http',
-                        root: 'http'
-                    },
-                    {
-                        export: './transcript',
-                        root: 'transcript'
-                    }
-                ]
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/simulation/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Finite simulation descriptors and simulated server launchers for Overkill.'
+                modules: packageModules({
+                    '.': 'main',
+                    './http': 'http',
+                    './transcript': 'transcript'
+                })
             }
         },
         {
-            name: '@overkill-dev/resources',
-            bundlePeerDependencies: [ '@overkill-dev/simulation' ],
-            roots: {
-                main: {
-                    js: 'packages/resources/resources.entry-point.js',
-                    declarationFile: 'packages/resources/resources.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/resources/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Typed Overkill resource and runtime descriptors.'
-            }
+            name: 'resources',
+            description: 'Typed Overkill resource and runtime descriptors.',
+            bundlePeerDependencies: [ '@overkill-dev/simulation' ]
         },
         {
-            name: '@overkill-dev/run',
+            name: 'run',
+            description: 'Overkill run resolution and orchestration.',
             roots: {
-                commandLine: {
-                    js: 'packages/run/command-line.entry-point.js',
-                    declarationFile: 'packages/run/command-line.entry-point.d.ts'
-                },
-                config: {
-                    js: 'packages/run/config.entry-point.js',
-                    declarationFile: 'packages/run/config.entry-point.d.ts'
-                },
-                coverageSession: {
-                    js: 'run/coverage-session.js'
-                },
-                filters: {
-                    js: 'packages/run/filters.entry-point.js',
-                    declarationFile: 'packages/run/filters.entry-point.d.ts'
-                },
-                localCoverage: {
-                    js: 'run/run-local-coverage.js'
-                },
-                main: {
-                    js: 'packages/run/run.entry-point.js',
-                    declarationFile: 'packages/run/run.entry-point.d.ts'
-                },
-                nodeCommandLineRunner: {
-                    js: 'run/node-command-line-runner.js',
-                    declarationFile: 'run/node-command-line-runner.d.ts'
-                },
-                recordedCoverage: {
-                    js: 'run/recorded-coverage-run.js'
-                },
-                resourceLifecycle: {
-                    js: 'packages/run/resource-lifecycle.entry-point.js',
-                    declarationFile: 'packages/run/resource-lifecycle.entry-point.d.ts'
-                },
-                transcriptStore: {
-                    js: 'packages/run/transcript-store.entry-point.js',
-                    declarationFile: 'packages/run/transcript-store.entry-point.d.ts'
-                }
+                commandLine: moduleRoot('packages/run/command-line.entry-point'),
+                config: moduleRoot('packages/run/config.entry-point'),
+                coverageSession: { js: 'run/coverage-session.js' },
+                filters: moduleRoot('packages/run/filters.entry-point'),
+                localCoverage: { js: 'run/run-local-coverage.js' },
+                main: moduleRoot('packages/run/run.entry-point'),
+                nodeCommandLineRunner: moduleRoot('run/node-command-line-runner'),
+                recordedCoverage: { js: 'run/recorded-coverage-run.js' },
+                resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
+                transcriptStore: moduleRoot('packages/run/transcript-store.entry-point')
             },
             packageInterface: {
-                modules: [
-                    {
-                        export: '.',
-                        root: 'main'
-                    },
-                    {
-                        export: './command-line',
-                        root: 'commandLine'
-                    },
-                    {
-                        export: './config',
-                        root: 'config'
-                    },
-                    {
-                        export: './filters',
-                        root: 'filters'
-                    },
-                    {
-                        export: './resource-lifecycle',
-                        root: 'resourceLifecycle'
-                    },
-                    {
-                        export: './transcript-store',
-                        root: 'transcriptStore'
-                    }
-                ],
+                modules: packageModules({
+                    '.': 'main',
+                    './command-line': 'commandLine',
+                    './config': 'config',
+                    './filters': 'filters',
+                    './resource-lifecycle': 'resourceLifecycle',
+                    './transcript-store': 'transcriptStore'
+                }),
                 privateRoots: [ 'coverageSession', 'localCoverage', 'nodeCommandLineRunner', 'recordedCoverage' ]
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/run/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Overkill run resolution and orchestration.'
             }
         },
         {
-            name: '@overkill-dev/test',
+            name: 'bench',
+            description: 'Ordinary test-node authoring for Overkill benchmark suites.',
+            bundlePeerDependencies: [
+                '@overkill-dev/engine',
+                '@overkill-dev/simulation',
+                '@overkill-dev/resources',
+                '@overkill-dev/run'
+            ]
+        },
+        {
+            name: 'test',
+            description: 'Standard Overkill distribution and command-line binary.',
             bundleDependencies: [
                 '@overkill-dev/assert',
                 '@overkill-dev/doubles',
@@ -297,187 +191,62 @@ export const config = {
                 '@overkill-dev/simulation'
             ],
             roots: {
-                assert: {
-                    js: 'packages/test/assert.entry-point.js',
-                    declarationFile: 'packages/test/assert.entry-point.d.ts'
-                },
-                baselines: {
-                    js: 'packages/test/baselines.entry-point.js',
-                    declarationFile: 'packages/test/baselines.entry-point.d.ts'
-                },
-                bench: {
-                    js: 'packages/test/bench.entry-point.js',
-                    declarationFile: 'packages/test/bench.entry-point.d.ts'
-                },
-                compatibility: {
-                    js: 'packages/test/compatibility.entry-point.js',
-                    declarationFile: 'packages/test/compatibility.entry-point.d.ts'
-                },
-                config: {
-                    js: 'packages/test/config.entry-point.js',
-                    declarationFile: 'packages/test/config.entry-point.d.ts'
-                },
-                main: {
-                    js: 'packages/test/test.entry-point.js',
-                    declarationFile: 'packages/test/test.entry-point.d.ts'
-                },
-                overkill: {
-                    js: 'packages/test/overkill.entry-point.js'
-                },
-                reporters: {
-                    js: 'packages/test/reporters.entry-point.js',
-                    declarationFile: 'packages/test/reporters.entry-point.d.ts'
-                },
-                resources: {
-                    js: 'packages/test/resources.entry-point.js',
-                    declarationFile: 'packages/test/resources.entry-point.d.ts'
-                },
-                simulation: {
-                    js: 'packages/test/simulation.entry-point.js',
-                    declarationFile: 'packages/test/simulation.entry-point.d.ts'
-                }
+                assert: moduleRoot('packages/test/assert.entry-point'),
+                baselines: moduleRoot('packages/test/baselines.entry-point'),
+                bench: moduleRoot('packages/test/bench.entry-point'),
+                compatibility: moduleRoot('packages/test/compatibility.entry-point'),
+                config: moduleRoot('packages/test/config.entry-point'),
+                main: moduleRoot('packages/test/test.entry-point'),
+                overkill: { js: 'packages/test/overkill.entry-point.js' },
+                reporters: moduleRoot('packages/test/reporters.entry-point'),
+                resources: moduleRoot('packages/test/resources.entry-point'),
+                simulation: moduleRoot('packages/test/simulation.entry-point')
             },
             packageInterface: {
-                modules: [
-                    {
-                        export: '.',
-                        root: 'main'
-                    },
-                    {
-                        export: './assert',
-                        root: 'assert'
-                    },
-                    {
-                        export: './baselines',
-                        root: 'baselines'
-                    },
-                    {
-                        export: './bench',
-                        root: 'bench'
-                    },
-                    {
-                        export: './compatibility',
-                        root: 'compatibility'
-                    },
-                    {
-                        export: './config',
-                        root: 'config'
-                    },
-                    {
-                        export: './reporters',
-                        root: 'reporters'
-                    },
-                    {
-                        export: './resources',
-                        root: 'resources'
-                    },
-                    {
-                        export: './simulation',
-                        root: 'simulation'
-                    }
-                ],
+                modules: packageModules({
+                    '.': 'main',
+                    './assert': 'assert',
+                    './baselines': 'baselines',
+                    './bench': 'bench',
+                    './compatibility': 'compatibility',
+                    './config': 'config',
+                    './reporters': 'reporters',
+                    './resources': 'resources',
+                    './simulation': 'simulation'
+                }),
                 bins: [
                     {
                         name: 'overkill',
                         root: 'overkill'
                     }
                 ]
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/test/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Standard Overkill distribution and command-line binary.'
             }
         },
         {
-            name: '@overkill-dev/reporter-line',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/reporter-line/reporter-line.entry-point.js',
-                    declarationFile: 'packages/reporter-line/reporter-line.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/reporter-line/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Human-readable Overkill line reporter family.'
-            }
+            name: 'reporter-line',
+            description: 'Human-readable Overkill line reporter family.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
-            name: '@overkill-dev/reporter-brief',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/reporter-brief/reporter-brief.entry-point.js',
-                    declarationFile: 'packages/reporter-brief/reporter-brief.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/reporter-brief/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Token-conscious Overkill managed stdout reporter.'
-            }
+            name: 'reporter-brief',
+            description: 'Token-conscious Overkill managed stdout reporter.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
-            name: '@overkill-dev/reporter-dot',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/reporter-dot/reporter-dot.entry-point.js',
-                    declarationFile: 'packages/reporter-dot/reporter-dot.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(projectFolder, 'source/packages/reporter-dot/readme.md'),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'Compact Overkill dot progress reporter.'
-            }
+            name: 'reporter-dot',
+            description: 'Compact Overkill dot progress reporter.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
-        reporterOpenTelemetryPackage(projectFolder, packageMetadata),
         {
-            name: '@overkill-dev/output-renderer-github-actions',
-            bundlePeerDependencies: [ '@overkill-dev/engine' ],
-            roots: {
-                main: {
-                    js: 'packages/output-renderer-github-actions/output-renderer-github-actions.entry-point.js',
-                    declarationFile:
-                        'packages/output-renderer-github-actions/output-renderer-github-actions.entry-point.d.ts'
-                }
-            },
-            additionalFiles: [
-                {
-                    inputFilePath: path.join(
-                        projectFolder,
-                        'source/packages/output-renderer-github-actions/readme.md'
-                    ),
-                    targetFilePath: 'readme.md'
-                }
-            ],
-            additionalPackageJsonAttributes: {
-                ...packageMetadata,
-                description: 'GitHub Actions renderer for Overkill managed output.'
-            }
+            name: 'reporter-opentelemetry',
+            description: 'OTLP JSON file reporter for Overkill timing data.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
+        },
+        {
+            name: 'output-renderer-github-actions',
+            description: 'GitHub Actions renderer for Overkill managed output.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
         }
-    ])
+    ]
+        .map(packageDefinition))
 };
