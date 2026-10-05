@@ -9,6 +9,7 @@ import { createAttachmentConnection, type AttachmentConnection } from './attachm
 import {
     attachmentMaxFrameBytes,
     attachmentMaxPendingRequests,
+    type AttachmentEndpoint,
     type AttachmentOperation
 } from './attachment-protocol.ts';
 
@@ -79,24 +80,60 @@ async function assertBoundedServerArtifacts(
     });
 }
 
-async function assertServerQueueLimit(scope: TestScope): Promise<void> {
-    const limits = { ...defaultAttachmentLimits, maxScopeAttachments: 1 };
-    const { store } = await attachmentFixture(scope, limits);
-    const server = await createAttachmentServer(store, limits);
-    scope.cleanup(async function finishFloodedServer() {
-        await server.finish();
-    });
-    const socket = connect({ host: '127.0.0.1', port: server.endpoint.port });
+type PendingAttachmentResponse = {
+    readonly store: AttachmentFixture['store'];
+    readonly opened: Promise<undefined>;
+    readonly release: () => void;
+};
+function holdAttachmentResponses(store: AttachmentFixture['store']): PendingAttachmentResponse {
+    const opened = Promise.withResolvers<undefined>();
+    const response = Promise.withResolvers<undefined>();
+    return {
+        opened: opened.promise,
+        release() {
+            response.resolve(undefined);
+        },
+        store: {
+            ...store,
+            async exchange(channel, operation) {
+                const result = await store.exchange(channel, operation);
+                opened.resolve(undefined);
+                await response.promise;
+                return result;
+            }
+        }
+    };
+}
+async function floodAttachmentChannel(
+    socket: Socket,
+    endpoint: AttachmentEndpoint,
+    opened: Promise<undefined>
+): Promise<void> {
     await once(socket, 'connect');
-    const disconnected = once(socket, 'close');
+    const disconnected = once(socket, 'close', { signal: AbortSignal.timeout(30_000) });
+    socket.write(`${JSON.stringify({ request: 0, token: endpoint.token, operation: open })}\n`);
+    await opened;
     socket.write(
         Array
-            .from({ length: attachmentMaxPendingRequests + 1 }, function queuedRequest(_value, request) {
-                return `${JSON.stringify({ request, token: server.endpoint.token, operation: open })}\n`;
+            .from({ length: attachmentMaxPendingRequests }, function queuedRequest(_value, request) {
+                return `${JSON.stringify({ request: request + 1, token: endpoint.token, operation: open })}\n`;
             })
             .join('')
     );
     await disconnected;
+}
+async function assertServerQueueLimit(scope: TestScope): Promise<void> {
+    const limits = { ...defaultAttachmentLimits, maxScopeAttachments: 1 };
+    const { store } = await attachmentFixture(scope, limits);
+    const pending = holdAttachmentResponses(store);
+    const server = await createAttachmentServer(pending.store, limits);
+    scope.cleanup(async function finishFloodedServer() {
+        pending.release();
+        await server.finish();
+    });
+    const socket = connect({ host: '127.0.0.1', port: server.endpoint.port });
+    await floodAttachmentChannel(socket, server.endpoint, pending.opened);
+    pending.release();
     await assertBoundedServerArtifacts(scope, server, store);
 }
 async function assertWriterIsolation(scope: TestScope): Promise<void> {
