@@ -97,13 +97,15 @@ export async function generateCoverageReports(
         clean: false,
         entryFilter: sources.entryIncluded,
         logging: 'off',
+        onEntry: sources.onEntry,
         outputDir: request.coverageDirectory,
         reports: configuredReports.length === 0
             ? [ [ 'none' ] ]
             : configuredReports.map(function backendReport(configuredReport) {
                 return configuredReport.backend;
             }),
-        sourceFilter: sources.sourceIncluded
+        sourceFilter: sources.sourceIncluded,
+        sourcePath: sources.sourcePath
     });
 
     await report.addFromDir(request.rawDataDirectory);

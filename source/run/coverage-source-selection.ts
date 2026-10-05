@@ -3,10 +3,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CoverageReport, V8CoverageEntry } from 'monocart-coverage-reports';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { prepareLoadedCoverageSources } from './coverage-loaded-sources.ts';
 import { isPathInside } from './path-containment.ts';
 import { readNativeCoverageBatches, type CoverageNativeBatch } from './coverage-native-data.ts';
 import {
-    hasRuntimeCoverageSource,
+    inspectCoverageSource,
+    isSupportedCoverageSource,
     isTypeScriptCoverageSource,
     transformCoverageSource
 } from './coverage-runtime-source.ts';
@@ -26,16 +28,6 @@ type AllFileEntry = {
     readonly source: string;
     readonly url: string;
 };
-
-const supportedSourceExtensions = new Set([ '.cjs', '.cts', '.js', '.mjs', '.mts', '.ts' ]);
-
-function entryFilePath(url: string): string | null {
-    if (!url.startsWith('file:')) {
-        return null;
-    }
-
-    return path.resolve(fileURLToPath(url));
-}
 
 function sourceFilePath(sourcePath: string, projectRoot: string): string {
     return path.resolve(projectRoot, sourcePath);
@@ -89,14 +81,8 @@ function includedSourceFile(filePath: string, request: CoverageSourceRequest): b
     });
 }
 
-function sourceIncluded(sourcePath: string, request: CoverageSourceRequest): boolean {
-    return includedSourceFile(sourceFilePath(sourcePath, request.projectRoot), request);
-}
-
 async function isRuntimeSourceFile(filePath: string, request: CoverageSourceRequest): Promise<boolean> {
-    const extension = path.extname(filePath);
-
-    if (!supportedSourceExtensions.has(extension) || !includedSourceFile(filePath, request)) {
+    if (!isSupportedCoverageSource(filePath) || !includedSourceFile(filePath, request)) {
         return false;
     }
 
@@ -104,7 +90,7 @@ async function isRuntimeSourceFile(filePath: string, request: CoverageSourceRequ
         return true;
     }
 
-    return hasRuntimeCoverageSource(await readFile(filePath, 'utf8'), filePath);
+    return inspectCoverageSource(await readFile(filePath, 'utf8'), filePath).hasRuntime;
 }
 
 async function allRuntimeFiles(
@@ -128,14 +114,12 @@ async function allRuntimeFiles(
     return runtimeFiles;
 }
 
-async function allFilesOptions(request: CoverageSourceRequest): Promise<CoverageAllOptions | null> {
+function allFilesOptions(request: CoverageSourceRequest, runtimeFiles: ReadonlySet<string>): CoverageAllOptions | null {
     const { sourceScope } = request;
 
     if (sourceScope.mode === 'loaded') {
         return null;
     }
-
-    const runtimeFiles = await allRuntimeFiles(request, sourceScope);
 
     return {
         dir: request.projectRoot,
@@ -157,28 +141,50 @@ export async function prepareCoverageSources(request: CoverageSourceRequest): Pr
     readonly batches: readonly CoverageNativeBatch[];
     readonly entryIncluded: (entry: V8CoverageEntry) => boolean;
     readonly sourceIncluded: (sourcePath: string) => boolean;
+    readonly onEntry: (entry: V8CoverageEntry) => void;
+    readonly sourcePath: (sourcePath: string, info: Readonly<Record<string, unknown>>) => string;
 }> {
     const batches = await readNativeCoverageBatches(request.rawDataDirectory);
-    const includedEntries = new Set<string>();
-
-    for (const batch of batches) {
-        for (const entry of batch.entries) {
-            const filePath = entryFilePath(entry.url);
-
-            if (filePath !== null && await isRuntimeSourceFile(filePath, request)) {
-                includedEntries.add(entry.url);
-            }
-        }
-    }
+    const loaded = await prepareLoadedCoverageSources({
+        batches,
+        excludedFiles: request.sourceScope.excludedFiles,
+        includeSource(filePath) {
+            return includedSourceFile(filePath, request);
+        },
+        projectRoot: request.projectRoot
+    });
+    const resolvedRequest = {
+        ...request,
+        sourceScope: { ...request.sourceScope, excludedFiles: loaded.excludedFiles }
+    };
+    const runtimeFiles = resolvedRequest.sourceScope.mode === 'all'
+        ? await allRuntimeFiles(resolvedRequest, resolvedRequest.sourceScope)
+        : new Set<string>();
+    const all = allFilesOptions(request, runtimeFiles);
 
     return {
-        all: await allFilesOptions(request),
+        all,
         batches,
         entryIncluded(entry) {
-            return includedEntries.has(entry.url);
+            return loaded.entries.has(entry.url);
+        },
+        onEntry(entry) {
+            const map = loaded.maps.get(entry.url);
+
+            if (map !== undefined) {
+                Object.assign(entry, { sourceMap: map });
+            }
+        },
+        sourcePath(sourcePath, info) {
+            return typeof info.url === 'string' && info.url.startsWith('file:')
+                ? path.relative(request.projectRoot, fileURLToPath(info.url)).split(path.sep).join('/')
+                : sourcePath;
         },
         sourceIncluded(sourcePath) {
-            return sourceIncluded(sourcePath, request);
+            const filePath = sourceFilePath(sourcePath, request.projectRoot);
+
+            return loaded.sources.has(filePath) ||
+                runtimeFiles.has(filePath);
         }
     };
 }

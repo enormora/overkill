@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { execFile } from 'node:child_process';
 
 export type CoverageFixtureSource = {
     readonly file: string;
@@ -62,4 +63,21 @@ export async function withCoverageSources(
     } finally {
         await rm(projectRoot, { force: true, recursive: true });
     }
+}
+
+export async function collectCoverageScript(fixture: CoverageSourceFixture, file: string): Promise<void> {
+    const environment: Readonly<Record<string, string | undefined>> = Reflect.get(process, 'env');
+
+    await new Promise<void>(function executeScript(resolve, reject) {
+        execFile(process.execPath, [ file ], {
+            cwd: fixture.projectRoot,
+            env: { ...environment, NODE_DISABLE_COMPILE_CACHE: '1', NODE_V8_COVERAGE: fixture.rawDataDirectory }
+        }, function completedScript(error) {
+            if (error === null) {
+                resolve();
+            } else {
+                reject(new Error('Coverage fixture execution failed.', { cause: error }));
+            }
+        });
+    });
 }

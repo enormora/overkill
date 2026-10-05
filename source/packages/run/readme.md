@@ -133,6 +133,12 @@ Type-only TypeScript files, including modules containing documentation comments
 or empty export markers, do not contribute to coverage totals. Executable
 imports and runtime declarations remain covered.
 
+Source patterns apply to original files when scripts declare source maps.
+Generated script paths do not need to match those patterns. Broken declared
+maps or references fail coverage; scripts without declarations use JavaScript
+coverage. Known test sources are excluded automatically. Mixed test bundles
+use `coverage.sources.exclude` to exclude their test originals.
+
 Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
 The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
 directory. Configured output directories keep raw data under `raw/<id>`.

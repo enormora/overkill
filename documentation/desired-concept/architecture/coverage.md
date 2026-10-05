@@ -81,7 +81,17 @@ The reporting integration must handle two jobs that V8 does not:
    implement a coverage-only parser.
 2. **Format emission.** The backend converts raw V8 data into the configured
    V8, LCOV, JSON, HTML, and text outputs and preserves source-map accuracy.
-   The runner evaluates configured thresholds from the resulting summary.
+The runner evaluates configured thresholds from the resulting summary.
+
+Source include/exclude rules apply to original files when source maps are
+present. A generated script does not need to match the original-source patterns.
+Originals still follow project containment and dependency exclusions. Known
+test modules and the single original of a compiled test module are excluded;
+mixed test bundles use `coverage.sources.exclude` for their test originals.
+
+Scripts without declared source maps use ordinary JavaScript coverage. A broken
+declared map or reference fails coverage rather than falling back to generated
+locations. Native raw data remains available in the run record's coverage directory.
 
 The integration aggregates raw coverage from the complete run process tree.
 It supports every valid microtest process model. Today those models are
