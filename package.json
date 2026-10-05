@@ -36,7 +36,7 @@
         "sucrase": "3.35.1",
         "tinypool": "2.2.0",
         "tslib": "2.8.1",
-        "type-fest": "5.8.0",
+        "type-fest": "5.10.0",
         "ulid": "3.0.2",
         "yoctocolors": "2.2.0",
         "zod": "4.6.5"
