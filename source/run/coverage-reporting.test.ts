@@ -9,6 +9,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { generateCoverageReports } from './coverage-reporting.ts';
+import { testNode as typeOnlyTestNode } from './coverage-type-only.test.ts';
 
 const sourcePath = 'source/integration-tests/run/fixtures/coverage-source.ts';
 const excludedSourcePath = 'source/integration-tests/run/fixtures/coverage-types.ts';
@@ -163,6 +164,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        typeOnlyTestNode,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'generateCoverageReports() emits every configured report format from raw process data',

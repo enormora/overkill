@@ -129,6 +129,10 @@ coverage `outputs`, loaded or all-files `sources`, line/function/branch
 V8 and LCOV. An empty `outputs` array keeps raw coverage without rendering
 reports.
 
+Type-only TypeScript files, including modules containing documentation comments
+or empty export markers, do not contribute to coverage totals. Executable
+imports and runtime declarations remain covered.
+
 Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
 The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
 directory. Configured output directories keep raw data under `raw/<id>`.
