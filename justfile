@@ -56,6 +56,7 @@ test-package-smoke: compile
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
+    node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 publish-dry-run: compile
