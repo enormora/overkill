@@ -16,7 +16,7 @@ import type { SupervisedChildCoverage } from './supervised-child-process.ts';
 import {
     generateCoverageReports,
     type CoverageReportResult,
-    type CoverageSourceScope
+    type CoverageReportRequest
 } from './coverage-reporting.ts';
 import { createCoveragePaths, type CoveragePaths } from './coverage-paths.ts';
 import type { RunCoveragePolicy } from './run-types.ts';
@@ -185,7 +185,7 @@ function resultWithCoverageError(result: RunResult, error: RunnerError): RunResu
 function coverageSourceScope(
     policy: RunCoveragePolicy,
     testFiles: readonly string[]
-): CoverageSourceScope {
+): CoverageReportRequest['sourceScope'] {
     const excludedFiles = new Set(testFiles.map(function resolveTestFile(filePath) {
         return path.resolve(filePath);
     }));

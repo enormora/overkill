@@ -1,25 +1,17 @@
-import { glob, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
     CoverageReport,
     type CoverageResults,
-    type ReportDescription,
-    type V8CoverageEntry
+    type ReportDescription
 } from 'monocart-coverage-reports';
-import { transform } from 'sucrase';
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type {
     CoverageArtifactPayload,
     CoverageMetric,
     CoverageReportFile
 } from '../engine/coverage-artifact.ts';
-import { isPathInside } from './path-containment.ts';
-import type { CoverageOutput, RunCoverageSourcePolicy } from './run-types.ts';
-
-export type CoverageSourceScope = RunCoverageSourcePolicy & {
-    readonly excludedFiles: ReadonlySet<string>;
-};
+import { prepareCoverageSources, type CoverageSourceScope } from './coverage-source-selection.ts';
+import type { CoverageOutput } from './run-types.ts';
+import type { CoverageNativeBatch } from './coverage-native-data.ts';
 
 export type CoverageReportRequest = {
     readonly coverageDirectory: string;
@@ -33,173 +25,6 @@ export type CoverageReportResult = {
     readonly reports: readonly CoverageReportFile[];
     readonly summary: CoverageArtifactPayload['summary'];
 };
-
-type AllFileEntry = {
-    readonly source: string;
-    readonly url: string;
-};
-type TransformedSource = {
-    readonly source: string;
-    readonly sourceMap: unknown;
-};
-type CoverageReportOptions = NonNullable<ConstructorParameters<typeof CoverageReport>[0]>;
-type CoverageAllOptions = NonNullable<CoverageReportOptions['all']>;
-
-const supportedSourceExtensions = new Set([ '.cjs', '.cts', '.js', '.mjs', '.mts', '.ts' ]);
-const typeScriptSourceExtensions = new Set([ '.cts', '.mts', '.ts' ]);
-
-function entryFilePath(url: string): string | null {
-    if (!url.startsWith('file:')) {
-        return null;
-    }
-
-    return path.resolve(fileURLToPath(url));
-}
-
-function sourceFilePath(sourcePath: string, projectRoot: string): string {
-    return path.resolve(projectRoot, sourcePath);
-}
-
-function includedProjectFile(
-    filePath: string,
-    projectRoot: string,
-    excludedFiles: ReadonlySet<string>
-): boolean {
-    const resolvedPath = path.resolve(filePath);
-
-    return isPathInside(projectRoot, resolvedPath) &&
-        !resolvedPath.split(path.sep).includes('node_modules') &&
-        !excludedFiles.has(resolvedPath);
-}
-
-function matchesSourcePatterns(
-    filePath: string,
-    projectRoot: string,
-    include: NonEmptyReadonlyArray<string>,
-    exclude: readonly string[]
-): boolean {
-    const relativePath = path.relative(projectRoot, filePath).split(path.sep).join('/');
-
-    return include.some(function matchesInclude(pattern) {
-        return path.matchesGlob(relativePath, pattern);
-    }) && exclude.every(function matchesExclude(pattern) {
-        return !path.matchesGlob(relativePath, pattern);
-    });
-}
-
-function includedSourceFile(filePath: string, request: CoverageReportRequest): boolean {
-    if (!includedProjectFile(filePath, request.projectRoot, request.sourceScope.excludedFiles)) {
-        return false;
-    }
-
-    if (request.sourceScope.mode === 'all') {
-        return matchesSourcePatterns(
-            filePath,
-            request.projectRoot,
-            request.sourceScope.include,
-            request.sourceScope.exclude
-        );
-    }
-
-    return request.sourceScope.exclude.every(function matchesExclude(pattern) {
-        const relativePath = path.relative(request.projectRoot, filePath).split(path.sep).join('/');
-
-        return !path.matchesGlob(relativePath, pattern);
-    });
-}
-
-function entryIncluded(entry: V8CoverageEntry, request: CoverageReportRequest): boolean {
-    const filePath = entryFilePath(entry.url);
-
-    return filePath !== null && includedSourceFile(filePath, request);
-}
-
-function sourceIncluded(sourcePath: string, request: CoverageReportRequest): boolean {
-    return includedSourceFile(sourceFilePath(sourcePath, request.projectRoot), request);
-}
-
-function transformedTypeScript(source: string, filePath: string): TransformedSource {
-    const result = transform(source, {
-        filePath,
-        sourceMapOptions: {
-            compiledFilename: filePath.replace(/\.[cm]?ts$/u, '.js')
-        },
-        transforms: [ 'typescript' ]
-    });
-
-    return {
-        source: result.code,
-        sourceMap: { ...result.sourceMap, sourcesContent: [ source ] }
-    };
-}
-
-function hasRuntimeTypeScript(source: string): boolean {
-    return source
-        .replace(/^export \{\};?\s*$/mu, '')
-        .replace(/^\/\/# sourceMappingURL=.*$/mu, '')
-        .trim() !== '';
-}
-
-async function isRuntimeSourceFile(filePath: string, request: CoverageReportRequest): Promise<boolean> {
-    const extension = path.extname(filePath);
-
-    if (!supportedSourceExtensions.has(extension) || !includedSourceFile(filePath, request)) {
-        return false;
-    }
-
-    if (!typeScriptSourceExtensions.has(extension)) {
-        return true;
-    }
-
-    const transformed = transformedTypeScript(await readFile(filePath, 'utf8'), filePath);
-
-    return hasRuntimeTypeScript(transformed.source);
-}
-
-async function allRuntimeFiles(
-    request: CoverageReportRequest,
-    sourceScope: Extract<CoverageSourceScope, { readonly mode: 'all'; }>
-): Promise<ReadonlySet<string>> {
-    const runtimeFiles = new Set<string>();
-    const matchedFiles = glob(sourceScope.include, {
-        cwd: request.projectRoot,
-        exclude: sourceScope.exclude
-    });
-
-    for await (const relativePath of matchedFiles) {
-        const filePath = path.resolve(request.projectRoot, relativePath);
-
-        if (await isRuntimeSourceFile(filePath, request)) {
-            runtimeFiles.add(filePath);
-        }
-    }
-
-    return runtimeFiles;
-}
-
-async function allFilesOptions(request: CoverageReportRequest): Promise<CoverageAllOptions | null> {
-    const { sourceScope } = request;
-
-    if (sourceScope.mode === 'loaded') {
-        return null;
-    }
-
-    const runtimeFiles = await allRuntimeFiles(request, sourceScope);
-
-    return {
-        dir: request.projectRoot,
-        filter(filePath: string) {
-            const resolvedPath = path.resolve(filePath);
-
-            return runtimeFiles.has(resolvedPath);
-        },
-        async transformer(entry: AllFileEntry) {
-            if (typeScriptSourceExtensions.has(path.extname(entry.url))) {
-                Object.assign(entry, transformedTypeScript(entry.source, entry.url));
-            }
-        }
-    };
-}
 
 type ConfiguredCoverageReport = {
     readonly backend: ReportDescription;
@@ -262,36 +87,67 @@ function metric(results: CoverageResults, name: 'branches' | 'functions' | 'line
     return { covered: value.covered, total: value.total };
 }
 
+async function initializeFilteredCoverage(
+    report: CoverageReport,
+    batches: readonly CoverageNativeBatch[]
+): Promise<void> {
+    if (report.hasCache()) {
+        return;
+    }
+    const batch = batches.find(function hasNativeEntries(candidate) {
+        return candidate.entries.length > 0;
+    });
+
+    if (batch === undefined) {
+        throw new Error('Coverage collection produced no native V8 data.');
+    }
+    await report.add(Array.from(batch.entries));
+}
+
+function hasExecutableCoverage(results: CoverageResults): boolean {
+    return ([ 'branches', 'functions', 'lines' ] as const).some(function hasExecutableMetric(name) {
+        return results.summary[name].total > 0;
+    });
+}
+
+async function generateExecutableCoverageReport(report: CoverageReport): Promise<CoverageResults> {
+    const results = await report.generate();
+
+    if (results === undefined) {
+        throw new Error('Coverage backend produced no result.');
+    }
+    if (!hasExecutableCoverage(results)) {
+        throw new Error('Coverage source selection contains no executable sources.');
+    }
+    return results;
+}
+
 export async function generateCoverageReports(
     request: CoverageReportRequest
 ): Promise<CoverageReportResult> {
-    const all = await allFilesOptions(request);
+    const sources = await prepareCoverageSources(request);
     const configuredReports = configuredCoverageReports(request);
     const report = new CoverageReport({
-        ...all === null ? {} : { all },
+        ...sources.all === null ? {} : { all: sources.all },
         baseDir: request.projectRoot,
         clean: false,
-        entryFilter(entry) {
-            return entryIncluded(entry, request);
-        },
+        cleanCache: true,
+        entryFilter: sources.entryIncluded,
         logging: 'off',
+        onEntry: sources.onEntry,
         outputDir: request.coverageDirectory,
         reports: configuredReports.length === 0
             ? [ [ 'none' ] ]
             : configuredReports.map(function backendReport(configuredReport) {
                 return configuredReport.backend;
             }),
-        sourceFilter(sourcePath) {
-            return sourceIncluded(sourcePath, request);
-        }
+        sourceFilter: sources.sourceIncluded,
+        sourcePath: sources.sourcePath
     });
 
     await report.addFromDir(request.rawDataDirectory);
-    const results = await report.generate();
-
-    if (results === undefined) {
-        throw new Error('Coverage backend produced no result.');
-    }
+    await initializeFilteredCoverage(report, sources.batches);
+    const results = await generateExecutableCoverageReport(report);
 
     return {
         reports: configuredReports.map(function reportFile(configuredReport) {
