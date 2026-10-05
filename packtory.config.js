@@ -149,6 +149,7 @@ export const config = {
             name: 'run',
             description: 'Overkill run resolution and orchestration.',
             roots: {
+                attachmentConnection: { js: 'run/attachment-connection.js' },
                 attachmentRun: { js: 'run/attachment-run.js' },
                 commandLine: moduleRoot('packages/run/command-line.entry-point'),
                 config: moduleRoot('packages/run/config.entry-point'),
@@ -172,6 +173,7 @@ export const config = {
                     './transcript-store': 'transcriptStore'
                 }),
                 privateRoots: [
+                    'attachmentConnection',
                     'attachmentRun',
                     'coverageSession',
                     'localCoverage',
