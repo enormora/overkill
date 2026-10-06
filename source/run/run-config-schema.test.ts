@@ -1,5 +1,6 @@
 import { safeParse } from '@schema-hub/zod-error-formatter';
 import type { $ZodType } from 'zod/v4/core';
+import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -235,6 +236,7 @@ export const testNode = createOverkillSuite({
                 const reporter = createInMemoryRealTimeReporter();
 
                 assertValidationSuccess(scope, integrationProfileSchema, {
+                    attachments: defaultAttachmentLimits,
                     execution: {
                         processModel: 'supervised-process',
                         scheduling: 'serial'
@@ -264,6 +266,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, integrationProfileSchema, {
+                    attachments: defaultAttachmentLimits,
                     execution: {
                         processModel: 'worker-pool',
                         scheduling: 'serial'

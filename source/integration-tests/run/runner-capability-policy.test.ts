@@ -1,4 +1,5 @@
 import { rm } from 'node:fs/promises';
+import { defaultAttachmentLimits } from '../../engine/runtime-attachment.ts';
 import {
     createSuite,
     createTestCase,
@@ -136,6 +137,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): RunConfig {
         }),
         profiles: {
             integration: {
+                attachments: defaultAttachmentLimits,
                 retries: null,
                 execution: {
                     maxConcurrency: 5,

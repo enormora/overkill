@@ -1,6 +1,8 @@
 import { createServer } from 'node:http';
 import { setTimeout as wait } from 'node:timers/promises';
+import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { ResourceLifecycleError, startResources } from '../packages/resources/resources.entry-point.ts';
 import {
     createLocalHttpServiceResource,
     type LocalHttpResourceHandle,
@@ -18,8 +20,6 @@ import {
     type EmptyResourceDependencies,
     type ResourceDefinition
 } from './resources.ts';
-import { ResourceLifecycleError } from './resource-lifecycle-error.ts';
-import { startResources } from './resource-session.ts';
 
 type Database = {
     readonly query: (sql: string) => string;
@@ -119,14 +119,29 @@ async function assertOwnerCleanup(scope: TestScope): Promise<void> {
             events.push(`dispose:${owner.id}`);
         }
     });
-    const handle = await service.acquire({ dependencies: {}, scenarios: {}, signal: testSignal });
+    const handle = await service.acquire({
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: testSignal
+    });
 
     if (service.dispose === null) {
         throw new Error('Expected local-service disposal.');
     }
 
-    await service.dispose(handle, { dependencies: {}, scenarios: {}, signal: testSignal });
-    await service.dispose(handle, { dependencies: {}, scenarios: {}, signal: testSignal });
+    await service.dispose(handle, {
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: testSignal
+    });
+    await service.dispose(handle, {
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: testSignal
+    });
     scope.assert.deepEqual(events, [
         'start:127.0.0.1:0',
         'ready:owner',
@@ -156,7 +171,14 @@ async function assertReadinessFailureCleanup(scope: TestScope): Promise<void> {
             events.push(`dispose:${owner.id}`);
         }
     });
-    const error = await rejectedValue(service.acquire({ dependencies: {}, scenarios: {}, signal: testSignal }));
+    const error = await rejectedValue(
+        service.acquire({
+            attachments: resourceAttachments('test'),
+            dependencies: {},
+            scenarios: {},
+            signal: testSignal
+        })
+    );
 
     scope.assert.equal(error, readyError);
     scope.assert.deepEqual(events, [ 'start', 'ready', 'dispose:owner' ]);
@@ -193,6 +215,7 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
         }
     });
     const ownerHandle = await service.acquire({
+        attachments: resourceAttachments('test'),
         dependencies: {
             database: {
                 query(sql) {
@@ -210,6 +233,7 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(
         service.deserializeHandle(
             service.serializeHandle(ownerHandle, {
+                attachments: resourceAttachments('test'),
                 dependencies: {
                     database: {
                         query(sql) {
@@ -219,6 +243,7 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
                 }
             }),
             {
+                attachments: resourceAttachments('test'),
                 dependencies: {
                     database: {
                         query(sql) {

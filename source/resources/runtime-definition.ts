@@ -9,7 +9,7 @@ import type {
     ScenarioBindingInput
 } from './resource-scenario.ts';
 
-const runtimeDefinitionBrand: unique symbol = Symbol('overkill.runtimeDefinition');
+const runtimeDefinitionBrand: unique symbol = Symbol.for('overkill.runtimeDefinition');
 
 export type RuntimeDimensions = Readonly<Record<string, string>>;
 type RuntimeScenarioBindings = Readonly<Record<string, string>>;

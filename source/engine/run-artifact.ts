@@ -12,7 +12,7 @@ export type RunArtifactScope = {
 type RunArtifactBaseId = {
     readonly runtimes: readonly RuntimeId[];
     readonly sequence: number;
-    readonly subtype: 'coverage' | 'hedged-conflict' | 'log-capture';
+    readonly subtype: 'attachment' | 'coverage' | 'hedged-conflict' | 'log-capture';
     readonly workload: WorkloadId | null;
 };
 

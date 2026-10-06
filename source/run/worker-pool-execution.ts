@@ -158,9 +158,17 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
         }),
         assignedWork,
         boundaryUseCounts: [],
-        command: createWorkerPoolBatchRunCommand(request.runtime, request.taskRun.members),
+        command: {
+            ...createWorkerPoolBatchRunCommand(request.runtime, request.taskRun.members),
+            attachmentEndpoint: request
+                .runtime
+                .attachments
+                ?.branchEndpoint(request.taskRun, request.taskRun.includeArtifacts.read) ?? null
+        },
         kind: 'run',
-        lane: request.lane.id,
+        lane: request
+            .lane
+            .id,
         lifecycle: request.runtime.lifecycle,
         port: request.channel.port,
         projectedResources: workerPoolProjectedResourcesForWork(request.resourceLifecycle, assignedWork),

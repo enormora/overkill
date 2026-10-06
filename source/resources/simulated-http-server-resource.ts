@@ -192,6 +192,7 @@ export function createSimulatedHttpServerResource<
         scenarios,
         async acquire(context) {
             const localService = await service.acquire({
+                attachments: context.attachments,
                 dependencies: context.dependencies,
                 signal: context.signal,
                 scenarios: {}
@@ -215,6 +216,7 @@ export function createSimulatedHttpServerResource<
             acquiredServices.delete(handle);
 
             return service.dispose?.(localService, {
+                attachments: context.attachments,
                 dependencies: context.dependencies,
                 signal: context.signal,
                 scenarios: {}

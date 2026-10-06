@@ -5,6 +5,7 @@ import type {
     RunnerError
 } from './run-engine-primitives.ts';
 import type {
+    RunRuntimeAttachments,
     CollectedRunPlan,
     PlacementPlan,
     RunExecutionFacts,
@@ -32,7 +33,7 @@ import type {
 import { createReporterDelivery, createReporterEventQueue, type ReporterEventQueue } from './supervised-run-runtime.ts';
 import { createStoredRunValue, type StoredRunValue, type SupervisedRunState } from './supervised-run-state.ts';
 import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
-import { runTask as workerPoolWorkerEntryPoint } from './worker-pool-worker.ts';
+import { workerPoolEntryPointUrl } from './worker-pool-worker.ts';
 import { createRoutedPool, type WorkerPoolRoute } from './worker-pool-routing.ts';
 import {
     emptyTimingSpanMetadata,
@@ -105,6 +106,7 @@ export type WorkerPoolTaskRun = {
 };
 
 export type WorkerPoolRunRuntime = {
+    readonly attachments: RunRuntimeAttachments;
     readonly activeTasks: WorkerPoolTaskRuns;
     readonly collectedPlan: CollectedRunPlan;
     readonly collectionRunnerErrors: readonly RunnerError[];
@@ -129,6 +131,7 @@ export type WorkerPoolRunRuntime = {
 };
 
 export type WorkerPoolRuntimeInput = {
+    readonly attachments: RunRuntimeAttachments;
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly createdPool: CreatedWorkerPool | null;
     readonly dependencies: RunOrchestratorDependencies;
@@ -158,14 +161,7 @@ type WorkerPoolExecutionPool = {
     readonly pool: CreatedWorkerPool;
 };
 
-function workerPoolEntryPointHref(worker: typeof workerPoolWorkerEntryPoint): string {
-    const entryPointWorkerName = worker.name;
-    const workerPoolEntryPointUrl = new URL('./worker-pool-worker.ts', import.meta.url);
-
-    return workerPoolEntryPointUrl.href + entryPointWorkerName.slice(0, 0);
-}
-
-export const workerPoolEntryPoint = workerPoolEntryPointHref(workerPoolWorkerEntryPoint);
+export const workerPoolEntryPoint = workerPoolEntryPointUrl;
 
 export function runStartTimeFromMilliseconds(milliseconds: number): string {
     const startedAt = new Date(milliseconds);
@@ -497,6 +493,7 @@ export async function createWorkerPoolRuntime(
     });
 
     return {
+        attachments: input.attachments,
         activeTasks: new Set(),
         collectedPlan: workerPoolCollectedPlan(resolvedRun),
         collectionRunnerErrors,

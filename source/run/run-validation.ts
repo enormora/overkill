@@ -144,7 +144,17 @@ function validateRunMicrotestProfile(profile: RunProfileConfig): void {
     validateTimeoutPolicy(profile.timeouts);
 }
 
+function validateAttachmentLimits(profile: RunProfileConfig): void {
+    if (profile.testFamily !== 'integration') {
+        return;
+    }
+    for (const [ name, value ] of Object.entries(profile.attachments)) {
+        validatePositiveSafeInteger(value, `Attachment ${name}`);
+    }
+}
+
 function validateRunIntegrationProfile(profile: RunProfileConfig): void {
+    validateAttachmentLimits(profile);
     validateRunResourceUsagePolicy(profile.resourceUsage);
     validateTimeoutPolicy(profile.timeouts);
 

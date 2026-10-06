@@ -1,14 +1,18 @@
 import type { Except } from 'type-fest';
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
-import type { Execute } from '../engine/execution.ts';
+import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
+    AttachmentLimits,
+    Execute,
+    OrphanedNode,
+    RunResult,
+    TestPlan,
+    TestPlanRootOptions,
     WorkId as EngineWorkId,
     RuntimeId,
     WorkloadId
-} from '../engine/identity.ts';
-import type { OrphanedNode, RunResult } from '../engine/run-result.ts';
-import type { TestPlan, TestPlanRootOptions } from '../engine/test-plan.ts';
+} from './run-engine-primitives.ts';
 import type { RunEngineSelection, RunSelection } from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type {
@@ -262,6 +266,7 @@ export type RunMicrotestProfileConfig = {
 };
 
 export type RunIntegrationProfileConfig = {
+    readonly attachments: AttachmentLimits;
     readonly retries: IntegrationRetryPolicy | null;
     readonly execution: RunIntegrationExecution;
     readonly files: RunProfileFiles;
@@ -365,6 +370,7 @@ export type RunEnvironmentFacts = {
 };
 
 type RunExecutionBaseFacts = {
+    readonly attachments: AttachmentLimits | null;
     readonly retries: IntegrationRetryPolicy | null;
     readonly baselineUpdateMode: 'none';
     readonly capture: 'buffered' | 'live';
@@ -498,3 +504,5 @@ export type RunOrchestrator = {
         readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
     }>;
 };
+
+export type RunRuntimeAttachments = AttachmentCoordinator | null;

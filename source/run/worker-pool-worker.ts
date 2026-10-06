@@ -4,7 +4,8 @@ import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import {
     composeRunRuntimePolicies,
     createRunPermissionRuntimePolicy,
-    engineExecution
+    engineExecution,
+    runWithWorkerAttachments
 } from './run-support.ts';
 import { resolvedTestPlanDefinitionLocations } from './collected-run-plan.ts';
 import {
@@ -332,12 +333,31 @@ async function runClosableTask(
     }
 }
 
+function taskHasAttachmentCommand(
+    task: WorkerPoolTask
+): task is Extract<WorkerPoolTask, { readonly command: WorkerPoolCommand; }> {
+    return Object.hasOwn(task, 'command');
+}
+
+function attachmentTaskCommand(task: WorkerPoolTask): WorkerPoolCommand | null {
+    return taskHasAttachmentCommand(task) ? task.command : null;
+}
+
+export const workerPoolEntryPointUrl = import.meta.url;
+
 export async function runTask(task: WorkerPoolTask): Promise<WorkerPoolTaskOutput> {
     const wallClock = createWorkerTimingClock();
 
     recordWorkerStartup(task, wallClock);
 
-    return task.kind === 'collect'
-        ? await runCollectionTask(task, wallClock)
-        : await runClosableTask(task, wallClock);
+    const command = attachmentTaskCommand(task);
+    return await runWithWorkerAttachments(
+        command?.attachmentEndpoint ?? null,
+        task.kind === 'collect' ? null : task.lifecycle.token,
+        async function executeAttachmentTask() {
+            return task.kind === 'collect'
+                ? await runCollectionTask(task, wallClock)
+                : await runClosableTask(task, wallClock);
+        }
+    );
 }

@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'tstyche';
 import type {
+    RuntimeAttachmentArtifact,
+    RuntimeAttachments,
+    TestScope,
     CoverageArtifact,
     CoverageArtifactPayload,
     CoverageMetric,
@@ -31,6 +34,7 @@ import type {
 
 type OutcomeKind = 'fail' | 'inconclusive' | 'pass' | 'skip';
 type ExpectedRunnerErrorSubtypeByName = {
+    readonly artifact: 'artifact';
     readonly attributionDrift: 'attribution-drift';
     readonly coverage: 'coverage';
     readonly crash: 'crash';
@@ -187,5 +191,16 @@ describe('RunnerError', function () {
     test('coverage runner error cause is public', function () {
         expect<CoverageRunnerError['subtype']>().type.toBe<'coverage'>();
         expect<CoverageRunnerError['cause']>().type.toBe<CoverageRunnerErrorCause>();
+    });
+});
+
+describe('runtime attachment contracts', function () {
+    test('extends artifacts without extending the base test scope', function () {
+        expect<RunArtifact>().type.toBeAssignableFrom<RuntimeAttachmentArtifact>();
+        expect<keyof TestScope>().type.not.toBeAssignableFrom<'attachments'>();
+        expect<RuntimeAttachments['json']>().type.toBeCallableWith({
+            name: 'accessibility',
+            mediaType: 'application/json'
+        }, { violations: [] });
     });
 });

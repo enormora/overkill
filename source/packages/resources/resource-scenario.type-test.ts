@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'tstyche';
-import { defineResource } from './resources.entry-point.ts';
+import { defineResource, type RuntimeAttachments } from './resources.entry-point.ts';
+
+declare const attachments: RuntimeAttachments;
 
 const routedScenarioDatabase = defineResource({
     name: 'routed-scenario-database',
@@ -30,6 +32,7 @@ const routedScenarioDatabase = defineResource({
 describe('resource scenarios', function () {
     test('separates acquisition and handle exposure bindings', function () {
         expect(routedScenarioDatabase.exposeHandle).type.toBeCallableWith('database', {
+            attachments,
             scenarios: { database: 'replica' }
         });
     });

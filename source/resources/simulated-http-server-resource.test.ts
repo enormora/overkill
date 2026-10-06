@@ -1,3 +1,4 @@
+import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defineSimulatedHttpServer } from '../simulation/simulation.ts';
 import type { HttpTranscript } from '../transcript/http-transcript.ts';
@@ -182,7 +183,12 @@ async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
         simulation,
         address: { kind: 'loopback', port: 0 }
     });
-    const acquired = await resource.acquire({ dependencies: {}, scenarios: {}, signal: testSignal() });
+    const acquired = await resource.acquire({
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: {},
+        signal: testSignal()
+    });
     const withoutScenarios: unknown = Reflect.apply(resource.exposeHandle, undefined, [ acquired, {} ]);
     const invalidScenario: unknown = Reflect.apply(resource.exposeHandle, undefined, [
         acquired,
@@ -197,7 +203,12 @@ async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
         throw new Error('Expected resource disposal.');
     }
 
-    const context = { dependencies: {}, scenarios: { api: 'default' as const }, signal: testSignal() };
+    const context = {
+        attachments: resourceAttachments('test'),
+        dependencies: {},
+        scenarios: { api: 'default' as const },
+        signal: testSignal()
+    };
 
     scope.assert.deepEqual(
         await Promise.all([

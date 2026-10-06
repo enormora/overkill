@@ -457,7 +457,7 @@ they are not inputs to the facade mapper.
 `mapScope(...)` may add project-owned convenience properties only. It must not
 return reserved scope keys: `assert`, `require`, `plan`, `collect`, `cleanup`,
 `signal`, `drainMicrotasks`, `settleAsyncWork`, `startInFlight`,
-`yieldToNextTurn`, `runtimes`, `resources`, or `parameters`. Known collisions
+`yieldToNextTurn`, `attachments`, `runtimes`, `resources`, or `parameters`. Known collisions
 are rejected by TypeScript, and dynamic mapper results are validated at
 runtime before the mapped scope is composed.
 
@@ -579,3 +579,8 @@ When no paths are supplied, `run` and `list` discover files from the selected
 profile's `files.include` and `files.exclude` policy. Explicit file paths run
 directly. Directory paths filter the selected profile's discovered files and
 require that profile policy.
+
+Resource and runtime wrappers expose `scope.attachments` for text, JSON, binary
+streams, and copied files during runner-managed integration execution. See the
+[resource attachment API](../resources/readme.md) for ownership, closure, and
+retention behavior. The engine's base `TestScope` remains unchanged.

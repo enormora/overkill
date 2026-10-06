@@ -9,8 +9,10 @@ import type { CapturedOutputArtifact, RunArtifactId } from './run-artifact.ts';
 import type { RunTimings } from './run-timings.ts';
 import type { RunResourceUsage } from './resource-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
+import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
 
 type RunnerErrorSubtypeByName = {
+    readonly artifact: 'artifact';
     readonly attributionDrift: 'attribution-drift';
     readonly coverage: 'coverage';
     readonly crash: 'crash';
@@ -511,6 +513,7 @@ export function singleAttemptResult(
 }
 
 export type HedgedConflictEvidence = {
+    readonly attachments: readonly RuntimeAttachmentArtifact[];
     readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;
@@ -529,7 +532,8 @@ export type HedgedConflictArtifact = {
     readonly source: 'native';
 };
 
-export type RunArtifact = CapturedOutputArtifact | CoverageArtifact | HedgedConflictArtifact;
+type DiagnosticArtifact = CapturedOutputArtifact | RuntimeAttachmentArtifact;
+export type RunArtifact = CoverageArtifact | DiagnosticArtifact | HedgedConflictArtifact;
 
 export type SuiteRunCounts = {
     readonly discovered: number;

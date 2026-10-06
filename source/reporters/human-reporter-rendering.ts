@@ -200,7 +200,24 @@ function runArtifacts(result: RunResult): readonly RunArtifact[] {
     });
 }
 
+function attachmentLines(
+    payload: Extract<RunArtifact['payload'], { readonly kind: 'runtime-attachment'; }>
+): readonly string[] {
+    const { content, mediaType, name } = payload;
+    if (content.kind === 'omitted') {
+        return [ `attachment "${name}" (${mediaType}): omitted (${content.reason})` ];
+    }
+    const location = content.kind === 'file' ? ` ${content.path}` : '';
+    const completeness = content.kind !== 'json' && content.completion.kind !== 'complete'
+        ? ` ${content.completion.kind} (${content.completion.reason})`
+        : '';
+    return [ `attachment "${name}" (${mediaType}, ${content.byteLength} bytes):${location}${completeness}` ];
+}
+
 function artifactLines(artifact: RunArtifact): readonly string[] {
+    if (artifact.payload.kind === 'runtime-attachment') {
+        return attachmentLines(artifact.payload);
+    }
     if (artifact.payload.kind !== 'captured-output') {
         return [];
     }

@@ -115,6 +115,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
@@ -266,6 +267,8 @@ function childHostResolvedRun(): ResolvedRun {
 
 function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
     return {
+        attachments: null,
+
         retries: null,
         baselineUpdateMode: 'none',
         capture: 'buffered',
@@ -331,6 +334,7 @@ async function createRuntime(
     resolvedRun: ResolvedRun
 ): Promise<WorkerPoolRunRuntime> {
     return await createWorkerPoolRuntime({
+        attachments: null,
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies,
@@ -488,6 +492,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function createMismatchedRuntime() {
                     await createWorkerPoolRuntime({
+                        attachments: null,
                         collectionRunnerErrors: [],
                         createdPool: null,
                         dependencies: fakeDependencies(),

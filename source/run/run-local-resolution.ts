@@ -32,6 +32,8 @@ import type {
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
+export type LocalRunCollectionSource = LocalTestPlanInput['source'];
+
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 
 function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: string | null) => string | null {

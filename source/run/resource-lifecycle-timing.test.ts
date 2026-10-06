@@ -3,6 +3,7 @@ import {
     type DeterministicClock,
     type Clock
 } from '@enormora/clock';
+import { resourceAttachments } from '../attachments/attachment-context.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -228,6 +229,7 @@ export const testNode = createOverkillSuite({
                 await capturedError(async function timeoutAcquisition() {
                     await fixture.timing.measure(operation(controller.signal), async function acquireResource() {
                         return await acquireResourceWithStartupBudget(timeoutResource(), {
+                            attachments: resourceAttachments('test'),
                             dependencies: {},
                             scenarios: {},
                             signal: controller.signal

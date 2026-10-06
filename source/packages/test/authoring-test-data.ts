@@ -1,4 +1,5 @@
 import type {
+    RuntimeAttachments,
     CaptureMode,
     DefinedOutputRenderer,
     DefinedReporter,
@@ -32,7 +33,7 @@ export type AuthoringControls = {
 
 type EmptyResources = Readonly<Record<string, never>>;
 type EmptyMappedScope = Readonly<Record<string, never>>;
-type ReservedFacadeScopeKey = keyof TestScope | 'collect' | 'parameters' | 'resources' | 'runtimes';
+type ReservedFacadeScopeKey = keyof TestScope | 'attachments' | 'collect' | 'parameters' | 'resources' | 'runtimes';
 type FacadeMappedScopeConflict<MappedScope extends Readonly<Record<string, unknown>>> = Extract<
     keyof MappedScope,
     ReservedFacadeScopeKey
@@ -41,11 +42,11 @@ type ValidFacadeMappedScope<MappedScope extends Readonly<Record<string, unknown>
     FacadeMappedScopeConflict<MappedScope> extends never ? MappedScope
         : MappedScope & Readonly<Record<FacadeMappedScopeConflict<MappedScope>, never>>;
 type FacadeRuntimeScope<Runtime, Scope extends TestScope> = Runtime extends RuntimeGraph
-    ? Scope & { readonly runtimes: RuntimeScopeContext<Runtime>; }
+    ? Scope & { readonly attachments: RuntimeAttachments; readonly runtimes: RuntimeScopeContext<Runtime>; }
     : Scope;
 type FacadeResourceMapScope<Resources extends ResourceMap, Scope extends TestScope> = keyof Resources extends never
     ? Scope
-    : Scope & { readonly resources: ResourceContext<Resources>; };
+    : Scope & { readonly attachments: RuntimeAttachments; readonly resources: ResourceContext<Resources>; };
 type FacadeResourceScope<Resources, Scope extends TestScope> = Resources extends ResourceMap
     ? FacadeResourceMapScope<Resources, Scope>
     : Scope;
@@ -120,6 +121,7 @@ const facadeDefinitionFields: ReadonlySet<string> = new Set([
 ]);
 const knownCaptureModes: ReadonlySet<unknown> = new Set(captureModeValues);
 const reservedFacadeScopeKeyValues: readonly ReservedFacadeScopeKey[] = [
+    'attachments',
     'assert',
     'cleanup',
     'collect',

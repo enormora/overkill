@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'tstyche';
 import type {
+    AttachmentLimits,
     DefinedOutputRenderer,
     DefinedReporter,
     RunResult,
@@ -464,6 +465,7 @@ describe('@overkill-dev/run config', function () {
             readonly testFamily: 'integration';
         }>();
         expect<RunIntegrationProfileConfig>().type.toBeAssignableFrom<{
+            readonly attachments: AttachmentLimits;
             readonly retries: null;
             readonly execution: {
                 readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };

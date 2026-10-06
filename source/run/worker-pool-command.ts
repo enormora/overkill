@@ -59,6 +59,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
+        attachmentEndpoint: runtime.attachments?.endpoint ?? null,
         collectionTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
         cwd: runtime.resolvedRun.cwd,
         definitionLocationCapture: 'disabled',

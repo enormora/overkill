@@ -216,6 +216,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
@@ -373,6 +374,7 @@ export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntim
     const taskResults: RunResult[] = [];
     const placementTrace = createWorkerPoolPlacementTraceRecorder();
     return {
+        attachments: null,
         activeTasks: new Set(),
         collectedPlan: createCollectedPlan(),
         collectionRunnerErrors: [],

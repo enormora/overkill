@@ -2,13 +2,9 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import type { ReporterEvent } from '../engine/reporter.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
-import type { WorkId } from '../engine/identity.ts';
-import type {
-    RunnerError,
-    RunResult
-} from '../engine/run-result.ts';
+import type { ReporterEvent, WorkId, RunnerError, RunResult } from './run-engine-primitives.ts';
+import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
 import type {
@@ -32,6 +28,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly retryPolicy: RunIntegrationProfileConfig['retries'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;

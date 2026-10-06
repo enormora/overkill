@@ -1,1 +1,1 @@
-export const resourceDefinitionBrand: unique symbol = Symbol('overkill.resourceDefinition');
+export const resourceDefinitionBrand: unique symbol = Symbol.for('overkill.resourceDefinition');

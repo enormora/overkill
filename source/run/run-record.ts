@@ -21,7 +21,7 @@ export type RunRecordSession = {
 
 export function createRunRecordSession(
     cwd: string,
-    input: ResolvedRunInput,
+    input: Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>,
     dependencies: RunRecordDependencies
 ): RunRecordSession {
     const value = initialRecord(cwd, input, dependencies);

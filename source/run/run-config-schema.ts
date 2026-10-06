@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
 import {
@@ -249,8 +250,21 @@ export const microtestProfileSchema = z
     })
     .readonly();
 
+export const attachmentLimitsSchema = z
+    .strictObject({
+        maxInlineBytes: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxInlineBytes),
+        maxArtifactBytes: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxArtifactBytes),
+        maxScopeBytes: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxScopeBytes),
+        maxScopeAttachments: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxScopeAttachments)
+    })
+    .readonly()
+    .default(defaultAttachmentLimits);
+
+export type RunProjectAttachmentLimits = z.input<typeof attachmentLimitsSchema>;
+
 export const integrationProfileSchema = z
     .strictObject({
+        attachments: attachmentLimitsSchema,
         execution: z.optional(integrationExecutionSchema),
         files: profileFilesSchema,
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),

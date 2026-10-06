@@ -301,13 +301,17 @@ function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
 
 function eventWithTaskArtifacts(
     event: RuntimeReporterEvent,
-    taskRun: WorkerPoolTaskRun
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
 ): RuntimeReporterEvent {
     return event.kind === 'test-end'
         ? {
             ...event,
             artifacts: [
                 ...event.artifacts,
+                ...runtime.attachments?.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
+                    index: event.attempt
+                }, taskRun) ?? [],
                 ...taskRun.state.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
                     index: event.attempt
                 })
@@ -325,7 +329,7 @@ function handleWorkerEvent(
         taskRun.startedCases.add(workIdentityKey(event.workId ?? createDefaultWorkId(event.case)));
     }
 
-    const reportedEvent = eventWithTaskArtifacts(event, taskRun);
+    const reportedEvent = eventWithTaskArtifacts(event, taskRun, runtime);
 
     applyEvent(
         reportedEvent,

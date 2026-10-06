@@ -121,6 +121,7 @@ async function routedResourceUsage(): Promise<{
     const createdWorkerPools: WorkerPoolCreationOptions[] = [];
     const samples: ResourceUsageSnapshot[] = [];
     const runtime = await createWorkerPoolRuntime({
+        attachments: null,
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies: trackingDependencies(createdWorkerPools),

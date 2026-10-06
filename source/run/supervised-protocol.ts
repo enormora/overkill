@@ -1,9 +1,8 @@
 import type { Clock } from '@enormora/clock';
 import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { ReporterEvent } from '../engine/reporter.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
-import type { RunResult } from '../engine/run-result.ts';
-import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
+import type { ReporterEvent, RunResult, ResourceUsageSnapshot } from './run-engine-primitives.ts';
+import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type {
     CollectedRunPlan,
@@ -61,11 +60,13 @@ export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCom
 export const supervisedChildCorrelationId = 'supervised-run';
 
 type WorkAssignmentCommand = {
+    readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly assignedWork: readonly WorkId[];
     readonly kind: 'assign';
 };
 
 type LegacyCaseAssignmentCommand = {
+    readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly assignedCases: readonly CaseId[];
     readonly kind: 'assign';
 };

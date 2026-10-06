@@ -6,7 +6,7 @@ import type {
 } from './run-engine-primitives.ts';
 import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
 import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
-import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
+import type { RunRuntimeAttachments, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     createSupervisedHardTimeout,
@@ -42,6 +42,7 @@ export type ReporterEventQueue = {
 export type SupervisedHardTimeout = SupervisedChildHardTimeout;
 
 export type SupervisedRunRuntimeSeed = {
+    readonly attachments: RunRuntimeAttachments;
     readonly child: SupervisedChildProcess;
     readonly collectedPlan: StoredRunValue<CollectedRunPlan | null>;
     readonly completedResult: StoredRunValue<RunResult | null>;
@@ -228,19 +229,26 @@ export function supervisedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunP
 export const createHardTimeout: (runtime: SupervisedRunRuntimeSeed) => SupervisedHardTimeout =
     createSupervisedHardTimeout;
 
-function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
-    const collectedPlan = runtime.collectedPlan.read();
-    const reportedEvent: ReporterEvent = event.kind === 'test-end'
+function childEventWithAttachments(event: ReporterEvent, runtime: SupervisedRunRuntime): ReporterEvent {
+    return event.kind === 'test-end'
         ? {
             ...event,
             artifacts: [
                 ...event.artifacts,
+                ...runtime.attachments?.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
+                    index: event.attempt
+                }, null) ?? [],
                 ...runtime.state.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
                     index: event.attempt
                 })
             ]
         }
         : event;
+}
+
+function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
+    const collectedPlan = runtime.collectedPlan.read();
+    const reportedEvent = childEventWithAttachments(event, runtime);
 
     if (collectedPlan !== null) {
         applyEvent(

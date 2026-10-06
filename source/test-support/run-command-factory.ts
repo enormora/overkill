@@ -1,3 +1,4 @@
+import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type {
@@ -126,6 +127,7 @@ function defaultCoveragePolicy(overrides: Partial<RunCoveragePolicy> = {}): RunC
 
 export function testRunExecutionFacts(command: RunCommand, profile: RunProfileConfig): RunExecutionFacts {
     const facts = {
+        attachments: profile.testFamily === 'integration' ? profile.attachments : null,
         retries: null,
         baselineUpdateMode: command.request.baselineUpdateMode,
         capture: command.request.capture,
@@ -291,6 +293,7 @@ export function defaultIntegrationProfile(
     overrides: IntegrationProfileOverrides
 ): RunIntegrationProfileConfig {
     return {
+        attachments: defaultAttachmentLimits,
         retries: null,
         execution: defaultIntegrationExecution(overrides.execution),
         files: overrides.files ?? {

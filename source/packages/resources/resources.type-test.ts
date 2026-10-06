@@ -18,6 +18,7 @@ import {
     type ExecutionRequirement,
     type ResourceContext,
     type ResourceCreationContext,
+    type RuntimeAttachments,
     type ResourceDefinitionInput,
     type ResourceDisposalContext,
     type ResourceHandle,
@@ -506,5 +507,13 @@ describe('runtime scenarios', function () {
         expect(simulatedApiResource.scenarios['simulated-api'].values).type.toBe<
             readonly ['default' | 'outage', ...('default' | 'outage')[]]
         >();
+    });
+});
+
+describe('resource attachment contexts', function () {
+    test('provides attachments across resource lifecycle contexts', function () {
+        expect<ResourceCreationContext['attachments']>().type.toBe<RuntimeAttachments>();
+        expect<ResourceDisposalContext['attachments']>().type.toBe<RuntimeAttachments>();
+        expect<ResourceProjectionContext['attachments']>().type.toBe<RuntimeAttachments>();
     });
 });

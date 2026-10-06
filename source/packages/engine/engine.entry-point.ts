@@ -19,6 +19,14 @@ import {
     type ThrowingTestCaseOptions
 } from '../../engine/test-node.ts';
 
+export type {
+    AttachmentMetadata,
+    AttachmentWriter,
+    AttachmentLimits,
+    RuntimeAttachments,
+    RuntimeAttachmentArtifact
+} from '../../engine/runtime-attachment.ts';
+
 function writeStdoutLine(line: string): void {
     process.stdout.write(`${line}\n`);
 }

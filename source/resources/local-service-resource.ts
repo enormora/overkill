@@ -1,3 +1,4 @@
+import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
 import {
     defineResource,
     type Awaitable,
@@ -32,12 +33,14 @@ export type LocalServiceAddress = {
 };
 
 export type LocalServiceCreationContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
+    readonly attachments: RuntimeAttachments;
     readonly address: LocalServiceAddress;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
 
 export type LocalServiceDisposalContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
+    readonly attachments: RuntimeAttachments;
     readonly address: LocalServiceAddress;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
@@ -71,6 +74,7 @@ type LocalServiceDefinitionDisposal<OwnerHandle, Dependencies extends ResourceDe
 };
 
 type LocalServiceAcquisitionContext<Dependencies extends ResourceDependencies> = {
+    readonly attachments: RuntimeAttachments;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
 };
@@ -220,6 +224,7 @@ async function cleanupStartedService<OwnerHandle, Dependencies extends ResourceD
     try {
         await definition.dispose(owner, {
             address: context.address,
+            attachments: context.attachments,
             dependencies: context.dependencies,
             signal: internalCleanupSignal()
         });
@@ -329,6 +334,7 @@ function localServiceDispose<
         owners.delete(handle);
         await definition.dispose(owner, {
             address,
+            attachments: context.attachments,
             dependencies: context.dependencies,
             signal: context.signal
         });

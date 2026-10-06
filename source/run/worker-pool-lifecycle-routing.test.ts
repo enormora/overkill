@@ -83,6 +83,7 @@ function baseResolvedRun(): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',
                 baselineUpdateMode: 'none',
@@ -400,6 +401,7 @@ export const testNode = createOverkillSuite({
                 const routedLifecycles: RunWorkerLifecycle[] = [];
                 const routedHostOutputSinks: RunWorkerLifecycle[] = [];
                 const runtime = await createWorkerPoolRuntime({
+                    attachments: null,
                     collectionRunnerErrors: [],
                     createdPool: null,
                     dependencies: fakeDependencies(createdWorkerPools, routedLifecycles, routedHostOutputSinks),

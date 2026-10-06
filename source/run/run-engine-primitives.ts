@@ -1,3 +1,10 @@
+import type { TestRuntimePolicy as TestRuntimePolicyDefinition } from '../engine/case-execution.ts';
+import type { AttachmentLimits as AttachmentLimitsDefinition } from '../engine/runtime-attachment.ts';
+import type {
+    WorkId as WorkIdDefinition,
+    RuntimeId as RuntimeIdDefinition,
+    WorkloadId as WorkloadIdDefinition
+} from '../engine/identity.ts';
 import type { Engine as EngineDefinition } from '../engine/engine.ts';
 import type { Execute as ExecuteDefinition } from '../engine/execution.ts';
 import type {
@@ -9,6 +16,7 @@ import type {
     ReporterEvent as ReporterEventDefinition
 } from '../engine/reporter.ts';
 import type {
+    OrphanedNode as OrphanedNodeDefinition,
     PerTestResult as PerTestResultDefinition,
     RunArtifact as RunArtifactDefinition,
     RunResult as RunResultDefinition,
@@ -20,6 +28,7 @@ import type {
     RunResourceUsageTracker as RunResourceUsageTrackerDefinition
 } from '../engine/resource-usage.ts';
 import type {
+    TestPlanRootOptions as TestPlanRootOptionsDefinition,
     TestPlan as TestPlanDefinition,
     TestPlanCase as TestPlanCaseDefinition
 } from '../engine/test-plan.ts';
@@ -39,3 +48,11 @@ export type RunResult = RunResultDefinition;
 export type RunnerError = RunnerErrorDefinition;
 export type TestPlan = TestPlanDefinition;
 export type TestPlanCase = TestPlanCaseDefinition;
+
+export type TestRuntimePolicy = TestRuntimePolicyDefinition;
+export type AttachmentLimits = AttachmentLimitsDefinition;
+export type WorkId = WorkIdDefinition;
+export type RuntimeId = RuntimeIdDefinition;
+export type WorkloadId = WorkloadIdDefinition;
+export type OrphanedNode = OrphanedNodeDefinition;
+export type TestPlanRootOptions = TestPlanRootOptionsDefinition;

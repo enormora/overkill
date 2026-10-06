@@ -1,13 +1,12 @@
+import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
 import {
     createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
 import { readResolvedRunInput } from './run-input-resolution.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
-import type {
-    RunCollectionSource
-} from './run-isolated-process.ts';
 import {
+    type LocalRunCollectionSource as RunCollectionSource,
     createLocalRunOrEmptySelectionResult
 } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -94,7 +93,9 @@ async function runOrdinaryLocalCommand(
         return await reportCollectionErrorResult(command, dependencies, resolvedRun, timing);
     }
 
-    return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
+    return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentRun() {
+        return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
+    });
 }
 
 export async function runLocalCommand(

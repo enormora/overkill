@@ -20,7 +20,8 @@ import {
 import {
     createRunResourceRuntimePolicy,
     engineExecution,
-    type RunRuntimePolicy
+    type RunRuntimePolicy,
+    runWithWorkerAttachments
 } from './run-support.ts';
 import {
     createSupervisedChildTestPlan,
@@ -316,15 +317,21 @@ async function run(
 
     sendRunResult(
         host,
-        await executeAssignment({
-            assignment,
-            collectedPlan,
-            command,
-            dependencies,
-            host,
-            startedAtMs,
-            wallClock
-        })
+        await runWithWorkerAttachments(
+            assignment.attachmentEndpoint,
+            null,
+            async function executeAttachmentAssignment() {
+                return await executeAssignment({
+                    assignment,
+                    collectedPlan,
+                    command,
+                    dependencies,
+                    host,
+                    startedAtMs,
+                    wallClock
+                });
+            }
+        )
     );
 }
 

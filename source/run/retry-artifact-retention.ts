@@ -2,7 +2,10 @@ import { workIdentityKey } from '../engine/identity.ts';
 import type { PerTestResult, RunArtifact } from '../engine/run-result.ts';
 import type { RetryArtifactPolicy } from './run-execution-config.ts';
 
-function retainedAttemptIndexes(result: PerTestResult, policy: RetryArtifactPolicy): ReadonlySet<number> {
+function retainedAttemptIndexes(
+    result: Pick<PerTestResult, 'attempts'>,
+    policy: RetryArtifactPolicy
+): ReadonlySet<number> {
     const failures = result.attempts.filter(function failedAttempt(attempt) {
         return attempt.verdict !== 'pass' && attempt.verdict !== 'skip';
     });
@@ -18,11 +21,11 @@ function retainedAttemptIndexes(result: PerTestResult, policy: RetryArtifactPoli
     return indexes;
 }
 
-export function retainedRetryArtifacts(
-    artifacts: readonly RunArtifact[],
-    results: readonly PerTestResult[],
+export function retainedRetryArtifacts<Artifact extends RunArtifact>(
+    artifacts: readonly Artifact[],
+    results: readonly Pick<PerTestResult, 'attempts' | 'workId'>[],
     policy: RetryArtifactPolicy
-): readonly RunArtifact[] {
+): readonly Artifact[] {
     if (policy === 'all') {
         return artifacts;
     }

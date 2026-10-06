@@ -1,5 +1,4 @@
-import type { TestRuntimePolicy } from '../engine/case-execution.ts';
-import type { TestPlanCase } from '../engine/test-plan.ts';
+import { resourceAttachments } from '../packages/resources/attachment-context.entry-point.ts';
 import type {
     AnyResourceDefinition,
     ResourceProjectionPayload,
@@ -11,6 +10,7 @@ import {
     createResourceGraph,
     type ResourceGraph
 } from '../resources/resource-graph.ts';
+import type { TestRuntimePolicy, TestPlanCase } from './run-engine-primitives.ts';
 import {
     combinedResourceEntries,
     composedResourceSession,
@@ -23,6 +23,7 @@ import {
     type ResourceWrapperStep
 } from './resource-lifecycle-composition.ts';
 import {
+    currentAttachmentExecution,
     currentLifecycleCase,
     runWithLifecycleCase,
     runWithManagedLifecycle,
@@ -145,6 +146,7 @@ async function disposeResourceRecord(
 
     const disposeHandle = async function disposeResourceHandle(): Promise<void> {
         await dispose(record.ownerHandle, {
+            attachments: resourceAttachments(record.descriptor.name),
             dependencies: record.dependencyContext,
             scenarios: lifecycleScenarioBindings(record.descriptor),
             signal
@@ -417,24 +419,44 @@ function createManagedLifecycleState(options: ResourceLifecycleOptions): Managed
 function createRuntimePolicyFromLifecycle(lifecycle: ManagedLifecycleState): TestRuntimePolicy {
     return {
         async completeCase(testCase, attempt) {
-            await lifecycle.completeCase(testCase, attempt);
+            const attachments = currentAttachmentExecution();
+            const complete = async function completeOwnedCase(): Promise<void> {
+                await lifecycle.completeCase(testCase, attempt);
+            };
+            await (attachments === null ? complete() : attachments.runAttempt(testCase.workId, attempt, complete));
         },
-        async runAttempt(testCase, attempt, run) {
+        async runAttempt<Value>(
+            testCase: TestPlanCase,
+            attempt: Parameters<ManagedLifecycleState['completeCase']>[1],
+            run: () => Promise<Value>
+        ): Promise<Value> {
             return await runWithManagedLifecycle(lifecycle, async function runWithResourceLifecycle() {
-                return await lifecycle.runAttempt(testCase, attempt, run);
+                const attachments = currentAttachmentExecution();
+                const execute = async function executeOwnedAttempt(): Promise<Value> {
+                    return await lifecycle.runAttempt(testCase, attempt, run);
+                };
+                return await (attachments === null
+                    ? execute()
+                    : attachments.runAttempt(testCase.workId, attempt, execute));
             });
         },
         async runLoad<Value>(run: () => Promise<Value>): Promise<Value> {
             return await run();
         },
         takeAttemptErrors(testCase, attempt) {
-            return lifecycle.takeAttemptErrors(testCase, attempt);
+            return [
+                ...lifecycle.takeAttemptErrors(testCase, attempt),
+                ...currentAttachmentExecution()?.takeErrors({ kind: 'case', work: testCase.workId, attempt }) ?? []
+            ];
         },
         takePendingRunErrors() {
-            return lifecycle.takePendingRunErrors();
+            return [
+                ...lifecycle.takePendingRunErrors(),
+                ...currentAttachmentExecution()?.takeErrors({ kind: 'run' }) ?? []
+            ];
         },
         takeRunErrors() {
-            return lifecycle.takeRunErrors();
+            return [ ...lifecycle.takeRunErrors(), ...currentAttachmentExecution()?.takeErrors({ kind: 'run' }) ?? [] ];
         }
     };
 }

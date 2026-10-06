@@ -152,6 +152,7 @@ function createRunExecutionFacts(
     profile: RunProfileConfig
 ): RunExecutionFacts {
     const facts = {
+        attachments: profile.testFamily === 'integration' ? profile.attachments : null,
         baselineUpdateMode: input.request.baselineUpdateMode,
         capture: input.request.capture,
         coverage: input.request.coverage,

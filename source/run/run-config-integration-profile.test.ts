@@ -1,3 +1,4 @@
+import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -42,6 +43,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(profile);
                 scope.require.defined(microtestProfile);
                 scope.assert.deepEqual(profile, {
+                    attachments: defaultAttachmentLimits,
                     retries: null,
                     execution: {
                         assignmentPolicy: 'case-count-balanced',
