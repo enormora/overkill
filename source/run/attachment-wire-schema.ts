@@ -1,10 +1,25 @@
 import { z } from 'zod/v4';
+import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import {
     attachmentChunkBytes,
     attachmentMetadataBytes,
+    type AttachmentEndpoint,
     type AttachmentReply,
     type AttachmentRequest
 } from './attachment-protocol.ts';
+
+const maxTcpPort = 65_535;
+export const attachmentEndpointSchema: z.ZodType<AttachmentEndpoint> = z.strictObject({
+    port: z.number().int().min(1).max(maxTcpPort),
+    token: z.string(),
+    branch: z.string().nullable(),
+    limits: z.strictObject({
+        maxInlineBytes: z.number().int().positive(),
+        maxArtifactBytes: z.number().int().positive(),
+        maxScopeBytes: z.number().int().positive(),
+        maxScopeAttachments: z.number().int().positive()
+    })
+});
 
 const caseSchema = z.object({
     file: z.string().nullable(),
@@ -106,7 +121,7 @@ const artifactIdSchema = z.union([
         })
     })
 ]);
-const artifactSchema = z.object({
+export const runtimeAttachmentArtifactSchema: z.ZodType<RuntimeAttachmentArtifact> = z.object({
     id: artifactIdSchema,
     payload: metadataSchema.extend({
         capture: z.literal('opt-in'),
@@ -122,7 +137,7 @@ export const attachmentReplySchema: z.ZodType<AttachmentReply> = z.object({
     result: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('opened'), writer: writerSchema }),
         z.object({ kind: z.literal('written') }),
-        z.object({ artifact: artifactSchema, kind: z.literal('closed') }),
+        z.object({ artifact: runtimeAttachmentArtifactSchema, kind: z.literal('closed') }),
         z.object({ kind: z.literal('error'), message: z.string(), reason: z.string() })
     ])
 });

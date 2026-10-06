@@ -85,10 +85,10 @@ export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['depen
             }
         },
         runtimeCapabilityPolicy: {
-            installIpcRestriction() {
+            observeIpcListeners() {
                 return doNothing;
             },
-            installProcessExecutionRestriction() {
+            observeProcessExit() {
                 return doNothing;
             },
             readEnvironment() {

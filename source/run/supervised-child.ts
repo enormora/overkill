@@ -173,8 +173,8 @@ function createRuntimePolicy(
     return command.capabilityRestrictions.mode === 'enabled'
         ? createRuntimeCapabilityPolicy({
             dependencies: {
-                installIpcRestriction: host.installIpcRestriction,
-                installProcessExecutionRestriction: host.installProcessExecutionRestriction,
+                observeIpcListeners: host.observeIpcListeners,
+                observeProcessExit: host.observeProcessExit,
                 readEnvironment: host.readEnvironment,
                 readStorage: host.readStorage
             },

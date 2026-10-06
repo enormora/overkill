@@ -15,7 +15,7 @@ function createCollectionErrorRunResult(
     error: RunCollectionError,
     runtimePolicyErrors: readonly RunResult['runnerErrors'][number][]
 ): RunResult {
-    const runnerErrors = [ ...runtimePolicyErrors, error.runnerError() ];
+    const runnerErrors = [ ...runtimePolicyErrors, ...error.runnerErrors() ];
     const summary = {
         crashed: 0,
         defined: 0,

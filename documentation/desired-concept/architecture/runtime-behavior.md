@@ -147,11 +147,19 @@ opaque to the dispatcher. Fallback diagnostics do not create a separate outcome
 category; they use the same non-zero exit code the underlying error would
 already require.
 
-Test code calling `process.exit(code)` is treated as a runner-level error
-and attributed to the currently-running test. The default policy is to
-**throw** when the test attempts `process.exit` in a profile that disallows
-process termination (microtest profile blocks it via the Node permission
-model; integration profile may permit it).
+Premature process termination is a runner-level failure. Supervised execution
+requires a valid completion result; exit code zero does not establish success.
+The parent records exit code, signal, and affected attempts without claiming to
+know which process method caused termination. Interrupted attempts are `crashed`.
+
+In-process execution observes the native `exit` event while restricted work is
+unfinished. It reports synchronously and changes a successful exit status to
+`1`, preserving nonzero status. It cannot stop termination, return a result, or
+reliably report aborts. Node permissions do not prevent `process.exit()`.
+
+Overkill never monkey-patches process methods. See
+[Microtests And Capabilities](../authoring/microtests-and-capabilities.md) for
+native observation, IPC validation, and the one-second terminal shutdown limit.
 
 A test profile may opt out of capture-on-exit if the SUT genuinely needs to
 test process-exit behavior; that test should run in an isolated subprocess

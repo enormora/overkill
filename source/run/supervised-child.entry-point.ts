@@ -1,4 +1,5 @@
 import { createClock } from '@enormora/clock';
+import { supervisedParentMessageSchema } from './supervised-protocol-schema.ts';
 import {
     childProcessEnvelope,
     envelopeMessage
@@ -10,9 +11,8 @@ import {
     runDiscovery
 } from './node-run-dependencies.entry-point.ts';
 import {
-    installIpcRestriction as installProcessIpcRestriction,
-    installProcessExecutionRestriction as installNodeProcessExecutionRestriction
-} from './node-process-capability-restrictions.ts';
+    observeProcessIpcListeners
+} from './node-process-policy-observation.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import {
@@ -21,6 +21,8 @@ import {
     type SupervisedChildCommand,
     type SupervisedRunCommand
 } from './supervised-protocol.ts';
+
+const ownedMessageListeners = new WeakSet<(message: unknown) => void>();
 
 const sendMessage = process.send?.bind(process);
 const disconnectProcess = process.disconnect?.bind(process);
@@ -33,51 +35,42 @@ function disconnect(): void {
     disconnectProcess?.();
 }
 
-function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
-    return typeof value === 'object' && value !== null;
-}
-
-function isChildCommand(message: unknown): message is SupervisedChildCommand {
-    return isRecord(message) &&
-        Object.hasOwn(message, 'kind') &&
-        (message.kind === 'collect' || message.kind === 'run');
-}
-
-function isAssignmentCommand(message: unknown): message is SupervisedAssignmentCommand {
-    return isRecord(message) &&
-        Object.hasOwn(message, 'kind') &&
-        message.kind === 'assign';
-}
-
 function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
-    return envelopeMessage<SupervisedAssignmentCommand | SupervisedChildCommand>(
-        message,
-        supervisedChildCorrelationId
-    );
+    return envelopeMessage(message, supervisedChildCorrelationId, supervisedParentMessageSchema);
 }
 
+function readCommand(message: unknown): SupervisedChildCommand {
+    const decoded = supervisedParentMessage(message);
+    if (decoded?.kind === 'run' || decoded?.kind === 'collect') {
+        return decoded;
+    }
+    throw new Error('Expected a supervised child command.');
+}
+function readAssignment(message: unknown): SupervisedAssignmentCommand {
+    const decoded = supervisedParentMessage(message);
+    if (decoded?.kind === 'assign') {
+        return decoded;
+    }
+    throw new Error('Expected a supervised child assignment.');
+}
+async function receiveParentMessage<Message>(read: (message: unknown) => Message): Promise<Message> {
+    return new Promise(function waitForParentMessage(resolve, reject) {
+        const listener = function receiveMessage(message: unknown): void {
+            try {
+                resolve(read(message));
+            } catch (error: unknown) {
+                reject(error instanceof Error ? error : new Error('Invalid parent IPC payload.'));
+            }
+        };
+        ownedMessageListeners.add(listener);
+        process.once('message', listener);
+    });
+}
 async function receiveCommand(): Promise<SupervisedChildCommand> {
-    return new Promise(function waitForCommand(resolve) {
-        process.once('message', function receiveChildCommand(message: unknown) {
-            const parentMessage = supervisedParentMessage(message);
-
-            if (isChildCommand(parentMessage)) {
-                resolve(parentMessage);
-            }
-        });
-    });
+    return receiveParentMessage(readCommand);
 }
-
 async function receiveAssignment(): Promise<SupervisedAssignmentCommand> {
-    return new Promise(function waitForAssignment(resolve) {
-        process.once('message', function receiveAssignmentCommand(message: unknown) {
-            const parentMessage = supervisedParentMessage(message);
-
-            if (isAssignmentCommand(parentMessage)) {
-                resolve(parentMessage);
-            }
-        });
-    });
+    return receiveParentMessage(readAssignment);
 }
 
 function validatePermissionHost(command: SupervisedChildCommand): void {
@@ -109,11 +102,13 @@ await runSupervisedChild(
         disconnect,
         discoverRunFiles: runDiscovery.discoverRunFiles,
         dropBodyReadPermission,
-        installIpcRestriction(record) {
-            return installProcessIpcRestriction(process, record);
+        observeIpcListeners(record) {
+            return observeProcessIpcListeners(process, record, ownedMessageListeners);
         },
-        installProcessExecutionRestriction(record) {
-            return installNodeProcessExecutionRestriction(process, record);
+        observeProcessExit() {
+            return function stopObservingChildExit() {
+                return undefined;
+            };
         },
         readEnvironment() {
             return readProcessEnvironment(process);

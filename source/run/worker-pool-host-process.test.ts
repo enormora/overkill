@@ -1,21 +1,18 @@
 import type { MessagePort as WorkerMessagePort } from 'node:worker_threads';
+import { createFakeHostChild, type FakeHostChild } from '../test-support/fake-worker-pool-host-process.ts';
+import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource-usage.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    childProcessEnvelope,
-    envelopeMessage
-} from './child-process-protocol.ts';
 import type {
     CreatedWorkerPool,
     WorkerPoolCreationOptions,
     WorkerPoolResourceUsageTracker,
     WorkerPoolHostProcessStartOptions
 } from './run-orchestrator-dependencies.ts';
-import type { SupervisedChildProcess } from './supervised-child-process.ts';
 import type {
     WorkerPoolCommand,
     WorkerPoolMessage
@@ -23,30 +20,15 @@ import type {
 import {
     serializeError,
     serializeWorkerPoolMessage,
-    type WorkerPoolHostCommand,
-    workerPoolHostCorrelationId,
-    type WorkerPoolHostMessage
+    type WorkerPoolHostCommand
 } from './worker-pool-host-protocol.ts';
 import { createHostedWorkerPool } from './worker-pool-host-process.ts';
 
 const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
-type ChildOutput = NonNullable<SupervisedChildProcess['stdout']> & {
-    readonly emit: (text: string) => void;
-};
-
 type FakePort = {
     readonly messages: () => readonly WorkerPoolMessage[];
     readonly postMessage: (message: WorkerPoolMessage) => void;
-};
-
-type FakeHostChild = SupervisedChildProcess & {
-    readonly emitError: (error: Error) => void;
-    readonly emitExit: () => void;
-    readonly emitMessage: (message: WorkerPoolHostMessage) => void;
-    readonly sentCommands: () => readonly WorkerPoolHostCommand[];
-    readonly stderr: ChildOutput;
-    readonly stdout: ChildOutput;
 };
 
 type HostedPoolFixture = {
@@ -69,21 +51,6 @@ type ResourceTrackingFixture = HostedPoolFixture & {
     readonly tracker: WorkerPoolResourceUsageTracker;
 };
 
-function createChildOutput(): ChildOutput {
-    let dataListener: (chunk: Uint8Array) => void = function ignoreOutput() {
-        return undefined;
-    };
-
-    return {
-        emit(text) {
-            dataListener(Buffer.from(text));
-        },
-        on(_event, listener) {
-            dataListener = listener;
-        }
-    };
-}
-
 function createFakePort(): FakePort {
     const messages: WorkerPoolMessage[] = [];
 
@@ -94,77 +61,6 @@ function createFakePort(): FakePort {
         postMessage(message) {
             messages.push(message);
         }
-    };
-}
-
-function createFakeHostChild(): FakeHostChild {
-    const commands: WorkerPoolHostCommand[] = [];
-    const errorListeners: ((error: Error) => void)[] = [];
-    const exitListeners: (() => void)[] = [];
-    const messageListeners: ((message: unknown) => void)[] = [];
-    const stdout = createChildOutput();
-    const stderr = createChildOutput();
-
-    function emitMessage(message: WorkerPoolHostMessage): void {
-        for (const listener of messageListeners) {
-            listener(childProcessEnvelope(workerPoolHostCorrelationId, message));
-        }
-    }
-
-    return {
-        emitError(error) {
-            for (const listener of errorListeners) {
-                listener(error);
-            }
-        },
-        emitExit() {
-            for (const listener of exitListeners) {
-                listener();
-            }
-        },
-        emitMessage,
-        exitCode: null,
-        kill() {
-            return true;
-        },
-        on(...registration) {
-            const [ event, listener ] = registration;
-
-            if (event === 'error') {
-                errorListeners.push(listener);
-            } else if (event === 'exit') {
-                exitListeners.push(listener);
-            } else {
-                messageListeners.push(listener);
-            }
-        },
-        pid: 12,
-        send(message) {
-            const command = envelopeMessage<WorkerPoolHostCommand>(message, workerPoolHostCorrelationId);
-
-            if (command === null) {
-                return false;
-            }
-
-            commands.push(command);
-
-            if (command.kind === 'configure') {
-                emitMessage({ kind: 'configured' });
-            } else if (command.kind === 'destroy') {
-                emitMessage({ kind: 'destroyed' });
-                for (const listener of exitListeners) {
-                    listener();
-                }
-            }
-
-            return true;
-        },
-        sentCommands() {
-            return commands;
-        },
-        signalCode: null,
-        stderr,
-        stdout
     };
 }
 
@@ -288,9 +184,15 @@ async function runTask(pool: CreatedWorkerPool): Promise<unknown> {
                 runtimes: [],
                 workload: null
             },
-            work: [ { file: 'test.ts', index: 0 } ]
+            attempt: 'attempt-0',
+            work: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ]
         } ],
-        assignedWork: [ { file: 'test.ts', index: 0 } ],
+        assignedWork: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ],
+        boundaryUseCounts: [],
+        lane: 'lane',
+        lifecycle: { token: 'lifecycle' },
+        projectedResources: { resources: [] },
+        runWork: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ],
         command: workerPoolCommand(),
         kind: 'run',
         port: messagePort(createFakePort()),

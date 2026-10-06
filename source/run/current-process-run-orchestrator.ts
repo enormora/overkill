@@ -1,8 +1,8 @@
 import type { Engine } from '../engine/engine.ts';
 import {
-    installIpcRestriction as installProcessIpcRestriction,
-    installProcessExecutionRestriction as installNodeProcessExecutionRestriction
-} from './node-process-capability-restrictions.ts';
+    observeProcessIpcListeners,
+    observeProcessExit as observeNodeProcessExit
+} from './node-process-policy-observation.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
 import {
     createNodeRunCoordinator,
@@ -47,12 +47,10 @@ export function createCurrentProcessRunOrchestrator(
         loadRunTestModules: dependencies.loadRunTestModules,
         startSupervisedChild: dependencies.startSupervisedChild,
         startWorkerPoolHost: dependencies.startWorkerPoolHost,
-        installIpcRestriction(record) {
-            return installProcessIpcRestriction(process, record);
+        observeIpcListeners(record) {
+            return observeProcessIpcListeners(process, record, new WeakSet());
         },
-        installProcessExecutionRestriction(record) {
-            return installNodeProcessExecutionRestriction(process, record);
-        },
+        observeProcessExit: observeNodeProcessExit,
         node: {
             arch: process.arch,
             platform: process.platform,
@@ -80,12 +78,10 @@ export function createCurrentProcessRunCoordinator(
         loadRunTestModules: dependencies.loadRunTestModules,
         startSupervisedChild: dependencies.startSupervisedChild,
         startWorkerPoolHost: dependencies.startWorkerPoolHost,
-        installIpcRestriction(record) {
-            return installProcessIpcRestriction(process, record);
+        observeIpcListeners(record) {
+            return observeProcessIpcListeners(process, record, new WeakSet());
         },
-        installProcessExecutionRestriction(record) {
-            return installNodeProcessExecutionRestriction(process, record);
-        },
+        observeProcessExit: observeNodeProcessExit,
         node: {
             arch: process.arch,
             platform: process.platform,

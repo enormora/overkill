@@ -1,3 +1,5 @@
+import type { RunnerError } from '../engine/run-result.ts';
+
 export type RuntimeCapabilityPolicyEnvironment = Readonly<Record<string, string | undefined>>;
 
 type EnvironmentSnapshot = {
@@ -17,8 +19,8 @@ export type WebStorageLike = {
 };
 
 export type RuntimeCapabilityPolicyDependencies = {
-    readonly installIpcRestriction: (record: (message: string) => void) => () => void;
-    readonly installProcessExecutionRestriction: (record: (message: string) => void) => () => void;
+    readonly observeIpcListeners: (record: (message: string) => void) => () => void;
+    readonly observeProcessExit: (record: (message: string) => RunnerError) => () => void;
     readonly readEnvironment: () => RuntimeCapabilityPolicyEnvironment;
     readonly readStorage: (name: 'localStorage' | 'sessionStorage') => WebStorageLike | null;
 };

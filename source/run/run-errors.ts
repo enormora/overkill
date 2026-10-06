@@ -174,6 +174,10 @@ export class RunCollectionError extends Error {
         this.errorSubtype = subtype;
     }
 
+    public runnerErrors(): readonly RunnerError[] {
+        return [ this.runnerError() ];
+    }
+
     public runnerError(): RunnerError {
         const permissionError = permissionDeniedRunnerErrorFromThrown(this.cause, {
             attributedTo: null,
@@ -197,6 +201,23 @@ export class RunCollectionError extends Error {
             message: this.message,
             subtype: this.errorSubtype
         };
+    }
+}
+
+export class SupervisedCollectionError extends RunCollectionError {
+    private readonly reportedErrors: readonly [RunnerError, ...readonly RunnerError[]];
+    public constructor(errors: readonly [RunnerError, ...readonly RunnerError[]], options: Readonly<ErrorOptions>) {
+        super(errors[0].message, options, errors[0].subtype);
+        this.reportedErrors = errors;
+        this.name = 'SupervisedCollectionError';
+    }
+
+    public override runnerError(): RunnerError {
+        return this.reportedErrors[0];
+    }
+
+    public override runnerErrors(): readonly RunnerError[] {
+        return this.reportedErrors;
     }
 }
 

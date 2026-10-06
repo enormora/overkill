@@ -1,3 +1,4 @@
+import { supervisedParentMessageSchema } from '../run/supervised-protocol-schema.ts';
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
 import {
@@ -27,6 +28,7 @@ type FakeSupervisedChildCollection = {
 
 type FakeSupervisedChildCollectionInput = {
     readonly command: SupervisedChildCommand;
+    readonly emitMessage: (message: SupervisedChildMessage) => void;
     readonly file: string;
 };
 
@@ -121,7 +123,7 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
         }
 
         state.emitMessage({
-            ...input.collect({ command: receivedCommand, file: testFile }),
+            ...input.collect({ command: receivedCommand, emitMessage: state.emitMessage, file: testFile }),
             kind: 'collected'
         });
     }
@@ -162,6 +164,9 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
     }
 
     return {
+        closeTransport() {
+            return undefined;
+        },
         exitCode: null,
         kill() {
             killed = true;
@@ -172,15 +177,16 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
 
             if (event === 'message') {
                 state.onMessage(listener);
-            } else if (event === 'exit') {
+            } else if (event === 'exit' || event === 'close') {
                 state.onExit(listener);
             }
         },
         pid: 1,
         send(message) {
-            const parentMessage = envelopeMessage<SupervisedAssignmentCommand | SupervisedChildCommand>(
+            const parentMessage = envelopeMessage(
                 message,
-                supervisedChildCorrelationId
+                supervisedChildCorrelationId,
+                supervisedParentMessageSchema
             );
 
             if (parentMessage?.kind === 'assign') {

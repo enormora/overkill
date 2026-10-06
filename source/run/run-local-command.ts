@@ -80,6 +80,26 @@ async function executeResolvedRun(
     });
 }
 
+async function runLocalWithPolicy(
+    command: RunCommand,
+    dependencies: RunOrchestratorDependencies,
+    options: LocalRunOptions,
+    runtimePolicy: RunRuntimePolicy | null
+): Promise<RunResult> {
+    const resolvedRun = await createLocalRunResult(command, dependencies, runtimePolicy, options);
+    if (isRunResult(resolvedRun)) {
+        const errors = runtimePolicy?.takeRunErrors() ?? [];
+        return await reportCollectionErrorResult(command, dependencies, {
+            ...resolvedRun,
+            runnerErrors: [ ...resolvedRun.runnerErrors, ...errors ],
+            status: errors.length > 0 ? 'failed' : resolvedRun.status
+        }, options.timing);
+    }
+    return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentRun() {
+        return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, options.timing);
+    });
+}
+
 async function runOrdinaryLocalCommand(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -87,15 +107,11 @@ async function runOrdinaryLocalCommand(
     source: RunCollectionSource
 ): Promise<RunResult> {
     const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
-    const resolvedRun = await createLocalRunResult(command, dependencies, runtimePolicy, { source, timing });
-
-    if (isRunResult(resolvedRun)) {
-        return await reportCollectionErrorResult(command, dependencies, resolvedRun, timing);
+    try {
+        return await runLocalWithPolicy(command, dependencies, { source, timing }, runtimePolicy);
+    } finally {
+        runtimePolicy?.takeRunErrors();
     }
-
-    return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentRun() {
-        return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, timing);
-    });
 }
 
 export async function runLocalCommand(

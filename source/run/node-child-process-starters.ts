@@ -38,6 +38,13 @@ function forkSupervisedChildProcess(
     });
 
     return {
+        closeTransport() {
+            child.stdout?.destroy();
+            child.stderr?.destroy();
+            if (child.connected) {
+                child.disconnect();
+            }
+        },
         get exitCode() {
             return child.exitCode;
         },
@@ -51,7 +58,7 @@ function forkSupervisedChildProcess(
                 return child.on(event, listener);
             }
 
-            if (event === 'exit') {
+            if (event === 'message') {
                 return child.on(event, listener);
             }
 

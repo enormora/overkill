@@ -1,4 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as processPolicyTestNode } from './process-policy-suite.test.ts';
 import { testNode as supervisedChildSuiteTestNode } from './supervised-child-suite.test.ts';
 import { testNode as supervisedRunResourcePolicyTestNode } from './supervised-run-resource-policy.test.ts';
 import { testNode as supervisedRunRuntimeTestNode } from './supervised-run-runtime.test.ts';
@@ -10,6 +11,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        processPolicyTestNode,
         supervisedChildSuiteTestNode,
         supervisedRunResourcePolicyTestNode,
         supervisedRunRuntimeTestNode,

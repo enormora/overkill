@@ -64,6 +64,9 @@ function createTimeoutChild(readTimeoutCallback: () => TimeoutCallback): Supervi
     const exitListeners: SupervisedChildExitListener[] = [];
 
     return {
+        closeTransport() {
+            return undefined;
+        },
         exitCode: null,
         kill() {
             for (const listener of exitListeners) {
@@ -73,7 +76,7 @@ function createTimeoutChild(readTimeoutCallback: () => TimeoutCallback): Supervi
         on(...registration) {
             const [ event, listener ] = registration;
 
-            if (event === 'exit') {
+            if (event === 'exit' || event === 'close') {
                 exitListeners.push(listener);
             }
         },
@@ -92,6 +95,9 @@ async function createEventChild(): Promise<SupervisedChildProcess> {
     const messageListeners: SupervisedChildMessageListener[] = [];
 
     return {
+        closeTransport() {
+            return undefined;
+        },
         exitCode: null,
         kill() {
             for (const listener of exitListeners) {
@@ -103,7 +109,7 @@ async function createEventChild(): Promise<SupervisedChildProcess> {
 
             if (event === 'message') {
                 messageListeners.push(listener);
-            } else if (event === 'exit') {
+            } else if (event === 'exit' || event === 'close') {
                 exitListeners.push(listener);
             }
         },

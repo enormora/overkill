@@ -79,6 +79,7 @@ export type SupervisedRunState = {
         completedAtMicroseconds: number
     ) => void;
     readonly perTestResults: () => readonly PerTestResult[];
+    readonly beginOutputDraining: () => void;
     readonly recordCapturedOutput: (
         stream: 'stderr' | 'stdout',
         chunk: Uint8Array,
@@ -262,7 +263,12 @@ export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue
 }
 
 export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): SupervisedRunState {
-    const activeCases = new Map<string, ActiveSupervisedCase>();
+    const cases = {
+        active: new Map<string, ActiveSupervisedCase>(),
+        interruptedByPolicy: new Map<string, ActiveSupervisedCase>(),
+        outputDraining: new Map<string, ActiveSupervisedCase>(),
+        terminalOutputDraining: false
+    };
     const artifacts: RunArtifact[] = [];
     const outputCapture = createSupervisedOutputCapture();
     const perTest = new Map<string, PerTestResult>();
@@ -273,7 +279,10 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
         verdict: PerTestResult['verdict'],
         completedAtMicroseconds: number
     ): void {
-        for (const [ key, testCase ] of activeCases) {
+        const interrupted = verdict === 'crashed'
+            ? new Map([ ...cases.interruptedByPolicy, ...cases.active ])
+            : cases.active;
+        for (const [ key, testCase ] of interrupted) {
             const previous = attemptResults.get(key) ?? [];
             perTest.set(
                 key,
@@ -288,13 +297,30 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             });
         }
 
-        activeCases.clear();
+        cases.active.clear();
+        if (verdict === 'crashed') {
+            cases.interruptedByPolicy.clear();
+        }
     };
 
+    function recordFinalCaseResult(
+        key: string,
+        result: PerTestResult,
+        activeCase: ActiveSupervisedCase | undefined
+    ): void {
+        perTest.set(key, result);
+        if (activeCase !== undefined) {
+            cases.outputDraining.set(key, activeCase);
+        }
+    }
+
     return {
-        activeCases,
+        activeCases: cases.active,
         addActiveCase(key, testCase, startedAtMicroseconds, attempt) {
-            activeCases.set(key, { ...testCase, attempt, startedAtMicroseconds });
+            if (cases.active.size === 0) {
+                cases.outputDraining.clear();
+            }
+            cases.active.set(key, { ...testCase, attempt, startedAtMicroseconds });
         },
         artifacts() {
             return artifacts;
@@ -312,8 +338,14 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             }
             return Array.from(results.values());
         },
+        beginOutputDraining() {
+            cases.terminalOutputDraining = true;
+        },
         recordCapturedOutput(stream, chunk, capturedAtMicroseconds) {
-            const activeWork = Array.from(activeCases.values(), function capturedWork(testCase) {
+            const captureWindow = cases.active.size === 0 && cases.terminalOutputDraining
+                ? cases.outputDraining
+                : cases.active;
+            const activeWork = Array.from(captureWindow.values(), function capturedWork(testCase) {
                 return { attempt: testCase.attempt, work: testCase.workId ?? createDefaultWorkId(testCase.id) };
             });
             artifacts.push(...outputCapture.record(activeWork, stream, chunk, capturedAtMicroseconds));
@@ -327,7 +359,7 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             attemptResults.set(key, results);
             const retained = retainedRetryArtifacts(artifacts, [ caseAttemptHistory(result, results) ], artifactPolicy);
             artifacts.splice(0, artifacts.length, ...retained);
-            const activeCase = activeCases.get(key);
+            const activeCase = cases.active.get(key);
             if (activeCase !== undefined) {
                 timingWindows.push({
                     endedAtMicroseconds: completedAtMicroseconds,
@@ -335,11 +367,11 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
                 });
             }
             if (completion === 'final') {
-                perTest.set(key, caseAttemptHistory(result, results));
+                recordFinalCaseResult(key, caseAttemptHistory(result, results), activeCase);
             }
         },
         recordPerTestResult(key, result, completedAtMicroseconds) {
-            const activeCase = activeCases.get(key);
+            const activeCase = cases.active.get(key);
 
             if (activeCase !== undefined) {
                 timingWindows.push({
@@ -357,12 +389,16 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             runnerErrors.push(...errors);
         },
         recordRuntimePolicyViolation(capability, message) {
-            runnerErrors.push(createRuntimePolicyError(activeCases, capability, message));
+            runnerErrors.push(createRuntimePolicyError(cases.active, capability, message));
+            for (const [ key, active ] of cases.active) {
+                cases.interruptedByPolicy.set(key, active);
+            }
             recordTerminalActiveCases('runtime-policy', 0);
         },
         recordTerminalActiveCases,
         removeActiveCase(key) {
-            activeCases.delete(key);
+            cases.active.delete(key);
+            cases.interruptedByPolicy.delete(key);
         },
         runnerErrors() {
             return runnerErrors;
