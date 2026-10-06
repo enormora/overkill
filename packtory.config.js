@@ -136,12 +136,21 @@ export const config = {
         {
             name: 'resources',
             description: 'Typed Overkill resource and runtime descriptors.',
+            roots: {
+                main: moduleRoot('packages/resources/resources.entry-point'),
+                attachmentContext: moduleRoot('packages/resources/attachment-context.entry-point')
+            },
+            packageInterface: {
+                modules: packageModules({ '.': 'main', './attachment-context': 'attachmentContext' })
+            },
             bundlePeerDependencies: [ '@overkill-dev/simulation' ]
         },
         {
             name: 'run',
             description: 'Overkill run resolution and orchestration.',
             roots: {
+                attachmentConnection: { js: 'run/attachment-connection.js' },
+                attachmentRun: { js: 'run/attachment-run.js' },
                 commandLine: moduleRoot('packages/run/command-line.entry-point'),
                 config: moduleRoot('packages/run/config.entry-point'),
                 coverageSession: { js: 'run/coverage-session.js' },
@@ -151,7 +160,8 @@ export const config = {
                 nodeCommandLineRunner: moduleRoot('run/node-command-line-runner'),
                 recordedCoverage: { js: 'run/recorded-coverage-run.js' },
                 resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
-                transcriptStore: moduleRoot('packages/run/transcript-store.entry-point')
+                transcriptStore: moduleRoot('packages/run/transcript-store.entry-point'),
+                workerPoolWorker: { js: 'run/worker-pool-worker.js' }
             },
             packageInterface: {
                 modules: packageModules({
@@ -162,7 +172,15 @@ export const config = {
                     './resource-lifecycle': 'resourceLifecycle',
                     './transcript-store': 'transcriptStore'
                 }),
-                privateRoots: [ 'coverageSession', 'localCoverage', 'nodeCommandLineRunner', 'recordedCoverage' ]
+                privateRoots: [
+                    'attachmentConnection',
+                    'attachmentRun',
+                    'coverageSession',
+                    'localCoverage',
+                    'nodeCommandLineRunner',
+                    'recordedCoverage',
+                    'workerPoolWorker'
+                ]
             }
         },
         {
@@ -200,6 +218,7 @@ export const config = {
                 overkill: { js: 'packages/test/overkill.entry-point.js' },
                 reporters: moduleRoot('packages/test/reporters.entry-point'),
                 resources: moduleRoot('packages/test/resources.entry-point'),
+                resourceWrapperSession: { js: 'packages/test/resource-wrapper-session.js' },
                 simulation: moduleRoot('packages/test/simulation.entry-point')
             },
             packageInterface: {
@@ -219,7 +238,8 @@ export const config = {
                         name: 'overkill',
                         root: 'overkill'
                     }
-                ]
+                ],
+                privateRoots: [ 'resourceWrapperSession' ]
             }
         },
         {

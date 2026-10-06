@@ -176,6 +176,7 @@ export function createWorkerPoolCommand(
     const resourceUsagePolicy = resolveResourceUsagePolicy(input.command.request, input.profile);
 
     return {
+        attachmentEndpoint: null,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,
         cwd: input.command.cwd,

@@ -1,4 +1,6 @@
+import { attachmentsForProducer } from '../resources/attachment-context.entry-point.ts';
 import {
+    type RuntimeAttachments,
     attachTestBodyResourceAttachments,
     hasTestBodyResourceAttachments,
     type AssertionResult,
@@ -58,6 +60,7 @@ type ResourceTestScope<
     Resources extends ResourceMap,
     Scope extends TestScope = TestScope
 > = Scope & {
+    readonly attachments: RuntimeAttachments;
     readonly resources: ResourceContext<Resources>;
 };
 
@@ -528,12 +531,16 @@ export function attachComposedResourceActions<Scope extends TestScope>(
         }
 
         const session = await acquireCompositionSession(steps, scope.signal, messages);
+        const attachmentScope = Object.freeze({
+            ...scope,
+            attachments: attachmentsForProducer({ kind: 'case' })
+        });
 
         scope.cleanup(async function cleanupComposedResources() {
             await disposeCompositionSession(session, messages);
         });
 
-        return await invokeTestBody(composition.body, composeActionScopes(scope, composedActions, session));
+        return await invokeTestBody(composition.body, composeActionScopes(attachmentScope, composedActions, session));
     };
     const composedBody = steps.length > 0
         ? attachResourceMetadata(wrappedBody, composedActions)

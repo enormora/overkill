@@ -144,6 +144,27 @@ A scope containing no executable sources fails, including scopes matching only
 types or no files. Native data is retained on reporting failures. Replay and
 automatic coverage cleanup await the replay and record-retention workflows.
 
+Integration runs with resource or runtime wrappers also persist a `RunRecord`.
+The record starts after collection and before resource acquisition. Attachment
+files are copied under `<runtimeStateDir>/runs/<id>/artifacts/`; artifact paths
+are relative to the project root. Completed and interrupted records retain
+attachment metadata and available content. Reporter completion events include
+attachments from their case attempt.
+
+Integration profiles accept `attachments` with these default limits:
+
+| Setting               | Default |
+| --------------------- | ------: |
+| `maxInlineBytes`      |   1 MiB |
+| `maxArtifactBytes`    |  10 MiB |
+| `maxScopeBytes`       |  10 MiB |
+| `maxScopeAttachments` |     100 |
+
+Scope budgets cover the full retry chain. Retry artifact policy also determines
+which attachment files remain. Cancelled or matching hedged peers are discarded;
+conflicting executions retain their attachments in the conflict evidence.
+Microtest profiles reject attachment configuration.
+
 Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
 The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
 directory. Configured output directories keep raw data under `raw/<id>`.
@@ -151,7 +172,8 @@ Records preserve the request, decimal seed, resolved facts, execution policy,
 project-relative coverage paths, and result artifacts. The started record
 precedes coverage setup and imports; early failures may have `facts: null`.
 Completion includes reporter and cleanup errors. Required persistence failures
-fail the run. Ordinary runs and `orchestrator.resolve()` do not create records.
+fail the run. Bare integration runs, microtest runs without coverage, and
+`orchestrator.resolve()` do not create records.
 
 Resolved runtime identities contain selected scenario bindings. They flow into
 `RunFacts`, duration-history keys, reporter labels, and artifact IDs so replay

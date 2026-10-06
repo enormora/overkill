@@ -61,6 +61,7 @@ import {
     type ResourceHandle,
     type ResourceScopeContext,
     type ResourceTestScope,
+    type RuntimeAttachments,
     type ResourceWrappedTestBody,
     type RuntimeGraph,
     type RuntimeSession,
@@ -292,6 +293,7 @@ describe('@overkill-dev/test standard subpaths', function () {
             const runtimeBody = withRuntime(runtime, function runWithDatabase(scope) {
                 expect(scope).type.toBe<RuntimeTestScope<typeof runtime>>();
                 expect(scope.runtimes.api.database).type.toBe<Database>();
+                expect(scope.attachments).type.toBe<RuntimeAttachments>();
 
                 return scope.assert.collect();
             });
@@ -334,6 +336,7 @@ describe('@overkill-dev/test standard subpaths', function () {
             const resourcesBody = withResources({ dir: temporaryDirectory }, function runWithResources(scope) {
                 expect(scope).type.toBe<ResourceTestScope<{ readonly dir: typeof temporaryDirectory; }>>();
                 expect(scope.resources.dir.path).type.toBe<string>();
+                expect(scope.attachments).type.toBe<RuntimeAttachments>();
 
                 return scope.assert.collect();
             });
@@ -352,6 +355,7 @@ describe('@overkill-dev/test standard subpaths', function () {
                     function runWithScratchAndRuntime(scope) {
                         expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
                         expect(scope.runtimes.api.database).type.toBe<Database>();
+                        expect(scope.attachments).type.toBe<RuntimeAttachments>();
 
                         return scope.assert.collect();
                     }
@@ -440,6 +444,7 @@ describe('@overkill-dev/test standard subpaths', function () {
                 resources: { scratch: temporaryDirectory },
                 mapScope(scope) {
                     expect(scope.runtimes.api.database).type.toBe<Database>();
+                    expect(scope.attachments).type.toBe<RuntimeAttachments>();
                     expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
 
                     return {
@@ -454,6 +459,7 @@ describe('@overkill-dev/test standard subpaths', function () {
                 expect(scope.scratchPath).type.toBe<string>();
                 expect(scope.resources.scratch).type.toBe<TemporaryDirectoryHandle>();
                 expect(scope.runtimes.api.database).type.toBe<Database>();
+                expect(scope.attachments).type.toBe<RuntimeAttachments>();
 
                 return scope.assert.collect();
             }))

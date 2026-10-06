@@ -54,6 +54,7 @@ export type {
     RunProjectCoveragePolicy,
     RunProjectCoverageSources,
     RunProjectCoverageThresholds,
+    RunProjectAttachmentLimits,
     RunProjectConfig,
     RunProjectIntegrationExecution,
     RunProjectIntegrationProfileConfig,

@@ -1,9 +1,11 @@
 import path from 'node:path';
+import type { z } from 'zod/v4';
 import { parse } from '@schema-hub/zod-error-formatter';
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
-import type { DefinedReporter } from '../engine/reporter.ts';
 import {
+    attachmentLimitsSchema,
+    type RunProjectAttachmentLimits as ParsedRunProjectAttachmentLimits,
+    type integrationProfileSchema,
     projectConfigSchema,
     workerPoolProjectExecution,
     type RunProjectConfig as ParsedRunProjectConfig,
@@ -65,6 +67,7 @@ import {
     defaultWorkerPoolHedgingPolicy
 } from './run-config-defaults.ts';
 
+type ConfiguredReporters = NonNullable<ParsedRunProjectConfig['reporters']>;
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
 
@@ -73,12 +76,13 @@ export type LoadedRunConfig = {
     readonly loader: RunLoaderConfig;
     readonly outputRenderer: DefinedOutputRenderer;
     readonly profiles: RunProfilesConfig;
-    readonly reporters: NonEmptyReadonlyArray<DefinedReporter> | null;
+    readonly reporters: ConfiguredReporters | null;
     readonly runtimeStateDir: string;
 };
 
 export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution & ProjectHostProcessGuard;
-export type RunProjectIntegrationProfileConfig = Pick<ParsedRunProjectIntegrationProfileConfig, 'retries'> & {
+type IntegrationArtifactSettings = Pick<z.input<typeof integrationProfileSchema>, 'attachments' | 'retries'>;
+export type RunProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
     readonly coverage?: never;
     readonly execution?: RunProjectIntegrationExecution | undefined;
     readonly files: ParsedRunProjectIntegrationProfileConfig['files'];
@@ -205,7 +209,7 @@ function readNamedConfigExport(configModule: unknown, configPath: string): unkno
 }
 
 function normalizeReporters(
-    reporters: NonEmptyReadonlyArray<DefinedReporter> | undefined
+    reporters: ConfiguredReporters | undefined
 ): LoadedRunConfig['reporters'] {
     return reporters ?? null;
 }
@@ -412,6 +416,7 @@ function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig
     assertValidWorkerPoolHedging(execution);
 
     return {
+        attachments: attachmentLimitsSchema.parse(profile.attachments),
         execution,
         files,
         reporters: normalizeReporters(profile.reporters),
@@ -492,3 +497,5 @@ export function createRunConfigLoader(dependencies: RunConfigLoaderDependencies)
         return normalizeConfig(parseConfig(configValue, configPath), configPath);
     };
 }
+
+export type RunProjectAttachmentLimits = ParsedRunProjectAttachmentLimits;

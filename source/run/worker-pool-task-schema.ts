@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 import type { WorkerPoolTaskWithoutPort } from './worker-pool-host-protocol.ts';
 import { workIdSchema, runtimeIdSchema, workloadIdSchema } from './run-identity-schema.ts';
 import { executionCommandFields, hostProcessSchema } from './run-command-schema.ts';
+import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
 const workUnitSchema = z.strictObject({
     key: z.string(),
@@ -16,6 +17,7 @@ const assignedUnitSchema = z.strictObject({
 });
 const commandSchema = z.strictObject({
     ...executionCommandFields,
+    attachmentEndpoint: attachmentEndpointSchema.nullable(),
     hostProcess: hostProcessSchema,
     workerLifecycle: z.enum([ 'fresh-worker-per-unit', 'reuse' ])
 });

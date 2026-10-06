@@ -112,6 +112,7 @@ export async function acquireResourceWithStartupBudget(
     try {
         return await Promise.race([
             callableResourceDefinition(resource).acquire({
+                attachments: context.attachments,
                 dependencies: context.dependencies,
                 scenarios: context.scenarios,
                 signal: controller.signal

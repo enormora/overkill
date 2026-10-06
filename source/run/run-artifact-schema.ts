@@ -3,6 +3,7 @@ import type { RunArtifact } from '../engine/run-result.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { attemptIdSchema, workIdSchema } from './run-identity-schema.ts';
 import { artifactIdentityFields, runArtifactIdSchema } from './run-artifact-id-schema.ts';
+import { runtimeAttachmentArtifactSchema } from './attachment-wire-schema.ts';
 
 export const verdictSchema = z.enum([
     'pass',
@@ -21,11 +22,13 @@ export const testAttemptSchema = z.strictObject({
 });
 const coverageMetricSchema = z.strictObject({ covered: z.number(), total: z.number() });
 const hedgeEvidenceSchema = z.strictObject({
+    attachments: z.array(runtimeAttachmentArtifactSchema),
     attempts: z.tuple([ testAttemptSchema ]).rest(testAttemptSchema),
     outcome: testOutcomeSchema.nullable(),
     verdict: verdictSchema
 });
 export const runArtifactSchema: z.ZodType<RunArtifact> = z.union([
+    runtimeAttachmentArtifactSchema,
     z.strictObject({
         id: runArtifactIdSchema.and(z.object({ subtype: z.literal('log-capture') })),
         payload: z.strictObject({

@@ -1,3 +1,4 @@
+import { resourceAttachments } from '../attachments/attachment-context.ts';
 import type {
     AnyResourceDefinition,
     Awaitable,
@@ -110,6 +111,7 @@ async function disposeResource(
 
     try {
         await disposeResourceHandle(dispose, handle, {
+            attachments: resourceAttachments(node.descriptor.name),
             dependencies: acquiredDependencyHandles(node.descriptor.dependencies, resourceHandles),
             scenarios: acquisitionResourceScenarioBindings(node.descriptor),
             signal
@@ -216,6 +218,7 @@ function createResourceAcquisition(
 
             try {
                 const ownerHandle = await acquireResourceHandle(resource, {
+                    attachments: resourceAttachments(resource.name),
                     dependencies,
                     scenarios: acquisitionResourceScenarioBindings(resource),
                     signal: acquisitionSignal

@@ -13,6 +13,7 @@ import {
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { contextPrefix, problemLines } from './human-reporter-rendering.ts';
 import { formatTimingOffenderLines } from './run-summary-rendering.ts';
+import { testNode as attachmentRendering } from './human-attachment-rendering.test.ts';
 
 const passingCaseId: CaseId = { file: null, params: null, suite: [], title: 'passes' };
 const failingCaseId: CaseId = { file: 'source/fails.test.ts', params: null, suite: [ 'root' ], title: 'fails' };
@@ -83,6 +84,7 @@ function ignoredRunArtifact(): RunArtifact {
         },
         payload: {
             authoritative: {
+                attachments: [],
                 attempts: [ {
                     attempt: { index: 0 },
                     durationMicroseconds: 0,
@@ -93,6 +95,7 @@ function ignoredRunArtifact(): RunArtifact {
                 verdict: 'pass'
             },
             conflicting: {
+                attachments: [],
                 attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: null, verdict: 'crashed' } ],
                 outcome: null,
                 verdict: 'crashed'
@@ -143,6 +146,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        attachmentRendering,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'human timing output shows at most five spans strictly above 500 ms',

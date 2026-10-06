@@ -28,6 +28,7 @@ type FakeSupervisedChildCollection = {
 
 type FakeSupervisedChildCollectionInput = {
     readonly command: SupervisedChildCommand;
+    readonly emitMessage: (message: SupervisedChildMessage) => void;
     readonly file: string;
 };
 
@@ -122,7 +123,7 @@ export function createFakeSupervisedChildProcess(input: FakeSupervisedChildProce
         }
 
         state.emitMessage({
-            ...input.collect({ command: receivedCommand, file: testFile }),
+            ...input.collect({ command: receivedCommand, emitMessage: state.emitMessage, file: testFile }),
             kind: 'collected'
         });
     }

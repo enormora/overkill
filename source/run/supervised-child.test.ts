@@ -104,6 +104,7 @@ function command(kind: SupervisedChildCommand['kind'], path: string): Supervised
 
 function assignment(title: string): SupervisedAssignmentCommand {
     return {
+        attachmentEndpoint: null,
         assignedCases: [
             {
                 file: passingFixturePath,
@@ -118,6 +119,7 @@ function assignment(title: string): SupervisedAssignmentCommand {
 
 function emptyAssignment(): SupervisedAssignmentCommand {
     return {
+        attachmentEndpoint: null,
         assignedCases: [],
         kind: 'assign'
     };

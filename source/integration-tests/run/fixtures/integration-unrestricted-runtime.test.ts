@@ -1,3 +1,4 @@
+import { resourceAttachments } from '../../../attachments/attachment-context.ts';
 import { spawnSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
@@ -45,6 +46,7 @@ function close(server: Server): Promise<void> {
 
 async function exerciseTemporaryDirectoryResource(scope: TestScope): Promise<void> {
     const temporaryDirectory = await temporaryDirectoryResource.acquire({
+        attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
         signal: resourceSignal
@@ -59,6 +61,7 @@ async function exerciseTemporaryDirectoryResource(scope: TestScope): Promise<voi
         scope.assert.equal(temporaryDirectory.path.includes('overkill-temporary-directory-'), true);
     } finally {
         await temporaryDirectoryResource.dispose(temporaryDirectory, {
+            attachments: resourceAttachments('test'),
             dependencies: {},
             scenarios: {},
             signal: resourceSignal

@@ -10,6 +10,7 @@ import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
 import { resourceUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
+import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
 const commandSchema: z.ZodType<SupervisedChildCommand> = z.strictObject({
     ...executionCommandFields,
@@ -18,8 +19,16 @@ const commandSchema: z.ZodType<SupervisedChildCommand> = z.strictObject({
     capture: z.enum([ 'buffered', 'live' ])
 });
 const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
-    z.strictObject({ kind: z.literal('assign'), assignedWork: z.array(workIdSchema) }),
-    z.strictObject({ kind: z.literal('assign'), assignedCases: z.array(caseIdSchema) })
+    z.strictObject({
+        kind: z.literal('assign'),
+        assignedWork: z.array(workIdSchema),
+        attachmentEndpoint: attachmentEndpointSchema.nullable()
+    }),
+    z.strictObject({
+        kind: z.literal('assign'),
+        assignedCases: z.array(caseIdSchema),
+        attachmentEndpoint: attachmentEndpointSchema.nullable()
+    })
 ]);
 export const supervisedParentMessageSchema: z.ZodType<SupervisedAssignmentCommand | SupervisedChildCommand> = z.union([
     commandSchema,

@@ -5,6 +5,7 @@ export type {
     RunProjectIntegrationRetryPolicy
 } from '../run/config.entry-point.ts';
 export type {
+    RunProjectAttachmentLimits,
     RunProjectConfig,
     RunProjectCoverageOutput,
     RunProjectCoveragePolicy,

@@ -53,6 +53,7 @@ function createChildProcess(): SupervisedChildProcess {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        attachmentEndpoint: null,
         retryPolicy: null,
         collectionTimeoutMilliseconds: 100,
         cwd: '/project',

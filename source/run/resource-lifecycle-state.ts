@@ -1,8 +1,10 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { runWithAttachmentContext } from '../packages/resources/attachment-context.entry-point.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { AttemptId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
+import type { AttachmentExecution } from './attachment-execution.ts';
 import type {
     ComposedResourceSession,
     LifecycleMessages,
@@ -67,5 +69,20 @@ export async function runWithLifecycleCase<Value>(
 ): Promise<Value> {
     return await runningCase.run({ testCase, attempt }, async function runScopedCase() {
         return await runWithTranscriptScope(testCase, run);
+    });
+}
+
+const executionContext = new AsyncLocalStorage<AttachmentExecution>();
+
+export function currentAttachmentExecution(): AttachmentExecution | null {
+    return executionContext.getStore() ?? null;
+}
+
+export async function runWithAttachmentExecution<Value>(
+    execution: AttachmentExecution,
+    run: () => Promise<Value>
+): Promise<Value> {
+    return await executionContext.run(execution, async function runAttachmentBoundary() {
+        return await runWithAttachmentContext(execution.context, run);
     });
 }

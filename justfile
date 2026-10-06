@@ -32,6 +32,8 @@ test-unit:
     node source/overkill.test.ts
 
 test-runner-integration:
+    node source/integration-tests/run/runner-attachments.test.ts
+    node source/integration-tests/run/runner-attachment-retention.test.ts
     node source/integration-tests/run/runner-retries.test.ts
     node source/integration-tests/run/runner-coverage.test.ts
     node source/integration-tests/run/runner-coverage-records.test.ts
@@ -59,6 +61,7 @@ test-package-smoke: compile
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
     node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
+    node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 

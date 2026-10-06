@@ -1,8 +1,5 @@
+import { executeWithRuntimeAttachments, activeRuntimeAttachments } from './runtime-attachment-boundary.ts';
 import { observeSupervisedTransport, sendSupervisedCommand } from './supervised-child-transport.ts';
-import type {
-    ResourceUsageSnapshot,
-    RunResult
-} from './run-engine-primitives.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun
@@ -44,6 +41,8 @@ import {
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
 
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
+type ResourceUsageSnapshot = NonNullable<ReturnType<SupervisedRunRuntime['previousSample']['read']>>;
 type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
 
 type SupervisedCollectionResult = {
@@ -332,6 +331,7 @@ async function createLiveRunRuntime(
     resolvedRun: ResolvedRun
 ): Promise<SupervisedRunRuntime> {
     const runtimeWithoutTimeout = {
+        attachments: activeRuntimeAttachments(),
         child: liveRun.child,
         collectedPlan: createStoredRunValue<CollectedRunPlan | null>(supervisedCollectedPlan(resolvedRun)),
         completedResult: createStoredRunValue<RunResult | null>(null),
@@ -358,7 +358,8 @@ function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;
         }),
-        kind: 'assign'
+        kind: 'assign',
+        attachmentEndpoint: runtime.attachments?.endpoint ?? null
     });
 }
 
@@ -374,12 +375,7 @@ async function reportRunStartForPlannedCases(
     await reportRunStart(runtime, collectedPlan, startedAtMs);
 }
 
-async function continueLiveRun(
-    liveRun: SupervisedLiveRun,
-    collection: SupervisedCollectionResult,
-    createResolvedRun: CreateResolvedRunFromCollection
-): Promise<RunResult> {
-    const resolvedRun = await createResolvedRun(collection);
+async function executeCollectedLiveRun(liveRun: SupervisedLiveRun, resolvedRun: ResolvedRun): Promise<RunResult> {
     const startedAt = supervisedRunStartTimes(liveRun.dependencies);
     const runtime = await createLiveRunRuntime(liveRun, resolvedRun);
     const collectedPlan = supervisedCollectedPlan(resolvedRun);
@@ -392,6 +388,21 @@ async function continueLiveRun(
     return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);
 }
 
+async function continueLiveRun(
+    liveRun: SupervisedLiveRun,
+    collection: SupervisedCollectionResult,
+    createResolvedRun: CreateResolvedRunFromCollection
+): Promise<RunResult> {
+    const resolvedRun = await createResolvedRun(collection);
+    return await executeWithRuntimeAttachments(
+        resolvedRun,
+        liveRun.dependencies,
+        async function executeAttachmentChild() {
+            return await executeCollectedLiveRun(liveRun, resolvedRun);
+        }
+    );
+}
+
 async function executeLiveCommand(
     command: SupervisedRunCommand,
     liveRun: SupervisedLiveRun,
@@ -401,6 +412,7 @@ async function executeLiveCommand(
     const collection = await readLiveCollection(liveRun);
     return await continueLiveRun(liveRun, collection, createResolvedRun);
 }
+
 export async function runSupervisedCommand(
     command: SupervisedRunCommand,
     dependencies: RunOrchestratorDependencies,

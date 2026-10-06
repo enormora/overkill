@@ -3,6 +3,7 @@ import type { SerializedValue } from '../compare/serialized-value.ts';
 import type { HedgedConflictArtifact, TestAttemptResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import type { CapturedOutputArtifact } from '../engine/run-artifact.ts';
 import type { CoverageArtifact } from '../engine/coverage-artifact.ts';
+import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 
 type RecordedThrownError = {
     readonly kind: 'body-error' | 'cleanup-error';
@@ -26,6 +27,7 @@ export type RunRecordTestOutcome = Exclude<TestOutcome, { readonly kind: 'fail';
 };
 
 type RecordedConflictEvidence = {
+    readonly attachments: readonly RuntimeAttachmentArtifact[];
     readonly attempts: readonly [RunRecordTestAttempt, ...readonly RunRecordTestAttempt[]];
     readonly outcome: RunRecordTestOutcome | null;
     readonly verdict: TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
@@ -40,4 +42,5 @@ type RecordedConflictArtifact = Except<HedgedConflictArtifact, 'payload'> & {
     };
 };
 
-export type RunRecordArtifact = CapturedOutputArtifact | CoverageArtifact | RecordedConflictArtifact;
+type DiagnosticArtifact = CapturedOutputArtifact | RuntimeAttachmentArtifact;
+export type RunRecordArtifact = CoverageArtifact | DiagnosticArtifact | RecordedConflictArtifact;

@@ -100,6 +100,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             runtimeStateDir: input.config.runtimeStateDir
         },
         execution: {
+            attachments: profile.testFamily === 'integration' ? profile.attachments : null,
             baselineUpdateMode: request.baselineUpdateMode,
             capture: request.capture,
             coverage: request.coverage,

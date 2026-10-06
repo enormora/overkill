@@ -1,6 +1,6 @@
-import type { TestRuntimePolicy } from '../engine/case-execution.ts';
-import type { RunResult } from '../engine/run-result.ts';
-import type { TestPlanCase } from '../engine/test-plan.ts';
+import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
+import type { TestRuntimePolicy, RunResult, TestPlanCase } from './run-engine-primitives.ts';
+import { currentAttachmentCoordinator } from './attachment-coordinator-context.ts';
 import {
     createResourceLifecycleRuntimePolicy,
     type ManagedResourceLifecycleTiming
@@ -80,10 +80,11 @@ export async function finalizeResultWithDurationHistory(
     result: RunResult,
     timing: DurationHistoryTimingMeasurement | null = null
 ): Promise<RunResult> {
+    const attachmentResult = await (currentAttachmentCoordinator()?.finalize(result) ?? result);
     return await resultWithUpdatedDurationHistoryAndTiming({
         completedAtMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
         resolvedRun,
-        result,
+        result: attachmentResult,
         store: dependencies.runtimeStateStore,
         timing
     });
@@ -353,6 +354,7 @@ function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
         }
 
         return {
+            attachments: { ...profile.attachments },
             execution: copyIntegrationExecution(profile.execution),
             files,
             reporters: profile.reporters === null ? null : Array.from(profile.reporters),
@@ -473,3 +475,5 @@ export function createRunRuntimePolicy(
 export function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
     validateRunResourceUsagePolicy(policy);
 }
+
+export const runWithWorkerAttachments: typeof executeWorkerAttachments = executeWorkerAttachments;

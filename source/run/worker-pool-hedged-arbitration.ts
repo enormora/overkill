@@ -171,10 +171,13 @@ function conflictArtifactId(result: PerTestResult, sequence: number): HedgedConf
     };
 }
 
+type ConflictExecutions = { readonly authority: WorkerPoolTaskRun; readonly conflicting: WorkerPoolTaskRun; };
+
 function conflictArtifact(
     authoritativeResult: PerTestResult,
     conflictingResult: PerTestResult,
-    runtime: WorkerPoolRunRuntime
+    runtime: WorkerPoolRunRuntime,
+    executions: ConflictExecutions
 ): RunArtifact {
     const artifactId = conflictArtifactId(authoritativeResult, runtime.runState.artifacts().length);
 
@@ -182,11 +185,13 @@ function conflictArtifact(
         id: artifactId,
         payload: {
             authoritative: {
+                attachments: runtime.attachments?.branchArtifacts(executions.authority) ?? [],
                 attempts: authoritativeResult.attempts,
                 outcome: authoritativeResult.outcome,
                 verdict: authoritativeResult.verdict
             },
             conflicting: {
+                attachments: runtime.attachments?.branchArtifacts(executions.conflicting) ?? [],
                 attempts: conflictingResult.attempts,
                 outcome: conflictingResult.outcome,
                 verdict: conflictingResult.verdict
@@ -230,7 +235,10 @@ function conflictResult(
         return null;
     }
 
-    const artifact = conflictArtifact(authoritativeResult, conflictingResult, runtime);
+    const artifact = conflictArtifact(authoritativeResult, conflictingResult, runtime, {
+        authority: authority.taskRun,
+        conflicting: taskRun
+    });
     runtime.runState.recordArtifact(artifact);
     workerPoolPlacementTrace(runtime).recordDecision({
         authoritativeAttempt: authority.taskRun.members[0].attempt,

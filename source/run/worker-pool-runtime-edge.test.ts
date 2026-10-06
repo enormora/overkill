@@ -41,6 +41,7 @@ function resolvedRunWithPlacementPlan(placement: PlacementPlan): ResolvedRun {
 
 async function createRuntime(resolvedRun: ResolvedRun): Promise<void> {
     await createWorkerPoolRuntime({
+        attachments: null,
         collectionRunnerErrors: [],
         createdPool: null,
         dependencies: fakeDependencies(),
