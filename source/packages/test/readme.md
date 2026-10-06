@@ -105,11 +105,13 @@ Standard subpaths:
 - `@overkill-dev/test/simulation` re-exports simulation descriptors from
   `@overkill-dev/simulation`. Import `@overkill-dev/simulation/http` directly
   for the standalone HTTP launcher.
-- `@overkill-dev/test/bench` and `@overkill-dev/test/baselines` are reserved.
-  They currently export only `unavailable()`.
-  The standalone [`@overkill-dev/bench`](../bench/readme.md) package exposes
-  ordinary node-authoring helpers; standard distribution integration follows
-  separately.
+- `@overkill-dev/test/bench` re-exports ordinary node-authoring helpers from
+  [`@overkill-dev/bench`](../bench/readme.md), included in the standard
+  distribution. These constructors are family-neutral and do not measure
+  performance. Benchmark measurement and `overkill bench` commands are separate
+  implementation milestones. Bench code stays behind this explicit subpath,
+  outside root imports and ordinary microtest startup.
+- `@overkill-dev/test/baselines` is reserved and exports only `unavailable()`.
 
 Implemented root authoring forms:
 

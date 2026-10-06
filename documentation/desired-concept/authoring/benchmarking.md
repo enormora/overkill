@@ -144,9 +144,9 @@ The initial `@overkill-dev/bench` package facade reuses ordinary `test`,
 `skippedTest`, `suite`, `table`, `defineMacro`, and
 `defineParameterizedTestBody` authoring. These constructors remain
 family-neutral and do not measure performance. Benchmark-specific authoring
-arrives with its workload, measurement, and budget contracts. Standard
-distribution integration is a separate milestone; `@overkill-dev/test/bench`
-remains reserved until that integration.
+arrives with its workload, measurement, and budget contracts. The standard
+distribution includes the leaf package and exposes these constructors and
+their public types through explicit `@overkill-dev/test/bench` re-exports.
 
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”
 

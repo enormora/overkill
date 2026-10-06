@@ -17,7 +17,6 @@ import type {
     NarrowingCompositeAssertionDefinition
 } from './assert.entry-point.ts';
 import type { unavailable as baselinesUnavailable } from './baselines.entry-point.ts';
-import type { unavailable as benchUnavailable } from './bench.entry-point.ts';
 import {
     throwingTest,
     type ThrowingTestAuthor,
@@ -482,7 +481,6 @@ describe('@overkill-dev/test standard subpaths', function () {
     });
 
     test('exposes only unavailable sentinel types for reserved subpaths', function () {
-        expect<typeof benchUnavailable>().type.toBe<UnavailableStandardSubpathApi>();
         expect<typeof baselinesUnavailable>().type.toBe<UnavailableStandardSubpathApi>();
     });
 });
