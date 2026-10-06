@@ -198,6 +198,7 @@ export const config = {
             description: 'Standard Overkill distribution and command-line binary.',
             bundleDependencies: [
                 '@overkill-dev/assert',
+                '@overkill-dev/bench',
                 '@overkill-dev/doubles',
                 '@overkill-dev/engine',
                 '@overkill-dev/output-renderer-github-actions',

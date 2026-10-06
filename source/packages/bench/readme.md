@@ -2,6 +2,11 @@
 
 Ordinary test-node authoring for the Overkill benchmark package.
 
+Included in the standard `@overkill-dev/test` installation. Standard users
+import the same authoring surface from `@overkill-dev/test/bench`; advanced
+consumers can install and import `@overkill-dev/bench` directly. Bench code
+stays outside root `@overkill-dev/test` imports and ordinary microtest startup.
+
 The current facade exports `test`, `skippedTest`, `suite`, `table`,
 `defineMacro`, and `defineParameterizedTestBody`. These are the same
 family-neutral constructors used by `@overkill-dev/test`, with the same
@@ -30,6 +35,5 @@ Public types include `AuthoringAnnotations`, `AuthoringControls`,
 
 This facade does not yet measure performance. `benchmark(...)`, workloads,
 measurement strategies, budgets, and `overkill bench` commands are separate
-implementation milestones. `@overkill-dev/test/bench` remains reserved until
-standard distribution integration. Advanced authoring and runtime binding
+implementation milestones. Advanced authoring and runtime binding
 remain available from `@overkill-dev/test` and its resources subpath.
