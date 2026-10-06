@@ -1,3 +1,4 @@
+import { runInNewContext } from 'node:vm';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createChildTransportFixture } from '../test-support/child-transport-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
@@ -12,10 +13,38 @@ const invalidMessages: readonly unknown[] = [
     childProcessEnvelope('supervised-run', { kind: 'event', event: { kind: 'test-start', attempt: 'invalid' } }),
     childProcessEnvelope('supervised-run', { kind: 'result', result: { status: 'passed' } })
 ];
+function createForeignDeliveryError(): Error {
+    return runInNewContext('new Error("Delivery failed.")') as Error;
+}
 export const testNode = createSuite({
     title: 'supervised child transport',
     ...metadata,
     children: [
+        ...[ new Error('Delivery failed.'), createForeignDeliveryError() ].map(function deliveryFailure(failure) {
+            return createTestCase({
+                title: `delivery failure from ${
+                    failure instanceof Error ? 'native' : 'foreign'
+                } errors settles the child transport`,
+                ...metadata,
+                body(scope) {
+                    const fixture = createChildTransportFixture(true);
+                    fixture.deliveryFailure.write(failure);
+                    fixture.emit(
+                        'message',
+                        childProcessEnvelope('supervised-run', { kind: 'result', result: runResultFactory.build() })
+                    );
+                    fixture.emit('close', undefined);
+                    scope.assert.equal(fixture.state.runnerErrors()[0]?.subtype, 'runtime-policy');
+                    scope.assert.equal(
+                        fixture.state.runnerErrors()[0]?.message,
+                        failure instanceof Error ? failure.message : 'Invalid supervised child IPC payload.'
+                    );
+                    scope.assert.deepEqual(fixture.messages, []);
+                    scope.assert.equal(fixture.outcome().finished, 1);
+                    return scope.assert.collect();
+                }
+            });
+        }),
         createTestCase({
             title: 'output draining retains the final completed attempt without reviving execution',
             ...metadata,

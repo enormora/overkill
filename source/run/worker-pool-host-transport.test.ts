@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { runInNewContext } from 'node:vm';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { observeHostTransport } from './worker-pool-host-transport.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
@@ -12,7 +13,7 @@ type HostFixture = {
     readonly emit: (event: string, value: unknown) => void;
     readonly finished: () => number;
 };
-function hostFixture(): HostFixture {
+function hostFixture(deliveryFailure: Error | null): HostFixture {
     const events = new EventEmitter();
     const errors: Error[] = [];
     const messages: WorkerPoolHostMessage[] = [];
@@ -52,6 +53,9 @@ function hostFixture(): HostFixture {
             return taskId === 'known';
         },
         receive(message) {
+            if (deliveryFailure !== null) {
+                throw deliveryFailure;
+            }
             messages.push(message);
         }
     });
@@ -75,16 +79,44 @@ const invalidMessages: readonly unknown[] = [
     }),
     childProcessEnvelope('worker-pool-host', { kind: 'runner-error', error: { message: 'incomplete' } })
 ];
+function createForeignDeliveryError(): Error {
+    return runInNewContext('new Error("Delivery failed.")') as Error;
+}
 export const testNode = createSuite({
     title: 'worker pool host transport',
     ...metadata,
     children: [
+        ...[ new Error('Delivery failed.'), createForeignDeliveryError() ].map(function deliveryFailure(failure) {
+            return createTestCase({
+                title: `delivery failure from ${
+                    failure instanceof Error ? 'native' : 'foreign'
+                } errors settles the host transport`,
+                ...metadata,
+                body(scope) {
+                    const fixture = hostFixture(failure);
+                    fixture.emit('message', childProcessEnvelope('worker-pool-host', { kind: 'configured' }));
+                    fixture.emit(
+                        'message',
+                        childProcessEnvelope('worker-pool-host', { kind: 'task-result', taskId: 'known', result: null })
+                    );
+                    fixture.emit('close', undefined);
+                    scope.assert.equal(fixture.errors.length, 1);
+                    scope.assert.equal(
+                        fixture.errors[0]?.message,
+                        failure instanceof Error ? failure.message : 'Invalid hosted worker-pool IPC payload.'
+                    );
+                    scope.assert.deepEqual(fixture.messages, []);
+                    scope.assert.equal(fixture.finished(), 1);
+                    return scope.assert.collect();
+                }
+            });
+        }),
         ...invalidMessages.map(function invalidMessage(message, index) {
             return createTestCase({
                 title: `invalid host message ${index} fails before forwarding`,
                 ...metadata,
                 body(scope) {
-                    const fixture = hostFixture();
+                    const fixture = hostFixture(null);
                     fixture.emit('message', message);
                     fixture.emit('message', message);
                     fixture.emit('close', undefined);
@@ -99,7 +131,7 @@ export const testNode = createSuite({
             title: 'duplicate configuration acknowledgements fail the host lifecycle',
             ...metadata,
             body(scope) {
-                const fixture = hostFixture();
+                const fixture = hostFixture(null);
                 fixture.emit('message', childProcessEnvelope('worker-pool-host', { kind: 'configured' }));
                 fixture.emit('message', childProcessEnvelope('worker-pool-host', { kind: 'configured' }));
                 fixture.emit('close', undefined);
@@ -111,7 +143,7 @@ export const testNode = createSuite({
             title: 'ordinary task results preserve host reuse until destruction acknowledgement',
             ...metadata,
             body(scope) {
-                const fixture = hostFixture();
+                const fixture = hostFixture(null);
                 fixture.emit('message', childProcessEnvelope('worker-pool-host', { kind: 'configured' }));
                 fixture.emit(
                     'message',
@@ -134,7 +166,7 @@ export const testNode = createSuite({
             title: 'a host disconnect without destruction acknowledgement fails and still drains',
             ...metadata,
             body(scope) {
-                const fixture = hostFixture();
+                const fixture = hostFixture(null);
                 fixture.emit('disconnect', undefined);
                 scope.assert.equal(fixture.finished(), 0);
                 fixture.emit('close', undefined);
@@ -150,7 +182,7 @@ export const testNode = createSuite({
             title: 'a foreign envelope cannot configure a host or turn an incomplete close into success',
             ...metadata,
             body(scope) {
-                const fixture = hostFixture();
+                const fixture = hostFixture(null);
                 fixture.emit('message', childProcessEnvelope('other-role', { kind: 'configured' }));
                 fixture.emit('close', undefined);
                 scope.assert.equal(fixture.errors[0]?.message, 'Hosted worker-pool exited before successful shutdown.');
@@ -161,7 +193,7 @@ export const testNode = createSuite({
             title: 'messages after destruction acknowledgement fail before closure',
             ...metadata,
             body(scope) {
-                const fixture = hostFixture();
+                const fixture = hostFixture(null);
                 fixture.emit('message', childProcessEnvelope('worker-pool-host', { kind: 'destroyed' }));
                 fixture.emit('message', childProcessEnvelope('worker-pool-host', { kind: 'configured' }));
                 fixture.emit('close', undefined);

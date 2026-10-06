@@ -19,6 +19,7 @@ export type ChildTransportFixture = {
     readonly child: SupervisedChildProcess;
     readonly clock: Clock & { readonly advanceByMilliseconds: (milliseconds: number) => unknown; };
     readonly emit: (event: string, value: unknown) => void;
+    readonly deliveryFailure: StoredRunValue<Error | null>;
     readonly messages: readonly SupervisedChildMessage[];
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
@@ -35,6 +36,7 @@ export function createChildTransportFixture(restricted: boolean): ChildTransport
         completed: false,
         finished: 0,
         signals: [] as string[],
+        deliveryFailure: createStoredRunValue<Error | null>(null),
         exitCode: createStoredRunValue<number | null>(null)
     };
     const child: SupervisedChildProcess = {
@@ -78,6 +80,10 @@ export function createChildTransportFixture(restricted: boolean): ChildTransport
             return undefined;
         },
         receive(message) {
+            const failure = lifecycle.deliveryFailure.read();
+            if (failure !== null) {
+                throw failure;
+            }
             messages.push(message);
             lifecycle.completed = message.kind === 'result';
         }
@@ -88,6 +94,7 @@ export function createChildTransportFixture(restricted: boolean): ChildTransport
         state,
         messages,
         terminalFailure,
+        deliveryFailure: lifecycle.deliveryFailure,
         emit(event, value) {
             if (event === 'exit') {
                 lifecycle.exitCode.write(0);
