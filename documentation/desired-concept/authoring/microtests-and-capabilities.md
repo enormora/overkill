@@ -79,8 +79,7 @@ Strict microtest mode denies, by default:
   denied)
 - addons (`addon` denied), WASI (`wasi` denied), and similar escape
   hatches
-- `process.exit` (treated as a runner error if the test calls it;
-  `process-exit` capability denied)
+- premature `process.exit` (fails the run; native termination cannot be prevented)
 - `console.*` usage is reported as a microtest violation when
   strict console diagnostics are enabled. `console.*` is **not**
   listed as a capability above because Node's permission model does
@@ -155,23 +154,45 @@ permission model. Overkill treats in-process restrictions as best-effort
 diagnostics only. It can observe builtin diagnostics, permission-audit channels
 when the process was started with `--permission-audit`, `async_hooks` resource
 creation, final `process.env` identity/value drift, and global storage drift.
-It cannot prevent effects that depend on Node's permission model, but the shared
-runtime policy blocks process execution calls and user IPC listener
-registration while the policy is active.
+It cannot guarantee prevention or recovery. Overkill does not monkey-patch
+runtime methods; see [No Runtime Monkey-Patching](../decisions/principles.md#no-runtime-monkey-patching).
+Native `newListener` events observe user `message` listener registration without
+preventing registration. Native diagnostics observe `process.execve()` attempts.
+A premature in-process exit receives a bounded synchronous diagnostic and turns
+a successful exit status into failure, but no returned result or asynchronous
+reporting is guaranteed. Abort and arbitrary process signaling remain native gaps.
+
+Supervised IPC is validated in both directions, including
+worker-pool host commands and responses. Unexpected IPC fails the run and
+terminates the child. Parent receipt does not identify the calling test:
+active attempts are recorded as interrupted, without naming a culprit.
+Valid-looking messages do not authenticate their sender; deliberate runner
+impersonation remains outside the accidental-impurity threat model.
+A valid completion message is required even when the child exits with code zero.
+Terminal completion, termination, or disconnect starts a one-second shutdown
+and output-draining limit. Final attempt capture remains open during draining,
+while execution remains complete. Raw pipe output attribution is best effort.
+A lingering child is killed; parent-owned transport
+resources are closed without terminating unrelated descendants. For reusable
+worker-pool hosts, terminal completion means destruction acknowledgement,
+not an ordinary task result.
 
 Strict microtest diagnostics use three classifications:
 
 - **Blocked.** Node denied the effect, for example fs write, network, child
   process, worker, addon, WASI, FFI, OpenSSL STORE, or inspector use in a
-  supervised child. The shared runtime policy also blocks `process.exit()`,
-  `process.abort()`, `process.kill()`, `process.execve()`, user
-  `process.on('message', ...)` registration, and user `process.send()`.
+  supervised child. Node also denies `process.execve()` without child-process
+  permission.
 - **Observed.** Node exposed a signal but the effect may already have happened.
   Examples include `console.*`, process env mutation, timers, Web Locks,
-  process execve, and async fs resource creation during load.
+  process execve, user IPC listener registration, unexpected supervised IPC,
+  premature supervised termination, and async fs resource creation during load.
+  Boundary observations identify affected attempts, not the origin of the effect.
 - **Native gap.** Node exposes no stable non-mutating signal. Current examples
   include sync bootstrap reads inside the cwd grant, `Date`, `Math.random()`,
-  sync crypto randomness, and SQLite execution.
+  sync crypto randomness, arbitrary `process.kill()`, in-process outgoing IPC
+  without an owned parent, and SQLite execution. Not every send attempt reaches
+  a parent application-message listener.
 
 Node permission denials have their own runner-error subtype, `permission`.
 Thrown `ERR_ACCESS_DENIED` errors and `node:permission-model:*` diagnostics

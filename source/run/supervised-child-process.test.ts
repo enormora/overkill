@@ -63,6 +63,9 @@ function createChildProcess(
     stderr: SupervisedChildProcess['stderr']
 ): SupervisedChildProcess {
     return {
+        closeTransport() {
+            return undefined;
+        },
         exitCode: null,
         kill() {
             return true;

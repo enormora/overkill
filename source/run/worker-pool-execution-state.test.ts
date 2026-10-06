@@ -338,12 +338,12 @@ export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
             }
         },
         runtimeCapabilityPolicy: {
-            installIpcRestriction() {
+            observeIpcListeners() {
                 return function restoreIpcRestriction() {
                     return undefined;
                 };
             },
-            installProcessExecutionRestriction() {
+            observeProcessExit() {
                 return function restoreProcessExecutionRestriction() {
                     return undefined;
                 };

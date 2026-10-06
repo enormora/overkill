@@ -322,8 +322,8 @@ export const testNode = createOverkillSuite({
                 const localStorageValues = new Map([ [ 'before', 'yes' ] ]);
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
-                        installIpcRestriction: installNoPolicyRestriction,
-                        installProcessExecutionRestriction: installNoPolicyRestriction,
+                        observeIpcListeners: installNoPolicyRestriction,
+                        observeProcessExit: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },
@@ -399,8 +399,8 @@ export const testNode = createOverkillSuite({
                 const channel = await readPermissionDiagnosticChannel();
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
-                        installIpcRestriction: installNoPolicyRestriction,
-                        installProcessExecutionRestriction: installNoPolicyRestriction,
+                        observeIpcListeners: installNoPolicyRestriction,
+                        observeProcessExit: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },
@@ -442,8 +442,8 @@ export const testNode = createOverkillSuite({
                 const sparseStorage = createSparseStorage();
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
-                        installIpcRestriction: installNoPolicyRestriction,
-                        installProcessExecutionRestriction: installNoPolicyRestriction,
+                        observeIpcListeners: installNoPolicyRestriction,
+                        observeProcessExit: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },
@@ -475,8 +475,8 @@ export const testNode = createOverkillSuite({
                 let environment: RuntimeCapabilityPolicyEnvironment = {};
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
-                        installIpcRestriction: installNoPolicyRestriction,
-                        installProcessExecutionRestriction: installNoPolicyRestriction,
+                        observeIpcListeners: installNoPolicyRestriction,
+                        observeProcessExit: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },
@@ -507,8 +507,8 @@ export const testNode = createOverkillSuite({
                 const environment: RuntimeCapabilityPolicyEnvironment = {};
                 const policy = createRuntimeCapabilityPolicy({
                     dependencies: {
-                        installIpcRestriction: installNoPolicyRestriction,
-                        installProcessExecutionRestriction: installNoPolicyRestriction,
+                        observeIpcListeners: installNoPolicyRestriction,
+                        observeProcessExit: installNoPolicyRestriction,
                         readEnvironment() {
                             return environment;
                         },

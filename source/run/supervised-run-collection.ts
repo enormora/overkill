@@ -1,12 +1,9 @@
+import { observeSupervisedTransport, sendSupervisedCommand } from './supervised-child-transport.ts';
 import type {
     ResourceUsageSnapshot,
     RunnerError
 } from './run-engine-primitives.ts';
-import {
-    childProcessEnvelope,
-    envelopeMessage
-} from './child-process-protocol.ts';
-import { RunCollectionError } from './run-errors.ts';
+import { RunCollectionError, SupervisedCollectionError } from './run-errors.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     applyEvent,
@@ -27,10 +24,9 @@ import {
     observeSupervisedChildOutput,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
-import {
-    supervisedChildCorrelationId,
-    type SupervisedChildMessage,
-    type SupervisedCollectCommand
+import type {
+    SupervisedChildMessage,
+    SupervisedCollectCommand
 } from './supervised-protocol.ts';
 
 export type SupervisedCollectionResult = {
@@ -57,10 +53,6 @@ function handleCollectionMessage(
     } else if (message.kind === 'sample') {
         handleCollectionSample(message.sample, runtime);
     }
-}
-
-function supervisedChildMessage(message: unknown): SupervisedChildMessage | null {
-    return envelopeMessage<SupervisedChildMessage>(message, supervisedChildCorrelationId);
 }
 
 async function observeCollection(
@@ -90,28 +82,31 @@ async function observeCollection(
             kill(runtime.child);
         }, runtime.command.collectionTimeoutMilliseconds);
 
-        runtime.child.on('message', function receiveMessage(message: unknown) {
-            const childMessage = supervisedChildMessage(message);
-
-            if (childMessage !== null) {
-                handleCollectionMessage(childMessage, runtime);
-            }
-        });
-        runtime.child.on('error', function recordChildError(error: Error) {
-            runtime.terminalFailure.write(true);
-            runtime.state.recordRunnerError({
-                attributedToAttempt: null,
-                attributedTo: null,
-                attributedToWork: null,
-                cause: error,
-                diagnostics: [],
-                message: error.message,
-                subtype: 'crash'
-            });
-        });
-        runtime.child.on('exit', function resolveExit() {
-            runtime.dependencies.wallClock.clearTimeout(collectionTimeout);
-            resolve();
+        observeSupervisedTransport({
+            accept(message) {
+                if (runtime.collected.read() !== null || message.kind === 'result') {
+                    return false;
+                }
+                return message.kind !== 'event' || message.event.kind === 'runner-error';
+            },
+            child: runtime.child,
+            completed() {
+                return runtime.collected.read() !== null;
+            },
+            finished() {
+                runtime.dependencies.wallClock.clearTimeout(collectionTimeout);
+                resolve();
+            },
+            interrupted() {
+                runtime.dependencies.wallClock.clearTimeout(collectionTimeout);
+            },
+            receive(message) {
+                handleCollectionMessage(message, runtime);
+            },
+            restricted: runtime.command.capabilityRestrictions.mode === 'enabled',
+            state: runtime.state,
+            terminalFailure: runtime.terminalFailure,
+            wallClock: runtime.dependencies.wallClock
         });
     });
 }
@@ -170,11 +165,14 @@ function readCollectedResult(
         };
     }
 
-    const [ firstError ] = runtime.state.runnerErrors();
+    const [ firstError, ...remaining ] = runtime.state.runnerErrors();
+    if (firstError !== undefined) {
+        throw new SupervisedCollectionError([ firstError, ...remaining ], { cause: firstError.cause });
+    }
 
     throw new RunCollectionError(
-        firstError?.message ?? 'Supervised collection failed.',
-        { cause: firstError ?? null },
+        'Supervised collection failed.',
+        { cause: null },
         'loader'
     );
 }
@@ -187,7 +185,7 @@ export async function collectSupervisedRun(
     const runtime = await createCollectionRuntime(command, dependencies, timing);
     const childFinished = observeCollection(runtime);
     const readyStartedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
-    runtime.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
+    sendSupervisedCommand(runtime.child, command);
     await childFinished;
     const readyCompletedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
 

@@ -208,24 +208,14 @@ function ambiguousBoundaryScript(): string {
 
 function hostFatalScript(): string {
     return `
+        const { fork } = await import('node:child_process');
         const sent = [];
-
-        process.send = (message) => {
-            sent.push(message);
-
-            return true;
-        };
-        process.disconnect = () => {
-            process.emit('disconnect');
-        };
-
-        await import('./source/run/worker-pool-host.entry-point.ts');
-        process.emit('unhandledRejection', new Error('host failed'), Promise.resolve());
-        process.emit('uncaughtException', new Error('second host failed'));
-        await new Promise((resolve) => {
-            setImmediate(resolve);
+        const child = fork('./source/integration-tests/run/fixtures/host-fatal-policy-probe.test.ts', {
+            stdio: [ 'ignore', 'ignore', 'ignore', 'ipc' ],
+            execArgv: []
         });
-
+        child.on('message', (message) => { sent.push(message); });
+        await new Promise((resolve) => { child.once('close', resolve); });
         console.log(JSON.stringify(sent.map((message) => message.message.kind)));
     `;
 }

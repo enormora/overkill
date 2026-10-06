@@ -1,20 +1,16 @@
+import { observeSupervisedTransport, sendSupervisedCommand } from './supervised-child-transport.ts';
 import type {
     ResourceUsageSnapshot,
     RunResult
 } from './run-engine-primitives.ts';
-import {
-    childProcessEnvelope,
-    envelopeMessage
-} from './child-process-protocol.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun
 } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import {
-    supervisedChildCorrelationId,
-    type SupervisedChildMessage,
-    type SupervisedRunCommand
+import type {
+    SupervisedChildMessage,
+    SupervisedRunCommand
 } from './supervised-protocol.ts';
 import {
     kill,
@@ -22,7 +18,7 @@ import {
     type SupervisedChildCoverage,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
-import { RunCollectionError } from './run-errors.ts';
+import { RunCollectionError, SupervisedCollectionError } from './run-errors.ts';
 import {
     applyEvent,
     createHardTimeout,
@@ -106,10 +102,6 @@ function supervisedRunStartTimes(dependencies: RunOrchestratorDependencies): Sup
         epochMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
         monotonicMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds)
     };
-}
-
-function supervisedChildMessage(message: unknown): SupervisedChildMessage | null {
-    return envelopeMessage<SupervisedChildMessage>(message, supervisedChildCorrelationId);
 }
 
 function recordCollectionTimeout(
@@ -243,6 +235,38 @@ function handleLiveMessage(
     }
 }
 
+function validRunResult(
+    message: Extract<SupervisedChildMessage, { readonly kind: 'result'; }>,
+    liveRun: SupervisedLiveRun
+): boolean {
+    const runtime = liveRun.runtime.read();
+    if (runtime === null || liveRun.state.activeCases.size > 0) {
+        return false;
+    }
+    return message.result.status === 'failed' ||
+        message.result.perTest.length === runtime.resolvedRun.facts.cases.length;
+}
+function validChildEvent(message: SupervisedChildMessage, running: boolean): boolean {
+    if (message.kind !== 'event') {
+        return true;
+    }
+    return ![ 'run-start', 'run-end' ].includes(message.event.kind) &&
+        (running || message.event.kind === 'runner-error');
+}
+function validLiveMessage(message: SupervisedChildMessage, liveRun: SupervisedLiveRun): boolean {
+    const runtime = liveRun.runtime.read();
+    if (runtime !== null && runtime.completedResult.read() !== null) {
+        return false;
+    }
+    if (message.kind === 'collected') {
+        return runtime === null && liveRun.collected.read() === null;
+    }
+    if (message.kind === 'result') {
+        return validRunResult(message, liveRun);
+    }
+    return validChildEvent(message, runtime !== null);
+}
+
 function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRun): void {
     observeSupervisedChildOutput({
         capabilityRestrictions: command.capabilityRestrictions,
@@ -252,38 +276,38 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
         state: liveRun.state,
         terminalFailure: liveRun.terminalFailure
     });
-    liveRun.child.on('message', function receiveMessage(message: unknown) {
-        const childMessage = supervisedChildMessage(message);
-
-        if (childMessage !== null) {
-            handleLiveMessage(childMessage, command, liveRun);
-        }
+    observeSupervisedTransport({
+        accept(message) {
+            return validLiveMessage(message, liveRun);
+        },
+        child: liveRun.child,
+        completed() {
+            const runtime = liveRun.runtime.read();
+            return runtime !== null && runtime.completedResult.read() !== null;
+        },
+        finished() {
+            liveRun.dependencies.wallClock.clearTimeout(liveRun.collectionTimeout);
+            liveRun.collectedSignal.resolve();
+            liveRun.finishedSignal.resolve();
+        },
+        interrupted() {
+            liveRun.collectedSignal.resolve();
+        },
+        receive(message) {
+            handleLiveMessage(message, command, liveRun);
+        },
+        restricted: command.capabilityRestrictions.mode === 'enabled',
+        state: liveRun.state,
+        terminalFailure: liveRun.terminalFailure,
+        wallClock: liveRun.dependencies.wallClock
     });
-    liveRun.child.on('error', function recordChildError(error: Error) {
-        liveRun.terminalFailure.write(true);
-        liveRun.state.recordRunnerError({
-            attributedToAttempt: null,
-            attributedTo: null,
-            attributedToWork: null,
-            cause: error,
-            diagnostics: [],
-            message: error.message,
-            subtype: 'crash'
-        });
-        liveRun.collectedSignal.resolve();
-    });
-    liveRun.child.on('exit', function resolveExit() {
-        const exitedAtMicroseconds = Number(liveRun.dependencies.wallClock.currentMonotonicMicroseconds);
-
+    liveRun.child.on('exit', function recordChildExitTiming() {
         liveRun.timing?.record(instantTimingSpanObservation({
             kind: 'supervised-process.exit',
             metadata: emptyTimingSpanMetadata(),
-            observedAtMicroseconds: exitedAtMicroseconds,
+            observedAtMicroseconds: Number(liveRun.dependencies.wallClock.currentMonotonicMicroseconds),
             status: liveRun.terminalFailure.read() ? 'failure' : 'success'
         }));
-        liveRun.dependencies.wallClock.clearTimeout(liveRun.collectionTimeout);
-        liveRun.collectedSignal.resolve();
-        liveRun.finishedSignal.resolve();
     });
 }
 
@@ -296,11 +320,11 @@ async function readLiveCollection(liveRun: SupervisedLiveRun): Promise<Supervise
     }
 
     await liveRun.finishedSignal.promise;
-    throw new RunCollectionError(
-        liveRun.state.runnerErrors()[0]?.message ?? 'Supervised collection failed.',
-        { cause: liveRun.state.runnerErrors()[0] ?? null },
-        'loader'
-    );
+    const [ first, ...remaining ] = liveRun.state.runnerErrors();
+    if (first !== undefined) {
+        throw new SupervisedCollectionError([ first, ...remaining ], { cause: first.cause });
+    }
+    throw new RunCollectionError('Supervised collection failed.', { cause: null }, 'loader');
 }
 
 async function createLiveRunRuntime(
@@ -330,12 +354,12 @@ async function createLiveRunRuntime(
 }
 
 function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
-    runtime.child.send(childProcessEnvelope(supervisedChildCorrelationId, {
+    sendSupervisedCommand(runtime.child, {
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;
         }),
         kind: 'assign'
-    }));
+    });
 }
 
 async function reportRunStartForPlannedCases(
@@ -368,6 +392,15 @@ async function continueLiveRun(
     return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);
 }
 
+async function executeLiveCommand(
+    command: SupervisedRunCommand,
+    liveRun: SupervisedLiveRun,
+    createResolvedRun: CreateResolvedRunFromCollection
+): Promise<RunResult> {
+    sendSupervisedCommand(liveRun.child, command);
+    const collection = await readLiveCollection(liveRun);
+    return await continueLiveRun(liveRun, collection, createResolvedRun);
+}
 export async function runSupervisedCommand(
     command: SupervisedRunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -376,11 +409,8 @@ export async function runSupervisedCommand(
 ): Promise<RunResult> {
     const liveRun = await createLiveRun(command, dependencies, options);
     observeLiveRun(command, liveRun);
-    liveRun.child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
-    const collection = await readLiveCollection(liveRun);
-
     try {
-        return await continueLiveRun(liveRun, collection, createResolvedRun);
+        return await executeLiveCommand(command, liveRun, createResolvedRun);
     } catch (error: unknown) {
         kill(liveRun.child);
         await liveRun.finishedSignal.promise;

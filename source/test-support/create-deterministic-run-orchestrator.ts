@@ -256,7 +256,7 @@ function runDeterministicSupervisedChild(context: FakeSupervisedChildRunContext)
     const firstWork = assignedFirstWork(context);
 
     if (firstWork === null) {
-        context.emitExit();
+        completeDeterministicSupervisedChild(context, 0);
 
         return;
     }
@@ -385,8 +385,8 @@ function createDeterministicRunCoordinatorWithDependencies(
             }
         },
         runtimeCapabilityPolicy: {
-            installIpcRestriction: installNoPolicyRestriction,
-            installProcessExecutionRestriction: installNoPolicyRestriction,
+            observeIpcListeners: installNoPolicyRestriction,
+            observeProcessExit: installNoPolicyRestriction,
             readEnvironment() {
                 return environment;
             },

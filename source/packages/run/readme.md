@@ -305,21 +305,26 @@ drop `fs.read` before test bodies run.
 `in-process` means no child process is spawned. Capability restrictions in this
 mode are best-effort diagnostics only: Overkill observes native diagnostics,
 `async_hooks` resources, and final global-state snapshots where possible, but it
-cannot add `--permission` after the caller process has started. Calls such as
-`process.exit()`, `process.abort()`, `process.kill()`, `process.execve()`, and
-`process.on('message', ...)` are blocked by the shared runtime policy when that
-policy is active. The CLI bin skeleton starts with `--permission-audit`, so CLI
+cannot add `--permission` after the caller process has started. Runtime methods are never monkey-patched. Native events observe user IPC
+listener registration, and native diagnostics observe `process.execve()` attempts.
+Registration is not prevented. Premature in-process exit receives a synchronous
+diagnostic and changes successful exit status to failure; abort reporting and
+arbitrary `process.kill()` detection are not guaranteed. Supervised parents
+validate shared IPC payloads, terminate children on unexpected IPC, and require
+valid completion even after exit code zero. Receipt does not identify the sending
+test. Terminal child shutdown and output draining are bounded to one second. Final attempt capture remains open during draining without reviving execution. The CLI bin skeleton starts with `--permission-audit`, so CLI
 in-process microtests can observe extra permission-model diagnostics.
 Programmatic in-process callers get those audit diagnostics only if their own
 Node process was started with `--permission-audit`.
 
 Capability results are classified as blocked, observed, or native-gap. Blocked
-effects are denied by Node permissions or by the shared runtime policy.
+effects are denied by native permissions.
 Observed effects are reported as `runtime-policy` runner errors and fail the
 owning case, all active cases when concurrent attribution is ambiguous, or the
 out-of-test boundary when no case is active. Native gaps are documented runtime
 limitations; current examples include sync bootstrap reads inside the cwd grant,
-`Date`, `Math.random()`, sync crypto randomness, and SQLite execution.
+`Date`, `Math.random()`, sync crypto randomness, arbitrary process signaling,
+in-process outgoing IPC without an owned parent, and SQLite execution.
 
 Live instance engines are supported for `in-process` runs. They are rejected
 for `supervised-process` and `worker-pool` runs because an object with

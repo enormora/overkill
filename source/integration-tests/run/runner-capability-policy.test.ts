@@ -28,7 +28,6 @@ const integrationUnrestrictedRuntimeFixturePath =
 const integrationUnrestrictedRuntimeOutputPath =
     'source/integration-tests/run/fixtures/integration-unrestricted-runtime-output.txt';
 const ipcPolicyFixturePath = 'source/integration-tests/run/fixtures/ipc-policy.test.ts';
-const processExitPolicyFixturePath = 'source/integration-tests/run/fixtures/process-exit-policy.test.ts';
 const timerPolicyFixturePath = 'source/integration-tests/run/fixtures/timer-policy.test.ts';
 
 type PolicyFixture = {
@@ -263,14 +262,6 @@ const policyFixtures: readonly PolicyFixture[] = [
         },
         name: 'timer creation',
         path: timerPolicyFixturePath
-    },
-    {
-        expectedCapability: {
-            'in-process': 'process-execute',
-            'supervised-process': 'process-execute'
-        },
-        name: 'process execution',
-        path: processExitPolicyFixturePath
     },
     {
         expectedCapability: {

@@ -158,8 +158,8 @@ function createChildRun(input: ChildHostInput): ChildRunFixture {
             dropBodyReadPermission() {
                 return undefined;
             },
-            installIpcRestriction: installNoPolicyRestriction,
-            installProcessExecutionRestriction: installNoPolicyRestriction,
+            observeIpcListeners: installNoPolicyRestriction,
+            observeProcessExit: installNoPolicyRestriction,
             async loadRunEngineModule() {
                 throw new Error('Supervised child test does not load engine modules.');
             },

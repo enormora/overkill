@@ -66,9 +66,11 @@ async function assertStorageAndOutputFakes(scope: OverkillScope, dependencies: F
 }
 
 function assertRuntimePolicyFakes(scope: OverkillScope, dependencies: FixtureDependencies): void {
-    const restoreIpcRestriction = dependencies.runtimeCapabilityPolicy.installIpcRestriction(recordPolicyMessage);
-    const restoreProcessRestriction = dependencies.runtimeCapabilityPolicy.installProcessExecutionRestriction(
-        recordPolicyMessage
+    const restoreIpcRestriction = dependencies.runtimeCapabilityPolicy.observeIpcListeners(recordPolicyMessage);
+    const restoreProcessRestriction = dependencies.runtimeCapabilityPolicy.observeProcessExit(
+        function unexpectedPrematureExit(): never {
+            throw new Error('Unexpected premature exit.');
+        }
     );
 
     scope.assert.equal(Object.keys(dependencies.runtimeCapabilityPolicy.readEnvironment()).length, 0);

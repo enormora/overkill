@@ -20,6 +20,17 @@ Overkill is optimized for TypeScript rather than trying to be equally ideal for 
 
 It does not mean “no convenience.” It means convenience must be explainable from the public API.
 
+## No Runtime Monkey-Patching
+
+Overkill must not replace, wrap, or redefine runtime globals or built-in
+methods for enforcement, observation, capture, or simulation. Native
+permissions, event subscriptions, diagnostics channels, and runner-owned
+execution boundaries are the supported mechanisms.
+
+Explicit adapters and injected doubles remain valid: they provide separate
+objects rather than modifying runtime objects. Unsupported effects remain
+native gaps instead of being intercepted through global mutation.
+
 ## Explicit Over Implicit
 
 If a test depends on a runtime, a capability, or a baseline artifact, that dependency should be visible in the code or runner configuration. Overkill prefers one more explicit line over a surprising hidden behavior.

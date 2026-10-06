@@ -63,9 +63,11 @@ async function resolveCoverageLocalRun(resolution: CoverageLocalResolution): Pro
     return resolved.run;
 }
 
-export async function executeCoverageLocalRun(execution: CoverageLocalExecution): Promise<RunResult> {
+async function executeCoveredWithPolicy(
+    execution: CoverageLocalExecution,
+    runtimePolicy: RunRuntimePolicy | null
+): Promise<RunResult> {
     const { command, dependencies, input, record, session, source, timing } = execution;
-    const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
     const resolvedRun = await resolveCoverageLocalRun({
         command,
         dependencies,
@@ -77,7 +79,12 @@ export async function executeCoverageLocalRun(execution: CoverageLocalExecution)
     });
 
     if (isRunResult(resolvedRun)) {
-        const finalResult = await session.finalize(resolvedRun);
+        const errors = runtimePolicy?.takeRunErrors() ?? [];
+        const finalResult = await session.finalize({
+            ...resolvedRun,
+            runnerErrors: [ ...resolvedRun.runnerErrors, ...errors ],
+            status: errors.length > 0 ? 'failed' : resolvedRun.status
+        });
 
         return await reportCollectionErrorResult(
             command,
@@ -98,6 +105,15 @@ export async function executeCoverageLocalRun(execution: CoverageLocalExecution)
         runtimePolicy,
         timing
     });
+}
+
+export async function executeCoverageLocalRun(execution: CoverageLocalExecution): Promise<RunResult> {
+    const runtimePolicy = createRunRuntimePolicy(execution.command.request, execution.dependencies);
+    try {
+        return await executeCoveredWithPolicy(execution, runtimePolicy);
+    } finally {
+        runtimePolicy?.takeRunErrors();
+    }
 }
 
 type CoverageLocalCommand = Pick<CoverageLocalExecution, 'command' | 'dependencies' | 'input' | 'source' | 'timing'>;
