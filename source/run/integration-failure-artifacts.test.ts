@@ -1,54 +1,21 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { setTimeout as wait } from 'node:timers/promises';
+import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
-    createSuite,
-    createTestCase,
-    type TestScope,
-    type TestBody,
-    type RunResult
-} from '../packages/engine/engine.entry-point.ts';
-import { defineResource, withFailureArtifacts, withResources } from '../packages/test/resources.entry-point.ts';
-import { createTestEngine } from '../test-support/create-test-engine.ts';
-import { attachmentFixtureForWork, type AttachmentFixture } from '../test-support/attachment-fixture.ts';
-import { defaultAttachmentLimits, type AttachmentLimits } from '../engine/runtime-attachment.ts';
-import { createResourceLifecycleRuntimePolicy } from './resource-lifecycle.ts';
-import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
+    defineResource,
+    withFailureArtifacts,
+    withResources,
+    createSimulatedHttpServerResource,
+    createLocalProcessServiceResource
+} from '../packages/test/resources.entry-point.ts';
+import { defineSimulatedHttpServer } from '../packages/simulation/simulation.entry-point.ts';
+import { executeEvidence } from '../test-support/failure-evidence-fixture.ts';
+import type { AttachmentFixture } from '../test-support/attachment-fixture.ts';
+import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { resultWithRuntimeAttachments } from './attachment-results.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const evidence = { name: 'evidence', mediaType: 'application/json' };
-
-async function executeEvidence(
-    scope: TestScope,
-    body: TestBody,
-    attempts: number,
-    limits: AttachmentLimits
-): Promise<AttachmentFixture & { readonly result: RunResult; }> {
-    const engine = createTestEngine();
-    const plan = engine.createTestPlan(engine.createRoot({
-        ...metadata,
-        title: 'root',
-        children: [ engine.createTestCase({ ...metadata, title: 'case', body }) ]
-    }));
-    const fixture = await attachmentFixtureForWork(
-        scope,
-        limits,
-        plan.cases.map(function work(entry) {
-            return entry.workId;
-        })
-    );
-    const result = await runWithAttachmentExecution(fixture.execution, async function executeManagedResources() {
-        return await engine.execute(plan, {
-            execution: { mode: 'serial-in-process' },
-            reporters: [],
-            runFacts: {},
-            startedAt: '1970-01-01T00:00:00.000Z',
-            retryPolicy: { maxAttempts: attempts },
-            runtimePolicy: createResourceLifecycleRuntimePolicy(plan.cases, null)
-        });
-    });
-    fixture.store.settleResult(result);
-    return { ...fixture, result };
-}
 
 const diagnostic = withFailureArtifacts(
     defineResource({
@@ -76,10 +43,138 @@ async function assertPreparedFile(scope: TestScope, fixture: AttachmentFixture):
     }
     scope.assert.equal(await readFile(artifact.payload.content.path, 'utf8'), 'before cleanup');
 }
+const daemon = createLocalProcessServiceResource({
+    name: 'daemon',
+    scope: 'per-case',
+    requirements: [],
+    dependencies: {},
+    address: { kind: 'loopback', port: 0 },
+    outputBufferBytes: 64,
+    shutdown: { gracefulSignal: 'SIGTERM', forceSignal: 'SIGKILL', graceMilliseconds: 100 },
+    command() {
+        return {
+            command: process.execPath,
+            arguments: [
+                '-e',
+                'process.stdout.write("ready 🌍"); process.stderr.write("warning"); setInterval(() => {}, 1000);'
+            ],
+            environment: {},
+            workingDirectory: null
+        };
+    },
+    async ready(owner) {
+        while (!owner.output.stdout.text().includes('ready') || !owner.output.stderr.text().includes('warning')) {
+            await wait(5);
+        }
+        return { output: owner.output.stdout.text() };
+    }
+});
+async function assertNativeEvidence(scope: TestScope, fixture: AttachmentFixture): Promise<void> {
+    const witness = fixture.store.selectedArtifacts().find(function nativeWitness(artifact) {
+        return artifact.id.subtype === 'witness';
+    });
+    if (witness?.payload.content.kind !== 'file') {
+        throw new Error('Expected native witness file.');
+    }
+    const value: unknown = JSON.parse(await readFile(witness.payload.content.path, 'utf8'));
+    scope.assert.partialDeepEqual(value, {
+        version: 1,
+        seed: null,
+        simulation: { name: 'api' }
+    });
+}
+function assertCapturedText(scope: TestScope, fixture: AttachmentFixture, name: string, expected: string): void {
+    const artifact = fixture.store.selectedArtifacts().find(function matchingOutput(entry) {
+        return entry.payload.name === name;
+    });
+    if (artifact?.payload.content.kind !== 'text') {
+        throw new Error('Expected retained service output.');
+    }
+    scope.assert.equal(artifact.payload.content.text, expected);
+}
+async function assertFirstPartyEvidence(scope: TestScope): Promise<void> {
+    const api = createSimulatedHttpServerResource({
+        address: { kind: 'loopback', port: 0 },
+        simulation: defineSimulatedHttpServer({
+            name: 'api',
+            scenarios: { default: { title: 'ready' } },
+            handle() {
+                return Response.json({ ready: true });
+            }
+        })
+    });
+    const fixture = await executeEvidence(
+        scope,
+        withResources({ api, daemon }, async function failingHttpCase(testScope) {
+            const response = await fetch(testScope.resources.api.baseUrl);
+            await response.json();
+            testScope.assert.fail();
+            return testScope.assert.collect();
+        }),
+        1,
+        defaultAttachmentLimits
+    );
+    const artifacts = fixture.store.selectedArtifacts();
+    scope.assert.deepEqual(fixture.result.runnerErrors, []);
+    scope.assert.equal(artifacts.length, 4);
+    assertCapturedText(scope, fixture, 'stdout', 'ready 🌍');
+    assertCapturedText(scope, fixture, 'stderr', 'warning');
+    await assertNativeEvidence(scope, fixture);
+}
 export const testNode = createSuite({
     ...metadata,
     title: 'source/run/integration-failure-artifacts.test.ts',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'failed managed services retain HTTP evidence, decoded output, and native witnesses',
+            async body(scope: TestScope) {
+                await assertFirstPartyEvidence(scope);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
+            title: 'native witnesses preserve decimal simulation seeds and runtime state',
+            async body(scope: TestScope) {
+                const resource = withFailureArtifacts(diagnostic, async function seededWitness(capture) {
+                    if (capture.kind === 'attempt') {
+                        await capture.attachments.witness({
+                            producedBy: { library: 'diagnostic', libraryVersion: '1' },
+                            simulation: { name: 'diagnostic', payload: { version: 1 } },
+                            scenario: 'fault',
+                            seed: 9_007_199_254_740_993n,
+                            runtimeSnapshot: { phase: 'request' },
+                            faultConfiguration: { delay: 5 }
+                        });
+                    }
+                });
+                const fixture = await executeEvidence(
+                    scope,
+                    withResources({ resource }, function fail(testScope) {
+                        testScope.assert.fail();
+                        return testScope.assert.collect();
+                    }),
+                    1,
+                    defaultAttachmentLimits
+                );
+                const witness = fixture.store.selectedArtifacts().find(function nativeWitness(artifact) {
+                    return artifact.id.subtype === 'witness';
+                });
+                if (witness?.payload.content.kind !== 'file') {
+                    throw new Error('Expected seeded witness file.');
+                }
+                const value: unknown = JSON.parse(await readFile(witness.payload.content.path, 'utf8'));
+                scope.assert.partialDeepEqual(value, {
+                    seed: '9007199254740993',
+                    scenario: 'fault',
+                    runtimeSnapshot: { phase: 'request' },
+                    faultConfiguration: { delay: 5 }
+                });
+                scope.assert.deepEqual(fixture.result.runnerErrors, []);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'oversized seedless witnesses become bounded omissions',
