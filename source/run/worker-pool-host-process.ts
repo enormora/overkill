@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { RunResourceUsage, RunResourceUsageTracker, ResourceUsageSnapshot } from '../engine/resource-usage.ts';
+import { observeHostTransport, sendHostCommand } from './worker-pool-host-transport.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
-import {
-    childProcessEnvelope,
-    envelopeMessage
-} from './child-process-protocol.ts';
 import {
     createHostRunnerErrors,
     type CreatedWorkerPool,
@@ -19,7 +16,6 @@ import {
     deserializeError,
     deserializeWorkerPoolMessage,
     type WorkerPoolHostCommand,
-    workerPoolHostCorrelationId,
     type WorkerPoolHostMessage
 } from './worker-pool-host-protocol.ts';
 import {
@@ -193,7 +189,9 @@ function createHostedWorkerPoolState(): HostedWorkerPoolState {
 }
 
 function sendCommand(child: SupervisedChildProcess | undefined, command: WorkerPoolHostCommand): void {
-    child?.send(childProcessEnvelope(workerPoolHostCorrelationId, command));
+    if (child !== undefined) {
+        sendHostCommand(child, command);
+    }
 }
 
 function createResourceUsage(samples: readonly ResourceUsageSnapshot[]): RunResourceUsage {
@@ -303,7 +301,8 @@ function handleRuntimeFailure(
 
     context.configured.reject(error);
     rejectPendingTasks(context.state, error);
-    context.finished.resolve();
+    context.state.resourceUsage.resolveFirstSample.read()?.();
+    context.state.resourceUsage.resolveFirstSample.write(null);
 }
 
 function recordHostStartup(
@@ -327,30 +326,38 @@ function recordHostStartup(
     }
 }
 
-function observeRuntime(
-    observation: RuntimeObservationInput
-): void {
-    observation.child.on('message', function receiveMessage(message: unknown) {
-        const hostMessage = envelopeMessage<WorkerPoolHostMessage>(message, workerPoolHostCorrelationId);
-
-        if (hostMessage?.kind === 'configured') {
-            recordHostStartup(observation.input, observation.child, observation.startupStartedAtMicroseconds);
-            observation.configured.resolve();
-        } else if (hostMessage !== null) {
-            handleHostMessage(observation.state, hostMessage);
-        }
-    });
+function observeRuntime(observation: RuntimeObservationInput): void {
     observeChildOutput(observation.child, function readOutputSink() {
         return observation.state.outputSink.read();
     });
-    observation.child.on('error', function rejectTasks(error: Error) {
-        handleRuntimeFailure(observation, error);
-    });
-    observation.child.on('exit', function rejectTasksAfterExit() {
-        handleRuntimeFailure(
-            observation,
-            new Error('Hosted worker-pool process exited.')
-        );
+    observeHostTransport({
+        child: observation.child,
+        configured() {
+            recordHostStartup(observation.input, observation.child, observation.startupStartedAtMicroseconds);
+            observation.configured.resolve();
+        },
+        failed(error) {
+            observation.state.hostRunnerErrors.push({
+                attributedTo: null,
+                attributedToAttempt: null,
+                attributedToWork: null,
+                cause: error,
+                diagnostics: [],
+                message: error.message,
+                subtype: 'crash'
+            });
+            handleRuntimeFailure(observation, error);
+        },
+        finished() {
+            rejectPendingTasks(observation.state, new Error('Hosted worker-pool process closed.'));
+            observation.finished.resolve();
+        },
+        hasTask(taskId) {
+            return observation.state.pendingTasks.get(taskId) !== undefined;
+        },
+        receive(message) {
+            handleHostMessage(observation.state, message);
+        }
     });
 }
 
@@ -374,7 +381,16 @@ function createRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPoolStat
         startupStartedAtMicroseconds,
         state
     });
-    sendCommand(child, { kind: 'configure', options: input.options });
+    sendCommand(child, {
+        kind: 'configure',
+        options: {
+            cwd: input.options.cwd,
+            hostProcess: input.options.hostProcess,
+            testFamily: input.options.testFamily,
+            workerCount: input.options.workerCount,
+            workerLifecycle: input.options.workerLifecycle
+        }
+    });
 
     return { child, configured: configured.promise, finished: finished.promise };
 }

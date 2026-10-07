@@ -19,8 +19,8 @@ type RuntimeCapabilityPolicyInput = RunOrchestratorDependencies['runtimeCapabili
 export type NodeRunOrchestratorInput = {
     readonly defaultEngine: RunOrchestratorDependencies['defaultEngine'];
     readonly discoverRunFilesWithProjectRoot: RunOrchestratorDependencies['discoverRunFilesWithProjectRoot'];
-    readonly installIpcRestriction: RuntimeCapabilityPolicyInput['installIpcRestriction'];
-    readonly installProcessExecutionRestriction: RuntimeCapabilityPolicyInput['installProcessExecutionRestriction'];
+    readonly observeIpcListeners: RuntimeCapabilityPolicyInput['observeIpcListeners'];
+    readonly observeProcessExit: RuntimeCapabilityPolicyInput['observeProcessExit'];
     readonly node: RunOrchestratorDependencies['node'];
     readonly readEnvironment: RuntimeCapabilityPolicyInput['readEnvironment'];
     readonly readStorage: RuntimeCapabilityPolicyInput['readStorage'];
@@ -73,8 +73,8 @@ export function createNodeRunCoordinator(input: NodeRunOrchestratorInput): NodeR
         startSupervisedChild: input.startSupervisedChild,
         startWorkerPoolHost: input.startWorkerPoolHost,
         runtimeCapabilityPolicy: {
-            installIpcRestriction: input.installIpcRestriction,
-            installProcessExecutionRestriction: input.installProcessExecutionRestriction,
+            observeIpcListeners: input.observeIpcListeners,
+            observeProcessExit: input.observeProcessExit,
             readEnvironment: input.readEnvironment,
             readStorage: input.readStorage
         },

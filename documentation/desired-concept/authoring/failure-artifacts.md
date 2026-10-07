@@ -10,8 +10,7 @@ updates, or diagnostic runs.
 Overkill treats failure artifacts as first-class outputs of a run, not as
 reporter-specific accidents.
 
-This does **not** imply monkey patching runtime globals as the default
-mechanism. The preferred model is explicit runner-owned boundaries,
+Runtime monkey-patching is forbidden. The preferred model is explicit runner-owned boundaries,
 structured results, and opt-in capture where the runner already controls the
 process or worker.
 

@@ -1,3 +1,4 @@
+import { startFakeIntegrationOutputChild } from '../test-support/supervised-output-fixture.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -5,7 +6,6 @@ import {
     defineReporter,
     type DefinedReporter,
     type RunArtifact,
-    type TestPlan,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -13,15 +13,8 @@ import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import {
-    createFakeSupervisedChildProcess,
-    type FakeSupervisedChildRunContext
-} from '../test-support/fake-supervised-child-process.ts';
-import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeRunOrchestrator } from './run-orchestrator.ts';
-import type { SupervisedChildProcess } from './supervised-child-process.ts';
-import { supervisedAssignedWork } from './supervised-protocol.ts';
 import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
@@ -42,85 +35,6 @@ type CapturedProcessOutput = {
     readonly stderr: () => string;
     readonly stdout: () => string;
 };
-
-function integrationOutputTestPlan(file: string): TestPlan {
-    const testNode = defaultRunEngine.createTestCase({
-        definitionLocations: [ { kind: 'unknown' as const } ],
-        annotations: { tags: [ 'output' ] },
-        controls: file === integrationCaptureControlsOutputFixturePath ? { capture: 'live' } : {},
-        title: 'captures output',
-        body(scope) {
-            scope.assert.true(true);
-
-            return scope.assert.collect();
-        }
-    });
-
-    return defaultRunEngine.createTestPlanFromTestFiles({
-        files: [ { file, testNode } ],
-        root: {
-            annotations: { tags: [ 'output' ] },
-            controls: {},
-            title: process.cwd()
-        }
-    });
-}
-
-function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): void {
-    const [ work ] = supervisedAssignedWork(context.assignment);
-
-    if (work === undefined) {
-        context.emitExit();
-
-        return;
-    }
-
-    context.emitMessage({
-        event: {
-            attempt: 0,
-            case: work.case,
-            definitionLocations: [ { kind: 'unknown' } ],
-            kind: 'test-start',
-            suitePath: [],
-            workId: work
-        },
-        kind: 'event'
-    });
-    context.stdout.emit('case stdout\n');
-    context.stderr.emit('case stderr\n');
-    context.emitMessage({
-        event: {
-            completion: 'final',
-            attempt: 0,
-            artifacts: [],
-            case: work.case,
-            definitionLocations: [ { kind: 'unknown' } ],
-            kind: 'test-end',
-            outcome: null,
-            suitePath: [],
-            verdict: 'pass',
-            durationMicroseconds: 0,
-            workId: work
-        },
-        kind: 'event'
-    });
-    context.emitExit();
-}
-
-async function startFakeIntegrationOutputChild(): Promise<SupervisedChildProcess> {
-    return createFakeSupervisedChildProcess({
-        collect(input) {
-            return {
-                collectedPlan: collectedRunPlanFromTestPlan(integrationOutputTestPlan(input.file)),
-                runnerErrors: []
-            };
-        },
-        run(context) {
-            context.stdout.emit('collection stdout\n');
-            runFakeIntegrationOutputChild(context);
-        }
-    });
-}
 
 function createRunConfig(profileName: string, profile: RunConfig['profiles'][string]): RunConfig {
     return {
@@ -235,8 +149,8 @@ function createTestOrchestrator(output: CapturedProcessOutput): RunOrchestrator 
                 projectRoot: request.cwd
             };
         },
-        installIpcRestriction: installNoPolicyRestriction,
-        installProcessExecutionRestriction: installNoPolicyRestriction,
+        observeIpcListeners: installNoPolicyRestriction,
+        observeProcessExit: installNoPolicyRestriction,
         async loadRunEngineModule() {
             throw new Error('Fake supervised child tests do not load engine modules.');
         },

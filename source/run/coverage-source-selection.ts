@@ -10,6 +10,7 @@ import {
     inspectCoverageSource,
     isSupportedCoverageSource,
     isTypeScriptCoverageSource,
+    nativeTypeScriptCoverageSource,
     transformCoverageSource
 } from './coverage-runtime-source.ts';
 import type { RunCoverageSourcePolicy } from './run-types.ts';
@@ -141,7 +142,7 @@ export async function prepareCoverageSources(request: CoverageSourceRequest): Pr
     readonly batches: readonly CoverageNativeBatch[];
     readonly entryIncluded: (entry: V8CoverageEntry) => boolean;
     readonly sourceIncluded: (sourcePath: string) => boolean;
-    readonly onEntry: (entry: V8CoverageEntry) => void;
+    readonly onEntry: (entry: V8CoverageEntry) => Promise<void>;
     readonly sourcePath: (sourcePath: string, info: Readonly<Record<string, unknown>>) => string;
 }> {
     const batches = await readNativeCoverageBatches(request.rawDataDirectory);
@@ -168,11 +169,15 @@ export async function prepareCoverageSources(request: CoverageSourceRequest): Pr
         entryIncluded(entry) {
             return loaded.entries.has(entry.url);
         },
-        onEntry(entry) {
+        async onEntry(entry) {
             const map = loaded.maps.get(entry.url);
 
             if (map !== undefined) {
                 Object.assign(entry, { sourceMap: map });
+            } else if (isTypeScriptCoverageSource(fileURLToPath(entry.url))) {
+                const source = await readFile(fileURLToPath(entry.url), 'utf8');
+
+                Object.assign(entry, { fake: false, source: nativeTypeScriptCoverageSource(source) });
             }
         },
         sourcePath(sourcePath, info) {

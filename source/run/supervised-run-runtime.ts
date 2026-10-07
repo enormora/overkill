@@ -317,6 +317,10 @@ function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRun
 }
 
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
+    for (const testResult of result.perTest) {
+        runtime.state.removeActiveCase(workIdentityKey(testResult.workId));
+    }
+    runtime.state.beginOutputDraining();
     const supervisorErrors = deduplicatedRuntimePolicyErrors(runtime.state.runnerErrors());
 
     runtime.completedResult.write({

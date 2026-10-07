@@ -1,4 +1,12 @@
+import { z } from 'zod/v4';
+
 const childProcessMessageKind = 'overkill-child-message';
+
+const envelopeSchema = z.strictObject({
+    correlationId: z.string(),
+    kind: z.literal(childProcessMessageKind),
+    message: z.unknown()
+});
 
 export type ChildProcessEnvelope<Message> = {
     readonly correlationId: string;
@@ -8,10 +16,6 @@ export type ChildProcessEnvelope<Message> = {
 
 function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
     return typeof value === 'object' && value !== null;
-}
-
-function ignoreTypeWitness(typeWitness: readonly unknown[]): void {
-    String(typeWitness.length);
 }
 
 export function childProcessEnvelope<Message>(
@@ -25,26 +29,26 @@ export function childProcessEnvelope<Message>(
     };
 }
 
-function isChildProcessEnvelope<Message>(
-    value: unknown,
-    correlationId: string
-): value is ChildProcessEnvelope<Message> {
-    return isRecord(value) &&
-        value.kind === childProcessMessageKind &&
-        value.correlationId === correlationId &&
-        Object.hasOwn(value, 'message');
-}
-
 export function envelopeMessage<Message>(
     value: unknown,
     correlationId: string,
-    ...typeWitness: readonly [Message?]
+    messageSchema: Readonly<z.ZodType<Message>>
 ): Message | null {
-    ignoreTypeWitness(typeWitness);
-
-    if (!isChildProcessEnvelope<Message>(value, correlationId)) {
+    if (!isRecord(value) || value.kind !== childProcessMessageKind || value.correlationId !== correlationId) {
         return null;
     }
 
-    return value.message;
+    const parsed = envelopeSchema.safeParse(value);
+
+    if (!parsed.success) {
+        throw new TypeError('Invalid child-process IPC payload.', { cause: parsed.error });
+    }
+
+    const payload = messageSchema.safeParse(parsed.data.message);
+
+    if (!payload.success) {
+        throw new TypeError('Invalid child-process IPC payload.', { cause: payload.error });
+    }
+
+    return payload.data;
 }

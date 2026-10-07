@@ -113,15 +113,24 @@ function assertRecoveredHistory(scope: TestScope, result: RunResult): void {
     );
 }
 
-function capturedAttemptIndexes(result: RunResult): readonly number[] {
-    const indexes = result.artifacts.flatMap(function capturedAttempt(artifact) {
-        return artifact.id.attempt === null || artifact.payload.kind !== 'captured-output'
-            ? []
-            : [ artifact.id.attempt.index ];
-    });
-    return Array.from(new Set(indexes)).toSorted(function numeric(first, second) {
-        return first - second;
-    });
+type RetryEvidence = readonly [number, string];
+
+function retainedRetryEvidence(result: RunResult): readonly RetryEvidence[] {
+    return result
+        .artifacts
+        .flatMap(function retryEvidence(artifact) {
+            if (artifact.id.attempt === null || artifact.payload.kind !== 'runtime-attachment') {
+                return [];
+            }
+            const { content, name } = artifact.payload;
+            if (content.kind !== 'text' || name !== 'retry-evidence') {
+                return [];
+            }
+            return [ [ artifact.id.attempt.index, content.text ] as const ];
+        })
+        .toSorted(function attemptOrder(first, second) {
+            return first[0] - second[0];
+        });
 }
 
 function assertRetryEvidence(
@@ -130,7 +139,12 @@ function assertRetryEvidence(
     events: readonly ReporterEvent[],
     policy: RetryArtifactPolicy
 ): void {
-    scope.assert.deepEqual(capturedAttemptIndexes(result), retainedAttemptIndexes[policy]);
+    scope.assert.deepEqual(
+        retainedRetryEvidence(result),
+        retainedAttemptIndexes[policy].map(function expectedEvidence(index) {
+            return [ index, `retry evidence ${index + 1}` ] as const;
+        })
+    );
     scope.assert.deepEqual(
         events
             .filter(function ended(event) {
@@ -164,7 +178,7 @@ function assertHardTimeoutEvidence(scope: TestScope, result: RunResult): void {
         }),
         [ [ 0, 'fail' ], [ 1, 'crashed' ] ]
     );
-    scope.assert.deepEqual(capturedAttemptIndexes(result), [ 0, 1 ]);
+    scope.assert.deepEqual(retainedRetryEvidence(result), [ [ 0, 'retry evidence 1' ], [ 1, 'retry evidence 2' ] ]);
     assertHardTimeoutAttribution(scope, result);
 }
 

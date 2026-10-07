@@ -1,3 +1,4 @@
+import { z } from 'zod/v4';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -30,6 +31,9 @@ import { createWorkerPoolHostProcessStarter } from './worker-pool-host-process-s
 
 function createChildProcess(): SupervisedChildProcess {
     return {
+        closeTransport() {
+            return undefined;
+        },
         exitCode: null,
         kill() {
             return true;
@@ -105,7 +109,11 @@ function createProtocolFixture(): ProtocolFixture {
     });
 
     return {
-        decodedEnvelope: envelopeMessage<{ readonly kind: 'event'; }>(eventEnvelope, 'event-message'),
+        decodedEnvelope: envelopeMessage(
+            eventEnvelope,
+            'event-message',
+            z.strictObject({ event: z.strictObject({ kind: z.literal('synthetic') }), kind: z.literal('event') })
+        ),
         deserializedError: deserializeError(serializeError(error)),
         deserializedWithoutStack: deserializeError({
             code: null,
@@ -143,7 +151,14 @@ function assertFallbackErrorProtocol(scope: OverkillScope, fixture: ProtocolFixt
 
 function assertWorkerMessageProtocol(scope: OverkillScope, fixture: ProtocolFixture): void {
     scope.assert.equal(fixture.decodedEnvelope?.kind, 'event');
-    scope.assert.equal(envelopeMessage(childProcessEnvelope('other', {}), 'event-message'), null);
+    scope.assert.equal(
+        envelopeMessage(
+            childProcessEnvelope('other', {}),
+            'event-message',
+            z.strictObject({ kind: z.literal('event') })
+        ),
+        null
+    );
     scope.assert.equal(serializeWorkerPoolMessage(fixture.workerEventMessage), fixture.workerEventMessage);
     scope.assert.equal(
         deserializeWorkerPoolMessage(serializeWorkerPoolMessage(fixture.workerEventMessage)),

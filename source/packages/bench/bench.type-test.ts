@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'tstyche';
 import type * as ordinary from '../test/test.entry-point.ts';
+import * as standard from '../test/bench.entry-point.ts';
 import * as bench from './bench.entry-point.ts';
 
 const parameterValue = 3;
@@ -94,5 +95,45 @@ describe('@overkill-dev/bench', function () {
             .type
             .toBe<bench.Table>();
         expect<bench.TestBody>().type.toBe<ordinary.TestBody>();
+    });
+});
+
+describe('@overkill-dev/test/bench', function () {
+    test('preserves leaf signatures, annotations, and table types', function () {
+        expect(standard).type.toBe<typeof bench>();
+        expect<standard.AuthoringAnnotations>().type.toBe<bench.AuthoringAnnotations>();
+        expect<standard.AuthoringControls>().type.toBe<bench.AuthoringControls>();
+        expect<standard.ParameterizedTestScope<string>>().type.toBe<bench.ParameterizedTestScope<string>>();
+        expect<standard.TableDefinition<string>>().type.toBe<bench.TableDefinition<string>>();
+        expect<standard.TableTestBody<string>>().type.toBe<bench.TableTestBody<string>>();
+    });
+    test('preserves engine node and scope types', function () {
+        expect<standard.Suite>().type.toBe<bench.Suite>();
+        expect<standard.Table>().type.toBe<bench.Table>();
+        expect<standard.TestBody>().type.toBe<bench.TestBody>();
+        expect<standard.TestCase>().type.toBe<bench.TestCase>();
+        expect<standard.TestNode>().type.toBe<bench.TestNode>();
+        expect<standard.TestScope>().type.toBe<bench.TestScope>();
+        expect<standard.TestScopeAssertContext>().type.toBe<bench.TestScopeAssertContext>();
+    });
+    test('infers table rows and parameterized bodies through the standard subpath', function () {
+        expect(standard.table({
+            cases: [ { value: parameterValue } ],
+            test(scope) {
+                expect(scope.parameters.value).type.toBe<number>();
+                scope.assert.greaterThan(scope.parameters.value, 0);
+                return scope.assert.collect();
+            },
+            title: 'rows'
+        }))
+            .type
+            .toBe<standard.Table>();
+        const body = standard.defineParameterizedTestBody<number>(function (scope, value) {
+            scope.assert.equal(value, parameterValue);
+            return scope.assert.collect();
+        });
+
+        expect(body).type.not.toBeCallableWith('invalid');
+        expect(standard.test('parameterized', body(parameterValue))).type.toBe<standard.TestCase>();
     });
 });

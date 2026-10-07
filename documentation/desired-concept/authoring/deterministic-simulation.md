@@ -72,7 +72,7 @@ Overkill should _not_ own:
 - a mandatory `World` pattern
 - predefined app-level service handles
 - one official simulator implementation for all apps
-- hidden monkey-patching as the default strategy
+- runtime monkey-patching
 - a `withSimulation(...)` test wrapper in `@overkill-dev/test`
 
 ## Simulation Definitions, Not Built-In Worlds

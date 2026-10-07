@@ -24,17 +24,6 @@ import {
     type ParameterizedTestScope
 } from './test.entry-point.ts';
 
-type ReservedSubpathModule = {
-    readonly name: string;
-    readonly module: {
-        readonly unavailable: (...parameters: readonly unknown[]) => never;
-    };
-};
-
-const reservedSubpathModules: readonly ReservedSubpathModule[] = [
-    { module: baselinesSubpath, name: 'baselines' },
-    { module: benchSubpath, name: 'bench' }
-];
 const invokeWithResource = resourcesSubpath.withResource as (...parameters: readonly unknown[]) => unknown;
 const invokeWithResources = resourcesSubpath.withResources as (...parameters: readonly unknown[]) => unknown;
 const invokeWithRuntime = resourcesSubpath.withRuntime as (...parameters: readonly unknown[]) => unknown;
@@ -452,15 +441,6 @@ async function assertResourcesSubpath(scope: TestScope): Promise<void> {
     assertResourceWrapperValidation(scope, database, runtime, temporaryDirectory);
 }
 
-function assertReservedSubpath(scope: TestScope, subpath: ReservedSubpathModule): void {
-    scope.assert.deepEqual(sortedKeys(subpath.module), [ 'unavailable' ]);
-    scope.assert.throws(function invokeUnavailableSubpath() {
-        subpath.module.unavailable('ignored');
-    }, {
-        message: `The @overkill-dev/test/${subpath.name} subpath is reserved until its leaf package exists.`
-    });
-}
-
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/standard-subpaths.test.ts',
@@ -513,13 +493,33 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test reserved subpaths expose sentinel only',
+            title: '@overkill-dev/test/bench exposes the leaf authoring surface',
             annotations: {},
             controls: {},
             body(scope: TestScope) {
-                for (const subpath of reservedSubpathModules) {
-                    assertReservedSubpath(scope, subpath);
-                }
+                scope.assert.deepEqual(sortedKeys(benchSubpath), [
+                    'defineMacro',
+                    'defineParameterizedTestBody',
+                    'skippedTest',
+                    'suite',
+                    'table',
+                    'test'
+                ]);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: '@overkill-dev/test/baselines exposes only the reserved sentinel',
+            annotations: {},
+            controls: {},
+            body(scope: TestScope) {
+                scope.assert.deepEqual(sortedKeys(baselinesSubpath), [ 'unavailable' ]);
+                scope.assert.throws(function invokeUnavailableSubpath() {
+                    baselinesSubpath.unavailable('ignored');
+                }, {
+                    message: 'The @overkill-dev/test/baselines subpath is reserved until its leaf package exists.'
+                });
 
                 return scope.assert.collect();
             }

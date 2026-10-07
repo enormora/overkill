@@ -1,10 +1,9 @@
-import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import { createClock } from '@enormora/clock';
-import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import type { RunnerError, RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
+import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
+import { readHostCommand } from './worker-pool-host-transport.ts';
 import {
-    childProcessEnvelope,
-    envelopeMessage
+    childProcessEnvelope
 } from './child-process-protocol.ts';
 import {
     createNodeResourceUsageTracker
@@ -105,7 +104,9 @@ function send(message: WorkerPoolHostMessage): void {
     sendMessage?.(childProcessEnvelope(workerPoolHostCorrelationId, message));
 }
 
-function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
+function portTransferList(
+    port: Readonly<WorkerPoolMessageChannel['port']>
+): readonly WorkerPoolMessageChannel['port'][] {
     return [ port ];
 }
 
@@ -231,7 +232,9 @@ function abortActiveTasks(): void {
     }
 }
 
-function handleFatalHostError(error: RunnerError): void {
+function handleFatalHostError(
+    error: RunnerError
+): void {
     if (fatalShutdownStarted.read()) {
         return;
     }
@@ -266,14 +269,35 @@ function handleCommand(command: WorkerPoolHostCommand): void {
     }
 }
 
+function receiveValidatedCommand(message: unknown): void {
+    const command = readHostCommand(message);
+    if (command === null) {
+        return;
+    }
+    if (command.kind === 'configure' && state.pool.read() !== null) {
+        throw new Error('Hosted worker pool was already configured.');
+    }
+    if (command.kind === 'run-task' && state.activeTasks.get(command.taskId) !== undefined) {
+        throw new Error('Hosted worker-pool task is already active.');
+    }
+    handleCommand(command);
+}
 globalErrorObserver.onFatalError(handleFatalHostError);
 
 state.commandHandling.write(globalErrorObserver.runBoundary(async function runObservedHostProcess() {
     process.on('message', function receiveHostCommand(message: unknown) {
-        const command = envelopeMessage<WorkerPoolHostCommand>(message, workerPoolHostCorrelationId);
-
-        if (command !== null) {
-            handleCommand(command);
+        try {
+            receiveValidatedCommand(message);
+        } catch (error: unknown) {
+            handleFatalHostError({
+                attributedTo: null,
+                attributedToAttempt: null,
+                attributedToWork: null,
+                cause: error,
+                diagnostics: [],
+                message: error instanceof Error ? error.message : 'Invalid worker-pool host command.',
+                subtype: 'crash'
+            });
         }
     });
 

@@ -191,7 +191,8 @@ Especially relevant built-in channels include:
 Architectural implication:
 
 - Overkill should prefer diagnostics-channel-based observability where it
-  exists before introducing direct monkey-patching
+  exists. Runtime monkey-patching is forbidden; unsupported observations remain
+  documented native gaps
 - this is especially useful for strict console policies in microtests and
   opt-in diagnostic capture modes
 

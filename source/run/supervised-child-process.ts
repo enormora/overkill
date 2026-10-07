@@ -1,5 +1,6 @@
 import { dirname, join } from 'node:path';
 import type { Clock } from '@enormora/clock';
+import { startChildShutdown } from './child-process-shutdown.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import type { ResolvedRun, RunRequest, RunTestFamily } from './run-types.ts';
@@ -20,6 +21,8 @@ export type SupervisedChildCoverage = {
 
 type SupervisedChildEventListener = {
     readonly error: (error: Error) => void;
+    readonly close: () => void;
+    readonly disconnect: () => void;
     readonly exit: () => void;
     readonly message: (message: unknown) => void;
 };
@@ -36,6 +39,7 @@ type SupervisedChildProcessOutput = {
 };
 
 export type SupervisedChildProcess = {
+    readonly closeTransport: () => void;
     readonly exitCode: number | null;
     readonly kill: (signal: 'SIGKILL') => unknown;
     readonly on: (...registration: SupervisedChildListenerRegistration) => unknown;
@@ -47,6 +51,7 @@ export type SupervisedChildProcess = {
 };
 
 export function kill(child: SupervisedChildProcess): void {
+    startChildShutdown(child);
     if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
         child.kill('SIGKILL');
     }

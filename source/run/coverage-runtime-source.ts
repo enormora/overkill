@@ -1,4 +1,6 @@
 import path from 'node:path';
+// eslint-disable-next-line node/no-unsupported-features/node-builtins -- Match native V8 offsets.
+import { stripTypeScriptTypes } from 'node:module';
 import { parse } from 'acorn';
 import { transform } from 'sucrase';
 
@@ -13,6 +15,10 @@ type CoverageSourceInspection = {
     readonly comments: readonly string[];
     readonly hasRuntime: boolean;
 };
+
+export function nativeTypeScriptCoverageSource(source: string): string {
+    return stripTypeScriptTypes(source, { mode: 'strip' });
+}
 
 export function transformCoverageSource(source: string, filePath: string): TransformedCoverageSource {
     const result = transform(source, {
