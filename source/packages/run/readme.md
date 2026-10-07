@@ -53,6 +53,13 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `defineConfig(config)`
 - `loadRunConfig({ cwd, configPath })`
 
+The binary recognizes `overkill bench run [paths...]` and
+`overkill bench list [paths...]` with `--config`, and delegates to the
+corresponding benchmark methods. Their `CommandLineCommandContext.arguments`
+contains only path operands; `configPath` is `null` when omitted. The default
+benchmark handlers still return exit code `3` because benchmark execution is
+not implemented. Benchmark configuration and execution are separate milestones.
+
 Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 
 - `all(filters)`

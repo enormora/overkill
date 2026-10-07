@@ -1,5 +1,5 @@
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
-import { passingResult, runCommandLine } from './command-line-runner.test.ts';
+import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
 import { parseRuntimeSelector } from './run-runtime-selector.ts';
 
 const emptyTestData = { annotations: {}, controls: {} } as const;
