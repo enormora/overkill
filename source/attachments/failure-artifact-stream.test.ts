@@ -22,10 +22,17 @@ function attemptStream(): FailureArtifactStream {
     }
     return stream;
 }
+function captureFailureMessage(cause: unknown, closeOnOwner: boolean): string {
+    if (closeOnOwner) {
+        return 'Failure artifact streams could not finish.';
+    }
+    return cause instanceof Error ? cause.message : 'Attachment transport failed.';
+}
 async function assertCaptureFailure(
     scope: TestScope,
     cause: unknown,
-    operation: 'close' | 'prepare' | 'write'
+    operation: 'close' | 'prepare' | 'write',
+    closeOnOwner: boolean
 ): Promise<void> {
     const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
     const execution = createAttachmentExecution(async function failingTransport(request) {
@@ -39,8 +46,14 @@ async function assertCaptureFailure(
             const stream = attemptStream();
             stream.write('received');
             await scope.assert.rejects(async function finishFailedCapture() {
-                await stream.close();
-            }, { message: cause instanceof Error ? cause.message : 'Attachment transport failed.' });
+                if (closeOnOwner) {
+                    await closeAttemptFailureStreams(work, { index: 0 });
+                } else {
+                    await stream.close();
+                }
+            }, {
+                message: captureFailureMessage(cause, closeOnOwner)
+            });
             await stream.close();
         });
     });
@@ -89,6 +102,14 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             ...metadata,
+            title: 'attempt cleanup reports failed stream drains as an aggregate error',
+            async body(scope: TestScope) {
+                await assertCaptureFailure(scope, new Error('disconnected'), 'prepare', true);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
             title: 'unmanaged captures remain unavailable without opening streams',
             async body(scope) {
                 scope.assert.equal(
@@ -126,7 +147,7 @@ export const testNode = createSuite({
                     ...metadata,
                     title: `${operation} failure preserves capture errors: ${String(cause)}`,
                     async body(scope) {
-                        await assertCaptureFailure(scope, cause, operation);
+                        await assertCaptureFailure(scope, cause, operation, false);
                         return scope.assert.collect();
                     }
                 });

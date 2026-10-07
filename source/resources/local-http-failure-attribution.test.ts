@@ -4,7 +4,7 @@ import { createSuite, createTestCase, type TestScope } from '../packages/engine/
 import { createLocalHttpServiceResource, startResources } from '../packages/resources/resources.entry-point.ts';
 import { observeTranscriptEntries } from '../packages/simulation/transcript.entry-point.ts';
 import { runWithTranscriptScope, type TranscriptScope } from '../transcript/transcript-store.ts';
-import { createHttpRequestAttribution } from './http-request-attribution.ts';
+import { createHttpRequestAttribution, type HttpRequestAttribution } from './http-request-attribution.ts';
 
 async function fetchFromExternalProcess(baseUrl: string): Promise<void> {
     await new Promise<void>(function fetchOutsideRunner(resolve, reject) {
@@ -69,10 +69,39 @@ function assertAmbiguousRequests(scope: TestScope): void {
     scope.assert.deepEqual(second, { scope: null, undiciRequest: null });
     scope.assert.equal(requests.take('GET /'), null);
 }
+function assertRequestIdentity(
+    scope: TestScope,
+    requests: HttpRequestAttribution,
+    owner: TranscriptScope,
+    client: Readonly<Record<string, unknown>>
+): void {
+    const request = requests.take('GET /');
+    scope.require.defined(request);
+    scope.assert.deepEqual(request, { scope: owner, undiciRequest: client });
+}
+function assertSameScopeRequests(scope: TestScope): void {
+    const requests = createHttpRequestAttribution();
+    const owner = { case: 'same attempt' };
+    const first = { client: 'first' };
+    const second = { client: 'second' };
+    requests.remember('GET /', owner, first);
+    requests.remember('GET /', owner, second);
+    assertRequestIdentity(scope, requests, owner, first);
+    assertRequestIdentity(scope, requests, owner, second);
+    scope.assert.equal(requests.take('GET /'), null);
+}
 export const testNode = createSuite({
     ...metadata,
     title: 'source/resources/local-http-failure-attribution.test.ts',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'identical overlapping requests in one attempt preserve their client identities',
+            body(scope: TestScope) {
+                assertSameScopeRequests(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'overlapping request signatures never borrow another case scope',

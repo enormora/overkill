@@ -1,19 +1,28 @@
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
+    type TestScope as OverkillScope,
+    type WorkId
 } from '../packages/engine/engine.entry-point.ts';
 import type { ResourceScope } from '../resources/resources.ts';
 import { createResourceOwnershipPlan } from './execution-plan-resolution.ts';
 import {
     acquireWorkerPoolResourceLifecycle,
-    disposeWorkerPoolResourceLifecycles
+    disposeWorkerPoolResourceLifecycles,
+    createResourcePreparationChannel
 } from './worker-pool-resource-lifecycle-execution.ts';
 import {
     createCollectedPlan,
-    fakeWorkerRuntime
+    fakeWorkerRuntime,
+    createTaskRun
 } from './worker-pool-execution-state.test.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
+import { createSupervisedRunState } from './supervised-run-state.ts';
+import type {
+    WorkerPoolMessage,
+    WorkerPoolPreparationReply,
+    WorkerPoolMessageChannel
+} from './worker-pool-protocol.ts';
 
 type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
 type PlacementPlan = NonNullable<WorkerPoolRunRuntime['resolvedRun']['facts']['execution']['placementPlan']>;
@@ -194,10 +203,110 @@ async function assertRunResourceDisposalFailureRecordsRunnerError(scope: Overkil
     );
 }
 
+function preparationRuntime(
+    output: unknown,
+    ownsResources: boolean,
+    recordTask: (kind: string) => void
+): WorkerPoolRunRuntime {
+    const runtime = runtimeWithPoolRun(
+        collectedPlanWithResources(ownsResources ? [ resource('database', 'per-run') ] : []),
+        async function prepareResources(task) {
+            recordTask(readTaskKind(task));
+            if (output instanceof Error) {
+                throw output;
+            }
+            return output;
+        }
+    );
+    return {
+        ...runtime,
+        resolvedRun: {
+            ...runtime.resolvedRun,
+            facts: {
+                ...runtime.resolvedRun.facts,
+                execution: { ...runtime.resolvedRun.facts.execution, placementPlan: placementPlan(runtime) }
+            }
+        }
+    };
+}
+function assertPreparationResponse(scope: OverkillScope, reply: WorkerPoolPreparationReply, failed: boolean): void {
+    scope.assert.equal(reply.kind, 'resource-artifacts-prepared');
+    scope.assert.equal(reply.request, 'request-2');
+    if (failed) {
+        scope.assert.equal(reply.runnerErrors.length, 1);
+        scope.assert.equal(reply.runnerErrors[0]?.subtype, 'artifact');
+        scope.assert.equal(reply.runnerErrors[0]?.attributedToAttempt?.index, 2);
+    } else {
+        scope.assert.deepEqual(reply.runnerErrors, []);
+    }
+}
+async function exchangePreparationMessages(
+    scope: OverkillScope,
+    channel: WorkerPoolMessageChannel,
+    work: WorkId,
+    received: readonly WorkerPoolMessage[]
+): Promise<WorkerPoolPreparationReply> {
+    const response = new Promise<WorkerPoolPreparationReply>(function receiveReply(resolve) {
+        channel.port.once('message', resolve);
+    });
+    channel.port.postMessage(
+        { kind: 'prepare-resource-artifacts', request: 'request-2', work, attempt: { index: 2 } },
+        []
+    );
+    const reply = await response;
+    channel.port.postMessage({ kind: 'task-messages-completed' }, []);
+    await channel.messagesCompleted;
+    scope.assert.deepEqual(received, [ { kind: 'task-messages-completed' } ]);
+    return reply;
+}
+async function collectPreparationReply(
+    scope: OverkillScope,
+    runtime: WorkerPoolRunRuntime
+): Promise<WorkerPoolPreparationReply> {
+    const received: WorkerPoolMessage[] = [];
+    const taskRun = createTaskRun(createSupervisedRunState('all'));
+    const channel = createResourcePreparationChannel(taskRun, runtime, function receive(message) {
+        received.push(message);
+    });
+    scope.cleanup(channel.close);
+    const work = taskRun.members[0].unit.work[0];
+    scope.require.defined(work);
+    return await exchangePreparationMessages(scope, channel, work, received);
+}
+async function assertPreparationReply(scope: OverkillScope, output: unknown, ownsResources: boolean): Promise<void> {
+    const calls: string[] = [];
+    const runtime = preparationRuntime(output, ownsResources, function recordTask(kind) {
+        calls.push(kind);
+    });
+    const reply = await collectPreparationReply(scope, runtime);
+    assertPreparationResponse(scope, reply, ownsResources && (output === null || output instanceof Error));
+    scope.assert.deepEqual(calls, ownsResources ? [ 'prepare-resource-artifacts' ] : []);
+}
+
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-resource-lifecycle-execution.test.ts',
     children: [
+        ...[ { runnerErrors: [] }, null, new Error('owner disconnected') ].map(
+            function ownerPreparation(output, index) {
+                return createOverkillTestCase({
+                    ...testCaseMetadata,
+                    title: `resource preparation replies preserve request identity: ${index}`,
+                    async body(scope: OverkillScope) {
+                        await assertPreparationReply(scope, output, true);
+                        return scope.assert.collect();
+                    }
+                });
+            }
+        ),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'preparation without an external owner replies without scheduling a task',
+            async body(scope: OverkillScope) {
+                await assertPreparationReply(scope, null, false);
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'worker-pool per-run resources acquire through the owner lane',

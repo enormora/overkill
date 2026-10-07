@@ -11,7 +11,7 @@ import {
     type AttachmentFixture,
     attachmentWork as work
 } from '../test-support/attachment-fixture.ts';
-import { attachmentsForProducer } from '../attachments/attachment-context.ts';
+import { attachmentsForProducer, preparedResourceAttachments } from '../attachments/attachment-context.ts';
 import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
 
 const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -199,10 +199,39 @@ async function assertSeparateRunStreams(scope: TestScope): Promise<void> {
     scope.require.defined(artifact);
     scope.assert.partialDeepEqual(artifact.payload.content, { kind: 'text', text: 'right end' });
 }
+async function assertUnknownPreparedAttempt(scope: TestScope): Promise<void> {
+    const { execution, store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    await runWithAttachmentExecution(execution, async function ownedRun() {
+        await execution.runAttempt(work, { index: 0 }, async function selectedAttempt() {
+            const attachments = preparedResourceAttachments(
+                'service',
+                { kind: 'attempt', work, attempt: { index: 99 } },
+                'instrumented',
+                'attachment'
+            );
+            scope.require.defined(attachments);
+            await scope.assert.rejects(async function rejectUnknownAttempt() {
+                await attachments.json(metadata, { ready: true });
+            }, { message: 'Failure artifact escaped its test attempt.' });
+        });
+    });
+    const errors = await execution.finish();
+    scope.assert.equal(errors.length, 1);
+    scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
+    scope.assert.deepEqual(store.artifacts(), []);
+}
 export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-ownership.test.ts',
     children: [
+        createTestCase({
+            ...definition,
+            title: 'prepared evidence cannot borrow an active attempt when its own attempt is unknown',
+            async body(scope: TestScope) {
+                await assertUnknownPreparedAttempt(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...definition,
             title: 'simultaneous runs keep service streams with identical work identities separate',

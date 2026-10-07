@@ -1,7 +1,7 @@
 import { resourceAttachments } from '../packages/resources/attachment-context.entry-point.ts';
 import { closeAttemptFailureStreams } from '../attachments/failure-artifact-stream.ts';
 import { callableResourceDefinition } from '../resources/resource-graph.ts';
-import { resourceDisposalErrors } from './resource-disposal-error.ts';
+import { resourceDisposalErrors, resourceDisposalCauses } from './resource-disposal-error.ts';
 import {
     prepareLifetimeResource,
     prepareAttemptResource,
@@ -130,7 +130,9 @@ export async function disposeCompletedBoundaries(
         try {
             await disposeCompletedBoundary(stores, boundary, options.timing, options.testCases);
         } catch (error: unknown) {
-            stores.recordCaseError(testCase, 'Resource disposal failed.', error);
+            for (const cause of resourceDisposalCauses(error)) {
+                stores.recordCaseError(testCase, 'Resource disposal failed.', cause);
+            }
         }
     }
 }

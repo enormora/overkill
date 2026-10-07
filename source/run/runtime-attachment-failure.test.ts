@@ -2,8 +2,7 @@ import { createSuite, createTestCase, type TestScope } from '../packages/engine/
 import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { testNode as captureFailures } from '../attachments/failure-artifact-stream.test.ts';
-import { testNode as integrationFailures } from './integration-failure-artifacts.test.ts';
+import { testNode as failureArtifacts } from './failure-artifact-suite.test.ts';
 import { createAttachmentExecution } from './attachment-execution.ts';
 import {
     AttachmentOperationError,
@@ -156,8 +155,7 @@ export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-failure.test.ts',
     children: [
-        captureFailures,
-        integrationFailures,
+        failureArtifacts,
         createTestCase({
             ...definition,
             title: 'reported operation errors are consumed before final collection',

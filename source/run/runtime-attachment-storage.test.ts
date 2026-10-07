@@ -108,24 +108,34 @@ async function assertClockFailure(scope: TestScope): Promise<void> {
     await assertRejectedClock(scope, null, 'Attachment operation failed.');
 }
 
+type EvidencePreparation = {
+    readonly capture: 'attempt' | 'lifetime';
+    readonly contentKind: 'binary' | 'json' | 'text';
+    readonly closed: boolean;
+};
+type EvidenceOrigin = { readonly source: 'instrumented' | 'native'; readonly subtype: 'attachment' | 'witness'; };
+function evidenceOrigin(preparation: EvidencePreparation): EvidenceOrigin {
+    const native = preparation.capture === 'attempt' && preparation.contentKind === 'binary';
+    return native ? { source: 'native', subtype: 'witness' } : { source: 'instrumented', subtype: 'attachment' };
+}
 async function checkpointPreparedEvidence(
     store: AttachmentStore,
     work: Parameters<AttachmentStore['settleAttempt']>[0],
-    capture: 'attempt' | 'lifetime'
+    preparation: EvidencePreparation
 ): Promise<void> {
+    const { capture, contentKind, closed } = preparation;
     await store.exchange('test', { kind: 'resource-consumer', boundary: 'diagnostic-boundary', work });
     const opened = await store.exchange('test', {
         kind: 'prepare',
         branch: null,
-        contentKind: 'binary',
+        contentKind,
         metadata: { name: 'prepared-evidence', mediaType: 'application/json' },
         owner: capture === 'attempt' ? { kind: 'case', work, attempt: { index: 0 } } : { kind: 'run' },
         condition: capture === 'attempt'
             ? { kind: 'attempt', work, attempt: { index: 0 } }
             : { kind: 'resource', resource: 'diagnostic', boundary: 'diagnostic-boundary' },
         producer: { kind: 'resource', name: 'diagnostic' },
-        source: capture === 'attempt' ? 'native' : 'instrumented',
-        subtype: capture === 'attempt' ? 'witness' : 'attachment'
+        ...evidenceOrigin(preparation)
     });
     if (opened.kind !== 'opened') {
         throw new TypeError('Expected a prepared witness writer.');
@@ -135,9 +145,14 @@ async function checkpointPreparedEvidence(
         writer: opened.writer,
         data: Buffer.from('{"version":1}').toString('base64')
     });
-    await store.exchange('test', { kind: 'close', writer: opened.writer, reason: 'complete' });
+    if (closed) {
+        await store.exchange('test', { kind: 'close', writer: opened.writer, reason: 'complete' });
+    }
 }
-async function assertInterruptedPreparation(scope: TestScope, capture: 'attempt' | 'lifetime'): Promise<void> {
+async function preparedEvidenceStore(scope: TestScope): Promise<{
+    readonly store: AttachmentStore;
+    readonly work: Parameters<AttachmentStore['settleAttempt']>[0];
+}> {
     const { resolved } = await attachmentRunFixture(scope);
     const work = resolved.facts.cases[0]?.workId;
     scope.require.defined(work);
@@ -154,7 +169,11 @@ async function assertInterruptedPreparation(scope: TestScope, capture: 'attempt'
             return undefined;
         }
     });
-    await checkpointPreparedEvidence(store, work, capture);
+    return { store, work };
+}
+async function assertInterruptedPreparation(scope: TestScope, capture: 'attempt' | 'lifetime'): Promise<void> {
+    const { store, work } = await preparedEvidenceStore(scope);
+    await checkpointPreparedEvidence(store, work, { capture, contentKind: 'binary', closed: true });
     store.settleResult(runResultFactory.build({ status: 'failed', runnerErrors: [ { subtype: 'crash' } ] }));
     scope.assert.deepEqual(
         store.selectedArtifacts().map(function name(artifact) {
@@ -166,32 +185,73 @@ async function assertInterruptedPreparation(scope: TestScope, capture: 'attempt'
     scope.assert.deepEqual(store.selectedArtifacts(), []);
     await store.finish(null);
 }
+async function assertUnknownAttemptPrefix(
+    scope: TestScope,
+    kind: 'binary' | 'json' | 'text',
+    closed: boolean
+): Promise<void> {
+    const { store, work } = await preparedEvidenceStore(scope);
+    await checkpointPreparedEvidence(store, work, { capture: 'attempt', contentKind: kind, closed });
+    store.settleResult(runResultFactory.build({ status: 'failed', runnerErrors: [ { subtype: 'artifact' } ] }));
+    scope.assert.deepEqual(await store.finish('test'), []);
+    scope.assert.equal(store.selectedArtifacts().length, !closed && kind !== 'json' ? 1 : 0);
+}
+async function assertUnknownLifetime(scope: TestScope): Promise<void> {
+    const { store, work } = await preparedEvidenceStore(scope);
+    await checkpointPreparedEvidence(store, work, { capture: 'lifetime', contentKind: 'text', closed: true });
+    store.settleResult(runResultFactory.build({ status: 'failed', runnerErrors: [ { subtype: 'artifact' } ] }));
+    scope.assert.deepEqual(store.selectedArtifacts(), []);
+    await store.exchange('test', { kind: 'resource-failure', boundary: 'diagnostic-boundary' });
+    scope.assert.equal(store.selectedArtifacts().length, 1);
+}
 
 export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-storage.test.ts',
-    children: ([
-        [ 'storage refuses missing integration limits', assertMissingLimits ],
-        [ 'checkpoint failures reject attachment persistence', assertCheckpointFailure ],
-        [ 'finalization remains idempotent with the default retry policy', assertFinalization ],
-        [ 'capture clock failures remove newly allocated attachment files', assertClockFailure ],
-        [ 'completed witness evidence survives an interrupted attempt', async function (scope: TestScope) {
-            await assertInterruptedPreparation(scope, 'attempt');
-        } ],
-        [ 'shared lifetime evidence survives an interrupted consumer', async function (scope: TestScope) {
-            await assertInterruptedPreparation(scope, 'lifetime');
-        } ]
-    ] as const)
-        .map(function storageCase([ title, check ]) {
-            return createTestCase({
-                ...definition,
-                title,
-                async body(scope: TestScope) {
-                    await check(scope);
-                    return scope.assert.collect();
-                }
+    children: [
+        ...([ 'binary', 'json', 'text' ] as const).flatMap(function interruptedContent(kind) {
+            return [ false, true ].map(function captureCompletion(closed) {
+                return createTestCase({
+                    ...definition,
+                    title: `unknown attempt retains only interrupted prefixes: ${kind}, closed ${closed}`,
+                    async body(scope: TestScope) {
+                        await assertUnknownAttemptPrefix(scope, kind, closed);
+                        return scope.assert.collect();
+                    }
+                });
             });
-        })
+        }),
+        createTestCase({
+            ...definition,
+            title: 'unknown consumers discard shared evidence unless their resource fails',
+            async body(scope: TestScope) {
+                await assertUnknownLifetime(scope);
+                return scope.assert.collect();
+            }
+        }),
+        ...([
+            [ 'storage refuses missing integration limits', assertMissingLimits ],
+            [ 'checkpoint failures reject attachment persistence', assertCheckpointFailure ],
+            [ 'finalization remains idempotent with the default retry policy', assertFinalization ],
+            [ 'capture clock failures remove newly allocated attachment files', assertClockFailure ],
+            [ 'completed witness evidence survives an interrupted attempt', async function (scope: TestScope) {
+                await assertInterruptedPreparation(scope, 'attempt');
+            } ],
+            [ 'shared lifetime evidence survives an interrupted consumer', async function (scope: TestScope) {
+                await assertInterruptedPreparation(scope, 'lifetime');
+            } ]
+        ] as const)
+            .map(function storageCase([ title, check ]) {
+                return createTestCase({
+                    ...definition,
+                    title,
+                    async body(scope: TestScope) {
+                        await check(scope);
+                        return scope.assert.collect();
+                    }
+                });
+            })
+    ]
 });
 const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);
