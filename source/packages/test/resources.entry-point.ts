@@ -255,3 +255,11 @@ export function withResources<
 
     return attachComposedResourceBody<Scope>(resourcesWrapperStep(resources), body, 'withResources');
 }
+
+export { withFailureArtifacts } from '../resources/resources.entry-point.ts';
+export type {
+    FailureArtifactAttachments,
+    ResourceFailureCapture,
+    SimulationWitnessArtifact,
+    SimulationWitnessInput
+} from '../resources/resources.entry-point.ts';

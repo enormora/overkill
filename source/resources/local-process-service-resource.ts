@@ -1,5 +1,8 @@
+import { StringDecoder } from 'node:string_decoder';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { setTimeout as wait } from 'node:timers/promises';
+import { createFailureArtifactStream, type FailureArtifactStream } from '../attachments/failure-artifact-stream.ts';
+import { currentResourceFailureContext } from '../attachments/resource-failure-context.ts';
 import type {
     Awaitable,
     ExecutionRequirement,
@@ -49,7 +52,7 @@ type LocalProcessChild = {
     readonly exitCode: number | null;
     readonly kill: (signal: LocalProcessSignal) => boolean;
     readonly once: (
-        event: 'error' | 'exit',
+        event: 'close' | 'error' | 'exit',
         listener: ((code: number | null, signal: string | null) => void) | ((error: Error) => void)
     ) => unknown;
     readonly signalCode: string | null;
@@ -210,13 +213,24 @@ function createBoundedOutputBuffer(maxBytes: number): BoundedOutputBufferControl
     };
 }
 
-function localProcessOutput(maxBytes: number): LocalProcessOutputWriters {
+function localProcessOutput(
+    maxBytes: number,
+    captures: Readonly<Record<'stderr' | 'stdout', FailureArtifactStream | null>>
+): LocalProcessOutputWriters {
     const stdout = createBoundedOutputBuffer(maxBytes);
     const stderr = createBoundedOutputBuffer(maxBytes);
+    const stdoutDecoder = new StringDecoder();
+    const stderrDecoder = new StringDecoder();
 
     return {
-        appendStderr: stderr.append,
-        appendStdout: stdout.append,
+        appendStderr(chunk) {
+            stderr.append(chunk);
+            captures.stderr?.write(stderrDecoder.write(chunk));
+        },
+        appendStdout(chunk) {
+            stdout.append(chunk);
+            captures.stdout?.write(stdoutDecoder.write(chunk));
+        },
         output: Object.freeze({
             stderr: stderr.buffer,
             stdout: stdout.buffer
@@ -291,16 +305,28 @@ async function waitForProcessExit(child: LocalProcessChild): Promise<void> {
     });
 }
 
+async function processHasExited(child: LocalProcessChild): Promise<boolean> {
+    await waitForProcessExit(child);
+    return true;
+}
+async function processExitWithinGrace(child: LocalProcessChild, milliseconds: number): Promise<boolean> {
+    const waiting = new AbortController();
+    const exits = [ processHasExited(child), wait(milliseconds, false, { signal: waiting.signal }) ];
+    try {
+        return await Promise.race(exits);
+    } finally {
+        waiting.abort();
+    }
+}
 async function disposeLocalProcess(owner: LocalProcessOwner, shutdown: LocalProcessShutdown): Promise<void> {
     if (owner.child.exitCode !== null || owner.child.signalCode !== null) {
         return;
     }
 
     owner.child.kill(shutdown.gracefulSignal);
-    const exited = waitForProcessExit(owner.child);
-    const result = await Promise.race([ exited, wait(shutdown.graceMilliseconds, 'delay') ]);
+    const graceful = await processExitWithinGrace(owner.child, shutdown.graceMilliseconds);
 
-    if (result === 'delay') {
+    if (!graceful) {
         owner.child.kill(shutdown.forceSignal);
         await waitForProcessExit(owner.child);
     }
@@ -316,6 +342,33 @@ function assertProcessInput(input: ProcessInputValidation): void {
     }
 }
 
+async function captureProcessOutput(
+    closed: Promise<void>,
+    stdout: FailureArtifactStream | null,
+    stderr: FailureArtifactStream | null
+): Promise<Error | null> {
+    await closed;
+    const closing = [ stdout, stderr ].flatMap(function closeCapture(capture) {
+        return capture === null ? [] : [ capture.close() ];
+    });
+    try {
+        await Promise.all(closing);
+    } catch (error: unknown) {
+        return error instanceof Error ? error : new Error('Service output capture failed.', { cause: error });
+    }
+    return null;
+}
+function processCaptures(): Readonly<Record<'stderr' | 'stdout', FailureArtifactStream | null>> {
+    const context = currentResourceFailureContext();
+    return {
+        stdout: context === null
+            ? null
+            : createFailureArtifactStream(context, 'boundary-captured', 'stdout', 'text/plain'),
+        stderr: context === null
+            ? null
+            : createFailureArtifactStream(context, 'boundary-captured', 'stderr', 'text/plain')
+    };
+}
 function localProcessDefinition<
     const Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
@@ -324,26 +377,36 @@ function localProcessDefinition<
 >(
     input: LocalProcessServiceResourceInput<Name, ConsumerHandle, Scope, Dependencies>
 ): LocalProcessDefinition<Name, ConsumerHandle, Scope, Dependencies> {
+    const captured = new WeakMap<LocalProcessOwner, Promise<Error | null>>();
     return {
         name: input.name,
         scope: input.scope,
         requirements: input.requirements,
         dependencies: input.dependencies,
         address: input.address,
-        async start(context: LocalServiceCreationContext<Dependencies>): Promise<LocalProcessOwner> {
-            const command = await input.command(context);
-            const output = localProcessOutput(input.outputBufferBytes);
-
-            return Object.freeze({
-                child: spawnLocalProcess(command, output),
-                output: output.output
+        async start(creation: LocalServiceCreationContext<Dependencies>): Promise<LocalProcessOwner> {
+            const command = await input.command(creation);
+            const { stdout, stderr } = processCaptures();
+            const output = localProcessOutput(input.outputBufferBytes, { stdout, stderr });
+            const child = spawnLocalProcess(command, output);
+            const owner = Object.freeze({ child, output: output.output });
+            const closed = new Promise<void>(function resolveClosedProcess(resolve) {
+                child.once('close', resolve);
             });
+            const completion = captureProcessOutput(closed, stdout, stderr);
+            captured.set(owner, completion);
+            return owner;
         },
         async ready(owner: LocalProcessOwner, context: LocalServiceCreationContext<Dependencies>) {
             return await readyLocalProcess(owner, context, input);
         },
         async dispose(owner: LocalProcessOwner) {
             await disposeLocalProcess(owner, input.shutdown);
+            const error = await captured.get(owner);
+            if (error !== undefined && error !== null) {
+                throw error;
+            }
+            captured.delete(owner);
         }
     };
 }

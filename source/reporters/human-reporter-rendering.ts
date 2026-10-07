@@ -1,5 +1,5 @@
 import colors from 'yoctocolors';
-import { formatCaseId, type CaseId, type RuntimeId } from '../engine/identity.ts';
+import { workIdentityKey, formatCaseId, type RuntimeId } from '../engine/identity.ts';
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
@@ -182,41 +182,59 @@ function formatRunnerError(error: RunnerError): readonly string[] {
     ];
 }
 
-function artifactCaseKey(id: CaseId): string {
-    return JSON.stringify([ id.file, id.suite, id.title, id.params ]);
+function artifactWorkKey(artifact: RunArtifact): string | null {
+    return artifact.id.scope.kind === 'case'
+        ? workIdentityKey({
+            case: artifact.id.scope.case,
+            runtimes: artifact.id.runtimes,
+            workload: artifact.id.workload
+        })
+        : null;
 }
-
 function caseArtifacts(result: RunResult, testResult: RunResult['perTest'][number]): readonly RunArtifact[] {
-    const testKey = artifactCaseKey(testResult.id);
-
-    return result.artifacts.filter(function artifactForCase(artifact) {
-        return artifact.id.scope.kind === 'case' && artifactCaseKey(artifact.id.scope.case) === testKey;
+    const key = workIdentityKey(testResult.workId);
+    return result.artifacts.filter(function artifactForWork(artifact) {
+        return artifactWorkKey(artifact) === key;
     });
 }
 
-function runArtifacts(result: RunResult): readonly RunArtifact[] {
-    return result.artifacts.filter(function isRunArtifact(artifact) {
-        return artifact.id.scope.kind === 'run';
+function unreportedArtifacts(result: RunResult): readonly RunArtifact[] {
+    const reportedWork = new Set<string | null>(result.perTest.map(function work(entry) {
+        return workIdentityKey(entry.workId);
+    }));
+    return result.artifacts.filter(function missingCaseResult(artifact) {
+        return !reportedWork.has(artifactWorkKey(artifact));
     });
 }
 
+type RuntimeAttachmentPayload = Extract<RunArtifact['payload'], { readonly kind: 'runtime-attachment'; }>;
+function attachmentProducerLabel(payload: RuntimeAttachmentPayload): string {
+    return payload.capture === 'automatic' && payload.producer.kind === 'resource' ? ` [${payload.producer.name}]` : '';
+}
+function attachmentCompleteness(content: RuntimeAttachmentPayload['content']): string {
+    if (content.kind === 'omitted' || content.kind === 'json' || content.completion.kind === 'complete') {
+        return '';
+    }
+    return ` ${content.completion.kind} (${content.completion.reason})`;
+}
 function attachmentLines(
-    payload: Extract<RunArtifact['payload'], { readonly kind: 'runtime-attachment'; }>
+    payload: Extract<RunArtifact['payload'], { readonly kind: 'runtime-attachment'; }>,
+    subtype: RunArtifact['id']['subtype']
 ): readonly string[] {
     const { content, mediaType, name } = payload;
+    const producer = attachmentProducerLabel(payload);
+    const label = subtype === 'witness' ? 'witness' : 'attachment';
     if (content.kind === 'omitted') {
-        return [ `attachment "${name}" (${mediaType}): omitted (${content.reason})` ];
+        return [ `${label} "${name}"${producer} (${mediaType}): omitted (${content.reason})` ];
     }
     const location = content.kind === 'file' ? ` ${content.path}` : '';
-    const completeness = content.kind !== 'json' && content.completion.kind !== 'complete'
-        ? ` ${content.completion.kind} (${content.completion.reason})`
-        : '';
-    return [ `attachment "${name}" (${mediaType}, ${content.byteLength} bytes):${location}${completeness}` ];
+    const completeness = attachmentCompleteness(content);
+    return [ `${label} "${name}"${producer} (${mediaType}, ${content.byteLength} bytes):${location}${completeness}` ];
 }
 
 function artifactLines(artifact: RunArtifact): readonly string[] {
     if (artifact.payload.kind === 'runtime-attachment') {
-        return attachmentLines(artifact.payload);
+        return attachmentLines(artifact.payload, artifact.id.subtype);
     }
     if (artifact.payload.kind !== 'captured-output') {
         return [];
@@ -235,6 +253,21 @@ function indentDetail(line: string): string {
     return `  ${line}`;
 }
 
+function unreportedArtifactLines(artifact: RunArtifact): readonly string[] {
+    const details = artifactLines(artifact);
+    if (artifact.id.scope.kind === 'run' || details.length === 0) {
+        return details;
+    }
+    const runtimes = artifact.id.runtimes.map(runtimeLabel).join(', ');
+    const suffix = runtimes === '' ? '' : ` [${runtimes}]`;
+    return [ `${formatCaseId(artifact.id.scope.case)}${suffix}`, ...details.map(indentDetail) ];
+}
+function caseArtifactDetails(result: RunResult, testResult: RunResult['perTest'][number]): readonly string[] {
+    return caseArtifacts(result, testResult).flatMap(function detail(artifact) {
+        return artifactLines(artifact).map(indentDetail);
+    });
+}
+
 function failedTestLines(
     result: RunResult,
     testResult: RunResult['perTest'][number],
@@ -250,9 +283,7 @@ function failedTestLines(
         ...testResult.outcome.failures.flatMap(function formatTestFailure(failure) {
             return formatFailure(failure, context).map(indentDetail);
         }),
-        ...caseArtifacts(result, testResult).flatMap(function formatArtifact(artifact) {
-            return artifactLines(artifact).map(indentDetail);
-        })
+        ...caseArtifactDetails(result, testResult)
     ];
 }
 
@@ -284,7 +315,7 @@ function knownOutcomeProblemLines(input: KnownOutcomeProblemInput): readonly str
     }
 
     if (outcome.kind === 'inconclusive') {
-        return [ heading, `  ${outcome.reason}` ];
+        return [ heading, `  ${outcome.reason}`, ...caseArtifactDetails(result, testResult) ];
     }
 
     if (options.verbose && outcome.kind === 'pass') {
@@ -304,7 +335,7 @@ function testProblemLines(
     const { outcome } = testResult;
 
     if (outcome === null) {
-        return [ heading, `  ${testResult.verdict}` ];
+        return [ heading, `  ${testResult.verdict}`, ...caseArtifactDetails(result, testResult) ];
     }
 
     return knownOutcomeProblemLines({ context, heading, options, outcome, result, testResult });
@@ -339,7 +370,7 @@ export function problemLines(
         });
     const runnerErrorLines = result.runnerErrors.flatMap(formatRunnerError);
     const runArtifactLines = result.status === 'failed'
-        ? runArtifacts(result).flatMap(artifactLines)
+        ? unreportedArtifacts(result).flatMap(unreportedArtifactLines)
         : [];
     const lines = [ ...testLines, ...runnerErrorLines, ...runArtifactLines ];
 

@@ -1,4 +1,7 @@
-import type { MessagePort as WorkerMessagePort } from 'node:worker_threads';
+import {
+    createWorkerMessagePortFixture as createFakePort,
+    type WorkerMessagePortFixture as FakePort
+} from '../test-support/worker-message-port-fixture.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource-usage.ts';
 import {
     createSuite as createOverkillSuite,
@@ -17,8 +20,8 @@ import type {
 } from './run-orchestrator-dependencies.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
 import type {
-    WorkerPoolCommand,
-    WorkerPoolMessage
+    WorkerPoolTask,
+    WorkerPoolCommand
 } from './worker-pool-protocol.ts';
 import {
     serializeError,
@@ -29,15 +32,12 @@ import {
 } from './worker-pool-host-protocol.ts';
 import { createHostedWorkerPool } from './worker-pool-host-process.ts';
 
+type WorkerMessagePort = Readonly<WorkerPoolTask['port']>;
+
 const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type ChildOutput = NonNullable<SupervisedChildProcess['stdout']> & {
     readonly emit: (text: string) => void;
-};
-
-type FakePort = {
-    readonly messages: () => readonly WorkerPoolMessage[];
-    readonly postMessage: (message: WorkerPoolMessage) => void;
 };
 
 type FakeHostChild = SupervisedChildProcess & {
@@ -80,19 +80,6 @@ function createChildOutput(): ChildOutput {
         },
         on(_event, listener) {
             dataListener = listener;
-        }
-    };
-}
-
-function createFakePort(): FakePort {
-    const messages: WorkerPoolMessage[] = [];
-
-    return {
-        messages() {
-            return messages;
-        },
-        postMessage(message) {
-            messages.push(message);
         }
     };
 }

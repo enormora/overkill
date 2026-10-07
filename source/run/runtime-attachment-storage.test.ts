@@ -6,7 +6,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createAttachmentRecord } from './attachment-record.ts';
 import { createAttachmentStorageSession } from './attachment-storage-session.ts';
 import { createAttachmentRunCoordinator } from './attachment-coordinator.ts';
-import { createAttachmentStore } from './attachment-store.ts';
+import { createAttachmentStore, type AttachmentStore } from './attachment-store.ts';
 
 const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
@@ -79,6 +79,7 @@ async function assertRejectedClock(scope: TestScope, cause: unknown, message: st
     const { resolved } = await attachmentRunFixture(scope);
     const directory = resolved.config.runtimeStateDir;
     const store = createAttachmentStore({
+        witnessDirectory: `${directory}/witnesses`,
         projectRoot: resolved.cwd,
         directory,
         limits: defaultAttachmentLimits,
@@ -107,6 +108,65 @@ async function assertClockFailure(scope: TestScope): Promise<void> {
     await assertRejectedClock(scope, null, 'Attachment operation failed.');
 }
 
+async function checkpointPreparedEvidence(
+    store: AttachmentStore,
+    work: Parameters<AttachmentStore['settleAttempt']>[0],
+    capture: 'attempt' | 'lifetime'
+): Promise<void> {
+    await store.exchange('test', { kind: 'resource-consumer', boundary: 'diagnostic-boundary', work });
+    const opened = await store.exchange('test', {
+        kind: 'prepare',
+        branch: null,
+        contentKind: 'binary',
+        metadata: { name: 'prepared-evidence', mediaType: 'application/json' },
+        owner: capture === 'attempt' ? { kind: 'case', work, attempt: { index: 0 } } : { kind: 'run' },
+        condition: capture === 'attempt'
+            ? { kind: 'attempt', work, attempt: { index: 0 } }
+            : { kind: 'resource', resource: 'diagnostic', boundary: 'diagnostic-boundary' },
+        producer: { kind: 'resource', name: 'diagnostic' },
+        source: capture === 'attempt' ? 'native' : 'instrumented',
+        subtype: capture === 'attempt' ? 'witness' : 'attachment'
+    });
+    if (opened.kind !== 'opened') {
+        throw new TypeError('Expected a prepared witness writer.');
+    }
+    await store.exchange('test', {
+        kind: 'write',
+        writer: opened.writer,
+        data: Buffer.from('{"version":1}').toString('base64')
+    });
+    await store.exchange('test', { kind: 'close', writer: opened.writer, reason: 'complete' });
+}
+async function assertInterruptedPreparation(scope: TestScope, capture: 'attempt' | 'lifetime'): Promise<void> {
+    const { resolved } = await attachmentRunFixture(scope);
+    const work = resolved.facts.cases[0]?.workId;
+    scope.require.defined(work);
+    const store = createAttachmentStore({
+        witnessDirectory: `${resolved.config.runtimeStateDir}/witnesses`,
+        projectRoot: resolved.cwd,
+        directory: resolved.config.runtimeStateDir,
+        limits: defaultAttachmentLimits,
+        work: [ work ],
+        captureTime() {
+            return 0;
+        },
+        async checkpoint() {
+            return undefined;
+        }
+    });
+    await checkpointPreparedEvidence(store, work, capture);
+    store.settleResult(runResultFactory.build({ status: 'failed', runnerErrors: [ { subtype: 'crash' } ] }));
+    scope.assert.deepEqual(
+        store.selectedArtifacts().map(function name(artifact) {
+            return artifact.payload.name;
+        }),
+        [ 'prepared-evidence' ]
+    );
+    store.settleAttempt(work, { index: 0 }, 'pass', null);
+    scope.assert.deepEqual(store.selectedArtifacts(), []);
+    await store.finish(null);
+}
+
 export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-storage.test.ts',
@@ -114,7 +174,13 @@ export const testNode = createSuite({
         [ 'storage refuses missing integration limits', assertMissingLimits ],
         [ 'checkpoint failures reject attachment persistence', assertCheckpointFailure ],
         [ 'finalization remains idempotent with the default retry policy', assertFinalization ],
-        [ 'capture clock failures remove newly allocated attachment files', assertClockFailure ]
+        [ 'capture clock failures remove newly allocated attachment files', assertClockFailure ],
+        [ 'completed witness evidence survives an interrupted attempt', async function (scope: TestScope) {
+            await assertInterruptedPreparation(scope, 'attempt');
+        } ],
+        [ 'shared lifetime evidence survives an interrupted consumer', async function (scope: TestScope) {
+            await assertInterruptedPreparation(scope, 'lifetime');
+        } ]
     ] as const)
         .map(function storageCase([ title, check ]) {
             return createTestCase({

@@ -191,7 +191,34 @@ Attachments require runner-managed integration execution. Standalone
 
 `@overkill-dev/resources/attachment-context` exposes the shared context bridge
 for runner and authoring integrations. Test authors should use `scope.attachments`.
-Service transcripts and logs are retained only when explicitly attached.
+Runner-managed integration failures automatically retain first-party HTTP
+transcripts, process stdout/stderr, and simulated HTTP scenario witnesses.
+Passing attempts discard this prepared evidence; explicit attachments retain
+their existing behavior.
+
+`withFailureArtifacts(resource, prepare)` adds custom evidence preparation.
+The callback receives the owner handle, including for projected resources.
+An `attempt` capture includes the exact work identity, retry attempt, and an
+attachment sink with `witness(...)`. Shared-resource `lifetime` captures use a
+run-scoped attachment sink. Preparation runs before scope cleanup and resource
+disposal, including for passing bodies that may fail during cleanup.
+Lifetime collectors read the complete resource transcript; attempt collectors
+read the current attempt's entries.
+
+```ts
+const diagnosticService = withFailureArtifacts(service, async (capture) => {
+    await capture.attachments.file(
+        { name: 'service-log', mediaType: 'text/plain' },
+        capture.handle.logPath
+    );
+});
+```
+
+First-party output checkpoints received prefixes during execution. Custom
+collectors run before teardown and cannot recover data after their owner
+crashes. Shared logs keep run attribution; precisely scoped interactions keep
+case and attempt attribution. Collector failures are artifact errors and do
+not prevent resource disposal.
 
 Resources may declare finite scenario slots with a default, timing, and allowed
 values. `defineRuntime(...)` lifts slots from its complete dependency graph.

@@ -33,6 +33,7 @@ export async function attachmentFixtureForWork(
         await rm(directory, { recursive: true, force: true });
     });
     const store = createAttachmentStore({
+        witnessDirectory: `${directory}/witnesses`,
         captureTime() {
             return 0;
         },
@@ -46,7 +47,7 @@ export async function attachmentFixtureForWork(
     });
     const execution = createAttachmentExecution(async function exchangeAttachment(operation) {
         return await store.exchange('test', operation);
-    }, limits.maxInlineBytes);
+    }, limits);
     return { directory, execution, store };
 }
 export async function attachmentFixture(scope: TestScope, limits: AttachmentLimits): Promise<AttachmentFixture> {

@@ -20,16 +20,12 @@ function unclosedError(owner: AttachmentOwner): RunnerError {
 }
 export function attachmentArtifacts(artifacts: readonly RunArtifact[]): readonly RuntimeAttachmentArtifact[] {
     return artifacts.flatMap(function retainedAttachments(artifact) {
+        const { id, payload, source } = artifact;
         if (
-            artifact.payload.kind === 'runtime-attachment' && artifact.id.subtype === 'attachment' &&
-            artifact.source === 'instrumented'
+            payload.kind === 'runtime-attachment' && (id.subtype === 'attachment' || id.subtype === 'witness') &&
+            source !== 'v8-native'
         ) {
-            return [ {
-                ...artifact,
-                id: { ...artifact.id, subtype: 'attachment' as const },
-                payload: artifact.payload,
-                source: 'instrumented' as const
-            } ];
+            return [ { id: { ...id, subtype: id.subtype }, payload, source } ];
         }
         return artifact.payload.kind === 'hedged-conflict'
             ? [ ...artifact.payload.authoritative.attachments, ...artifact.payload.conflicting.attachments ]
@@ -114,7 +110,7 @@ export function resultWithRuntimeAttachments(
         result
             .artifacts
             .filter(function attachment(artifact) {
-                return artifact.id.subtype === 'attachment';
+                return artifact.id.subtype === 'attachment' || artifact.id.subtype === 'witness';
             })
             .map(function sequence(artifact) {
                 return artifact.id.sequence;

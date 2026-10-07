@@ -2,6 +2,7 @@ import { createSuite, createTestCase, type TestScope } from '../packages/engine/
 import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { testNode as integrationFailures } from './integration-failure-artifacts.test.ts';
 import { createAttachmentExecution } from './attachment-execution.ts';
 import {
     AttachmentOperationError,
@@ -60,7 +61,7 @@ async function assertHostileJson(scope: TestScope): Promise<void> {
 async function assertInvalidReplies(scope: TestScope): Promise<void> {
     const execution = createAttachmentExecution(async function invalidReply() {
         return { kind: 'written' };
-    }, 1024);
+    }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
     await scope.assert.rejects(async function rejectWrongOpenReply() {
         await execution.context.forProducer({ kind: 'case' }).open(metadata);
     }, { message: 'Attachment open returned an invalid reply.' });
@@ -68,7 +69,7 @@ async function assertInvalidReplies(scope: TestScope): Promise<void> {
     scope.assert.equal(openErrors.length, 1);
     const closing = createAttachmentExecution(async function invalidCloseReply(operation) {
         return operation.kind === 'open' ? { kind: 'opened', writer: 0 } : { kind: 'written' };
-    }, 1024);
+    }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
     const writer = await closing.context.forProducer({ kind: 'case' }).open(metadata);
     await scope.assert.rejects(async function rejectWrongCloseReply() {
         await writer.close();
@@ -80,7 +81,7 @@ async function assertInvalidReplies(scope: TestScope): Promise<void> {
 async function assertTransportFailure(scope: TestScope, cause: unknown, message: string): Promise<void> {
     const execution = createAttachmentExecution(async function disconnectedTransport() {
         throw cause;
-    }, 1024);
+    }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
     await execution.runAttempt(work, { index: 1 }, async function rejectTransport() {
         await scope.assert.rejects(async function openFailedTransport() {
             await execution.context.forProducer({ kind: 'case' }).open(metadata);
@@ -154,6 +155,7 @@ export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-failure.test.ts',
     children: [
+        integrationFailures,
         createTestCase({
             ...definition,
             title: 'reported operation errors are consumed before final collection',

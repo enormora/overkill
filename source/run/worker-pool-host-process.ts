@@ -32,6 +32,8 @@ import {
     type CompletionSignal
 } from './worker-pool-host-signal.ts';
 
+type WorkerPoolPreparationReply = Extract<WorkerPoolHostCommand, { readonly kind: 'task-reply'; }>['reply'];
+
 const microsecondsPerMillisecond = 1000;
 
 type PendingHostTask = {
@@ -463,6 +465,10 @@ async function runHostedTask(
     const workerPoolTask = readWorkerPoolTask(task);
     const hostRuntime = await activeRuntime(input, state);
 
+    function forwardPreparationReply(reply: WorkerPoolPreparationReply): void {
+        sendCommand(hostRuntime.child, { kind: 'task-reply', taskId, reply });
+    }
+    workerPoolTask.port.on('message', forwardPreparationReply);
     function abortHostTask(): void {
         sendCommand(hostRuntime.child, { kind: 'abort-task', taskId });
     }
@@ -483,6 +489,7 @@ async function runHostedTask(
         });
     } finally {
         options.signal.removeEventListener('abort', abortHostTask);
+        workerPoolTask.port.off('message', forwardPreparationReply);
     }
 }
 

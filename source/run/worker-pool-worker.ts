@@ -2,6 +2,16 @@ import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import {
+    prepareLocalOwnerResources,
+    withProjectedFailurePreparation,
+    acquireWorkerRunResources,
+    completeWorkerResourceOwnerWork,
+    createWorkerResourceUsageTracker,
+    disposeWorkerLaneLifecycle,
+    disposeWorkerRunResources,
+    laneResourceSession
+} from './worker-pool-worker-resources.ts';
+import {
     composeRunRuntimePolicies,
     createRunPermissionRuntimePolicy,
     engineExecution,
@@ -14,14 +24,6 @@ import {
     silentOutputSinks,
     suppressOutput
 } from './worker-pool-output.ts';
-import {
-    acquireWorkerRunResources,
-    completeWorkerResourceOwnerWork,
-    createWorkerResourceUsageTracker,
-    disposeWorkerLaneLifecycle,
-    disposeWorkerRunResources,
-    laneResourceSession
-} from './worker-pool-worker-resources.ts';
 import type {
     WorkerPoolCollection,
     WorkerPoolCommand,
@@ -140,7 +142,7 @@ async function runAssignment(
                 resourceUsageTracker: createWorkerResourceUsageTracker(task.command),
                 runtimePolicy: composeRunRuntimePolicies(
                     createRunPermissionRuntimePolicy(),
-                    resourceSession.runtimePolicy
+                    withProjectedFailurePreparation(resourceSession.runtimePolicy, task)
                 ),
                 runFacts: {},
                 startedAt: startedAtIso(task.startedAtMilliseconds),
@@ -289,8 +291,8 @@ type WorkerPoolTaskOutputs = {
 };
 type WorkerPoolTaskOutput = WorkerPoolTaskOutputs[keyof WorkerPoolTaskOutputs];
 
-async function runWorkerTask(
-    task: Exclude<WorkerPoolTask, { readonly kind: 'collect'; }>,
+async function runResourceOwnerTask(
+    task: Exclude<WorkerPoolTask, { readonly kind: 'collect' | 'run'; }>,
     wallClock: WorkerTimingClock
 ): Promise<WorkerPoolTaskOutput> {
     if (task.kind === 'acquire-run-resources') {
@@ -309,7 +311,22 @@ async function runWorkerTask(
         return await disposeLaneLifecycle(task);
     }
 
-    return await runAssignments(task, wallClock);
+    return await runWithWorkerAttachments(
+        task.attachmentEndpoint,
+        task.lifecycle.token,
+        async function prepareOwnerEvidence() {
+            return {
+                runnerErrors: await prepareLocalOwnerResources(task.lifecycle, task.work, task.attempt) ?? []
+            };
+        }
+    );
+}
+
+async function runWorkerTask(
+    task: Exclude<WorkerPoolTask, { readonly kind: 'collect'; }>,
+    wallClock: WorkerTimingClock
+): Promise<WorkerPoolTaskOutput> {
+    return task.kind === 'run' ? await runAssignments(task, wallClock) : await runResourceOwnerTask(task, wallClock);
 }
 
 async function runClosableTask(

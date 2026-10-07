@@ -15,6 +15,7 @@ import {
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
 import {
+    crashError,
     findResourceBudgetBreach,
     resourceExhaustionError,
     type ResourceBudgetBreach
@@ -230,20 +231,28 @@ export const createHardTimeout: (runtime: SupervisedRunRuntimeSeed) => Supervise
     createSupervisedHardTimeout;
 
 function childEventWithAttachments(event: ReporterEvent, runtime: SupervisedRunRuntime): ReporterEvent {
-    return event.kind === 'test-end'
-        ? {
-            ...event,
-            artifacts: [
-                ...event.artifacts,
-                ...runtime.attachments?.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
-                    index: event.attempt
-                }, null) ?? [],
-                ...runtime.state.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
-                    index: event.attempt
-                })
-            ]
-        }
-        : event;
+    if (event.kind !== 'test-end') {
+        return event;
+    }
+    const work = event.workId ?? createDefaultWorkId(event.case);
+    runtime.attachments?.settleAttempt(
+        work,
+        { index: event.attempt },
+        event.verdict,
+        null
+    );
+    return {
+        ...event,
+        artifacts: [
+            ...event.artifacts,
+            ...runtime.attachments?.caseArtifacts(work, {
+                index: event.attempt
+            }, null) ?? [],
+            ...runtime.state.caseArtifacts(work, {
+                index: event.attempt
+            })
+        ]
+    };
 }
 
 function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): void {
@@ -428,11 +437,27 @@ async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntim
     return await reportResultWithDelivery(result, runtime.reporterDelivery);
 }
 
+function recordUnexpectedChildExit(runtime: SupervisedRunRuntime): void {
+    if (runtime.child.exitCode === null && runtime.child.signalCode === null) {
+        return;
+    }
+    if (runtime.completedResult.read() === null && !runtime.terminalFailure.read()) {
+        runtime.terminalFailure.write(true);
+        runtime.state.recordRunnerError(
+            crashError(runtime.state, 'Supervised child exited before returning a result.')
+        );
+        runtime.state.recordTerminalActiveCases(
+            'crashed',
+            Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
+        );
+    }
+}
 export async function finishSupervisedRuntime(
     runtime: SupervisedRunRuntime,
     startedAtMicroseconds: number
 ): Promise<RunResult> {
     runtime.timeout.clear();
+    recordUnexpectedChildExit(runtime);
     await runtime.reporterEvents.wait();
 
     const result = await runtime.finalizeResult(selectRunResult(runtime, startedAtMicroseconds));

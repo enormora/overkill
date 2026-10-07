@@ -1,10 +1,8 @@
 import type { Clock } from '@enormora/clock';
-import {
-    evaluateAssertion,
-    invalidDeepAssertionOperand
-} from '../assertion-protocol/evaluation.ts';
+
 import type { AssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
+import { assertionFailure } from './recorded-assertion-failure.ts';
 import {
     assertNonEmptyItems,
     createAssertionRecorder,
@@ -23,7 +21,6 @@ import {
     type TestContractFailure,
     type TestFailure,
     type TestOutcome,
-    invalidDeepAssertionOperandFailure,
     verdictFromOutcome
 } from './run-result.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
@@ -83,6 +80,7 @@ export type RunTestCaseOptions = {
 };
 
 export type TestRuntimePolicy = {
+    readonly prepareAttempt: (testCase: TestPlanCase, attempt: AttemptId) => Promise<void>;
     readonly runAttempt: <Value>(
         testCase: TestPlanCase,
         attempt: AttemptId,
@@ -94,41 +92,6 @@ export type TestRuntimePolicy = {
     readonly takePendingRunErrors: () => readonly RunnerError[];
     readonly takeRunErrors: () => readonly RunnerError[];
 };
-
-function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
-    const checks = assertions.flatMap(function evaluateRecordedAssertion(assertion, index) {
-        const failedCheck = evaluateAssertion(assertion, index + 1);
-
-        return failedCheck === null ? [] : [ failedCheck ];
-    });
-
-    if (checks.length === 0) {
-        return null;
-    }
-
-    assertNonEmptyItems(checks, 'Expected failed checks to be non-empty.');
-
-    return {
-        checks,
-        kind: 'assertion'
-    };
-}
-
-function assertionContractFailure(assertions: readonly AssertionNode[]): TestContractFailure | null {
-    for (const assertion of assertions) {
-        const invalid = invalidDeepAssertionOperand(assertion);
-
-        if (invalid !== null) {
-            return invalidDeepAssertionOperandFailure(invalid);
-        }
-    }
-
-    return null;
-}
-
-function assertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
-    return assertionContractFailure(assertions) ?? evaluatedAssertionFailure(assertions);
-}
 
 function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
     if (isCaseRunnerError(error)) {
@@ -356,14 +319,23 @@ async function runBuilderCaseBody(
 
         return await lifecycle.runBody(options.controller.signal, testCase.execution.body);
     };
+    let prepared = false;
+    const prepare = async function prepareCaseArtifacts(): Promise<void> {
+        if (!prepared) {
+            prepared = true;
+            await options.runtimePolicy?.prepareAttempt(testCase, options.attempt);
+        }
+    };
     const runAndCleanUp = async function runBodyAndScopeCleanup(): Promise<ExecutedBody> {
         try {
             const assertionResult = await runBody();
+            await prepare();
             return completedBody({
                 assertionResult,
                 context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller))
             });
         } catch (error: unknown) {
+            await prepare();
             return failedBody({
                 context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller)),
                 error,
@@ -387,7 +359,11 @@ async function runThrowingCaseBody(
             throw new TypeError('Non-throwing test cases do not have throwing bodies.');
         }
 
-        await testCase.execution.body(createThrowingTestScope(recorder, options.controller.signal));
+        try {
+            await testCase.execution.body(createThrowingTestScope(recorder, options.controller.signal));
+        } finally {
+            await options.runtimePolicy?.prepareAttempt(testCase, options.attempt);
+        }
     };
     const runPolicyCheckedBody = async function runPolicyCheckedUserBody(): Promise<void> {
         if (options.runtimePolicy === null) {

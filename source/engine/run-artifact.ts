@@ -12,7 +12,7 @@ export type RunArtifactScope = {
 type RunArtifactBaseId = {
     readonly runtimes: readonly RuntimeId[];
     readonly sequence: number;
-    readonly subtype: 'attachment' | 'coverage' | 'hedged-conflict' | 'log-capture';
+    readonly subtype: 'attachment' | 'coverage' | 'hedged-conflict' | 'log-capture' | 'witness';
     readonly workload: WorkloadId | null;
 };
 
@@ -38,7 +38,7 @@ export type CapturedOutputArtifactPayload = {
 };
 
 export type CapturedOutputArtifact = {
-    readonly id: RunArtifactId & { readonly subtype: 'log-capture'; };
+    readonly id: RunArtifactId & { readonly subtype: 'log-capture' | 'witness'; };
     readonly payload: CapturedOutputArtifactPayload;
     readonly source: 'boundary-captured' | 'native';
 };

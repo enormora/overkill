@@ -37,7 +37,7 @@ async function assertFailedPendingWrite(scope: TestScope): Promise<void> {
             await pending.promise;
         }
         return store.exchange('pending', operation);
-    }, 1024);
+    }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
     const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
     await assertPendingFailure(scope, writer, pending);
     const content = store.artifacts()[0]?.payload.content;
@@ -58,7 +58,7 @@ async function assertPendingWrite(scope: TestScope): Promise<void> {
             await pending.promise;
         }
         return store.exchange('pending', operation);
-    }, 1024);
+    }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
     const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
     const writing = writer.write('one');
     await scope.assert.rejects(async function rejectOverlappingWrite() {

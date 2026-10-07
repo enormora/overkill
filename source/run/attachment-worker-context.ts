@@ -9,7 +9,7 @@ async function createWorkerAttachmentSession(endpoint: AttachmentEndpoint): Prom
     const { createAttachmentConnection } = await import('./attachment-connection.ts');
     const { createAttachmentExecution } = await import('./attachment-execution.ts');
     const connection = createAttachmentConnection(endpoint);
-    return { connection, execution: createAttachmentExecution(connection.exchange, endpoint.limits.maxInlineBytes) };
+    return { connection, execution: createAttachmentExecution(connection.exchange, endpoint.limits) };
 }
 async function observeWorkerAttachmentSession(
     key: string,

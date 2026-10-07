@@ -428,6 +428,9 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         recordViolation(capability, message, strictness) {
             record({ capability, message, strictness });
         },
+        async prepareAttempt() {
+            return undefined;
+        },
         async completeCase() {
             return undefined;
         },

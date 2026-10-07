@@ -29,6 +29,10 @@ const ownerSchema = z.union([
     z.object({ kind: z.literal('run') }),
     z.object({ attempt: attemptSchema, kind: z.literal('case'), work: workSchema })
 ]);
+const conditionSchema = z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('attempt'), work: workSchema, attempt: attemptSchema }),
+    z.object({ kind: z.literal('resource'), resource: z.string(), boundary: z.string() })
+]);
 const producerSchema = z.union([
     z.object({ kind: z.literal('case') }),
     z.object({ kind: z.literal('resource'), name: z.string().max(attachmentMetadataBytes) })
@@ -53,6 +57,19 @@ export const attachmentRequestSchema: z.ZodType<AttachmentRequest> = z.object({
             owner: ownerSchema,
             producer: producerSchema
         }),
+        z.object({ kind: z.literal('resource-failure'), boundary: z.string() }),
+        z.object({ kind: z.literal('resource-consumer'), boundary: z.string(), work: workSchema }),
+        z.object({
+            branch: z.string().nullable(),
+            contentKind: z.enum([ 'binary', 'json', 'text' ]),
+            kind: z.literal('prepare'),
+            metadata: metadataSchema,
+            owner: ownerSchema,
+            producer: producerSchema,
+            condition: conditionSchema,
+            source: z.enum([ 'instrumented', 'boundary-captured', 'native' ]),
+            subtype: z.enum([ 'attachment', 'witness' ])
+        }),
         z.object({
             data: z.string().max(maxEncodedChunk).regex(/^[A-Za-z0-9+/]*={0,2}$/u),
             kind: z.literal('write'),
@@ -61,7 +78,7 @@ export const attachmentRequestSchema: z.ZodType<AttachmentRequest> = z.object({
         z.object({ kind: z.literal('omit'), writer: writerSchema }),
         z.object({
             kind: z.literal('close'),
-            reason: z.enum([ 'complete', 'unclosed', 'write-error' ]),
+            reason: z.enum([ 'complete', 'unclosed', 'write-error', 'capture-limit' ]),
             writer: writerSchema
         })
     ])
@@ -70,7 +87,7 @@ const completionSchema = z.union([
     z.object({ kind: z.literal('complete') }),
     z.object({
         kind: z.literal('incomplete'),
-        reason: z.enum([ 'byte-limit', 'interrupted', 'unclosed', 'write-error' ])
+        reason: z.enum([ 'byte-limit', 'interrupted', 'unclosed', 'write-error', 'capture-limit' ])
     })
 ]);
 const inlineCompletionSchema = z.union([
@@ -91,7 +108,7 @@ const contentSchema = z.discriminatedUnion('kind', [
 const artifactBaseSchema = z.object({
     runtimes: z.array(runtimeSchema),
     sequence: writerSchema,
-    subtype: z.literal('attachment'),
+    subtype: z.enum([ 'attachment', 'witness' ]),
     workload: workloadSchema.nullable()
 });
 const artifactIdSchema = z.union([
@@ -108,14 +125,21 @@ const artifactIdSchema = z.union([
 ]);
 const artifactSchema = z.object({
     id: artifactIdSchema,
-    payload: metadataSchema.extend({
-        capture: z.literal('opt-in'),
-        capturedAtMicroseconds: z.number(),
-        content: contentSchema,
-        kind: z.literal('runtime-attachment'),
-        producer: producerSchema
-    }),
-    source: z.literal('instrumented')
+    payload: metadataSchema
+        .extend({
+            capturedAtMicroseconds: z.number(),
+            content: contentSchema,
+            kind: z.literal('runtime-attachment'),
+            producer: producerSchema
+        })
+        .and(z.discriminatedUnion('capture', [
+            z.object({ capture: z.literal('opt-in') }),
+            z.object({
+                capture: z.literal('automatic'),
+                retention: z.object({ condition: conditionSchema, state: z.enum([ 'prepared', 'retained' ]) })
+            })
+        ])),
+    source: z.enum([ 'instrumented', 'boundary-captured', 'native' ])
 });
 export const attachmentReplySchema: z.ZodType<AttachmentReply> = z.object({
     request: writerSchema,
