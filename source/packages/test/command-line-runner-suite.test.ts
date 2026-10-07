@@ -1,7 +1,7 @@
 import { createSuite } from '../engine/engine.entry-point.ts';
 import { testNode as commandLineRunnerCaptureTestNode } from './command-line-runner-capture.test.ts';
 import { testNode as commandLineRunnerCoverageTestNode } from './command-line-runner-coverage.test.ts';
-import { testNode as commandLineRunnerHelpTestNode } from './command-line-runner-help.test.ts';
+import { testNode as commandLineRunnerNamespaceTestNode } from './command-line-runner-namespace-suite.test.ts';
 import { testNode as commandLineRunnerOrderingTestNode } from './command-line-runner-ordering.test.ts';
 import { testNode as commandLineRunnerSelectionTestNode } from './command-line-runner-selection-suite.test.ts';
 import { testNode as commandLineRunnerShardingTestNode } from './command-line-runner-sharding.test.ts';
@@ -16,7 +16,7 @@ export const testNode = createSuite({
     children: [
         commandLineRunnerCaptureTestNode,
         commandLineRunnerCoverageTestNode,
-        commandLineRunnerHelpTestNode,
+        commandLineRunnerNamespaceTestNode,
         commandLineRunnerOrderingTestNode,
         commandLineRunnerSelectionTestNode,
         commandLineRunnerShardingTestNode,

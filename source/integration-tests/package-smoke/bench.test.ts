@@ -13,6 +13,7 @@ import {
 } from './bench-scripts.test.ts';
 
 type ScriptOutput = {
+    readonly exitCode: number;
     readonly stderr: string;
     readonly stdout: string;
 };
@@ -23,11 +24,19 @@ async function executeNode(nodeArguments: readonly string[], cwd: string): Promi
             cwd,
             encoding: 'utf8'
         }, function collectResult(error, stdout, stderr) {
-            if (error instanceof Error) {
-                reject(error);
-            } else {
-                resolve({ stderr, stdout });
+            if (!(error instanceof Error)) {
+                resolve({ exitCode: 0, stderr, stdout });
+
+                return;
             }
+
+            if (typeof error.code !== 'number') {
+                reject(error);
+
+                return;
+            }
+
+            resolve({ exitCode: error.code, stderr, stdout });
         });
     });
 }
@@ -62,6 +71,7 @@ export const testNode = createSuite({
                     import.meta.dirname
                 );
 
+                scope.assert.equal(result.exitCode, 0);
                 scope.assert.equal(result.stdout, 'bench authoring passed\n');
                 scope.assert.equal(result.stderr, '');
                 return scope.assert.collect();
@@ -78,6 +88,7 @@ export const testNode = createSuite({
                     import.meta.dirname
                 );
 
+                scope.assert.equal(result.exitCode, 0);
                 scope.assert.equal(result.stdout, 'bench macro locations passed\n');
                 scope.assert.equal(result.stderr, '');
                 return scope.assert.collect();
@@ -98,6 +109,7 @@ export const testNode = createSuite({
                     'bench.test.mjs'
                 ], consumerFolder);
 
+                scope.assert.equal(result.exitCode, 0);
                 scope.assert.equal(result.stderr, '');
                 scope.assert.includes(result.stdout, '(4 pass, 0 fail, 1 skip)');
                 return scope.assert.collect();
@@ -105,6 +117,67 @@ export const testNode = createSuite({
             controls: {},
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'standard-only installation runs benchmark authoring through the packaged binary'
+        }),
+        ...[ 'run', 'list' ].flatMap(function createPackagedBenchmarkCommandTests(verb) {
+            return [
+                createTestCase({
+                    annotations: {},
+                    async body(scope) {
+                        const consumerFolder = await createStandardBenchConsumer(scope);
+                        const result = await executeNode([
+                            path.join(
+                                consumerFolder,
+                                'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
+                            ),
+                            'bench',
+                            verb,
+                            '--config',
+                            'missing.config.mjs',
+                            'never-imported.bench.mjs'
+                        ], consumerFolder);
+
+                        scope.assert.equal(result.exitCode, 3);
+                        scope.assert.equal(result.stdout, '');
+                        const diagnostic = `Overkill argument error: Command "bench ${verb}"` +
+                            ' with 1 arguments is not implemented yet.\n';
+
+                        scope.assert.equal(
+                            result.stderr,
+                            diagnostic
+                        );
+
+                        return scope.assert.collect();
+                    },
+                    controls: {},
+                    definitionLocations: [ { kind: 'unknown' } ],
+                    title: `standard-only installation dispatches bench ${verb} without loading config or workloads`
+                }),
+                createTestCase({
+                    annotations: {},
+                    async body(scope) {
+                        const consumerFolder = await createStandardBenchConsumer(scope);
+                        const result = await executeNode([
+                            path.join(
+                                consumerFolder,
+                                'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
+                            ),
+                            'bench',
+                            verb,
+                            '--help'
+                        ], consumerFolder);
+
+                        scope.assert.equal(result.exitCode, 0);
+                        scope.assert.equal(result.stderr, '');
+                        scope.assert.includes(result.stdout, `overkill bench ${verb}`);
+                        scope.assert.includes(result.stdout, '--config');
+
+                        return scope.assert.collect();
+                    },
+                    controls: {},
+                    definitionLocations: [ { kind: 'unknown' } ],
+                    title: `standard-only installation exposes bench ${verb} help`
+                })
+            ];
         })
     ],
     controls: {},

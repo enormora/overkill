@@ -1,156 +1,5 @@
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
-import type {
-    CommandLineCommand,
-    CommandLineExitCode,
-    CommandLineListTestsRequest,
-    CommandLineRunTestsRequest,
-    CommandLineRunnerResult
-} from '../../run/command-line-command.ts';
-import type { CommandLineRunner } from '../../run/command-line-runner.ts';
-import { runOverkillCommandLine } from './command-line-runner.ts';
-
-type CapturedOutput = {
-    readonly chunks: readonly string[];
-    readonly output: {
-        readonly write: (chunk: string) => unknown;
-    };
-};
-
-type RecordedExitCodes = {
-    readonly values: readonly number[];
-    readonly apply: (exitCode: number) => void;
-};
-
-type RequestRecorder = {
-    readonly recordList: (commandLineRequest: CommandLineListTestsRequest) => void;
-    readonly recordRun: (commandLineRequest: CommandLineRunTestsRequest) => void;
-};
-
-const unexpectedCommand: CommandLineCommand = async function runUnexpectedCommand() {
-    throw new Error('Unexpected command.');
-};
-
-const testExitCodes: {
-    readonly pass: CommandLineExitCode;
-    readonly runnerError: CommandLineExitCode;
-} = {
-    pass: 0,
-    runnerError: 2
-};
-
-export function passingResult(): CommandLineRunnerResult {
-    return {
-        exitCode: testExitCodes.pass,
-        fallbackDiagnostics: [],
-        runResult: null,
-        stdoutLines: []
-    };
-}
-
-function createCapturedOutput(): CapturedOutput {
-    const chunks: string[] = [];
-
-    return {
-        chunks,
-        output: {
-            write(chunk) {
-                chunks.push(chunk);
-            }
-        }
-    };
-}
-
-function createRecordedExitCodes(): RecordedExitCodes {
-    const values: number[] = [];
-
-    return {
-        values,
-        apply(exitCode) {
-            values.push(exitCode);
-        }
-    };
-}
-
-function createRunner(
-    requestRecorder: RequestRecorder,
-    result: CommandLineRunnerResult
-): CommandLineRunner {
-    return {
-        baseline: {
-            apply: unexpectedCommand,
-            bootstrap: unexpectedCommand,
-            diff: unexpectedCommand,
-            list: unexpectedCommand,
-            update: unexpectedCommand
-        },
-        bench: {
-            baseline: {
-                apply: unexpectedCommand,
-                bootstrap: unexpectedCommand,
-                diff: unexpectedCommand,
-                list: unexpectedCommand,
-                update: unexpectedCommand
-            },
-            listBenchmarks: unexpectedCommand,
-            runBenchmarks: unexpectedCommand
-        },
-        async listTests(request) {
-            requestRecorder.recordList(request);
-
-            return result;
-        },
-        replayRun: unexpectedCommand,
-        replayWitness: unexpectedCommand,
-        async runTests(request) {
-            requestRecorder.recordRun(request);
-
-            return result;
-        }
-    };
-}
-
-export async function runCommandLine(
-    args: readonly string[],
-    runnerResult: CommandLineRunnerResult
-): Promise<{
-    readonly exitCodes: readonly number[];
-    readonly listRequests: readonly CommandLineListTestsRequest[];
-    readonly runRequests: readonly CommandLineRunTestsRequest[];
-    readonly stderr: string;
-    readonly stdout: string;
-}> {
-    const stdout = createCapturedOutput();
-    const stderr = createCapturedOutput();
-    const exitCodes = createRecordedExitCodes();
-    const listRequests: CommandLineListTestsRequest[] = [];
-    const runRequests: CommandLineRunTestsRequest[] = [];
-
-    await runOverkillCommandLine({
-        arguments: args,
-        applyExitCode: exitCodes.apply,
-        cwd: '/project',
-        async loadRunner() {
-            return createRunner({
-                recordList(request) {
-                    listRequests.push(request);
-                },
-                recordRun(request) {
-                    runRequests.push(request);
-                }
-            }, runnerResult);
-        },
-        stderr: stderr.output,
-        stdout: stdout.output
-    });
-
-    return {
-        exitCodes: exitCodes.values,
-        listRequests,
-        runRequests,
-        stderr: stderr.chunks.join(''),
-        stdout: stdout.chunks.join('')
-    };
-}
+import { passingResult, runCommandLine, testExitCodes } from '../../test-support/command-line-test-driver.ts';
 
 const emptyTestData = { annotations: {}, controls: {} } as const;
 
@@ -299,6 +148,31 @@ export const testNode = createSuite({
                 scope.assert.equal(commandLineRequest.configPath, 'overkill.config.ts');
                 scope.assert.equal(commandLineRequest.runRequest.profile, 'backend-http');
                 scope.assert.deepEqual(commandLineRequest.runRequest.paths, [ 'source/a.test.ts' ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'overkill wrapper rejects malformed config arguments before runner loading',
+            ...emptyTestData,
+            async body(scope: TestScope) {
+                for (const verb of [ 'run', 'list' ]) {
+                    for (
+                        const configArguments of [
+                            [ '--config' ],
+                            [ '--config', 'first.config.ts', '--config', 'second.config.ts' ]
+                        ]
+                    ) {
+                        const result = await runCommandLine([ verb, ...configArguments ], passingResult());
+
+                        scope.assert.equal(result.exitCode, 3);
+                        scope.assert.deepEqual(result.exitCodes, [ 3 ]);
+                        scope.assert.equal(result.runnerLoadCount, 0);
+                        scope.assert.equal(result.stdout, '');
+                        scope.assert.includes(result.stderr, '--config');
+                    }
+                }
 
                 return scope.assert.collect();
             }

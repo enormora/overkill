@@ -33,7 +33,12 @@ Public types include `AuthoringAnnotations`, `AuthoringControls`,
 `Table`, `TestBody`, `TestCase`, `TestNode`, `TestScope`, and
 `TestScopeAssertContext`.
 
+The `@overkill-dev/test` binary recognizes `overkill bench run [paths...]` and
+`overkill bench list [paths...]` with `--config`. These commands currently
+return exit code `3` because benchmark execution is not implemented. Benchmark
+profile selection and execution are separate implementation milestones.
+
 This facade does not yet measure performance. `benchmark(...)`, workloads,
-measurement strategies, budgets, and `overkill bench` commands are separate
-implementation milestones. Advanced authoring and runtime binding
-remain available from `@overkill-dev/test` and its resources subpath.
+measurement strategies, and budgets are separate implementation milestones.
+Advanced authoring and runtime binding remain available from
+`@overkill-dev/test` and its resources subpath.

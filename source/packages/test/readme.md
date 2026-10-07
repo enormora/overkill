@@ -521,6 +521,8 @@ Supported command-line surface:
 
 - `overkill run [paths...]`
 - `overkill list [paths...]`
+- `overkill bench run [paths...]`
+- `overkill bench list [paths...]`
 - `--config <path>`
 - `--file <path>`
 - `--filter <expr>`
@@ -536,6 +538,12 @@ Supported command-line surface:
 - `--workers <n>`
 - `--with-locations`
 - `--with-orphans`
+
+`bench run` and `bench list` currently accept path operands and `--config`
+only. They dispatch to the benchmark command namespace. Its default handlers
+return exit code `3` because benchmark execution is not implemented.
+Benchmark profiles, selection flags, measurements, and baseline
+commands belong to subsequent milestones.
 
 `--resource-budget` accepts `activeResourceCount`,
 `javaScriptEngineHeapBytes`, `residentSetBytes`, and
