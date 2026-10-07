@@ -1,3 +1,4 @@
+import { packageVersion } from '../package-version.ts';
 import {
     assertNoSimulatedHttpHandlerErrors,
     createSimulatedHttpListeningServer
@@ -6,7 +7,8 @@ import type {
     SimulatedHttpServerDefinition,
     SimulationScenarioCatalog
 } from '../packages/simulation/simulation.entry-point.ts';
-import type { HttpTranscript } from '../packages/simulation/transcript.entry-point.ts';
+import { httpTranscriptArtifactEntry, type HttpTranscript } from '../packages/simulation/transcript.entry-point.ts';
+import { withFailureArtifacts } from './failure-artifacts.ts';
 import {
     defineResource,
     type EmptyResourceDependencies,
@@ -185,48 +187,74 @@ export function createSimulatedHttpServerResource<
     });
     const scenarios = simulatedHttpScenarioSlots(options.simulation.name, options.simulation.scenarios);
 
-    return defineResource({
-        name: options.simulation.name,
-        scope: 'per-case',
-        requirements: service.requirements,
-        scenarios,
-        async acquire(context) {
-            const localService = await service.acquire({
-                attachments: context.attachments,
-                dependencies: context.dependencies,
-                signal: context.signal,
-                scenarios: {}
-            });
-            const handle = simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
-                localService,
-                'default'
-            );
+    return withFailureArtifacts(
+        defineResource({
+            name: options.simulation.name,
+            scope: 'per-case',
+            requirements: service.requirements,
+            scenarios,
+            async acquire(context) {
+                const localService = await service.acquire({
+                    attachments: context.attachments,
+                    dependencies: context.dependencies,
+                    signal: context.signal,
+                    scenarios: {}
+                });
+                const handle = simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
+                    localService,
+                    'default'
+                );
 
-            acquiredServices.set(handle, localService);
+                acquiredServices.set(handle, localService);
 
-            return handle;
-        },
-        async dispose(handle, context) {
-            const localService = acquiredServices.get(handle);
+                return handle;
+            },
+            async dispose(handle, context) {
+                const localService = acquiredServices.get(handle);
 
-            if (localService === undefined) {
-                return undefined;
+                if (localService === undefined) {
+                    return undefined;
+                }
+
+                acquiredServices.delete(handle);
+
+                return service.dispose?.(localService, {
+                    attachments: context.attachments,
+                    dependencies: context.dependencies,
+                    signal: context.signal,
+                    scenarios: {}
+                });
+            },
+            exposeHandle(handle, context) {
+                return simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
+                    handle,
+                    selectedScenario(context, options.simulation.name)
+                );
             }
-
-            acquiredServices.delete(handle);
-
-            return service.dispose?.(localService, {
-                attachments: context.attachments,
-                dependencies: context.dependencies,
-                signal: context.signal,
-                scenarios: {}
+        }),
+        async function prepareSimulationWitness(capture) {
+            if (capture.kind !== 'attempt') {
+                return;
+            }
+            const producer = await packageVersion(import.meta.url);
+            if (producer === null) {
+                throw new TypeError('Simulation witness producer metadata is unavailable.');
+            }
+            await capture.attachments.witness({
+                producedBy: { library: producer.name, libraryVersion: producer.version },
+                simulation: {
+                    name: options.simulation.name,
+                    payload: {
+                        version: 1,
+                        scenarios: capture.scenarios,
+                        interactions: capture.handle.transcript.entries.map(httpTranscriptArtifactEntry)
+                    }
+                },
+                scenario: capture.scenarios[options.simulation.name] ?? 'default',
+                seed: null,
+                runtimeSnapshot: null,
+                faultConfiguration: null
             });
-        },
-        exposeHandle(handle, context) {
-            return simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
-                handle,
-                selectedScenario(context, options.simulation.name)
-            );
         }
-    });
+    );
 }

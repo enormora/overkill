@@ -6,6 +6,12 @@ function eventWithAttachments(event: ReporterEvent, coordinator: AttachmentCoord
     if (event.kind !== 'test-end') {
         return event;
     }
+    coordinator.settleAttempt(
+        event.workId ?? createDefaultWorkId(event.case),
+        { index: event.attempt },
+        event.verdict,
+        null
+    );
     return {
         ...event,
         artifacts: [

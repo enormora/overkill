@@ -132,6 +132,7 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'defineRuntimeMatrix',
         'ResourceLifecycleError',
         'startRuntime',
+        'withFailureArtifacts',
         'withResource',
         'withResources',
         'withRuntime'

@@ -9,8 +9,15 @@ import { workerPoolTaskSchema } from './worker-pool-task-schema.ts';
 import { runnerErrorSchema } from './run-result-schema.ts';
 import { resourceUsageSchema, resourceUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
+import { workIdSchema, attemptIdSchema } from './run-identity-schema.ts';
 
 const serializedWorkerMessageSchema: z.ZodType<SerializedWorkerPoolMessage> = z.discriminatedUnion('kind', [
+    z.strictObject({
+        kind: z.literal('prepare-resource-artifacts'),
+        request: z.string(),
+        work: workIdSchema,
+        attempt: attemptIdSchema
+    }),
     z.strictObject({ kind: z.literal('event'), event: reporterEventSchema }),
     z.strictObject({ kind: z.literal('timing'), span: runTimingSpanSchema }),
     z.strictObject({
@@ -32,6 +39,15 @@ const serializedWorkerMessageSchema: z.ZodType<SerializedWorkerPoolMessage> = z.
     })
 ]);
 export const workerPoolHostCommandSchema: z.ZodType<WorkerPoolHostCommand> = z.discriminatedUnion('kind', [
+    z.strictObject({
+        kind: z.literal('task-reply'),
+        taskId: z.string(),
+        reply: z.strictObject({
+            kind: z.literal('resource-artifacts-prepared'),
+            request: z.string(),
+            runnerErrors: z.array(runnerErrorSchema)
+        })
+    }),
     z.strictObject({ kind: z.literal('abort-task'), taskId: z.string() }),
     z.strictObject({
         kind: z.literal('configure'),

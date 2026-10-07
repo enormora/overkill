@@ -157,7 +157,7 @@ export type {
     TestPlanFromTestFilesFactory,
     TestPlanFromTestFilesOptions
 } from '../../engine/test-plan.ts';
-export { formatCaseId } from '../../engine/identity.ts';
+export { formatCaseId, workIdentityKey } from '../../engine/identity.ts';
 export type {
     CaseId,
     RuntimeDimensions,

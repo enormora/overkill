@@ -142,7 +142,7 @@ type FileAttachmentRetentionState = {
     readonly completion: StoredRunValue<
         { readonly kind: 'complete'; } | {
             readonly kind: 'incomplete';
-            readonly reason: 'byte-limit' | 'interrupted' | 'unclosed' | 'write-error';
+            readonly reason: 'byte-limit' | 'capture-limit' | 'interrupted' | 'unclosed' | 'write-error';
         }
     >;
     readonly ended: StoredRunValue<boolean>;

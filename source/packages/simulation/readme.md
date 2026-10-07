@@ -26,6 +26,8 @@ per HTTP exchange, including the selected scenario. Request and response bodies
 are captured up to 16 KiB independently.
 Protocol integrations can use `@overkill-dev/simulation/transcript` for the
 shared HTTP transcript recorder, snapshots, and types.
+`runWithTranscriptScope(scope, run)` shares attribution across package boundaries.
+Pass `null` to read the complete lifetime transcript.
 Use `createSimulatedHttpServerResource(...)` from `@overkill-dev/resources`
 when a test runtime should own the server lifecycle. The resource adapter
 requires an explicit local address request, for example

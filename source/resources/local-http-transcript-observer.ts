@@ -14,6 +14,7 @@ import {
     type RecordedHttpBody,
     type TranscriptScope
 } from '../packages/simulation/transcript.entry-point.ts';
+import { createHttpRequestAttribution, type HttpRequestAttribution } from './http-request-attribution.ts';
 
 type UndiciRequest = Readonly<Record<string, unknown>>;
 type UndiciResponse = Readonly<Record<string, unknown>>;
@@ -30,10 +31,6 @@ type RequestObservation = {
 type UndiciObservation = {
     readonly responseBody: BodyCapture;
     readonly serverRequest: IncomingMessage | null;
-};
-type ExpectedRequest = {
-    readonly scope: TranscriptScope | null;
-    readonly undiciRequest: UndiciRequest | null;
 };
 type UndiciDiagnostic = {
     readonly observation: UndiciObservation;
@@ -61,9 +58,10 @@ type ObservedNodeClientRequest = {
 type ValueSet<Value> = Pick<Set<Value>, 'add' | 'delete' | 'values'>;
 type ValueMap<Key, Value> = Pick<Map<Key, Value>, 'entries' | 'get' | 'set'>;
 type ObserverState = {
+    readonly fallbackAttribution: 'attempt' | 'lifetime';
     readonly activeRequests: ValueSet<IncomingMessage>;
     readonly baseUrl: string;
-    readonly expectedByRequest: ValueMap<string, readonly ExpectedRequest[]>;
+    readonly expectedRequests: HttpRequestAttribution;
     readonly listeners: ValueMap<string, (message: unknown) => void>;
     readonly recorder: HttpTranscriptRecorder<null>;
     readonly requests: WeakMap<IncomingMessage, RequestObservation>;
@@ -263,11 +261,16 @@ function responseSnapshot(response: UndiciResponse, body: RecordedHttpBody): Htt
     };
 }
 
-function createObserverState(server: unknown, baseUrl: string): ObserverState {
+function createObserverState(
+    server: unknown,
+    baseUrl: string,
+    fallbackAttribution: 'attempt' | 'lifetime'
+): ObserverState {
     return {
+        fallbackAttribution,
         activeRequests: new Set(),
         baseUrl,
-        expectedByRequest: new Map(),
+        expectedRequests: createHttpRequestAttribution(),
         listeners: new Map(),
         recorder: createHttpTranscriptRecorder(),
         requests: new WeakMap(),
@@ -297,10 +300,7 @@ function observeUndiciCreate(state: ObserverState, message: unknown): void {
     state.undiciRequests.add(diagnostic.request);
     const identity = undiciRequestIdentity(diagnostic.request, url);
 
-    state.expectedByRequest.set(identity, [
-        ...state.expectedByRequest.get(identity) ?? [],
-        { scope: state.recorder.currentScope(), undiciRequest: diagnostic.request }
-    ]);
+    state.expectedRequests.remember(identity, state.recorder.currentScope(), diagnostic.request);
 }
 
 function observeNodeClientStart(state: ObserverState, message: unknown): void {
@@ -316,30 +316,21 @@ function observeNodeClientStart(state: ObserverState, message: unknown): void {
 
     const identity = requestIdentity(message.request.method, url);
 
-    state.expectedByRequest.set(identity, [
-        ...state.expectedByRequest.get(identity) ?? [],
-        { scope: state.recorder.currentScope(), undiciRequest: null }
-    ]);
+    state.expectedRequests.remember(identity, state.recorder.currentScope(), null);
 }
 
-function takeExpectedRequest(state: ObserverState, identity: string): ExpectedRequest | null {
-    const expected = state.expectedByRequest.get(identity) ?? [];
-    const request = expected[0] ?? null;
-
-    state.expectedByRequest.set(identity, expected.slice(1));
-
-    return request;
+function fallbackTranscriptScope(state: ObserverState): TranscriptScope | null {
+    return state.fallbackAttribution === 'attempt' ? state.recorder.currentScope() : null;
 }
-
 function pairUndiciRequest(
     state: ObserverState,
     url: string,
     serverRequest: IncomingMessage
 ): TranscriptScope | null {
-    const expected = takeExpectedRequest(state, requestIdentity(serverRequest.method ?? 'GET', url));
+    const expected = state.expectedRequests.take(requestIdentity(serverRequest.method ?? 'GET', url));
 
     if (expected === null) {
-        return state.recorder.currentScope();
+        return fallbackTranscriptScope(state);
     }
 
     if (expected.undiciRequest === null) {
@@ -349,7 +340,7 @@ function pairUndiciRequest(
     const observation = state.undici.get(expected.undiciRequest);
 
     if (observation === undefined) {
-        return state.recorder.currentScope();
+        return fallbackTranscriptScope(state);
     }
 
     state.undici.set(expected.undiciRequest, { ...observation, serverRequest });
@@ -534,7 +525,7 @@ function guardedObserver(
         try {
             observer(message);
         } catch (error: unknown) {
-            state.recorder.recordCaptureError(source, error, state.recorder.currentScope());
+            state.recorder.recordCaptureError(source, error, fallbackTranscriptScope(state));
         }
     };
 }
@@ -580,8 +571,12 @@ function disposeObservers(state: ObserverState): void {
     }
 }
 
-export function observeLocalHttpServer(server: unknown, baseUrl: string): LocalHttpTranscriptObserver {
-    const state = createObserverState(server, baseUrl);
+export function observeLocalHttpServer(
+    server: unknown,
+    baseUrl: string,
+    fallbackAttribution: 'attempt' | 'lifetime'
+): LocalHttpTranscriptObserver {
+    const state = createObserverState(server, baseUrl, fallbackAttribution);
 
     subscribeObservers(state);
 

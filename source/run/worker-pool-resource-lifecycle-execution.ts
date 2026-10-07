@@ -2,8 +2,9 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import { workIdentityKey, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
+import { workerPoolPlacementPlan, type WorkerPoolTaskRun, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import type { PlacementPlan } from './run-types.ts';
 import {
     createBatchRunCommand,
@@ -13,14 +14,15 @@ import {
 } from './worker-pool-command.ts';
 import type { WorkerPoolLeaseMember } from './worker-pool-dispatch-state.ts';
 import {
+    createWorkerPoolMessageChannel,
+    type WorkerPoolPrepareResourcesTask,
+    type WorkerPoolMessage,
+    type WorkerPoolMessageChannel,
     workerPoolRunResourceOwnerLane,
     type WorkerPoolCommand,
     type WorkerPoolDisposeResourceOutput,
     type WorkerPoolRunResourceOutput
 } from './worker-pool-protocol.ts';
-import type {
-    WorkerPoolRunRuntime
-} from './worker-pool-runtime.ts';
 
 type WorkerPoolTaskChannel = {
     readonly close: () => void;
@@ -437,4 +439,88 @@ export async function disposeWorkerPoolResourceLifecycles(
     if (resourceLifecycle.resourceOwner && resourceLifecycle.ownerLane !== null) {
         await disposeRunResources(runtime, resourceLifecycle.ownerLane);
     }
+}
+
+async function executeOwnerPreparation(
+    runtime: WorkerPoolRunRuntime,
+    task: WorkerPoolPrepareResourcesTask
+): Promise<readonly RunnerError[]> {
+    const output = await runtime.pool.run(task, {
+        name: 'runTask',
+        signal: freshSignal(),
+        transferList: portTransferList(task.port)
+    });
+    if (!isWorkerPoolDisposeResourceOutput(output)) {
+        throw new TypeError('Resource owner preparation returned an invalid result.');
+    }
+    return output.runnerErrors;
+}
+async function prepareWorkerPoolResourceArtifacts(
+    runtime: WorkerPoolRunRuntime,
+    work: WorkId,
+    attempt: AttemptId,
+    branch: WorkerPoolTaskRun
+): Promise<readonly RunnerError[]> {
+    const lane = resourceOwnerLane(workerPoolPlacementPlan(runtime.resolvedRun));
+    if (lane === null) {
+        return [];
+    }
+    const channel = resourceTaskChannel();
+    const task: WorkerPoolPrepareResourcesTask = {
+        kind: 'prepare-resource-artifacts',
+        work,
+        attempt,
+        lane,
+        lifecycle: runtime.lifecycle,
+        attachmentEndpoint: runtime.attachments?.branchEndpoint(branch, branch.includeArtifacts.read) ?? null,
+        port: channel.port
+    };
+    try {
+        return await executeOwnerPreparation(runtime, task);
+    } finally {
+        channel.close();
+    }
+}
+
+async function resourcePreparationResponse(
+    message: Extract<WorkerPoolMessage, { readonly kind: 'prepare-resource-artifacts'; }>,
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): Promise<readonly RunnerError[]> {
+    try {
+        return await prepareWorkerPoolResourceArtifacts(runtime, message.work, message.attempt, taskRun);
+    } catch (error: unknown) {
+        return [ {
+            attributedTo: message.work.case,
+            attributedToWork: message.work,
+            attributedToAttempt: message.attempt,
+            cause: error,
+            diagnostics: [],
+            message: 'Resource owner preparation failed.',
+            subtype: 'artifact'
+        } ];
+    }
+}
+async function replyResourcePreparation(
+    message: Extract<WorkerPoolMessage, { readonly kind: 'prepare-resource-artifacts'; }>,
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime,
+    channel: WorkerPoolMessageChannel
+): Promise<void> {
+    const runnerErrors = await resourcePreparationResponse(message, taskRun, runtime);
+    channel.reply({ kind: 'resource-artifacts-prepared', request: message.request, runnerErrors });
+}
+export function createResourcePreparationChannel(
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime,
+    receive: (message: WorkerPoolMessage) => void
+): WorkerPoolMessageChannel {
+    const channel = createWorkerPoolMessageChannel(function receiveResourceRequest(message) {
+        if (message.kind === 'prepare-resource-artifacts') {
+            runtime.reporterEvents.add(replyResourcePreparation(message, taskRun, runtime, channel));
+        } else {
+            receive(message);
+        }
+    });
+    return channel;
 }

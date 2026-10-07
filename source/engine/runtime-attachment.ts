@@ -1,4 +1,5 @@
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
+import type { AttemptId, WorkId } from './identity.ts';
 import type { RunArtifactId } from './run-artifact.ts';
 
 export type AttachmentMetadata = {
@@ -8,7 +9,7 @@ export type AttachmentMetadata = {
 
 export type AttachmentCompletion = { readonly kind: 'complete'; } | {
     readonly kind: 'incomplete';
-    readonly reason: 'byte-limit' | 'interrupted' | 'unclosed' | 'write-error';
+    readonly reason: 'byte-limit' | 'capture-limit' | 'interrupted' | 'unclosed' | 'write-error';
 } | { readonly kind: 'truncated'; readonly reason: 'byte-limit'; };
 
 export type AttachmentContent = {
@@ -36,21 +37,39 @@ export type AttachmentProducer = { readonly kind: 'case'; } | {
     readonly name: string;
 };
 
+export type FailureArtifactCondition = {
+    readonly kind: 'attempt';
+    readonly work: WorkId;
+    readonly attempt: AttemptId;
+} | {
+    readonly kind: 'resource';
+    readonly resource: string;
+    readonly boundary: string;
+};
+
+type ExplicitAttachmentCapture = { readonly capture: 'opt-in'; };
+type AutomaticAttachmentCapture = {
+    readonly capture: 'automatic';
+    readonly retention: {
+        readonly condition: FailureArtifactCondition;
+        readonly state: 'prepared' | 'retained';
+    };
+};
+
 export type RuntimeAttachmentArtifact = {
-    readonly id: RunArtifactId & { readonly subtype: 'attachment'; };
-    readonly source: 'instrumented';
+    readonly id: RunArtifactId & { readonly subtype: 'attachment' | 'witness'; };
+    readonly source: 'boundary-captured' | 'instrumented' | 'native';
     readonly payload: AttachmentMetadata & {
         readonly kind: 'runtime-attachment';
-        readonly capture: 'opt-in';
         readonly capturedAtMicroseconds: number;
         readonly producer: AttachmentProducer;
         readonly content: AttachmentContent;
-    };
+    } & (AutomaticAttachmentCapture | ExplicitAttachmentCapture);
 };
 
 export type AttachmentWriter<Chunk> = {
     readonly write: (chunk: Chunk) => Promise<void>;
-    readonly close: () => Promise<RuntimeAttachmentArtifact>;
+    readonly close: (...reason: readonly ['capture-limit'] | readonly []) => Promise<RuntimeAttachmentArtifact>;
 };
 
 export type RuntimeAttachments = {

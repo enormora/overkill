@@ -217,6 +217,39 @@ Size caps:
 
 All caps are configurable per profile.
 
+## Integration Resource Evidence
+
+Runner-managed integration execution prepares first-party HTTP transcripts,
+process stdout/stderr, and simulated HTTP scenario witnesses automatically.
+`withFailureArtifacts(resource, prepare)` adds explicit custom collectors.
+Collectors receive the actual owner handle, even when consumers receive a
+projected handle.
+
+Attempt preparation runs after the body settles and before scope cleanup or
+resource disposal. It also runs for passing bodies, because cleanup can fail.
+Prepared evidence is provisional until the attempt fails. Passing attempts
+discard it, while explicitly attached evidence retains its existing policy.
+Retry and hedge selection apply after failure promotion.
+
+Precisely correlated interactions use the full work identity and attempt.
+Shared lifetime output remains run-scoped and is retained when a consumer or
+resource disposal fails. Each retry starts a fresh transcript scope. A shared
+resource collector also receives a `lifetime` capture before disposal.
+
+First-party transcript and process streams checkpoint bounded received
+prefixes during execution. Interrupted captures retain their completeness
+metadata. Custom collectors are best effort after a crash unless they have
+already checkpointed evidence. Collector errors remain artifact errors,
+preserve body outcomes, prevent integration retries, and allow cleanup.
+
+Attempt captures provide `attachments.witness(...)`. Simulation witnesses
+record the actual producing library/version, a versioned simulation payload,
+scenario, nullable decimal simulation seed, and nullable runtime/fault state.
+Seedless simulations use `null`; the ordering seed is never substituted.
+Complete witness files live under `runtimeStateDir/witnesses`, with unique run,
+work, attempt, and artifact identities. This capture API does not add replay
+commands or history maintenance.
+
 ## Witnesses And Replay Artifacts
 
 Failing property tests and deterministic-simulation tests produce

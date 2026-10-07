@@ -1,4 +1,6 @@
 import * as httpTranscript from '../../transcript/http-transcript.ts';
+import * as transcriptStore from '../../transcript/transcript-store.ts';
+import * as transcriptArtifact from '../../transcript/http-transcript-artifact.ts';
 import type {
     HttpHeadersSnapshot as CoreHttpHeadersSnapshot,
     HttpInteraction as CoreHttpInteraction,
@@ -40,3 +42,6 @@ export type TranscriptCaptureErrorEntry = CoreTranscriptCaptureErrorEntry;
 export type TranscriptEntry = CoreTranscriptEntry;
 export type TranscriptScope = CoreTranscriptScope;
 export type TranscriptView<Entry extends TranscriptEntry = TranscriptEntry> = CoreTranscriptView<Entry>;
+
+export const { observeTranscriptEntries, runWithTranscriptScope } = transcriptStore;
+export const { httpTranscriptArtifactEntry } = transcriptArtifact;

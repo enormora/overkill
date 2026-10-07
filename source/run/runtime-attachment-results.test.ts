@@ -118,10 +118,44 @@ async function assertConflictRetention(scope: TestScope): Promise<void> {
     assertConflictAttempts(scope, result.artifacts[0]);
 }
 
+async function assertIndependentOutputSequence(scope: TestScope): Promise<void> {
+    const { execution, store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    await execution.context.forProducer({ kind: 'case' }).json(metadata, { ready: true });
+    const attachment = store.artifacts()[0];
+    scope.require.defined(attachment);
+    const output: RunArtifact = {
+        id: { ...attachment.id, subtype: 'log-capture' },
+        source: 'native',
+        payload: {
+            kind: 'captured-output',
+            capturedAtMicroseconds: 0,
+            stream: 'stdout',
+            text: 'ready',
+            byteLength: 5,
+            truncated: false
+        }
+    };
+    const result = resultWithRuntimeAttachments(runResultFactory.build({ artifacts: [ output ] }), store.artifacts(), {
+        localErrors: [],
+        owners: [],
+        policy: 'all',
+        retainsBranch: retainEveryBranch
+    });
+    scope.assert.equal(result.artifacts.length, 2);
+    scope.assert.deepEqual(attachmentArtifacts(result.artifacts), store.artifacts());
+}
 export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-results.test.ts',
     children: [
+        createTestCase({
+            ...definition,
+            title: 'console captures do not collide with resource attachment sequences',
+            async body(scope: TestScope) {
+                await assertIndependentOutputSequence(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...definition,
             title: 'result merging matches attempt identities, deduplicates artifacts, and reports abandoned owners',

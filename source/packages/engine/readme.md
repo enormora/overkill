@@ -14,6 +14,7 @@ Top-level API:
 - `execute(testPlan)`
 - `createEngine()`
 - `formatCaseId(caseId)`
+- `workIdentityKey(workId)`
 - `validateReporterSinks(reporters)`
 - `defineReporter(factory)`
 - `defineOutputRenderer(factory)`

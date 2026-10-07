@@ -245,7 +245,7 @@ function handleFatalHostError(
     state.commandHandling.write(destroy());
 }
 
-function handleCommand(command: WorkerPoolHostCommand): void {
+function handleLifecycleCommand(command: Exclude<WorkerPoolHostCommand, { readonly kind: 'task-reply'; }>): void {
     if (command.kind === 'configure') {
         configure(command);
     } else if (command.kind === 'run-task') {
@@ -258,6 +258,14 @@ function handleCommand(command: WorkerPoolHostCommand): void {
         finishResourceTracking();
     } else {
         state.commandHandling.write(destroy());
+    }
+}
+
+function handleCommand(command: WorkerPoolHostCommand): void {
+    if (command.kind === 'task-reply') {
+        state.activeTasks.get(command.taskId)?.channel.reply(command.reply);
+    } else {
+        handleLifecycleCommand(command);
     }
 }
 

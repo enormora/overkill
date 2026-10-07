@@ -59,6 +59,9 @@ function createRuntimePolicyProbe(): RuntimePolicyProbe {
             return caseRuns;
         },
         runtimePolicy: {
+            async prepareAttempt() {
+                return undefined;
+            },
             async completeCase() {
                 return undefined;
             },

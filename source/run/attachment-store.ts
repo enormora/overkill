@@ -1,177 +1,42 @@
-import { createHash } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
-import { workIdentityKey, type WorkId } from '../engine/identity.ts';
-import type { RuntimeAttachmentArtifact, AttachmentLimits } from '../engine/runtime-attachment.ts';
+import { workIdentityKey, type WorkId, type AttemptId } from '../engine/identity.ts';
+import type { TestVerdict, RunResult } from '../engine/run-result.ts';
+import type {
+    RuntimeAttachmentArtifact,
+    AttachmentLimits
+} from '../engine/runtime-attachment.ts';
+import { createFailureArtifactRetention, type FailureArtifactRetention } from './failure-artifact-retention.ts';
+import {
+    retainedAttachmentPath,
+    createAttachmentScopeBudget,
+    createStoredAttachment,
+    type AttachmentScopeBudget,
+    type StoredAttachment
+} from './attachment-storage-writer.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import {
+    attachmentScopeKey,
     attachmentMetadataBytes,
     type AttachmentOperation,
     type AttachmentOwner,
-    type AttachmentResponse,
-    type AttachmentCloseReason
+    type AttachmentResponse
 } from './attachment-protocol.ts';
 import { createAttachmentRetention, type AttachmentRetention } from './attachment-retention.ts';
 
-type OpenOperation = Extract<AttachmentOperation, { readonly kind: 'open'; }>;
-type AttachmentScopeBudget = {
-    readonly reserve: (limits: AttachmentLimits) => void;
-    readonly available: (limits: AttachmentLimits) => number;
-    readonly retained: (bytes: number) => void;
-};
-function createAttachmentScopeBudget(): AttachmentScopeBudget {
-    const bytes = createStoredRunValue<number>(0);
-    const count = createStoredRunValue<number>(0);
-    function reserve(limits: AttachmentLimits): void {
-        if (count.read() >= limits.maxScopeAttachments) {
-            throw new Error('Attachment count limit exceeded.');
-        }
-        count.write(count.read() + 1);
-    }
-    function available(limits: AttachmentLimits): number {
-        return limits.maxScopeBytes - bytes.read();
-    }
-    function retained(retainedBytes: number): void {
-        bytes.write(bytes.read() + retainedBytes);
-    }
-
-    return { reserve, available, retained };
-}
-type StoredAttachment = {
-    readonly channel: string;
-    readonly branch: string | null;
-    readonly owner: AttachmentOwner;
-    readonly artifact: () => RuntimeAttachmentArtifact;
-    readonly close: (reason: AttachmentCloseReason) => Promise<void>;
-    readonly interrupt: (reason: 'interrupted' | 'unclosed') => Promise<AttachmentOwner | null>;
-    readonly omit: () => void;
-    readonly write: (data: string, limits: AttachmentLimits) => Promise<AttachmentResponse>;
-};
-type StoredAttachmentState = {
-    readonly channel: string;
-    readonly operation: OpenOperation;
-    readonly initial: RuntimeAttachmentArtifact;
-    readonly retention: AttachmentRetention;
-    readonly budget: AttachmentScopeBudget;
-    readonly branch: string | null;
-    readonly owner: AttachmentOwner;
-    readonly closed: StoredRunValue<boolean>;
-    readonly failed: StoredRunValue<boolean>;
-};
-function storedAttachmentArtifact(state: StoredAttachmentState): RuntimeAttachmentArtifact {
-    const { initial, retention } = state;
-
-    return { ...state.initial, payload: { ...initial.payload, content: retention.content() } };
-}
-async function storedAttachmentClose(state: StoredAttachmentState, reason: AttachmentCloseReason): Promise<void> {
-    const { closed, retention } = state;
-
-    if (closed.read()) {
-        return;
-    }
-    closed.write(true);
-    await retention.finish(reason === 'complete' ? { kind: 'complete' } : { kind: 'incomplete', reason });
-}
-async function storedAttachmentInterrupt(
-    state: StoredAttachmentState,
-    reason: 'interrupted' | 'unclosed'
-): Promise<AttachmentOwner | null> {
-    const { closed, retention, failed } = state;
-
-    if (closed.read()) {
-        return null;
-    }
-    closed.write(true);
-    await retention.finish({ kind: 'incomplete', reason });
-    return failed.read() ? null : state.owner;
-}
-function storedAttachmentAssertOpen(state: StoredAttachmentState): void {
-    const { closed, failed } = state;
-
-    if (closed.read() || failed.read()) {
-        throw new Error('Attachment writer is closed.');
-    }
-}
-function storedAttachmentOmit(state: StoredAttachmentState): void {
-    const { retention } = state;
-
-    storedAttachmentAssertOpen(state);
-    retention.omit();
-}
-async function storedAttachmentRetain(
-    state: StoredAttachmentState,
-    bytes: Uint8Array,
-    limits: AttachmentLimits
-): Promise<number> {
-    const { retention, budget, failed } = state;
-
-    try {
-        return await retention.retain(bytes, budget.available(limits));
-    } catch (error: unknown) {
-        failed.write(true);
-        await storedAttachmentClose(state, 'write-error');
-        throw error;
-    }
-}
-async function storedAttachmentWrite(
-    state: StoredAttachmentState,
-    data: string,
-    limits: AttachmentLimits
-): Promise<AttachmentResponse> {
-    const { budget, initial, failed, retention } = state;
-
-    storedAttachmentAssertOpen(state);
-    const bytes = Buffer.from(data, 'base64');
-    const retained = await storedAttachmentRetain(state, bytes, limits);
-    budget.retained(retained);
-    if (retained < bytes.length && initial.payload.content.kind === 'file') {
-        failed.write(true);
-        await retention.finish({ kind: 'incomplete', reason: 'byte-limit' });
-        return { kind: 'error', message: 'Binary attachment byte limit exceeded.', reason: 'byte-limit' };
-    }
-    return { kind: 'written' };
-}
-type StoredAttachmentContent = {
-    readonly initial: RuntimeAttachmentArtifact;
-    readonly retention: AttachmentRetention;
-    readonly budget: AttachmentScopeBudget;
-};
-function createStoredAttachment(
-    channel: string,
-    operation: OpenOperation,
-    content: StoredAttachmentContent
-): StoredAttachment {
-    const { initial, retention, budget } = content;
-    const branch: string | null = operation.branch;
-    const owner: AttachmentOwner = operation.owner;
-    const closed = createStoredRunValue<boolean>(false);
-    const failed = createStoredRunValue<boolean>(false);
-    const state: StoredAttachmentState = {
-        channel,
-        operation,
-        initial,
-        retention,
-        budget,
-        branch,
-        owner,
-        closed,
-        failed
-    };
-    return {
-        channel: state.channel,
-        branch: state.branch,
-        owner: state.owner,
-        artifact: storedAttachmentArtifact.bind(null, state),
-        close: storedAttachmentClose.bind(null, state),
-        interrupt: storedAttachmentInterrupt.bind(null, state),
-        omit: storedAttachmentOmit.bind(null, state),
-        write: storedAttachmentWrite.bind(null, state)
-    };
-}
+type OpenOperation = Extract<AttachmentOperation, { readonly kind: 'open' | 'prepare'; }>;
 export type AttachmentStore = {
+    readonly settleAttempt: (
+        work: WorkId,
+        attempt: AttemptId,
+        verdict: TestVerdict,
+        branch: string | null
+    ) => void;
+    readonly settleResult: (result: RunResult) => void;
     readonly exchange: (channel: string, operation: AttachmentOperation) => Promise<AttachmentResponse>;
     readonly retainsBranch: (branch: string | null) => boolean;
     readonly registerBranch: (branch: string, retain: () => boolean) => void;
+    readonly conflictArtifacts: (branch: string) => readonly RuntimeAttachmentArtifact[];
     readonly branchArtifacts: (branch: string | null) => readonly RuntimeAttachmentArtifact[];
     readonly selectedArtifacts: () => readonly RuntimeAttachmentArtifact[];
     readonly artifacts: () => readonly RuntimeAttachmentArtifact[];
@@ -179,6 +44,7 @@ export type AttachmentStore = {
     readonly finish: (channel: string | null) => Promise<readonly AttachmentOwner[]>;
 };
 export type AttachmentStoreOptions = {
+    readonly witnessDirectory: string;
     readonly projectRoot: string;
     readonly directory: string;
     readonly limits: AttachmentLimits;
@@ -186,9 +52,6 @@ export type AttachmentStoreOptions = {
     readonly captureTime: () => number;
     readonly checkpoint: (artifacts: readonly RuntimeAttachmentArtifact[]) => Promise<void>;
 };
-function ownerKey(owner: AttachmentOwner): string {
-    return owner.kind === 'run' ? 'run' : workIdentityKey(owner.work);
-}
 function attachmentId(owner: AttachmentOwner, sequence: number): RuntimeAttachmentArtifact['id'] {
     if (owner.kind === 'run') {
         return { attempt: null, runtimes: [], scope: { kind: 'run' }, sequence, subtype: 'attachment', workload: null };
@@ -219,6 +82,7 @@ function validateMetadata(operation: OpenOperation): void {
     }
 }
 type RunAttachmentStoreState = {
+    readonly failureRetention: FailureArtifactRetention;
     readonly options: AttachmentStoreOptions;
     readonly writers: RetainedAttachmentRegistry;
     readonly branches: AttachmentBranchRegistry;
@@ -229,7 +93,7 @@ type RunAttachmentStoreState = {
 function runAttachmentStoreArtifacts(state: RunAttachmentStoreState): readonly RuntimeAttachmentArtifact[] {
     const { writers } = state;
 
-    return Array.from(writers.values(), function retainedArtifact(writer) {
+    return Array.from(writers.values(), function currentArtifact(writer) {
         return writer.artifact();
     });
 }
@@ -237,6 +101,13 @@ function runAttachmentStoreRegisterBranch(state: RunAttachmentStoreState, branch
     const { branches } = state;
 
     branches.set(branch, retain);
+}
+function retainedArtifact(writer: StoredAttachment): RuntimeAttachmentArtifact {
+    const artifact = writer.artifact();
+    return artifact.payload.capture === 'opt-in' ? artifact : {
+        ...artifact,
+        payload: { ...artifact.payload, retention: { ...artifact.payload.retention, state: 'retained' } }
+    };
 }
 function runAttachmentStoreBranchArtifacts(
     state: RunAttachmentStoreState,
@@ -247,17 +118,17 @@ function runAttachmentStoreBranchArtifacts(
     return Array
         .from(writers.values())
         .filter(function inBranch(writer) {
-            return writer.branch === branch;
+            return writer.branch === branch && state.failureRetention.retains(writer);
         })
-        .map(function retainedArtifact(writer) {
-            return writer.artifact();
-        });
+        .map(retainedArtifact);
 }
 function runAttachmentStoreRetainsBranch(state: RunAttachmentStoreState, branch: string | null): boolean {
     return branch === null || state.branches.get(branch)?.() === true;
 }
 function runAttachmentStoreRetains(state: RunAttachmentStoreState, writer: StoredAttachment): boolean {
-    return runAttachmentStoreRetainsBranch(state, writer.branch);
+    const artifact = writer.artifact();
+    return runAttachmentStoreRetainsBranch(state, writer.branch) &&
+        (artifact.payload.capture === 'opt-in' || state.failureRetention.retains(writer));
 }
 function runAttachmentStoreSelectedArtifacts(state: RunAttachmentStoreState): readonly RuntimeAttachmentArtifact[] {
     const { writers } = state;
@@ -267,9 +138,7 @@ function runAttachmentStoreSelectedArtifacts(state: RunAttachmentStoreState): re
         .filter(function (writer) {
             return runAttachmentStoreRetains(state, writer);
         })
-        .map(function retainedArtifact(writer) {
-            return writer.artifact();
-        });
+        .map(retainedArtifact);
 }
 function runAttachmentStoreValidateOwner(state: RunAttachmentStoreState, operation: OpenOperation): void {
     const { branches, planned } = state;
@@ -291,7 +160,7 @@ function runAttachmentStoreScopeBudget(
 
     const key = operation.owner.kind === 'run'
         ? 'run'
-        : `${operation.branch ?? channel}:${ownerKey(operation.owner)}`;
+        : `${operation.branch ?? channel}:${attachmentScopeKey(operation.owner)}`;
     const budget = budgets.get(key) ?? createAttachmentScopeBudget();
     budgets.set(key, budget);
     budget.reserve(options.limits);
@@ -304,11 +173,19 @@ function runAttachmentStoreInitialArtifact(
     retention: AttachmentRetention
 ): RuntimeAttachmentArtifact {
     return {
-        id: attachmentId(operation.owner, writer),
-        source: 'instrumented',
+        id: {
+            ...attachmentId(operation.owner, writer),
+            subtype: operation.kind === 'prepare' ? operation.subtype : 'attachment'
+        },
+        source: operation.kind === 'prepare' ? operation.source : 'instrumented',
         payload: {
             ...operation.metadata,
-            capture: 'opt-in',
+            ...operation.kind === 'prepare'
+                ? {
+                    capture: 'automatic' as const,
+                    retention: { condition: operation.condition, state: 'prepared' as const }
+                }
+                : { capture: 'opt-in' as const },
             capturedAtMicroseconds: state.options.captureTime(),
             content: retention.content(),
             kind: 'runtime-attachment',
@@ -357,9 +234,8 @@ async function runAttachmentStoreCreateWriter(
     const budget = runAttachmentStoreScopeBudget(state, channel, operation);
     const writer = sequence.read();
     sequence.write(sequence.read() + 1);
-    const folder = createHash('sha256').update(ownerKey(operation.owner)).digest('hex');
-    const filePath = path.join(options.directory, folder, `${writer}.attachment.bin`);
-    const limit = operation.contentKind === 'binary'
+    const filePath = retainedAttachmentPath(options, operation, writer);
+    const limit = operation.contentKind === 'binary' || operation.kind === 'prepare' && operation.subtype === 'witness'
         ? options.limits.maxArtifactBytes
         : options.limits.maxInlineBytes;
     writers.set(writer, await createRetainedAttachment(state, { channel, operation, writer, filePath, limit, budget }));
@@ -379,7 +255,21 @@ async function runAttachmentStoreStart(
     }
     return { kind: 'opened', writer };
 }
-type AttachmentWriterOperation = Exclude<AttachmentOperation, { readonly kind: 'open'; }>;
+type AttachmentWriterOperation = Exclude<
+    AttachmentOperation,
+    { readonly kind: 'open' | 'prepare' | 'resource-consumer' | 'resource-failure'; }
+>;
+async function checkpointCapturedWrite(
+    state: RunAttachmentStoreState,
+    writer: StoredAttachment,
+    data: string
+): Promise<AttachmentResponse> {
+    const response = await writer.write(data, state.options.limits);
+    if (writer.artifact().payload.capture === 'automatic') {
+        await state.options.checkpoint(runAttachmentStoreArtifacts(state));
+    }
+    return response;
+}
 async function processAttachmentWriterOperation(
     state: RunAttachmentStoreState,
     writer: StoredAttachment,
@@ -394,14 +284,35 @@ async function processAttachmentWriterOperation(
         writer.omit();
         return { kind: 'written' };
     }
-    return await writer.write(operation.data, state.options.limits);
+    return await checkpointCapturedWrite(state, writer, operation.data);
+}
+function registerResourceEvidence(
+    state: RunAttachmentStoreState,
+    channel: string,
+    operation: Extract<AttachmentOperation, { readonly kind: 'resource-consumer' | 'resource-failure'; }>
+): AttachmentResponse {
+    if (operation.kind === 'resource-consumer') {
+        if (!state.planned.has(workIdentityKey(operation.work))) {
+            throw new TypeError('Resource consumer is outside selected work.');
+        }
+        state.failureRetention.consume(channel, operation.boundary, operation.work);
+    } else {
+        state.failureRetention.markResourceFailure(channel, operation.boundary);
+    }
+    return { kind: 'written' };
+}
+function isOpenOperation(operation: AttachmentOperation): operation is OpenOperation {
+    return operation.kind === 'open' || operation.kind === 'prepare';
 }
 async function runAttachmentStoreProcessOperation(
     state: RunAttachmentStoreState,
     channel: string,
     operation: AttachmentOperation
 ): Promise<AttachmentResponse> {
-    if (operation.kind === 'open') {
+    if (operation.kind === 'resource-consumer' || operation.kind === 'resource-failure') {
+        return registerResourceEvidence(state, channel, operation);
+    }
+    if (isOpenOperation(operation)) {
         return await runAttachmentStoreStart(state, channel, operation);
     }
     const writer = state.writers.get(operation.writer);
@@ -425,6 +336,16 @@ async function runAttachmentStoreExchange(
         };
     }
 }
+async function finishStoredAttachment(
+    state: RunAttachmentStoreState,
+    channel: string | null,
+    writer: StoredAttachment
+): Promise<AttachmentOwner | null> {
+    const owner = await writer.interrupt(
+        channel === null && !state.failureRetention.interrupted() ? 'unclosed' : 'interrupted'
+    );
+    return writer.artifact().payload.capture === 'opt-in' && runAttachmentStoreRetains(state, writer) ? owner : null;
+}
 async function runAttachmentStoreFinish(
     state: RunAttachmentStoreState,
     channel: string | null
@@ -436,8 +357,8 @@ async function runAttachmentStoreFinish(
         return channel === null || writer.channel === channel;
     });
     for (const writer of selected) {
-        const owner = await writer.interrupt(channel === null ? 'unclosed' : 'interrupted');
-        if (owner !== null && runAttachmentStoreRetains(state, writer)) {
+        const owner = await finishStoredAttachment(state, channel, writer);
+        if (owner !== null) {
             owners.push(owner);
         }
     }
@@ -459,6 +380,7 @@ async function runAttachmentStorePrune(
         if (artifact.payload.content.kind === 'file') {
             await rm(path.resolve(options.projectRoot, artifact.payload.content.path), { force: true });
         }
+        writers.get(artifact.id.sequence)?.release();
         writers.delete(artifact.id.sequence);
     }
 }
@@ -468,11 +390,29 @@ export function createAttachmentStore(options: AttachmentStoreOptions): Attachme
     const budgets = new Map<string, AttachmentScopeBudget>();
     const planned: ReadonlySet<string> = new Set(options.work.map(workIdentityKey));
     const sequence = createStoredRunValue<number>(0);
-    const state: RunAttachmentStoreState = { options, writers, branches, budgets, planned, sequence };
+    const state: RunAttachmentStoreState = {
+        options,
+        writers,
+        branches,
+        budgets,
+        planned,
+        sequence,
+        failureRetention: createFailureArtifactRetention()
+    };
     return {
+        settleAttempt: state.failureRetention.settleAttempt,
+        settleResult: state.failureRetention.settleResult,
         artifacts: runAttachmentStoreArtifacts.bind(null, state),
         retainsBranch: runAttachmentStoreRetainsBranch.bind(null, state),
         registerBranch: runAttachmentStoreRegisterBranch.bind(null, state),
+        conflictArtifacts(branch) {
+            return Array
+                .from(writers.values())
+                .filter(function conflictBranch(writer) {
+                    return writer.branch === branch;
+                })
+                .map(retainedArtifact);
+        },
         branchArtifacts: runAttachmentStoreBranchArtifacts.bind(null, state),
         selectedArtifacts: runAttachmentStoreSelectedArtifacts.bind(null, state),
         exchange: runAttachmentStoreExchange.bind(null, state),
