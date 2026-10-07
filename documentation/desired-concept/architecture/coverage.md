@@ -92,6 +92,8 @@ mixed test bundles use `coverage.sources.exclude` for their test originals.
 Scripts without declared source maps use ordinary JavaScript coverage. A broken
 declared map or reference fails coverage rather than falling back to generated
 locations. Native raw data remains available in the run record's coverage directory.
+Native TypeScript reporting uses Node's whitespace-preserving type stripping
+to match source branch arms to V8 ranges without moving their locations.
 
 The integration aggregates raw coverage from the complete run process tree.
 It supports every valid microtest process model. Today those models are
