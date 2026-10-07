@@ -86,6 +86,8 @@ export type LocalProcessServiceResourceInput<
 type LocalProcessOutputWriters = {
     readonly appendStderr: (chunk: Buffer) => void;
     readonly appendStdout: (chunk: Buffer) => void;
+    readonly finishStderr: () => void;
+    readonly finishStdout: () => void;
     readonly output: LocalProcessOutput;
 };
 
@@ -231,6 +233,18 @@ function localProcessOutput(
             stdout.append(chunk);
             captures.stdout?.write(stdoutDecoder.write(chunk));
         },
+        finishStderr() {
+            const tail = stderrDecoder.end();
+            if (tail.length > 0) {
+                captures.stderr?.write(tail);
+            }
+        },
+        finishStdout() {
+            const tail = stdoutDecoder.end();
+            if (tail.length > 0) {
+                captures.stdout?.write(tail);
+            }
+        },
         output: Object.freeze({
             stderr: stderr.buffer,
             stdout: stdout.buffer
@@ -245,6 +259,8 @@ function attachOutputDrains(child: ChildProcess, output: LocalProcessOutputWrite
 
     child.stdout.on('data', output.appendStdout);
     child.stderr.on('data', output.appendStderr);
+    child.stdout.on('end', output.finishStdout);
+    child.stderr.on('end', output.finishStderr);
 }
 
 function spawnLocalProcess(command: LocalProcessCommand, output: LocalProcessOutputWriters): ChildProcess {
