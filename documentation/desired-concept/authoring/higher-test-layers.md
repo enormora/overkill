@@ -752,10 +752,10 @@ from the plugin worker's own transport and logging.
 The adapter preserves the configured process model. Fresh-state execution is
 opt-in; it does not add a process boundary to ordinary in-process runs.
 
-| Configured process model | `freshState: false` | `freshState: true` |
-| --- | --- | --- |
-| `in-process` | Execute serially inside Stryker's reusable plugin worker with the profile's best-effort observations | Start a fresh invocation host; execute the normal in-process runner there |
-| `supervised-process` | Use the normal runner's fresh restricted test child | Use that same fresh-child boundary, without an additional invocation host |
+| Configured process model | `freshState: false`                                                                                  | `freshState: true`                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `in-process`             | Execute serially inside Stryker's reusable plugin worker with the profile's best-effort observations | Start a fresh invocation host; execute the normal in-process runner there |
+| `supervised-process`     | Use the normal runner's fresh restricted test child                                                  | Use that same fresh-child boundary, without an additional invocation host |
 
 Report `reloadEnvironment: false` for normal in-process execution because native
 ESM cannot reset its transitive imports. Stryker then restarts the plugin worker
@@ -814,15 +814,15 @@ execute nothing and return an error rather than claiming survival or coverage.
 Mutated collection failures are reported as
 errors rather than silently changing the catalog or widening an invalid filter.
 
-| Overkill observation | Stryker result |
-| --- | --- |
-| Dry run completes normally | Individual success, failure, and skipped results with stable IDs and durations |
-| Dry-run timeout or infrastructure failure | Dry-run timeout or error; no mutation score |
+| Overkill observation                                                                                         | Stryker result                                                                 |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Dry run completes normally                                                                                   | Individual success, failure, and skipped results with stable IDs and durations |
+| Dry-run timeout or infrastructure failure                                                                    | Dry-run timeout or error; no mutation score                                    |
 | Mutant causes a safely attributed case failure, including an assertion, body error, or test-policy violation | `Killed`, with the failing IDs and structured diagnostic rendered as a message |
-| All requested runnable cases complete successfully | `Survived`, with the number actually executed |
-| Execution deadline expires, a case times out, or Stryker's hit limit is exceeded | `Timeout` |
-| Pre-case loading or collection failure, infrastructure failure, or failure without safe case attribution | `Error`, with its diagnostic |
-| Inconclusive result, unexpected skip, identity drift, or incomplete result delivery | `Error` |
+| All requested runnable cases complete successfully                                                           | `Survived`, with the number actually executed                                  |
+| Execution deadline expires, a case times out, or Stryker's hit limit is exceeded                             | `Timeout`                                                                      |
+| Pre-case loading or collection failure, infrastructure failure, or failure without safe case attribution     | `Error`, with its diagnostic                                                   |
+| Inconclusive result, unexpected skip, identity drift, or incomplete result delivery                          | `Error`                                                                        |
 
 Test-policy violations count as kills only when safely attributed to an eligible
 case and its active attempt. Permission violations, forbidden console output,
