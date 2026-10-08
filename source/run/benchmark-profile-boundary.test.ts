@@ -16,6 +16,35 @@ async function rejectUnexpectedInvocation(): Promise<never> {
 }
 
 export const testNode = suite('benchmark profile command boundaries', [
+    test('snapshots mixed profiles without losing retry, work-group or coverage policies', function (scope: TestScope) {
+        const config = normalizeConfig({
+            profiles: {
+                startup: benchmark,
+                service: {
+                    testFamily: 'integration',
+                    files: { sets: { smoke: { include: [ 'source/smoke.test.ts' ] } } },
+                    retries: { maxAttempts: 2, artifacts: 'first-failure-and-final' },
+                    execution: {
+                        processModel: 'worker-pool',
+                        workDistribution: {
+                            mode: 'group',
+                            groups: [ { name: 'service', fileSets: [ 'smoke' ] } ]
+                        }
+                    }
+                },
+                unit: {
+                    testFamily: 'microtest',
+                    coverage: { sources: { mode: 'all', include: [ 'source/**/*.ts' ], exclude: [] } }
+                }
+            }
+        });
+        const snapshot = copyConfig(config);
+        scope.assert.deepEqual(snapshot, config);
+        scope.assert.notEqual(snapshot.profiles, config.profiles);
+        scope.assert.notEqual(snapshot.profiles.service, config.profiles.service);
+        scope.assert.notEqual(snapshot.profiles.unit, config.profiles.unit);
+        return scope.assert.collect();
+    }),
     ...([ 'run', 'list' ] as const).map(function (command) {
         return test(
             `ordinary ${command} rejects benchmark profiles before collection and reporter loading`,
