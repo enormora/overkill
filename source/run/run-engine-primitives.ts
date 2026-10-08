@@ -1,6 +1,7 @@
 import type { TestRuntimePolicy as TestRuntimePolicyDefinition } from '../engine/case-execution.ts';
 import type { AttachmentLimits as AttachmentLimitsDefinition } from '../engine/runtime-attachment.ts';
 import type {
+    AttemptId as AttemptIdDefinition,
     WorkId as WorkIdDefinition,
     RuntimeId as RuntimeIdDefinition,
     WorkloadId as WorkloadIdDefinition
@@ -51,6 +52,7 @@ export type TestPlanCase = TestPlanCaseDefinition;
 
 export type TestRuntimePolicy = TestRuntimePolicyDefinition;
 export type AttachmentLimits = AttachmentLimitsDefinition;
+export type AttemptId = AttemptIdDefinition;
 export type WorkId = WorkIdDefinition;
 export type RuntimeId = RuntimeIdDefinition;
 export type WorkloadId = WorkloadIdDefinition;

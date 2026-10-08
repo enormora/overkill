@@ -2,7 +2,6 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import type { AttemptId } from '../engine/identity.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type {
     HostProcess,
@@ -11,7 +10,7 @@ import type {
     ResourceBudgets,
     Scheduling
 } from '../config/types.ts';
-import type { ReporterEvent, WorkId, RunnerError, RunResult } from './run-engine-primitives.ts';
+import type { AttemptId, ReporterEvent, WorkId, RunnerError, RunResult } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
