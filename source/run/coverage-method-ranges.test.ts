@@ -19,8 +19,7 @@ export const testNode = createSuite({
             .map(function unknownRange(scenario) {
                 return createTestCase({
                     ...metadata,
-                    title:
-                        `preserves unmatched range ${scenario.start}:${scenario.end} in ${scenario.source}`,
+                    title: `preserves unmatched range ${scenario.start}:${scenario.end} in ${scenario.source}`,
                     body(scope) {
                         const functions = [ {
                             functionName: 'replace',
