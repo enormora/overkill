@@ -2,7 +2,8 @@ import type { ReporterDelivery } from '../engine/reporter-dispatcher.ts';
 import { runStatusFromSummary, type RunResult } from '../engine/run-result.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import { RunCollectionError } from './run-errors.ts';
-import { resolveTimingCollection, selectedProfile } from './run-facts.ts';
+import { resolveTimingCollection } from './run-profile-facts.ts';
+import { selectTestProfile } from './test-profile.ts';
 import {
     resultWithTimingCollection,
     type RunTimingMeasurement
@@ -130,7 +131,7 @@ export async function reportCollectionErrorResult(
     result: RunResult,
     timing: RunTimingMeasurement | null = null
 ): Promise<RunResult> {
-    const profile = selectedProfile(command.request, command.config);
+    const profile = selectTestProfile(command.request.profile, command.config);
     const reporters = resolveRunReporters(profile, command.config.reporters);
     const reporterDelivery = await dependencies.reporterDispatcher.createDelivery(
         reporters,

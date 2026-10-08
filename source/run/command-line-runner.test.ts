@@ -1,11 +1,13 @@
+import { ConfigError, type LoadedConfig } from '../packages/run/config.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     defineReporter,
     type Engine as OverkillEngine,
-    type TestScope as OverkillScope
+    type TestScope as OverkillScope,
+    ReporterSinkConflictError
 } from '../packages/engine/engine.entry-point.ts';
-import { ReporterSinkConflictError } from '../engine/reporter.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     defaultRunConfig,
@@ -13,14 +15,15 @@ import {
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunCommand, RunProfileConfig, RunOrchestrator } from './run-types.ts';
-import { RunConfigError, RunResolutionError } from './run-errors.ts';
-import type { LoadedRunConfig } from './run-config.ts';
+import type { RunCommand, RunOrchestrator } from './run-types.ts';
+import { RunResolutionError } from './run-errors.ts';
+import { selectTestProfile } from './test-profile.ts';
 
 const emptyTestData = { annotations: {}, controls: {} } as const;
 
@@ -54,7 +57,7 @@ const defaultRequest = defaultRunRequest();
 
 type PassingTestPlan = ReturnType<OverkillEngine['createTestPlanFromTestFiles']>;
 
-function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRunConfig {
+function defaultLoadedConfig(reporters: LoadedConfig['reporters']): LoadedConfig {
     const config = defaultRunConfig();
 
     return {
@@ -65,16 +68,6 @@ function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRun
         reporters,
         runtimeStateDir: config.runtimeStateDir
     };
-}
-
-function selectedProfile(command: RunCommand): RunProfileConfig {
-    const profile = command.config.profiles[command.request.profile];
-
-    if (profile === undefined) {
-        throw new Error(`Missing profile ${command.request.profile}.`);
-    }
-
-    return profile;
 }
 
 function createPassingPlan(): PassingTestPlan {
@@ -106,7 +99,7 @@ function createPassingPlan(): PassingTestPlan {
 }
 
 async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrator['resolve']> {
-    const profile = selectedProfile(command);
+    const profile = selectTestProfile(command.request.profile, command.config);
 
     return {
         config: command.config,
@@ -130,7 +123,7 @@ async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrato
             }
         },
         collectionRunnerErrors: [],
-        reporters: command.config.reporters,
+        reporters: command.config.reporters ?? [],
         engine: command.engine,
         plan: {
             kind: 'local',
@@ -181,7 +174,7 @@ function createRunnerDependencies(
         async loadBenchmarkCommands() {
             throw new Error('Benchmark commands are not configured.');
         },
-        async loadRunConfig() {
+        async loadConfig() {
             return defaultLoadedConfig(null);
         },
         orchestrator,
@@ -225,6 +218,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(result.exitCode, 0);
                 scope.require.defined(receivedCommands[0]);
+                scope.require.notNull(receivedCommands[0].config.reporters);
                 scope.assert.equal(receivedCommands[0].config.reporters[0], memoryReporter);
 
                 return scope.assert.collect();
@@ -242,7 +236,7 @@ export const testNode = createOverkillSuite({
                         defaultReporterLoadCount += 1;
                         return memoryReporter;
                     },
-                    async loadRunConfig() {
+                    async loadConfig() {
                         return defaultLoadedConfig([ terminalReporter ]);
                     },
                     orchestrator: createRunOnlyOrchestrator(
@@ -260,6 +254,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 0);
                 scope.assert.equal(defaultReporterLoadCount, 0);
                 scope.require.defined(receivedCommands[0]);
+                scope.require.notNull(receivedCommands[0].config.reporters);
                 scope.assert.equal(receivedCommands[0].config.reporters[0], terminalReporter);
 
                 return scope.assert.collect();
@@ -356,8 +351,8 @@ export const testNode = createOverkillSuite({
             ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
-                    async loadRunConfig() {
-                        throw new RunConfigError('Invalid project policy.');
+                    async loadConfig() {
+                        throw new ConfigError('Invalid project policy.');
                     }
                 }));
 
@@ -375,7 +370,7 @@ export const testNode = createOverkillSuite({
             ...emptyTestData,
             async body(scope: OverkillScope) {
                 const result = await runTests(createRunnerDependencies({
-                    async loadRunConfig() {
+                    async loadConfig() {
                         throw new Error('Config failed.');
                     }
                 }));

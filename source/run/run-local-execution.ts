@@ -1,4 +1,5 @@
 import type { TestPlan } from '../engine/test-plan.ts';
+import type { ResourceUsagePolicy } from '../config/types.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -7,11 +8,7 @@ import {
     type ResolvedRunResultFinalizer,
     type RunRuntimePolicy
 } from './run-support.ts';
-import type {
-    ResolvedRun,
-    RunOrchestrator,
-    RunResourceUsagePolicy
-} from './run-types.ts';
+import type { ResolvedRun, RunOrchestrator } from './run-types.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import { createResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
@@ -37,7 +34,7 @@ function currentRunStartTime(dependencies: RunOrchestratorDependencies): string 
 }
 
 function createExecutionResourceUsageTracker(
-    policy: RunResourceUsagePolicy,
+    policy: ResourceUsagePolicy,
     dependencies: RunOrchestratorDependencies
 ): RunResourceUsageTracker | null {
     if (!policy.measure) {

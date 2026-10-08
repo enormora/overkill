@@ -9,8 +9,9 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { runIfMain } from '../direct-launcher.test.ts';
 import type { Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
-import type { RunCommand, RunConfig, RunRequest } from '../../run/run-types.ts';
+import { defaultCoveragePolicy } from '../../config/defaults.ts';
+import type { RunCommand, RunRequest } from '../../run/run-types.ts';
+import type { NormalizedConfig } from '../../config/types.ts';
 
 const integrationFixturePath = 'source/integration-tests/run/fixtures/discovery/integration.test.ts';
 const unitFixturePath = 'source/integration-tests/run/fixtures/discovery/unit.test.ts';
@@ -28,7 +29,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
     };
 });
 
-function createDefaultMicrotestProfile(): RunConfig['profiles'][string] {
+function createDefaultMicrotestProfile(): NormalizedConfig['profiles'][string] {
     return {
         coverage: defaultCoveragePolicy,
         execution: {
@@ -81,7 +82,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
     };
 }
 
-function createRunConfig(): RunConfig {
+function createRunConfig(): NormalizedConfig {
     return {
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: defineOutputRenderer(function createOutputRenderer() {

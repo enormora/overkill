@@ -1,3 +1,4 @@
+import { selectTestProfile } from '../run/test-profile.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import {
     createSuite as createOverkillSuite,
@@ -9,23 +10,23 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import type { LoadedRunConfig } from './run-config.ts';
+import type { LoadedConfig } from './config.ts';
 
-async function loadConfigValue(config: unknown): Promise<LoadedRunConfig> {
-    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
+async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
+    const loadConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
 
-    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
+    return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-integration-profile.test.ts',
+    title: 'source/config/config-integration-profile.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() normalizes integration profile defaults',
+            title: 'loadConfig() normalizes integration profile defaults',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -37,8 +38,8 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
-                const profile = config.profiles.service;
-                const microtestProfile = config.profiles.microtest;
+                const profile = selectTestProfile('service', config);
+                const microtestProfile = selectTestProfile('microtest', config);
 
                 scope.require.defined(profile);
                 scope.require.defined(microtestProfile);
@@ -78,7 +79,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() normalizes worker-pool lifecycle and distribution overrides',
+            title: 'loadConfig() normalizes worker-pool lifecycle and distribution overrides',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -116,8 +117,8 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
-                const defaultedProfile = config.profiles.defaultedService;
-                const profile = config.profiles.service;
+                const defaultedProfile = selectTestProfile('defaultedService', config);
+                const profile = selectTestProfile('service', config);
 
                 scope.require.defined(defaultedProfile);
                 scope.require.defined(profile);
@@ -164,7 +165,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() normalizes and validates worker-pool hedging',
+            title: 'loadConfig() normalizes and validates worker-pool hedging',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -184,7 +185,7 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
-                const profile = config.profiles.service;
+                const profile = selectTestProfile('service', config);
 
                 scope.require.defined(profile);
                 scope.assert.deepEqual(profile.execution, {
@@ -228,7 +229,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects invalid grouped work distribution',
+            title: 'loadConfig() rejects invalid grouped work distribution',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -364,7 +365,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() normalizes integration execution overrides',
+            title: 'loadConfig() normalizes integration execution overrides',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -380,7 +381,7 @@ export const testNode = createOverkillSuite({
                         }
                     }
                 });
-                const profile = config.profiles.service;
+                const profile = selectTestProfile('service', config);
 
                 scope.require.defined(profile);
                 scope.assert.deepEqual(profile.execution, {

@@ -259,7 +259,8 @@ export function runIsolatedProcessCommand(
     dependencies: RunOrchestratorDependencies,
     options: IsolatedRunOptions
 ): Promise<RunResult> | null {
-    const processModel = command.config.profiles[command.request.profile]?.execution.processModel;
+    const profile = command.config.profiles[command.request.profile];
+    const processModel = profile?.testFamily === 'benchmark' ? null : profile?.execution.processModel;
 
     if (processModel === 'supervised-process') {
         return createSupervisedRunResult(command, dependencies, options.timing, options.source);

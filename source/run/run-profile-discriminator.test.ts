@@ -9,9 +9,10 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import type { RunCommand, RunConfig } from './run-types.ts';
+import type { NormalizedConfig } from '../config/types.ts';
+import type { RunCommand } from './run-types.ts';
 
-function createRunCommand(config: RunConfig, profileName: string): RunCommand {
+function createRunCommand(config: NormalizedConfig, profileName: string): RunCommand {
     return {
         config,
         cwd: process.cwd(),
@@ -44,13 +45,14 @@ export const testNode = createOverkillSuite({
                     await orchestrator.resolve(createRunCommand(
                         defaultRunConfig({
                             profiles: {
-                                microtest: profile as unknown as RunConfig['profiles'][string]
+                                microtest: profile as unknown as NormalizedConfig['profiles'][string]
                             }
                         }),
                         'microtest'
                     ));
                 }, {
-                    message: 'Invalid run profile "microtest": testFamily must be "integration" or "microtest".'
+                    message:
+                        'Invalid profile "microtest": testFamily must be "benchmark", "integration", or "microtest".'
                 });
 
                 return scope.assert.collect();
@@ -71,13 +73,13 @@ export const testNode = createOverkillSuite({
                                 backend: {
                                     ...defaultMicrotestProfile(),
                                     testFamily: 'property'
-                                } as unknown as RunConfig['profiles'][string]
+                                } as unknown as NormalizedConfig['profiles'][string]
                             }
                         }),
                         'backend'
                     ));
                 }, {
-                    message: 'Invalid run profile "backend": testFamily must be "integration" or "microtest".'
+                    message: 'Invalid profile "backend": testFamily must be "benchmark", "integration", or "microtest".'
                 });
 
                 return scope.assert.collect();

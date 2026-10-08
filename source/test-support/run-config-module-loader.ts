@@ -1,8 +1,8 @@
 import path from 'node:path';
 import {
-    createRunConfigLoader,
-    type RunConfigLoader
-} from '../run/run-config.ts';
+    createConfigLoader,
+    type ConfigLoader
+} from '../config/config.ts';
 
 export const configFixtureCwd = '/overkill-project';
 
@@ -10,8 +10,8 @@ export function resolvedConfigFixturePath(fileName: string): string {
     return path.resolve(configFixtureCwd, fileName);
 }
 
-export function createConfigModuleLoader(modules: Readonly<Record<string, unknown>>): RunConfigLoader {
-    return createRunConfigLoader({
+export function createConfigModuleLoader(modules: Readonly<Record<string, unknown>>): ConfigLoader {
+    return createConfigLoader({
         async fileExists(filePath) {
             return Object.hasOwn(modules, filePath);
         },
@@ -25,7 +25,7 @@ export function createConfigModuleLoader(modules: Readonly<Record<string, unknow
     });
 }
 
-export function createSingleConfigModuleLoader(fileName: string, module: unknown): RunConfigLoader {
+export function createSingleConfigModuleLoader(fileName: string, module: unknown): ConfigLoader {
     return createConfigModuleLoader({
         [resolvedConfigFixturePath(fileName)]: module
     });

@@ -5,24 +5,27 @@ import {
     defineReporter,
     type TestCase,
     type TestCaseOptions,
-    type TestScope as OverkillScope
+    type TestScope as OverkillScope,
+    type TestPlan,
+    type DefinedReporter,
+    type SinkDeclaration
 } from '../packages/engine/engine.entry-point.ts';
-import type { DefinedReporter, SinkDeclaration } from '../engine/reporter.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     defaultIntegrationProfile,
     defaultMicrotestProfile,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
+import type { LoadedConfig } from '../config/config.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { LoadedRunConfig } from './run-config.ts';
+import { selectTestProfile } from './test-profile.ts';
 import type { RunSelection } from './run-request-types.ts';
-import type { ResolvedRun, RunCommand, RunProfileConfig, RunOrchestrator } from './run-types.ts';
+import type { ResolvedRun, RunCommand, RunOrchestrator } from './run-types.ts';
 
 const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
     return {
@@ -63,7 +66,7 @@ function listRunnerCase(
     });
 }
 
-async function loadDefaultConfig(): Promise<LoadedRunConfig> {
+async function loadDefaultConfig(): Promise<LoadedConfig> {
     return {
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -109,16 +112,6 @@ function createPassingPlan(): TestPlan {
     });
 }
 
-function selectedProfile(command: RunCommand): RunProfileConfig {
-    const profile = command.config.profiles[command.request.profile];
-
-    if (profile === undefined) {
-        throw new Error(`Missing profile ${command.request.profile}.`);
-    }
-
-    return profile;
-}
-
 function caseFactsFromPlan(testPlan: TestPlan): ResolvedRun['facts']['cases'] {
     return testPlan.cases.map(function toRunCaseFacts(testCase) {
         return {
@@ -135,7 +128,7 @@ export function createResolvedRun(
     command: RunCommand,
     collectionRunnerErrors: ResolvedRun['collectionRunnerErrors']
 ): ResolvedRun {
-    const profile = selectedProfile(command);
+    const profile = selectTestProfile(command.request.profile, command.config);
     const testPlan = createPassingPlan();
 
     return {
@@ -165,7 +158,7 @@ export function createResolvedRun(
             kind: 'local',
             testPlan
         },
-        reporters: command.config.reporters,
+        reporters: command.config.reporters ?? [],
         request: command.request
     };
 }
@@ -240,7 +233,7 @@ export function createDependencies(
         async loadBenchmarkCommands() {
             throw new Error('Benchmark commands are not configured.');
         },
-        loadRunConfig: loadDefaultConfig,
+        loadConfig: loadDefaultConfig,
         orchestrator
     };
 }
@@ -300,8 +293,10 @@ export const testNode = createOverkillSuite({
                 );
                 const result = await listTests(dependencies, false, false);
 
-                scope.assert.equal(result.exitCode, 0);
-                scope.assert.equal(defaultReporterLoadCount, 0);
+                scope.assert.deepEqual({ exitCode: result.exitCode, reporterLoadCount: defaultReporterLoadCount }, {
+                    exitCode: 0,
+                    reporterLoadCount: 0
+                });
                 scope.assert.deepEqual(result.stdoutLines, [
                     'order=seeded seed=42',
                     'source/a.test.ts',
@@ -309,6 +304,7 @@ export const testNode = createOverkillSuite({
                     '    passes'
                 ]);
                 scope.require.defined(receivedCommands[0]);
+                scope.require.notNull(receivedCommands[0].config.reporters);
                 scope.assert.deepEqual(receivedCommands[0].config.reporters, []);
 
                 return scope.assert.collect();
@@ -333,7 +329,7 @@ export const testNode = createOverkillSuite({
                 );
                 const runner = createCommandLineRunner({
                     ...dependencies,
-                    async loadRunConfig() {
+                    async loadConfig() {
                         const config = await loadDefaultConfig();
 
                         return {

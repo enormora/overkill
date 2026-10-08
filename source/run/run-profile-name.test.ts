@@ -9,18 +9,15 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { invalidRunProfileNameMessage } from './profile-file-glob.ts';
+import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
 import type { RunCommand } from './run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const validProjectProfileNames = [ 'backend-http', 'ui-browser', 'ui.browser', 'unit_fast' ];
-const invalidProfileNameMessage = 'Invalid profile name "backend/http". ' +
+const validProjectProfileNames = [ 'backend-http', 'ui-browser', 'ui.browser', 'unit_fast', 'benchmark' ];
+const invalidProfileSyntaxMessage = 'Invalid profile name "backend/http". ' +
     'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
 const emptyProfileNameMessage = 'Invalid profile name "". ' +
     'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
-const reservedBenchmarkProfileNameMessage = 'Invalid profile name "benchmark". ' +
-    'The "benchmark" profile name is reserved for benchmark commands.';
-
 function runCommand(profile: string, config = defaultRunConfig()): RunCommand {
     return {
         config,
@@ -46,7 +43,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             body(scope: OverkillScope) {
                 for (const profileName of validProjectProfileNames) {
-                    scope.assert.equal(invalidRunProfileNameMessage(profileName), null);
+                    scope.assert.equal(invalidProfileNameMessage(profileName), null);
                 }
 
                 return scope.assert.collect();
@@ -54,13 +51,12 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'profile name validation rejects invalid and reserved names',
+            title: 'profile name validation rejects invalid names',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                scope.assert.equal(invalidRunProfileNameMessage('backend/http'), invalidProfileNameMessage);
-                scope.assert.equal(invalidRunProfileNameMessage(''), emptyProfileNameMessage);
-                scope.assert.equal(invalidRunProfileNameMessage('benchmark'), reservedBenchmarkProfileNameMessage);
+                scope.assert.equal(invalidProfileNameMessage('backend/http'), invalidProfileSyntaxMessage);
+                scope.assert.equal(invalidProfileNameMessage(''), emptyProfileNameMessage);
 
                 return scope.assert.collect();
             }
@@ -107,7 +103,7 @@ export const testNode = createOverkillSuite({
 
                 await scope.assert.rejects(async function resolveInvalidRequestProfileName() {
                     await runOrchestrator.resolve(runCommand('backend/http'));
-                }, { message: invalidProfileNameMessage });
+                }, { message: invalidProfileSyntaxMessage });
                 await scope.assert.rejects(async function resolveInvalidConfigProfileName() {
                     await runOrchestrator.resolve(runCommand(
                         'microtest',
@@ -115,16 +111,7 @@ export const testNode = createOverkillSuite({
                             profiles: { 'backend/http': defaultMicrotestProfile() }
                         })
                     ));
-                }, { message: invalidProfileNameMessage });
-                await scope.assert.rejects(async function resolveReservedProfileName() {
-                    await runOrchestrator.resolve(runCommand(
-                        'benchmark',
-                        defaultRunConfig({
-                            profiles: { benchmark: defaultMicrotestProfile() }
-                        })
-                    ));
-                }, { message: reservedBenchmarkProfileNameMessage });
-
+                }, { message: invalidProfileSyntaxMessage });
                 return scope.assert.collect();
             }
         })

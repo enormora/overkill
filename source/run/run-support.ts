@@ -1,3 +1,4 @@
+import type { NormalizedConfig, MaxConcurrency, TestProfileConfig, Scheduling } from '../config/types.ts';
 import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
 import type { TestRuntimePolicy, RunResult, TestPlanCase } from './run-engine-primitives.ts';
 import { currentAttachmentCoordinator } from './attachment-coordinator-context.ts';
@@ -9,33 +10,9 @@ import {
     createPermissionDenialRuntimePolicy,
     createRuntimeCapabilityPolicy
 } from './capability-policy.ts';
-import type {
-    RunConfig,
-    RunCommand,
-    RunCoveragePolicy,
-    RunEngineFacts,
-    RunHostProcess,
-    RunIntegrationExecution,
-    RunMaxConcurrency,
-    RunLoaderConfig,
-    RunMicrotestExecution,
-    RunProfileConfig,
-    RunProfileFiles,
-    RunProfilesConfig,
-    RunRequest,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
-    RunScheduling,
-    ResolvedRun,
-    RunShard,
-    TimingProfilePolicy,
-    RunTimeoutPolicy,
-    RunWorkDistribution,
-    RunWorkGroup
-} from './run-types.ts';
+import type { RunCommand, RunEngineFacts, RunRequest, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { copyRunSelection } from './run-selection-filters.ts';
-import { validateRunResourceUsagePolicy } from './run-validation.ts';
+
 import {
     readDurationHistoryIndex,
     resultWithUpdatedDurationHistoryAndTiming,
@@ -47,15 +24,15 @@ export type RunRuntimePolicy = TestRuntimePolicy;
 type RunEngineSelection = RunCommand['engine'];
 
 type ConcurrentEngineExecution = {
-    readonly maxConcurrency: RunMaxConcurrency;
+    readonly maxConcurrency: MaxConcurrency;
     readonly mode: 'concurrent-in-process';
 };
 type SerialEngineExecution = { readonly mode: 'serial-in-process'; };
 type EngineExecution = ConcurrentEngineExecution | SerialEngineExecution;
 
 export function engineExecution(
-    scheduling: RunScheduling,
-    maxConcurrency: RunMaxConcurrency
+    scheduling: Scheduling,
+    maxConcurrency: MaxConcurrency
 ): EngineExecution {
     return scheduling === 'concurrent'
         ? { maxConcurrency, mode: 'concurrent-in-process' as const }
@@ -155,10 +132,6 @@ export function createRunResourceRuntimePolicy(
     return composeRunRuntimePolicies(runtimePolicy, resourcePolicy) ?? resourcePolicy;
 }
 
-type RunProfileFileSets = {
-    readonly sets: NonNullable<RunProfileFiles['sets']>;
-};
-
 export function freezeValue<Value>(value: Value): Value {
     if (value !== null && typeof value === 'object') {
         for (const propertyValue of Object.values(value)) {
@@ -172,258 +145,10 @@ export function freezeValue<Value>(value: Value): Value {
 }
 
 export function resolveRunReporters(
-    profile: RunProfileConfig,
-    fallbackReporters: RunConfig['reporters']
-): RunConfig['reporters'] {
-    return profile.reporters ?? fallbackReporters;
-}
-
-function copyLoaderConfig(loader: RunLoaderConfig): RunLoaderConfig {
-    return {
-        sourceMaps: loader.sourceMaps,
-        stripMode: loader.stripMode
-    };
-}
-
-function copyRunShard(shard: RunShard): RunShard {
-    return {
-        index: shard.index,
-        total: shard.total
-    };
-}
-
-export function copyResourceBudgets(resourceBudgets: RunResourceBudgets): RunResourceBudgets {
-    return {
-        activeResourceCount: resourceBudgets.activeResourceCount,
-        javaScriptEngineHeapBytes: resourceBudgets.javaScriptEngineHeapBytes,
-        residentSetBytes: resourceBudgets.residentSetBytes,
-        residentSetGrowthBytesPerSecond: resourceBudgets.residentSetGrowthBytesPerSecond
-    };
-}
-
-function copyResourceBudgetOverrides(overrides: RunResourceBudgets | null): RunResourceBudgets | null {
-    if (overrides === null) {
-        return null;
-    }
-
-    return copyResourceBudgets(overrides);
-}
-
-function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsagePolicy {
-    return {
-        budgets: copyResourceBudgets(policy.budgets),
-        measure: policy.measure,
-        samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
-    };
-}
-
-function copyTimingProfilePolicy(policy: TimingProfilePolicy): TimingProfilePolicy {
-    return {
-        collection: policy.collection
-    };
-}
-
-function copyTimeoutPolicy(policy: RunTimeoutPolicy): RunTimeoutPolicy {
-    return {
-        collectionMilliseconds: policy.collectionMilliseconds,
-        hardMilliseconds: policy.hardMilliseconds,
-        softMilliseconds: policy.softMilliseconds
-    };
-}
-
-function copyMicrotestExecution(execution: RunMicrotestExecution): RunMicrotestExecution {
-    return {
-        maxConcurrency: execution.maxConcurrency,
-        processModel: execution.processModel,
-        scheduling: execution.scheduling
-    };
-}
-
-function copyWorkGroup(group: RunWorkGroup): RunWorkGroup {
-    return {
-        fileSets: [ group.fileSets[0], ...group.fileSets.slice(1) ],
-        granularity: group.granularity,
-        name: group.name,
-        order: group.order,
-        scheduling: group.scheduling,
-        workerLifecycle: group.workerLifecycle
-    };
-}
-
-function copyWorkDistribution(distribution: RunWorkDistribution): RunWorkDistribution {
-    if (distribution.mode !== 'group') {
-        return { mode: distribution.mode };
-    }
-
-    return {
-        groups: [
-            copyWorkGroup(distribution.groups[0]),
-            ...distribution.groups.slice(1).map(copyWorkGroup)
-        ],
-        mode: 'group',
-        unmatched: distribution.unmatched
-    };
-}
-
-function copyHostProcess(hostProcess: RunHostProcess): RunHostProcess {
-    if (hostProcess.kind === 'direct') {
-        return { kind: 'direct' };
-    }
-
-    return {
-        kind: 'child',
-        nodeArguments: Array.from(hostProcess.nodeArguments)
-    };
-}
-
-function copyIntegrationExecution(execution: RunIntegrationExecution): RunIntegrationExecution {
-    if (execution.processModel === 'worker-pool') {
-        return {
-            assignmentPolicy: execution.assignmentPolicy,
-            dispatchPolicy: execution.dispatchPolicy,
-            hedging: execution.hedging,
-            hostProcess: copyHostProcess(execution.hostProcess),
-            maxConcurrency: execution.maxConcurrency,
-            maxWorkers: execution.maxWorkers,
-            processModel: execution.processModel,
-            scheduling: execution.scheduling,
-            workDistribution: copyWorkDistribution(execution.workDistribution),
-            workerLifecycle: execution.workerLifecycle
-        };
-    }
-
-    return {
-        maxConcurrency: execution.maxConcurrency,
-        processModel: execution.processModel,
-        scheduling: execution.scheduling
-    };
-}
-
-function hasProfileFileSets(files: RunProfileFiles): files is RunProfileFileSets {
-    return files.sets !== undefined;
-}
-
-function copyProfileFiles(files: RunProfileFiles | null): RunProfileFiles | null {
-    if (files === null) {
-        return null;
-    }
-
-    if (hasProfileFileSets(files)) {
-        return {
-            sets: Object.fromEntries(
-                Object.entries(files.sets).map(function copyProfileFileSet([ name, set ]) {
-                    return [
-                        name,
-                        {
-                            exclude: Array.from(set.exclude),
-                            include: [ set.include[0], ...set.include.slice(1) ]
-                        }
-                    ];
-                })
-            )
-        };
-    }
-
-    return {
-        exclude: Array.from(files.exclude),
-        include: [ files.include[0], ...files.include.slice(1) ]
-    };
-}
-
-function copyCoveragePolicy(policy: RunCoveragePolicy): RunCoveragePolicy {
-    return {
-        outputDirectory: policy.outputDirectory,
-        outputs: Array.from(policy.outputs),
-        sources: policy.sources.mode === 'loaded'
-            ? { exclude: Array.from(policy.sources.exclude), mode: 'loaded' }
-            : {
-                exclude: Array.from(policy.sources.exclude),
-                include: [ policy.sources.include[0], ...policy.sources.include.slice(1) ],
-                mode: 'all'
-            },
-        thresholds: {
-            branches: policy.thresholds.branches,
-            functions: policy.thresholds.functions,
-            lines: policy.thresholds.lines
-        }
-    };
-}
-
-function copyProfileConfig(profile: RunProfileConfig): RunProfileConfig {
-    if (profile.testFamily === 'integration') {
-        const files = copyProfileFiles(profile.files);
-
-        if (files === null) {
-            throw new Error('Integration profiles require files.');
-        }
-
-        return {
-            attachments: { ...profile.attachments },
-            execution: copyIntegrationExecution(profile.execution),
-            files,
-            reporters: profile.reporters === null ? null : Array.from(profile.reporters),
-            retries: profile.retries === null ? null : { ...profile.retries },
-            resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
-            testFamily: profile.testFamily,
-            timings: copyTimingProfilePolicy(profile.timings),
-            timeouts: copyTimeoutPolicy(profile.timeouts)
-        };
-    }
-
-    return {
-        coverage: copyCoveragePolicy(profile.coverage),
-        execution: copyMicrotestExecution(profile.execution),
-        files: copyProfileFiles(profile.files),
-        reporters: profile.reporters === null ? null : Array.from(profile.reporters),
-        resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
-        testFamily: profile.testFamily,
-        timings: copyTimingProfilePolicy(profile.timings),
-        timeouts: copyTimeoutPolicy(profile.timeouts)
-    };
-}
-
-function copyRunProfilesConfig(profiles: RunProfilesConfig): RunProfilesConfig {
-    return Object.fromEntries(
-        Object.entries(profiles).map(function copyProfileEntry([ name, profile ]) {
-            return [ name, copyProfileConfig(profile) ];
-        })
-    );
-}
-
-export function copyRunRequest(request: RunRequest): RunRequest {
-    return {
-        baselineUpdateMode: request.baselineUpdateMode,
-        capabilityRestrictions: { mode: request.capabilityRestrictions.mode },
-        capture: request.capture,
-        coverage: request.coverage,
-        debug: {
-            mode: request.debug.mode,
-            selectors: []
-        },
-        execution: { mode: request.execution.mode },
-        measureResourceUsage: request.measureResourceUsage,
-        order: request.order,
-        paths: Array.from(request.paths),
-        profile: request.profile,
-        resourceBudgetOverrides: copyResourceBudgetOverrides(request.resourceBudgetOverrides),
-        resourceUsageSamplingIntervalMilliseconds: request.resourceUsageSamplingIntervalMilliseconds,
-        seed: { value: request.seed.value },
-        selection: copyRunSelection(request.selection),
-        shard: copyRunShard(request.shard),
-        timingCollection: request.timingCollection,
-        verbose: request.verbose,
-        workers: request.workers
-    };
-}
-
-export function copyRunConfig(config: RunConfig): RunConfig {
-    return {
-        loader: copyLoaderConfig(config.loader),
-        outputRenderer: config.outputRenderer,
-        profiles: copyRunProfilesConfig(config.profiles),
-        reporters: Array.from(config.reporters),
-        runtimeStateDir: config.runtimeStateDir
-    };
+    profile: TestProfileConfig,
+    fallbackReporters: NormalizedConfig['reporters']
+): NonNullable<NormalizedConfig['reporters']> {
+    return profile.reporters ?? fallbackReporters ?? [];
 }
 
 export function copyRunEngineSelection(engine: RunEngineSelection): RunEngineSelection {
@@ -474,10 +199,6 @@ export function createRunRuntimePolicy(
             observedStdout: false
         })
         : createPermissionDenialRuntimePolicy();
-}
-
-export function assertRunnableResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
-    validateRunResourceUsagePolicy(policy);
 }
 
 export const runWithWorkerAttachments: typeof executeWorkerAttachments = executeWorkerAttachments;

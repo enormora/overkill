@@ -1,8 +1,9 @@
-import type { LoadedRunConfig } from './run-config.ts';
+import type { LoadedConfig } from '../config/config.ts';
+import { selectTestProfile } from './test-profile.ts';
 
 export type CommandLineReporterFallback = {
     readonly kind: 'configured';
-    readonly reporters: NonNullable<LoadedRunConfig['reporters']>;
+    readonly reporters: NonNullable<LoadedConfig['reporters']>;
 } | {
     readonly kind: 'default';
 } | {
@@ -10,14 +11,16 @@ export type CommandLineReporterFallback = {
 };
 
 export function selectCommandLineReporterFallback(
-    loadedConfig: LoadedRunConfig,
+    loadedConfig: LoadedConfig,
     profileName: string
 ): CommandLineReporterFallback {
+    const profile = loadedConfig.profiles[profileName] === undefined
+        ? undefined
+        : selectTestProfile(profileName, loadedConfig);
+
     if (loadedConfig.reporters !== null) {
         return { kind: 'configured', reporters: loadedConfig.reporters };
     }
-
-    const profile = loadedConfig.profiles[profileName];
 
     if (profile?.reporters !== null) {
         return { kind: 'none' };

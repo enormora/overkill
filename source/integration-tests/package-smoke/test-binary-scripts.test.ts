@@ -385,8 +385,11 @@ export const runSubpathImportScript = [
     "const resourceLifecycleModule = await import('@overkill-dev/run/resource-lifecycle');",
     'console.log(JSON.stringify(Object.keys(configModule)));',
     'console.log(configModule.defineConfig({ profiles: {} }).profiles === undefined);',
-    'console.log(typeof configModule.loadRunConfig);',
-    "console.log(new configModule.RunConfigError('Invalid config.').name);",
+    'console.log(typeof configModule.loadConfig);',
+    "console.log(new configModule.ConfigError('Invalid config.').name);",
+    "const policy = configModule.normalizeConfig({ profiles: { startup: { testFamily: 'benchmark', files: { include: ['startup.bench.ts'] } } } });",
+    'console.log(policy.profiles.startup.testFamily);',
+    'console.log(JSON.stringify(policy.profiles.startup.files.exclude));',
     'console.log(JSON.stringify(Object.keys(resourceLifecycleModule)));',
     'console.log(typeof resourceLifecycleModule.activeManagedLifecycle);',
     'console.log(resourceLifecycleModule.activeManagedLifecycle());'
@@ -450,7 +453,7 @@ export const expectedRootImportOutput = [
     .join('\n');
 
 export const expectedStandardSubpathImportOutput = [
-    '["defineConfig"]',
+    '["ConfigError","defineConfig","loadConfig","normalizeConfig"]',
     '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineProgressReporter","createLineReporter","createLineTreeReporter"]',
     '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
     '["throwingTest"]',
@@ -486,10 +489,12 @@ export const expectedStandardSubpathImportOutput = [
     .join('\n');
 
 export const expectedRunSubpathImportOutput = [
-    '["RunConfigError","defineConfig","loadRunConfig"]',
+    '["ConfigError","defineConfig","loadConfig","normalizeConfig"]',
     'false',
     'function',
-    'RunConfigError',
+    'ConfigError',
+    'benchmark',
+    '[]',
     '["activeManagedLifecycle","combinedResourceEntries","composedResourceSession","directResourceEntries","resourceContextForStep","resourceMapFromEntries","resourceWrapperErrorFromUnknown","resourceWrapperLifecycleError","runtimeContextForStep","stepRuntimeGraphs"]',
     'function',
     'null',

@@ -1,11 +1,11 @@
+import { validateHostProcess } from '../config/host-process.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
-    hostProcessFacts,
-    validateHostProcess
+    hostProcessFacts
 } from './run-host-process.ts';
 
 export const testNode = createOverkillSuite({

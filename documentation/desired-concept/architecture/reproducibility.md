@@ -64,7 +64,7 @@ type SingleRunRecord = {
     readonly request: RunRecordRequest;
     readonly engine: RunExecutionFacts['engine'];
     readonly environment: RunFacts['environment'];
-    readonly execution: RunProfileConfig['execution'];
+    readonly execution: TestProfileConfig['execution'];
     readonly loader: RunFacts['loader'];
     readonly coverage: RunRecordCoverage | null;
     readonly status: 'started' | 'completed' | 'interrupted';

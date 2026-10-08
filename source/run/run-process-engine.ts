@@ -1,21 +1,22 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { TestProfileConfig } from '../config/types.ts';
 import { invalidRequest } from './run-errors.ts';
-import type { RunCommand, RunProfileConfig } from './run-types.ts';
+import type { RunCommand } from './run-types.ts';
 
-function separateRuntime(profile: RunProfileConfig): boolean {
+function separateRuntime(profile: TestProfileConfig): boolean {
     return profile.execution.processModel !== 'in-process';
 }
 
-function processModelLabel(profile: RunProfileConfig): string {
+function processModelLabel(profile: TestProfileConfig): string {
     return profile.execution.processModel;
 }
 
-function customEngineLabel(profile: RunProfileConfig): string {
+function customEngineLabel(profile: TestProfileConfig): string {
     return profile.execution.processModel === 'supervised-process' ? 'Supervised' : profile.execution.processModel;
 }
 
-function assertSupportedSeparateRuntimeEngine(command: RunCommand, profile: RunProfileConfig): void {
+function assertSupportedSeparateRuntimeEngine(command: RunCommand, profile: TestProfileConfig): void {
     if (command.engine.kind === 'instance') {
         invalidRequest(
             `Instance engines are not supported with ${processModelLabel(profile)} execution. Use a module engine.`
@@ -39,7 +40,7 @@ function insideCwd(cwd: string, filePath: string): boolean {
     return !relativeModulePath.startsWith('..') && !path.isAbsolute(relativeModulePath);
 }
 
-function assertSupportedSeparateRuntimeModule(command: RunCommand, profile: RunProfileConfig): void {
+function assertSupportedSeparateRuntimeModule(command: RunCommand, profile: TestProfileConfig): void {
     if (command.engine.kind !== 'module') {
         return;
     }
@@ -49,7 +50,7 @@ function assertSupportedSeparateRuntimeModule(command: RunCommand, profile: RunP
     }
 }
 
-export function assertSupportedProcessEngine(command: RunCommand, profile: RunProfileConfig): void {
+export function assertSupportedProcessEngine(command: RunCommand, profile: TestProfileConfig): void {
     if (!separateRuntime(profile)) {
         return;
     }

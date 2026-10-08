@@ -26,12 +26,13 @@ import {
 } from './compatibility.entry-point.ts';
 import type {
     defineConfig,
-    RunProjectConfig,
-    RunProjectIntegrationProfileConfig,
-    RunProjectMicrotestProfileConfig,
-    RunProjectProfileConfig,
-    RunProjectProfileFiles,
-    RunProjectResourceBudgets
+    Config,
+    ProjectIntegrationProfileConfig,
+    ProjectMicrotestProfileConfig,
+    ProjectProfileConfig,
+    ProjectBenchmarkProfileConfig,
+    ProjectProfileFiles,
+    ProjectResourceBudgets
 } from './config.entry-point.ts';
 import type {
     BriefReporterSinks,
@@ -165,13 +166,13 @@ declare const testScope: TestScope;
 
 describe('@overkill-dev/test standard subpaths', function () {
     test('exposes config authoring types', function () {
-        expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
-        expect<RunProjectProfileConfig>().type.toBe<
-            RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig
+        expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
+        expect<ProjectProfileConfig>().type.toBe<
+            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
         >();
-        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
-        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
-        expect<keyof RunProjectResourceBudgets>().type.toBe<
+        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
+        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
+        expect<keyof ProjectResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
         >();
     });

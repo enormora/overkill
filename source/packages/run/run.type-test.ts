@@ -8,19 +8,20 @@ import type {
     TestControlsInput
 } from '../engine/engine.entry-point.ts';
 import {
-    RunConfigError,
+    ConfigError,
     RunResolutionError,
+    type TestProfileConfig,
     type defineConfig,
     type DynamicWorkUnitId,
-    type loadRunConfig,
-    type LoadedRunConfig,
+    type loadConfig,
+    type LoadedConfig,
     type orchestrator,
     type PlacementPlan,
     type PlacementTrace,
     type ResolvedRun,
     type RunCommand,
-    type RunConfig,
-    type RunConfigLoadRequest,
+    type NormalizedConfig,
+    type ConfigLoadRequest,
     type RunEngineSelection,
     type RunExecutionFacts,
     type RunExecutionPlanError,
@@ -29,48 +30,50 @@ import {
     type RunIfMain,
     type RunIfMainOptions,
     type RunIfMainRootOptions,
-    type RunHostProcess,
+    type HostProcess,
     type RunHostProcessFacts,
     type RunHostProcessReason,
     type RunInvocationTimingOptions,
     type runIfMain,
-    type RunIntegrationExecution,
-    type RunIntegrationProfileConfig,
-    type RunMaxConcurrency,
-    type RunMicrotestExecution,
+    type IntegrationExecution,
+    type IntegrationProfileConfig,
+    type MaxConcurrency,
+    type MicrotestExecution,
     type RunSelection,
-    type RunMicrotestProfileConfig,
+    type MicrotestProfileConfig,
     type RunOrder,
     type RunOrchestrator,
-    type RunProcessModel,
-    type RunProfileConfig,
-    type RunProfileFiles,
-    type RunProjectConfig,
-    type RunProjectIntegrationProfileConfig,
-    type RunProjectIntegrationExecution,
-    type RunProjectProfileFiles,
-    type RunProjectMicrotestProfileConfig,
-    type RunProjectMicrotestExecution,
-    type RunProjectProfileConfig,
-    type RunResourceBudgets,
-    type RunResourceUsagePolicy,
+    type ProcessModel,
+    type ProfileConfig,
+    type BenchmarkProfileConfig,
+    type ProfileFiles,
+    type Config,
+    type ProjectIntegrationProfileConfig,
+    type ProjectIntegrationExecution,
+    type ProjectProfileFiles,
+    type ProjectMicrotestProfileConfig,
+    type ProjectMicrotestExecution,
+    type ProjectProfileConfig,
+    type ProjectBenchmarkProfileConfig,
+    type ResourceBudgets,
+    type ResourceUsagePolicy,
     type ResourceOwnershipPlan,
     type RunRequest,
-    type RunScheduling,
+    type Scheduling,
     type RunTestFamily,
-    type RunProjectTimingProfilePolicy,
+    type ProjectTimingProfilePolicy,
     type TimingCollectionMode,
     type TimingCollectionOverride,
     type TimingProfilePolicy,
-    type RunWorkDistribution,
-    type RunWorkGroup,
-    type RunWorkGroupGranularity,
-    type RunWorkGroupOrder,
-    type RunWorkGroupScheduling,
-    type RunWorkGroupWorkerLifecycle,
-    type RunWorkerPoolAssignmentPolicy,
-    type RunWorkerPoolDispatchPolicy,
-    type RunWorkerLifecycle,
+    type WorkDistribution,
+    type WorkGroup,
+    type WorkGroupGranularity,
+    type WorkGroupOrder,
+    type WorkGroupScheduling,
+    type WorkGroupWorkerLifecycle,
+    type WorkerPoolAssignmentPolicy,
+    type WorkerPoolDispatchPolicy,
+    type WorkerLifecycle,
     type RunWorkerCountFacts,
     type RuntimeId,
     type TraceWorkUnitId,
@@ -147,7 +150,7 @@ type ExpectedPlacementTraceKinds = {
     readonly 'worker-crashed': true;
 };
 type ExpectedRunWorkDistribution = {
-    readonly groups: readonly [RunWorkGroup, ...readonly RunWorkGroup[]];
+    readonly groups: readonly [WorkGroup, ...readonly WorkGroup[]];
     readonly mode: 'group';
     readonly unmatched: 'file' | 'reject';
 } | {
@@ -188,7 +191,7 @@ function assertWorkIdentityTypes(): void {
 describe('@overkill-dev/run', function () {
     test('exposes the typed run command surface', function () {
         expect<keyof RunCommand>().type.toBe<'config' | 'cwd' | 'engine' | 'request'>();
-        expect<RunCommand['config']>().type.toBe<RunConfig>();
+        expect<RunCommand['config']>().type.toBe<NormalizedConfig>();
         expect<RunCommand['cwd']>().type.toBe<string>();
         expect<RunCommand['engine']>().type.toBe<RunEngineSelection>();
         expect<RunCommand['request']>().type.toBe<RunRequest>();
@@ -228,7 +231,7 @@ describe('@overkill-dev/run', function () {
         expect<RunRequest['execution']['mode']>().type.toBe<'profile-default'>();
         expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
         expect<RunRequest['profile']>().type.toBe<string>();
-        expect<RunRequest['resourceBudgetOverrides']>().type.toBe<RunResourceBudgets | null>();
+        expect<RunRequest['resourceBudgetOverrides']>().type.toBe<ResourceBudgets | null>();
         expect<RunRequest['timingCollection']>().type.toBe<TimingCollectionOverride>();
         expect<Pick<RunRequest, 'capture' | 'coverage' | 'order'>>().type.toBe<{
             readonly capture: 'buffered' | 'live';
@@ -243,11 +246,11 @@ describe('@overkill-dev/run', function () {
         expect<RunExecutionFacts['engine']['kind']>().type.toBe<'default' | 'instance' | 'module'>();
         expect<RunExecutionFacts['capture']>().type.toBe<'buffered' | 'live'>();
         expect<RunExecutionFacts['coverage']>().type.toBe<boolean>();
-        expect<RunExecutionFacts['maxConcurrency']>().type.toBe<RunMaxConcurrency>();
-        expect<RunExecutionFacts['processModel']>().type.toBe<RunProcessModel>();
+        expect<RunExecutionFacts['maxConcurrency']>().type.toBe<MaxConcurrency>();
+        expect<RunExecutionFacts['processModel']>().type.toBe<ProcessModel>();
         expect<RunExecutionFacts['placementPlan']>().type.toBe<PlacementPlan | null>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
-        expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<RunResourceUsagePolicy>();
+        expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<ResourceUsagePolicy>();
         expect<RunExecutionFacts['timingCollection']>().type.toBe<TimingCollectionMode>();
     });
 
@@ -256,24 +259,24 @@ describe('@overkill-dev/run', function () {
     });
 
     test('exposes run scheduling and family facts', function () {
-        expect<RunExecutionFacts['scheduling']>().type.toBe<RunScheduling>();
+        expect<RunExecutionFacts['scheduling']>().type.toBe<Scheduling>();
         expect<RunExecutionFacts['testFamily']>().type.toBe<RunTestFamily>();
         expect<
             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workerLifecycle']
         >()
             .type
-            .toBe<RunWorkerLifecycle>();
+            .toBe<WorkerLifecycle>();
         expect<
             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['workDistribution']
         >()
             .type
-            .toBe<RunWorkDistribution>();
+            .toBe<WorkDistribution>();
         expect<
             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['hostProcess']
         >()
             .type
             .toBe<RunHostProcessFacts>();
-        expect<RunHostProcess>().type.toBe<ExpectedRunHostProcess>();
+        expect<HostProcess>().type.toBe<ExpectedRunHostProcess>();
         expect<RunHostProcessFacts>().type.toBe<ExpectedRunHostProcessFacts>();
         expect<RunHostProcessReason>().type.toBe<
             keyof {
@@ -285,14 +288,14 @@ describe('@overkill-dev/run', function () {
                 readonly profiling: true;
             }
         >();
-        expect<RunWorkDistribution>().type.toBe<ExpectedRunWorkDistribution>();
-        expect<RunWorkGroup>().type.toBe<{
+        expect<WorkDistribution>().type.toBe<ExpectedRunWorkDistribution>();
+        expect<WorkGroup>().type.toBe<{
             readonly fileSets: readonly [string, ...readonly string[]];
-            readonly granularity: RunWorkGroupGranularity;
+            readonly granularity: WorkGroupGranularity;
             readonly name: string;
-            readonly order: RunWorkGroupOrder;
-            readonly scheduling: RunWorkGroupScheduling;
-            readonly workerLifecycle: RunWorkGroupWorkerLifecycle;
+            readonly order: WorkGroupOrder;
+            readonly scheduling: WorkGroupScheduling;
+            readonly workerLifecycle: WorkGroupWorkerLifecycle;
         }>();
     });
 
@@ -306,7 +309,7 @@ describe('@overkill-dev/run', function () {
             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['dispatchPolicy']
         >()
             .type
-            .toBe<RunWorkerPoolDispatchPolicy>();
+            .toBe<WorkerPoolDispatchPolicy>();
     });
 
     test('exposes work-unit planning types', function () {
@@ -314,8 +317,8 @@ describe('@overkill-dev/run', function () {
         expect<WorkUnit['work']>().type.toBe<readonly [WorkId, ...readonly WorkId[]]>();
         expect<WorkUnit['id']['mode']>().type.toBe<WorkUnitMode>();
         expect<WorkUnit['order']>().type.toBe<RunOrder>();
-        expect<WorkUnit['scheduling']>().type.toBe<RunScheduling>();
-        expect<WorkUnit['workerLifecycle']>().type.toBe<RunWorkerLifecycle>();
+        expect<WorkUnit['scheduling']>().type.toBe<Scheduling>();
+        expect<WorkUnit['workerLifecycle']>().type.toBe<WorkerLifecycle>();
         expect<PlacementPlan['lanes'][number]['executor']['kind']>().type.toBe<
             'browser' | 'local-process' | 'local-worker' | 'remote'
         >();
@@ -360,25 +363,25 @@ describe('@overkill-dev/run worker-pool placement', function () {
     });
 
     test('exposes worker-pool profile maximums', function () {
-        expect<RunProjectIntegrationProfileConfig>().type.toBeAssignableFrom<{
+        expect<ProjectIntegrationProfileConfig>().type.toBeAssignableFrom<{
             readonly execution: {
                 readonly maxWorkers: number;
                 readonly processModel: 'worker-pool';
             };
-            readonly files: RunProjectProfileFiles;
+            readonly files: ProjectProfileFiles;
             readonly testFamily: 'integration';
         }>();
     });
 
     test('exposes per-executor concurrency limits', function () {
-        expect<RunMaxConcurrency>().type.toBe<number | 'unlimited'>();
-        expect<RunMicrotestExecution['maxConcurrency']>().type.toBe<RunMaxConcurrency>();
-        expect<RunIntegrationExecution['maxConcurrency']>().type.toBe<RunMaxConcurrency>();
-        expect<RunProjectMicrotestExecution>().type.toBeAssignableFrom<{
+        expect<MaxConcurrency>().type.toBe<number | 'unlimited'>();
+        expect<MicrotestExecution['maxConcurrency']>().type.toBe<MaxConcurrency>();
+        expect<IntegrationExecution['maxConcurrency']>().type.toBe<MaxConcurrency>();
+        expect<ProjectMicrotestExecution>().type.toBeAssignableFrom<{
             readonly maxConcurrency: 'unlimited';
             readonly processModel: 'in-process';
         }>();
-        expect<RunProjectIntegrationExecution>().type.toBeAssignableFrom<{
+        expect<ProjectIntegrationExecution>().type.toBeAssignableFrom<{
             readonly maxConcurrency: 'unlimited';
             readonly processModel: 'worker-pool';
         }>();
@@ -389,11 +392,11 @@ describe('@overkill-dev/run worker-pool placement', function () {
             Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>['assignmentPolicy']
         >()
             .type
-            .toBe<RunWorkerPoolAssignmentPolicy>();
-        expect<RunWorkerPoolAssignmentPolicy>()
+            .toBe<WorkerPoolAssignmentPolicy>();
+        expect<WorkerPoolAssignmentPolicy>()
             .type
             .toBe<'case-count-balanced' | 'duration-history-balanced' | 'stable'>();
-        expect<RunWorkerPoolDispatchPolicy>()
+        expect<WorkerPoolDispatchPolicy>()
             .type
             .toBe<'dynamic-lease' | 'static-assignment'>();
     });
@@ -407,21 +410,21 @@ describe('@overkill-dev/run config', function () {
     });
 
     test('exposes config and resolution errors', function () {
-        expect<keyof RunConfig>().type.toBe<
+        expect<keyof NormalizedConfig>().type.toBe<
             'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
         >();
-        expect<RunConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
-        expect<RunConfig['profiles'][string]>().type.toBe<RunProfileConfig>();
-        expect<RunProfileConfig>().type.toBe<RunIntegrationProfileConfig | RunMicrotestProfileConfig>();
-        expect<RunConfig['profiles']['backend-http']>().type.toBe<RunProfileConfig>();
-        expect<RunConfig['reporters']>().type.toBe<readonly DefinedReporter[]>();
-        expect<RunProfileConfig['timings']>().type.toBe<TimingProfilePolicy>();
+        expect<NormalizedConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
+        expect<NormalizedConfig['profiles'][string]>().type.toBe<ProfileConfig>();
+        expect<ProfileConfig>().type.toBe<BenchmarkProfileConfig | IntegrationProfileConfig | MicrotestProfileConfig>();
+        expect<NormalizedConfig['profiles']['backend-http']>().type.toBe<ProfileConfig>();
+        expect<NormalizedConfig['reporters']>().type.toBe<readonly DefinedReporter[] | null>();
+        expect<TestProfileConfig['timings']>().type.toBe<TimingProfilePolicy>();
         expect<TimingProfilePolicy>().type.toBe<{ readonly collection: TimingCollectionMode; }>();
-        expect<RunProjectTimingProfilePolicy>().type.toBe<{ readonly collection: TimingCollectionMode; }>();
+        expect<ProjectTimingProfilePolicy>().type.toBe<{ readonly collection: TimingCollectionMode; }>();
     });
 
     test('exposes run resource budget and resolution error types', function () {
-        expect<keyof RunResourceBudgets>().type.toBe<
+        expect<keyof ResourceBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
         >();
         expect(new RunResolutionError('Unsupported.', undefined, 'unsupported-request')).type.toBe<
@@ -433,38 +436,38 @@ describe('@overkill-dev/run config', function () {
     });
 
     test('exposes profile file discovery types', function () {
-        expect<RunMicrotestProfileConfig['files']>().type.toBe<RunProfileFiles | null>();
-        expect<RunIntegrationProfileConfig['files']>().type.toBe<RunProfileFiles>();
-        expect<RunProfileFiles>().type.toBeAssignableFrom<RuntimeProfileFilePatterns>();
-        expect<RunProfileFiles>().type.toBeAssignableFrom<RuntimeProfileFileSets>();
-        expect<RunProfileFiles>().type.not.toBeAssignableFrom<MixedRuntimeProfileFiles>();
-        expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
-        expect<RunProjectIntegrationProfileConfig['files']>().type.toBe<RunProjectProfileFiles>();
-        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
-        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
+        expect<MicrotestProfileConfig['files']>().type.toBe<ProfileFiles | null>();
+        expect<IntegrationProfileConfig['files']>().type.toBe<ProfileFiles>();
+        expect<ProfileFiles>().type.toBeAssignableFrom<RuntimeProfileFilePatterns>();
+        expect<ProfileFiles>().type.toBeAssignableFrom<RuntimeProfileFileSets>();
+        expect<ProfileFiles>().type.not.toBeAssignableFrom<MixedRuntimeProfileFiles>();
+        expect<ProjectMicrotestProfileConfig['files']>().type.toBe<ProjectProfileFiles | undefined>();
+        expect<ProjectIntegrationProfileConfig['files']>().type.toBe<ProjectProfileFiles>();
+        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
+        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
     });
 
     test('exposes config loading helpers from the main package surface', function () {
-        expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
-        expect<typeof loadRunConfig>().type.toBe<
-            (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>
+        expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
+        expect<typeof loadConfig>().type.toBe<
+            (request: ConfigLoadRequest) => Promise<LoadedConfig>
         >();
-        expect<RunProjectConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
-        expect<RunProjectConfig['reporters']>().type.toBe<
+        expect<Config['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
+        expect<Config['reporters']>().type.toBe<
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
         >();
-        expect<RunProjectProfileConfig>().type.toBe<
-            RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig
+        expect<ProjectProfileConfig>().type.toBe<
+            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
         >();
-        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
-            readonly execution: RunProjectMicrotestProfileConfig['execution'];
+        expect<ProjectProfileConfig>().type.toBeAssignableFrom<{
+            readonly execution: ProjectMicrotestProfileConfig['execution'];
             readonly testFamily: 'microtest';
         }>();
-        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
-            readonly files: RunProjectProfileFiles;
+        expect<ProjectProfileConfig>().type.toBeAssignableFrom<{
+            readonly files: ProjectProfileFiles;
             readonly testFamily: 'integration';
         }>();
-        expect<RunIntegrationProfileConfig>().type.toBeAssignableFrom<{
+        expect<IntegrationProfileConfig>().type.toBeAssignableFrom<{
             readonly attachments: AttachmentLimits;
             readonly retries: null;
             readonly execution: {
@@ -474,26 +477,26 @@ describe('@overkill-dev/run config', function () {
                 readonly assignmentPolicy: 'case-count-balanced';
                 readonly dispatchPolicy: 'dynamic-lease';
                 readonly hedging: { readonly mode: 'off'; };
-                readonly maxConcurrency: RunMaxConcurrency;
+                readonly maxConcurrency: MaxConcurrency;
                 readonly maxWorkers: null;
                 readonly workDistribution: { readonly mode: 'file'; };
                 readonly workerLifecycle: 'reuse';
             };
-            readonly files: RunProfileFiles;
+            readonly files: ProfileFiles;
             readonly reporters: null;
-            readonly resourceUsage: RunResourceUsagePolicy;
+            readonly resourceUsage: ResourceUsagePolicy;
             readonly testFamily: 'integration';
             readonly timings: TimingProfilePolicy;
             readonly timeouts: RunExecutionFacts['timeoutPolicy'];
         }>();
-        expect<RunProjectIntegrationProfileConfig>().type.not.toBeAssignableFrom<{
+        expect<ProjectIntegrationProfileConfig>().type.not.toBeAssignableFrom<{
             readonly execution: {
                 readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };
                 readonly processModel: 'worker-pool';
             };
-            readonly files: RunProjectProfileFiles;
+            readonly files: ProjectProfileFiles;
             readonly testFamily: 'integration';
         }>();
-        expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
+        expect(new ConfigError('Invalid config.')).type.toBe<ConfigError>();
     });
 });

@@ -4,7 +4,7 @@ import type { RunnerError, RunResourceUsageTracker } from '../packages/engine/en
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
-import { createRunConfigLoader, type RunConfigLoader } from '../run/run-config.ts';
+import { createConfigLoader, type ConfigLoader } from '../config/config.ts';
 import { directRunFacts, finalizeDirectRunResult } from '../run/run-if-main-facts.ts';
 import {
     assertTestPlanCasesMatchProfilePolicy,
@@ -125,10 +125,10 @@ function createConfigModules(
     };
 }
 
-function createFixtureRunConfigLoader(cwd: string, config: DirectRunConfigFixture | null): RunConfigLoader {
+function createFixtureRunConfigLoader(cwd: string, config: DirectRunConfigFixture | null): ConfigLoader {
     const modules = createConfigModules(cwd, config);
 
-    return createRunConfigLoader({
+    return createConfigLoader({
         async fileExists(filePath) {
             return Object.hasOwn(modules, filePath);
         },
@@ -174,7 +174,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
     let exitCode: number | string | null | undefined = null;
     let stderr = '';
     let undeliveredRunnerErrors: readonly RunnerError[] = [];
-    const loadRunConfig = createFixtureRunConfigLoader(cwd, input.config);
+    const loadConfig = createFixtureRunConfigLoader(cwd, input.config);
     const resolveDirectProfile = createDirectProfileResolver({
         fileURLToPath,
         glob(pattern, options) {
@@ -197,7 +197,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
 
             return asyncMatches(matches);
         },
-        loadRunConfig,
+        loadConfig,
         async realpath(filePath) {
             const absolutePath = resolve(filePath);
 
@@ -240,7 +240,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
                 return finalizeDirectRunResult(facts, runResult);
             },
             outputRenderer: command.config.outputRenderer,
-            reporters: profile.reporters ?? command.config.reporters,
+            reporters: profile.reporters ?? command.config.reporters ?? [],
             resourceBudgets: facts.execution.resourceUsagePolicy.budgets,
             resourceUsageTracker: createResourceUsageTracker(),
             runtimePolicy: null,

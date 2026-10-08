@@ -1,16 +1,9 @@
-import { selectedProfile } from './run-facts.ts';
-import {
-    copyRunEngineSelection,
-    copyRunConfig,
-    copyRunRequest,
-    freezeValue
-} from './run-support.ts';
-import type {
-    RunCommand,
-    RunConfig,
-    RunProfileConfig,
-    RunRequest
-} from './run-types.ts';
+import { copyConfig } from '../config/snapshot.ts';
+import type { NormalizedConfig, TestProfileConfig } from '../config/types.ts';
+import { selectTestProfile } from './test-profile.ts';
+import { copyRunEngineSelection, freezeValue } from './run-support.ts';
+import { copyRunRequest } from './request-snapshot.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     assertSupportedProcessEngine,
@@ -19,36 +12,36 @@ import {
 import { invalidRequest } from './run-errors.ts';
 
 export type ResolvedRunInput = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly engine: RunCommand['engine'];
     readonly files: Awaited<ReturnType<RunOrchestratorDependencies['discoverRunFilesWithProjectRoot']>>['files'];
-    readonly profile: RunProfileConfig;
+    readonly profile: TestProfileConfig;
     readonly projectRoot: string;
     readonly request: RunRequest;
 };
 
 function assertMicrotestCaptureSupported(
     request: RunRequest,
-    profile: RunProfileConfig
+    profile: TestProfileConfig
 ): void {
     if (profile.testFamily === 'microtest' && request.capture === 'live') {
         invalidRequest('Microtest profiles do not support live capture.');
     }
 }
 
-function assertWorkerCountSupported(request: RunRequest, profile: RunProfileConfig): void {
+function assertWorkerCountSupported(request: RunRequest, profile: TestProfileConfig): void {
     if (request.workers !== null && profile.execution.processModel !== 'worker-pool') {
         invalidRequest('Worker count can only be requested for worker-pool profiles.');
     }
 }
 
-function assertCoverageSupported(request: RunRequest, profile: RunProfileConfig): void {
+function assertCoverageSupported(request: RunRequest, profile: TestProfileConfig): void {
     if (request.coverage && profile.testFamily !== 'microtest') {
         invalidRequest('Coverage can only be requested for microtest profiles.');
     }
 }
 
-function assertProfileRequestSupported(request: RunRequest, profile: RunProfileConfig): void {
+function assertProfileRequestSupported(request: RunRequest, profile: TestProfileConfig): void {
     assertCoverageSupported(request, profile);
     assertMicrotestCaptureSupported(request, profile);
     assertWorkerCountSupported(request, profile);
@@ -60,8 +53,8 @@ export async function readResolvedRunInput(
 ): Promise<ResolvedRunInput> {
     validateRunInput(command);
     const request = freezeValue(copyRunRequest(command.request));
-    const config = freezeValue(copyRunConfig(command.config));
-    const profile = selectedProfile(request, config);
+    const config = freezeValue(copyConfig(command.config));
+    const profile = selectTestProfile(request.profile, config);
     assertProfileRequestSupported(request, profile);
     assertSupportedProcessEngine(command, profile);
     const discovery = freezeValue(

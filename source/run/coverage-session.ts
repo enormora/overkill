@@ -8,6 +8,7 @@ import type {
     CoverageThresholdFailure
 } from '../engine/coverage-artifact.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
+import type { CoveragePolicy } from '../config/types.ts';
 import {
     emptyTimingSpanMetadata,
     type RunTimingMeasurement
@@ -19,7 +20,6 @@ import {
     type CoverageReportRequest
 } from './coverage-reporting.ts';
 import { createCoveragePaths, type CoveragePaths } from './coverage-paths.ts';
-import type { RunCoveragePolicy } from './run-types.ts';
 
 export type CoverageSession = {
     readonly childProcess: SupervisedChildCoverage | null;
@@ -29,7 +29,7 @@ export type CoverageSession = {
 };
 
 export type CoverageSessionRequest = {
-    readonly coverage: RunCoveragePolicy;
+    readonly coverage: CoveragePolicy;
     readonly processModel: 'in-process' | 'supervised-process';
     readonly paths: CoveragePaths;
     readonly testFiles: readonly string[];
@@ -183,7 +183,7 @@ function resultWithCoverageError(result: RunResult, error: RunnerError): RunResu
 }
 
 function coverageSourceScope(
-    policy: RunCoveragePolicy,
+    policy: CoveragePolicy,
     testFiles: readonly string[]
 ): CoverageReportRequest['sourceScope'] {
     const excludedFiles = new Set(testFiles.map(function resolveTestFile(filePath) {
@@ -214,7 +214,7 @@ function coveragePercentageText(percentage: number): string {
 
 function thresholdFailures(
     summary: CoverageArtifact['payload']['summary'],
-    policy: RunCoveragePolicy
+    policy: CoveragePolicy
 ): readonly CoverageThresholdFailure[] {
     const metrics = [ 'lines', 'functions', 'branches' ] as const;
 
@@ -260,7 +260,7 @@ function coverageThresholdError(failures: readonly CoverageThresholdFailure[]): 
 function resultWithCoverageArtifact(
     result: RunResult,
     artifact: CoverageArtifact,
-    policy: RunCoveragePolicy
+    policy: CoveragePolicy
 ): RunResult {
     const thresholdError = coverageThresholdError(thresholdFailures(artifact.payload.summary, policy));
 

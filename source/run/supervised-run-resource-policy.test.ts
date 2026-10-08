@@ -5,6 +5,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
+import type { ResourceBudgets } from '../config/types.ts';
 import {
     crashError,
     findResourceBudgetBreach,
@@ -12,7 +13,6 @@ import {
     type ResourceBudgetBreach
 } from './supervised-run-resource-policy.ts';
 import { createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
-import type { RunResourceBudgets } from './run-types.ts';
 
 const firstCaseId: CaseId = {
     file: 'source/example.test.ts',
@@ -40,14 +40,14 @@ const sample: ResourceUsageSnapshot = {
     javaScriptEngineHeapBytes: 200,
     residentSetBytes: 300
 };
-const noBudgetsExceeded: RunResourceBudgets = {
+const noBudgetsExceeded: ResourceBudgets = {
     activeResourceCount: 2,
     javaScriptEngineHeapBytes: 200,
     residentSetBytes: 300,
     residentSetGrowthBytesPerSecond: 200
 };
 
-function noBudgets(): RunResourceBudgets {
+function noBudgets(): ResourceBudgets {
     return {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,

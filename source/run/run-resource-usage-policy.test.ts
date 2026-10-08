@@ -10,11 +10,12 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { NormalizedConfig } from '../config/types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
-const defaultConfig: RunConfig = defaultRunConfig({
+const defaultConfig: NormalizedConfig = defaultRunConfig({
     outputRenderer: defineOutputRenderer(function createEmptyOutputRenderer() {
         return {
             render() {
@@ -37,7 +38,7 @@ function plainData(value: unknown): unknown {
     return structuredClone(value);
 }
 
-function createRunCommand(config: RunConfig, request: RunRequest): RunCommand {
+function createRunCommand(config: NormalizedConfig, request: RunRequest): RunCommand {
     return {
         config,
         cwd: process.cwd(),

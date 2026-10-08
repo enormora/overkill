@@ -6,15 +6,16 @@ import {
     loadUnimplementedBaselineCommands,
     loadUnimplementedBenchmarkCommands
 } from '../../run/command-line-unimplemented-commands.ts';
-import { loadRunConfig } from './config.entry-point.ts';
+import { loadConfig } from './config.entry-point.ts';
 
 export {
     commandLineExitCodes
 } from '../../run/command-line-command.ts';
 export {
     defineConfig,
-    loadRunConfig,
-    RunConfigError
+    normalizeConfig,
+    loadConfig,
+    ConfigError
 } from './config.entry-point.ts';
 
 const commandLoaders = {
@@ -44,7 +45,7 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
                         discoverRunFilesWithProjectRoot: runDependencies.runDiscovery.discoverRunFilesWithProjectRoot,
                         loadRunEngineModule: runDependencies.loadRunEngineModule,
                         loadRunTestModules: runDependencies.loadRunTestModules,
-                        loadRunConfig,
+                        loadConfig,
                         startSupervisedChild: childProcessStarters.startSupervisedChild,
                         startWorkerPoolHost: childProcessStarters.startWorkerPoolHost
                     }
@@ -92,7 +93,7 @@ async function loadDefaultRunner(): Promise<CommandLineRunner> {
             discoverRunFilesWithProjectRoot: dependenciesModule.runDiscovery.discoverRunFilesWithProjectRoot,
             loadRunEngineModule: dependenciesModule.loadRunEngineModule,
             loadRunTestModules: dependenciesModule.loadRunTestModules,
-            loadRunConfig,
+            loadConfig,
             startSupervisedChild: childProcessStarters.startSupervisedChild,
             startWorkerPoolHost: childProcessStarters.startWorkerPoolHost
         }
@@ -136,22 +137,26 @@ export type {
     NodeCommandLineRunnerOptions
 } from '../../run/node-command-line-runner.ts';
 export type {
-    LoadedRunConfig,
-    RunConfigLoader,
-    RunConfigLoaderDependencies,
-    RunConfigLoadRequest,
-    RunProjectConfig,
-    RunProjectIntegrationExecution,
-    RunProjectIntegrationProfileConfig,
-    RunProjectMeasuredResourceUsage,
-    RunProjectMicrotestExecution,
-    RunProjectMicrotestProfileConfig,
-    RunProjectProfileFiles,
-    RunProjectProfileConfig,
-    RunProjectProfilesConfig,
-    RunProjectResourceBudgets,
-    RunProjectResourceUsageConfig,
-    RunProjectTimingProfilePolicy,
-    RunProjectTimeoutConfig,
-    RunProjectUnmeasuredResourceUsage
-} from '../../run/run-config.ts';
+    LoadedConfig,
+    ConfigLoader,
+    ConfigLoaderDependencies,
+    ConfigLoadRequest,
+    Config,
+    ProjectIntegrationExecution,
+    ProjectIntegrationProfileConfig,
+    ProjectMeasuredResourceUsage,
+    ProjectMicrotestExecution,
+    ProjectMicrotestProfileConfig,
+    ProjectProfileFiles,
+    ProjectProfileConfig,
+    ProjectProfilesConfig,
+    ProjectResourceBudgets,
+    ProjectResourceUsageConfig,
+    ProjectTimingProfilePolicy,
+    ProjectTimeoutConfig,
+    ProjectUnmeasuredResourceUsage
+} from '../../config/config.ts';
+
+export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';
+
+export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';

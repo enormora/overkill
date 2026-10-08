@@ -1,7 +1,7 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
-import { integrationProfileSchema, microtestProfileSchema } from './run-config-schema.ts';
-import type { LoadedRunConfig } from './run-config.ts';
+import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
+import type { LoadedConfig } from './config.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const files = { include: [ 'source/**/*.integration.test.ts' ] };
@@ -18,7 +18,7 @@ const invalidPolicies: readonly unknown[] = [
     null
 ];
 
-async function integrationConfig(retries: unknown): Promise<LoadedRunConfig> {
+async function integrationConfig(retries: unknown): Promise<LoadedConfig> {
     const loadConfig = createSingleConfigModuleLoader('overkill.config.js', {
         config: { profiles: { service: { testFamily: 'integration', files, retries } } }
     });
@@ -27,7 +27,7 @@ async function integrationConfig(retries: unknown): Promise<LoadedRunConfig> {
 
 export const testNode = createSuite({
     ...metadata,
-    title: 'source/run/run-config-retries.test.ts',
+    title: 'source/config/config-retries.test.ts',
     children: [
         ...invalidPolicies.map(function invalidPolicy(retries, index) {
             return createTestCase({

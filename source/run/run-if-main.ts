@@ -1,4 +1,5 @@
 import type { TestNode } from '../engine/test-node.ts';
+import type { NormalizedConfig } from '../config/types.ts';
 import { formatRunnerErrorDiagnostics } from './command-line-command.ts';
 import type { DirectEntrypointRunner } from './run.ts';
 import {
@@ -10,7 +11,7 @@ import {
     type RunIfMainOptions
 } from './run-if-main-options.ts';
 import type { DirectProfileContext } from './run-if-main-profile.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
 
 export type RunIfMain = (
     meta: Readonly<ImportMeta>,
@@ -65,7 +66,7 @@ function directRunRequest(context: DirectRunContext): RunRequest {
     };
 }
 
-async function directRunConfig(context: DirectRunContext): Promise<RunConfig> {
+async function directRunConfig(context: DirectRunContext): Promise<NormalizedConfig> {
     const reporters = await selectedReporters(context.profile, context.config, context.options);
 
     return {

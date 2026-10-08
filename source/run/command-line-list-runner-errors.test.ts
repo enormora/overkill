@@ -60,7 +60,7 @@ export const testNode = createOverkillSuite({
                     ...createListDependencies(async function resolveCommand(command) {
                         return createResolvedRun(command, []);
                     }, createMemoryReporter),
-                    async loadRunConfig() {
+                    async loadConfig() {
                         throw new Error('Config failed.');
                     }
                 });

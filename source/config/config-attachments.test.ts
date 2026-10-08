@@ -1,14 +1,14 @@
 import { defaultRunRequest, defaultIntegrationProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import type { RunCommand } from './run-types.ts';
-import { validateRunInput } from './run-validation.ts';
-import { attachmentLimitsSchema, integrationProfileSchema, microtestProfileSchema } from './run-config-schema.ts';
+import type { RunCommand } from '../run/run-types.ts';
+import { validateRunInput } from '../run/run-validation.ts';
+import { attachmentLimitsSchema, integrationProfileSchema, microtestProfileSchema } from './schema.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const files = { include: [ 'source/**/*.integration.test.ts' ] };
 export const testNode = createSuite({
     ...metadata,
-    title: 'source/run/run-config-attachments.test.ts',
+    title: 'source/config/config-attachments.test.ts',
     children: [
         createTestCase({
             ...metadata,

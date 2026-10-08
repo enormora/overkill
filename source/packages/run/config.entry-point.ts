@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { createRunConfigLoader } from '../../run/run-config.ts';
+import { createConfigLoader } from '../../config/config.ts';
 
 async function fileExists(filePath: string): Promise<boolean> {
     try {
@@ -16,39 +16,44 @@ async function importModule(configPath: string): Promise<unknown> {
     return await import(pathToFileURL(configPath).href) as unknown;
 }
 
-export const loadRunConfig = createRunConfigLoader({
+export const loadConfig = createConfigLoader({
     fileExists,
     importModule
 });
 
 export {
-    defineConfig
-} from '../../run/run-config.ts';
-export { RunConfigError } from '../../run/run-errors.ts';
-export type { IntegrationRetryPolicy, RetryArtifactPolicy } from '../../run/run-execution-config.ts';
-export type { RunProjectIntegrationRetryPolicy } from '../../run/run-config-schema.ts';
+    defineConfig,
+    normalizeConfig
+} from '../../config/config.ts';
+export { ConfigError } from '../../config/config-error.ts';
+export type { IntegrationRetryPolicy, RetryArtifactPolicy } from '../../config/execution.ts';
+export type { ProjectIntegrationRetryPolicy } from '../../config/schema.ts';
 export type {
-    LoadedRunConfig,
-    RunConfigLoader,
-    RunConfigLoaderDependencies,
-    RunConfigLoadRequest,
-    RunProjectCoverageOutput,
-    RunProjectCoveragePolicy,
-    RunProjectCoverageSources,
-    RunProjectCoverageThresholds,
-    RunProjectAttachmentLimits,
-    RunProjectConfig,
-    RunProjectIntegrationExecution,
-    RunProjectIntegrationProfileConfig,
-    RunProjectMeasuredResourceUsage,
-    RunProjectMicrotestExecution,
-    RunProjectMicrotestProfileConfig,
-    RunProjectProfileConfig,
-    RunProjectProfileFiles,
-    RunProjectProfilesConfig,
-    RunProjectResourceBudgets,
-    RunProjectResourceUsageConfig,
-    RunProjectTimingProfilePolicy,
-    RunProjectTimeoutConfig,
-    RunProjectUnmeasuredResourceUsage
-} from '../../run/run-config.ts';
+    LoadedConfig,
+    ConfigLoader,
+    ConfigLoaderDependencies,
+    ConfigLoadRequest,
+    ProjectCoverageOutput,
+    ProjectCoveragePolicy,
+    ProjectCoverageSources,
+    ProjectCoverageThresholds,
+    ProjectAttachmentLimits,
+    Config,
+    ProjectIntegrationExecution,
+    ProjectIntegrationProfileConfig,
+    ProjectMeasuredResourceUsage,
+    ProjectMicrotestExecution,
+    ProjectMicrotestProfileConfig,
+    ProjectProfileConfig,
+    ProjectProfileFiles,
+    ProjectProfilesConfig,
+    ProjectResourceBudgets,
+    ProjectResourceUsageConfig,
+    ProjectTimingProfilePolicy,
+    ProjectTimeoutConfig,
+    ProjectUnmeasuredResourceUsage
+} from '../../config/config.ts';
+
+export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';
+
+export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';

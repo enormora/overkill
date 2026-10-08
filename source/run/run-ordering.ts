@@ -1,7 +1,8 @@
 import { uniformInt } from 'pure-rand/distribution/uniformInt';
 import { xoroshiro128plus } from 'pure-rand/generator/xoroshiro128plus';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { RunOrder, RunSeed } from './run-types.ts';
+import type { RunOrder } from '../config/types.ts';
+import type { RunSeed } from './run-types.ts';
 
 const randomSeedRange = 4_294_967_296n;
 

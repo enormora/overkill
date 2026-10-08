@@ -11,7 +11,8 @@ import {
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
-import type { RunCommand, RunRequest, RunTimeoutPolicy } from '../../run/run-types.ts';
+import type { RunCommand, RunRequest } from '../../run/run-types.ts';
+import type { TimeoutPolicy } from '../../config/types.ts';
 
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const staggeredTimeoutFixturePath = 'source/integration-tests/run/fixtures/staggered-timeout.test.ts';
@@ -20,7 +21,7 @@ const emptyTestData = { annotations: {}, controls: {} } as const;
 function supervisedRunCommand(
     paths: readonly string[],
     request: Partial<RunRequest>,
-    timeouts: RunTimeoutPolicy
+    timeouts: TimeoutPolicy
 ): RunCommand {
     return {
         config: defaultRunConfig({

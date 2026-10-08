@@ -2,21 +2,14 @@ import type { Except } from 'type-fest';
 import type { RuntimeId, WorkId } from '../engine/identity.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
+import type { CoveragePolicy, LoaderConfig, TestProfileConfig } from '../config/types.ts';
 import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
-import type {
-    RunCoveragePolicy,
-    RunEngineFacts,
-    RunEnvironmentFacts,
-    RunFacts,
-    RunLoaderConfig,
-    RunProfileConfig,
-    RunRequest
-} from './run-types.ts';
+import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest } from './run-types.ts';
 
 export type RunRecordCoverage = {
     readonly directory: string;
-    readonly policy: RunCoveragePolicy;
+    readonly policy: CoveragePolicy;
     readonly rawDataDirectory: string;
 };
 
@@ -54,12 +47,12 @@ type RunRecordInputs = {
     readonly cwd: string;
     readonly engine: RunEngineFacts;
     readonly environment: RunEnvironmentFacts;
-    readonly execution: RunProfileConfig['execution'];
+    readonly execution: TestProfileConfig['execution'];
     readonly facts: RunFacts | null;
     readonly id: string;
     readonly identities: readonly WorkId[];
     readonly kind: 'single';
-    readonly loader: RunLoaderConfig;
+    readonly loader: LoaderConfig;
     readonly placementTrace: PlacementTrace | null;
     readonly request: RunRecordRequest;
     readonly runtime: ResolvedRuntime | null;

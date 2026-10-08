@@ -4,7 +4,7 @@ import {
     createTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { timingProfilePolicySchema } from './run-config-schema.ts';
+import { timingProfilePolicySchema } from './schema.ts';
 
 function assertValidationSuccess(scope: OverkillScope, data: unknown): void {
     const result = safeParse(timingProfilePolicySchema, data);
@@ -36,7 +36,7 @@ function assertValidationFailure(
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-schema-timings.test.ts',
+    title: 'source/config/config-schema-timings.test.ts',
     annotations: {},
     controls: {},
     children: [

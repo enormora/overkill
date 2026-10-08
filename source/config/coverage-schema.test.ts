@@ -4,7 +4,7 @@ import {
     createTestCase,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
-import { microtestProfileSchema } from './run-config-schema.ts';
+import { microtestProfileSchema } from './schema.ts';
 
 function validationIssues(data: unknown): readonly string[] {
     const result = safeParse(microtestProfileSchema, data);
@@ -14,7 +14,7 @@ function validationIssues(data: unknown): readonly string[] {
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/coverage-config-schema.test.ts',
+    title: 'source/config/coverage-schema.test.ts',
     annotations: {},
     controls: {},
     children: [

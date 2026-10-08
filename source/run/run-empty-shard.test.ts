@@ -9,12 +9,13 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../config/types.ts';
 import { executeEmptyShardRun } from './run-empty-shard.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunCommand, RunConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
@@ -31,7 +32,7 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
     };
 }
 
-function inProcessMicrotestConfig(): RunConfig {
+function inProcessMicrotestConfig(): NormalizedConfig {
     return defaultRunConfig({
         profiles: {
             microtest: defaultMicrotestProfile({

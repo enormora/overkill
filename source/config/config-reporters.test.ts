@@ -1,3 +1,4 @@
+import { selectTestProfile } from '../run/test-profile.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -12,7 +13,7 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import type { LoadedRunConfig } from './run-config.ts';
+import type { LoadedConfig } from './config.ts';
 
 function createReporter(name: string): FixedDefinedReporter {
     return defineFixedReporter({
@@ -27,8 +28,8 @@ function createReporter(name: string): FixedDefinedReporter {
     });
 }
 
-async function loadReporterConfig(): Promise<LoadedRunConfig> {
-    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', {
+async function loadReporterConfig(): Promise<LoadedConfig> {
+    const loadConfig = createSingleConfigModuleLoader('overkill.config.js', {
         config: {
             reporters: [ createReporter('global') ],
             profiles: {
@@ -40,18 +41,18 @@ async function loadReporterConfig(): Promise<LoadedRunConfig> {
         }
     });
 
-    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
+    return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-async function loadConfigValue(config: unknown): Promise<LoadedRunConfig> {
-    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
+async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
+    const loadConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
 
-    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
+    return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
-function reporterNames(scope: OverkillScope, config: LoadedRunConfig): readonly [string, string] {
+function reporterNames(scope: OverkillScope, config: LoadedConfig): readonly [string, string] {
     const globalReporters = config.reporters;
-    const profileReporters = config.profiles.microtest?.reporters;
+    const profileReporters = selectTestProfile('microtest', config).reporters;
 
     scope.require.defined(globalReporters);
     scope.require.defined(profileReporters);
@@ -67,13 +68,13 @@ function reporterNames(scope: OverkillScope, config: LoadedRunConfig): readonly 
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-reporters.test.ts',
+    title: 'source/config/config-reporters.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() preserves global reporter fallback and profile reporter overrides',
+            title: 'loadConfig() preserves global reporter fallback and profile reporter overrides',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -84,7 +85,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects an explicit empty reporter list',
+            title: 'loadConfig() rejects an explicit empty reporter list',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {

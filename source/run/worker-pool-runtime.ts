@@ -10,8 +10,6 @@ import type {
     PlacementPlan,
     RunExecutionFacts,
     ResolvedRun,
-    RunHostProcess,
-    RunWorkerLifecycle,
     WorkUnit
 } from './run-types.ts';
 import {
@@ -197,7 +195,7 @@ export function createPool(options: WorkerPoolCreationOptions): TinypoolInstance
     });
 }
 
-function copiedHostProcess(execution: WorkerPoolExecutionFacts): RunHostProcess {
+function copiedHostProcess(execution: WorkerPoolExecutionFacts): WorkerPoolCreationOptions['hostProcess'] {
     return execution.hostProcess.kind === 'direct'
         ? { kind: 'direct' }
         : {
@@ -235,10 +233,10 @@ function assignedUnits(plan: PlacementPlan): readonly WorkUnit[] {
 }
 
 function laneLifecycle(
-    laneLifecycles: ReadonlyMap<string, RunWorkerLifecycle>,
+    laneLifecycles: ReadonlyMap<string, WorkerPoolCreationOptions['workerLifecycle']>,
     lane: string,
-    workerLifecycle: RunWorkerLifecycle
-): RunWorkerLifecycle {
+    workerLifecycle: WorkerPoolCreationOptions['workerLifecycle']
+): WorkerPoolCreationOptions['workerLifecycle'] {
     const existingLifecycle = laneLifecycles.get(lane);
 
     if (existingLifecycle !== undefined && existingLifecycle !== workerLifecycle) {
@@ -248,8 +246,10 @@ function laneLifecycle(
     return workerLifecycle;
 }
 
-function placementLaneLifecycles(plan: PlacementPlan): ReadonlyMap<string, RunWorkerLifecycle> {
-    const laneLifecycles = new Map<string, RunWorkerLifecycle>();
+function placementLaneLifecycles(
+    plan: PlacementPlan
+): ReadonlyMap<string, WorkerPoolCreationOptions['workerLifecycle']> {
+    const laneLifecycles = new Map<string, WorkerPoolCreationOptions['workerLifecycle']>();
     const units = assignedUnits(plan);
 
     plan.assignments.forEach(function recordLaneLifecycle(assignment, index) {
@@ -270,7 +270,7 @@ type WorkerPoolOptionsInput = {
     readonly resolvedRun: ResolvedRun;
     readonly timing: RunTimingMeasurement | null;
     readonly workerCount: number;
-    readonly workerLifecycle: RunWorkerLifecycle;
+    readonly workerLifecycle: WorkerPoolCreationOptions['workerLifecycle'];
 };
 
 function workerPoolOptions(input: WorkerPoolOptionsInput): WorkerPoolCreationOptions {
@@ -322,7 +322,7 @@ function createExecutionWorkerPool(
     input: WorkerPoolRuntimeInput,
     execution: WorkerPoolExecutionFacts,
     workerCount: number,
-    workerLifecycle: RunWorkerLifecycle
+    workerLifecycle: WorkerPoolCreationOptions['workerLifecycle']
 ): CreatedWorkerPool {
     const options = workerPoolOptions({
         execution,
@@ -369,9 +369,9 @@ function runResourceOwnerRoutes(
 
 function shareableSingleLaneLifecycle(
     placementPlan: PlacementPlan,
-    laneLifecycles: ReadonlyMap<string, RunWorkerLifecycle>,
+    laneLifecycles: ReadonlyMap<string, WorkerPoolCreationOptions['workerLifecycle']>,
     needsInfrastructureOwner: boolean
-): RunWorkerLifecycle | null {
+): WorkerPoolCreationOptions['workerLifecycle'] | null {
     const [ lane ] = placementPlan.lanes;
 
     if (placementPlan.lanes.length !== 1 || lane === undefined) {

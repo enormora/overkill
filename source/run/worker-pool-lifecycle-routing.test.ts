@@ -5,12 +5,12 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
+import type { WorkerLifecycle } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type {
     CreatedWorkerPool,
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
-import type { RunWorkerLifecycle } from './run-types.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createWorkerPoolRuntime,
@@ -25,7 +25,7 @@ export type CreatedWorkerPools = {
     readonly push: (...options: readonly WorkerPoolCreationOptions[]) => number;
 };
 type RoutedLifecycles = {
-    readonly push: (...workerLifecycle: readonly RunWorkerLifecycle[]) => number;
+    readonly push: (...workerLifecycle: readonly WorkerLifecycle[]) => number;
 };
 
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -319,7 +319,7 @@ export function fakeDependencies(
     };
 }
 
-function lifecycleTask(workerLifecycle: RunWorkerLifecycle, lane: string): unknown {
+function lifecycleTask(workerLifecycle: WorkerLifecycle, lane: string): unknown {
     return {
         command: { workerLifecycle },
         kind: 'run',
@@ -366,8 +366,8 @@ async function assertRoutedPoolErrors(scope: OverkillScope, runtime: WorkerPoolR
 async function assertRoutedLifecycleRuns(
     scope: OverkillScope,
     runtime: WorkerPoolRunRuntime,
-    routedLifecycles: readonly RunWorkerLifecycle[],
-    routedHostOutputSinks: readonly RunWorkerLifecycle[]
+    routedLifecycles: readonly WorkerLifecycle[],
+    routedHostOutputSinks: readonly WorkerLifecycle[]
 ): Promise<void> {
     scope.assert.equal(runtime.pool.options.maxThreads, 2);
     scope.assert.equal(await runtime.pool.run(lifecycleTask('reuse', 'worker-1'), runOptions()), 'reuse');
@@ -398,8 +398,8 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool runtime splits and routes mixed lifecycle pools',
             async body(scope: OverkillScope) {
                 const createdWorkerPools: WorkerPoolCreationOptions[] = [];
-                const routedLifecycles: RunWorkerLifecycle[] = [];
-                const routedHostOutputSinks: RunWorkerLifecycle[] = [];
+                const routedLifecycles: WorkerLifecycle[] = [];
+                const routedHostOutputSinks: WorkerLifecycle[] = [];
                 const runtime = await createWorkerPoolRuntime({
                     attachments: null,
                     collectionRunnerErrors: [],

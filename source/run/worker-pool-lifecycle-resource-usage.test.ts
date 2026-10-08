@@ -4,12 +4,12 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import type { WorkerLifecycle } from '../config/types.ts';
 import type {
     CreatedWorkerPool,
     WorkerPoolCreationOptions,
     WorkerPoolResourceUsageTracker
 } from './run-orchestrator-dependencies.ts';
-import type { RunWorkerLifecycle } from './run-types.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { createWorkerPoolRuntime, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import {
@@ -42,7 +42,7 @@ function measuredMixedLifecycleResolvedRun(): WorkerPoolRunRuntime['resolvedRun'
     };
 }
 
-function resourceSnapshot(workerLifecycle: RunWorkerLifecycle, capturedAtMicroseconds: number): ResourceUsageSnapshot {
+function resourceSnapshot(workerLifecycle: WorkerLifecycle, capturedAtMicroseconds: number): ResourceUsageSnapshot {
     return {
         activeResourceCount: workerLifecycle === 'reuse' ? 1 : 2,
         activeResourceTypes: [ workerLifecycle ],
@@ -52,7 +52,7 @@ function resourceSnapshot(workerLifecycle: RunWorkerLifecycle, capturedAtMicrose
     };
 }
 
-function resourceUsageTracker(workerLifecycle: RunWorkerLifecycle): WorkerPoolResourceUsageTracker {
+function resourceUsageTracker(workerLifecycle: WorkerLifecycle): WorkerPoolResourceUsageTracker {
     return {
         finish() {
             const start = resourceSnapshot(workerLifecycle, 1);
@@ -100,8 +100,8 @@ function trackingPool(options: WorkerPoolCreationOptions): CreatedWorkerPool {
 }
 
 function trackingDependencies(createdWorkerPools: CreatedWorkerPools): WorkerPoolRunRuntime['dependencies'] {
-    const routedLifecycles: RunWorkerLifecycle[] = [];
-    const routedHostOutputSinks: RunWorkerLifecycle[] = [];
+    const routedLifecycles: WorkerLifecycle[] = [];
+    const routedHostOutputSinks: WorkerLifecycle[] = [];
 
     return {
         ...fakeDependencies(createdWorkerPools, routedLifecycles, routedHostOutputSinks),

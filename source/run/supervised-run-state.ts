@@ -8,11 +8,11 @@ import {
 } from '../engine/identity.ts';
 import type { PerTestResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
 import { caseAttemptHistory } from '../engine/test-attempt-history.ts';
+import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import type { RunRequest } from './run-types.ts';
 import { createSupervisedOutputCapture } from './supervised-output-capture.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
-import type { RetryArtifactPolicy } from './run-execution-config.ts';
 
 export type StoredRunValue<Value> = StoredValue<Value>;
 export const createStoredRunValue: <Value>(value: Value) => StoredRunValue<Value> = createStoredValue;

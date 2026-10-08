@@ -13,15 +13,11 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from '../../run/command-line-runner.ts';
-import type { LoadedRunConfig } from '../../run/run-config.ts';
+import type { LoadedConfig } from '../../config/config.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
-import type {
-    RunConfig,
-    RunMicrotestProcessModel,
-    RunMicrotestProfileConfig,
-    RunRequest
-} from '../../run/run-types.ts';
+import { defaultCoveragePolicy } from '../../config/defaults.ts';
+import type { RunRequest } from '../../run/run-types.ts';
+import type { NormalizedConfig, MicrotestProcessModel, MicrotestProfileConfig } from '../../config/types.ts';
 
 const emptySuiteFixturePath = 'source/integration-tests/run/fixtures/empty-suite.test.ts';
 const missingTestNodeFixturePath = 'source/integration-tests/run/fixtures/missing-test-node.test.ts';
@@ -43,7 +39,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
     };
 });
 
-function createDefaultMicrotestProfile(): RunMicrotestProfileConfig {
+function createDefaultMicrotestProfile(): MicrotestProfileConfig {
     return {
         coverage: defaultCoveragePolicy,
         execution: {
@@ -73,7 +69,7 @@ function createDefaultMicrotestProfile(): RunMicrotestProfileConfig {
     };
 }
 
-const defaultConfig: RunConfig = {
+const defaultConfig: NormalizedConfig = {
     loader: { sourceMaps: false, stripMode: 'strip-only' },
     outputRenderer: defineOutputRenderer(function createOutputRenderer() {
         return {
@@ -112,7 +108,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
     };
 }
 
-function createLoadedRunConfig(config: RunConfig): LoadedRunConfig {
+function createLoadedRunConfig(config: NormalizedConfig): LoadedConfig {
     return {
         configPath: null,
         loader: config.loader,
@@ -123,7 +119,7 @@ function createLoadedRunConfig(config: RunConfig): LoadedRunConfig {
     };
 }
 
-function createRunnerDependencies(config: RunConfig): CommandLineRunnerDependencies {
+function createRunnerDependencies(config: NormalizedConfig): CommandLineRunnerDependencies {
     return {
         async createDefaultReporter() {
             return memoryReporter;
@@ -134,14 +130,14 @@ function createRunnerDependencies(config: RunConfig): CommandLineRunnerDependenc
         async loadBenchmarkCommands() {
             throw new Error('Benchmark commands are not configured.');
         },
-        async loadRunConfig() {
+        async loadConfig() {
             return createLoadedRunConfig(config);
         },
         orchestrator
     };
 }
 
-function createDiscoveryConfig(processModel: RunMicrotestProcessModel): RunConfig {
+function createDiscoveryConfig(processModel: MicrotestProcessModel): NormalizedConfig {
     return {
         ...defaultConfig,
         profiles: {
@@ -171,7 +167,7 @@ async function runCommandLine(paths: readonly string[]): Promise<CommandLineRunn
     });
 }
 
-async function runDiscoveryCommandLine(processModel: RunMicrotestProcessModel): Promise<CommandLineRunnerResult> {
+async function runDiscoveryCommandLine(processModel: MicrotestProcessModel): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(createDiscoveryConfig(processModel)));
 
     return await runner.runTests({
@@ -181,7 +177,7 @@ async function runDiscoveryCommandLine(processModel: RunMicrotestProcessModel): 
     });
 }
 
-function listConfig(processModel: RunMicrotestProcessModel): RunConfig {
+function listConfig(processModel: MicrotestProcessModel): NormalizedConfig {
     return {
         ...defaultConfig,
         profiles: {
@@ -199,7 +195,7 @@ function listConfig(processModel: RunMicrotestProcessModel): RunConfig {
 
 async function listCommandLine(
     paths: readonly string[],
-    processModel: RunMicrotestProcessModel,
+    processModel: MicrotestProcessModel,
     withOrphans: boolean
 ): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(listConfig(processModel)));
@@ -220,7 +216,7 @@ async function listCommandLine(
     });
 }
 
-async function listDiscoveryCommandLine(processModel: RunMicrotestProcessModel): Promise<CommandLineRunnerResult> {
+async function listDiscoveryCommandLine(processModel: MicrotestProcessModel): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(createDiscoveryConfig(processModel)));
 
     return await runner.listTests({

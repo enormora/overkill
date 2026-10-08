@@ -1,9 +1,9 @@
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { singleAttemptResult, type TestVerdict } from '../engine/run-result.ts';
+import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 import { capturedOutputLimitBytes } from './supervised-output-capture.ts';
-import type { RetryArtifactPolicy } from './run-execution-config.ts';
 import { crashError } from './supervised-run-resource-policy.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;

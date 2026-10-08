@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'tstyche';
+import type { TestProfileConfig } from '../../config/types.ts';
 import type {
     DefinedOutputRenderer,
     DefinedReporter
 } from '../engine/engine.entry-point.ts';
 import {
-    RunConfigError,
+    ConfigError,
     type commandLineExitCodes,
     type commandLineRunner,
     type createNodeCommandLineRunner,
@@ -19,14 +20,15 @@ import {
     type CommandLineRunner,
     type CommandLineRunnerResult,
     type CommandLineRunTestsRequest,
-    type LoadedRunConfig,
-    type RunProjectConfig,
-    type RunProjectIntegrationProfileConfig,
-    type RunProjectMicrotestProfileConfig,
-    type RunProjectProfileFiles,
-    type RunProjectProfileConfig,
-    type RunProjectProfilesConfig,
-    type RunProjectResourceBudgets
+    type LoadedConfig,
+    type Config,
+    type ProjectIntegrationProfileConfig,
+    type ProjectMicrotestProfileConfig,
+    type ProjectProfileFiles,
+    type ProjectProfileConfig,
+    type ProjectBenchmarkProfileConfig,
+    type ProjectProfilesConfig,
+    type ProjectResourceBudgets
 } from './command-line.entry-point.ts';
 import type { RunRequest } from './run.entry-point.ts';
 
@@ -95,39 +97,39 @@ describe('@overkill-dev/run/command-line', function () {
     });
 
     test('exposes typed config helpers', function () {
-        expect<typeof defineConfig>().type.toBe<(config: RunProjectConfig) => RunProjectConfig>();
-        expect<RunProjectConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
-        expect<LoadedRunConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
-        expect<RunProjectConfig['reporters']>().type.toBe<
+        expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
+        expect<Config['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
+        expect<LoadedConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
+        expect<Config['reporters']>().type.toBe<
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
         >();
-        expect<LoadedRunConfig['reporters']>().type.toBe<readonly [DefinedReporter, ...DefinedReporter[]] | null>();
-        expect<RunProjectResourceBudgets['residentSetBytes']>().type.toBe<number | null | undefined>();
-        expect(new RunConfigError('Invalid config.')).type.toBe<RunConfigError>();
+        expect<LoadedConfig['reporters']>().type.toBe<readonly DefinedReporter[] | null>();
+        expect<ProjectResourceBudgets['residentSetBytes']>().type.toBe<number | null | undefined>();
+        expect(new ConfigError('Invalid config.')).type.toBe<ConfigError>();
     });
 
     test('exposes typed runner profiles', function () {
-        expect<RunProjectConfig['profiles']>().type.toBe<RunProjectProfilesConfig | undefined>();
-        expect<RunProjectProfilesConfig[string]>().type.toBe<RunProjectProfileConfig>();
-        expect<RunProjectProfileConfig>().type.toBe<
-            RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig
+        expect<Config['profiles']>().type.toBe<ProjectProfilesConfig | undefined>();
+        expect<ProjectProfilesConfig[string]>().type.toBe<ProjectProfileConfig>();
+        expect<ProjectProfileConfig>().type.toBe<
+            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
         >();
-        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
-            readonly execution: RunProjectMicrotestProfileConfig['execution'];
+        expect<ProjectProfileConfig>().type.toBeAssignableFrom<{
+            readonly execution: ProjectMicrotestProfileConfig['execution'];
             readonly testFamily: 'microtest';
         }>();
-        expect<RunProjectProfileConfig>().type.toBeAssignableFrom<{
-            readonly files: RunProjectProfileFiles;
+        expect<ProjectProfileConfig>().type.toBeAssignableFrom<{
+            readonly files: ProjectProfileFiles;
             readonly testFamily: 'integration';
         }>();
-        expect<RunProjectProfilesConfig['backend-http']>().type.toBe<RunProjectProfileConfig>();
-        expect<RunProjectMicrotestProfileConfig['files']>().type.toBe<RunProjectProfileFiles | undefined>();
-        expect<LoadedRunConfig['profiles']['backend-http']['resourceUsage']['measure']>().type.toBe<boolean>();
-        expect<LoadedRunConfig['profiles']['backend-http']['files']>().type.not.toBe<undefined>();
+        expect<ProjectProfilesConfig['backend-http']>().type.toBe<ProjectProfileConfig>();
+        expect<ProjectMicrotestProfileConfig['files']>().type.toBe<ProjectProfileFiles | undefined>();
+        expect<TestProfileConfig['resourceUsage']['measure']>().type.toBe<boolean>();
+        expect<LoadedConfig['profiles']['backend-http']['files']>().type.not.toBe<undefined>();
     });
 
     test('exposes typed profile file discovery', function () {
-        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
-        expect<RunProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
+        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
+        expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
     });
 });

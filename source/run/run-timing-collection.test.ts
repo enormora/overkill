@@ -1,4 +1,5 @@
 import { createDeterministicClock } from '@enormora/clock';
+import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -18,17 +19,17 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { resolveTimingCollection } from './run-facts.ts';
+
+import { resolveTimingCollection } from './run-profile-facts.ts';
 import {
     createRunTimingMeasurement,
     emptyTimingSpanMetadata,
     resultWithTimingCollection
 } from './run-timing-collection.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 
-function runCommand(config: RunConfig, request: RunRequest): RunCommand {
+function runCommand(config: NormalizedConfig, request: RunRequest): RunCommand {
     return {
         config,
         cwd: process.cwd(),
@@ -67,7 +68,7 @@ function assertMeasuredParentAndLocalSpans(scope: OverkillScope, report: RunPrec
     );
 }
 
-function inProcessConfig(profile = defaultMicrotestProfile()): RunConfig {
+function inProcessConfig(profile = defaultMicrotestProfile()): NormalizedConfig {
     return defaultRunConfig({
         profiles: {
             microtest: {

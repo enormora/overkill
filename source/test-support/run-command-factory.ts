@@ -1,60 +1,58 @@
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
+import type { RunCommand, RunExecutionFacts, RunRequest } from '../run/run-types.ts';
 import type {
-    RunCommand,
-    RunConfig,
-    RunCoveragePolicy,
-    RunExecutionFacts,
-    RunHostProcess,
-    RunIntegrationExecution,
-    RunIntegrationProfileConfig,
-    RunMicrotestExecution,
-    RunMicrotestProfileConfig,
-    RunProfileFiles,
-    RunProfileConfig,
-    RunRequest,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
+    NormalizedConfig,
+    CoveragePolicy,
+    HostProcess,
+    IntegrationExecution,
+    IntegrationProfileConfig,
+    MicrotestExecution,
+    MicrotestProfileConfig,
+    ProfileFiles,
+    TestProfileConfig,
+    ResourceBudgets,
+    ResourceUsagePolicy,
     TimingProfilePolicy,
-    RunTimeoutPolicy,
-    RunWorkDistribution,
-    RunWorkerPoolAssignmentPolicy,
-    RunWorkerPoolDispatchPolicy,
-    RunWorkerPoolHedgingPolicy,
-    RunWorkerLifecycle
-} from '../run/run-types.ts';
+    TimeoutPolicy,
+    WorkDistribution,
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolDispatchPolicy,
+    WorkerPoolHedgingPolicy,
+    WorkerLifecycle
+} from '../config/types.ts';
 import { hostProcessFacts } from '../run/run-host-process.ts';
-import { resolveTimingCollection } from '../run/run-facts.ts';
+import { resolveTimingCollection } from '../run/run-profile-facts.ts';
 
 type WorkerPoolExecutionOverrides = Partial<
-    Extract<RunIntegrationExecution, { readonly processModel: 'worker-pool'; }>
+    Extract<IntegrationExecution, { readonly processModel: 'worker-pool'; }>
 >;
 const defaultMaxConcurrency = 5;
 
 type ResourceUsageOverrides = {
-    readonly budgets?: Partial<RunResourceBudgets>;
+    readonly budgets?: Partial<ResourceBudgets>;
     readonly measure?: boolean;
     readonly samplingIntervalMilliseconds?: number;
 };
 
 type MicrotestProfileOverrides = {
-    readonly coverage?: Partial<RunCoveragePolicy>;
-    readonly execution?: Partial<RunMicrotestExecution>;
-    readonly files?: RunProfileFiles | null;
+    readonly coverage?: Partial<CoveragePolicy>;
+    readonly execution?: Partial<MicrotestExecution>;
+    readonly files?: ProfileFiles | null;
     readonly reporters?: readonly DefinedReporter[] | null;
     readonly resourceUsage?: ResourceUsageOverrides;
     readonly timings?: Partial<TimingProfilePolicy>;
-    readonly timeouts?: Partial<RunTimeoutPolicy>;
+    readonly timeouts?: Partial<TimeoutPolicy>;
 };
 
 type IntegrationProfileOverrides = {
-    readonly execution?: Partial<RunIntegrationExecution>;
-    readonly files?: RunProfileFiles;
+    readonly execution?: Partial<IntegrationExecution>;
+    readonly files?: ProfileFiles;
     readonly reporters?: readonly DefinedReporter[] | null;
     readonly resourceUsage?: ResourceUsageOverrides;
     readonly timings?: Partial<TimingProfilePolicy>;
-    readonly timeouts?: Partial<RunTimeoutPolicy>;
+    readonly timeouts?: Partial<TimeoutPolicy>;
 };
 
 const defaultResourceUsageSamplingIntervalMilliseconds = 100;
@@ -65,14 +63,14 @@ const defaultIntegrationCollectionTimeoutMilliseconds = 5000;
 const defaultIntegrationHardTimeoutMilliseconds = 7000;
 const defaultIntegrationSoftTimeoutMilliseconds = 5000;
 
-const defaultResourceBudgets: RunResourceBudgets = {
+const defaultResourceBudgets: ResourceBudgets = {
     activeResourceCount: null,
     javaScriptEngineHeapBytes: null,
     residentSetBytes: null,
     residentSetGrowthBytesPerSecond: null
 };
 
-function defaultRunResourceBudgets(overrides: Partial<RunResourceBudgets> = {}): RunResourceBudgets {
+function defaultRunResourceBudgets(overrides: Partial<ResourceBudgets> = {}): ResourceBudgets {
     return {
         ...defaultResourceBudgets,
         ...overrides
@@ -81,7 +79,7 @@ function defaultRunResourceBudgets(overrides: Partial<RunResourceBudgets> = {}):
 
 function defaultRunResourceUsagePolicy(
     overrides: MicrotestProfileOverrides['resourceUsage'] = {}
-): RunResourceUsagePolicy {
+): ResourceUsagePolicy {
     return {
         budgets: defaultRunResourceBudgets(overrides.budgets),
         measure: overrides.measure ?? false,
@@ -96,7 +94,7 @@ function defaultTimingProfilePolicy(overrides: Partial<TimingProfilePolicy> = {}
     };
 }
 
-function defaultRunTimeoutPolicy(overrides: Partial<RunTimeoutPolicy> = {}): RunTimeoutPolicy {
+function defaultRunTimeoutPolicy(overrides: Partial<TimeoutPolicy> = {}): TimeoutPolicy {
     return {
         collectionMilliseconds: overrides.collectionMilliseconds ?? defaultCollectionTimeoutMilliseconds,
         hardMilliseconds: overrides.hardMilliseconds ?? defaultHardTimeoutMilliseconds,
@@ -104,7 +102,7 @@ function defaultRunTimeoutPolicy(overrides: Partial<RunTimeoutPolicy> = {}): Run
     };
 }
 
-function defaultMicrotestExecution(overrides: Partial<RunMicrotestExecution> = {}): RunMicrotestExecution {
+function defaultMicrotestExecution(overrides: Partial<MicrotestExecution> = {}): MicrotestExecution {
     return {
         maxConcurrency: overrides.maxConcurrency ?? defaultMaxConcurrency,
         processModel: overrides.processModel ?? 'supervised-process',
@@ -112,7 +110,7 @@ function defaultMicrotestExecution(overrides: Partial<RunMicrotestExecution> = {
     };
 }
 
-function defaultCoveragePolicy(overrides: Partial<RunCoveragePolicy> = {}): RunCoveragePolicy {
+function defaultCoveragePolicy(overrides: Partial<CoveragePolicy> = {}): CoveragePolicy {
     return {
         outputDirectory: overrides.outputDirectory ?? null,
         outputs: overrides.outputs ?? [ 'v8', 'lcov' ],
@@ -125,7 +123,7 @@ function defaultCoveragePolicy(overrides: Partial<RunCoveragePolicy> = {}): RunC
     };
 }
 
-export function testRunExecutionFacts(command: RunCommand, profile: RunProfileConfig): RunExecutionFacts {
+export function testRunExecutionFacts(command: RunCommand, profile: TestProfileConfig): RunExecutionFacts {
     const facts = {
         attachments: profile.testFamily === 'integration' ? profile.attachments : null,
         retries: null,
@@ -172,60 +170,60 @@ export function testRunExecutionFacts(command: RunCommand, profile: RunProfileCo
 }
 
 function hasWorkerLifecycleOverride(
-    overrides: Partial<RunIntegrationExecution>
+    overrides: Partial<IntegrationExecution>
 ): overrides is WorkerPoolExecutionOverrides {
     return Object.hasOwn(overrides, 'workerLifecycle');
 }
 
-function defaultWorkerLifecycle(overrides: Partial<RunIntegrationExecution>): RunWorkerLifecycle {
+function defaultWorkerLifecycle(overrides: Partial<IntegrationExecution>): WorkerLifecycle {
     return hasWorkerLifecycleOverride(overrides)
         ? overrides.workerLifecycle ?? 'reuse'
         : 'reuse';
 }
 
 function hasAssignmentPolicyOverride(
-    overrides: Partial<RunIntegrationExecution>
+    overrides: Partial<IntegrationExecution>
 ): overrides is WorkerPoolExecutionOverrides {
     return Object.hasOwn(overrides, 'assignmentPolicy');
 }
 
-function defaultAssignmentPolicy(overrides: Partial<RunIntegrationExecution>): RunWorkerPoolAssignmentPolicy {
+function defaultAssignmentPolicy(overrides: Partial<IntegrationExecution>): WorkerPoolAssignmentPolicy {
     return hasAssignmentPolicyOverride(overrides)
         ? overrides.assignmentPolicy ?? 'case-count-balanced'
         : 'case-count-balanced';
 }
 
 function hasDispatchPolicyOverride(
-    overrides: Partial<RunIntegrationExecution>
+    overrides: Partial<IntegrationExecution>
 ): overrides is WorkerPoolExecutionOverrides {
     return Object.hasOwn(overrides, 'dispatchPolicy');
 }
 
-function defaultDispatchPolicy(overrides: Partial<RunIntegrationExecution>): RunWorkerPoolDispatchPolicy {
+function defaultDispatchPolicy(overrides: Partial<IntegrationExecution>): WorkerPoolDispatchPolicy {
     return hasDispatchPolicyOverride(overrides)
         ? overrides.dispatchPolicy ?? 'dynamic-lease'
         : 'dynamic-lease';
 }
 
 function hasWorkDistributionOverride(
-    overrides: Partial<RunIntegrationExecution>
+    overrides: Partial<IntegrationExecution>
 ): overrides is WorkerPoolExecutionOverrides {
     return Object.hasOwn(overrides, 'workDistribution');
 }
 
-function defaultWorkDistribution(overrides: Partial<RunIntegrationExecution>): RunWorkDistribution {
+function defaultWorkDistribution(overrides: Partial<IntegrationExecution>): WorkDistribution {
     return hasWorkDistributionOverride(overrides)
         ? overrides.workDistribution ?? { mode: 'file' }
         : { mode: 'file' };
 }
 
 function hasHostProcessOverride(
-    overrides: Partial<RunIntegrationExecution>
+    overrides: Partial<IntegrationExecution>
 ): overrides is WorkerPoolExecutionOverrides {
     return Object.hasOwn(overrides, 'hostProcess');
 }
 
-function defaultHostProcess(overrides: Partial<RunIntegrationExecution>): RunHostProcess {
+function defaultHostProcess(overrides: Partial<IntegrationExecution>): HostProcess {
     if (!hasHostProcessOverride(overrides)) {
         return { kind: 'direct' };
     }
@@ -235,23 +233,23 @@ function defaultHostProcess(overrides: Partial<RunIntegrationExecution>): RunHos
     return hostProcess ?? { kind: 'direct' };
 }
 
-function defaultHedging(overrides: Partial<RunIntegrationExecution>): RunWorkerPoolHedgingPolicy {
+function defaultHedging(overrides: Partial<IntegrationExecution>): WorkerPoolHedgingPolicy {
     return overrides.processModel === 'worker-pool' && overrides.hedging !== undefined
         ? overrides.hedging
         : { mode: 'off' };
 }
 
 function hasMaximumWorkersOverride(
-    overrides: Partial<RunIntegrationExecution>
+    overrides: Partial<IntegrationExecution>
 ): overrides is WorkerPoolExecutionOverrides {
     return Object.hasOwn(overrides, 'maxWorkers');
 }
 
-function defaultMaximumWorkers(overrides: Partial<RunIntegrationExecution>): number | null {
+function defaultMaximumWorkers(overrides: Partial<IntegrationExecution>): number | null {
     return hasMaximumWorkersOverride(overrides) ? overrides.maxWorkers ?? null : null;
 }
 
-function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution> = {}): RunIntegrationExecution {
+function defaultIntegrationExecution(overrides: Partial<IntegrationExecution> = {}): IntegrationExecution {
     const processModel = overrides.processModel ?? 'worker-pool';
     const maxConcurrency = overrides.maxConcurrency ?? defaultMaxConcurrency;
     const scheduling = overrides.scheduling ?? 'concurrent';
@@ -276,7 +274,7 @@ function defaultIntegrationExecution(overrides: Partial<RunIntegrationExecution>
 
 export function defaultMicrotestProfile(
     overrides: MicrotestProfileOverrides = {}
-): RunMicrotestProfileConfig {
+): MicrotestProfileConfig {
     return {
         coverage: defaultCoveragePolicy(overrides.coverage),
         execution: defaultMicrotestExecution(overrides.execution),
@@ -291,7 +289,7 @@ export function defaultMicrotestProfile(
 
 export function defaultIntegrationProfile(
     overrides: IntegrationProfileOverrides
-): RunIntegrationProfileConfig {
+): IntegrationProfileConfig {
     return {
         attachments: defaultAttachmentLimits,
         retries: null,
@@ -313,8 +311,8 @@ export function defaultIntegrationProfile(
     };
 }
 
-export function defaultRunConfig(overrides: Partial<RunConfig> = {}): RunConfig {
-    const defaultConfig: RunConfig = {
+export function defaultRunConfig(overrides: Partial<NormalizedConfig> = {}): NormalizedConfig {
+    const defaultConfig: NormalizedConfig = {
         loader: {
             sourceMaps: false,
             stripMode: 'strip-only'

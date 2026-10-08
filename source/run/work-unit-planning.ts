@@ -3,6 +3,7 @@ import {
     workIdentityKey,
     type WorkId
 } from '../engine/identity.ts';
+import type { RunOrder, Scheduling, WorkDistribution, WorkGroup, WorkerLifecycle } from '../config/types.ts';
 import {
     collectedRunCaseEntries
 } from './collected-run-plan.ts';
@@ -16,13 +17,8 @@ import {
     emptyWorkUnitResourceConstraints,
     type CollectedRunFile,
     type CollectedRunPlan,
-    type RunOrder,
     type RunSeed,
     type RunShard,
-    type RunScheduling,
-    type RunWorkDistribution,
-    type RunWorkGroup,
-    type RunWorkerLifecycle,
     type WorkUnit
 } from './run-types.ts';
 import {
@@ -37,7 +33,7 @@ import {
     workFromCases
 } from './work-unit-identity.ts';
 
-type GroupWorkDistribution = Extract<RunWorkDistribution, { readonly mode: 'group'; }>;
+type GroupWorkDistribution = Extract<WorkDistribution, { readonly mode: 'group'; }>;
 
 type WorkUnitShardInput = {
     readonly shard?: RunShard;
@@ -49,17 +45,17 @@ type WorkUnitPlanningBaseInput = {
     readonly order: RunOrder;
     readonly seed: RunSeed;
     readonly selectedPlan: CollectedRunPlan;
-    readonly scheduling: RunScheduling;
-    readonly workDistribution: RunWorkDistribution;
-    readonly workerLifecycle: RunWorkerLifecycle;
+    readonly scheduling: Scheduling;
+    readonly workDistribution: WorkDistribution;
+    readonly workerLifecycle: WorkerLifecycle;
 };
 
 export type WorkUnitPlanningInput = WorkUnitPlanningBaseInput & WorkUnitShardInput;
 
 type WorkUnitPolicy = {
     readonly order: RunOrder;
-    readonly scheduling: RunScheduling;
-    readonly workerLifecycle: RunWorkerLifecycle;
+    readonly scheduling: Scheduling;
+    readonly workerLifecycle: WorkerLifecycle;
 };
 
 type PlannedWorkUnit = {
@@ -87,7 +83,7 @@ function profilePolicy(input: WorkUnitPlanningInput): WorkUnitPolicy {
     };
 }
 
-function groupOrder(group: RunWorkGroup, input: WorkUnitPlanningInput): RunOrder {
+function groupOrder(group: WorkGroup, input: WorkUnitPlanningInput): RunOrder {
     if (group.order === 'profile-default') {
         return input.order;
     }
@@ -95,7 +91,7 @@ function groupOrder(group: RunWorkGroup, input: WorkUnitPlanningInput): RunOrder
     return group.order;
 }
 
-function groupScheduling(group: RunWorkGroup, input: WorkUnitPlanningInput): RunScheduling {
+function groupScheduling(group: WorkGroup, input: WorkUnitPlanningInput): Scheduling {
     if (group.scheduling === 'profile-default') {
         return input.scheduling;
     }
@@ -103,7 +99,7 @@ function groupScheduling(group: RunWorkGroup, input: WorkUnitPlanningInput): Run
     return group.scheduling;
 }
 
-function groupWorkerLifecycle(group: RunWorkGroup, input: WorkUnitPlanningInput): RunWorkerLifecycle {
+function groupWorkerLifecycle(group: WorkGroup, input: WorkUnitPlanningInput): WorkerLifecycle {
     if (group.workerLifecycle === 'profile-default') {
         return input.workerLifecycle;
     }
@@ -111,7 +107,7 @@ function groupWorkerLifecycle(group: RunWorkGroup, input: WorkUnitPlanningInput)
     return group.workerLifecycle;
 }
 
-function groupPolicy(group: RunWorkGroup, input: WorkUnitPlanningInput): WorkUnitPolicy {
+function groupPolicy(group: WorkGroup, input: WorkUnitPlanningInput): WorkUnitPolicy {
     return {
         order: groupOrder(group, input),
         scheduling: groupScheduling(group, input),
@@ -285,7 +281,7 @@ function selectedGroupName(
 
 function groupedFiles(
     plan: CollectedRunPlan,
-    group: RunWorkGroup,
+    group: WorkGroup,
     fileSets: ReadonlyMap<string, string>
 ): readonly CollectedRunFile[] {
     const groupFileSets = new Set(group.fileSets);
@@ -298,7 +294,7 @@ function groupedFiles(
 }
 
 function groupWorkUnit(
-    group: RunWorkGroup,
+    group: WorkGroup,
     fileSets: ReadonlyMap<string, string>,
     policy: WorkUnitPolicy,
     input: WorkUnitPlanningInput
@@ -321,7 +317,7 @@ function groupWorkUnit(
 }
 
 function groupFileWorkUnits(
-    group: RunWorkGroup,
+    group: WorkGroup,
     fileSets: ReadonlyMap<string, string>,
     policy: WorkUnitPolicy,
     input: WorkUnitPlanningInput
@@ -340,7 +336,7 @@ function groupFileWorkUnits(
 }
 
 function groupCaseWorkUnits(
-    group: RunWorkGroup,
+    group: WorkGroup,
     fileSets: ReadonlyMap<string, string>,
     policy: WorkUnitPolicy,
     input: WorkUnitPlanningInput
@@ -353,7 +349,7 @@ function groupCaseWorkUnits(
 }
 
 function groupWorkUnits(
-    group: RunWorkGroup,
+    group: WorkGroup,
     fileSets: ReadonlyMap<string, string>,
     input: WorkUnitPlanningInput
 ): readonly WorkUnit[] {

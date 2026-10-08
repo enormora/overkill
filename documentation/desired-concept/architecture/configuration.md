@@ -142,9 +142,9 @@ human project entry point. Direct package usage does not auto-discover that
 file:
 
 ```ts
-import { loadRunConfig, run } from '@overkill-dev/run';
+import { loadConfig, run } from '@overkill-dev/run';
 
-const config = await loadRunConfig({
+const config = await loadConfig({
     configPath: 'overkill.config.ts',
     cwd: process.cwd()
 });
@@ -155,7 +155,7 @@ await run({ config, cwd: process.cwd(), engine: { kind: 'default' }, request });
 Callers that already have policy in memory pass it directly:
 
 ```ts
-import { run } from '@overkill-dev/run';
+import { run, normalizeConfig } from '@overkill-dev/run';
 import { defineConfig } from '@overkill-dev/test/config';
 
 const config = defineConfig({
@@ -172,8 +172,7 @@ const config = defineConfig({
                     include: [ 'source/**/*.ts' ],
                     exclude: [ 'source/**/*.test.ts' ]
                 },
-                thresholds: { lines: 90 },
-                outputDir: 'coverage'
+                thresholds: { lines: 90 }
             },
             resourceUsage: {
                 measure: true,
@@ -214,7 +213,7 @@ const config = defineConfig({
 });
 
 await run({
-    config,
+    config: normalizeConfig(config),
     cwd: process.cwd(),
     engine: { kind: 'default' },
     request: { ...request, coverage: true, profile: 'unit' }
@@ -236,13 +235,28 @@ Important ownership split:
 - CLI chooses per-run intent and may discover the project configuration file
 - programmatic `RunRequest` values choose the same per-run intent without
   going through CLI parsing
-- programmatic APIs require an explicit `RunConfig` value; loading a file is a
-  separate `loadRunConfig(...)` call
+- programmatic APIs require an explicit `NormalizedConfig` value; loading a file is a
+  separate `loadConfig(...)` call
 
 Coverage policy is available only on `testFamily: 'microtest'` profiles. The
 configuration type rejects it on other profile families. `outputs` defaults to
 `['v8', 'lcov']`, `sources` defaults to loaded runtime files, thresholds default
 to disabled, and `outputDir` defaults to the per-run runtime-state directory.
+
+The config API uses command-independent types: `Config` is authored policy,
+`NormalizedConfig` has validated defaults, and `LoadedConfig` adds `configPath`.
+`normalizeConfig(config)` validates in-memory policy without filesystem access.
+`loadConfig(request)` uses the same normalization with file-origin context.
+Programmatic run and list calls accept `NormalizedConfig`; they do not load files.
+An in-memory config has no file origin, so `coverage.outputDir` requires loading
+from a config file.
+
+The internal shared config module owns schemas, defaults, validation, snapshots,
+and profile file evaluation. Commands derive selected profiles, discovered
+files, and effective reporters from the complete registry. They do not filter
+benchmark profiles out of project policy. `runIfMain` preserves profile
+ambiguity errors and rejects a sole benchmark match instead of using microtest
+fallback.
 
 So, for example:
 
@@ -300,8 +314,8 @@ Canonical shape:
   surface
 - unit, integration, browser, and type-test differences normally live as
   named profiles in that one policy file, not as separate convention files
-- benchmark configuration lives in the standard `benchmark` configuration domain
-  because benchmark execution uses the `overkill bench` namespace
+- benchmark configuration uses named profiles with `testFamily: 'benchmark'`;
+  benchmark commands select those profiles through `overkill bench`
 
 The only configuration-oriented CLI flag should be `--config <path>` to pick
 the configuration file location explicitly when discovery is not enough.
@@ -345,15 +359,12 @@ export const config = defineConfig({
                 assignmentPolicy: 'case-count-balanced',
                 dispatchPolicy: 'dynamic-lease'
             }
-        }
-    },
-    benchmark: {
-        profiles: {
-            'cli-cold-start': {
-                files: {
-                    include: [ 'source/**/*.bench.ts' ],
-                    exclude: []
-                }
+        },
+        'cli-cold-start': {
+            testFamily: 'benchmark',
+            files: {
+                include: [ 'source/**/*.bench.ts' ],
+                exclude: []
             }
         }
     }
@@ -364,11 +375,12 @@ export const config = defineConfig({
 It defaults to `5`. Use `'unlimited'` to preserve unbounded concurrent
 admission. Serial scheduling always admits one case at a time.
 
-Benchmark configuration is a standard top-level configuration domain because
-benchmark execution uses `overkill bench`, not `overkill run --profile
-benchmark`.
+Benchmark profiles share the project registry with ordinary profiles.
+`overkill run` and `overkill list` reject selected benchmark profiles and direct
+callers to `overkill bench`. A microtest profile named `benchmark` remains valid.
+Benchmark profiles currently configure only `testFamily` and `files`.
 
-Direct `RunConfig` values can choose worker-pool host shape with
+Direct `NormalizedConfig` values can choose worker-pool host shape with
 `execution.hostProcess`. Project configuration files do not expose that key
 until the configuration schema has a stable policy for which Node/V8 arguments
 are acceptable in persistent project policy.
@@ -418,8 +430,8 @@ per-run path narrowing. A file matched by more than one set is an invalid
 request.
 
 Set names are project-owned strings with the same character rules as profile
-names: letters, numbers, dots, underscores, and hyphens. The `benchmark` name
-is reserved for profiles only, not for file sets.
+names: letters, numbers, dots, underscores, and hyphens. The name `benchmark`
+is valid for both profiles and file sets; names never select behavior.
 
 Patterns are interpreted relative to the run cwd. Absolute patterns, parent
 segments, blank patterns, and negated patterns are rejected. Overkill uses
@@ -442,7 +454,7 @@ Important distinction:
   policy
 
 Configuration files are TS modules exporting a named `config` value. CLI
-discovery and explicit `loadRunConfig(...)` calls import them via the same
+discovery and explicit `loadConfig(...)` calls import them via the same
 loader pipeline as test files (Node type stripping). No JSON or YAML schema;
 types over schema.
 
@@ -524,7 +536,7 @@ magical for configuration too.
 - JS/TS configuration is preferred
 - CLI configuration discovery lives above the engine, in `@overkill-dev/run`
 - standard users import `defineConfig(...)` from `@overkill-dev/test/config`
-- programmatic configuration loading is explicit through `loadRunConfig(...)`
+- programmatic configuration loading is explicit through `loadConfig(...)`
 - programmatic `run(...)` and `resolveRun(...)` accept an already resolved
   configuration value and do not auto-load files
 - suite-family differences are runner profiles in one project policy, not

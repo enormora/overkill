@@ -1,29 +1,7 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { invalidRequest } from './run-errors.ts';
-import type {
-    RunHostProcess,
-    RunHostProcessFacts,
-    RunHostProcessReason
-} from './run-types.ts';
-
-const deniedNodeArgumentNames = new Set([
-    '--env-file',
-    '--eval',
-    '--experimental-loader',
-    '--import',
-    '--loader',
-    '--print',
-    '--require',
-    '--run',
-    '--test',
-    '--watch'
-]);
-
-function nodeArgumentName(argument: string): string {
-    const assignmentIndex = argument.indexOf('=');
-
-    return assignmentIndex === -1 ? argument : argument.slice(0, assignmentIndex);
-}
+import { validateHostProcess } from '../config/host-process.ts';
+import type { HostProcess } from '../config/types.ts';
+import type { RunHostProcessFacts, RunHostProcessReason } from './run-types.ts';
 
 function isInspectArgument(argument: string): boolean {
     return argument === '--inspect' ||
@@ -68,37 +46,7 @@ function childHostReasons(nodeArguments: readonly string[]): NonEmptyReadonlyArr
     ]);
 }
 
-function validateNodeArgument(argument: string): void {
-    if (argument.length === 0) {
-        invalidRequest('Host process Node argument must not be empty.');
-    }
-
-    if (argument.includes('\n') || argument.includes('\0')) {
-        invalidRequest('Host process Node argument must stay on one command-line token.');
-    }
-
-    if (!argument.startsWith('--')) {
-        invalidRequest(`Host process Node argument must use long-form syntax: ${argument}`);
-    }
-
-    const argumentName = nodeArgumentName(argument);
-
-    if (deniedNodeArgumentNames.has(argumentName)) {
-        invalidRequest(`Host process Node argument is not supported: ${argumentName}`);
-    }
-}
-
-export function validateHostProcess(hostProcess: RunHostProcess): void {
-    if (hostProcess.kind === 'direct') {
-        return;
-    }
-
-    for (const argument of hostProcess.nodeArguments) {
-        validateNodeArgument(argument);
-    }
-}
-
-export function hostProcessFacts(hostProcess: RunHostProcess): RunHostProcessFacts {
+export function hostProcessFacts(hostProcess: HostProcess): RunHostProcessFacts {
     validateHostProcess(hostProcess);
 
     if (hostProcess.kind === 'direct') {

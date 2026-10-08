@@ -1,25 +1,23 @@
 import type { TestRetryPolicy } from '../engine/retry-policy.ts';
-import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
 export type RetryArtifactPolicy = 'all' | 'first-failure-and-final' | 'last-failure-and-final';
 export type IntegrationRetryPolicy = TestRetryPolicy & { readonly artifacts: RetryArtifactPolicy; };
 
-export type RunExecutionResourceOwnershipPlan = ResourceOwnershipPlan;
 type Either<First, Second> = First | Second;
 
-export type RunMicrotestExecutionShape<MaxConcurrency, ProcessModel, Scheduling> = {
+export type MicrotestExecutionShape<MaxConcurrency, ProcessModel, Scheduling> = {
     readonly maxConcurrency: MaxConcurrency;
     readonly processModel: ProcessModel;
     readonly scheduling: Scheduling;
 };
 
-type RunSupervisedIntegrationExecution<MaxConcurrency, Scheduling> = {
+type SupervisedIntegrationExecution<MaxConcurrency, Scheduling> = {
     readonly maxConcurrency: MaxConcurrency;
     readonly processModel: 'supervised-process';
     readonly scheduling: Scheduling;
 };
 
-type RunWorkerPoolExecution<
+type WorkerPoolExecution<
     AssignmentPolicy,
     DispatchPolicy,
     HedgingPolicy,
@@ -41,7 +39,7 @@ type RunWorkerPoolExecution<
     readonly workDistribution: WorkDistribution;
 };
 
-export type RunIntegrationExecutionShape<
+export type IntegrationExecutionShape<
     AssignmentPolicy,
     DispatchPolicy,
     HedgingPolicy,
@@ -51,8 +49,8 @@ export type RunIntegrationExecutionShape<
     WorkerLifecycle,
     WorkDistribution
 > = Either<
-    RunSupervisedIntegrationExecution<MaxConcurrency, Scheduling>,
-    RunWorkerPoolExecution<
+    SupervisedIntegrationExecution<MaxConcurrency, Scheduling>,
+    WorkerPoolExecution<
         AssignmentPolicy,
         DispatchPolicy,
         HedgingPolicy,

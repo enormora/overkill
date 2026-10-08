@@ -84,7 +84,7 @@ function createTestRunner(): CommandLineRunner {
         },
         loadBaselineCommands: loadUnimplementedBaselineCommands,
         loadBenchmarkCommands: loadUnimplementedBenchmarkCommands,
-        async loadRunConfig() {
+        async loadConfig() {
             return {
                 configPath: null,
                 loader: config.loader,

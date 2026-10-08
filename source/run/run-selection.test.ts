@@ -1,3 +1,4 @@
+import type { NormalizedConfig, ResolvedRun, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
     createRoot,
@@ -16,8 +17,9 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+
 import type { RunFilter } from './run-request-types.ts';
-import type { ResolvedRun, RunCommand, RunConfig, RunRequest } from './run-types.ts';
+
 import {
     caseId,
     file,
@@ -38,7 +40,7 @@ import {
 import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 
 type RunCommandParts = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
@@ -50,7 +52,7 @@ type SelectionScenario = {
 
 const selectionFixturePath = 'source/integration-tests/run/fixtures/selection.test.ts';
 
-const localSelectionConfig: RunConfig = defaultRunConfig({
+const localSelectionConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'in-process', scheduling: 'serial' },
@@ -58,7 +60,7 @@ const localSelectionConfig: RunConfig = defaultRunConfig({
         })
     }
 });
-const supervisedSelectionConfig: RunConfig = defaultRunConfig({
+const supervisedSelectionConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }

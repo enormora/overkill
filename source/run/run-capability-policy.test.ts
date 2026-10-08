@@ -1,3 +1,4 @@
+import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -12,6 +13,7 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
+
 import {
     createPermissionDenialRuntimePolicy,
     createRuntimeCapabilityPolicy,
@@ -23,12 +25,11 @@ import {
     type WebStorageLike
 } from './capability-policy-snapshots.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type RunCommandParts = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
@@ -279,7 +280,7 @@ export const testNode = createOverkillSuite({
 
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
-                const profileReporter: RunConfig['reporters'][number] = defineReporter(
+                const profileReporter: NonNullable<NormalizedConfig['reporters']>[number] = defineReporter(
                     function profileMemoryReporter() {
                         return {
                             dispose: null,

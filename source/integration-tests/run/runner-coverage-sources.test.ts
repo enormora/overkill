@@ -7,7 +7,7 @@ import {
     type CoverageRunnerError,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
-import { orchestrator, type RunCoveragePolicy, type RunRecord } from '../../packages/run/run.entry-point.ts';
+import { orchestrator, type CoveragePolicy, type RunRecord } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -21,7 +21,7 @@ const scenarios = [ 'unloaded', 'threshold', 'types-only', 'missing-sources', 'b
 type CoverageScenario = typeof scenarios[number];
 type RecordedCoverageResult = { readonly record: RunRecord; readonly result: RunResult; };
 
-function scenarioCoverage(scenario: CoverageScenario): Partial<RunCoveragePolicy> {
+function scenarioCoverage(scenario: CoverageScenario): Partial<CoveragePolicy> {
     if (scenario === 'broken-map') {
         return {};
     }

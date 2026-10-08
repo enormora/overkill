@@ -20,7 +20,7 @@ import {
 const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const secondIntegrationPath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 
-type RunProfileConfig = RunCommand['config']['profiles'][string];
+type ProfileConfig = RunCommand['config']['profiles'][string];
 type DiscoveredFile = {
     readonly file: string;
     readonly fileSet: string | null;
@@ -29,7 +29,7 @@ type DiscoveredFile = {
 };
 type DiscoveredFiles = readonly [DiscoveredFile, ...readonly DiscoveredFile[]];
 
-function createRunCommand(profile: RunProfileConfig): RunCommand {
+function createRunCommand(profile: ProfileConfig): RunCommand {
     return {
         config: defaultRunConfig({
             profiles: {

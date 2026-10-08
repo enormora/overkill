@@ -1,6 +1,13 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type {
+    RunCommand,
+    RunRequest,
+    NormalizedConfig,
+    MicrotestExecution,
+    Scheduling
+} from '../../packages/run/run.entry-point.ts';
 import {
     createSuite,
     createTestCase,
@@ -17,13 +24,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import type {
-    RunCommand,
-    RunConfig,
-    RunMicrotestProcessModel,
-    RunRequest,
-    RunScheduling
-} from '../../run/run-types.ts';
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const skippedFixturePath = 'source/integration-tests/run/fixtures/skipped.test.ts';
@@ -75,14 +75,14 @@ function createRunRequest(paths: readonly string[]): RunRequest {
     });
 }
 
-function createRunConfig(): RunConfig {
+function createRunConfig(): NormalizedConfig {
     return {
         ...defaultConfig,
         reporters: [ memoryReporter ]
     };
 }
 
-function createDiscoveryRunConfig(): RunConfig {
+function createDiscoveryRunConfig(): NormalizedConfig {
     return {
         ...defaultConfig,
         profiles: {
@@ -125,10 +125,10 @@ function createSchedulingEventRecorder(): SchedulingEventRecorder {
 }
 
 function createSchedulingRunConfig(
-    processModel: RunMicrotestProcessModel,
-    scheduling: RunScheduling,
+    processModel: MicrotestExecution['processModel'],
+    scheduling: Scheduling,
     reporter: DefinedReporter
-): RunConfig {
+): NormalizedConfig {
     return {
         ...defaultConfig,
         profiles: {
@@ -150,7 +150,7 @@ function createRunCommand(paths: readonly string[]): RunCommand {
     };
 }
 
-function createSupervisedRunCommand(paths: readonly string[], config: RunConfig): RunCommand {
+function createSupervisedRunCommand(paths: readonly string[], config: NormalizedConfig): RunCommand {
     return {
         config,
         cwd: process.cwd(),
@@ -163,8 +163,8 @@ function createSupervisedRunCommand(paths: readonly string[], config: RunConfig)
 }
 
 async function runSchedulingScenario(
-    processModel: RunMicrotestProcessModel,
-    scheduling: RunScheduling
+    processModel: MicrotestExecution['processModel'],
+    scheduling: Scheduling
 ): Promise<readonly SchedulingEvent[]> {
     const recorder = createSchedulingEventRecorder();
     await orchestrator.run(createSupervisedRunCommand(

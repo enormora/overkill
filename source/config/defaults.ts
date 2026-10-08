@@ -1,22 +1,22 @@
 import type {
-    RunCoveragePolicy,
-    RunMaxConcurrency,
-    RunMicrotestExecution,
-    RunResourceUsagePolicy,
+    CoveragePolicy,
+    MaxConcurrency,
+    MicrotestExecution,
+    ResourceUsagePolicy,
     TimingProfilePolicy,
-    RunTimeoutPolicy,
-    RunWorkerPoolAssignmentPolicy,
-    RunWorkerPoolDispatchPolicy,
-    RunWorkerPoolHedgingPolicy,
-    RunWorkerLifecycle
-} from './run-types.ts';
-import type { RunProjectMicrotestExecution } from './run-config-schema.ts';
+    TimeoutPolicy,
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolDispatchPolicy,
+    WorkerPoolHedgingPolicy,
+    WorkerLifecycle
+} from './types.ts';
+import type { ProjectMicrotestExecution } from './schema.ts';
 
 const defaultMaxConcurrency = 5;
 
 export function normalizedMaxConcurrency(
-    execution: { readonly maxConcurrency?: RunMaxConcurrency | undefined; } | null | undefined
-): RunMaxConcurrency {
+    execution: { readonly maxConcurrency?: MaxConcurrency | undefined; } | null | undefined
+): MaxConcurrency {
     return execution?.maxConcurrency ?? defaultMaxConcurrency;
 }
 
@@ -36,7 +36,7 @@ export const defaultLoader = {
     stripMode: 'strip-only'
 } as const;
 
-export const defaultResourceUsagePolicy: RunResourceUsagePolicy = {
+export const defaultResourceUsagePolicy: ResourceUsagePolicy = {
     budgets: {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,
@@ -51,7 +51,7 @@ export const defaultTimingProfilePolicy: TimingProfilePolicy = {
     collection: 'summary'
 };
 
-export const defaultCoveragePolicy: RunCoveragePolicy = {
+export const defaultCoveragePolicy: CoveragePolicy = {
     outputDirectory: null,
     outputs: [ 'v8', 'lcov' ],
     sources: {
@@ -65,21 +65,21 @@ export const defaultCoveragePolicy: RunCoveragePolicy = {
     }
 };
 
-export const defaultTimeoutPolicy: RunTimeoutPolicy = {
+export const defaultTimeoutPolicy: TimeoutPolicy = {
     collectionMilliseconds: defaultMicrotestCollectionTimeoutMilliseconds,
     hardMilliseconds: defaultMicrotestHardTimeoutMilliseconds,
     softMilliseconds: defaultMicrotestTimeoutMilliseconds
 };
 
-export const defaultIntegrationTimeoutPolicy: RunTimeoutPolicy = {
+export const defaultIntegrationTimeoutPolicy: TimeoutPolicy = {
     collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,
     hardMilliseconds: defaultIntegrationHardTimeoutMilliseconds,
     softMilliseconds: defaultIntegrationTimeoutMilliseconds
 };
 
 export function normalizeMicrotestExecution(
-    execution: RunProjectMicrotestExecution | undefined
-): RunMicrotestExecution {
+    execution: ProjectMicrotestExecution | undefined
+): MicrotestExecution {
     return {
         maxConcurrency: normalizedMaxConcurrency(execution),
         processModel: execution?.processModel ?? defaultMicrotestProcessModel,
@@ -89,8 +89,8 @@ export function normalizeMicrotestExecution(
 
 export const defaultIntegrationProcessModel = 'worker-pool';
 export const defaultIntegrationScheduling = 'concurrent';
-export const defaultWorkerPoolAssignmentPolicy: RunWorkerPoolAssignmentPolicy = 'case-count-balanced';
-export const defaultWorkerPoolDispatchPolicy: RunWorkerPoolDispatchPolicy = 'dynamic-lease';
-export const defaultWorkerPoolHedgingPolicy: RunWorkerPoolHedgingPolicy = { mode: 'off' };
-export const defaultWorkerLifecycle: RunWorkerLifecycle = 'reuse';
+export const defaultWorkerPoolAssignmentPolicy: WorkerPoolAssignmentPolicy = 'case-count-balanced';
+export const defaultWorkerPoolDispatchPolicy: WorkerPoolDispatchPolicy = 'dynamic-lease';
+export const defaultWorkerPoolHedgingPolicy: WorkerPoolHedgingPolicy = { mode: 'off' };
+export const defaultWorkerLifecycle: WorkerLifecycle = 'reuse';
 export const defaultWorkDistribution = { mode: 'file' } as const;

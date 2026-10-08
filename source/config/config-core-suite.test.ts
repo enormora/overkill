@@ -1,15 +1,17 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
-import { testNode as runConfigIntegrationProfileTestNode } from './run-config-integration-profile.test.ts';
-import { testNode as runConfigTestNode } from './run-config.test.ts';
-import { testNode as runConfigTimeoutsTestNode } from './run-config-timeouts.test.ts';
-import { testNode as runConfigRetriesTestNode } from './run-config-retries.test.ts';
+import { testNode as benchmarkProfileTestNode } from './benchmark-profile.test.ts';
+import { testNode as runConfigIntegrationProfileTestNode } from './config-integration-profile.test.ts';
+import { testNode as runConfigTestNode } from './config.test.ts';
+import { testNode as runConfigTimeoutsTestNode } from './config-timeouts.test.ts';
+import { testNode as runConfigRetriesTestNode } from './config-retries.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-core-suite.test.ts',
+    title: 'source/config/config-core-suite.test.ts',
     annotations: {},
     controls: {},
     children: [
+        benchmarkProfileTestNode,
         runConfigRetriesTestNode,
         runConfigTestNode,
         runConfigIntegrationProfileTestNode,

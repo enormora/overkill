@@ -4,6 +4,7 @@ Overkill uses a feature-oriented monorepo layout.
 
 ```text
 source/
+|-- config/                  # shared project policy, loading, normalization, and profile file evaluation
 |-- engine/                  # current engine-owned runtime, contracts, core execution code
 |-- integration-tests/       # integration tests outside the unit-test suite
 |-- reporters/               # current concrete reporter implementations

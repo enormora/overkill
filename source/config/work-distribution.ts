@@ -1,21 +1,21 @@
-import type { RunProjectIntegrationExecution } from './run-config-schema.ts';
-import { invalidRunProfileFileSetNameMessage } from './profile-file-glob.ts';
+import type { ProjectIntegrationExecution } from './schema.ts';
+import { invalidProfileFileSetNameMessage } from './profile-patterns.ts';
 import type {
-    RunIntegrationExecution,
-    RunProfileFiles,
-    RunWorkDistribution,
-    RunWorkGroup
-} from './run-types.ts';
+    IntegrationExecution,
+    ProfileFiles,
+    WorkDistribution,
+    WorkGroup
+} from './types.ts';
 
 type NormalizedProfileFileSets = {
-    readonly sets: NonNullable<RunProfileFiles['sets']>;
+    readonly sets: NonNullable<ProfileFiles['sets']>;
 };
 
 type ProjectGroupWorkDistribution = Extract<
-    NonNullable<Extract<RunProjectIntegrationExecution, { readonly processModel: 'worker-pool'; }>['workDistribution']>,
+    NonNullable<Extract<ProjectIntegrationExecution, { readonly processModel: 'worker-pool'; }>['workDistribution']>,
     { readonly mode: 'group'; }
 >;
-type GroupWorkDistribution = Extract<RunWorkDistribution, { readonly mode: 'group'; }>;
+type GroupWorkDistribution = Extract<WorkDistribution, { readonly mode: 'group'; }>;
 type GroupValidationContext = {
     readonly assignedFileSets: ReadonlyMap<string, string>;
     readonly assignedGroupNames: ReadonlySet<string>;
@@ -26,7 +26,7 @@ type GroupFileSetValidationContext = GroupValidationContext & {
 };
 type GroupFileSetAssignment = readonly [string, string];
 
-function normalizeWorkGroup(group: ProjectGroupWorkDistribution['groups'][number]): RunWorkGroup {
+function normalizeWorkGroup(group: ProjectGroupWorkDistribution['groups'][number]): WorkGroup {
     return {
         fileSets: [ group.fileSets[0], ...group.fileSets.slice(1) ],
         granularity: group.granularity ?? 'group',
@@ -38,9 +38,9 @@ function normalizeWorkGroup(group: ProjectGroupWorkDistribution['groups'][number
 }
 
 export function normalizeWorkDistribution(
-    execution: RunProjectIntegrationExecution | undefined,
-    defaultWorkDistribution: RunWorkDistribution
-): RunWorkDistribution {
+    execution: ProjectIntegrationExecution | undefined,
+    defaultWorkDistribution: WorkDistribution
+): WorkDistribution {
     if (execution?.processModel !== 'worker-pool') {
         return defaultWorkDistribution;
     }
@@ -61,18 +61,18 @@ export function normalizeWorkDistribution(
     };
 }
 
-function hasFileSets(files: RunProfileFiles): files is NormalizedProfileFileSets {
+function hasFileSets(files: ProfileFiles): files is NormalizedProfileFileSets {
     return files.sets !== undefined;
 }
 
-function invalidWorkGroupNameMessage(group: RunWorkGroup): string | null {
-    const message = invalidRunProfileFileSetNameMessage(group.name);
+function invalidWorkGroupNameMessage(group: WorkGroup): string | null {
+    const message = invalidProfileFileSetNameMessage(group.name);
 
     return message === null ? null : message.replace('file set name', 'work group name');
 }
 
 function invalidDuplicateGroupNameMessage(
-    group: RunWorkGroup,
+    group: WorkGroup,
     assignedGroupNames: ReadonlySet<string>
 ): string | null {
     return assignedGroupNames.has(group.name)
@@ -82,7 +82,7 @@ function invalidDuplicateGroupNameMessage(
 
 function invalidGroupFileSetMessage(
     fileSet: string,
-    group: RunWorkGroup,
+    group: WorkGroup,
     context: GroupFileSetValidationContext
 ): string | null {
     if (context.groupFileSets.has(fileSet)) {
@@ -101,7 +101,7 @@ function invalidGroupFileSetMessage(
 }
 
 function invalidGroupIdentityMessage(
-    group: RunWorkGroup,
+    group: WorkGroup,
     context: GroupValidationContext
 ): string | null {
     const nameMessage = invalidWorkGroupNameMessage(group);
@@ -110,7 +110,7 @@ function invalidGroupIdentityMessage(
 }
 
 function invalidGroupMessage(
-    group: RunWorkGroup,
+    group: WorkGroup,
     context: GroupValidationContext
 ): string | null {
     const groupMessage = invalidGroupIdentityMessage(group, context);
@@ -146,7 +146,7 @@ function groupValidationContext(
     };
 }
 
-function groupFileSetAssignments(group: RunWorkGroup): readonly GroupFileSetAssignment[] {
+function groupFileSetAssignments(group: WorkGroup): readonly GroupFileSetAssignment[] {
     return group.fileSets.map(function toAssignment(fileSet) {
         return [ fileSet, group.name ];
     });
@@ -177,8 +177,8 @@ function invalidAssignedGroupsMessage(
 }
 
 function invalidGroupDistributionMessage(
-    distribution: RunWorkDistribution,
-    files: RunProfileFiles
+    distribution: WorkDistribution,
+    files: ProfileFiles
 ): string | null {
     if (distribution.mode !== 'group') {
         return null;
@@ -192,8 +192,8 @@ function invalidGroupDistributionMessage(
 }
 
 export function invalidWorkDistributionConfigMessage(
-    execution: RunIntegrationExecution,
-    files: RunProfileFiles
+    execution: IntegrationExecution,
+    files: ProfileFiles
 ): string | null {
     return execution.processModel === 'worker-pool'
         ? invalidGroupDistributionMessage(execution.workDistribution, files)

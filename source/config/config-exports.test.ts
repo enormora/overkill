@@ -15,10 +15,10 @@ import {
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
 import type {
-    LoadedRunConfig,
-    RunConfigLoader
-} from './run-config.ts';
-import { RunConfigError } from './run-errors.ts';
+    LoadedConfig,
+    ConfigLoader
+} from './config.ts';
+import { ConfigError } from './config-error.ts';
 
 const configFileName = 'overkill.config.js';
 
@@ -49,21 +49,21 @@ function reporter(): FixedDefinedReporter {
     });
 }
 
-async function loadModule(module: unknown): Promise<LoadedRunConfig> {
-    const loadRunConfig: RunConfigLoader = createSingleConfigModuleLoader(configFileName, module);
+async function loadModule(module: unknown): Promise<LoadedConfig> {
+    const loadConfig: ConfigLoader = createSingleConfigModuleLoader(configFileName, module);
 
-    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
+    return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-exports.test.ts',
+    title: 'source/config/config-exports.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() accepts branded reporter and output renderer values',
+            title: 'loadConfig() accepts branded reporter and output renderer values',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -85,14 +85,16 @@ export const testNode = createOverkillSuite({
                     }),
                     'rendered line'
                 );
-                scope.assert.equal(config.reporters[0](context).name, 'configured-memory');
+                const configuredReporter = config.reporters[0];
+                scope.require.defined(configuredReporter);
+                scope.assert.equal(configuredReporter(context).name, 'configured-memory');
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects unbranded reporter values',
+            title: 'loadConfig() rejects unbranded reporter values',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -122,7 +124,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects unbranded output renderer values',
+            title: 'loadConfig() rejects unbranded output renderer values',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -145,14 +147,14 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects config files without a named config export',
+            title: 'loadConfig() rejects config files without a named config export',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadModule({ projectConfig: {} });
                 }, {
-                    type: RunConfigError,
+                    type: ConfigError,
                     message: /must export a named config value/
                 });
 
@@ -161,14 +163,14 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects config files with a default export',
+            title: 'loadConfig() rejects config files with a default export',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadModule({ default: {} });
                 }, {
-                    type: RunConfigError,
+                    type: ConfigError,
                     message: /must not export a default config/
                 });
 
@@ -177,14 +179,14 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects config files with named config and default exports',
+            title: 'loadConfig() rejects config files with named config and default exports',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadModule({ config: {}, default: {} });
                 }, {
-                    type: RunConfigError,
+                    type: ConfigError,
                     message: /must not export a default config/
                 });
 
@@ -193,14 +195,14 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects config files with extra runtime exports',
+            title: 'loadConfig() rejects config files with extra runtime exports',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadModule({ config: {}, extra: {} });
                 }, {
-                    type: RunConfigError,
+                    type: ConfigError,
                     message: /must only export a named config value/
                 });
 

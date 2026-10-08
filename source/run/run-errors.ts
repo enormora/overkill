@@ -1,21 +1,9 @@
 import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
 import type { RuntimeId } from '../engine/identity.ts';
-import type {
-    RunProcessModel,
-    RunTestFamily,
-    RunWorkerLifecycle,
-    WorkId,
-    WorkUnitId
-} from './run-types.ts';
+import type { ProcessModel, WorkerLifecycle } from '../config/types.ts';
+import type { RunTestFamily, WorkId, WorkUnitId } from './run-types.ts';
 
 export type RunResolutionErrorCode = 'invalid-request' | 'no-tests-collected' | 'unsupported-request';
-
-export class RunConfigError extends Error {
-    public constructor(message: string, options?: Readonly<ErrorOptions>) {
-        super(message, options);
-        this.name = 'RunConfigError';
-    }
-}
 
 export class RunResolutionError extends Error {
     private readonly errorCode: RunResolutionErrorCode;
@@ -41,7 +29,7 @@ export type ExecutionPlanResourceFacts = {
 export type RunExecutionPlanConflict = {
     readonly available: number;
     readonly kind: 'worker-capacity';
-    readonly lifecycles: readonly [RunWorkerLifecycle, ...readonly RunWorkerLifecycle[]];
+    readonly lifecycles: readonly [WorkerLifecycle, ...readonly WorkerLifecycle[]];
     readonly required: number;
 } | {
     readonly boundaryKey: string;
@@ -51,7 +39,7 @@ export type RunExecutionPlanConflict = {
 } | {
     readonly constraint: string;
     readonly kind: 'worker-lifecycle';
-    readonly lifecycles: readonly [RunWorkerLifecycle, ...readonly RunWorkerLifecycle[]];
+    readonly lifecycles: readonly [WorkerLifecycle, ...readonly WorkerLifecycle[]];
     readonly units: readonly [WorkUnitId, ...readonly WorkUnitId[]];
 } | {
     readonly definitions: readonly [ExecutionPlanResourceFacts, ...readonly ExecutionPlanResourceFacts[]];
@@ -70,7 +58,7 @@ export type RunExecutionPlanConflict = {
     readonly reason: 'missing-file-set' | 'unmatched-file-set';
 } | {
     readonly kind: 'process-model';
-    readonly processModel: RunProcessModel;
+    readonly processModel: ProcessModel;
     readonly reason: 'resource-descriptors' | 'test-family';
     readonly testFamily: RunTestFamily;
     readonly work: readonly [WorkId, ...readonly WorkId[]];

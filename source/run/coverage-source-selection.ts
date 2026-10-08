@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CoverageReport, V8CoverageEntry } from 'monocart-coverage-reports';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { CoverageSourcePolicy } from '../config/types.ts';
 import { prepareLoadedCoverageSources } from './coverage-loaded-sources.ts';
 import { isPathInside } from './path-containment.ts';
 import { readNativeCoverageBatches, type CoverageNativeBatch } from './coverage-native-data.ts';
@@ -13,9 +14,8 @@ import {
     prepareNativeTypeScriptCoverage,
     transformCoverageSource
 } from './coverage-runtime-source.ts';
-import type { RunCoverageSourcePolicy } from './run-types.ts';
 
-export type CoverageSourceScope = RunCoverageSourcePolicy & {
+export type CoverageSourceScope = CoverageSourcePolicy & {
     readonly excludedFiles: ReadonlySet<string>;
 };
 type CoverageSourceRequest = {

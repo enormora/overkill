@@ -14,9 +14,10 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { orchestrator } from './run-orchestrator.entry-point.ts';
-import type { RunCommand, RunConfig } from './run-types.ts';
+import type { RunCommand } from './run-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
 const hostProcessNodeArgumentsFixturePath = 'source/integration-tests/run/fixtures/host-process-node-arguments.test.ts';
@@ -38,7 +39,7 @@ function createOutputRenderer(): DefinedOutputRenderer {
     });
 }
 
-function createRunConfig(profileName: string, profile: RunConfig['profiles'][string]): RunConfig {
+function createRunConfig(profileName: string, profile: NormalizedConfig['profiles'][string]): NormalizedConfig {
     return {
         loader: {
             sourceMaps: false,
@@ -54,7 +55,7 @@ function createRunConfig(profileName: string, profile: RunConfig['profiles'][str
     };
 }
 
-function integrationCommand(profile: RunConfig['profiles'][string], path: string): RunCommand {
+function integrationCommand(profile: NormalizedConfig['profiles'][string], path: string): RunCommand {
     return {
         config: createRunConfig('integration', profile),
         cwd: process.cwd(),

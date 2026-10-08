@@ -1,14 +1,9 @@
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 import { createLocalTestPlan, type LocalTestPlan } from './run-local-test-plan.ts';
-import { resolveResourceUsagePolicy } from './run-facts.ts';
+import { resolveResourceUsagePolicy } from './run-profile-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
-import type {
-    RunCommand,
-    CollectedRunPlan,
-    RunProfileConfig,
-    RunRequest
-} from './run-types.ts';
+import type { RunCommand, CollectedRunPlan, RunRequest } from './run-types.ts';
 import type {
     SupervisedCollectCommand,
     SupervisedRunCommand
@@ -45,7 +40,7 @@ type SupervisedCommandBaseInput = {
     readonly command: RunCommand;
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly files: ResolvedRunInput['files'];
-    readonly profile: RunProfileConfig;
+    readonly profile: ResolvedRunInput['profile'];
     readonly source: IsolatedRunCollectionSource;
 };
 
@@ -53,7 +48,7 @@ type WorkerPoolCommandInput = {
     readonly command: RunCommand;
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly files: ResolvedRunInput['files'];
-    readonly profile: RunProfileConfig;
+    readonly profile: ResolvedRunInput['profile'];
     readonly source: IsolatedRunCollectionSource;
 };
 
@@ -93,7 +88,7 @@ export function assertExpectedDirectEntrypointCollection(
 }
 
 function supervisedCapabilityRestrictions(
-    profile: RunProfileConfig,
+    profile: ResolvedRunInput['profile'],
     command: RunCommand
 ): SupervisedCommandBase['capabilityRestrictions'] {
     if (profile.testFamily === 'integration') {
@@ -134,7 +129,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
 
 export function createSupervisedCollectCommand(
     command: RunCommand,
-    profile: RunProfileConfig,
+    profile: ResolvedRunInput['profile'],
     files: ResolvedRunInput['files'],
     source: IsolatedRunCollectionSource
 ): SupervisedCollectCommand {
@@ -153,7 +148,7 @@ export function createSupervisedCollectCommand(
 
 export function createSupervisedRunCommand(
     command: RunCommand,
-    profile: RunProfileConfig,
+    profile: ResolvedRunInput['profile'],
     files: ResolvedRunInput['files'],
     source: IsolatedRunCollectionSource
 ): SupervisedRunCommand {

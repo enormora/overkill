@@ -7,23 +7,22 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import type { LoadedRunConfig } from './run-config.ts';
-import type { RunProfileFiles } from './run-types.ts';
+import type { LoadedConfig } from './config.ts';
+import type { ProfileFiles } from './types.ts';
 
-type LoadedConfig = LoadedRunConfig;
 type ExpectedProfileFiles = {
     readonly exclude: readonly string[];
     readonly include: readonly [string, ...readonly string[]];
 };
 
 async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
-    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
+    const loadConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
 
-    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
+    return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 function assertProfileFiles(
-    files: RunProfileFiles | null,
+    files: ProfileFiles | null,
     expected: ExpectedProfileFiles,
     scope: OverkillScope
 ): void {
@@ -33,13 +32,13 @@ function assertProfileFiles(
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-profile-files.test.ts',
+    title: 'source/config/config-profile-files.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() normalizes profile file discovery',
+            title: 'loadConfig() normalizes profile file discovery',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -79,7 +78,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects invalid profile file globs',
+            title: 'loadConfig() rejects invalid profile file globs',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -104,7 +103,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() normalizes profile file sets',
+            title: 'loadConfig() normalizes profile file sets',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -148,7 +147,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects invalid profile file sets',
+            title: 'loadConfig() rejects invalid profile file sets',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {

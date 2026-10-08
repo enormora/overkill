@@ -68,10 +68,16 @@ function assertConfigSubpath(scope: TestScope): void {
         }
     } as const;
 
-    scope.assert.deepEqual(sortedKeys(configSubpath), [ 'defineConfig' ]);
+    scope.assert.deepEqual(sortedKeys(configSubpath), [
+        'ConfigError',
+        'defineConfig',
+        'loadConfig',
+        'normalizeConfig'
+    ]);
     scope.assert.equal(configSubpath.defineConfig(config), config);
     scope.assert.equal(Object.hasOwn(configSubpath, 'orchestrator'), false);
-    scope.assert.equal(Object.hasOwn(configSubpath, 'loadRunConfig'), false);
+    scope.assert.equal(typeof configSubpath.loadConfig, 'function');
+    scope.assert.equal(configSubpath.normalizeConfig(config).profiles.unit?.testFamily, 'microtest');
 }
 
 function reporterSubpathOutputs(): readonly string[] {
@@ -449,7 +455,7 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/config exposes config authoring only',
+            title: '@overkill-dev/test/config exposes shared project configuration',
             annotations: {},
             controls: {},
             body(scope: TestScope) {

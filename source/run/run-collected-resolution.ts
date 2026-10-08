@@ -1,4 +1,5 @@
 import type { RunnerError } from '../engine/run-result.ts';
+
 import {
     collectedRunCaseFactsFromEntries,
     collectedRunPlanFromEntries
@@ -19,14 +20,7 @@ import {
     freezeValue,
     resolveRunReporters
 } from './run-support.ts';
-import type {
-    CollectedRunPlan,
-    ResolvedRun,
-    RunCommand,
-    RunConfig,
-    RunProfileConfig,
-    RunRequest
-} from './run-types.ts';
+import type { CollectedRunPlan, ResolvedRun, RunCommand } from './run-types.ts';
 import type { WorkerPoolPlacementResolutionInput } from './worker-pool-placement-planning.ts';
 
 type CollectedPlanKind = 'supervised' | 'worker-pool';
@@ -37,35 +31,23 @@ type RunCollection = {
     readonly runnerErrors: readonly RunnerError[];
 };
 
-type CollectedResolvedRunInput = {
+type CollectedResolvedRunInput = ResolvedRunInput & {
     readonly allowEmptySelection: boolean;
     readonly collectionRunnerErrors: readonly RunnerError[];
     readonly collectedPlan: CollectedRunPlan;
     readonly command: RunCommand;
-    readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
     readonly durationHistoryIndex: CollectionDurationHistoryIndex;
-    readonly engine: RunCommand['engine'];
-    readonly files: ResolvedRunInput['files'];
     readonly planKind: CollectedPlanKind;
-    readonly profile: RunProfileConfig;
-    readonly projectRoot: string;
-    readonly request: RunRequest;
 };
 
-export type CollectionResolvedRunInput = {
+export type CollectionResolvedRunInput = ResolvedRunInput & {
     readonly allowEmptySelection: boolean;
     readonly collection: RunCollection;
     readonly command: RunCommand;
-    readonly config: RunConfig;
     readonly dependencies: RunOrchestratorDependencies;
     readonly durationHistoryIndex: CollectionDurationHistoryIndex;
-    readonly engine: RunCommand['engine'];
-    readonly files: ResolvedRunInput['files'];
     readonly planKind: CollectedPlanKind;
-    readonly profile: RunProfileConfig;
-    readonly projectRoot: string;
-    readonly request: RunRequest;
 };
 
 function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: string | null) => string | null {
