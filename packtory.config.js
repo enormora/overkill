@@ -87,7 +87,7 @@ export const config = {
         }
     },
     commonPackageSettings: {
-        sourcesFolder: path.join(projectFolder, 'target/build/source'),
+        sourcesFolder: path.join(projectFolder, 'target/package-build/source'),
         mainPackageJson: rootPackageJson,
         includeSourceMapFiles: true,
         publishSettings: {

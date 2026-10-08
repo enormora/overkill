@@ -12,5 +12,9 @@
         "types": ["node"]
     },
     "references": [{ "path": "./tsconfig.sources.json" }],
-    "include": ["./integration-tests/**/*.ts", "./test-support/run-command-factory.ts"]
+    "include": [
+        "./integration-tests/**/*.ts",
+        "./test-support/run-command-factory.ts",
+        "./test-support/coverage-transpilation.ts"
+    ]
 }

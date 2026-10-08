@@ -1,4 +1,5 @@
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as runtimeSourceTestNode } from './coverage-runtime-source.test.ts';
 import { testNode as typeOnlyTestNode } from './coverage-type-only.test.ts';
 import { testNode as sourceMapTestNode } from './coverage-source-map.test.ts';
 import { testNode as mapSelectionTestNode } from './coverage-map-selection.test.ts';
@@ -14,6 +15,7 @@ export const testNode = createSuite({
     title: 'coverage source selection',
     children: [
         typeOnlyTestNode,
+        runtimeSourceTestNode,
         sourceMapTestNode,
         mapSelectionTestNode,
         unloadedTestNode,

@@ -156,6 +156,8 @@ coverage. Known test sources are excluded automatically. Mixed test bundles
 use `coverage.sources.exclude` to exclude their test originals.
 
 All-files reporting emits 0% when selected runtime sources were never loaded.
+Native TypeScript coverage uses Node's type stripping and preserves source
+offsets. Never-loaded TypeScript files need no generated source maps.
 A scope containing no executable sources fails, including scopes matching only
 types or no files. Native data is retained on reporting failures. Replay and
 automatic coverage cleanup await the replay and record-retention workflows.

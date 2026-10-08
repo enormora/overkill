@@ -1,6 +1,8 @@
 import { fromObject } from 'convert-source-map';
-import { transform } from 'sucrase';
+import * as typescript from 'typescript';
+import { createCoverageTranspiler } from '../../test-support/coverage-transpilation.ts';
 
+const transformCoverageFixture = createCoverageTranspiler(typescript);
 export type CoverageSourceKind = 'javascript' | 'mapped' | 'native' | 'unloaded';
 
 export function coverageSourceFile(sourceKind: CoverageSourceKind): string {
@@ -71,10 +73,9 @@ export function coverageGeneratedScript(sourceKind: CoverageSourceKind): string 
     if (sourceKind !== 'mapped') {
         return coverageSourceScript;
     }
-    const compiled = transform(coverageTypeScriptSource, {
+    const compiled = transformCoverageFixture(coverageTypeScriptSource, {
         filePath: 'coverage-source.ts',
-        sourceMapOptions: { compiledFilename: 'coverage-source.mjs' },
-        transforms: [ 'typescript' ]
+        sourceMapOptions: { compiledFilename: 'coverage-source.mjs' }
     });
     const map = { ...compiled.sourceMap, sourcesContent: [ coverageTypeScriptSource ] };
 

@@ -12,6 +12,16 @@ const branchCountsSchema = z.record(
     })
 );
 const declarations = [
+    {
+        source:
+            'const box = { function<Target>(value: Target): number { return value ? 10 : 20; } }; const choose = box.function;',
+        title: 'generic method named function'
+    },
+    {
+        source:
+            'const box = { [["replace"][0]]<Target>(value: Target): number { return value ? 10 : 20; } }; const choose = box.replace;',
+        title: 'nested computed generic method'
+    },
     { source: 'const choose = (value: boolean): number => value ? 10 : 20;', title: 'typed arrow' },
     {
         source:

@@ -1,17 +1,18 @@
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { fromObject } from 'convert-source-map';
-import { transform } from 'sucrase';
-import { z } from 'zod/v4';
+import * as typescript from 'typescript';
+import { createCoverageTranspiler } from '../test-support/coverage-transpilation.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
+    cacheCoverageSourceMap,
     collectCoverageScript,
     withCoverageSources,
     type CoverageSourceFixture
 } from '../test-support/coverage-source-fixture.ts';
 import { generateCoverageReports, type CoverageReportRequest } from './coverage-reporting.ts';
 
+const transformCoverageFixture = createCoverageTranspiler(typescript);
 const original = [
     'export function covered(): number {',
     '    return 42;',
@@ -23,10 +24,9 @@ const original = [
     ''
 ]
     .join('\n');
-const compiled = transform(original, {
+const compiled = transformCoverageFixture(original, {
     filePath: 'src/value.ts',
-    sourceMapOptions: { compiledFilename: 'generated/compiled.mjs' },
-    transforms: [ 'typescript' ]
+    sourceMapOptions: { compiledFilename: 'generated/compiled.mjs' }
 });
 const map = { ...compiled.sourceMap, sources: [ '../src/value.ts' ], sourcesContent: [ original ] };
 const mapStyles = [ 'cached', 'external', 'inline', 'indexed' ] as const;
@@ -39,25 +39,6 @@ function mappedScript(style: MapStyle): string {
     return style === 'external' || style === 'indexed'
         ? `${compiled.code}\n//# sourceMappingURL=../maps/compiled.map\n`
         : compiled.code;
-}
-
-async function cacheMap(fixture: CoverageSourceFixture): Promise<void> {
-    const files = await readdir(fixture.rawDataDirectory);
-
-    for (const file of files) {
-        const location = path.join(fixture.rawDataDirectory, file);
-        const data = z.record(z.string(), z.unknown()).parse(JSON.parse(await readFile(location, 'utf8')));
-
-        await writeFile(
-            location,
-            JSON.stringify({
-                ...data,
-                'source-map-cache': {
-                    [pathToFileURL(path.join(fixture.projectRoot, 'generated/compiled.mjs')).href]: { data: map }
-                }
-            })
-        );
-    }
 }
 
 async function assertOriginalCoverage(
@@ -95,7 +76,7 @@ const validMapTests = mapStyles.flatMap(function mapStyle(style) {
                 ], async function verifyMap(fixture) {
                     await collectCoverageScript(fixture, 'generated/compiled.mjs');
                     if (style === 'cached') {
-                        await cacheMap(fixture);
+                        await cacheCoverageSourceMap(fixture, 'generated/compiled.mjs', map);
                     }
                     await assertOriginalCoverage(
                         scope,

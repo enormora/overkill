@@ -45,15 +45,11 @@ async function runPackagedCoverage(): Promise<{ readonly stderr: string; readonl
     });
 }
 
-function assertCoverageDiagnostics(scope: TestScope, stderr: string, sourceKind: CoverageSourceKind): void {
-    if (sourceKind === 'native') {
-        scope.assert.match(
-            stderr,
-            /^(?:\(node:\d+\) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\n)?$/u
-        );
-    } else {
-        scope.assert.equal(stderr, '');
-    }
+function assertCoverageDiagnostics(scope: TestScope, stderr: string): void {
+    scope.assert.match(
+        stderr,
+        /^\(node:\d+\) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\n$/u
+    );
 }
 
 function assertGenericBranches(scope: TestScope, sourceCoverage: string): void {
@@ -130,7 +126,7 @@ export const testNode = createSuite({
                     const result = await runPackagedCoverage();
                     const lcov = await fs.readFile(path.join(packageSmokeFolder, 'coverage-smoke/lcov.info'), 'utf8');
 
-                    assertCoverageDiagnostics(scope, result.stderr, sourceKind);
+                    assertCoverageDiagnostics(scope, result.stderr);
                     scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
                     assertConsumerCoverage(scope, lcov, sourceKind);
 

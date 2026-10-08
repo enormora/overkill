@@ -1,22 +1,22 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fromObject } from 'convert-source-map';
-import { transform } from 'sucrase';
+import * as typescript from 'typescript';
+import { createCoverageTranspiler } from '../test-support/coverage-transpilation.ts';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { collectCoverageScript, withCoverageSources } from '../test-support/coverage-source-fixture.ts';
 import { generateCoverageReports } from './coverage-reporting.ts';
 
+const transformCoverageFixture = createCoverageTranspiler(typescript);
 const application = 'export function value(): number { return 42; }\nvalue();\n';
 const test = 'function check(): number { return 42; }\ncheck();\n';
-const applicationOutput = transform(application, {
+const applicationOutput = transformCoverageFixture(application, {
     filePath: 'src/application.ts',
-    sourceMapOptions: { compiledFilename: 'generated/bundle.mjs' },
-    transforms: [ 'typescript' ]
+    sourceMapOptions: { compiledFilename: 'generated/bundle.mjs' }
 });
-const testOutput = transform(test, {
+const testOutput = transformCoverageFixture(test, {
     filePath: 'src/check.test.ts',
-    sourceMapOptions: { compiledFilename: 'generated/bundle.mjs' },
-    transforms: [ 'typescript' ]
+    sourceMapOptions: { compiledFilename: 'generated/bundle.mjs' }
 });
 const applicationMap = {
     ...applicationOutput.sourceMap,

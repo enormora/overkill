@@ -6,6 +6,7 @@ default:
 
 compile:
     tsc --build
+    tsc --project source/tsconfig.sources.json --outDir target/package-build --tsBuildInfoFile target/buildcache/package-sources.tsbuildinfo
 
 eslint *OPTIONS:
     eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}

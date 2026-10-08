@@ -22,6 +22,7 @@ Rules:
 
 - Shared feature folders are the source of truth.
 - Published packages are assembled by `packtory` from facade entry points in `source/packages/**`.
+- `just compile` separates production package output (`target/package-build/source`) from compiled tests (`target/build/source`). Package analysis uses only production output.
 - Register dynamically loaded runner modules as private roots in `packtory.config.js` to preserve their runtime exports.
 - Adding a package should usually mean adding a small facade first, not creating a new isolated source tree.
 - A package facade should mainly re-export or lightly adapt code from shared feature folders.
