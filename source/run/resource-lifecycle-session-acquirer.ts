@@ -1,4 +1,4 @@
-import { resourceAttachments } from '../packages/resources/attachment-context.entry-point.ts';
+import { runWithResourceFailureContext } from '../attachments/resource-failure-context.ts';
 import { workIdentityKey, type AttemptId } from '../engine/identity.ts';
 import type {
     AnyResourceDefinition,
@@ -12,11 +12,12 @@ import {
     sourceResourceDefinition
 } from '../resources/resource-scenario-binding.ts';
 import {
+    caseResourceBoundaryKeys,
     boundaryFor,
     initialBoundaryUseCountsFromRecords,
     type LifecycleBoundary
 } from './resource-lifecycle-boundaries.ts';
-import { resourceWrapperLifecycleError } from './resource-lifecycle-error.ts';
+import { resourceWrapperLifecycleError, resourceWrapperErrorFromUnknown } from './resource-lifecycle-error.ts';
 import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
 import {
     deserializeProjectedHandle,
@@ -26,6 +27,7 @@ import {
 } from './resource-lifecycle-projection.ts';
 import {
     currentLifecycleAttempt,
+    currentAttachmentExecution,
     type ManagedLifecycleState,
     type ManagedRunnerError
 } from './resource-lifecycle-state.ts';
@@ -70,6 +72,7 @@ export type ManagedResourceAcquirer = {
 };
 
 type ResourceLifecycleStoreOptions = {
+    readonly testCases: readonly TestPlanCase[];
     readonly boundaryUseCounts: readonly {
         readonly boundaryKey: string;
         readonly count: number;
@@ -112,7 +115,7 @@ export function createManagedStores(options: ResourceLifecycleStoreOptions): Man
             const errors = errorsByCase.get(key) ?? [];
 
             errors.push({
-                ...resourceWrapperLifecycleError(message, cause).runnerError(testCase.id, testCase.workId),
+                ...resourceWrapperErrorFromUnknown(message, cause).runnerError(testCase.id, testCase.workId),
                 attributedToAttempt: attempt
             });
             errorsByCase.set(key, errors);
@@ -231,13 +234,36 @@ export function createManagedResourceAcquirer(
         signal: AbortSignal
     ): Promise<ManagedResourceRecord> {
         const dependencyContext = await acquireDependencyContext(resource, testCase, signal);
+        if (resource.scope !== 'per-case') {
+            const consumers = options
+                .testCases
+                .filter(function consumesBoundary(candidate) {
+                    return caseResourceBoundaryKeys(candidate, new Set([ resource.scope ])).includes(boundary.key);
+                })
+                .map(function consumerWork(candidate) {
+                    return candidate.workId;
+                });
+            await currentAttachmentExecution()?.registerResourceConsumers(boundary.key, consumers);
+        }
         const acquireHandle = async function acquireResourceHandle(): Promise<unknown> {
-            return await acquireResourceWithStartupBudget(resource, {
-                attachments: resourceAttachments(resource.name),
-                dependencies: dependencyContext,
-                scenarios: acquisitionResourceScenarioBindings(resource),
-                signal
-            });
+            const condition = resource.scope === 'per-case'
+                ? {
+                    kind: 'attempt' as const,
+                    work: testCase.workId,
+                    attempt: currentLifecycleAttempt() ?? { index: 0 }
+                }
+                : { kind: 'resource' as const, resource: resource.name, boundary: boundary.key };
+            return await runWithResourceFailureContext(
+                { name: resource.name, condition },
+                async function acquireWithFailureCapture(attachments) {
+                    return await acquireResourceWithStartupBudget(resource, {
+                        attachments,
+                        dependencies: dependencyContext,
+                        scenarios: acquisitionResourceScenarioBindings(resource),
+                        signal
+                    });
+                }
+            );
         };
         const ownerHandle = options.timing === null
             ? await acquireHandle()
@@ -300,6 +326,7 @@ export function createManagedResourceAcquirer(
         try {
             return await acquisition;
         } catch (error: unknown) {
+            await currentAttachmentExecution()?.markResourceFailure(boundary.key);
             stores.deleteAcquisition(boundary.key);
             throw error;
         }

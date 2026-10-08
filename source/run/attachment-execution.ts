@@ -1,7 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { RunnerError } from '../engine/run-result.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
-import type { AttachmentMetadata, AttachmentProducer, RuntimeAttachments } from '../engine/runtime-attachment.ts';
+import type {
+    AttachmentLimits,
+    AttachmentMetadata,
+    AttachmentProducer,
+    FailureArtifactCondition,
+    RuntimeAttachments
+} from '../engine/runtime-attachment.ts';
 import type { AttachmentContext } from '../packages/resources/attachment-context.entry-point.ts';
 import { AttachmentOperationError, createAttachmentFailure, type AttachmentRejection } from './attachment-failure.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
@@ -34,6 +40,8 @@ function createAttachmentAttempt(work: WorkId, attempt: AttemptId): AttachmentAt
 
 export type AttachmentExecution = {
     readonly context: AttachmentContext;
+    readonly markResourceFailure: (boundary: string) => Promise<void>;
+    readonly registerResourceConsumers: (boundary: string, consumers: readonly WorkId[]) => Promise<void>;
     readonly runAttempt: <Value>(work: WorkId, attempt: AttemptId, run: () => Promise<Value>) => Promise<Value>;
     readonly runBranch: <Value>(branch: string | null, run: () => Promise<Value>) => Promise<Value>;
     readonly takeErrors: (owner: AttachmentOwner) => readonly RunnerError[];
@@ -48,7 +56,13 @@ type AttachmentExecutionSessionState = {
     readonly closed: StoredRunValue<boolean>;
     readonly exchange: AttachmentExchange;
     readonly maxInlineBytes: number;
+    readonly maxArtifactBytes: number;
+    readonly preparation: AttachmentPreparation | null;
     readonly currentAttempt: AsyncLocalStorage<AttachmentAttempt>;
+    readonly attempts: {
+        readonly get: (key: string) => AttachmentAttempt | undefined;
+        readonly set: (key: string, attempt: AttachmentAttempt) => void;
+    };
     readonly currentBranch: AsyncLocalStorage<string | null>;
     readonly writers: OpenAttachmentRegistry;
     readonly failures: AttachmentFailureRegistry;
@@ -121,8 +135,28 @@ async function attachmentExecutionSessionSend(
     }
     return response;
 }
+function preparedAttemptWindow(
+    state: AttachmentExecutionSessionState,
+    condition: Extract<FailureArtifactCondition, { readonly kind: 'attempt'; }>
+): AttachmentAttempt {
+    const window = state.attempts.get(ownerKey({ kind: 'case', work: condition.work, attempt: condition.attempt }));
+    if (window === undefined) {
+        throw attachmentExecutionSessionFail(state, {
+            owner: { kind: 'case', work: condition.work, attempt: condition.attempt },
+            message: 'Failure artifact escaped its test attempt.',
+            reason: 'expired-attempt',
+            drift: true
+        });
+    }
+    attachmentExecutionSessionVerify(state, window);
+    return window;
+}
 function activeAttachmentWindow(state: AttachmentExecutionSessionState): AttachmentAttempt | undefined {
-    const window = state.currentAttempt.getStore();
+    const condition = state.preparation?.condition;
+    if (condition?.kind === 'attempt') {
+        return preparedAttemptWindow(state, condition);
+    }
+    const window = condition?.kind === 'resource' ? undefined : state.currentAttempt.getStore();
     attachmentExecutionSessionVerify(state, window);
     return window;
 }
@@ -135,11 +169,13 @@ async function attachmentExecutionSessionOpen(
     const { currentBranch, writers } = state;
 
     const window = activeAttachmentWindow(state);
-    const owner = window?.owner ?? { kind: 'run' };
+    const owner: AttachmentOwner = window?.owner ?? { kind: 'run' };
     const response = await attachmentExecutionSessionSend(state, {
         branch: currentBranch.getStore() ?? null,
         contentKind: kind,
-        kind: 'open',
+        ...state.preparation === null
+            ? { kind: 'open' as const }
+            : { kind: 'prepare' as const, ...state.preparation },
         metadata,
         owner,
         producer
@@ -180,14 +216,17 @@ async function attachmentExecutionSessionOpen(
     writers.set(token, writer);
     return writer;
 }
+function attachmentJsonLimit(state: AttachmentExecutionSessionState): number {
+    return state.preparation?.subtype === 'witness' ? state.maxArtifactBytes : state.maxInlineBytes;
+}
 function attachmentExecutionSessionJsonSnapshot(
     state: AttachmentExecutionSessionState,
     value: unknown
 ): ReturnType<typeof snapshotAttachmentJson> {
     const { currentAttempt } = state;
-
+    const limit = attachmentJsonLimit(state);
     try {
-        return snapshotAttachmentJson(value, state.maxInlineBytes);
+        return snapshotAttachmentJson(value, limit);
     } catch (error: unknown) {
         const owner = currentAttempt.getStore()?.owner ?? { kind: 'run' };
         throw attachmentExecutionSessionFail(state, {
@@ -307,7 +346,12 @@ async function attachmentExecutionSessionRunAttempt<Value>(
 ): Promise<Value> {
     const { currentAttempt } = state;
 
+    const existing = currentAttempt.getStore();
+    if (existing?.isActive() === true && ownerKey(existing.owner) === ownerKey({ kind: 'case', work, attempt })) {
+        return await run();
+    }
     const window = createAttachmentAttempt(work, attempt);
+    state.attempts.set(ownerKey(window.owner), window);
     return await currentAttempt.run(window, async function () {
         return attachmentExecutionSessionOwnedAttempt(state, window, run);
     });
@@ -323,7 +367,7 @@ async function attachmentExecutionSessionRunBranch<Value>(
 }
 export function createAttachmentExecution(
     exchange: AttachmentExchange,
-    maxInlineBytes: number
+    limits: AttachmentLimits
 ): AttachmentExecution {
     const currentAttempt = new AsyncLocalStorage<AttachmentAttempt>();
     const currentBranch = new AsyncLocalStorage<string | null>();
@@ -332,15 +376,37 @@ export function createAttachmentExecution(
     const state: AttachmentExecutionSessionState = {
         closed: createStoredRunValue(false),
         exchange,
-        maxInlineBytes,
+        maxInlineBytes: limits.maxInlineBytes,
+        maxArtifactBytes: limits.maxArtifactBytes,
+        preparation: null,
+        attempts: new Map(),
         currentAttempt,
         currentBranch,
         writers,
         failures
     };
-    const context: AttachmentContext = { forProducer: attachmentExecutionSessionCapabilities.bind(null, state) };
+    const context: AttachmentContext = {
+        limits,
+        forProducer: attachmentExecutionSessionCapabilities.bind(null, state),
+        prepareForProducer(producer, condition, source, subtype) {
+            return attachmentExecutionSessionCapabilities(
+                { ...state, preparation: { condition, source, subtype } },
+                producer
+            );
+        }
+    };
     return {
         context,
+        async markResourceFailure(boundary) {
+            await attachmentExecutionSessionSend(state, { kind: 'resource-failure', boundary }, { kind: 'run' });
+        },
+        async registerResourceConsumers(boundary, consumers) {
+            for (const work of consumers) {
+                await attachmentExecutionSessionSend(state, { kind: 'resource-consumer', boundary, work }, {
+                    kind: 'run'
+                });
+            }
+        },
         takeErrors: attachmentExecutionSessionTakeErrors.bind(null, state),
         finish: attachmentExecutionSessionFinish.bind(null, state),
         async runAttempt(work, attempt, run) {
@@ -361,4 +427,10 @@ type AttachmentFailureRegistry = {
     readonly get: (scope: string) => readonly AttachmentOperationError[] | undefined;
     readonly set: (scope: string, errors: readonly AttachmentOperationError[]) => void;
     readonly delete: (scope: string) => boolean;
+};
+
+type AttachmentPreparation = {
+    readonly condition: FailureArtifactCondition;
+    readonly source: 'boundary-captured' | 'instrumented' | 'native';
+    readonly subtype: 'attachment' | 'witness';
 };

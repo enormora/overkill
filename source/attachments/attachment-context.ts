@@ -1,7 +1,19 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { AttachmentProducer, RuntimeAttachments } from '../engine/runtime-attachment.ts';
+import type {
+    AttachmentProducer,
+    AttachmentLimits,
+    FailureArtifactCondition,
+    RuntimeAttachments
+} from '../engine/runtime-attachment.ts';
 
 export type AttachmentContext = {
+    readonly limits: AttachmentLimits;
+    readonly prepareForProducer: (
+        producer: AttachmentProducer,
+        condition: FailureArtifactCondition,
+        source: 'boundary-captured' | 'instrumented' | 'native',
+        subtype: 'attachment' | 'witness'
+    ) => RuntimeAttachments;
     readonly forProducer: (producer: AttachmentProducer) => RuntimeAttachments;
 };
 
@@ -43,4 +55,22 @@ export async function runWithAttachmentContext<Value>(
     run: () => Promise<Value>
 ): Promise<Value> {
     return await attachmentContext.run(context, run);
+}
+
+export function preparedResourceAttachments(
+    name: string,
+    condition: FailureArtifactCondition,
+    source: 'boundary-captured' | 'instrumented' | 'native',
+    subtype: 'attachment' | 'witness'
+): RuntimeAttachments | null {
+    return attachmentContext.getStore()?.prepareForProducer({ kind: 'resource', name }, condition, source, subtype) ??
+        null;
+}
+
+export function currentAttachmentLimits(): AttachmentLimits | null {
+    return attachmentContext.getStore()?.limits ?? null;
+}
+
+export function currentAttachmentContext(): AttachmentContext | null {
+    return attachmentContext.getStore() ?? null;
 }

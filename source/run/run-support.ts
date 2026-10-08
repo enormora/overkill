@@ -80,6 +80,10 @@ export function composeRunRuntimePolicies(
     }
 
     return {
+        async prepareAttempt(testCase, attempt) {
+            await secondPolicy.prepareAttempt(testCase, attempt);
+            await firstPolicy.prepareAttempt(testCase, attempt);
+        },
         async completeCase(testCase, attempt) {
             try {
                 await secondPolicy.completeCase(testCase, attempt);

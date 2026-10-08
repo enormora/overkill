@@ -1,8 +1,17 @@
 import { AsyncResource } from 'node:async_hooks';
+import {
+    createFailureArtifactStream,
+    closeAttemptFailureStreams,
+    type FailureArtifactStream
+} from '../attachments/failure-artifact-stream.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
-import { attachmentsForProducer } from '../attachments/attachment-context.ts';
+import {
+    attachmentFixture,
+    type AttachmentFixture,
+    attachmentWork as work
+} from '../test-support/attachment-fixture.ts';
+import { attachmentsForProducer, preparedResourceAttachments } from '../attachments/attachment-context.ts';
 import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
 
 const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -125,10 +134,120 @@ async function assertExpiredRun(scope: TestScope): Promise<void> {
     scope.assert.equal(execution.takeErrors({ kind: 'run' })[0]?.subtype, 'attribution-drift');
 }
 
+async function assertLateServiceOutput(scope: TestScope): Promise<void> {
+    const { execution, store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const captured = Promise.withResolvers<FailureArtifactStream>();
+    await runWithAttachmentExecution(execution, async function captureFirstAttempt() {
+        await execution.runAttempt(work, { index: 0 }, async function serviceOutput() {
+            const stream = createFailureArtifactStream(
+                { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } },
+                'boundary-captured',
+                'stdout',
+                'text/plain'
+            );
+            if (stream === null) {
+                throw new Error('Expected managed service capture.');
+            }
+            stream.write('first attempt');
+            await stream.close();
+            captured.resolve(stream);
+        });
+    });
+    const stream = await captured.promise;
+    stream.write('late output');
+    const errors = await execution.finish();
+    scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
+    scope.assert.equal(store.artifacts().length, 1);
+}
+async function assertSeparateRunStreams(scope: TestScope): Promise<void> {
+    const [ left, right ] = await Promise.all([
+        attachmentFixture(scope, defaultAttachmentLimits),
+        attachmentFixture(scope, defaultAttachmentLimits)
+    ]);
+    const rightStarted = Promise.withResolvers<undefined>();
+    const leftFinished = Promise.withResolvers<undefined>();
+    async function finishRight(stream: FailureArtifactStream): Promise<void> {
+        rightStarted.resolve(undefined);
+        await leftFinished.promise;
+        stream.write(' end');
+        await stream.close();
+    }
+    async function finishLeft(): Promise<void> {
+        await rightStarted.promise;
+        await closeAttemptFailureStreams(work, { index: 0 });
+        leftFinished.resolve(undefined);
+    }
+    async function capturedAttempt(fixture: AttachmentFixture, side: 'left' | 'right'): Promise<void> {
+        await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+            await fixture.execution.runAttempt(work, { index: 0 }, async function sharedWorkIdentity() {
+                const stream = createFailureArtifactStream(
+                    { name: 'service', condition: { kind: 'attempt', work, attempt: { index: 0 } } },
+                    'boundary-captured',
+                    'stdout',
+                    'text/plain'
+                );
+                if (stream === null) {
+                    throw new Error('Expected managed service capture.');
+                }
+                stream.write(side);
+                await (side === 'right' ? finishRight(stream) : finishLeft());
+            });
+        });
+    }
+    await Promise.all([ capturedAttempt(left, 'left'), capturedAttempt(right, 'right') ]);
+    const artifact = right.store.artifacts()[0];
+    scope.require.defined(artifact);
+    scope.assert.partialDeepEqual(artifact.payload.content, { kind: 'text', text: 'right end' });
+}
+async function assertUnknownPreparedAttempt(scope: TestScope): Promise<void> {
+    const { execution, store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    await runWithAttachmentExecution(execution, async function ownedRun() {
+        await execution.runAttempt(work, { index: 0 }, async function selectedAttempt() {
+            const attachments = preparedResourceAttachments(
+                'service',
+                { kind: 'attempt', work, attempt: { index: 99 } },
+                'instrumented',
+                'attachment'
+            );
+            scope.require.defined(attachments);
+            await scope.assert.rejects(async function rejectUnknownAttempt() {
+                await attachments.json(metadata, { ready: true });
+            }, { message: 'Failure artifact escaped its test attempt.' });
+        });
+    });
+    const errors = await execution.finish();
+    scope.assert.equal(errors.length, 1);
+    scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
+    scope.assert.deepEqual(store.artifacts(), []);
+}
 export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-ownership.test.ts',
     children: [
+        createTestCase({
+            ...definition,
+            title: 'prepared evidence cannot borrow an active attempt when its own attempt is unknown',
+            async body(scope: TestScope) {
+                await assertUnknownPreparedAttempt(scope);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...definition,
+            title: 'simultaneous runs keep service streams with identical work identities separate',
+            async body(scope: TestScope) {
+                await assertSeparateRunStreams(scope);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...definition,
+            title: 'late service output preserves its expired attempt attribution',
+            async body(scope: TestScope) {
+                await assertLateServiceOutput(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...definition,
             title: 'captured resource attachment APIs reject writes after the integration run ends',

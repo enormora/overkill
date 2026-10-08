@@ -304,20 +304,28 @@ function eventWithTaskArtifacts(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): RuntimeReporterEvent {
-    return event.kind === 'test-end'
-        ? {
-            ...event,
-            artifacts: [
-                ...event.artifacts,
-                ...runtime.attachments?.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
-                    index: event.attempt
-                }, taskRun) ?? [],
-                ...taskRun.state.caseArtifacts(event.workId ?? createDefaultWorkId(event.case), {
-                    index: event.attempt
-                })
-            ]
-        }
-        : event;
+    if (event.kind !== 'test-end') {
+        return event;
+    }
+    const work = event.workId ?? createDefaultWorkId(event.case);
+    runtime.attachments?.settleAttempt(
+        work,
+        { index: event.attempt },
+        event.verdict,
+        taskRun
+    );
+    return {
+        ...event,
+        artifacts: [
+            ...event.artifacts,
+            ...runtime.attachments?.caseArtifacts(work, {
+                index: event.attempt
+            }, taskRun) ?? [],
+            ...taskRun.state.caseArtifacts(work, {
+                index: event.attempt
+            })
+        ]
+    };
 }
 
 function handleWorkerEvent(
@@ -372,7 +380,7 @@ function handleUnitCompleted(
 }
 
 function handleTaskMessage(
-    message: Exclude<WorkerPoolMessage, { readonly kind: 'task-messages-completed'; }>,
+    message: Exclude<WorkerPoolMessage, { readonly kind: 'prepare-resource-artifacts' | 'task-messages-completed'; }>,
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
@@ -398,7 +406,7 @@ export function handleWorkerMessage(
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
-    if (message.kind !== 'task-messages-completed') {
+    if (message.kind !== 'task-messages-completed' && message.kind !== 'prepare-resource-artifacts') {
         handleTaskMessage(message, taskRun, runtime);
     }
 }

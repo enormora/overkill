@@ -18,6 +18,12 @@ export async function createAttachmentStorageSession(
         throw new TypeError('Runtime attachments require integration limits.');
     }
     const store = createAttachmentStore({
+        witnessDirectory: path.resolve(
+            resolved.facts.environment.projectRoot,
+            resolved.config.runtimeStateDir,
+            'witnesses',
+            record.session.id
+        ),
         captureTime: record.captureTime,
         checkpoint: record.checkpoint,
         directory: path.resolve(

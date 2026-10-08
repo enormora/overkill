@@ -4,10 +4,9 @@ import {
     createSupervisedRunState,
     type StoredRunValue
 } from './supervised-run-state.ts';
-import {
-    createWorkerPoolMessageChannel,
-    type WorkerPoolMessageChannel,
-    type WorkerPoolRunOutput
+import type {
+    WorkerPoolMessageChannel,
+    WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
 import {
     workerPoolPlacementTrace,
@@ -41,6 +40,7 @@ import {
     stopWorkerPoolTasks
 } from './worker-pool-task-events.ts';
 import {
+    createResourcePreparationChannel,
     acquireWorkerPoolResourceLifecycle,
     completeWorkerPoolResourceMembers,
     createWorkerPoolBatchRunCommand,
@@ -137,7 +137,7 @@ function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
 }
 
 function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): WorkerPoolMessageChannel {
-    return createWorkerPoolMessageChannel(function receiveWorkerMessage(message) {
+    return createResourcePreparationChannel(taskRun, runtime, function receiveWorkerMessage(message) {
         handleWorkerMessage(message, taskRun, runtime);
     });
 }

@@ -53,9 +53,8 @@ function isWorkerPoolTask(value: unknown): value is WorkerPoolTask {
         isWorkerPoolTaskKind(Reflect.get(value, 'kind'));
 }
 
-type LifecycleWorkerTask = Extract<WorkerPoolTask, {
-    readonly kind: 'complete-resource-owner-work' | 'dispose-lane-lifecycle' | 'dispose-run-resources';
-}>;
+type ExecutableWorkerTaskKind = 'acquire-run-resources' | 'collect' | 'run';
+type LifecycleWorkerTask = Exclude<WorkerPoolTask, { readonly kind: ExecutableWorkerTaskKind; }>;
 
 function isCompletionTask(task: WorkerPoolTask): boolean {
     return task.kind === 'complete-resource-owner-work';
@@ -70,7 +69,8 @@ function isRunDisposalTask(task: WorkerPoolTask): boolean {
 }
 
 function isLifecycleWorkerTask(task: WorkerPoolTask): task is LifecycleWorkerTask {
-    return isCompletionTask(task) || isLaneDisposalTask(task) || isRunDisposalTask(task);
+    return task.kind === 'prepare-resource-artifacts' || isCompletionTask(task) || isLaneDisposalTask(task) ||
+        isRunDisposalTask(task);
 }
 
 function taskWorkerLifecycle(task: unknown): WorkerLifecycle {

@@ -2,9 +2,7 @@ import { createClock } from '@enormora/clock';
 import type { RunnerError, RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import { readHostCommand } from './worker-pool-host-transport.ts';
-import {
-    childProcessEnvelope
-} from './child-process-protocol.ts';
+import { createChildProcessOutbox } from './child-process-outbox.ts';
 import {
     createNodeResourceUsageTracker
 } from './resource-usage.ts';
@@ -57,7 +55,10 @@ type TaskWithHostPort = {
     readonly task: WorkerPoolTask;
 };
 
-const sendMessage = process.send?.bind(process);
+const outbox = createChildProcessOutbox(workerPoolHostCorrelationId, {
+    disconnect: process.disconnect?.bind(process) ?? null,
+    send: process.send?.bind(process) ?? null
+});
 const globalErrorObserver = createExecutionGlobalErrorObserver('worker-pool-host');
 
 function createStoredValue<Value>(initialValue: Value): StoredValue<Value> {
@@ -101,7 +102,7 @@ const state: WorkerPoolHostState = {
 const fatalShutdownStarted = createStoredValue(false);
 
 function send(message: WorkerPoolHostMessage): void {
-    sendMessage?.(childProcessEnvelope(workerPoolHostCorrelationId, message));
+    outbox.send(message);
 }
 
 function portTransferList(
@@ -223,7 +224,7 @@ async function destroy(): Promise<void> {
     await poolToDestroy?.destroy();
     send({ kind: 'destroyed' });
     globalErrorObserver.stop();
-    process.disconnect?.();
+    await outbox.disconnect();
 }
 
 function abortActiveTasks(): void {
@@ -245,7 +246,7 @@ function handleFatalHostError(
     state.commandHandling.write(destroy());
 }
 
-function handleCommand(command: WorkerPoolHostCommand): void {
+function handleLifecycleCommand(command: Exclude<WorkerPoolHostCommand, { readonly kind: 'task-reply'; }>): void {
     if (command.kind === 'configure') {
         configure(command);
     } else if (command.kind === 'run-task') {
@@ -258,6 +259,14 @@ function handleCommand(command: WorkerPoolHostCommand): void {
         finishResourceTracking();
     } else {
         state.commandHandling.write(destroy());
+    }
+}
+
+function handleCommand(command: WorkerPoolHostCommand): void {
+    if (command.kind === 'task-reply') {
+        state.activeTasks.get(command.taskId)?.channel.reply(command.reply);
+    } else {
+        handleLifecycleCommand(command);
     }
 }
 

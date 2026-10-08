@@ -2,6 +2,7 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
+import type { AttemptId } from '../engine/identity.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type {
     HostProcess,
@@ -109,7 +110,22 @@ export type WorkerPoolDisposeLaneLifecycleTask = {
     readonly port: NodeMessagePort;
 };
 
+export type WorkerPoolPrepareResourcesTask = {
+    readonly kind: 'prepare-resource-artifacts';
+    readonly work: WorkId;
+    readonly attempt: AttemptId;
+    readonly lane: string;
+    readonly lifecycle: WorkerPoolLifecycleIdentity;
+    readonly attachmentEndpoint: AttachmentEndpoint | null;
+    readonly port: NodeMessagePort;
+};
+export type WorkerPoolPreparationReply = {
+    readonly kind: 'resource-artifacts-prepared';
+    readonly request: string;
+    readonly runnerErrors: readonly RunnerError[];
+};
 type WorkerPoolTasksByKind = {
+    readonly prepareResources: WorkerPoolPrepareResourcesTask;
     readonly acquireRunResources: WorkerPoolAcquireRunResourcesTask;
     readonly collect: WorkerPoolCollectTask;
     readonly completeResourceOwnerWork: WorkerPoolCompleteResourceOwnerWorkTask;
@@ -154,6 +170,12 @@ type WorkerPoolTaskMessagesCompleted = {
 };
 
 type WorkerPoolMessagesByKind = {
+    readonly prepareResources: {
+        readonly kind: 'prepare-resource-artifacts';
+        readonly request: string;
+        readonly work: WorkId;
+        readonly attempt: AttemptId;
+    };
     readonly event: WorkerPoolReporterMessage;
     readonly output: WorkerPoolOutputMessage;
     readonly timing: WorkerPoolTimingMessage;
@@ -165,6 +187,7 @@ type WorkerPoolMessagesByKind = {
 export type WorkerPoolMessage = WorkerPoolMessagesByKind[keyof WorkerPoolMessagesByKind];
 
 export type WorkerPoolMessageChannel = {
+    readonly reply: (reply: WorkerPoolPreparationReply) => void;
     readonly close: () => void;
     readonly messagesCompleted: Promise<undefined>;
     readonly port: NodeMessagePort;
@@ -185,6 +208,9 @@ export function createWorkerPoolMessageChannel(
     });
 
     return {
+        reply(reply) {
+            port2.postMessage(reply, []);
+        },
         close() {
             port1.close();
             port2.close();

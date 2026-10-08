@@ -5,6 +5,12 @@ import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts'
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 
 export type AttachmentCoordinator = {
+    readonly settleAttempt: (
+        work: WorkId,
+        attempt: AttemptId,
+        verdict: RunResult['perTest'][number]['verdict'],
+        branch: Readonly<Record<string, unknown>> | null
+    ) => void;
     readonly endpoint: AttachmentEndpoint;
     readonly branchEndpoint: (branch: Readonly<Record<string, unknown>>, retain: () => boolean) => AttachmentEndpoint;
     readonly branchArtifacts: (branch: Readonly<Record<string, unknown>>) => readonly RuntimeAttachmentArtifact[];

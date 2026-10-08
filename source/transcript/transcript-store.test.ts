@@ -73,13 +73,18 @@ async function assertScopedTranscriptStore(scope: TestScope): Promise<void> {
     const store = createTranscriptStore<readonly ['state', number]>();
 
     store.recordInScope(firstScope, 'state', 1);
+    store.recordInScope(null, 'state', 2);
     await runWithTranscriptScope(firstScope, async function assertFirstScope() {
         scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ] ]);
     });
     await runWithTranscriptScope(emptyScope, async function assertEmptyScope() {
         scope.assert.deepEqual(store.view.entries, []);
+        await runWithTranscriptScope(null, async function assertLifetimeEvidence() {
+            scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
+        });
+        scope.assert.deepEqual(store.view.entries, []);
     });
-    scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ] ]);
+    scope.assert.deepEqual(store.view.entries, [ [ 'state', 1 ], [ 'state', 2 ] ]);
 }
 
 export const testNode = createSuite({

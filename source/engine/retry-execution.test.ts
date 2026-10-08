@@ -194,6 +194,9 @@ function failingCompletionPolicy(completed: () => void): NonNullable<ExecuteOpti
         async runAttempt(_testCase, _attempt, run) {
             return await run();
         },
+        async prepareAttempt() {
+            return undefined;
+        },
         async completeCase() {
             completed();
             throw new Error('shared cleanup failed');

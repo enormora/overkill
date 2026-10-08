@@ -3,6 +3,7 @@ import {
     emptyTranscriptView,
     type HttpTranscript
 } from '../packages/simulation/transcript.entry-point.ts';
+import { observeHttpFailureArtifacts, type HttpFailureCapture } from './local-http-failure-capture.ts';
 import type {
     Awaitable,
     ExecutionRequirement,
@@ -275,6 +276,22 @@ function customTranscript(policy: LocalHttpTranscriptPolicy, server: LocalHttpSe
     }
 }
 
+type ServiceTranscript = {
+    readonly view: HttpTranscript<unknown>;
+    readonly observer: LocalHttpTranscriptObserver | null;
+};
+function serviceTranscript(
+    server: LocalHttpServer,
+    baseUrl: string,
+    policy: LocalHttpTranscriptPolicy | null,
+    scope: ResourceScope
+): ServiceTranscript {
+    if (policy === null) {
+        const observer = observeLocalHttpServer(server, baseUrl, scope === 'per-case' ? 'attempt' : 'lifetime');
+        return { view: observer.transcript, observer };
+    }
+    return { view: customTranscript(policy, server), observer: null };
+}
 function localHttpDefinition<
     const Name extends string,
     ConsumerHandle extends LocalServiceConsumerHandle,
@@ -285,6 +302,7 @@ function localHttpDefinition<
     policy: LocalHttpTranscriptPolicy | null
 ): LocalHttpDefinition<Name, LocalHttpResourceHandle<ConsumerHandle, unknown>, Scope, Dependencies> {
     const observers = new WeakMap<LocalHttpServer, LocalHttpTranscriptObserver>();
+    const captures = new WeakMap<LocalHttpServer, HttpFailureCapture>();
 
     return {
         name: input.name,
@@ -298,16 +316,19 @@ function localHttpDefinition<
         async ready(server: LocalHttpServer, context: LocalServiceCreationContext<Dependencies>) {
             await listen(server, context.address);
             const endpoint = serverEndpoint(server, context.address.host);
-            const baseUrl = `http://${endpoint.host}:${endpoint.port}`;
-            const transcript = policy === null
-                ? observeLocalHttpServer(server, baseUrl)
-                : null;
-
-            if (transcript !== null) {
-                observers.set(server, transcript);
+            const { view, observer } = serviceTranscript(
+                server,
+                `http://${endpoint.host}:${endpoint.port}`,
+                policy,
+                input.scope
+            );
+            if (observer !== null) {
+                observers.set(server, observer);
             }
-
-            const view = transcript?.transcript ?? customTranscript(policy ?? { kind: 'disabled' }, server);
+            const capture = policy?.kind === 'disabled' ? null : observeHttpFailureArtifacts(input.name, view);
+            if (capture !== null) {
+                captures.set(server, capture);
+            }
 
             return withTranscript(
                 input.handle(
@@ -324,6 +345,8 @@ function localHttpDefinition<
             } finally {
                 observers.get(server)?.dispose();
                 observers.delete(server);
+                await captures.get(server)?.close();
+                captures.delete(server);
             }
             await input.dispose(server, context);
         }

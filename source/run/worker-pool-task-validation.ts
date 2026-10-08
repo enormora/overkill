@@ -6,6 +6,7 @@ const workerPoolTaskKinds: ReadonlySet<string> = new Set([
     'complete-resource-owner-work',
     'dispose-lane-lifecycle',
     'dispose-run-resources',
+    'prepare-resource-artifacts',
     'run'
 ]);
 

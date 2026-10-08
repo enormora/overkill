@@ -9,6 +9,7 @@ import {
 import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
 import { snapshotAttachmentJson } from './attachment-json.ts';
 import { createAttachmentExecution } from './attachment-execution.ts';
+import { createAttachmentStream } from './attachment-writer.ts';
 
 const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { name: 'evidence', mediaType: 'application/octet-stream' };
@@ -37,7 +38,7 @@ async function assertFailedPendingWrite(scope: TestScope): Promise<void> {
             await pending.promise;
         }
         return store.exchange('pending', operation);
-    }, 1024);
+    }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
     const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
     await assertPendingFailure(scope, writer, pending);
     const content = store.artifacts()[0]?.payload.content;
@@ -58,7 +59,7 @@ async function assertPendingWrite(scope: TestScope): Promise<void> {
             await pending.promise;
         }
         return store.exchange('pending', operation);
-    }, 1024);
+    }, { ...defaultAttachmentLimits, maxInlineBytes: 1024 });
     const writer = await execution.context.forProducer({ kind: 'case' }).open({ ...metadata, kind: 'text' });
     const writing = writer.write('one');
     await scope.assert.rejects(async function rejectOverlappingWrite() {
@@ -188,10 +189,129 @@ async function assertFailureBudget(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }), []);
 }
 
+async function assertFailedWriterBoundary(scope: TestScope): Promise<void> {
+    const { store } = await attachmentFixture(scope, { ...defaultAttachmentLimits, maxArtifactBytes: 1 });
+    const opened = await store.exchange('test', {
+        kind: 'open',
+        branch: null,
+        contentKind: 'binary',
+        metadata,
+        owner: { kind: 'case', work, attempt: { index: 0 } },
+        producer: { kind: 'case' }
+    });
+    if (opened.kind !== 'opened') {
+        throw new Error('Expected binary writer.');
+    }
+    const failed = await store.exchange('test', {
+        kind: 'write',
+        writer: opened.writer,
+        data: Buffer.from([ 1, 2 ]).toString('base64')
+    });
+    scope.assert.deepEqual(failed, {
+        kind: 'error',
+        message: 'Binary attachment byte limit exceeded.',
+        reason: 'byte-limit'
+    });
+    const omitted = await store.exchange('test', { kind: 'omit', writer: opened.writer });
+    scope.assert.deepEqual(omitted, {
+        kind: 'error',
+        message: 'Attachment writer is closed.',
+        reason: 'operation-error'
+    });
+    scope.assert.deepEqual(await store.finish(null), []);
+    scope.assert.equal(store.artifacts()[0]?.payload.content.kind, 'file');
+}
+async function assertForeignConsumer(scope: TestScope): Promise<void> {
+    const { store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const foreign = { ...work, runtimes: [ { name: 'outside', dimensions: {}, scenarios: {}, variantId: null } ] };
+    const response = await store.exchange('test', { kind: 'resource-consumer', boundary: 'owner', work: foreign });
+    scope.assert.deepEqual(response, {
+        kind: 'error',
+        message: 'Resource consumer is outside selected work.',
+        reason: 'operation-error'
+    });
+    scope.assert.deepEqual(store.selectedArtifacts(), []);
+}
+function rejectCaptureTransport(cause: unknown): never {
+    throw cause;
+}
+async function assertForeignTransportFailure(scope: TestScope): Promise<void> {
+    const { store } = await attachmentFixture(scope, defaultAttachmentLimits);
+    const opened = await store.exchange('test', {
+        kind: 'open',
+        branch: null,
+        contentKind: 'text',
+        metadata,
+        owner: { kind: 'run' },
+        producer: { kind: 'case' }
+    });
+    if (opened.kind !== 'opened') {
+        throw new Error('Expected text writer.');
+    }
+    const writer = createAttachmentStream(
+        {
+            owner: { kind: 'run' },
+            fail(message) {
+                return new Error(message);
+            },
+            verify() {
+                return undefined;
+            },
+            release() {
+                return undefined;
+            },
+            async send(operation) {
+                if (operation.kind === 'write') {
+                    return rejectCaptureTransport(null);
+                }
+                return await store.exchange('test', operation);
+            }
+        },
+        opened.writer,
+        'text'
+    );
+    await scope.assert.rejects(async function foreignWrite() {
+        await writer.write('prefix');
+    }, { message: 'Attachment write failed.' });
+    await scope.assert.rejects(async function failedClose() {
+        await writer.close();
+    }, { message: 'Attachment write failed.' });
+    const artifact = store.artifacts()[0];
+    scope.require.defined(artifact);
+    scope.assert.partialDeepEqual(artifact.payload.content, {
+        kind: 'text',
+        text: '',
+        completion: { kind: 'incomplete', reason: 'write-error' }
+    });
+}
 export const testNode = createSuite({
     ...definition,
     title: 'source/run/runtime-attachment-validation.test.ts',
     children: [
+        createTestCase({
+            ...definition,
+            title: 'foreign transport rejections preserve incomplete capture metadata',
+            async body(scope: TestScope) {
+                await assertForeignTransportFailure(scope);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...definition,
+            title: 'failed binary writers refuse further operations and do not add unclosed errors',
+            async body(scope: TestScope) {
+                await assertFailedWriterBoundary(scope);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...definition,
+            title: 'resource consumers cannot substitute another runtime variant of a selected case',
+            async body(scope: TestScope) {
+                await assertForeignConsumer(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...definition,
             title: 'a pending write failure keeps the artifact incomplete when close races it',

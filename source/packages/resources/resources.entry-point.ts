@@ -169,3 +169,11 @@ export type {
     RuntimeSessionDisposalContext,
     StartRuntimeRequest
 } from '../../resources/runtime-lifecycle.ts';
+
+export { withFailureArtifacts } from '../../resources/failure-artifacts.ts';
+export type {
+    FailureArtifactAttachments,
+    ResourceFailureCapture,
+    SimulationWitnessArtifact,
+    SimulationWitnessInput
+} from '../../resources/failure-artifacts.ts';

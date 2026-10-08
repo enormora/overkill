@@ -22,7 +22,7 @@ export type AttachmentStream = {
     readonly write: (chunk: Uint8Array | string) => Promise<void>;
     readonly omit: () => Promise<void>;
     readonly finish: (reason: AttachmentCloseReason) => Promise<RuntimeAttachmentArtifact>;
-    readonly close: () => Promise<RuntimeAttachmentArtifact>;
+    readonly close: (...reason: readonly ['capture-limit'] | readonly []) => Promise<RuntimeAttachmentArtifact>;
 };
 type AttachmentStreamState = {
     readonly operations: AttachmentOperations;
@@ -123,13 +123,16 @@ async function attachmentStreamFinish(
     }
     return await result;
 }
-async function attachmentStreamClose(state: AttachmentStreamState): Promise<RuntimeAttachmentArtifact> {
+async function attachmentStreamClose(
+    state: AttachmentStreamState,
+    reason: 'capture-limit' | 'complete'
+): Promise<RuntimeAttachmentArtifact> {
     const { closing, operations, failure } = state;
 
     if (closing.read() === null) {
         operations.verify();
     }
-    const artifact = await attachmentStreamFinish(state, 'complete');
+    const artifact = await attachmentStreamFinish(state, reason);
     const previousFailure = failure.read();
     if (previousFailure !== null) {
         throw previousFailure;
@@ -151,7 +154,9 @@ export function createAttachmentStream(
         write: attachmentStreamWrite.bind(null, state),
         omit: attachmentStreamOmit.bind(null, state),
         finish: attachmentStreamFinish.bind(null, state),
-        close: attachmentStreamClose.bind(null, state)
+        async close(...reason: readonly ['capture-limit'] | readonly []) {
+            return await attachmentStreamClose(state, reason[0] ?? 'complete');
+        }
     };
 }
 

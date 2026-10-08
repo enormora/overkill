@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 import type { WorkerPoolTaskWithoutPort } from './worker-pool-host-protocol.ts';
-import { workIdSchema, runtimeIdSchema, workloadIdSchema } from './run-identity-schema.ts';
+import { workIdSchema, runtimeIdSchema, workloadIdSchema, attemptIdSchema } from './run-identity-schema.ts';
 import { executionCommandFields, hostProcessSchema } from './run-command-schema.ts';
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
@@ -24,6 +24,13 @@ const commandSchema = z.strictObject({
 const lifecycleFields = { lane: z.string(), lifecycle: z.strictObject({ token: z.string() }) };
 const boundaryUsesSchema = z.array(z.strictObject({ boundaryKey: z.string(), count: z.number() }));
 export const workerPoolTaskSchema: z.ZodType<WorkerPoolTaskWithoutPort> = z.discriminatedUnion('kind', [
+    z.strictObject({
+        kind: z.literal('prepare-resource-artifacts'),
+        ...lifecycleFields,
+        work: workIdSchema,
+        attempt: attemptIdSchema,
+        attachmentEndpoint: attachmentEndpointSchema.nullable()
+    }),
     z.strictObject({ kind: z.literal('collect'), command: commandSchema }),
     z.strictObject({
         kind: z.literal('run'),

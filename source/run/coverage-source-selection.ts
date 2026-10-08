@@ -11,7 +11,7 @@ import {
     inspectCoverageSource,
     isSupportedCoverageSource,
     isTypeScriptCoverageSource,
-    nativeTypeScriptCoverageSource,
+    prepareNativeTypeScriptCoverage,
     transformCoverageSource
 } from './coverage-runtime-source.ts';
 
@@ -177,7 +177,7 @@ export async function prepareCoverageSources(request: CoverageSourceRequest): Pr
             } else if (isTypeScriptCoverageSource(fileURLToPath(entry.url))) {
                 const source = await readFile(fileURLToPath(entry.url), 'utf8');
 
-                Object.assign(entry, { fake: false, source: nativeTypeScriptCoverageSource(source) });
+                prepareNativeTypeScriptCoverage(entry, source);
             }
         },
         sourcePath(sourcePath, info) {

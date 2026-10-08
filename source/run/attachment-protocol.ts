@@ -1,6 +1,7 @@
-import type { AttemptId, WorkId } from '../engine/identity.ts';
+import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
 import type {
     AttachmentLimits,
+    FailureArtifactCondition,
     AttachmentMetadata,
     AttachmentProducer,
     RuntimeAttachmentArtifact
@@ -19,7 +20,7 @@ type CaseAttachmentOwner = {
     readonly attempt: AttemptId;
 };
 export type AttachmentOwner = CaseAttachmentOwner | { readonly kind: 'run'; };
-export type AttachmentCloseReason = 'complete' | 'unclosed' | 'write-error';
+export type AttachmentCloseReason = 'capture-limit' | 'complete' | 'unclosed' | 'write-error';
 type AttachmentOpen = {
     readonly kind: 'open';
     readonly metadata: AttachmentMetadata;
@@ -28,6 +29,17 @@ type AttachmentOpen = {
     readonly producer: AttachmentProducer;
     readonly branch: string | null;
 };
+type PreparedAttachmentOpen = {
+    readonly metadata: AttachmentMetadata;
+    readonly contentKind: 'binary' | 'json' | 'text';
+    readonly owner: AttachmentOwner;
+    readonly producer: AttachmentProducer;
+    readonly branch: string | null;
+    readonly kind: 'prepare';
+    readonly condition: FailureArtifactCondition;
+    readonly source: 'boundary-captured' | 'instrumented' | 'native';
+    readonly subtype: 'attachment' | 'witness';
+};
 type AttachmentWrite = { readonly kind: 'write'; readonly writer: number; readonly data: string; };
 type AttachmentClose = {
     readonly kind: 'close';
@@ -35,7 +47,20 @@ type AttachmentClose = {
     readonly reason: AttachmentCloseReason;
 };
 type AttachmentOmit = { readonly kind: 'omit'; readonly writer: number; };
-export type AttachmentOperation = AttachmentClose | AttachmentOmit | AttachmentOpen | AttachmentWrite;
+type AttachmentOperationsByKind = {
+    readonly resourceFailure: { readonly kind: 'resource-failure'; readonly boundary: string; };
+    readonly resourceConsumer: {
+        readonly kind: 'resource-consumer';
+        readonly boundary: string;
+        readonly work: WorkId;
+    };
+    readonly close: AttachmentClose;
+    readonly omit: AttachmentOmit;
+    readonly open: AttachmentOpen;
+    readonly prepare: PreparedAttachmentOpen;
+    readonly write: AttachmentWrite;
+};
+export type AttachmentOperation = AttachmentOperationsByKind[keyof AttachmentOperationsByKind];
 export type AttachmentRequest = {
     readonly request: number;
     readonly token: string;
@@ -53,3 +78,7 @@ export const attachmentMetadataBytes = 256;
 export const attachmentMaxFrameBytes = 131_072;
 
 export const attachmentMaxPendingRequests = 256;
+
+export function attachmentScopeKey(owner: AttachmentOwner): string {
+    return owner.kind === 'run' ? 'run' : workIdentityKey(owner.work);
+}

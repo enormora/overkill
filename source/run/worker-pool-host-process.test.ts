@@ -1,4 +1,7 @@
-import type { MessagePort as WorkerMessagePort } from 'node:worker_threads';
+import {
+    createWorkerMessagePortFixture as createFakePort,
+    type WorkerMessagePortFixture as FakePort
+} from '../test-support/worker-message-port-fixture.ts';
 import { createFakeHostChild, type FakeHostChild } from '../test-support/fake-worker-pool-host-process.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource-usage.ts';
@@ -15,7 +18,7 @@ import type {
 } from './run-orchestrator-dependencies.ts';
 import type {
     WorkerPoolCommand,
-    WorkerPoolMessage
+    WorkerPoolTask
 } from './worker-pool-protocol.ts';
 import {
     serializeError,
@@ -26,10 +29,7 @@ import { createHostedWorkerPool } from './worker-pool-host-process.ts';
 
 const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
-type FakePort = {
-    readonly messages: () => readonly WorkerPoolMessage[];
-    readonly postMessage: (message: WorkerPoolMessage) => void;
-};
+type WorkerMessagePort = Readonly<WorkerPoolTask['port']>;
 
 type HostedPoolFixture = {
     readonly child: FakeHostChild;
@@ -50,19 +50,6 @@ type ResourceTrackingFixture = HostedPoolFixture & {
     readonly observedSamples: readonly number[];
     readonly tracker: WorkerPoolResourceUsageTracker;
 };
-
-function createFakePort(): FakePort {
-    const messages: WorkerPoolMessage[] = [];
-
-    return {
-        messages() {
-            return messages;
-        },
-        postMessage(message) {
-            messages.push(message);
-        }
-    };
-}
 
 function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): WorkerPoolCreationOptions {
     return {

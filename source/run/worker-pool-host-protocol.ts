@@ -3,7 +3,9 @@ import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource
 import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
 import type {
     WorkerPoolMessage,
-    WorkerPoolTask
+    WorkerPoolTask,
+    WorkerPoolPrepareResourcesTask,
+    WorkerPoolPreparationReply
 } from './worker-pool-protocol.ts';
 
 export const workerPoolHostCorrelationId = 'worker-pool-host';
@@ -57,7 +59,16 @@ type WorkerPoolDisposeLaneLifecycleTaskWithoutPort = {
     readonly lane: WorkerPoolDisposeLaneLifecycleTask['lane'];
     readonly lifecycle: WorkerPoolDisposeLaneLifecycleTask['lifecycle'];
 };
+type WorkerPoolPrepareResourcesTaskWithoutPort = {
+    readonly kind: 'prepare-resource-artifacts';
+    readonly work: WorkerPoolPrepareResourcesTask['work'];
+    readonly attempt: WorkerPoolPrepareResourcesTask['attempt'];
+    readonly lane: WorkerPoolPrepareResourcesTask['lane'];
+    readonly lifecycle: WorkerPoolPrepareResourcesTask['lifecycle'];
+    readonly attachmentEndpoint: WorkerPoolPrepareResourcesTask['attachmentEndpoint'];
+};
 type WorkerPoolTasksWithoutPortByKind = {
+    readonly prepareResources: WorkerPoolPrepareResourcesTaskWithoutPort;
     readonly acquireRunResources: WorkerPoolAcquireRunResourcesTaskWithoutPort;
     readonly collect: WorkerPoolCollectTaskWithoutPort;
     readonly completeResourceOwnerWork: WorkerPoolCompleteResourceOwnerWorkTaskWithoutPort;
@@ -78,6 +89,7 @@ export type SerializedError = {
 };
 
 type SerializedWorkerPoolEventMessagesByKind = {
+    readonly prepareResources: Extract<WorkerPoolMessage, { readonly kind: 'prepare-resource-artifacts'; }>;
     readonly event: Extract<WorkerPoolMessage, { readonly kind: 'event'; }>;
     readonly timing: Extract<WorkerPoolMessage, { readonly kind: 'timing'; }>;
     readonly attemptCompleted: Extract<WorkerPoolMessage, { readonly kind: 'attempt-completed'; }>;
@@ -111,7 +123,7 @@ export type WorkerPoolHostCommand = {
 } | {
     readonly kind: 'start-resource-tracking';
     readonly samplingIntervalMilliseconds: number;
-};
+} | { readonly kind: 'task-reply'; readonly taskId: string; readonly reply: WorkerPoolPreparationReply; };
 
 export type WorkerPoolHostMessage = {
     readonly error: RunnerError;

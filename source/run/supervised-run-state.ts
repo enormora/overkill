@@ -9,9 +9,13 @@ import {
 import type { PerTestResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
 import { caseAttemptHistory } from '../engine/test-attempt-history.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
+import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import type { RunRequest } from './run-types.ts';
 import { createSupervisedOutputCapture } from './supervised-output-capture.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
+
+export type StoredRunValue<Value> = StoredValue<Value>;
+export const createStoredRunValue: <Value>(value: Value) => StoredRunValue<Value> = createStoredValue;
 
 const microsecondsPerMillisecond = 1000;
 
@@ -55,11 +59,6 @@ export type ActiveSupervisedCase = SupervisedCase & {
 type TimingWindow = {
     readonly endedAtMicroseconds: number;
     readonly startedAtMicroseconds: number;
-};
-
-export type StoredRunValue<Value> = {
-    readonly read: () => Value;
-    readonly write: (value: Value) => void;
 };
 
 export type SupervisedRunState = {
@@ -247,19 +246,6 @@ export function deduplicatedChildRuntimePolicyErrors(
 
         return key === null || !supervisorKeys.has(key);
     });
-}
-
-export function createStoredRunValue<Value>(initialValue: Value): StoredRunValue<Value> {
-    let currentValue = initialValue;
-
-    return {
-        read() {
-            return currentValue;
-        },
-        write(value) {
-            currentValue = value;
-        }
-    };
 }
 
 export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): SupervisedRunState {

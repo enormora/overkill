@@ -268,7 +268,7 @@ function publishMalformedNodeHttpDiagnostics(): void {
 
 function assertDiagnosticFailuresAreContained(scope: TestScope): void {
     const baseUrl = 'http://127.0.0.1:12345';
-    const observer = observeLocalHttpServer({}, baseUrl);
+    const observer = observeLocalHttpServer({}, baseUrl, 'attempt');
 
     publishMalformedUndiciDiagnostics(baseUrl);
     publishMalformedNodeHttpDiagnostics();

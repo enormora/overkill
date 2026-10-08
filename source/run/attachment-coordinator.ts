@@ -31,7 +31,7 @@ function attachmentRunCoordinatorBranchEndpoint(
 ): AttachmentEndpoint {
     const { branches, store } = state;
 
-    const id = randomUUID();
+    const id = branches.get(branch) ?? randomUUID();
     branches.set(branch, id);
     store.registerBranch(id, retain);
     return { ...state.endpoint, branch: id };
@@ -43,7 +43,7 @@ function attachmentRunCoordinatorBranchArtifacts(
     const { branches, store } = state;
 
     const id = branches.get(branch);
-    return id === undefined ? [] : store.branchArtifacts(id);
+    return id === undefined ? [] : store.conflictArtifacts(id);
 }
 function attachmentRunCoordinatorCaseArtifacts(
     state: AttachmentRunCoordinatorState,
@@ -55,7 +55,7 @@ function attachmentRunCoordinatorCaseArtifacts(
 
     const artifacts = branch === null
         ? store.branchArtifacts(null)
-        : attachmentRunCoordinatorBranchArtifacts(state, branch);
+        : store.branchArtifacts(state.branches.get(branch) ?? null);
     return artifacts.filter(function belongsToAttempt(artifact) {
         return attachmentMatchesAttempt(artifact, work, attempt);
     });
@@ -70,6 +70,7 @@ async function attachmentRunCoordinatorFinalize(
         return result;
     }
     const localErrors = await execution.finish();
+    store.settleResult(result);
     const owners = await server.finish();
     const final = resultWithRuntimeAttachments(result, store.selectedArtifacts(), {
         localErrors,
@@ -92,7 +93,7 @@ export function createAttachmentRunCoordinator(storage: AttachmentStorageSession
     const branches = new WeakMap<Record<string, unknown>, string>();
     const execution: AttachmentExecution = createAttachmentExecution(async function (operation) {
         return store.exchange('local', operation);
-    }, server.endpoint.limits.maxInlineBytes);
+    }, server.endpoint.limits);
     const endpoint: AttachmentEndpoint = server.endpoint;
     const finalized = createStoredRunValue<RunResult | null>(null);
     const state: AttachmentRunCoordinatorState = {
@@ -106,6 +107,9 @@ export function createAttachmentRunCoordinator(storage: AttachmentStorageSession
         finalized
     };
     return {
+        settleAttempt(work, attempt, verdict, branch) {
+            store.settleAttempt(work, attempt, verdict, branch === null ? null : branches.get(branch) ?? null);
+        },
         artifacts: store.selectedArtifacts,
         execution: state.execution,
         endpoint: state.endpoint,
