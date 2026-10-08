@@ -104,6 +104,12 @@ Projects may define any number of benchmark profiles. A separate CLI namespace
 organizes measurement and performance baseline operations; it does not require
 a separate configuration registry.
 
+Both `bench run` and `bench list` accept `--profile <name>`. When omitted,
+selection uses the sole profile whose `testFamily` is `benchmark` in the
+complete registry, independent of path operands. Zero or multiple benchmark
+profiles require an explicit selection; unknown names and other families are
+argument errors. There is no reserved or default benchmark profile name.
+
 It also confirms that Overkill should support:
 
 - benchmark registries or service handles as resources

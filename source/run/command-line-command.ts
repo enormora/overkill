@@ -62,10 +62,19 @@ export type CommandLineBaselineCommands = {
     readonly update: CommandLineCommand;
 };
 
+export type CommandLineBenchmarkRequest = ConfigLoadRequest & {
+    readonly paths: readonly string[];
+    readonly profile: string | null;
+};
+
+export type CommandLineBenchmarkCommand = (
+    request: CommandLineBenchmarkRequest
+) => Promise<CommandLineRunnerResult>;
+
 export type CommandLineBenchmarkCommands = {
     readonly baseline: CommandLineBaselineCommands;
-    readonly listBenchmarks: CommandLineCommand;
-    readonly runBenchmarks: CommandLineCommand;
+    readonly listBenchmarks: CommandLineBenchmarkCommand;
+    readonly runBenchmarks: CommandLineBenchmarkCommand;
 };
 
 function formatRunnerError(error: RunnerError): string {

@@ -1,6 +1,5 @@
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
 import type {
-    CommandLineCommand,
     CommandLineExitCode,
     CommandLineListTestsRequest,
     CommandLineRunTestsRequest,
@@ -26,7 +25,7 @@ type RequestRecorder = {
     readonly recordRun: (commandLineRequest: CommandLineRunTestsRequest) => void;
 };
 
-const unexpectedCommand: CommandLineCommand = async function runUnexpectedCommand() {
+const unexpectedCommand: () => Promise<CommandLineRunnerResult> = async function runUnexpectedCommand() {
     throw new Error('Unexpected command.');
 };
 const testExitCodes: {

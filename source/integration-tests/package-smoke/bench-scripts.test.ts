@@ -123,6 +123,49 @@ export const config = defineConfig({
 });
 `;
 
+export const benchmarkSelectionConfigScript = `
+import { defineConfig } from '@overkill-dev/test/config';
+
+export const config = defineConfig({
+    profiles: {
+        benchmark: { testFamily: 'microtest' },
+        startup: { testFamily: 'benchmark', files: { include: ['never-imported.bench.mjs'] } }
+    }
+});
+`;
+
+export const benchmarkCommandsScript = `
+import assert from 'node:assert/strict';
+import { createEngine } from '@overkill-dev/engine';
+import { commandLineRunner, createNodeCommandLineRunner } from '@overkill-dev/run/command-line';
+
+const cwd = process.argv[1];
+for (const runner of [commandLineRunner, createNodeCommandLineRunner({ defaultEngine: createEngine() })]) {
+    for (const [method, command] of [['runBenchmarks', 'bench run'], ['listBenchmarks', 'bench list']]) {
+        for (const profile of [null, 'startup']) {
+            const result = await runner.bench[method]({
+                configPath: null, cwd, paths: ['never-imported.bench.mjs'], profile
+            });
+            assert.deepEqual(result, {
+                exitCode: 3,
+                fallbackDiagnostics: [
+                    'Overkill argument error: Command "' + command + '" for profile "startup" is not implemented yet.'
+                ],
+                runResult: null,
+                stdoutLines: []
+            });
+        }
+        const rejected = await runner.bench[method]({ configPath: null, cwd, paths: [], profile: 'benchmark' });
+        assert.equal(rejected.exitCode, 3);
+        assert.deepEqual(rejected.fallbackDiagnostics, [
+            'Overkill argument error: Profile "benchmark" has testFamily "microtest". ' +
+                'Benchmark commands require testFamily "benchmark".'
+        ]);
+    }
+}
+console.log('benchmark selection passed');
+`;
+
 export const standardBenchConsumerScript = `
 import assert from 'node:assert/strict';
 import { suite, test } from '@overkill-dev/test';

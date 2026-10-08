@@ -1,5 +1,5 @@
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
-import type { CommandLineCommandContext } from '../run/command-line.entry-point.ts';
+import type { CommandLineBenchmarkRequest } from '../run/command-line.entry-point.ts';
 import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
 
 type CapturedCommandLineRun = Awaited<ReturnType<typeof runCommandLine>>;
@@ -8,7 +8,10 @@ type BenchmarkVerb = 'list' | 'run';
 const emptyTestData = { annotations: {}, controls: {} } as const;
 const benchmarkVerbs: readonly BenchmarkVerb[] = [ 'run', 'list' ];
 
-function benchmarkRequests(result: CapturedCommandLineRun, verb: BenchmarkVerb): readonly CommandLineCommandContext[] {
+function benchmarkRequests(
+    result: CapturedCommandLineRun,
+    verb: BenchmarkVerb
+): readonly CommandLineBenchmarkRequest[] {
     return verb === 'run' ? result.benchmarkRunRequests : result.benchmarkListRequests;
 }
 
@@ -19,6 +22,39 @@ export const testNode = createSuite({
     children: [
         ...benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
             return [
+                createTestCase({
+                    definitionLocations: [ { kind: 'unknown' } ],
+                    title: `bench ${verb} dispatches explicit profile selection`,
+                    ...emptyTestData,
+                    async body(scope: TestScope) {
+                        for (
+                            const profileArguments of [
+                                [ '--profile', 'cli-cold-start' ],
+                                [ '--profile=cli-cold-start' ]
+                            ]
+                        ) {
+                            const result = await runCommandLine([
+                                'bench',
+                                verb,
+                                ...profileArguments,
+                                '--config',
+                                'policy.ts',
+                                '--',
+                                '-cold.bench.ts'
+                            ], passingResult());
+
+                            scope.assert.deepEqual(benchmarkRequests(result, verb), [ {
+                                configPath: 'policy.ts',
+                                cwd: '/project',
+                                paths: [ '-cold.bench.ts' ],
+                                profile: 'cli-cold-start'
+                            } ]);
+                            scope.assert.equal(result.exitCode, 0);
+                        }
+
+                        return scope.assert.collect();
+                    }
+                }),
                 createTestCase({
                     definitionLocations: [ { kind: 'unknown' } ],
                     title: `bench ${verb} dispatches path operands and config`,
@@ -63,7 +99,8 @@ export const testNode = createSuite({
                             const result = await runCommandLine(scenario.arguments, passingResult());
 
                             scope.assert.deepEqual(benchmarkRequests(result, verb), [ {
-                                arguments: scenario.paths,
+                                paths: scenario.paths,
+                                profile: null,
                                 configPath: scenario.configPath,
                                 cwd: '/project'
                             } ]);
@@ -129,7 +166,6 @@ export const testNode = createSuite({
                     ...emptyTestData,
                     async body(scope: TestScope) {
                         const unsupportedArguments: readonly (readonly [string, ...string[]])[] = [
-                            [ '--profile', 'cli-cold-start' ],
                             [ '--coverage' ],
                             [ '--filter', 'tag=fast' ],
                             [ '--file', 'a.bench.ts' ],
@@ -168,6 +204,8 @@ export const testNode = createSuite({
                     async body(scope: TestScope) {
                         const malformedConfigArguments = [
                             [ '--config' ],
+                            [ '--profile' ],
+                            [ '--profile', 'first', '--profile', 'second' ],
                             [ '--config', 'first.config.ts', '--config', 'second.config.ts' ]
                         ];
 
@@ -178,7 +216,7 @@ export const testNode = createSuite({
                             scope.assert.deepEqual(result.exitCodes, [ 3 ]);
                             scope.assert.equal(result.runnerLoadCount, 0);
                             scope.assert.equal(result.stdout, '');
-                            scope.assert.includes(result.stderr, '--config');
+                            scope.assert.includes(result.stderr, configArguments[0] ?? '');
                         }
 
                         return scope.assert.collect();

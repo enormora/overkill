@@ -61,13 +61,18 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `loadConfig({ cwd, configPath })`
 
 The binary recognizes `overkill bench run [paths...]` and
-`overkill bench list [paths...]` with `--config`, and delegates to the
-corresponding benchmark methods. Their `CommandLineCommandContext.arguments`
-contains only path operands; `configPath` is `null` when omitted. The default
-benchmark handlers still return exit code `3` because benchmark execution is
-not implemented. Benchmark profiles load from shared `profiles` with `testFamily: 'benchmark'`.
-Ordinary run/list and direct-file execution reject that family. Profile selection
-and benchmark execution remain separate milestones.
+`overkill bench list [paths...]` with `--config` and `--profile`. Both methods
+accept `CommandLineBenchmarkRequest`: `{ cwd, configPath, paths, profile }`.
+Pass `null` for an omitted config path or profile. An omitted profile selects
+the sole configured benchmark profile; zero or multiple benchmark profiles
+require explicit selection. Unknown names and ordinary profile families return
+argument error `3`.
+
+Benchmark profiles load from shared `profiles` with `testFamily: 'benchmark'`.
+Ordinary run/list and direct-file execution reject that family. Valid benchmark
+selection still returns exit code `3` identifying the selected profile because
+workload listing and execution are not implemented. Selection loads config but
+does not discover files or import workload modules.
 
 Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 

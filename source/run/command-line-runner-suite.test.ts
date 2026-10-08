@@ -1,11 +1,9 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as commandLineFallbackDiagnosticsTestNode } from './command-line-fallback-diagnostics.test.ts';
-import { testNode as commandLineCommandTestNode } from './command-line-command.test.ts';
-import { testNode as commandLineCommandNamespaceTestNode } from './command-line-command-namespace.test.ts';
+import { testNode as commandLineCommandTestNode } from './command-line-command-suite.test.ts';
 import { testNode as commandLineRunnerErrorTestNode } from './command-line-runner-error.test.ts';
 import { testNode as commandLineRunnerReporterResolutionTestNode } from './command-line-runner-reporter-resolution.test.ts';
 import { testNode as commandLineRunnerResourceUsageTestNode } from './command-line-runner-resource-usage.test.ts';
-import { testNode as commandLineUnimplementedCommandsTestNode } from './command-line-unimplemented-commands.test.ts';
 import { testNode as commandLineRunnerRunTestsTestNode } from './command-line-runner.test.ts';
 
 export const testNode = createOverkillSuite({
@@ -15,12 +13,10 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         commandLineCommandTestNode,
-        commandLineCommandNamespaceTestNode,
         commandLineFallbackDiagnosticsTestNode,
         commandLineRunnerErrorTestNode,
         commandLineRunnerReporterResolutionTestNode,
         commandLineRunnerResourceUsageTestNode,
-        commandLineUnimplementedCommandsTestNode,
         commandLineRunnerRunTestsTestNode
     ]
 });
