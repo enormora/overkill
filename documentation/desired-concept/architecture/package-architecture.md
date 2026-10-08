@@ -787,7 +787,8 @@ engine features.
 The clearest current example is:
 
 - type-test adapters or integrations rather than a built-in type-test engine
-- a first-party Stryker integration
+- `@overkill-dev/stryker-runner`, a first-party Stryker `TestRunner` plugin
+  above the runner; see [Mutation Runner Contract](../authoring/higher-test-layers.md#mutation-runner-contract)
 - a first-party ESLint rule-testing adapter package rather than baking
   `RuleTester` compatibility into the core authoring layer
 - a separate `@overkill-dev/eslint-plugin` for static enforcement of
