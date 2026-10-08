@@ -2,10 +2,10 @@ import { appendRunnerErrors } from '../engine/execution-result.ts';
 import { workIdentityKey, type WorkId, type AttemptId } from '../engine/identity.ts';
 import { runStatusFromPlan, type RunResult, type RunnerError, type RunArtifact } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
+import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { attachmentFailureIdentity, attachmentFailureBranch } from './attachment-failure.ts';
 import type { AttachmentOwner } from './attachment-protocol.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
-import type { RetryArtifactPolicy } from './run-execution-config.ts';
 
 function unclosedError(owner: AttachmentOwner): RunnerError {
     return {

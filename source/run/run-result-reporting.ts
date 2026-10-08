@@ -1,7 +1,7 @@
 import { appendRunnerErrors } from '../engine/execution-result.ts';
+import type { RetryArtifactPolicy } from '../config/execution.ts';
 import type { ReporterDelivery, RunResult, RunArtifact } from './run-engine-primitives.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
-import type { RetryArtifactPolicy } from './run-execution-config.ts';
 
 export function resultWithRetainedArtifacts(
     result: RunResult,

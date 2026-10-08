@@ -9,7 +9,7 @@ import {
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import type { RetryArtifactPolicy } from '../../run/run-execution-config.ts';
+import type { RetryArtifactPolicy } from '../../config/execution.ts';
 import {
     defaultIntegrationProfile,
     defaultRunConfig,

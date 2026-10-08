@@ -1,33 +1,33 @@
 import path from 'node:path';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type {
-    RunProjectCoveragePolicy,
-    RunProjectCoverageSources,
-    RunProjectCoverageThresholds
-} from './coverage-config-schema.ts';
+    ProjectCoveragePolicy,
+    ProjectCoverageSources,
+    ProjectCoverageThresholds
+} from './coverage-schema.ts';
 import {
     invalidProfileFileGlobConfigMessage,
-    invalidRunProfileFileSetNameMessage,
-    invalidRunProfileNameMessage
-} from './profile-file-glob.ts';
+    invalidProfileFileSetNameMessage,
+    invalidProfileNameMessage
+} from './profile-patterns.ts';
 import type {
-    RunProjectIntegrationExecution,
-    RunProjectProfileFiles
-} from './run-config-schema.ts';
-import { defaultCoveragePolicy, defaultWorkDistribution } from './run-config-defaults.ts';
-import { RunConfigError } from './run-errors.ts';
+    ProjectIntegrationExecution,
+    ProjectProfileFiles
+} from './schema.ts';
+import { defaultCoveragePolicy, defaultWorkDistribution } from './defaults.ts';
+import { ConfigError } from './config-error.ts';
 import type {
-    RunCoveragePolicy,
-    RunCoverageSourcePolicy,
-    RunCoverageThresholds,
-    RunIntegrationExecution,
-    RunProfileFileSet,
-    RunProfileFiles
-} from './run-types.ts';
+    CoveragePolicy,
+    CoverageSourcePolicy,
+    CoverageThresholds,
+    IntegrationExecution,
+    ProfileFileSet,
+    ProfileFiles
+} from './types.ts';
 import {
     invalidWorkDistributionConfigMessage,
     normalizeWorkDistribution
-} from './work-distribution-config.ts';
+} from './work-distribution.ts';
 
 type ProjectProfileFilePatterns = {
     readonly exclude?: readonly string[] | undefined;
@@ -42,13 +42,13 @@ function assertValidProfileGlob(field: string, pattern: string): void {
     const message = invalidProfileFileGlobConfigMessage(field, pattern);
 
     if (message !== null) {
-        throw new RunConfigError(message);
+        throw new ConfigError(message);
     }
 }
 
 function normalizeCoverageOutputs(
-    outputs: RunProjectCoveragePolicy['outputs']
-): RunCoveragePolicy['outputs'] {
+    outputs: ProjectCoveragePolicy['outputs']
+): CoveragePolicy['outputs'] {
     return Array.from(new Set(outputs ?? defaultCoveragePolicy.outputs));
 }
 
@@ -63,8 +63,8 @@ function normalizeCoverageExclude(exclude: readonly string[] | undefined): reado
 }
 
 function normalizeCoverageSources(
-    sources: RunProjectCoverageSources | undefined
-): RunCoverageSourcePolicy {
+    sources: ProjectCoverageSources | undefined
+): CoverageSourcePolicy {
     if (sources === undefined) {
         return {
             exclude: Array.from(defaultCoveragePolicy.sources.exclude),
@@ -94,8 +94,8 @@ function thresholdValue(value: number | undefined): number | null {
 }
 
 function normalizeCoverageThresholds(
-    thresholds: RunProjectCoverageThresholds | undefined
-): RunCoverageThresholds {
+    thresholds: ProjectCoverageThresholds | undefined
+): CoverageThresholds {
     return {
         branches: thresholdValue(thresholds?.branches),
         functions: thresholdValue(thresholds?.functions),
@@ -112,7 +112,7 @@ function normalizeCoverageOutputDirectory(
     }
 
     if (configPath === null) {
-        throw new RunConfigError('Coverage outputDir requires a loaded config file.');
+        throw new ConfigError('Coverage outputDir requires a loaded config file.');
     }
 
     return path.isAbsolute(outputDirectory)
@@ -121,9 +121,9 @@ function normalizeCoverageOutputDirectory(
 }
 
 export function normalizeCoveragePolicy(
-    policy: RunProjectCoveragePolicy | undefined,
+    policy: ProjectCoveragePolicy | undefined,
     configPath: string | null
-): RunCoveragePolicy {
+): CoveragePolicy {
     return {
         outputDirectory: normalizeCoverageOutputDirectory(policy?.outputDir, configPath),
         outputs: normalizeCoverageOutputs(policy?.outputs),
@@ -139,7 +139,7 @@ function profileFileGlobField(fieldPrefix: string | null, field: 'exclude' | 'in
 function normalizeProfileFilePatterns(
     files: ProjectProfileFilePatterns,
     fieldPrefix: string | null
-): RunProfileFileSet {
+): ProfileFileSet {
     for (const pattern of files.include) {
         assertValidProfileGlob(profileFileGlobField(fieldPrefix, 'include'), pattern);
     }
@@ -157,18 +157,18 @@ function normalizeProfileFilePatterns(
 }
 
 function assertValidProfileFileSetName(name: string): void {
-    const message = invalidRunProfileFileSetNameMessage(name);
+    const message = invalidProfileFileSetNameMessage(name);
 
     if (message !== null) {
-        throw new RunConfigError(message);
+        throw new ConfigError(message);
     }
 }
 
-function normalizeProfileFileSets(files: ProjectProfileFileSets): RunProfileFiles {
+function normalizeProfileFileSets(files: ProjectProfileFileSets): ProfileFiles {
     const entries = Object.entries(files.sets);
 
     if (entries.length === 0) {
-        throw new RunConfigError('Invalid profile files.sets: at least one file set is required.');
+        throw new ConfigError('Invalid profile files.sets: at least one file set is required.');
     }
 
     return {
@@ -180,11 +180,11 @@ function normalizeProfileFileSets(files: ProjectProfileFileSets): RunProfileFile
     };
 }
 
-function hasProfileFileSets(files: RunProjectProfileFiles): files is ProjectProfileFileSets {
+function hasProfileFileSets(files: ProjectProfileFiles): files is ProjectProfileFileSets {
     return files.sets !== undefined;
 }
 
-export function normalizeProfileFiles(files: RunProjectProfileFiles | undefined): RunProfileFiles | null {
+export function normalizeProfileFiles(files: ProjectProfileFiles | undefined): ProfileFiles | null {
     if (files === undefined) {
         return null;
     }
@@ -194,33 +194,33 @@ export function normalizeProfileFiles(files: RunProjectProfileFiles | undefined)
         : normalizeProfileFilePatterns(files, null);
 }
 
-export function normalizeRequiredProfileFiles(files: RunProjectProfileFiles): RunProfileFiles {
+export function normalizeRequiredProfileFiles(files: ProjectProfileFiles): ProfileFiles {
     return hasProfileFileSets(files)
         ? normalizeProfileFileSets(files)
         : normalizeProfileFilePatterns(files, null);
 }
 
 export function assertValidProfileName(profileName: string): void {
-    const message = invalidRunProfileNameMessage(profileName);
+    const message = invalidProfileNameMessage(profileName);
 
     if (message !== null) {
-        throw new RunConfigError(message);
+        throw new ConfigError(message);
     }
 }
 
 export function assertValidWorkDistribution(
-    execution: RunIntegrationExecution,
-    files: RunProfileFiles
+    execution: IntegrationExecution,
+    files: ProfileFiles
 ): void {
     const message = invalidWorkDistributionConfigMessage(execution, files);
 
     if (message !== null) {
-        throw new RunConfigError(message);
+        throw new ConfigError(message);
     }
 }
 
 export function normalizedWorkDistribution(
-    execution: RunProjectIntegrationExecution | undefined
-): Extract<RunIntegrationExecution, { readonly processModel: 'worker-pool'; }>['workDistribution'] {
+    execution: ProjectIntegrationExecution | undefined
+): Extract<IntegrationExecution, { readonly processModel: 'worker-pool'; }>['workDistribution'] {
     return normalizeWorkDistribution(execution, defaultWorkDistribution);
 }

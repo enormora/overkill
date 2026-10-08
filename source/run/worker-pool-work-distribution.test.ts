@@ -5,14 +5,9 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey } from '../engine/identity.ts';
-import {
-    emptyWorkUnitResourceConstraints,
-    type CollectedRunPlan,
-    type RunWorkDistribution,
-    type RunWorkGroup,
-    type WorkUnit
-} from './run-types.ts';
-import { invalidWorkDistributionConfigMessage } from './work-distribution-config.ts';
+import type { WorkDistribution, WorkGroup } from '../config/types.ts';
+import { invalidWorkDistributionConfigMessage } from '../config/work-distribution.ts';
+import { emptyWorkUnitResourceConstraints, type CollectedRunPlan, type WorkUnit } from './run-types.ts';
 import {
     createWorkerPoolPlacementPlan
 } from './worker-pool-placement-planning.ts';
@@ -177,7 +172,7 @@ function fileSetForFile(file: string): string | null {
     return fileSets.get(file) ?? null;
 }
 
-function workGroup(name: string, groupFileSets: readonly [string, ...string[]]): RunWorkGroup {
+function workGroup(name: string, groupFileSets: readonly [string, ...string[]]): WorkGroup {
     return {
         fileSets: groupFileSets,
         granularity: 'group',
@@ -191,8 +186,8 @@ function workGroup(name: string, groupFileSets: readonly [string, ...string[]]):
 function workGroupWithGranularity(
     name: string,
     groupFileSets: readonly [string, ...string[]],
-    granularity: RunWorkGroup['granularity']
-): RunWorkGroup {
+    granularity: WorkGroup['granularity']
+): WorkGroup {
     return {
         ...workGroup(name, groupFileSets),
         granularity
@@ -202,9 +197,9 @@ function workGroupWithGranularity(
 function workGroupWithOrder(
     name: string,
     groupFileSets: readonly [string, ...string[]],
-    granularity: RunWorkGroup['granularity'],
-    order: RunWorkGroup['order']
-): RunWorkGroup {
+    granularity: WorkGroup['granularity'],
+    order: WorkGroup['order']
+): WorkGroup {
     return {
         ...workGroupWithGranularity(name, groupFileSets, granularity),
         order
@@ -214,7 +209,7 @@ function workGroupWithOrder(
 function workGroupWithPolicyOverrides(
     name: string,
     groupFileSets: readonly [string, ...string[]]
-): RunWorkGroup {
+): WorkGroup {
     return {
         ...workGroupWithGranularity(name, groupFileSets, 'file'),
         scheduling: 'serial',
@@ -224,7 +219,7 @@ function workGroupWithPolicyOverrides(
 
 function planningInput(
     selectedPlan: CollectedRunPlan,
-    workDistribution: RunWorkDistribution,
+    workDistribution: WorkDistribution,
     fileSetLookup: (file: string) => string | null
 ): WorkUnitPlanningInput {
     return {

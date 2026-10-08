@@ -11,7 +11,7 @@ import {
     type ReporterEvent
 } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import type { RunIntegrationExecution } from '../../run/run-types.ts';
+import type { IntegrationExecution } from '../../config/types.ts';
 import {
     defaultIntegrationProfile,
     defaultRunConfig,
@@ -21,7 +21,7 @@ import { runIfMain } from '../direct-launcher.test.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/runtime-attachments.test.ts';
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-const workerExecution: RunIntegrationExecution = {
+const workerExecution: IntegrationExecution = {
     assignmentPolicy: 'case-count-balanced',
     dispatchPolicy: 'dynamic-lease',
     hedging: { mode: 'off' },
@@ -33,7 +33,7 @@ const workerExecution: RunIntegrationExecution = {
     workDistribution: { mode: 'case' },
     workerLifecycle: 'reuse'
 };
-const executions: readonly RunIntegrationExecution[] = [
+const executions: readonly IntegrationExecution[] = [
     { maxConcurrency: 1, processModel: 'supervised-process', scheduling: 'serial' },
     workerExecution,
     { ...workerExecution, workerLifecycle: 'fresh-worker-per-unit' },
@@ -41,7 +41,7 @@ const executions: readonly RunIntegrationExecution[] = [
 ];
 
 async function runAttachmentFixture(
-    execution: RunIntegrationExecution,
+    execution: IntegrationExecution,
     runtimeStateDir: string
 ): Promise<{ readonly result: RunResult; readonly events: readonly ReporterEvent[]; }> {
     const events: ReporterEvent[] = [];

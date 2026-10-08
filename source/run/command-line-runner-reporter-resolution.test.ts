@@ -1,23 +1,25 @@
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
+    type TestScope as OverkillScope,
+    type DefinedReporter
 } from '../packages/engine/engine.entry-point.ts';
-import type { DefinedReporter } from '../engine/reporter.ts';
+
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { LoadedConfig } from '../config/config.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
 import { RunResolutionError } from './run-errors.ts';
-import type { LoadedRunConfig } from './run-config.ts';
-import type { RunCommand, RunProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import { selectTestProfile } from './test-profile.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type ReporterLoader = {
     readonly createDefaultReporter: () => Promise<DefinedReporter>;
@@ -60,9 +62,9 @@ const terminalReporter = defineFixedReporter({
 const defaultRequest = defaultRunRequest();
 
 function loadedConfig(
-    reporters: LoadedRunConfig['reporters'],
+    reporters: LoadedConfig['reporters'],
     profileReporters: readonly DefinedReporter[] | null
-): LoadedRunConfig {
+): LoadedConfig {
     return {
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -78,18 +80,8 @@ function loadedConfig(
     };
 }
 
-function selectedProfile(command: RunCommand): RunProfileConfig {
-    const profile = command.config.profiles[command.request.profile];
-
-    if (profile === undefined) {
-        throw new Error(`Missing profile ${command.request.profile}.`);
-    }
-
-    return profile;
-}
-
 function selectedProfileReporters(command: RunCommand): readonly DefinedReporter[] {
-    const { reporters } = selectedProfile(command);
+    const { reporters } = selectTestProfile(command.request.profile, command.config);
 
     if (reporters === null) {
         throw new Error(`Missing profile reporters for ${command.request.profile}.`);
@@ -114,7 +106,7 @@ function createDefaultReporterLoader(reporter: DefinedReporter): ReporterLoader 
 }
 
 function createRunnerDependencies(
-    config: LoadedRunConfig,
+    config: LoadedConfig,
     defaultReporterLoader: ReporterLoader,
     run: RunOrchestrator['run']
 ): CommandLineRunnerDependencies {
@@ -126,7 +118,7 @@ function createRunnerDependencies(
         async loadBenchmarkCommands() {
             throw new Error('Benchmark commands are not configured.');
         },
-        async loadRunConfig() {
+        async loadConfig() {
             return config;
         },
         orchestrator: {
@@ -148,7 +140,7 @@ function createRunnerDependencies(
 }
 
 async function runScenario(
-    config: LoadedRunConfig,
+    config: LoadedConfig,
     defaultReporterLoader: ReporterLoader,
     request: RunRequest,
     run: RunOrchestrator['run']
@@ -217,6 +209,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(scenario.result.exitCode, 0);
                 scope.assert.equal(defaultReporter.loadCount(), 0);
+                scope.require.notNull(scenario.command.config.reporters);
                 scope.assert.equal(scenario.command.config.reporters[0], terminalReporter);
                 scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
 
@@ -238,6 +231,7 @@ export const testNode = createOverkillSuite({
                 );
 
                 scope.assert.equal(defaultReporter.loadCount(), 0);
+                scope.require.notNull(scenario.command.config.reporters);
                 scope.assert.deepEqual(scenario.command.config.reporters, []);
                 scope.assert.equal(selectedProfileReporters(scenario.command)[0], memoryReporter);
 
@@ -259,6 +253,7 @@ export const testNode = createOverkillSuite({
                 );
 
                 scope.assert.equal(defaultReporter.loadCount(), 0);
+                scope.require.notNull(scenario.command.config.reporters);
                 scope.assert.equal(scenario.command.config.reporters[0], memoryReporter);
 
                 return scope.assert.collect();
@@ -280,6 +275,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(scenario.result.exitCode, 3);
                 scope.assert.equal(defaultReporter.loadCount(), 0);
+                scope.require.notNull(scenario.command.config.reporters);
                 scope.assert.deepEqual(scenario.command.config.reporters, []);
                 scope.assert.deepEqual(scenario.result.fallbackDiagnostics, [
                     'Overkill argument error: Unknown run profile: missing'

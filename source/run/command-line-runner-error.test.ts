@@ -1,9 +1,10 @@
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
+    type TestScope as OverkillScope,
+    type TestPlan
 } from '../packages/engine/engine.entry-point.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+
 import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
@@ -12,9 +13,10 @@ import {
     defaultRunRequest,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
+import type { LoadedConfig } from '../config/config.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
-import type { LoadedRunConfig } from './run-config.ts';
-import type { RunCommand, RunProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import { selectTestProfile } from './test-profile.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 
 const memoryReporter = defineFixedReporter({
     dispose: null,
@@ -29,7 +31,7 @@ const memoryReporter = defineFixedReporter({
 
 const defaultRequest: RunRequest = defaultRunRequest();
 
-async function loadDefaultRunConfig(): Promise<LoadedRunConfig> {
+async function loadDefaultRunConfig(): Promise<LoadedConfig> {
     return {
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -46,16 +48,6 @@ async function loadDefaultRunConfig(): Promise<LoadedRunConfig> {
     };
 }
 
-function selectedProfile(command: RunCommand): RunProfileConfig {
-    const profile = command.config.profiles[command.request.profile];
-
-    if (profile === undefined) {
-        throw new Error(`Missing profile ${command.request.profile}.`);
-    }
-
-    return profile;
-}
-
 function createRunnerDependencies(orchestrator: RunOrchestrator): CommandLineRunnerDependencies {
     return {
         async createDefaultReporter() {
@@ -67,7 +59,7 @@ function createRunnerDependencies(orchestrator: RunOrchestrator): CommandLineRun
         async loadBenchmarkCommands() {
             throw new Error('Benchmark commands are not configured.');
         },
-        loadRunConfig: loadDefaultRunConfig,
+        loadConfig: loadDefaultRunConfig,
         orchestrator
     };
 }
@@ -98,7 +90,7 @@ function createPassingPlan(): TestPlan {
 }
 
 async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnType<RunOrchestrator['resolve']>>> {
-    const profile = selectedProfile(command);
+    const profile = selectTestProfile(command.request.profile, command.config);
 
     return {
         config: command.config,
@@ -127,7 +119,7 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
             kind: 'local',
             testPlan: createPassingPlan()
         },
-        reporters: command.config.reporters,
+        reporters: command.config.reporters ?? [],
         request: command.request
     };
 }

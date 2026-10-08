@@ -1,10 +1,10 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { RunProfileFiles } from './run-types.ts';
+import type { ProfileFiles } from '../config/types.ts';
 
 export type RunDiscoveryRequest = {
     readonly cwd: string;
     readonly paths: readonly string[];
-    readonly profileFiles: RunProfileFiles | null;
+    readonly profileFiles: ProfileFiles | null;
 };
 
 type RunDiscoveryGlobOptions = {

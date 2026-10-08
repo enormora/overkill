@@ -9,17 +9,18 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { NormalizedConfig } from '../config/types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
 };
 
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const defaultConfig: RunConfig = defaultRunConfig({
+const defaultConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }

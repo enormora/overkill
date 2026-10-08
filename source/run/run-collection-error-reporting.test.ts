@@ -1,3 +1,4 @@
+import type { NormalizedConfig, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -11,16 +12,16 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
 import { RunCollectionError } from './run-errors.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;

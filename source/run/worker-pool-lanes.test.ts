@@ -3,11 +3,10 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import type { WorkerPoolAssignmentPolicy, WorkerLifecycle } from '../config/types.ts';
 import {
     emptyWorkUnitResourceConstraints,
     type PlacementLane,
-    type RunWorkerPoolAssignmentPolicy,
-    type RunWorkerLifecycle,
     type WorkUnit,
     type WorkUnitResourceConstraints
 } from './run-types.ts';
@@ -15,7 +14,7 @@ import { workerPoolLanes, workerPoolPlacementAssignments } from './worker-pool-l
 
 function workUnitWithConstraints(
     key: string,
-    workerLifecycle: RunWorkerLifecycle,
+    workerLifecycle: WorkerLifecycle,
     caseCount: number,
     resourceConstraints: WorkUnitResourceConstraints
 ): WorkUnit {
@@ -43,11 +42,11 @@ function workUnitWithConstraints(
     };
 }
 
-function workUnitWithCases(key: string, workerLifecycle: RunWorkerLifecycle, caseCount: number): WorkUnit {
+function workUnitWithCases(key: string, workerLifecycle: WorkerLifecycle, caseCount: number): WorkUnit {
     return workUnitWithConstraints(key, workerLifecycle, caseCount, emptyWorkUnitResourceConstraints);
 }
 
-function workUnit(key: string, workerLifecycle: RunWorkerLifecycle): WorkUnit {
+function workUnit(key: string, workerLifecycle: WorkerLifecycle): WorkUnit {
     return workUnitWithCases(key, workerLifecycle, 1);
 }
 
@@ -66,7 +65,7 @@ function placementLane(id: string): PlacementLane {
 function assignedLanes(
     units: readonly WorkUnit[],
     availableParallelism: number,
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy = 'stable'
+    assignmentPolicy: WorkerPoolAssignmentPolicy = 'stable'
 ): readonly string[] {
     const lanes = workerPoolLanes({
         assignmentPolicy,
@@ -196,7 +195,7 @@ export const testNode = createOverkillSuite({
             body(scope: OverkillScope) {
                 const unit = {
                     ...workUnit('unknown-1', 'reuse'),
-                    workerLifecycle: 'unknown' as RunWorkerLifecycle
+                    workerLifecycle: 'unknown' as WorkerLifecycle
                 };
                 const lanes = workerPoolLanes({
                     assignmentPolicy: 'stable',

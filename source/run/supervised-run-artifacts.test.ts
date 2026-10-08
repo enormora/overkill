@@ -13,9 +13,10 @@ import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeRunOrchestrator } from './run-orchestrator.ts';
-import type { RunCommand, RunConfig, RunOrchestrator } from './run-types.ts';
+import type { RunCommand, RunOrchestrator } from './run-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
 const integrationCaptureControlsOutputFixturePath =
@@ -36,7 +37,7 @@ type CapturedProcessOutput = {
     readonly stdout: () => string;
 };
 
-function createRunConfig(profileName: string, profile: RunConfig['profiles'][string]): RunConfig {
+function createRunConfig(profileName: string, profile: NormalizedConfig['profiles'][string]): NormalizedConfig {
     return {
         loader: {
             sourceMaps: false,

@@ -7,7 +7,8 @@ import {
     type WorkloadId
 } from '../engine/identity.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { CollectedRunFile, RunWorkGroup, WorkUnitId } from './run-types.ts';
+import type { WorkGroup } from '../config/types.ts';
+import type { CollectedRunFile, WorkUnitId } from './run-types.ts';
 
 function suiteTitles(suitePath: CollectedRunFile['cases'][number]['suitePath']): readonly string[] {
     return suitePath.map(function toTitle(entry) {
@@ -69,7 +70,7 @@ export function caseWorkUnitId(work: WorkId): WorkUnitId {
     };
 }
 
-export function groupWorkUnitId(group: RunWorkGroup, work: WorkId): WorkUnitId {
+export function groupWorkUnitId(group: WorkGroup, work: WorkId): WorkUnitId {
     return {
         key: group.name,
         mode: 'group',

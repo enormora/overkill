@@ -7,15 +7,21 @@ Top-level API:
 - `RunCommand`
 - `RunRequest`
 - `RunFacts`
-- `RunResourceBudgets`
-- `RunResourceUsagePolicy`
+- `ResourceBudgets`
+- `ResourceUsagePolicy`
 - `ResolvedRun`
 - `defineConfig(config)`
-- `loadRunConfig({ cwd, configPath })`
+- `normalizeConfig(config)`
+- `loadConfig({ cwd, configPath })`
 - `runIfMain(import.meta, testNode, options?)`
 - `orchestrator.resolve(command)`
 - `orchestrator.run(command)`
 - `orchestrator.runWithReporterDelivery(command)`
+
+`Config` describes authored policy. `normalizeConfig` produces a
+command-independent `NormalizedConfig` without reading files; `loadConfig`
+returns that policy plus `configPath` as `LoadedConfig`. Programmatic commands
+accept normalized policy. The old run-prefixed config names are removed.
 
 Configuration loading and authoring are also exposed through
 `@overkill-dev/run/config` for packages that need the config-owned surface
@@ -51,14 +57,17 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `commandLineRunner.bench.baseline.list(context)`
 - `commandLineRunner.bench.baseline.diff(context)`
 - `defineConfig(config)`
-- `loadRunConfig({ cwd, configPath })`
+- `normalizeConfig(config)`
+- `loadConfig({ cwd, configPath })`
 
 The binary recognizes `overkill bench run [paths...]` and
 `overkill bench list [paths...]` with `--config`, and delegates to the
 corresponding benchmark methods. Their `CommandLineCommandContext.arguments`
 contains only path operands; `configPath` is `null` when omitted. The default
 benchmark handlers still return exit code `3` because benchmark execution is
-not implemented. Benchmark configuration and execution are separate milestones.
+not implemented. Benchmark profiles load from shared `profiles` with `testFamily: 'benchmark'`.
+Ordinary run/list and direct-file execution reject that family. Profile selection
+and benchmark execution remain separate milestones.
 
 Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 
@@ -212,9 +221,9 @@ Runner profile names are project-owned. Names such as `microtest`,
 `backend-http`, `ui-browser`, `ui.browser`, and `unit_fast` select profile
 entries exactly. Behavior comes from the selected profile config, not from the
 name. Profile names must be non-empty and contain only letters, numbers, dots,
-underscores, and hyphens. The exact lowercase name `benchmark` is reserved for
-benchmark commands. Every configured runner profile must declare
-`testFamily: 'microtest'` or `testFamily: 'integration'`; the selected
+underscores, and hyphens. The name `benchmark` is valid. Profiles declare
+`testFamily: 'microtest'`, `'integration'`, or `'benchmark'`; ordinary commands
+accept microtest and integration families. The selected
 profile's test family is recorded in `RunFacts.execution.testFamily`.
 
 Configured microtest profiles may set `files.include` and `files.exclude`.
@@ -315,7 +324,7 @@ dependency scopes, mixed worker lifecycles for one hard constraint, and worker
 capacity that cannot satisfy the resolved lifecycle lanes. These failures are
 reported as `RunExecutionPlanError` with deterministic structured conflicts
 before test execution begins.
-Direct `RunConfig` values may set `execution.hostProcess` for worker-pool
+Direct `NormalizedConfig` values may set `execution.hostProcess` for worker-pool
 profiles. `{ kind: 'direct' }` keeps the worker-thread pool in the coordinator
 process. `{ kind: 'child', nodeArguments: [...] }` starts one supervised host
 process around the worker-thread pool, applies validated Node/V8 arguments to

@@ -8,8 +8,9 @@ import {
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import type { RunIntegrationExecution, RunCommand, RunTimeoutPolicy } from '../../run/run-types.ts';
-import type { RetryArtifactPolicy } from '../../run/run-execution-config.ts';
+import type { RunCommand } from '../../run/run-types.ts';
+import type { IntegrationExecution, TimeoutPolicy } from '../../config/types.ts';
+import type { RetryArtifactPolicy } from '../../config/execution.ts';
 import {
     defaultIntegrationProfile,
     defaultRunConfig,
@@ -18,14 +19,14 @@ import {
 import { runIfMain } from '../direct-launcher.test.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
-type RetryFixture = { readonly path: string; readonly timeouts: RunTimeoutPolicy | null; };
+type RetryFixture = { readonly path: string; readonly timeouts: TimeoutPolicy | null; };
 const fixture: RetryFixture = { path: 'source/integration-tests/run/fixtures/retry-policy.test.ts', timeouts: null };
 const hardTimeoutFixture: RetryFixture = {
     path: 'source/integration-tests/run/fixtures/retry-hard-timeout.test.ts',
     timeouts: { collectionMilliseconds: 5000, softMilliseconds: 500, hardMilliseconds: 1000 }
 };
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-const workerExecution: RunIntegrationExecution = {
+const workerExecution: IntegrationExecution = {
     assignmentPolicy: 'case-count-balanced',
     dispatchPolicy: 'dynamic-lease',
     hedging: { mode: 'off' },
@@ -37,7 +38,7 @@ const workerExecution: RunIntegrationExecution = {
     workDistribution: { mode: 'case' },
     workerLifecycle: 'reuse'
 };
-const executions: readonly RunIntegrationExecution[] = [
+const executions: readonly IntegrationExecution[] = [
     { maxConcurrency: 1, processModel: 'supervised-process', scheduling: 'serial' },
     workerExecution,
     { ...workerExecution, hostProcess: { kind: 'child', nodeArguments: [] } },
@@ -66,7 +67,7 @@ function eventReporter(record: (event: ReporterEvent) => void): DefinedReporter 
 }
 
 function retryCommand(
-    execution: RunIntegrationExecution,
+    execution: IntegrationExecution,
     reporter: DefinedReporter,
     artifacts: RetryArtifactPolicy,
     selectedFixture: RetryFixture

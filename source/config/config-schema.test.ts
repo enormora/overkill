@@ -15,7 +15,7 @@ import {
     resourceBudgetsSchema,
     resourceUsageSchema,
     timeoutSchema
-} from './run-config-schema.ts';
+} from './schema.ts';
 
 type SchemaValidationFailure = {
     readonly data: unknown;
@@ -128,7 +128,7 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-schema.test.ts',
+    title: 'source/config/config-schema.test.ts',
     annotations: {},
     controls: {},
     children: [

@@ -1,10 +1,12 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import type { RunFacts, NormalizedConfig } from '../packages/run/run.entry-point.ts';
+import { selectTestProfile } from '../run/test-profile.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { RecordedCoverageRequest } from '../run/recorded-coverage-types.ts';
 import { createRunFacts } from '../run/run-facts.ts';
-import type { RunConfig, RunFacts } from '../run/run-types.ts';
+
 import { defaultRunRequest } from './run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies } from './worker-pool-runtime-fixtures.ts';
 
@@ -48,7 +50,7 @@ function coverageFixtureDependencies(): RecordedCoverageRequest['dependencies'] 
 }
 
 async function createCoverageRecordFixture(
-    config: RunConfig,
+    config: NormalizedConfig,
     failedWrites: readonly number[]
 ): Promise<CoverageRecordFixture> {
     await mkdir('target', { recursive: true });
@@ -60,14 +62,10 @@ async function createCoverageRecordFixture(
         config: { ...config, runtimeStateDir: directory },
         engine: { kind: 'default' as const },
         files: [ { file: 'fixture.ts', fileSet: null, href: 'file:///fixture.ts', path: '/fixture.ts' } ] as const,
-        profile: config.profiles.microtest,
+        profile: selectTestProfile('microtest', config),
         projectRoot: process.cwd(),
         request: defaultRunRequest({ coverage: true })
     };
-
-    if (input.profile === undefined) {
-        throw new Error('Coverage fixture requires a microtest profile.');
-    }
 
     const request = {
         command: { config: input.config, cwd: process.cwd(), engine: input.engine, request: input.request },
@@ -118,7 +116,7 @@ async function createCoverageRecordFixture(
 }
 
 export async function withCoverageRecordFixture<Value>(
-    config: RunConfig,
+    config: NormalizedConfig,
     failedWrites: readonly number[],
     work: (fixture: CoverageRecordFixture) => Promise<Value>
 ): Promise<Value> {

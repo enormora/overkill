@@ -1,26 +1,20 @@
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
-import type { LoadedRunConfig } from './run-config.ts';
-import {
-    resolveResourceUsagePolicy,
-    resolveTimingCollection,
-    runCaseFactsFromTestPlan
-} from './run-facts.ts';
+import type { LoadedConfig } from '../config/config.ts';
+import type { NormalizedConfig } from '../config/types.ts';
+import { runCaseFactsFromTestPlan } from './run-facts.ts';
+import { resolveResourceUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
 import { resultWithTimingCollection } from './run-timing-collection.ts';
-import type {
-    RunConfig,
-    RunFacts,
-    RunProfileConfig,
-    RunRequest
-} from './run-types.ts';
+import type { RunFacts, RunRequest } from './run-types.ts';
+import { selectTestProfile } from './test-profile.ts';
 
 type ResolvedRunSeed = {
     readonly value: bigint;
 };
 
 type DirectRunFactsInput = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly fileSet: string | null;
     readonly profileName: string;
     readonly projectRoot: string;
@@ -58,9 +52,9 @@ function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunReque
 }
 
 export function runConfig(
-    loadedConfig: LoadedRunConfig,
+    loadedConfig: LoadedConfig,
     reporters: readonly DefinedReporter[]
-): RunConfig {
+): NormalizedConfig {
     return {
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
@@ -70,19 +64,13 @@ export function runConfig(
     };
 }
 
-function selectedProfile(config: RunConfig, profileName: string): RunProfileConfig {
-    const profile = config.profiles[profileName];
-
-    if (profile === undefined) {
-        throw new Error(`Unknown direct run profile: ${profileName}.`);
-    }
-
-    return profile;
-}
-
 export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     const request = defaultRunRequest(input.profileName, input.seed);
-    const profile = selectedProfile(input.config, input.profileName);
+    if (!Object.hasOwn(input.config.profiles, input.profileName)) {
+        throw new Error(`Unknown direct run profile: ${input.profileName}.`);
+    }
+
+    const profile = selectTestProfile(input.profileName, input.config);
 
     return {
         cases: runCaseFactsFromTestPlan(input.testPlan, function directRunFileSet() {

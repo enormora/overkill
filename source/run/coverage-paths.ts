@@ -1,7 +1,7 @@
 import { mkdir, realpath } from 'node:fs/promises';
 import path from 'node:path';
+import type { CoveragePolicy } from '../config/types.ts';
 import { isPathInside } from './path-containment.ts';
-import type { RunCoveragePolicy } from './run-types.ts';
 
 export type CoveragePaths = {
     readonly coverageDirectory: string;
@@ -10,7 +10,7 @@ export type CoveragePaths = {
 };
 
 export type CoveragePathRequest = {
-    readonly coverage: RunCoveragePolicy;
+    readonly coverage: CoveragePolicy;
     readonly projectRoot: string;
     readonly runtimeStateDir: string;
     readonly runId: string;

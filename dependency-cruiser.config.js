@@ -35,6 +35,7 @@ const testRootAuthoringFiles = [
     '^source/packages/test/test\\.entry-point\\.ts$'
 ];
 const testRootLazyModuleBoundaries = [
+    '^source/config/',
     '^source/packages/test/(baselines|bench|config|overkill|reporters|resources)\\.entry-point\\.ts$',
     '^source/packages/test/command-line-runner\\.ts$',
     '^source/packages/reporter-',
@@ -57,6 +58,12 @@ const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ..
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
     forbidden: [
+        {
+            name: 'config-does-not-import-orchestration',
+            severity: 'error',
+            from: { path: '^source/config/', pathNot: testFiles },
+            to: { path: '^source/run/' }
+        },
         {
             name: 'no-circular',
             severity: 'error',

@@ -80,30 +80,29 @@ overkill bench list
 overkill bench baseline update
 ```
 
-`overkill run --profile benchmark` is rejected. This keeps one first-party
-benchmark execution path and avoids making benchmarks look like ordinary tests
-with a different profile.
+Ordinary `overkill run` and `overkill list` reject profiles whose `testFamily`
+is `benchmark`. Profile names do not determine command routing.
 
-Benchmark suites still need named configuration. They use a separate
-`benchmark.profiles` namespace:
+Benchmark suites use the shared project profile registry:
 
 ```ts
 export const config = defineConfig({
-    benchmark: {
-        profiles: {
-            'cli-cold-start': {
-                files: {
-                    include: [ 'source/**/*.bench.ts' ],
-                    exclude: []
-                }
+    profiles: {
+        'cli-cold-start': {
+            testFamily: 'benchmark',
+            files: {
+                include: [ 'source/**/*.bench.ts' ],
+                exclude: []
             }
         }
     }
 });
 ```
 
-This lets `overkill bench run --profile cli-cold-start` select benchmark
-configuration without making `benchmark` an ordinary `overkill run` profile.
+This lets `overkill bench run --profile cli-cold-start` select benchmark policy.
+Projects may define any number of benchmark profiles. A separate CLI namespace
+organizes measurement and performance baseline operations; it does not require
+a separate configuration registry.
 
 It also confirms that Overkill should support:
 

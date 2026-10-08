@@ -1,45 +1,46 @@
 import path from 'node:path';
 import type { z } from 'zod/v4';
 import { parse } from '@schema-hub/zod-error-formatter';
-import { createPlainOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import {
     attachmentLimitsSchema,
-    type RunProjectAttachmentLimits as ParsedRunProjectAttachmentLimits,
+    type ProjectAttachmentLimits as ParsedProjectAttachmentLimits,
     type integrationProfileSchema,
     projectConfigSchema,
     workerPoolProjectExecution,
-    type RunProjectConfig as ParsedRunProjectConfig,
-    type RunProjectCoverageOutput as ParsedRunProjectCoverageOutput,
-    type RunProjectCoveragePolicy as ParsedRunProjectCoveragePolicy,
-    type RunProjectCoverageSources as ParsedRunProjectCoverageSources,
-    type RunProjectCoverageThresholds as ParsedRunProjectCoverageThresholds,
-    type RunProjectIntegrationExecution as ParsedRunProjectIntegrationExecution,
-    type RunProjectIntegrationProfileConfig as ParsedRunProjectIntegrationProfileConfig,
-    type RunProjectMeasuredResourceUsage as ParsedRunProjectMeasuredResourceUsage,
-    type RunProjectMicrotestExecution as ParsedRunProjectMicrotestExecution,
-    type RunProjectMicrotestProfileConfig as ParsedRunProjectMicrotestProfileConfig,
-    type RunProjectProfileFiles as ParsedRunProjectProfileFiles,
-    type RunProjectResourceBudgets as ParsedRunProjectResourceBudgets,
-    type RunProjectResourceUsageConfig as ParsedRunProjectResourceUsageConfig,
-    type RunProjectTimingProfilePolicy as ParsedRunProjectTimingProfilePolicy,
-    type RunProjectTimeoutConfig as ParsedRunProjectTimeoutConfig,
-    type RunProjectUnmeasuredResourceUsage as ParsedRunProjectUnmeasuredResourceUsage
-} from './run-config-schema.ts';
+    type Config as ParsedProjectConfig,
+    type ProjectBenchmarkProfileConfig,
+    type ProjectCoverageOutput as ParsedProjectCoverageOutput,
+    type ProjectCoveragePolicy as ParsedProjectCoveragePolicy,
+    type ProjectCoverageSources as ParsedProjectCoverageSources,
+    type ProjectCoverageThresholds as ParsedProjectCoverageThresholds,
+    type ProjectIntegrationExecution as ParsedProjectIntegrationExecution,
+    type ProjectIntegrationProfileConfig as ParsedProjectIntegrationProfileConfig,
+    type ProjectMeasuredResourceUsage as ParsedProjectMeasuredResourceUsage,
+    type ProjectMicrotestExecution as ParsedProjectMicrotestExecution,
+    type ProjectMicrotestProfileConfig as ParsedProjectMicrotestProfileConfig,
+    type ProjectProfileFiles as ParsedProjectProfileFiles,
+    type ProjectResourceBudgets as ParsedProjectResourceBudgets,
+    type ProjectResourceUsageConfig as ParsedProjectResourceUsageConfig,
+    type ProjectTimingProfilePolicy as ParsedProjectTimingProfilePolicy,
+    type ProjectTimeoutConfig as ParsedProjectTimeoutConfig,
+    type ProjectUnmeasuredResourceUsage as ParsedProjectUnmeasuredResourceUsage
+} from './schema.ts';
 import type {
-    RunIntegrationExecution,
-    RunIntegrationProfileConfig,
-    RunLoaderConfig,
-    RunMicrotestProfileConfig,
-    RunProfileConfig,
-    RunProfilesConfig,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
+    IntegrationExecution,
+    IntegrationProfileConfig,
+    MicrotestProfileConfig,
+    ProfileConfig,
+    ProfilesConfig,
+    NormalizedConfig,
+    ResourceBudgets,
+    ResourceUsagePolicy,
     TimingProfilePolicy,
-    RunTimeoutPolicy,
-    RunWorkerPoolAssignmentPolicy,
-    RunWorkerPoolHedgingPolicy,
-    RunWorkerLifecycle
-} from './run-types.ts';
+    TimeoutPolicy,
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolHedgingPolicy,
+    WorkerLifecycle
+} from './types.ts';
 import {
     assertValidProfileName,
     assertValidWorkDistribution,
@@ -47,8 +48,8 @@ import {
     normalizeProfileFiles,
     normalizeRequiredProfileFiles,
     normalizedWorkDistribution
-} from './profile-config-normalization.ts';
-import { RunConfigError } from './run-errors.ts';
+} from './profile-normalization.ts';
+import { ConfigError } from './config-error.ts';
 import {
     defaultConfigFileNames,
     defaultIntegrationProcessModel,
@@ -65,75 +66,69 @@ import {
     defaultWorkerPoolAssignmentPolicy,
     defaultWorkerPoolDispatchPolicy,
     defaultWorkerPoolHedgingPolicy
-} from './run-config-defaults.ts';
+} from './defaults.ts';
 
-type ConfiguredReporters = NonNullable<ParsedRunProjectConfig['reporters']>;
+type ConfiguredReporters = NonNullable<ParsedProjectConfig['reporters']>;
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
 
-export type LoadedRunConfig = {
-    readonly configPath: string | null;
-    readonly loader: RunLoaderConfig;
-    readonly outputRenderer: DefinedOutputRenderer;
-    readonly profiles: RunProfilesConfig;
-    readonly reporters: ConfiguredReporters | null;
-    readonly runtimeStateDir: string;
-};
+export type LoadedConfig = NormalizedConfig & { readonly configPath: string | null; };
 
-export type RunProjectIntegrationExecution = ParsedRunProjectIntegrationExecution & ProjectHostProcessGuard;
+export type ProjectIntegrationExecution = ParsedProjectIntegrationExecution & ProjectHostProcessGuard;
 type IntegrationArtifactSettings = Pick<z.input<typeof integrationProfileSchema>, 'attachments' | 'retries'>;
-export type RunProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
+export type ProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
     readonly coverage?: never;
-    readonly execution?: RunProjectIntegrationExecution | undefined;
-    readonly files: ParsedRunProjectIntegrationProfileConfig['files'];
-    readonly reporters?: ParsedRunProjectIntegrationProfileConfig['reporters'];
-    readonly resourceUsage?: ParsedRunProjectIntegrationProfileConfig['resourceUsage'];
-    readonly testFamily: ParsedRunProjectIntegrationProfileConfig['testFamily'];
-    readonly timings?: ParsedRunProjectIntegrationProfileConfig['timings'];
-    readonly timeouts?: ParsedRunProjectIntegrationProfileConfig['timeouts'];
+    readonly execution?: ProjectIntegrationExecution | undefined;
+    readonly files: ParsedProjectIntegrationProfileConfig['files'];
+    readonly reporters?: ParsedProjectIntegrationProfileConfig['reporters'];
+    readonly resourceUsage?: ParsedProjectIntegrationProfileConfig['resourceUsage'];
+    readonly testFamily: ParsedProjectIntegrationProfileConfig['testFamily'];
+    readonly timings?: ParsedProjectIntegrationProfileConfig['timings'];
+    readonly timeouts?: ParsedProjectIntegrationProfileConfig['timeouts'];
 };
-export type RunProjectMicrotestExecution = ParsedRunProjectMicrotestExecution;
-export type RunProjectMicrotestProfileConfig = ParsedRunProjectMicrotestProfileConfig & ProjectRetryPolicyGuard;
-export type RunProjectCoverageOutput = ParsedRunProjectCoverageOutput;
-export type RunProjectCoveragePolicy = ParsedRunProjectCoveragePolicy;
-export type RunProjectCoverageSources = ParsedRunProjectCoverageSources;
-export type RunProjectCoverageThresholds = ParsedRunProjectCoverageThresholds;
-export type RunProjectProfileFiles = ParsedRunProjectProfileFiles;
-export type RunProjectProfileConfig = RunProjectIntegrationProfileConfig | RunProjectMicrotestProfileConfig;
-export type RunProjectProfilesConfig = Readonly<Record<string, RunProjectProfileConfig>>;
-export type RunProjectResourceBudgets = ParsedRunProjectResourceBudgets;
-export type RunProjectMeasuredResourceUsage = ParsedRunProjectMeasuredResourceUsage;
-export type RunProjectUnmeasuredResourceUsage = ParsedRunProjectUnmeasuredResourceUsage;
-export type RunProjectResourceUsageConfig = ParsedRunProjectResourceUsageConfig;
-export type RunProjectTimingProfilePolicy = ParsedRunProjectTimingProfilePolicy;
-export type RunProjectTimeoutConfig = ParsedRunProjectTimeoutConfig;
-export type RunProjectConfig = {
-    readonly loader?: ParsedRunProjectConfig['loader'];
-    readonly outputRenderer?: ParsedRunProjectConfig['outputRenderer'];
-    readonly profiles?: RunProjectProfilesConfig | undefined;
-    readonly reporters?: ParsedRunProjectConfig['reporters'];
-    readonly runtimeStateDir?: ParsedRunProjectConfig['runtimeStateDir'];
+export type ProjectMicrotestExecution = ParsedProjectMicrotestExecution;
+export type ProjectMicrotestProfileConfig = ParsedProjectMicrotestProfileConfig & ProjectRetryPolicyGuard;
+export type ProjectCoverageOutput = ParsedProjectCoverageOutput;
+export type ProjectCoveragePolicy = ParsedProjectCoveragePolicy;
+export type ProjectCoverageSources = ParsedProjectCoverageSources;
+export type ProjectCoverageThresholds = ParsedProjectCoverageThresholds;
+export type ProjectProfileFiles = ParsedProjectProfileFiles;
+type ProjectTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
+export type ProjectProfileConfig = ProjectBenchmarkProfileConfig | ProjectTestProfileConfig;
+export type ProjectProfilesConfig = Readonly<Record<string, ProjectProfileConfig>>;
+export type ProjectResourceBudgets = ParsedProjectResourceBudgets;
+export type ProjectMeasuredResourceUsage = ParsedProjectMeasuredResourceUsage;
+export type ProjectUnmeasuredResourceUsage = ParsedProjectUnmeasuredResourceUsage;
+export type ProjectResourceUsageConfig = ParsedProjectResourceUsageConfig;
+export type ProjectTimingProfilePolicy = ParsedProjectTimingProfilePolicy;
+export type ProjectTimeoutConfig = ParsedProjectTimeoutConfig;
+export type Config = {
+    readonly loader?: ParsedProjectConfig['loader'];
+    readonly outputRenderer?: ParsedProjectConfig['outputRenderer'];
+    readonly profiles?: ProjectProfilesConfig | undefined;
+    readonly reporters?: ParsedProjectConfig['reporters'];
+    readonly runtimeStateDir?: ParsedProjectConfig['runtimeStateDir'];
 };
 
-export type RunConfigLoadRequest = {
+export type ConfigLoadRequest = {
     readonly configPath: string | null;
     readonly cwd: string;
 };
 
-export type RunConfigLoaderDependencies = {
+export type ConfigLoaderDependencies = {
     readonly fileExists: (filePath: string) => Promise<boolean>;
     readonly importModule: (configPath: string) => Promise<unknown>;
 };
 
-export type RunConfigLoader = (request: RunConfigLoadRequest) => Promise<LoadedRunConfig>;
+export type ConfigLoader = (request: ConfigLoadRequest) => Promise<LoadedConfig>;
 
-export function defineConfig(config: RunProjectConfig): RunProjectConfig {
+export function defineConfig(config: Config): Config {
     return config;
 }
 
 async function discoverConfigPath(
     cwd: string,
-    dependencies: RunConfigLoaderDependencies
+    dependencies: ConfigLoaderDependencies
 ): Promise<string | null> {
     for (const configFileName of defaultConfigFileNames) {
         const candidate = path.resolve(cwd, configFileName);
@@ -147,8 +142,8 @@ async function discoverConfigPath(
 }
 
 async function resolveConfigPath(
-    request: RunConfigLoadRequest,
-    dependencies: RunConfigLoaderDependencies
+    request: ConfigLoadRequest,
+    dependencies: ConfigLoaderDependencies
 ): Promise<string | null> {
     if (request.configPath !== null) {
         return path.resolve(request.cwd, request.configPath);
@@ -159,12 +154,12 @@ async function resolveConfigPath(
 
 async function importConfigModule(
     configPath: string,
-    dependencies: RunConfigLoaderDependencies
+    dependencies: ConfigLoaderDependencies
 ): Promise<unknown> {
     try {
         return await dependencies.importModule(configPath);
     } catch (error: unknown) {
-        throw new RunConfigError(`Failed to load config file "${configPath}".`, { cause: error });
+        throw new ConfigError(`Failed to load config file "${configPath}".`, { cause: error });
     }
 }
 
@@ -190,13 +185,13 @@ function assertNoExtraConfigExports(configModule: ConfigModuleWithNamedConfigExp
     });
 
     if (extraExports.length > 0) {
-        throw new RunConfigError(`Config file "${configPath}" must only export a named config value.`);
+        throw new ConfigError(`Config file "${configPath}" must only export a named config value.`);
     }
 }
 
 function readNamedConfigExport(configModule: unknown, configPath: string): unknown {
     if (hasDefaultExport(configModule)) {
-        throw new RunConfigError(`Config file "${configPath}" must not export a default config.`);
+        throw new ConfigError(`Config file "${configPath}" must not export a default config.`);
     }
 
     if (hasNamedConfigExport(configModule)) {
@@ -205,12 +200,12 @@ function readNamedConfigExport(configModule: unknown, configPath: string): unkno
         return configModule.config;
     }
 
-    throw new RunConfigError(`Config file "${configPath}" must export a named config value.`);
+    throw new ConfigError(`Config file "${configPath}" must export a named config value.`);
 }
 
 function normalizeReporters(
     reporters: ConfiguredReporters | undefined
-): LoadedRunConfig['reporters'] {
+): LoadedConfig['reporters'] {
     return reporters ?? null;
 }
 
@@ -218,7 +213,7 @@ function normalizeBudgetValue(value: number | null | undefined): number | null {
     return value ?? null;
 }
 
-function normalizeResourceBudgets(resourceBudgets: RunProjectResourceBudgets | undefined): RunResourceBudgets {
+function normalizeResourceBudgets(resourceBudgets: ProjectResourceBudgets | undefined): ResourceBudgets {
     return {
         activeResourceCount: normalizeBudgetValue(resourceBudgets?.activeResourceCount),
         javaScriptEngineHeapBytes: normalizeBudgetValue(resourceBudgets?.javaScriptEngineHeapBytes),
@@ -227,7 +222,7 @@ function normalizeResourceBudgets(resourceBudgets: RunProjectResourceBudgets | u
     };
 }
 
-function disabledResourceBudgets(): RunResourceBudgets {
+function disabledResourceBudgets(): ResourceBudgets {
     return {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,
@@ -236,7 +231,7 @@ function disabledResourceBudgets(): RunResourceBudgets {
     };
 }
 
-function copyResourceBudgets(resourceBudgets: RunResourceBudgets): RunResourceBudgets {
+function copyResourceBudgets(resourceBudgets: ResourceBudgets): ResourceBudgets {
     return {
         activeResourceCount: resourceBudgets.activeResourceCount,
         javaScriptEngineHeapBytes: resourceBudgets.javaScriptEngineHeapBytes,
@@ -245,7 +240,7 @@ function copyResourceBudgets(resourceBudgets: RunResourceBudgets): RunResourceBu
     };
 }
 
-function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsagePolicy {
+function copyResourceUsagePolicy(policy: ResourceUsagePolicy): ResourceUsagePolicy {
     return {
         budgets: copyResourceBudgets(policy.budgets),
         measure: policy.measure,
@@ -253,7 +248,7 @@ function copyResourceUsagePolicy(policy: RunResourceUsagePolicy): RunResourceUsa
     };
 }
 
-function normalizeUnmeasuredResourceUsage(): RunResourceUsagePolicy {
+function normalizeUnmeasuredResourceUsage(): ResourceUsagePolicy {
     return {
         budgets: disabledResourceBudgets(),
         measure: false,
@@ -261,7 +256,7 @@ function normalizeUnmeasuredResourceUsage(): RunResourceUsagePolicy {
     };
 }
 
-function normalizeMeasuredResourceUsage(profile: RunProjectMeasuredResourceUsage): RunResourceUsagePolicy {
+function normalizeMeasuredResourceUsage(profile: ProjectMeasuredResourceUsage): ResourceUsagePolicy {
     return {
         budgets: normalizeResourceBudgets(profile.budgets),
         measure: true,
@@ -271,8 +266,8 @@ function normalizeMeasuredResourceUsage(profile: RunProjectMeasuredResourceUsage
 }
 
 function normalizeResourceUsage(
-    profile: RunProjectResourceUsageConfig | undefined
-): RunResourceUsagePolicy {
+    profile: ProjectResourceUsageConfig | undefined
+): ResourceUsagePolicy {
     if (profile === undefined) {
         return copyResourceUsagePolicy(defaultResourceUsagePolicy);
     }
@@ -284,8 +279,8 @@ function normalizeResourceUsage(
     return normalizeMeasuredResourceUsage(profile);
 }
 
-function normalizeTimings(timings: RunProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
-    return timings ?? defaultTimingProfilePolicy;
+function normalizeTimings(timings: ProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
+    return { collection: timings?.collection ?? defaultTimingProfilePolicy.collection };
 }
 
 function timeoutValue(value: number | undefined, fallback: number): number {
@@ -293,9 +288,9 @@ function timeoutValue(value: number | undefined, fallback: number): number {
 }
 
 function normalizeTimeouts(
-    timeouts: RunProjectTimeoutConfig | undefined,
-    defaultPolicy: RunTimeoutPolicy
-): RunTimeoutPolicy {
+    timeouts: ProjectTimeoutConfig | undefined,
+    defaultPolicy: TimeoutPolicy
+): TimeoutPolicy {
     return {
         collectionMilliseconds: timeoutValue(timeouts?.collectionMilliseconds, defaultPolicy.collectionMilliseconds),
         hardMilliseconds: timeoutValue(timeouts?.hardMilliseconds, defaultPolicy.hardMilliseconds),
@@ -303,15 +298,15 @@ function normalizeTimeouts(
     };
 }
 
-function assertValidTimeouts(timeouts: RunTimeoutPolicy): void {
+function assertValidTimeouts(timeouts: TimeoutPolicy): void {
     if (timeouts.softMilliseconds > timeouts.hardMilliseconds) {
-        throw new RunConfigError(
+        throw new ConfigError(
             'Invalid profile timeouts: softMilliseconds must be less than or equal to hardMilliseconds.'
         );
     }
 }
 
-function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | undefined): RunWorkerLifecycle {
+function normalizeWorkerLifecycle(execution: ProjectIntegrationExecution | undefined): WorkerLifecycle {
     if (execution?.processModel !== 'worker-pool') {
         return defaultWorkerLifecycle;
     }
@@ -320,8 +315,8 @@ function normalizeWorkerLifecycle(execution: RunProjectIntegrationExecution | un
 }
 
 function normalizeWorkerPoolAssignmentPolicy(
-    execution: RunProjectIntegrationExecution | undefined
-): RunWorkerPoolAssignmentPolicy {
+    execution: ProjectIntegrationExecution | undefined
+): WorkerPoolAssignmentPolicy {
     if (execution?.processModel !== 'worker-pool') {
         return defaultWorkerPoolAssignmentPolicy;
     }
@@ -330,8 +325,8 @@ function normalizeWorkerPoolAssignmentPolicy(
 }
 
 function normalizeWorkerPoolHedgingPolicy(
-    execution: RunProjectIntegrationExecution | undefined
-): RunWorkerPoolHedgingPolicy {
+    execution: ProjectIntegrationExecution | undefined
+): WorkerPoolHedgingPolicy {
     if (execution?.processModel !== 'worker-pool') {
         return defaultWorkerPoolHedgingPolicy;
     }
@@ -339,20 +334,20 @@ function normalizeWorkerPoolHedgingPolicy(
     return execution.hedging ?? defaultWorkerPoolHedgingPolicy;
 }
 
-function assertValidWorkerPoolHedging(execution: RunIntegrationExecution): void {
+function assertValidWorkerPoolHedging(execution: IntegrationExecution): void {
     if (
         execution.processModel === 'worker-pool' &&
         execution.hedging.mode === 'on' &&
         execution.dispatchPolicy === 'static-assignment'
     ) {
-        throw new RunConfigError('Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.');
+        throw new ConfigError('Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.');
     }
 }
 
 function normalizeWorkerPoolExecution(
-    execution: RunProjectIntegrationExecution | undefined,
-    scheduling: RunIntegrationExecution['scheduling']
-): RunIntegrationExecution {
+    execution: ProjectIntegrationExecution | undefined,
+    scheduling: IntegrationExecution['scheduling']
+): IntegrationExecution {
     const workerPoolExecution = workerPoolProjectExecution(execution);
 
     return {
@@ -370,8 +365,8 @@ function normalizeWorkerPoolExecution(
 }
 
 function normalizeIntegrationExecution(
-    execution: RunProjectIntegrationExecution | undefined
-): RunIntegrationExecution {
+    execution: ProjectIntegrationExecution | undefined
+): IntegrationExecution {
     const processModel = execution?.processModel ?? defaultIntegrationProcessModel;
     const scheduling = execution?.scheduling ?? defaultIntegrationScheduling;
 
@@ -387,9 +382,9 @@ function normalizeIntegrationExecution(
 }
 
 function normalizeMicrotestProfile(
-    profile: RunProjectMicrotestProfileConfig,
+    profile: ProjectMicrotestProfileConfig,
     configPath: string | null
-): RunMicrotestProfileConfig {
+): MicrotestProfileConfig {
     const timeouts = normalizeTimeouts(profile.timeouts, defaultTimeoutPolicy);
 
     assertValidTimeouts(timeouts);
@@ -406,7 +401,7 @@ function normalizeMicrotestProfile(
     };
 }
 
-function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig): RunIntegrationProfileConfig {
+function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): IntegrationProfileConfig {
     const timeouts = normalizeTimeouts(profile.timeouts, defaultIntegrationTimeoutPolicy);
     const files = normalizeRequiredProfileFiles(profile.files);
     const execution = normalizeIntegrationExecution(profile.execution);
@@ -431,7 +426,11 @@ function normalizeIntegrationProfile(profile: RunProjectIntegrationProfileConfig
     };
 }
 
-function normalizeProfile(profile: RunProjectProfileConfig, configPath: string | null): RunProfileConfig {
+function normalizeProfile(profile: ProjectProfileConfig, configPath: string | null): ProfileConfig {
+    if (profile.testFamily === 'benchmark') {
+        return { testFamily: 'benchmark', files: normalizeRequiredProfileFiles(profile.files) };
+    }
+
     if (profile.testFamily === 'integration') {
         return normalizeIntegrationProfile(profile);
     }
@@ -439,15 +438,15 @@ function normalizeProfile(profile: RunProjectProfileConfig, configPath: string |
     return normalizeMicrotestProfile(profile, configPath);
 }
 
-function defaultMicrotestProfile(): RunMicrotestProfileConfig {
+function defaultMicrotestProfile(): MicrotestProfileConfig {
     return normalizeMicrotestProfile({ testFamily: 'microtest' }, null);
 }
 
 function normalizeConfiguredProfiles(
-    profiles: RunProjectProfilesConfig | undefined,
+    profiles: ProjectProfilesConfig | undefined,
     configPath: string | null
-): RunProfilesConfig {
-    const normalizedProfiles: Record<string, RunProfileConfig> = {};
+): ProfilesConfig {
+    const normalizedProfiles: Record<string, ProfileConfig> = {};
     const profileEntries = Object.entries(profiles ?? {});
 
     for (const [ profileName, profile ] of profileEntries) {
@@ -462,9 +461,8 @@ function normalizeConfiguredProfiles(
     return normalizedProfiles;
 }
 
-function normalizeConfig(parsedConfig: RunProjectConfig, configPath: string | null): LoadedRunConfig {
+function normalizeConfigForOrigin(parsedConfig: Config, configPath: string | null): NormalizedConfig {
     return {
-        configPath,
         loader: parsedConfig.loader ?? defaultLoader,
         outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
         profiles: normalizeConfiguredProfiles(parsedConfig.profiles, configPath),
@@ -473,29 +471,35 @@ function normalizeConfig(parsedConfig: RunProjectConfig, configPath: string | nu
     };
 }
 
-function parseConfig(configValue: unknown, configPath: string): RunProjectConfig {
+function parseConfig(configValue: unknown, configPath: string | null): Config {
     try {
-        const parsedConfig: RunProjectConfig = parse(projectConfigSchema, configValue);
+        const parsedConfig: Config = parse(projectConfigSchema, configValue);
 
         return parsedConfig;
     } catch (error: unknown) {
-        throw new RunConfigError(`Invalid config file "${configPath}": ${String(error)}`, { cause: error });
+        const location = configPath === null ? 'Invalid config' : `Invalid config file "${configPath}"`;
+
+        throw new ConfigError(`${location}: ${String(error)}`, { cause: error });
     }
 }
 
-export function createRunConfigLoader(dependencies: RunConfigLoaderDependencies): RunConfigLoader {
-    return async function loadRunConfig(request) {
+export function normalizeConfig(config: Config): NormalizedConfig {
+    return normalizeConfigForOrigin(parseConfig(config, null), null);
+}
+
+export function createConfigLoader(dependencies: ConfigLoaderDependencies): ConfigLoader {
+    return async function loadConfig(request) {
         const configPath = await resolveConfigPath(request, dependencies);
 
         if (configPath === null) {
-            return normalizeConfig({}, null);
+            return { ...normalizeConfigForOrigin({}, null), configPath: null };
         }
 
         const configModule = await importConfigModule(configPath, dependencies);
         const configValue = readNamedConfigExport(configModule, configPath);
 
-        return normalizeConfig(parseConfig(configValue, configPath), configPath);
+        return { ...normalizeConfigForOrigin(parseConfig(configValue, configPath), configPath), configPath };
     };
 }
 
-export type RunProjectAttachmentLimits = ParsedRunProjectAttachmentLimits;
+export type ProjectAttachmentLimits = ParsedProjectAttachmentLimits;

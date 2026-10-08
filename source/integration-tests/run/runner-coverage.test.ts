@@ -1,6 +1,15 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
+    orchestrator,
+    type RunRecord,
+    type RunRequest,
+    type CoveragePolicy,
+    type NormalizedConfig,
+    type MicrotestExecution,
+    type Scheduling
+} from '../../packages/run/run.entry-point.ts';
+import {
     createPlainOutputRenderer,
     createSuite,
     createTestCase,
@@ -9,17 +18,11 @@ import {
     type RunResult,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
-import { orchestrator, type RunRecord } from '../../packages/run/run.entry-point.ts';
+
 import { generateCoverageReports } from '../../run/coverage-reporting.ts';
-import { defaultCoveragePolicy } from '../../run/run-config-defaults.ts';
+import { defaultCoveragePolicy } from '../../config/defaults.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import type {
-    RunCoveragePolicy,
-    RunConfig,
-    RunMicrotestProcessModel,
-    RunScheduling,
-    RunRequest
-} from '../../run/run-types.ts';
+
 import { runIfMain } from '../direct-launcher.test.ts';
 import { loadCoverageFixtures } from './fixtures/coverage-files.ts';
 
@@ -27,11 +30,11 @@ const coverageFixturePath = 'source/integration-tests/run/fixtures/coverage.test
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 
 function coverageConfig(
-    processModel: RunMicrotestProcessModel,
+    processModel: MicrotestExecution['processModel'],
     hardTimeoutMilliseconds: number,
-    coverage: RunCoveragePolicy,
-    scheduling: RunScheduling
-): RunConfig {
+    coverage: CoveragePolicy,
+    scheduling: Scheduling
+): NormalizedConfig {
     return {
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: createPlainOutputRenderer(),
@@ -127,7 +130,10 @@ async function assertCoverageFiles(scope: TestScope, artifact: CoverageArtifact)
     scope.assert.false(lcov.includes('coverage.test.ts'));
 }
 
-type CoverageExecution = { readonly processModel: RunMicrotestProcessModel; readonly scheduling: RunScheduling; };
+type CoverageExecution = {
+    readonly processModel: MicrotestExecution['processModel'];
+    readonly scheduling: Scheduling;
+};
 
 async function assertCoverageRecord(
     scope: TestScope,
@@ -169,8 +175,8 @@ async function assertCoverageRecord(
 
 async function assertCoverageRun(
     scope: TestScope,
-    processModel: RunMicrotestProcessModel,
-    scheduling: RunScheduling
+    processModel: MicrotestExecution['processModel'],
+    scheduling: Scheduling
 ): Promise<CoverageArtifact> {
     const result = await orchestrator.run({
         config: coverageConfig(processModel, 10_000, defaultCoveragePolicy, scheduling),

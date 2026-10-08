@@ -1,9 +1,11 @@
 import type { TestPlan } from '../engine/test-plan.ts';
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+
 import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
+import type { ResolvedRunInput } from './run-input-resolution.ts';
+
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { resolveRunEngine } from './run-engine-selection.ts';
@@ -12,16 +14,14 @@ import {
     createRunTestPlanFromFiles,
     type RunTestPlanCollectionSource
 } from './run-test-plan.ts';
-import type { DiscoveredRunFile } from './run-discovery-types.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunCommand, RunProfileConfig } from './run-types.ts';
 
-export type LocalTestPlanInput = {
+import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type { RunCommand } from './run-types.ts';
+
+export type LocalTestPlanInput = Pick<ResolvedRunInput, 'files' | 'profile'> & {
     readonly command: RunCommand;
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly dependencies: RunOrchestratorDependencies;
-    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
-    readonly profile: RunProfileConfig;
     readonly source: RunTestPlanCollectionSource;
 };
 export type LocalTestPlan = TestPlan;

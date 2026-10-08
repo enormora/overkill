@@ -1,3 +1,4 @@
+import type { TestProfileConfig, Scheduling, WorkerPoolAssignmentPolicy } from '../config/types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import {
     createRunShardHasher,
@@ -6,14 +7,7 @@ import {
 import {
     orderedRunItems
 } from './run-ordering.ts';
-import type {
-    CollectedRunPlan,
-    RunProfileConfig,
-    RunRequest,
-    RunScheduling,
-    RunWorkerCountFacts,
-    RunWorkerPoolAssignmentPolicy
-} from './run-types.ts';
+import type { CollectedRunPlan, RunRequest, RunWorkerCountFacts } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     collectedRunCaseEntriesFromWorkUnits,
@@ -36,7 +30,7 @@ type CollectedExecutionPlanInput = {
     readonly durationHistoryIndex: WorkerPoolPlacementResolutionInput['durationHistoryIndex'];
     readonly files: ResolvedRunInput['files'];
     readonly planKind: CollectedPlanKind;
-    readonly profile: RunProfileConfig;
+    readonly profile: TestProfileConfig;
     readonly request: RunRequest;
 };
 
@@ -44,7 +38,7 @@ type CollectedExecutionPlan = {
     readonly durationHistory: WorkerPoolPlacementResolution['durationHistory'] | null;
     readonly orderedCases: ReturnType<typeof shardCollectedRunPlanCases>;
     readonly placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null;
-    readonly scheduling: RunScheduling;
+    readonly scheduling: Scheduling;
     readonly workerCount: RunWorkerCountFacts | null;
 };
 
@@ -58,25 +52,25 @@ function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: str
     };
 }
 
-function workerPoolAssignmentPolicy(profile: RunProfileConfig): RunWorkerPoolAssignmentPolicy {
+function workerPoolAssignmentPolicy(profile: TestProfileConfig): WorkerPoolAssignmentPolicy {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.assignmentPolicy
         : 'case-count-balanced';
 }
 
-function workDistribution(profile: RunProfileConfig): WorkerPoolPlacementResolutionInput['workDistribution'] {
+function workDistribution(profile: TestProfileConfig): WorkerPoolPlacementResolutionInput['workDistribution'] {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.workDistribution
         : { mode: 'file' };
 }
 
-function workerLifecycle(profile: RunProfileConfig): WorkerPoolPlacementResolutionInput['workerLifecycle'] {
+function workerLifecycle(profile: TestProfileConfig): WorkerPoolPlacementResolutionInput['workerLifecycle'] {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.workerLifecycle
         : 'reuse';
 }
 
-function profileMaximumWorkers(profile: RunProfileConfig): number | null {
+function profileMaximumWorkers(profile: TestProfileConfig): number | null {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.maxWorkers
         : null;
@@ -128,7 +122,7 @@ function orderedCollectedCases(
 function resolvedScheduling(
     input: CollectedExecutionPlanInput,
     orderedCases: CollectedExecutionPlan['orderedCases']
-): RunScheduling {
+): Scheduling {
     if (input.planKind === 'worker-pool') {
         return input.profile.execution.scheduling;
     }

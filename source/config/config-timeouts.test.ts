@@ -9,20 +9,20 @@ import {
 } from '../test-support/run-config-module-loader.ts';
 
 async function loadConfigValue(config: unknown): Promise<unknown> {
-    const loadRunConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
+    const loadConfig = createSingleConfigModuleLoader('overkill.config.js', { config });
 
-    return await loadRunConfig({ configPath: null, cwd: configFixtureCwd });
+    return await loadConfig({ configPath: null, cwd: configFixtureCwd });
 }
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-timeouts.test.ts',
+    title: 'source/config/config-timeouts.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() rejects profile soft timeouts greater than hard timeouts',
+            title: 'loadConfig() rejects profile soft timeouts greater than hard timeouts',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {

@@ -1,23 +1,18 @@
 import { isAbsolute } from 'node:path';
 
-const runProfileNamePattern = /^[A-Za-z0-9._-]+$/u;
-const reservedBenchmarkProfileName = 'benchmark';
+const profileNamePattern = /^[A-Za-z0-9._-]+$/u;
 
-export function invalidRunProfileNameMessage(profileName: string): string | null {
-    if (!runProfileNamePattern.test(profileName)) {
+export function invalidProfileNameMessage(profileName: string): string | null {
+    if (!profileNamePattern.test(profileName)) {
         return `Invalid profile name "${profileName}". ` +
             'Profile names may only contain letters, numbers, dots, underscores, and hyphens.';
-    }
-
-    if (profileName === reservedBenchmarkProfileName) {
-        return 'Invalid profile name "benchmark". The "benchmark" profile name is reserved for benchmark commands.';
     }
 
     return null;
 }
 
-export function invalidRunProfileFileSetNameMessage(fileSetName: string): string | null {
-    return runProfileNamePattern.test(fileSetName)
+export function invalidProfileFileSetNameMessage(fileSetName: string): string | null {
+    return profileNamePattern.test(fileSetName)
         ? null
         : `Invalid profile file set name "${fileSetName}". ` +
             'Profile file set names may only contain letters, numbers, dots, underscores, and hyphens.';

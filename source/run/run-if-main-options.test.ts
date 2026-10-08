@@ -13,8 +13,9 @@ import {
     defineFixedReporter,
     type FixedDefinedReporter
 } from '../test-support/reporter-definition.ts';
+import type { LoadedConfig } from '../config/config.ts';
+import type { MicrotestProfileConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import type { LoadedRunConfig } from './run-config.ts';
 import {
     directRunFacts,
     runConfig
@@ -26,7 +27,6 @@ import {
     selectedOutputRenderer,
     selectedReporters
 } from './run-if-main-options.ts';
-import type { RunMicrotestProfileConfig } from './run-types.ts';
 
 const outputRenderer = defineFixedOutputRenderer({
     render(): string {
@@ -54,9 +54,9 @@ function createReporter(name: string): FixedDefinedReporter {
 }
 
 function directProfile(
-    reporters: RunMicrotestProfileConfig['reporters'],
+    reporters: MicrotestProfileConfig['reporters'],
     scheduling: 'concurrent' | 'serial'
-): RunMicrotestProfileConfig {
+): MicrotestProfileConfig {
     return {
         coverage: {
             outputDirectory: null,
@@ -91,7 +91,7 @@ function directProfile(
     };
 }
 
-function loadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRunConfig {
+function loadedConfig(reporters: LoadedConfig['reporters']): LoadedConfig {
     return {
         configPath: null,
         loader: {

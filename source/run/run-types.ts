@@ -1,4 +1,25 @@
 import type { Except } from 'type-fest';
+import type { IntegrationRetryPolicy } from '../config/execution.ts';
+import type {
+    LoaderConfig,
+    ResourceBudgets,
+    TimingCollectionMode,
+    TimingCollectionOverride,
+    CoveragePolicy,
+    ProcessModel,
+    MicrotestProcessModel,
+    MaxConcurrency,
+    Scheduling,
+    WorkerLifecycle,
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolDispatchPolicy,
+    WorkerPoolHedgingPolicy,
+    WorkDistribution,
+    ResourceUsagePolicy,
+    TimeoutPolicy,
+    NormalizedConfig,
+    RunOrder
+} from '../config/types.ts';
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
@@ -15,12 +36,7 @@ import type {
 } from './run-engine-primitives.ts';
 import type { RunEngineSelection, RunSelection } from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
-import type {
-    IntegrationRetryPolicy,
-    RunExecutionResourceOwnershipPlan,
-    RunIntegrationExecutionShape,
-    RunMicrotestExecutionShape
-} from './run-execution-config.ts';
+import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
@@ -46,68 +62,7 @@ export type RunDebugRequest = {
     readonly selectors: readonly [];
 };
 
-export type RunLoaderConfig = {
-    readonly sourceMaps: boolean;
-    readonly stripMode: 'strip-only';
-};
-
-export type RunResourceBudgets = {
-    readonly activeResourceCount: number | null;
-    readonly javaScriptEngineHeapBytes: number | null;
-    readonly residentSetBytes: number | null;
-    readonly residentSetGrowthBytesPerSecond: number | null;
-};
-
-export type TimingCollectionMode = 'precise' | 'summary';
-export type TimingCollectionOverride = 'precise' | 'profile-default';
-export type TimingProfilePolicy = {
-    readonly collection: TimingCollectionMode;
-};
-
-export type CoverageOutput = 'html' | 'json' | 'lcov' | 'text' | 'v8';
-
-export type RunCoverageSourcePolicy = {
-    readonly exclude: readonly string[];
-    readonly include: NonEmptyReadonlyArray<string>;
-    readonly mode: 'all';
-} | {
-    readonly exclude: readonly string[];
-    readonly mode: 'loaded';
-};
-
-export type RunCoverageThresholds = {
-    readonly branches: number | null;
-    readonly functions: number | null;
-    readonly lines: number | null;
-};
-
-export type RunCoveragePolicy = {
-    readonly outputDirectory: string | null;
-    readonly outputs: readonly CoverageOutput[];
-    readonly sources: RunCoverageSourcePolicy;
-    readonly thresholds: RunCoverageThresholds;
-};
-
 export type RunTestFamily = 'integration' | 'microtest';
-export type RunProcessModel = 'in-process' | 'supervised-process' | 'worker-pool';
-export type RunMicrotestProcessModel = Exclude<RunProcessModel, 'worker-pool'>;
-export type RunMaxConcurrency = number | 'unlimited';
-export type RunScheduling = 'concurrent' | 'serial';
-export type RunWorkerLifecycle = 'fresh-worker-per-unit' | 'reuse';
-export type RunWorkerPoolAssignmentPolicy = 'case-count-balanced' | 'duration-history-balanced' | 'stable';
-export type RunWorkerPoolDispatchPolicy = 'dynamic-lease' | 'static-assignment';
-export type RunWorkerPoolHedgingPolicy = {
-    readonly durationMultiplier: number;
-    readonly minimumDelayMilliseconds: number;
-    readonly mode: 'on';
-} | {
-    readonly mode: 'off';
-};
-export type RunWorkGroupGranularity = 'case' | 'file' | 'group';
-export type RunWorkGroupOrder = RunOrder | 'profile-default';
-export type RunWorkGroupScheduling = RunScheduling | 'profile-default';
-export type RunWorkGroupWorkerLifecycle = RunWorkerLifecycle | 'profile-default';
-
 type RunHostProcessReasonKey = {
     readonly 'benchmark-isolation': true;
     readonly debugging: true;
@@ -118,33 +73,6 @@ type RunHostProcessReasonKey = {
 };
 
 export type RunHostProcessReason = keyof RunHostProcessReasonKey;
-
-export type RunHostProcess = {
-    readonly kind: 'child';
-    readonly nodeArguments: readonly string[];
-} | {
-    readonly kind: 'direct';
-};
-
-type FileRunWorkDistribution = { readonly mode: 'file'; };
-type CaseRunWorkDistribution = { readonly mode: 'case'; };
-
-export type RunWorkGroup = {
-    readonly fileSets: NonEmptyReadonlyArray<string>;
-    readonly granularity: RunWorkGroupGranularity;
-    readonly name: string;
-    readonly order: RunWorkGroupOrder;
-    readonly scheduling: RunWorkGroupScheduling;
-    readonly workerLifecycle: RunWorkGroupWorkerLifecycle;
-};
-
-type GroupRunWorkDistribution = {
-    readonly groups: NonEmptyReadonlyArray<RunWorkGroup>;
-    readonly mode: 'group';
-    readonly unmatched: 'file' | 'reject';
-};
-
-export type RunWorkDistribution = CaseRunWorkDistribution | FileRunWorkDistribution | GroupRunWorkDistribution;
 
 export type WorkUnitMode = 'case' | 'file' | 'group';
 
@@ -180,9 +108,9 @@ export type WorkUnit = {
     readonly id: WorkUnitId;
     readonly order: RunOrder;
     readonly resourceConstraints: WorkUnitResourceConstraints;
-    readonly scheduling: RunScheduling;
+    readonly scheduling: Scheduling;
     readonly work: NonEmptyReadonlyArray<WorkId>;
-    readonly workerLifecycle: RunWorkerLifecycle;
+    readonly workerLifecycle: WorkerLifecycle;
 };
 
 export type ExecutorDescriptor = {
@@ -205,97 +133,18 @@ export type PlacementAssignment = {
 export type PlacementPlan = {
     readonly assignments: readonly PlacementAssignment[];
     readonly lanes: readonly PlacementLane[];
-    readonly resourceOwnership: RunExecutionResourceOwnershipPlan;
+    readonly resourceOwnership: ResourceOwnershipPlan;
     readonly units: readonly WorkUnit[];
 };
 
-export type RunMicrotestExecution = RunMicrotestExecutionShape<
-    RunMaxConcurrency,
-    RunMicrotestProcessModel,
-    RunScheduling
->;
-export type RunIntegrationExecution = RunIntegrationExecutionShape<
-    RunWorkerPoolAssignmentPolicy,
-    RunWorkerPoolDispatchPolicy,
-    RunWorkerPoolHedgingPolicy,
-    RunHostProcess,
-    RunMaxConcurrency,
-    RunScheduling,
-    RunWorkerLifecycle,
-    RunWorkDistribution
->;
-
-export type RunResourceUsagePolicy = {
-    readonly budgets: RunResourceBudgets;
-    readonly measure: boolean;
-    readonly samplingIntervalMilliseconds: number;
-};
-
-export type RunTimeoutPolicy = {
-    readonly collectionMilliseconds: number;
-    readonly hardMilliseconds: number;
-    readonly softMilliseconds: number;
-};
-
-type RunProfileFilePatterns = {
-    readonly exclude: readonly string[];
-    readonly include: NonEmptyReadonlyArray<string>;
-    readonly sets?: never;
-};
-
-export type RunProfileFileSet = {
-    readonly exclude: readonly string[];
-    readonly include: NonEmptyReadonlyArray<string>;
-};
-
-export type RunProfileFiles = RunProfileFilePatterns | {
-    readonly exclude?: never;
-    readonly include?: never;
-    readonly sets: Readonly<Record<string, RunProfileFileSet>>;
-};
-
-export type RunMicrotestProfileConfig = {
-    readonly coverage: RunCoveragePolicy;
-    readonly execution: RunMicrotestExecution;
-    readonly files: RunProfileFiles | null;
-    readonly reporters: RunReporters | null;
-    readonly resourceUsage: RunResourceUsagePolicy;
-    readonly testFamily: 'microtest';
-    readonly timings: TimingProfilePolicy;
-    readonly timeouts: RunTimeoutPolicy;
-};
-
-export type RunIntegrationProfileConfig = {
-    readonly attachments: AttachmentLimits;
-    readonly retries: IntegrationRetryPolicy | null;
-    readonly execution: RunIntegrationExecution;
-    readonly files: RunProfileFiles;
-    readonly reporters: RunReporters | null;
-    readonly resourceUsage: RunResourceUsagePolicy;
-    readonly testFamily: 'integration';
-    readonly timings: TimingProfilePolicy;
-    readonly timeouts: RunTimeoutPolicy;
-};
-
-export type RunProfileConfig = RunIntegrationProfileConfig | RunMicrotestProfileConfig;
-
-export type RunProfilesConfig = Readonly<Record<string, RunProfileConfig>>;
-
-export type RunConfig = {
-    readonly loader: RunLoaderConfig;
-    readonly outputRenderer: NonNullable<RunExecuteOptions['outputRenderer']>;
-    readonly profiles: RunProfilesConfig;
-    readonly reporters: RunReporters;
-    readonly runtimeStateDir: string;
-};
 export type DurationHistoryObservation = {
     readonly durationMicroseconds: number;
     readonly metadata: {
-        readonly processModel: RunProcessModel;
+        readonly processModel: ProcessModel;
         readonly profile: string;
-        readonly scheduling: RunScheduling;
+        readonly scheduling: Scheduling;
         readonly testFamily: RunTestFamily;
-        readonly workerLifecycle: RunWorkerLifecycle | null;
+        readonly workerLifecycle: WorkerLifecycle | null;
     };
     readonly observedAt: string;
 };
@@ -311,7 +160,6 @@ export type DurationHistoryInput = {
     readonly samples: readonly DurationHistorySample[];
     readonly source: 'runtime-state-index';
 };
-export type RunOrder = 'lexical' | 'plan' | 'seeded';
 
 export type RunRequest = {
     readonly baselineUpdateMode: 'none';
@@ -324,7 +172,7 @@ export type RunRequest = {
     readonly order: RunOrder;
     readonly paths: readonly string[];
     readonly profile: string;
-    readonly resourceBudgetOverrides: RunResourceBudgets | null;
+    readonly resourceBudgetOverrides: ResourceBudgets | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
     readonly selection: RunSelection;
@@ -335,19 +183,19 @@ export type RunRequest = {
 };
 
 export type RunCommand = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunEngineSelection;
     readonly request: RunRequest;
 };
 
 export type RunFacts = {
-    readonly coveragePolicy: RunCoveragePolicy | null;
+    readonly coveragePolicy: CoveragePolicy | null;
     readonly cases: readonly RunCaseFacts[];
     readonly durationHistory: DurationHistoryInput | null;
     readonly environment: RunEnvironmentFacts;
     readonly execution: RunExecutionFacts;
-    readonly loader: RunLoaderConfig;
+    readonly loader: LoaderConfig;
     readonly reproducibility: RunReproducibilityFacts;
 };
 
@@ -377,27 +225,27 @@ type RunExecutionBaseFacts = {
     readonly coverage: boolean;
     readonly debug: RunDebugRequest;
     readonly engine: RunEngineFacts;
-    readonly maxConcurrency: RunMaxConcurrency;
+    readonly maxConcurrency: MaxConcurrency;
     readonly order: RunOrder;
     readonly placementPlan: PlacementPlan | null;
     readonly profile: string;
-    readonly resourceUsagePolicy: RunResourceUsagePolicy;
-    readonly scheduling: RunScheduling;
+    readonly resourceUsagePolicy: ResourceUsagePolicy;
+    readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;
     readonly timingCollection: TimingCollectionMode;
-    readonly timeoutPolicy: RunTimeoutPolicy;
+    readonly timeoutPolicy: TimeoutPolicy;
     readonly verbose: false;
 };
 
 type RunWorkerPoolExecutionFacts = RunExecutionBaseFacts & {
-    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
-    readonly dispatchPolicy: RunWorkerPoolDispatchPolicy;
-    readonly hedging: RunWorkerPoolHedgingPolicy;
+    readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
+    readonly dispatchPolicy: WorkerPoolDispatchPolicy;
+    readonly hedging: WorkerPoolHedgingPolicy;
     readonly hostProcess: RunHostProcessFacts;
     readonly processModel: 'worker-pool';
     readonly workerCount: RunWorkerCountFacts;
-    readonly workDistribution: RunWorkDistribution;
-    readonly workerLifecycle: RunWorkerLifecycle;
+    readonly workDistribution: WorkDistribution;
+    readonly workerLifecycle: WorkerLifecycle;
 };
 
 export type RunWorkerCountFacts = {
@@ -416,7 +264,7 @@ export type RunHostProcessFacts = {
 };
 
 type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
-    readonly processModel: RunMicrotestProcessModel | 'supervised-process';
+    readonly processModel: MicrotestProcessModel | 'supervised-process';
 };
 
 export type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
@@ -486,7 +334,7 @@ export type ResolvedRunPlan = {
 
 export type ResolvedRun = {
     readonly collectionRunnerErrors: readonly RunResult['runnerErrors'][number][];
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunEngineSelection;
     readonly facts: RunFacts;

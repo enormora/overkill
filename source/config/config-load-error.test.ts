@@ -5,11 +5,11 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
-    createRunConfigLoader
-} from './run-config.ts';
-import { RunConfigError } from './run-errors.ts';
+    createConfigLoader
+} from './config.ts';
+import { ConfigError } from './config-error.ts';
 
-const loadRunConfig = createRunConfigLoader({
+const loadConfig = createConfigLoader({
     async fileExists() {
         return false;
     },
@@ -20,20 +20,20 @@ const loadRunConfig = createRunConfigLoader({
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-load-error.test.ts',
+    title: 'source/config/config-load-error.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadRunConfig() reports explicit config import failures',
+            title: 'loadConfig() reports explicit config import failures',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadMissingConfig() {
-                    await loadRunConfig({ configPath: 'missing.config.js', cwd: '/project' });
+                    await loadConfig({ configPath: 'missing.config.js', cwd: '/project' });
                 }, {
-                    type: RunConfigError,
+                    type: ConfigError,
                     message: /Failed to load config file/
                 });
 

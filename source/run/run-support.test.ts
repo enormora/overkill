@@ -10,14 +10,11 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../config/types.ts';
+import { copyConfig } from '../config/snapshot.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import type { RunConfig } from './run-types.ts';
-import {
-    copyRunConfig,
-    copyRunEngineSelection,
-    copyRunRequest,
-    runEngineFacts
-} from './run-support.ts';
+import { copyRunEngineSelection, runEngineFacts } from './run-support.ts';
+import { copyRunRequest } from './request-snapshot.ts';
 
 const reporter = defineReporter(function createRunSupportReporter() {
     return {
@@ -40,7 +37,7 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'copyRunConfig() preserves profile behavior while copying mutable containers',
+            title: 'copyConfig() preserves profile behavior while copying mutable containers',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
@@ -67,7 +64,7 @@ export const testNode = createOverkillSuite({
                     },
                     reporters: [ reporter ]
                 });
-                const copied = copyRunConfig(config);
+                const copied = copyConfig(config);
 
                 scope.assert.deepEqual(copied, config);
                 scope.assert.notEqual(copied.profiles, config.profiles);
@@ -105,7 +102,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'copyRunConfig() rejects integration profiles without file discovery',
+            title: 'copyConfig() rejects integration profiles without file discovery',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
@@ -121,10 +118,10 @@ export const testNode = createOverkillSuite({
                             files: null
                         }
                     }
-                } as unknown as Partial<RunConfig>);
+                } as unknown as Partial<NormalizedConfig>);
 
                 scope.assert.throws(function copyInvalidConfig() {
-                    copyRunConfig(config);
+                    copyConfig(config);
                 }, { message: 'Integration profiles require files.' });
 
                 return scope.assert.collect();

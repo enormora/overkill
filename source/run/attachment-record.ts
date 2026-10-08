@@ -4,7 +4,7 @@ import { createStoredRunValue } from './supervised-run-state.ts';
 import { collectedRunPlanFromTestPlan, createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import { createRunRecordSession, type RunRecordSession } from './run-record.ts';
 import { runRecordVersions } from './run-record-versions.ts';
-import { selectedProfile } from './run-facts.ts';
+import { selectTestProfile } from './test-profile.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
 
@@ -54,7 +54,7 @@ export async function createAttachmentRecord(
     const record = createRunRecordSession(resolved.cwd, {
         config: resolved.config,
         engine: resolved.engine,
-        profile: selectedProfile(resolved.request, resolved.config),
+        profile: selectTestProfile(resolved.request.profile, resolved.config),
         projectRoot: resolved.facts.environment.projectRoot,
         request: { ...resolved.request, seed: { value: BigInt(resolved.facts.reproducibility.seed) } }
     }, {

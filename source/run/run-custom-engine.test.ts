@@ -10,15 +10,16 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import type { NormalizedConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {
     createRunEngineModuleLoader,
     type RunEngineModuleLoader
 } from './run-engine-selection.ts';
-import type { RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
@@ -28,7 +29,7 @@ const customEngineFixturePath = 'source/integration-tests/run/fixtures/custom-en
 const customEnginePassingFixturePath = 'source/integration-tests/run/fixtures/custom-engine-passing.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const customEngineModuleUrl = pathToFileURL(`${process.cwd()}/${customEngineFixturePath}`).href;
-const supervisedCollectionConfig: RunConfig = defaultRunConfig({
+const supervisedCollectionConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }

@@ -11,12 +11,12 @@ import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { LoadedConfig } from '../config/config.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { LoadedRunConfig } from './run-config.ts';
 import type { RunOrchestrator, RunRequest } from './run-types.ts';
 
 const plainOutputRenderer = defineFixedOutputRenderer({
@@ -76,7 +76,7 @@ const terminalFinalResultReporter = defineFixedReporter(terminalFinalResultRunti
 
 const defaultRequest: RunRequest = defaultRunRequest();
 
-function defaultLoadedConfig(reporters: LoadedRunConfig['reporters']): LoadedRunConfig {
+function defaultLoadedConfig(reporters: LoadedConfig['reporters']): LoadedConfig {
     return {
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -125,7 +125,7 @@ function createRunnerDependencies(
         async loadBenchmarkCommands() {
             throw new Error('Benchmark commands are not configured.');
         },
-        async loadRunConfig() {
+        async loadConfig() {
             return defaultLoadedConfig([ reporter ]);
         },
         orchestrator: {

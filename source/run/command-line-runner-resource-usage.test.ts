@@ -1,9 +1,10 @@
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type TestScope as OverkillScope
+    type TestScope as OverkillScope,
+    type TestPlan
 } from '../packages/engine/engine.entry-point.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
@@ -12,9 +13,10 @@ import {
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import type { LoadedConfig } from '../config/config.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
-import type { LoadedRunConfig } from './run-config.ts';
-import type { RunCommand, RunProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import { selectTestProfile } from './test-profile.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 
 type RecordedRunCommands = {
     readonly first: () => RunCommand | undefined;
@@ -40,7 +42,7 @@ const terminalReporter = defineFixedReporter({
 
 const defaultRequest: RunRequest = defaultRunRequest();
 
-function defaultLoadedConfig(): LoadedRunConfig {
+function defaultLoadedConfig(): LoadedConfig {
     return {
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
@@ -51,16 +53,6 @@ function defaultLoadedConfig(): LoadedRunConfig {
         reporters: [ terminalReporter ],
         runtimeStateDir: '.overkill'
     };
-}
-
-function selectedProfile(command: RunCommand): RunProfileConfig {
-    const profile = command.config.profiles[command.request.profile];
-
-    if (profile === undefined) {
-        throw new Error(`Missing profile ${command.request.profile}.`);
-    }
-
-    return profile;
 }
 
 function createPassingPlan(): TestPlan {
@@ -103,7 +95,7 @@ function createRecordedRunCommands(): RecordedRunCommands {
 function createRunnerDependencies(recordedCommands: RecordedRunCommands): CommandLineRunnerDependencies {
     const orchestrator: RunOrchestrator = {
         async resolve(command) {
-            const profile = selectedProfile(command);
+            const profile = selectTestProfile(command.request.profile, command.config);
 
             return {
                 config: command.config,
@@ -132,7 +124,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                     kind: 'local',
                     testPlan: createPassingPlan()
                 },
-                reporters: command.config.reporters,
+                reporters: command.config.reporters ?? [],
                 request: command.request
             };
         },
@@ -168,7 +160,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
         async loadBenchmarkCommands() {
             throw new Error('Benchmark commands are not configured.');
         },
-        async loadRunConfig() {
+        async loadConfig() {
             return {
                 ...defaultLoadedConfig(),
                 profiles: {

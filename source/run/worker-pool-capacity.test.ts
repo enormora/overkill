@@ -8,11 +8,8 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import {
-    emptyWorkUnitResourceConstraints,
-    type RunWorkerLifecycle,
-    type WorkUnit
-} from './run-types.ts';
+import type { WorkerLifecycle } from '../config/types.ts';
+import { emptyWorkUnitResourceConstraints, type WorkUnit } from './run-types.ts';
 import { createRunFacts } from './run-facts.ts';
 import {
     resolveWorkerCount,
@@ -20,7 +17,7 @@ import {
     workerPoolPlacementAssignments
 } from './worker-pool-lanes.ts';
 
-function weightedWorkUnit(key: string, workerLifecycle: RunWorkerLifecycle, capacityWeight: number): WorkUnit {
+function weightedWorkUnit(key: string, workerLifecycle: WorkerLifecycle, capacityWeight: number): WorkUnit {
     return {
         group: null,
         id: { key, mode: 'file', runtimes: [], workload: null },
@@ -38,13 +35,13 @@ function weightedWorkUnit(key: string, workerLifecycle: RunWorkerLifecycle, capa
     };
 }
 
-function workUnit(key: string, workerLifecycle: RunWorkerLifecycle): WorkUnit {
+function workUnit(key: string, workerLifecycle: WorkerLifecycle): WorkUnit {
     return weightedWorkUnit(key, workerLifecycle, emptyWorkUnitResourceConstraints.capacityWeight);
 }
 
 function constrainedWorkUnit(
     key: string,
-    workerLifecycle: RunWorkerLifecycle,
+    workerLifecycle: WorkerLifecycle,
     hardKey: string,
     kind: 'serial' | 'single-worker'
 ): WorkUnit {

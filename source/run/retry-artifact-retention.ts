@@ -1,6 +1,6 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import type { PerTestResult, RunArtifact } from '../engine/run-result.ts';
-import type { RetryArtifactPolicy } from './run-execution-config.ts';
+import type { RetryArtifactPolicy } from '../config/execution.ts';
 
 function retainedAttemptIndexes(
     result: Pick<PerTestResult, 'attempts'>,

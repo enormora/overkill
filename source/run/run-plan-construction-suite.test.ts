@@ -1,4 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as benchmarkProfileBoundaryTestNode } from './benchmark-profile-boundary.test.ts';
 import { testNode as collectedRunPlanTestNode } from './collected-run-plan.test.ts';
 import { testNode as runShardingTestNode } from './run-sharding.test.ts';
 import { testNode as runtimeMatrixExpansionTestNode } from './runtime-matrix-expansion.test.ts';
@@ -9,6 +10,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        benchmarkProfileBoundaryTestNode,
         collectedRunPlanTestNode,
         runShardingTestNode,
         runtimeMatrixExpansionTestNode

@@ -39,7 +39,7 @@ export const coveragePolicySchema = z
     })
     .readonly();
 
-export type RunProjectCoverageOutput = z.infer<typeof coverageOutputSchema>;
-export type RunProjectCoveragePolicy = z.infer<typeof coveragePolicySchema>;
-export type RunProjectCoverageSources = z.infer<typeof coverageSourcesSchema>;
-export type RunProjectCoverageThresholds = z.infer<typeof coverageThresholdsSchema>;
+export type ProjectCoverageOutput = z.infer<typeof coverageOutputSchema>;
+export type ProjectCoveragePolicy = z.infer<typeof coveragePolicySchema>;
+export type ProjectCoverageSources = z.infer<typeof coverageSourcesSchema>;
+export type ProjectCoverageThresholds = z.infer<typeof coverageThresholdsSchema>;

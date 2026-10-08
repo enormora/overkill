@@ -65,7 +65,7 @@ import { defineConfig } from '@overkill-dev/test/config';
 import { suite, test, testDouble } from '@overkill-dev/test';
 import {
     list,
-    loadRunConfig,
+    loadConfig,
     mergeResults,
     replay,
     replayWitness,
@@ -82,7 +82,7 @@ Conceptually:
   file. Standard users import it from `@overkill-dev/test/config`; custom
   orchestrators may import the same underlying capability from
   `@overkill-dev/run`
-- `loadRunConfig(request)` loads project policy from a file when a caller asks
+- `loadConfig(request)` loads project policy from a file when a caller asks
   for that explicitly
 - `resolveRun(command)` returns a frozen `ResolvedRun`
 - `run(command)` is shorthand for planning plus execution
@@ -578,7 +578,7 @@ verbs too:
   commands
 
 This is also the logical layer for choosing ordinary runner profiles.
-Benchmark execution is intentionally not a `run --profile benchmark` alias:
+Ordinary `run` and `list` reject the benchmark family regardless of profile name:
 benchmarks use the `overkill bench` namespace because their primary output is
 measurement data, budget evaluation, and benchmark-specific artifacts.
 

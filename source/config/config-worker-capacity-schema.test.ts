@@ -4,13 +4,13 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { integrationExecutionSchema } from './run-config-schema.ts';
+import { integrationExecutionSchema } from './schema.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-config-worker-capacity-schema.test.ts',
+    title: 'source/config/config-worker-capacity-schema.test.ts',
     children: [
         createOverkillTestCase({
             annotations: {},

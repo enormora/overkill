@@ -4,7 +4,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { workerLifecycleProbe } from '../test-support/worker-pool-lifecycle-probe.ts';
-import type { RunWorkerLifecycle } from './run-types.ts';
+import type { WorkerLifecycle } from '../config/types.ts';
 import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
 import { createTinypoolWorkerPool } from './worker-pool-runtime.ts';
 
@@ -39,7 +39,7 @@ async function runWorkerLifecycleProbe(pool: TinypoolInstance): Promise<WorkerLi
 }
 
 async function realTinypoolWorkerLifecycle(
-    workerLifecycle: RunWorkerLifecycle
+    workerLifecycle: WorkerLifecycle
 ): Promise<readonly [WorkerLifecycleProbeResult, WorkerLifecycleProbeResult]> {
     const pool = createTinypoolWorkerPool({
         cwd: process.cwd(),

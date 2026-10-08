@@ -9,12 +9,13 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../config/types.ts';
 import { orderedRunItems } from './run-ordering.ts';
-import type { ResolvedRun, RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { ResolvedRun, RunCommand, RunRequest } from './run-types.ts';
 
 const selectionFixturePath = 'source/integration-tests/run/fixtures/selection.test.ts';
 
-const localConfig: RunConfig = defaultRunConfig({
+const localConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'in-process', scheduling: 'serial' },
@@ -22,7 +23,7 @@ const localConfig: RunConfig = defaultRunConfig({
         })
     }
 });
-const supervisedConfig: RunConfig = defaultRunConfig({
+const supervisedConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             execution: { processModel: 'supervised-process', scheduling: 'serial' },
@@ -48,7 +49,7 @@ function runRequest(order: RunRequest['order'], seed: bigint): RunRequest {
     });
 }
 
-function runCommand(config: RunConfig, request: RunRequest): RunCommand {
+function runCommand(config: NormalizedConfig, request: RunRequest): RunCommand {
     return {
         config,
         cwd: process.cwd(),

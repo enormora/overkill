@@ -1,3 +1,4 @@
+import type { WorkerLifecycle } from '../config/types.ts';
 import type {
     ResourceUsageSnapshot,
     RunResourceUsage
@@ -7,19 +8,18 @@ import type {
     WorkerPoolResourceUsageTracker
 } from './run-orchestrator-dependencies.ts';
 import { createResourceUsageFromSamples } from './resource-usage.ts';
-import type { RunWorkerLifecycle } from './run-types.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 import { isWorkerPoolTaskKind } from './worker-pool-task-validation.ts';
 
 export type WorkerPoolRoute = {
     readonly lane: string | null;
     readonly pool: CreatedWorkerPool;
-    readonly workerLifecycle: RunWorkerLifecycle;
+    readonly workerLifecycle: WorkerLifecycle;
 };
 
 function routeForLifecycle(
     routes: readonly WorkerPoolRoute[],
-    workerLifecycle: RunWorkerLifecycle
+    workerLifecycle: WorkerLifecycle
 ): WorkerPoolRoute {
     const route = routes.find(function hasWorkerLifecycle(candidate) {
         return candidate.workerLifecycle === workerLifecycle;
@@ -73,7 +73,7 @@ function isLifecycleWorkerTask(task: WorkerPoolTask): task is LifecycleWorkerTas
     return isCompletionTask(task) || isLaneDisposalTask(task) || isRunDisposalTask(task);
 }
 
-function taskWorkerLifecycle(task: unknown): RunWorkerLifecycle {
+function taskWorkerLifecycle(task: unknown): WorkerLifecycle {
     if (!isWorkerPoolTask(task)) {
         throw new Error('Worker-pool received an invalid task.');
     }

@@ -20,7 +20,7 @@ type NodeCommandLineStartWorkerPoolHost = CurrentProcessRunOrchestratorDependenc
 
 type NodeCommandLineRunnerDependencies = {
     readonly discoverRunFilesWithProjectRoot: NodeCommandLineRunDiscovery;
-    readonly loadRunConfig: CommandLineRunnerDependencies['loadRunConfig'];
+    readonly loadConfig: CommandLineRunnerDependencies['loadConfig'];
     readonly loadRunEngineModule: CurrentProcessRunOrchestratorDependencies['loadRunEngineModule'];
     readonly loadRunTestModules: CurrentProcessRunOrchestratorDependencies['loadRunTestModules'];
     readonly startSupervisedChild: NodeCommandLineStartSupervisedChild;
@@ -40,7 +40,7 @@ export function createNodeCommandLineRunner(input: NodeCommandLineRunnerInput): 
         createDefaultReporter: loadDefaultLineReporter,
         loadBaselineCommands: loadUnimplementedBaselineCommands,
         loadBenchmarkCommands: loadUnimplementedBenchmarkCommands,
-        loadRunConfig: input.dependencies.loadRunConfig,
+        loadConfig: input.dependencies.loadConfig,
         orchestrator: createCurrentProcessRunOrchestrator(input.defaultEngine, {
             discoverRunFilesWithProjectRoot: input.dependencies.discoverRunFilesWithProjectRoot,
             loadRunEngineModule: input.dependencies.loadRunEngineModule,

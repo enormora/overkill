@@ -4,11 +4,8 @@ import {
     type CaseId,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    emptyWorkUnitResourceConstraints,
-    type CollectedRunPlan,
-    type RunWorkDistribution
-} from './run-types.ts';
+import type { WorkDistribution } from '../config/types.ts';
+import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
 const firstPath = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -84,7 +81,7 @@ function collectedPlan(files: CollectedRunPlan['files']): CollectedRunPlan {
 
 function planningInput(
     selectedPlan: CollectedRunPlan,
-    workDistribution: RunWorkDistribution
+    workDistribution: WorkDistribution
 ): WorkUnitPlanningInput {
     return {
         fileSetForFile() {

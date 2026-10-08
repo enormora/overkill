@@ -1,19 +1,12 @@
+import { validateNormalizedConfig } from '../config/validation.ts';
+import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
+import type { TestProfileConfig, ResourceBudgets } from '../config/types.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
-import { validateHostProcess } from './run-host-process.ts';
+
 import { invalidRunSelectionMessage } from './run-selection-filters.ts';
-import { invalidRunProfileNameMessage } from './profile-file-glob.ts';
-import type {
-    RunCommand,
-    RunConfig,
-    RunProfileConfig,
-    RunRequest,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
-    RunTestFamily,
-    RunTimeoutPolicy
-} from './run-types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
 
 const minimumSeedValue = 0n;
 
@@ -43,7 +36,7 @@ function validatePositiveSafeInteger(value: number | null, label: string): void 
     }
 }
 
-function validateResourceBudgets(resourceBudgets: RunResourceBudgets): void {
+function validateResourceBudgets(resourceBudgets: ResourceBudgets): void {
     validatePositiveSafeInteger(resourceBudgets.activeResourceCount, 'Active resource count budget');
     validatePositiveSafeInteger(resourceBudgets.javaScriptEngineHeapBytes, 'JavaScript engine heap budget');
     validatePositiveSafeInteger(resourceBudgets.residentSetBytes, 'Resident set budget');
@@ -54,17 +47,7 @@ function validateSamplingInterval(value: number | null): void {
     validatePositiveSafeInteger(value, 'Resource usage sampling interval');
 }
 
-function validateTimeoutPolicy(policy: RunTimeoutPolicy): void {
-    validatePositiveSafeInteger(policy.collectionMilliseconds, 'Collection timeout');
-    validatePositiveSafeInteger(policy.softMilliseconds, 'Soft timeout');
-    validatePositiveSafeInteger(policy.hardMilliseconds, 'Hard timeout');
-
-    if (policy.softMilliseconds > policy.hardMilliseconds) {
-        invalidRequest('Soft timeout must not exceed hard timeout.');
-    }
-}
-
-function hasResourceBudgets(resourceBudgets: RunResourceBudgets): boolean {
+function hasResourceBudgets(resourceBudgets: ResourceBudgets): boolean {
     return resourceBudgets.activeResourceCount !== null ||
         resourceBudgets.javaScriptEngineHeapBytes !== null ||
         resourceBudgets.residentSetBytes !== null ||
@@ -108,7 +91,7 @@ function validateTimingCollection(request: RunRequest): void {
 }
 
 function assertValidRunProfileName(profileName: string): void {
-    const message = invalidRunProfileNameMessage(profileName);
+    const message = invalidProfileNameMessage(profileName);
 
     if (message !== null) {
         invalidRequest(message);
@@ -130,76 +113,12 @@ function validateRunCommand(command: RunCommand): void {
     validateRunEngineSelection(command.engine);
 }
 
-export function validateRunResourceUsagePolicy(policy: RunResourceUsagePolicy): void {
-    validateResourceBudgets(policy.budgets);
-    validateSamplingInterval(policy.samplingIntervalMilliseconds);
-
-    if (!policy.measure && hasResourceBudgets(policy.budgets)) {
-        invalidRequest('Resource budgets require resource usage measurement.');
-    }
-}
-
-function validateRunMicrotestProfile(profile: RunProfileConfig): void {
-    validateRunResourceUsagePolicy(profile.resourceUsage);
-    validateTimeoutPolicy(profile.timeouts);
-}
-
-function validateAttachmentLimits(profile: RunProfileConfig): void {
-    if (profile.testFamily !== 'integration') {
-        return;
-    }
-    for (const [ name, value ] of Object.entries(profile.attachments)) {
-        validatePositiveSafeInteger(value, `Attachment ${name}`);
-    }
-}
-
-function validateRunIntegrationProfile(profile: RunProfileConfig): void {
-    validateAttachmentLimits(profile);
-    validateRunResourceUsagePolicy(profile.resourceUsage);
-    validateTimeoutPolicy(profile.timeouts);
-
-    if (profile.execution.processModel === 'worker-pool') {
-        validatePositiveSafeInteger(profile.execution.maxWorkers, 'Profile worker maximum');
-        validateHostProcess(profile.execution.hostProcess);
-    }
-}
-
-const runProfileValidators: Readonly<Record<RunTestFamily, (profile: RunProfileConfig) => void>> = {
-    integration: validateRunIntegrationProfile,
-    microtest: validateRunMicrotestProfile
-};
-
-function readProfileTestFamily(profile: RunProfileConfig): unknown {
-    return (profile as { readonly testFamily?: unknown; }).testFamily;
-}
-
-function isRunTestFamily(value: unknown): value is RunTestFamily {
-    return value === 'integration' || value === 'microtest';
-}
-
-function validateRunProfile(profileName: string, profile: RunProfileConfig): void {
-    const testFamily = readProfileTestFamily(profile);
-
-    if (!isRunTestFamily(testFamily)) {
-        invalidRequest(`Invalid run profile "${profileName}": testFamily must be "integration" or "microtest".`);
-    }
-
-    runProfileValidators[testFamily](profile);
-}
-
-function validateRunConfig(config: RunConfig): void {
-    for (const [ profileName, profile ] of Object.entries(config.profiles)) {
-        assertValidRunProfileName(profileName);
-        validateRunProfile(profileName, profile);
-    }
-}
-
 export function validateRunInput(command: RunCommand): void {
     validateRunCommand(command);
     validateRunRequest(command.request);
-    validateRunConfig(command.config);
+    validateNormalizedConfig(command.config);
 }
 
-export function assertSupportedProcessEngine(command: RunCommand, profile: RunProfileConfig): void {
+export function assertSupportedProcessEngine(command: RunCommand, profile: TestProfileConfig): void {
     assertSupportedProcessEngineSelection(command, profile);
 }

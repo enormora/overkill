@@ -11,7 +11,6 @@ import {
 } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
-    assertRunnableResourceUsagePolicy,
     createRunRuntimePolicy,
     finalizeResultWithDurationHistory,
     type RunRuntimePolicy
@@ -69,8 +68,6 @@ async function executeResolvedRun(
     runtimePolicy: RunRuntimePolicy | null,
     timing: RunTimingMeasurement
 ): Promise<RunResult> {
-    assertRunnableResourceUsagePolicy(resolvedRun.facts.execution.resourceUsagePolicy);
-
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {
         async finalizeResult(run, result) {
             return await finalizeResultWithDurationHistory(dependencies, run, result, timing);

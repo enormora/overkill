@@ -3,12 +3,8 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import {
-    emptyWorkUnitResourceConstraints,
-    type RunWorkerLifecycle,
-    type WorkUnit,
-    type WorkUnitResourceConstraints
-} from './run-types.ts';
+import type { WorkerLifecycle } from '../config/types.ts';
+import { emptyWorkUnitResourceConstraints, type WorkUnit, type WorkUnitResourceConstraints } from './run-types.ts';
 import {
     workerPoolLanes,
     workerPoolPlacementAssignments
@@ -16,7 +12,7 @@ import {
 
 function workUnitWithConstraints(
     key: string,
-    workerLifecycle: RunWorkerLifecycle,
+    workerLifecycle: WorkerLifecycle,
     resourceConstraints: WorkUnitResourceConstraints
 ): WorkUnit {
     return {

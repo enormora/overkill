@@ -2,10 +2,10 @@ import { createDefaultWorkId, type AttemptId, type CaseId, type WorkId } from '.
 import { observedGrowthBytesPerSecond } from '../engine/resource-usage-growth.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
-import type { RunResourceBudgets } from './run-types.ts';
+import type { ResourceBudgets } from '../config/types.ts';
 import type { SupervisedRunState } from './supervised-run-state.ts';
 
-type ResourceBudgetMetric = keyof RunResourceBudgets;
+type ResourceBudgetMetric = keyof ResourceBudgets;
 
 export type ResourceBudgetBreach = {
     readonly budget: number;
@@ -48,7 +48,7 @@ function observedBudgetValue(
 }
 
 export function findResourceBudgetBreach(
-    budgets: RunResourceBudgets,
+    budgets: ResourceBudgets,
     sample: ResourceUsageSnapshot,
     previousSample: ResourceUsageSnapshot | null
 ): ResourceBudgetBreach | null {

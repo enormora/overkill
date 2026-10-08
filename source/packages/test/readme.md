@@ -84,7 +84,7 @@ Current root runtime exports:
 
 Standard subpaths:
 
-- `@overkill-dev/test/config` exports `defineConfig` and run project config
+- `@overkill-dev/test/config` exports `defineConfig`, `normalizeConfig`, `loadConfig`, `ConfigError`, and project config
   types.
 - `@overkill-dev/test/reporters` exports `createLineReporter`,
   `createLineTreeReporter`, `createLineProgressReporter`, `createBriefReporter`,

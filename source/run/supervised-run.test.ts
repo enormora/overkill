@@ -12,7 +12,8 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
-import type { RunCommand, RunConfig, RunMicrotestProfileConfig, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { NormalizedConfig, MicrotestProfileConfig } from '../config/types.ts';
+import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
@@ -72,7 +73,7 @@ function createConsoleReporter(): DefinedReporter {
     });
 }
 
-function createRunConfig(profile: RunMicrotestProfileConfig): RunConfig {
+function createRunConfig(profile: MicrotestProfileConfig): NormalizedConfig {
     return {
         loader: {
             sourceMaps: false,
@@ -94,9 +95,9 @@ function createRunConfig(profile: RunMicrotestProfileConfig): RunConfig {
 }
 
 function createRunConfigWithReporters(
-    profile: RunMicrotestProfileConfig,
+    profile: MicrotestProfileConfig,
     reporters: readonly DefinedReporter[]
-): RunConfig {
+): NormalizedConfig {
     return {
         ...createRunConfig(profile),
         reporters
@@ -113,7 +114,7 @@ function createRunRequest(path: string): RunRequest {
 
 function createRunCommand(
     path: string,
-    profile: RunMicrotestProfileConfig,
+    profile: MicrotestProfileConfig,
     request: RunRequest = createRunRequest(path)
 ): RunCommand {
     return {

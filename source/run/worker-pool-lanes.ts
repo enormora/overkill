@@ -1,17 +1,11 @@
+import type { WorkerPoolAssignmentPolicy, WorkerLifecycle } from '../config/types.ts';
 import { invalidRequest } from './run-errors.ts';
 import {
     caseCountPlacementLoad,
     lifecycleLaneCounts,
     workerLifecycles
 } from './worker-pool-lifecycle-lanes.ts';
-import type {
-    PlacementAssignment,
-    PlacementLane,
-    RunWorkerCountFacts,
-    RunWorkerPoolAssignmentPolicy,
-    RunWorkerLifecycle,
-    WorkUnit
-} from './run-types.ts';
+import type { PlacementAssignment, PlacementLane, RunWorkerCountFacts, WorkUnit } from './run-types.ts';
 import {
     hardConstraintKeys,
     workUnitsShareHardConstraint
@@ -20,7 +14,7 @@ import {
 const maximumWorkerCount = 8;
 
 export type WorkerPoolLaneInput = {
-    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
+    readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
     readonly profileMaximum: number | null;
     readonly requestedWorkers: number | null;
@@ -41,7 +35,7 @@ type IndexedWorkUnit = {
     readonly unit: WorkUnit;
 };
 type LaneSelectionInput = {
-    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
+    readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly lanes: readonly PlacementLane[];
     readonly nextIndex: number;
     readonly placementState: LanePlacementState;
@@ -155,7 +149,7 @@ function lanesByLifecycle(
     lanes: readonly PlacementLane[],
     units: readonly WorkUnit[],
     unitLoad: UnitLoad
-): ReadonlyMap<RunWorkerLifecycle, readonly PlacementLane[]> {
+): ReadonlyMap<WorkerLifecycle, readonly PlacementLane[]> {
     const counts = lifecycleLaneCounts(units, lanes.length, unitLoad);
     let nextLaneIndex = 0;
 
@@ -342,7 +336,7 @@ function selectedLaneForUnit(input: LaneSelectionInput): PlacementLane {
 
 function orderedUnitsForAssignment(
     units: readonly WorkUnit[],
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    assignmentPolicy: WorkerPoolAssignmentPolicy,
     unitLoad: UnitLoad
 ): readonly WorkUnit[] {
     if (assignmentPolicy === 'stable') {
@@ -364,7 +358,7 @@ function orderedUnitsForAssignment(
 }
 
 function assignmentUnitLoad(
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    assignmentPolicy: WorkerPoolAssignmentPolicy,
     durationUnitLoad: UnitLoad | null
 ): UnitLoad {
     if (assignmentPolicy === 'duration-history-balanced' && durationUnitLoad !== null) {
@@ -383,12 +377,12 @@ function assignmentUnitLoad(
 export function workerPoolPlacementAssignments(
     units: readonly WorkUnit[],
     lanes: readonly PlacementLane[],
-    assignmentPolicy: RunWorkerPoolAssignmentPolicy,
+    assignmentPolicy: WorkerPoolAssignmentPolicy,
     durationUnitLoad: UnitLoad | null = null
 ): readonly PlacementAssignment[] {
     const unitLoad = assignmentUnitLoad(assignmentPolicy, durationUnitLoad);
     const lifecycleLanes = lanesByLifecycle(lanes, units, unitLoad);
-    const lifecycleIndexes = new Map<RunWorkerLifecycle, number>();
+    const lifecycleIndexes = new Map<WorkerLifecycle, number>();
     const placementState = createLanePlacementState(unitLoad);
     const assignmentUnits = orderedUnitsForAssignment(units, assignmentPolicy, unitLoad);
 

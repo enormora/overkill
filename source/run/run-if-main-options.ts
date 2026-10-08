@@ -4,9 +4,9 @@ import type {
 } from '../engine/test-data.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
+import type { LoadedConfig } from '../config/config.ts';
+import type { TestProfileConfig } from '../config/types.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
-import type { LoadedRunConfig } from './run-config.ts';
-import type { RunProfileConfig } from './run-types.ts';
 
 export type RunIfMainRootOptions = {
     readonly annotations?: TestAnnotationsInput;
@@ -21,8 +21,8 @@ export type RunIfMainOptions = {
 };
 
 export async function selectedReporters(
-    profile: RunProfileConfig,
-    config: LoadedRunConfig,
+    profile: TestProfileConfig,
+    config: LoadedConfig,
     options: RunIfMainOptions | undefined
 ): Promise<readonly DefinedReporter[]> {
     if (options?.reporters !== undefined) {
@@ -41,7 +41,7 @@ export async function selectedReporters(
 }
 
 export function selectedOutputRenderer(
-    config: LoadedRunConfig,
+    config: LoadedConfig,
     options: RunIfMainOptions | undefined
 ): DefinedOutputRenderer {
     return options?.outputRenderer ?? config.outputRenderer;

@@ -5,10 +5,10 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
+import type { WorkerLifecycle } from '../config/types.ts';
 import type {
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
-import type { RunWorkerLifecycle } from './run-types.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createWorkerPoolRuntime,
@@ -211,7 +211,7 @@ function resourceMeasurementResolvedRun(): ResolvedRun {
     };
 }
 
-function workerPoolResolvedRunWithLifecycle(workerLifecycle: RunWorkerLifecycle): ResolvedRun {
+function workerPoolResolvedRunWithLifecycle(workerLifecycle: WorkerLifecycle): ResolvedRun {
     const resolvedRun = workerPoolResolvedRun(createCollectedPlan());
 
     if (resolvedRun.facts.execution.processModel !== 'worker-pool') {

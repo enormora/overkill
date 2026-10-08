@@ -1,8 +1,9 @@
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
+import { ConfigError } from '../config/config-error.ts';
+import type { ConfigLoadRequest } from '../config/config.ts';
 import type { RunRequest } from './run-types.ts';
-import { RunCollectionError, RunConfigError, RunResolutionError } from './run-errors.ts';
-import type { RunConfigLoadRequest } from './run-config.ts';
+import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
 type CommandLineRunOrder = Exclude<RunRequest['order'], 'plan'>;
 
@@ -23,11 +24,11 @@ type ExitCodeRule = {
     readonly matches: (result: RunResult) => boolean;
 };
 
-export type CommandLineRunTestsRequest = RunConfigLoadRequest & {
+export type CommandLineRunTestsRequest = ConfigLoadRequest & {
     readonly runRequest: RunRequest;
 };
 
-export type CommandLineListTestsRequest = RunConfigLoadRequest & {
+export type CommandLineListTestsRequest = ConfigLoadRequest & {
     readonly listRequest: {
         readonly order: CommandLineRunOrder;
         readonly paths: readonly string[];
@@ -40,7 +41,7 @@ export type CommandLineListTestsRequest = RunConfigLoadRequest & {
     };
 };
 
-export type CommandLineCommandContext = RunConfigLoadRequest & {
+export type CommandLineCommandContext = ConfigLoadRequest & {
     readonly arguments: readonly string[];
 };
 
@@ -222,7 +223,7 @@ function createCommandLineCollectionErrorResult(error: RunCollectionError): Comm
 export function createCommandLineErrorResultFromUnknown(error: unknown): CommandLineRunnerResult {
     const classifiedError = primaryError(error);
 
-    if (classifiedError instanceof RunConfigError) {
+    if (classifiedError instanceof ConfigError) {
         return createCommandLineErrorResult(commandLineExitCodes.argumentOrConfig, 'configuration error', error);
     }
 

@@ -786,14 +786,11 @@ annotations, and controls. It is not a `TestNode` and does not contribute to
 `CaseId.suite`, `suitePath`, or `RunResult.bySuite`.
 
 ```ts
-type RunConfig = {
+type NormalizedConfig = {
     readonly outputRenderer: DefinedOutputRenderer;
-    readonly reporters: ReadonlyArray<DefinedReporter>;
+    readonly reporters: ReadonlyArray<DefinedReporter> | null;
     readonly loader: { readonly stripMode: 'strip-only'; readonly sourceMaps: boolean; };
-    readonly profiles: Readonly<Record<ProfileName, RunProfileConfig>>;
-    readonly benchmark?: {
-        readonly profiles: Readonly<Record<ProfileName, BenchmarkProfileConfig>>;
-    };
+    readonly profiles: Readonly<Record<ProfileName, ProfileConfig>>;
     readonly history: HistoryConfig;
     readonly runtimeStateDir: string;
 };
@@ -825,7 +822,9 @@ type RunRecordProfilePolicy = {
     readonly persist: RunRecordPersistenceMode;
 };
 
-type RunProfileConfig =
+type ProfileConfig = BenchmarkProfileConfig | TestProfileConfig;
+
+type TestProfileConfig =
     | MicrotestProfileConfig
     | IntegrationProfileConfig
     | PropertyProfileConfig
@@ -875,6 +874,7 @@ type TypeTestProfileConfig = {
 };
 
 type BenchmarkProfileConfig = {
+    readonly testFamily: 'benchmark';
     readonly files: ProfileFiles;
 };
 
@@ -894,7 +894,7 @@ type ProfileFileSet = {
 };
 
 type MicrotestExecutionConfig = {
-    readonly maxConcurrency: RunMaxConcurrency;
+    readonly maxConcurrency: MaxConcurrency;
     readonly processModel: 'in-process' | 'supervised-process';
     readonly scheduling: 'serial' | 'concurrent';
 };
@@ -904,14 +904,14 @@ type IntegrationExecutionConfig =
     | WorkerPoolIntegrationExecutionConfig;
 
 type SupervisedIntegrationExecutionConfig = {
-    readonly maxConcurrency: RunMaxConcurrency;
+    readonly maxConcurrency: MaxConcurrency;
     readonly processModel: 'supervised-process';
     readonly scheduling: 'serial' | 'concurrent';
 };
 
 type WorkerPoolIntegrationExecutionConfig = {
     readonly hostProcess: HostProcess;
-    readonly maxConcurrency: RunMaxConcurrency;
+    readonly maxConcurrency: MaxConcurrency;
     readonly maxWorkers: number | null;
     readonly processModel: 'worker-pool';
     readonly scheduling: 'serial' | 'concurrent';
@@ -922,7 +922,7 @@ type WorkerPoolIntegrationExecutionConfig = {
     readonly hedging: WorkerPoolHedgingPolicy;
 };
 
-type RunMaxConcurrency = number | 'unlimited';
+type MaxConcurrency = number | 'unlimited';
 
 type WorkerPoolHedgingPolicy =
     | { readonly mode: 'off'; }
@@ -994,13 +994,16 @@ type CoverageThresholds = {
     readonly lines?: number;
 };
 
-type LoadRunConfigRequest = {
+type ConfigLoadRequest = {
     readonly cwd: string;
     readonly configPath: string | null;
 };
 
-declare function defineConfig(config: RunConfig): RunConfig;
-declare function loadRunConfig(request: LoadRunConfigRequest): Promise<RunConfig>;
+type LoadedConfig = NormalizedConfig & { readonly configPath: string | null; };
+
+declare function defineConfig(config: Config): Config;
+declare function normalizeConfig(config: Config): NormalizedConfig;
+declare function loadConfig(request: ConfigLoadRequest): Promise<LoadedConfig>;
 
 type RunStringFilterField =
     | 'file'
@@ -1081,7 +1084,7 @@ type RunEngineSelection =
     };
 
 type RunCommand = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunEngineSelection;
     readonly request: RunRequest;
@@ -1092,7 +1095,7 @@ type MergeResultsInput =
     | { readonly kind: 'directory'; readonly path: string; };
 
 type MergeResultsCommand = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly inputs: NonEmptyReadonlyArray<MergeResultsInput>;
 };
@@ -1134,7 +1137,7 @@ type RunExecutionBaseFacts = {
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly capture: 'buffered' | 'live';
     readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
-    readonly maxConcurrency: RunMaxConcurrency;
+    readonly maxConcurrency: MaxConcurrency;
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly placementPlan: PlacementPlan | null;
     readonly profile: ProfileName;
@@ -1236,11 +1239,11 @@ type DurationHistoryObservation = {
 };
 
 type DurationHistoryObservationMetadata = {
-    readonly processModel: RunProcessModel;
+    readonly processModel: ProcessModel;
     readonly profile: string;
-    readonly scheduling: RunScheduling;
+    readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;
-    readonly workerLifecycle: RunWorkerLifecycle | null;
+    readonly workerLifecycle: WorkerLifecycle | null;
 };
 
 type RunCaseFacts = {
@@ -1439,7 +1442,7 @@ type ResolvedRunPlan =
 
 type ResolvedRun = {
     readonly request: RunRequest;
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunEngineSelection;
     readonly facts: RunFacts;
@@ -1483,7 +1486,7 @@ type SingleRunRecord = {
     readonly request: RunRecordRequest;
     readonly engine: RunExecutionFacts['engine'];
     readonly environment: RunFacts['environment'];
-    readonly execution: RunProfileConfig['execution'];
+    readonly execution: TestProfileConfig['execution'];
     readonly loader: RunFacts['loader'];
     readonly coverage: RunRecordCoverage | null;
     readonly status: RunRecordStatus;
@@ -1827,12 +1830,17 @@ type RunResourceUsage = {
 };
 ```
 
+`Config` is authored project policy with optional fields and schema-derived profile types.
+`NormalizedConfig` contains validated defaults and every configured family.
+`LoadedConfig` adds file-origin metadata. Commands narrow selected profiles,
+preserving the full project registry.
+
 Canonical: [Reproducibility](../architecture/reproducibility.md) for `RunFacts` and `RunRecord`,
 [Package Architecture](../architecture/package-architecture.md) for `RunRequest`, `ResolvedRun`, and `TestPlan`,
 [Run Timings](../architecture/run-timings.md) for `RunTimings`,
 [Failure Artifacts](../authoring/failure-artifacts.md) for `RunnerError`.
 
-`RunConfig.reporters` is the global fallback list. A selected profile's
+`NormalizedConfig.reporters` is the global fallback list. A selected profile's
 `reporters` list replaces it for that run when present. `ResolvedRun.reporters`
 contains the effective list after that resolution.
 

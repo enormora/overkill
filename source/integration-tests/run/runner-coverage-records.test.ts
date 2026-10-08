@@ -10,7 +10,7 @@ import {
     orchestrator,
     type RunRecord,
     type RunRequest,
-    type RunMicrotestExecution
+    type MicrotestExecution
 } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
@@ -21,8 +21,8 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { runIfMain } from '../direct-launcher.test.ts';
 
 const coverageFile = 'source/integration-tests/run/fixtures/coverage.test.ts';
-type RunMicrotestProcessModel = RunMicrotestExecution['processModel'];
-const processModels: readonly RunMicrotestProcessModel[] = [ 'in-process', 'supervised-process' ];
+type MicrotestProcessModel = MicrotestExecution['processModel'];
+const processModels: readonly MicrotestProcessModel[] = [ 'in-process', 'supervised-process' ];
 type RecordedResult = { readonly record: RunRecord; readonly result: RunResult; };
 
 async function singleRunRecord(directory: string): Promise<RunRecord> {
@@ -38,7 +38,7 @@ async function singleRunRecord(directory: string): Promise<RunRecord> {
 }
 
 async function withRecordedResult<Value>(
-    processModel: RunMicrotestProcessModel,
+    processModel: MicrotestProcessModel,
     request: Partial<RunRequest>,
     work: (result: RecordedResult) => Promise<Value>
 ): Promise<Value> {

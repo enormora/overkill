@@ -1,10 +1,10 @@
 import { createCaseId, createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
+import type { Scheduling } from '../config/types.ts';
 import {
     emptyWorkUnitResourceConstraints,
     type CollectedRunCase,
     type CollectedRunPlan,
     type DuplicateExecutionSafety,
-    type RunScheduling,
     type WorkUnit,
     type WorkUnitResourceConstraints
 } from './run-types.ts';
@@ -312,9 +312,9 @@ export function hardConstraintKeys(constraints: WorkUnitResourceConstraints): re
 }
 
 export function constrainedScheduling(
-    scheduling: RunScheduling,
+    scheduling: Scheduling,
     constraints: WorkUnitResourceConstraints
-): RunScheduling {
+): Scheduling {
     return constraints.serialKeys.length > 0 ? 'serial' : scheduling;
 }
 

@@ -6,8 +6,8 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
+import type { ProfileFiles } from '../config/types.ts';
 import type { DiscoveredRunFile, RunDiscovery } from './run-discovery-types.ts';
-import type { RunProfileFiles } from './run-types.ts';
 
 const cwd = '/project';
 
@@ -31,7 +31,7 @@ function createDiscovery(files: readonly string[]): RunDiscovery {
     });
 }
 
-function profileFiles(files: RunProfileFiles): RunProfileFiles {
+function profileFiles(files: ProfileFiles): ProfileFiles {
     return files;
 }
 

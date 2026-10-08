@@ -22,8 +22,8 @@ requested through the public programmatic API.
 
 The CLI may discover `overkill.config.ts` because it is the project-facing
 entry point. Programmatic `@overkill-dev/run` calls do not auto-load config
-files; callers either pass a `RunConfig` value or explicitly call
-`loadRunConfig(...)`.
+files; callers either pass a `NormalizedConfig` value or explicitly call
+`loadConfig(...)`.
 
 ## Distribution And Loading
 
@@ -143,8 +143,9 @@ gate.
 
 Benchmarks use a dedicated namespace because their primary artifact is
 measurement data plus policy evaluation, not an ordinary test verdict.
-`overkill run --profile benchmark` is rejected as an argument error so there is
-one first-party benchmark execution path.
+Ordinary `run` and `list` reject a selected profile with `testFamily: 'benchmark'`
+as an argument error. Names remain arbitrary, so a microtest profile named
+`benchmark` is valid.
 
 | Command                                        | Behavior                                                                      | Reference                                                          |
 | ---------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
@@ -197,8 +198,8 @@ entrypoints rather than as hidden boolean flags.
 general-purpose policy override channel, and Overkill should not add parallel
 fixed-path config files for suite families such as unit, integration, or
 browser runs. Those differences belong in named runner profiles selected
-with `--profile <name>`. Benchmark policy belongs in the `benchmark`
-configuration domain and benchmark execution uses `overkill bench`.
+with `--profile <name>`. Benchmark policy uses the same registry with `testFamily: 'benchmark'`;
+benchmark execution uses `overkill bench`.
 
 ## Selection And Iteration
 
@@ -226,7 +227,8 @@ inside a matrix. Exact `CaseId` selection is programmatic API-only.
 ## Capability And Execution
 
 - `--profile <name>` selects an ordinary runner profile, such as `unit`,
-  `backend-http`, or `ui-browser`. `benchmark` is reserved for `overkill bench`.
+  `backend-http`, or `ui-browser`. A selected benchmark family requires
+  `overkill bench`; the name `benchmark` is valid for ordinary families.
   See [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 - Process model and scheduling come from the selected profile. There is no
   first-party request-level execution override in the current concept.

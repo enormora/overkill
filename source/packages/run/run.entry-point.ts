@@ -3,12 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { createRunIfMain } from '../../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../../run/run-if-main-profile.ts';
 import { runDirectEntrypoint } from '../../run/run-orchestrator.entry-point.ts';
-import { loadRunConfig } from './config.entry-point.ts';
+import { loadConfig } from './config.entry-point.ts';
 
 const resolveDirectProfile = createDirectProfileResolver({
     fileURLToPath,
     glob,
-    loadRunConfig,
+    loadConfig,
     realpath,
     stat
 });
@@ -31,14 +31,15 @@ export const runIfMain = createRunIfMain({
 export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 export {
     defineConfig,
-    loadRunConfig,
-    RunConfigError
+    normalizeConfig,
+    loadConfig,
+    ConfigError
 } from './config.entry-point.ts';
 export { RunExecutionPlanError, RunResolutionError } from '../../run/run-errors.ts';
 export type {
     IntegrationRetryPolicy,
     RetryArtifactPolicy,
-    RunProjectIntegrationRetryPolicy
+    ProjectIntegrationRetryPolicy
 } from './config.entry-point.ts';
 export type {
     PlannedResourceOwner,
@@ -46,30 +47,30 @@ export type {
     ResourceOwnershipPlan
 } from '../../run/resource-ownership-plan.ts';
 export type {
-    LoadedRunConfig,
-    RunConfigLoader,
-    RunConfigLoaderDependencies,
-    RunConfigLoadRequest,
-    RunProjectCoverageOutput,
-    RunProjectCoveragePolicy,
-    RunProjectCoverageSources,
-    RunProjectCoverageThresholds,
-    RunProjectAttachmentLimits,
-    RunProjectConfig,
-    RunProjectIntegrationExecution,
-    RunProjectIntegrationProfileConfig,
-    RunProjectMeasuredResourceUsage,
-    RunProjectMicrotestExecution,
-    RunProjectMicrotestProfileConfig,
-    RunProjectProfileFiles,
-    RunProjectProfileConfig,
-    RunProjectProfilesConfig,
-    RunProjectResourceBudgets,
-    RunProjectResourceUsageConfig,
-    RunProjectTimingProfilePolicy,
-    RunProjectTimeoutConfig,
-    RunProjectUnmeasuredResourceUsage
-} from '../../run/run-config.ts';
+    LoadedConfig,
+    ConfigLoader,
+    ConfigLoaderDependencies,
+    ConfigLoadRequest,
+    ProjectCoverageOutput,
+    ProjectCoveragePolicy,
+    ProjectCoverageSources,
+    ProjectCoverageThresholds,
+    ProjectAttachmentLimits,
+    Config,
+    ProjectIntegrationExecution,
+    ProjectIntegrationProfileConfig,
+    ProjectMeasuredResourceUsage,
+    ProjectMicrotestExecution,
+    ProjectMicrotestProfileConfig,
+    ProjectProfileFiles,
+    ProjectProfileConfig,
+    ProjectProfilesConfig,
+    ProjectResourceBudgets,
+    ProjectResourceUsageConfig,
+    ProjectTimingProfilePolicy,
+    ProjectTimeoutConfig,
+    ProjectUnmeasuredResourceUsage
+} from '../../config/config.ts';
 export type {
     RunIfMain,
     RunIfMainDependencies
@@ -107,7 +108,6 @@ export type {
     TraceWorkUnitId
 } from '../../run/placement-trace.ts';
 export type {
-    CoverageOutput,
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,
@@ -119,60 +119,65 @@ export type {
     ResolvedRunPlan,
     RunCaseFacts,
     RunCommand,
-    RunConfig,
-    RunCoveragePolicy,
-    RunCoverageSourcePolicy,
-    RunCoverageThresholds,
     RunDebugRequest,
     RunEngineFacts,
     RunEnvironmentFacts,
     RunExecutionRequest,
     RunFacts,
     RunExecutionFacts,
-    RunHostProcess,
     RunHostProcessFacts,
     RunHostProcessReason,
-    RunIntegrationExecution,
-    RunIntegrationProfileConfig,
-    RunLoaderConfig,
-    RunMaxConcurrency,
-    RunMicrotestExecution,
-    RunMicrotestProfileConfig,
-    RunOrder,
     RunOrchestrator,
-    RunProcessModel,
-    RunProfileConfig,
-    RunProfileFiles,
-    RunProfilesConfig,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
     RunReproducibilityFacts,
     RunRequest,
-    RunScheduling,
     RunSeed,
     RunShard,
     RunTestFamily,
-    RunTimeoutPolicy,
-    TimingCollectionMode,
-    TimingCollectionOverride,
-    TimingProfilePolicy,
-    RunWorkDistribution,
-    RunWorkGroup,
-    RunWorkGroupGranularity,
-    RunWorkGroupOrder,
-    RunWorkGroupScheduling,
-    RunWorkGroupWorkerLifecycle,
-    RunWorkerPoolAssignmentPolicy,
-    RunWorkerPoolDispatchPolicy,
-    RunWorkerPoolHedgingPolicy,
     RunWorkerCountFacts,
-    RunWorkerLifecycle,
     SerializedValue,
     DuplicateExecutionSafety,
     WorkUnitId,
     WorkUnit,
     WorkUnitMode
 } from '../../run/run-types.ts';
+export type {
+    CoverageOutput,
+    NormalizedConfig,
+    CoveragePolicy,
+    CoverageSourcePolicy,
+    CoverageThresholds,
+    HostProcess,
+    IntegrationExecution,
+    IntegrationProfileConfig,
+    LoaderConfig,
+    MaxConcurrency,
+    MicrotestExecution,
+    MicrotestProfileConfig,
+    RunOrder,
+    ProcessModel,
+    ProfileConfig,
+    BenchmarkProfileConfig,
+    TestProfileConfig,
+    ProfileFiles,
+    ProfilesConfig,
+    ResourceBudgets,
+    ResourceUsagePolicy,
+    Scheduling,
+    TimeoutPolicy,
+    TimingCollectionMode,
+    TimingCollectionOverride,
+    TimingProfilePolicy,
+    WorkDistribution,
+    WorkGroup,
+    WorkGroupGranularity,
+    WorkGroupOrder,
+    WorkGroupScheduling,
+    WorkGroupWorkerLifecycle,
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolDispatchPolicy,
+    WorkerPoolHedgingPolicy,
+    WorkerLifecycle
+} from '../../config/types.ts';
 export type { RunEngineSelection } from '../../run/run-request-types.ts';
 export type {
     RunFilter,
@@ -191,3 +196,5 @@ export type {
     RunRecordResult,
     RunRecordVersions
 } from '../../run/run-record-types.ts';
+
+export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';

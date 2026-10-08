@@ -1,8 +1,8 @@
 import type { RunResult } from '../engine/run-result.ts';
 import type { CoverageRunnerErrorCause } from '../engine/coverage-artifact.ts';
+import type { CoveragePolicy, TestProfileConfig } from '../config/types.ts';
 import type { CoverageSession, CoverageSessionRequest } from './coverage-session.ts';
 import { RunCollectionError } from './run-errors.ts';
-import type { RunCoveragePolicy, RunProfileConfig } from './run-types.ts';
 
 const interruptedCoverageErrorSubtypes = new Set<string>([ 'crash', 'loader', 'resource-exhaustion' ]);
 
@@ -53,7 +53,7 @@ export async function startCoverageSession(request: CoverageSessionRequest): Pro
     }
 }
 
-export function microtestCoveragePolicy(profile: RunProfileConfig): RunCoveragePolicy {
+export function microtestCoveragePolicy(profile: TestProfileConfig): CoveragePolicy {
     if (profile.testFamily !== 'microtest') {
         throw new Error('Coverage policy requires a microtest profile.');
     }

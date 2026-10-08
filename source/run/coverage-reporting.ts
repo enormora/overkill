@@ -9,8 +9,8 @@ import type {
     CoverageMetric,
     CoverageReportFile
 } from '../engine/coverage-artifact.ts';
+import type { CoverageOutput } from '../config/types.ts';
 import { prepareCoverageSources, type CoverageSourceScope } from './coverage-source-selection.ts';
-import type { CoverageOutput } from './run-types.ts';
 import type { CoverageNativeBatch } from './coverage-native-data.ts';
 
 export type CoverageReportRequest = {

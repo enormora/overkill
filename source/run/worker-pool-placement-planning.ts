@@ -1,19 +1,15 @@
 import { workIdentityKey } from '../engine/identity.ts';
+import type {
+    RunOrder,
+    Scheduling,
+    WorkDistribution,
+    WorkerPoolAssignmentPolicy,
+    WorkerLifecycle
+} from '../config/types.ts';
 import {
     collectedRunCaseEntries
 } from './collected-run-plan.ts';
-import type {
-    CollectedRunPlan,
-    PlacementPlan,
-    RunOrder,
-    RunSeed,
-    RunShard,
-    RunScheduling,
-    RunWorkerCountFacts,
-    RunWorkDistribution,
-    RunWorkerPoolAssignmentPolicy,
-    RunWorkerLifecycle
-} from './run-types.ts';
+import type { CollectedRunPlan, PlacementPlan, RunSeed, RunShard, RunWorkerCountFacts } from './run-types.ts';
 import {
     selectDurationHistoryPlacement,
     type DurationHistoryIndex,
@@ -43,7 +39,7 @@ type WorkerPoolPlacementShardInput = {
 };
 
 type WorkerPoolPlacementBaseInput = {
-    readonly assignmentPolicy: RunWorkerPoolAssignmentPolicy;
+    readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
     readonly fileSetForFile: (file: string) => string | null;
     readonly order: RunOrder;
@@ -51,9 +47,9 @@ type WorkerPoolPlacementBaseInput = {
     readonly requestedWorkers: number | null;
     readonly seed: RunSeed;
     readonly selectedPlan: CollectedRunPlan;
-    readonly scheduling: RunScheduling;
-    readonly workDistribution: RunWorkDistribution;
-    readonly workerLifecycle: RunWorkerLifecycle;
+    readonly scheduling: Scheduling;
+    readonly workDistribution: WorkDistribution;
+    readonly workerLifecycle: WorkerLifecycle;
 };
 
 export type WorkerPoolPlacementPlanInput = WorkerPoolPlacementBaseInput & WorkerPoolPlacementShardInput;

@@ -1,155 +1,49 @@
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
-import { invalidRequest } from './run-errors.ts';
+
+import type { NormalizedConfig, TestProfileConfig, Scheduling } from '../config/types.ts';
+import { resolveResourceUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
+import { selectTestProfile } from './test-profile.ts';
+
 import { hostProcessFacts } from './run-host-process.ts';
 import { runShardHashAlgorithm } from './run-shard-hash-algorithm.ts';
-import { copyResourceBudgets, runEngineFacts } from './run-support.ts';
+import { runEngineFacts } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
     RunCaseFacts,
     RunCommand,
-    RunConfig,
     DurationHistoryInput,
     RunFacts,
     RunExecutionFacts,
     PlacementPlan,
-    RunProfileConfig,
     RunRequest,
-    RunResourceBudgets,
-    RunResourceUsagePolicy,
-    RunScheduling,
-    RunWorkerCountFacts,
-    TimingCollectionMode
+    RunWorkerCountFacts
 } from './run-types.ts';
 
 type RunFactsDependencies = Pick<RunOrchestratorDependencies, 'createSeed' | 'node'>;
 
 export type RunFactsInput = {
     readonly cases: readonly RunCaseFacts[];
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly dependencies: RunFactsDependencies;
     readonly durationHistory: DurationHistoryInput | null;
     readonly engine: RunCommand['engine'];
     readonly placementPlan: PlacementPlan | null;
     readonly projectRoot: string;
     readonly request: RunRequest;
-    readonly scheduling: RunScheduling;
+    readonly scheduling: Scheduling;
     readonly workerCount: RunWorkerCountFacts | null;
 };
 
 export type RunCaseFileSet = (file: RunCaseFacts['id']['file']) => string | null;
 
-function disabledResourceBudgets(): RunResourceBudgets {
-    return {
-        activeResourceCount: null,
-        javaScriptEngineHeapBytes: null,
-        residentSetBytes: null,
-        residentSetGrowthBytesPerSecond: null
-    };
-}
-
-function readBudgetOverride(configValue: number | null, requestValue: number | null): number | null {
-    return requestValue ?? configValue;
-}
-
-function resolveResourceBudgets(
-    configBudgets: RunResourceBudgets,
-    requestOverrides: RunResourceBudgets | null
-): RunResourceBudgets {
-    if (requestOverrides === null) {
-        return copyResourceBudgets(configBudgets);
-    }
-
-    return {
-        activeResourceCount: readBudgetOverride(
-            configBudgets.activeResourceCount,
-            requestOverrides.activeResourceCount
-        ),
-        javaScriptEngineHeapBytes: readBudgetOverride(
-            configBudgets.javaScriptEngineHeapBytes,
-            requestOverrides.javaScriptEngineHeapBytes
-        ),
-        residentSetBytes: readBudgetOverride(configBudgets.residentSetBytes, requestOverrides.residentSetBytes),
-        residentSetGrowthBytesPerSecond: readBudgetOverride(
-            configBudgets.residentSetGrowthBytesPerSecond,
-            requestOverrides.residentSetGrowthBytesPerSecond
-        )
-    };
-}
-
-function hasResourceBudgets(resourceBudgets: RunResourceBudgets): boolean {
-    return resourceBudgets.activeResourceCount !== null ||
-        resourceBudgets.javaScriptEngineHeapBytes !== null ||
-        resourceBudgets.residentSetBytes !== null ||
-        resourceBudgets.residentSetGrowthBytesPerSecond !== null;
-}
-
-function assertResourceBudgetOverridesAllowed(
-    measureResourceUsage: boolean,
-    requestOverrides: RunResourceBudgets | null
-): void {
-    if (!measureResourceUsage && requestOverrides !== null && hasResourceBudgets(requestOverrides)) {
-        invalidRequest('Resource budget overrides require resource usage measurement.');
-    }
-}
-
-export function selectedProfile(request: RunRequest, config: RunConfig): RunProfileConfig {
-    const profile = config.profiles[request.profile];
-
-    if (profile === undefined) {
-        invalidRequest(`Unknown run profile: ${request.profile}`);
-    }
-
-    return profile;
-}
-
-export function resolveResourceUsagePolicy(
-    request: RunRequest,
-    profile: RunProfileConfig
-): RunResourceUsagePolicy {
-    const configuredPolicy = profile.resourceUsage;
-    const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measure;
-    const resourceUsageSamplingIntervalMilliseconds = request.resourceUsageSamplingIntervalMilliseconds ??
-        configuredPolicy.samplingIntervalMilliseconds;
-    const resourceBudgets = measureResourceUsage
-        ? resolveResourceBudgets(configuredPolicy.budgets, request.resourceBudgetOverrides)
-        : disabledResourceBudgets();
-
-    assertResourceBudgetOverridesAllowed(measureResourceUsage, request.resourceBudgetOverrides);
-
-    return {
-        budgets: resourceBudgets,
-        measure: measureResourceUsage,
-        samplingIntervalMilliseconds: resourceUsageSamplingIntervalMilliseconds
-    };
-}
-
 function resolvedSeed(request: RunRequest, dependencies: RunFactsDependencies): bigint {
     return request.seed.value ?? dependencies.createSeed();
 }
 
-function strategyRequiresPreciseTiming(profile: RunProfileConfig): boolean {
-    return profile.execution.processModel === 'worker-pool' &&
-        (
-            profile.execution.assignmentPolicy === 'duration-history-balanced' ||
-            profile.execution.hedging.mode === 'on'
-        );
-}
-
-export function resolveTimingCollection(
-    request: RunRequest,
-    profile: RunProfileConfig
-): TimingCollectionMode {
-    if (request.timingCollection === 'precise' || strategyRequiresPreciseTiming(profile)) {
-        return 'precise';
-    }
-
-    return profile.timings.collection;
-}
-
 function createRunExecutionFacts(
     input: RunFactsInput,
-    profile: RunProfileConfig
+    profile: TestProfileConfig
 ): RunExecutionFacts {
     const facts = {
         attachments: profile.testFamily === 'integration' ? profile.attachments : null,
@@ -211,7 +105,7 @@ export function runCaseFactsFromTestPlan(
 }
 
 export function createRunFacts(input: RunFactsInput): RunFacts {
-    const profile = selectedProfile(input.request, input.config);
+    const profile = selectTestProfile(input.request.profile, input.config);
 
     return {
         cases: input.cases,

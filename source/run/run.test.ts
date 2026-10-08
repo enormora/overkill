@@ -11,12 +11,13 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
+import type { NormalizedConfig } from '../config/types.ts';
 import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
 import { RunResolutionError } from './run-errors.ts';
-import type { RunCaseFacts, RunCommand, RunConfig, RunRequest } from './run-types.ts';
+import type { RunCaseFacts, RunCommand, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
-    readonly config: RunConfig;
+    readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunCommand['engine'];
     readonly request: RunRequest;
@@ -25,14 +26,14 @@ type RunCommandParts = {
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const microtestCaptureControlsFixturePath = 'source/integration-tests/run/fixtures/microtest-capture-controls.test.ts';
 
-const defaultConfig: RunConfig = defaultRunConfig({
+const defaultConfig: NormalizedConfig = defaultRunConfig({
     profiles: {
         microtest: defaultMicrotestProfile({
             timeouts: { collectionMilliseconds: 5000 }
         })
     }
 });
-const supervisedCollectionConfig: RunConfig = defaultConfig;
+const supervisedCollectionConfig: NormalizedConfig = defaultConfig;
 
 const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 

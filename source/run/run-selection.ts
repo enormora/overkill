@@ -2,20 +2,19 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import { createCaseId, createDefaultWorkId, type CaseId } from '../engine/identity.ts';
 import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
-import { noTestsCollected, RunCollectionError } from './run-errors.ts';
-import { orderedRunItems } from './run-ordering.ts';
-import { matchesRunFilter } from './run-selection-filters.ts';
-import type { RunSelection } from './run-request-types.ts';
-import { createRandomRunSeed } from './run-seed.ts';
+import type { RunOrder, TestProfileConfig } from '../config/types.ts';
 import type {
+    RunRequest,
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,
-    RunOrder,
-    RunProfileConfig,
     RunSeed,
     RunTestFamily
 } from './run-types.ts';
+import { noTestsCollected, RunCollectionError } from './run-errors.ts';
+import { orderedRunItems } from './run-ordering.ts';
+import { matchesRunFilter } from './run-selection-filters.ts';
+import { createRandomRunSeed } from './run-seed.ts';
 
 type SelectedRunCases<Case> = {
     readonly discoveredCases: NonEmptyReadonlyArray<Case>;
@@ -96,7 +95,7 @@ function microtestCaptureControlsMessage(): string {
     return 'Run profile "microtest" cannot run test cases with authored capture controls.';
 }
 
-function assertMicrotestCaseHasNoCaptureControls(testCase: ProfileControlledRunCase, profile: RunProfileConfig): void {
+function assertMicrotestCaseHasNoCaptureControls(testCase: ProfileControlledRunCase, profile: TestProfileConfig): void {
     if (profile.testFamily === 'microtest' && testCase.controls.capture !== null) {
         throw new RunCollectionError(microtestCaptureControlsMessage(), { cause: null }, 'loader');
     }
@@ -106,7 +105,7 @@ function isPositiveSafeInteger(value: number): boolean {
     return Number.isSafeInteger(value) && value > 0;
 }
 
-function timeoutControlsMessage(timeoutMilliseconds: number, profile: RunProfileConfig): string {
+function timeoutControlsMessage(timeoutMilliseconds: number, profile: TestProfileConfig): string {
     return [
         `Run profile "${profile.testFamily}" cannot run test case timeoutMilliseconds ${timeoutMilliseconds};`,
         `expected positive safe integer <= ${profile.timeouts.softMilliseconds}.`
@@ -114,7 +113,7 @@ function timeoutControlsMessage(timeoutMilliseconds: number, profile: RunProfile
         .join(' ');
 }
 
-function assertCaseTimeoutControls(testCase: ProfileControlledRunCase, profile: RunProfileConfig): void {
+function assertCaseTimeoutControls(testCase: ProfileControlledRunCase, profile: TestProfileConfig): void {
     const { timeoutMilliseconds } = testCase.controls;
 
     if (timeoutMilliseconds === null) {
@@ -129,7 +128,7 @@ function assertCaseTimeoutControls(testCase: ProfileControlledRunCase, profile: 
     }
 }
 
-function assertCaseControlsMatchProfile(testCase: ProfileControlledRunCase, profile: RunProfileConfig): void {
+function assertCaseControlsMatchProfile(testCase: ProfileControlledRunCase, profile: TestProfileConfig): void {
     assertMicrotestCaseHasNoCaptureControls(testCase, profile);
     assertCaseTimeoutControls(testCase, profile);
 }
@@ -150,7 +149,7 @@ export function assertCollectedRunPlanMatchesTestFamily(plan: CollectedRunPlan, 
     }
 }
 
-export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profile: RunProfileConfig): void {
+export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profile: TestProfileConfig): void {
     for (const testCase of testPlan.cases) {
         assertCaseControlsMatchProfile(testCase, profile);
     }
@@ -158,7 +157,7 @@ export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profil
 
 export function assertCollectedRunPlanCasesMatchProfilePolicy(
     plan: CollectedRunPlan,
-    profile: RunProfileConfig
+    profile: TestProfileConfig
 ): void {
     for (const file of plan.files) {
         for (const testCase of file.cases) {
@@ -169,7 +168,7 @@ export function assertCollectedRunPlanCasesMatchProfilePolicy(
 
 function selectedCases<Case>(
     cases: NonEmptyReadonlyArray<Case>,
-    selection: RunSelection,
+    selection: RunRequest['selection'],
     matchesCase: (testCase: Case) => boolean
 ): SelectedRunCases<Case> {
     if (selection.kind === 'all') {
@@ -185,7 +184,7 @@ function selectedCases<Case>(
     };
 }
 
-function matchesTestPlanCase(selection: RunSelection): (testCase: TestPlanCase) => boolean {
+function matchesTestPlanCase(selection: RunRequest['selection']): (testCase: TestPlanCase) => boolean {
     if (selection.kind === 'all') {
         return function keepAllCases() {
             return true;
@@ -201,13 +200,13 @@ function matchesTestPlanCase(selection: RunSelection): (testCase: TestPlanCase) 
     };
 }
 
-function selectedTestPlanCases(testPlan: TestPlan, selection: RunSelection): SelectedRunCases<TestPlanCase> {
+function selectedTestPlanCases(testPlan: TestPlan, selection: RunRequest['selection']): SelectedRunCases<TestPlanCase> {
     return selectedCases(testPlan.discoveredCases, selection, matchesTestPlanCase(selection));
 }
 
 export function selectedNonEmptyTestPlanCases(
     testPlan: TestPlan,
-    selection: RunSelection
+    selection: RunRequest['selection']
 ): NonEmptyReadonlyArray<TestPlanCase> | null {
     const cases = selectedTestPlanCases(testPlan, selection).plannedCases;
     const firstCase = cases[0];
@@ -215,7 +214,7 @@ export function selectedNonEmptyTestPlanCases(
     return firstCase === undefined ? null : [ firstCase, ...cases.slice(1) ];
 }
 
-export function selectedTestPlan(testPlan: TestPlan, selection: RunSelection): TestPlan {
+export function selectedTestPlan(testPlan: TestPlan, selection: RunRequest['selection']): TestPlan {
     const cases = selectedNonEmptyTestPlanCases(testPlan, selection);
 
     if (cases === null) {
@@ -250,7 +249,7 @@ function collectedCases(files: readonly CollectedRunFile[]): readonly CollectedC
     });
 }
 
-function matchesCollectedCase(selection: RunSelection): (input: CollectedCaseInput) => boolean {
+function matchesCollectedCase(selection: RunRequest['selection']): (input: CollectedCaseInput) => boolean {
     if (selection.kind === 'all') {
         return function keepAllCases() {
             return true;
@@ -293,7 +292,7 @@ function collectedRunFiles(cases: readonly CollectedCaseInput[]): readonly Colle
         });
 }
 
-export function selectedCollectedRunPlan(plan: CollectedRunPlan, selection: RunSelection): CollectedRunPlan {
+export function selectedCollectedRunPlan(plan: CollectedRunPlan, selection: RunRequest['selection']): CollectedRunPlan {
     const discoveredCases = collectedCases(plan.discoveredFiles);
     const plannedCases = selection.kind === 'all'
         ? discoveredCases

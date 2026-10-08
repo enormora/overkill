@@ -9,6 +9,7 @@ import {
     assertResourceDependencyScopes,
     resourceDependencyScopeAllowed
 } from '../resources/resource-graph.ts';
+import type { WorkerLifecycle } from '../config/types.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
 import {
     collectedPlanCompatibilityConflicts,
@@ -20,7 +21,6 @@ import {
     emptyWorkUnitResourceConstraints,
     type CollectedRunPlan,
     type PlacementLane,
-    type RunWorkerLifecycle,
     type WorkUnit
 } from './run-types.ts';
 
@@ -168,7 +168,7 @@ function withoutFirstRuntime(plan: CollectedRunPlan): CollectedRunPlan {
 function workUnit(
     key: string,
     work: WorkUnit['work'],
-    workerLifecycle: RunWorkerLifecycle,
+    workerLifecycle: WorkerLifecycle,
     singleWorkerKeys: readonly string[]
 ): WorkUnit {
     return {

@@ -3,21 +3,18 @@ import {
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
+import type {
+    HostProcess,
+    IntegrationProfileConfig,
+    MaxConcurrency,
+    ResourceBudgets,
+    Scheduling
+} from '../config/types.ts';
 import type { ReporterEvent, WorkId, RunnerError, RunResult } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
-import type {
-    CollectedRunPlan,
-    RunCommand,
-    RunCollectionRoot,
-    RunHostProcess,
-    RunIntegrationProfileConfig,
-    RunMaxConcurrency,
-    RunResourceBudgets,
-    RunScheduling,
-    RunTestFamily
-} from './run-types.ts';
+import type { CollectedRunPlan, RunCommand, RunCollectionRoot, RunTestFamily } from './run-types.ts';
 import type {
     ResourceBoundaryUseCount
 } from './resource-lifecycle-boundaries.ts';
@@ -29,19 +26,19 @@ type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
     readonly attachmentEndpoint: AttachmentEndpoint | null;
-    readonly retryPolicy: RunIntegrationProfileConfig['retries'];
+    readonly retryPolicy: IntegrationProfileConfig['retries'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly hardTimeoutMilliseconds: number;
-    readonly hostProcess: RunHostProcess;
-    readonly maxConcurrency: RunMaxConcurrency;
+    readonly hostProcess: HostProcess;
+    readonly maxConcurrency: MaxConcurrency;
     readonly paths: readonly string[];
-    readonly resourceBudgets: RunResourceBudgets;
+    readonly resourceBudgets: ResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly root: RunCollectionRoot;
-    readonly scheduling: RunScheduling;
+    readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;
     readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';

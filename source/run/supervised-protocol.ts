@@ -1,20 +1,11 @@
 import type { Clock } from '@enormora/clock';
 import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
+import type { IntegrationProfileConfig, MaxConcurrency, ResourceBudgets, Scheduling } from '../config/types.ts';
 import type { ReporterEvent, RunResult, ResourceUsageSnapshot } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
-import type {
-    CollectedRunPlan,
-    RunCommand,
-    RunIntegrationProfileConfig,
-    RunRequest,
-    RunMaxConcurrency,
-    RunResourceBudgets,
-    RunCollectionRoot,
-    RunScheduling,
-    RunTestFamily
-} from './run-types.ts';
+import type { CollectedRunPlan, RunCommand, RunRequest, RunCollectionRoot, RunTestFamily } from './run-types.ts';
 import {
     childProcessEnvelope,
     type ChildProcessEnvelope
@@ -27,7 +18,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
-    readonly retryPolicy: RunIntegrationProfileConfig['retries'];
+    readonly retryPolicy: IntegrationProfileConfig['retries'];
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
     };
@@ -38,11 +29,11 @@ type SupervisedCommandBase = {
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly paths: readonly string[];
     readonly hardTimeoutMilliseconds: number;
-    readonly maxConcurrency: RunMaxConcurrency;
-    readonly resourceBudgets: RunResourceBudgets;
+    readonly maxConcurrency: MaxConcurrency;
+    readonly resourceBudgets: ResourceBudgets;
     readonly resourceUsageSamplingIntervalMilliseconds: number;
     readonly root: RunCollectionRoot;
-    readonly scheduling: RunScheduling;
+    readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;
 };

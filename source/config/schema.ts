@@ -4,11 +4,11 @@ import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter
 import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
 import {
     coveragePolicySchema,
-    type RunProjectCoverageOutput as CoverageOutput,
-    type RunProjectCoveragePolicy as CoveragePolicy,
-    type RunProjectCoverageSources as CoverageSources,
-    type RunProjectCoverageThresholds as CoverageThresholds
-} from './coverage-config-schema.ts';
+    type ProjectCoverageOutput as CoverageOutput,
+    type ProjectCoveragePolicy as CoveragePolicy,
+    type ProjectCoverageSources as CoverageSources,
+    type ProjectCoverageThresholds as CoverageThresholds
+} from './coverage-schema.ts';
 
 const reporterSchema = z.custom<DefinedReporter>(isReporter, 'must be created with defineReporter(...)');
 
@@ -37,7 +37,7 @@ const integrationRetryPolicySchema = z
     })
     .readonly();
 
-export type RunProjectIntegrationRetryPolicy = z.infer<typeof integrationRetryPolicySchema>;
+export type ProjectIntegrationRetryPolicy = z.infer<typeof integrationRetryPolicySchema>;
 
 const fileGlobSchema = z.string();
 
@@ -260,7 +260,7 @@ export const attachmentLimitsSchema = z
     .readonly()
     .default(defaultAttachmentLimits);
 
-export type RunProjectAttachmentLimits = z.input<typeof attachmentLimitsSchema>;
+export type ProjectAttachmentLimits = z.input<typeof attachmentLimitsSchema>;
 
 export const integrationProfileSchema = z
     .strictObject({
@@ -276,7 +276,17 @@ export const integrationProfileSchema = z
     })
     .readonly();
 
+export const benchmarkProfileSchema = z
+    .strictObject({
+        testFamily: z.literal('benchmark'),
+        files: profileFilesSchema
+    })
+    .readonly();
+
+export type ProjectBenchmarkProfileConfig = z.infer<typeof benchmarkProfileSchema>;
+
 const profileSchema = z.discriminatedUnion('testFamily', [
+    benchmarkProfileSchema,
     integrationProfileSchema,
     microtestProfileSchema
 ]);
@@ -293,29 +303,29 @@ export const projectConfigSchema = z
     })
     .readonly();
 
-export type RunProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
-export type RunProjectCoverageOutput = CoverageOutput;
-export type RunProjectCoveragePolicy = CoveragePolicy;
-export type RunProjectCoverageSources = CoverageSources;
-export type RunProjectCoverageThresholds = CoverageThresholds;
-export type RunProjectProfileFiles = z.infer<typeof profileFilesSchema>;
-export type RunProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
-export type RunProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
-export type RunProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
-export type RunProjectTimingProfilePolicy = z.infer<typeof timingProfilePolicySchema>;
-export type RunProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
-export type RunProjectIntegrationExecution = z.infer<typeof integrationExecutionSchema>;
-export type RunProjectWorkerPoolExecution = Extract<
-    RunProjectIntegrationExecution,
+export type ProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
+export type ProjectCoverageOutput = CoverageOutput;
+export type ProjectCoveragePolicy = CoveragePolicy;
+export type ProjectCoverageSources = CoverageSources;
+export type ProjectCoverageThresholds = CoverageThresholds;
+export type ProjectProfileFiles = z.infer<typeof profileFilesSchema>;
+export type ProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
+export type ProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
+export type ProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
+export type ProjectTimingProfilePolicy = z.infer<typeof timingProfilePolicySchema>;
+export type ProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
+export type ProjectIntegrationExecution = z.infer<typeof integrationExecutionSchema>;
+export type ProjectWorkerPoolExecution = Extract<
+    ProjectIntegrationExecution,
     { readonly processModel: 'worker-pool'; }
 >;
 
 export function workerPoolProjectExecution(
-    execution: RunProjectIntegrationExecution | undefined
-): RunProjectWorkerPoolExecution | null {
+    execution: ProjectIntegrationExecution | undefined
+): ProjectWorkerPoolExecution | null {
     return execution?.processModel === 'worker-pool' ? execution : null;
 }
-export type RunProjectIntegrationProfileConfig = z.infer<typeof integrationProfileSchema>;
-export type RunProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
-export type RunProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
-export type RunProjectConfig = z.infer<typeof projectConfigSchema>;
+export type ProjectIntegrationProfileConfig = z.infer<typeof integrationProfileSchema>;
+export type ProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
+export type ProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
+export type Config = z.infer<typeof projectConfigSchema>;
