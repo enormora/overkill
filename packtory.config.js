@@ -151,6 +151,7 @@ export const config = {
             roots: {
                 attachmentConnection: { js: 'run/attachment-connection.js' },
                 attachmentRun: { js: 'run/attachment-run.js' },
+                benchmarkCommands: moduleRoot('run/benchmark-commands'),
                 commandLine: moduleRoot('packages/run/command-line.entry-point'),
                 config: moduleRoot('packages/run/config.entry-point'),
                 coverageSession: { js: 'run/coverage-session.js' },
@@ -175,6 +176,7 @@ export const config = {
                 privateRoots: [
                     'attachmentConnection',
                     'attachmentRun',
+                    'benchmarkCommands',
                     'coverageSession',
                     'localCoverage',
                     'nodeCommandLineRunner',
