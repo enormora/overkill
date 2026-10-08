@@ -2,7 +2,9 @@ import path from 'node:path';
 // eslint-disable-next-line node/no-unsupported-features/node-builtins -- Match native V8 offsets.
 import { stripTypeScriptTypes } from 'node:module';
 import { parse } from 'acorn';
+import type { V8CoverageEntry } from 'monocart-coverage-reports';
 import { transform } from 'sucrase';
+import { normalizeCoverageMethodRanges } from './coverage-method-ranges.ts';
 
 const typeScriptExtensions = new Set([ '.cts', '.mts', '.ts' ]);
 const sourceExtensions = new Set([ '.cjs', '.cts', '.js', '.mjs', '.mts', '.ts' ]);
@@ -16,8 +18,11 @@ type CoverageSourceInspection = {
     readonly hasRuntime: boolean;
 };
 
-export function nativeTypeScriptCoverageSource(source: string): string {
-    return stripTypeScriptTypes(source, { mode: 'strip' });
+export function prepareNativeTypeScriptCoverage(entry: V8CoverageEntry, source: string): void {
+    const runtimeSource = stripTypeScriptTypes(source, { mode: 'strip' });
+    const functions = normalizeCoverageMethodRanges(entry.functions, runtimeSource);
+
+    Object.assign(entry, { fake: false, functions, source: runtimeSource });
 }
 
 export function transformCoverageSource(source: string, filePath: string): TransformedCoverageSource {

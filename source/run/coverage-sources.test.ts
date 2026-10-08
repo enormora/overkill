@@ -4,6 +4,7 @@ import { testNode as sourceMapTestNode } from './coverage-source-map.test.ts';
 import { testNode as mapSelectionTestNode } from './coverage-map-selection.test.ts';
 import { testNode as unloadedTestNode } from './coverage-unloaded-sources.test.ts';
 import { testNode as mapContentTestNode } from './coverage-map-content.test.ts';
+import { testNode as methodRangesTestNode } from './coverage-method-ranges.test.ts';
 import { testNode as branchesTestNode } from './coverage-branches.test.ts';
 
 export const testNode = createSuite({
@@ -17,7 +18,8 @@ export const testNode = createSuite({
         mapSelectionTestNode,
         unloadedTestNode,
         mapContentTestNode,
-        branchesTestNode
+        branchesTestNode,
+        methodRangesTestNode
     ]
 });
 
