@@ -24,7 +24,7 @@
         "@jridgewell/trace-mapping": "0.3.31",
         "@overkill-dev/reporter-line": "0.0.41",
         "@schema-hub/zod-error-formatter": "0.0.19",
-        "acorn": "8.18.0",
+        "acorn": "8.19.0",
         "acorn-walk": "8.3.5",
         "ansi-escapes": "7.3.0",
         "cmd-ts": "0.15.0",
