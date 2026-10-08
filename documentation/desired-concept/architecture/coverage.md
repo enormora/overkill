@@ -65,6 +65,11 @@ apply). No source rewriting, no Babel/Istanbul instrumenter, no
 runtime transform step. Native speed wins; the cost of carrying a second
 instrumentation engine is not justified.
 
+This policy governs ordinary coverage reports. The separate
+[Stryker integration](../authoring/higher-test-layers.md#mutation-runner-contract)
+uses Stryker's source instrumentation and mutant counters for mutation selection;
+those counters do not extend Overkill's aggregate V8 coverage API.
+
 V8 native coverage in 2026 produces line, function, and block
 coverage with source-map–accurate locations.
 

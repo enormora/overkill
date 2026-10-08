@@ -233,9 +233,12 @@ custom mutation engine.
 The settled direction is:
 
 - a first-party Stryker plugin is part of the product shape
-- initial scope targets microtests only
+- scope targets microtests only
 - Overkill contributes stable identities, selection, and
   machine-readable run results; Stryker remains the mutation engine
+
+The [Mutation Runner Contract](#mutation-runner-contract) records the
+integration boundary and execution requirements.
 
 ### Rule-Centric Adapter Suites
 
@@ -630,3 +633,299 @@ Overkill becomes more useful for higher layers when it provides:
 
 That is the real path from microtests to integration, browser, and workflow
 tests without changing the whole mental model.
+
+## Mutation Runner Contract
+
+### Question And Answer
+
+How should the first-party mutation integration execute selected microtests
+without making mutation testing an engine concern?
+
+Ship `@overkill-dev/stryker-runner` as a Stryker `TestRunner` plugin above
+`@overkill-dev/run`. Stryker owns source mutation, sandboxing, mutant planning,
+scores, thresholds, incremental reports, and mutant parallelism. The adapter
+owns Overkill configuration loading, identity translation, execution, and
+result translation. It uses public programmatic APIs, never terminal parsing.
+No custom mutation engine or general mutation-provider framework is needed.
+
+Scope is Node microtest profiles with per-case mutant coverage and
+selection. Browser, integration, benchmark, and mixed-family runs are rejected
+before test collection. Installing the plugin does not activate mutation testing
+in ordinary runs. The adapter selects an existing microtest profile; no second
+profile or duplicated discovery policy is required. When exactly one microtest
+profile exists, its name is optional in Stryker's adapter configuration. When
+there are several, an explicit name is required. No eligible profile, an unknown
+name, or selection of a non-microtest profile fails before collection.
+
+### Execution And Coverage
+
+- Mutation execution has an explicit adapter-owned policy: serial cases.
+  Preserve the configured profile's process model and
+  restrictions. Stryker parallelizes mutants. Resolve and expose the scheduling
+  override before running; no dedicated mutation profile is required.
+- Reuse the profile's discovery, loader, capability restrictions, and resource
+  policies. Keep ordinary V8 coverage disabled and disable retries and baseline
+  updates. Use one campaign seed across the dry run, all mutants, workers, and
+  worker replacements. Accept an explicit seed or generate one once for the
+  campaign and expose it for reproduction. Derive case seeds from that seed and
+  stable executable identity, independently of scheduling and filtered selection.
+- Freeze authoritative discovery, loader declarations, selection, permissions,
+  and resource policy during unmutated initialization. Exclude configuration,
+  test definitions, and adapter code from mutation targets. If configuration is
+  evaluated again with a static mutant active, reject conflicting policy facts;
+  unchanged test IDs alone are insufficient validation.
+  Resolve policy outside the execution module graph and transport the frozen
+  facts into execution hosts. Worker initialization must not import user
+  configuration or its dependencies into that graph before the invocation's
+  activation mode is established. This also applies to replacement workers.
+- Performance is the default priority. The Stryker adapter's `freshState`
+  configuration defaults to `false`. Normal in-process runs reuse the loaded
+  module graph and assume the suite can be rerun in the same process. Persistent
+  caches can affect mutation results; document that limitation explicitly.
+  Setting `freshState: true` resets the complete transitive module graph and
+  mutable state for every invocation, accepting startup and collection cost.
+  Do not implement freshness with import URL query parameters.
+- Initialize the Stryker namespace inside the process that executes instrumented
+  code. For static activation, activate before importing any user configuration
+  or test modules. For runtime activation, collect without an active mutant,
+  then activate before executing cases. Honor Stryker's activation mode and
+  hit limit through its instrumented runtime contract.
+  Reset invocation counters, hit-limit state, active mutation, and current test
+  identity at their lifecycle boundaries. Preserve namespace and counter-object
+  identities retained by instrumented modules in a reused graph. Clear active
+  mutation and test identity when an invocation ends, including error paths.
+- During the dry run, set Stryker's `currentTestId` at the local, awaited case
+  start boundary and clear it after case completion, including scope cleanup.
+  Reads outside a case remain in Stryker's static coverage bucket. Parent-side
+  events received through IPC are too late to control child-side attribution.
+- Return Stryker's mutant counters, not V8 coverage. This is private adapter
+  data, separate from Overkill's aggregate coverage artifacts. Support Stryker's
+  `perTest`, `all`, and `off` modes; the normal optimized path is `perTest`.
+  Static or uncertain attribution requires the full eligible suite. Never infer
+  `NoCoverage` from missing transport data, missing tests, or ordinary coverage.
+- Honor both the profile's per-case timeouts and Stryker's invocation deadline;
+  the earlier applicable limit wins. The invocation deadline covers startup,
+  collection, execution, and cleanup. Stryker owns enforcement against its
+  plugin worker, including a synchronous infinite loop. Terminate and reap
+  adapter-owned execution hosts on timeout or disposal. Unrelated processes
+  remain outside that ownership boundary. Disable Overkill retries; Stryker
+  retains ownership of its infrastructure recovery.
+
+### Reporting And Persistence
+
+Stryker owns campaign output and reports. Mutation invocations suppress ordinary
+Overkill reporters, including configured custom reporters. Adapter-owned
+reporting collects structured results, failures, and counters in memory without
+disabling test checks.
+
+Overkill writes nothing to disk by default during mutation invocations: no run
+records, results, duration history, artifacts, or reports. Stryker's sandbox and
+campaign reports remain governed by Stryker's configuration.
+
+One adapter artifact-persistence setting supports `off`, `failures`, and `all`,
+defaulting to `off`. Opt-in persistence saves available diagnostic artifacts and
+transcripts with campaign, mutant, invocation, and case identity. It does not
+enable ordinary Overkill reports, run records, or duration-history persistence.
+`failures` means failed test invocations, including killed mutants, timeouts,
+execution errors, and failed dry runs; surviving mutants are included by `all`.
+
+Use existing artifact production and limits. Persistence does not enable capture
+or capabilities forbidden by the selected profile. Runner-owned persistence
+happens outside the test capability boundary; artifact delivery or write failure
+is an execution error, not a mutant kill.
+
+### Process And Error Ownership
+
+Stryker owns the mutation campaign and supervises its plugin workers. Overkill
+still owns microtest execution, assertion and scope contracts, capability
+policy, asynchronous-error attribution, and structured results. External
+orchestration does not disable those checks.
+
+Stryker uses a pool of plugin worker processes. Each adapter instance handles
+multiple mutant-run invocations; a worker is not recreated for every test or
+mutant by default. When a plugin cannot reload its environment, Stryker restarts
+it for required reloads, including transitions involving static mutants. The
+[reload decorator](https://github.com/stryker-mutator/stryker-js/blob/v10.0.0/packages/core/src/test-runner/reload-environment-decorator.ts)
+owns that behavior. Worker isolation from the main CLI does not isolate tests
+from the plugin worker's own transport and logging.
+
+The adapter preserves the configured process model. Fresh-state execution is
+opt-in; it does not add a process boundary to ordinary in-process runs.
+
+| Configured process model | `freshState: false`                                                                                  | `freshState: true`                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `in-process`             | Execute serially inside Stryker's reusable plugin worker with the profile's best-effort observations | Start a fresh invocation host; execute the normal in-process runner there |
+| `supervised-process`     | Use the normal runner's fresh restricted test child                                                  | Use that same fresh-child boundary, without an additional invocation host |
+
+Report `reloadEnvironment: false` for normal in-process execution because native
+ESM cannot reset its transitive imports. Stryker then restarts the plugin worker
+when a reload is required. Report `true` when the adapter can reset its execution
+environment through fresh-state mode or the supervised child's lifecycle.
+Fresh-state mode changes module lifetime, not the configured profile's permission
+guarantees. Its in-process runner still supplies best-effort observations.
+
+Keep console policy, uncaught-exception and unhandled-rejection observation,
+and async-leak checks around test execution. Stryker logging, transport, and
+adapter bootstrap operations belong outside the test policy boundary. An
+existing runner guard that accidentally captures those operations needs a
+boundary correction, not a blanket policy bypass.
+
+Use the existing programmatic runner APIs so configured test policy remains
+active. No adapter-specific low-level execution API, unchecked mode, or
+host-supplied process-error observer is required. Runtime methods remain native
+under [No Runtime Monkey-Patching](../decisions/principles.md#no-runtime-monkey-patching).
+Stop per-run event subscriptions, diagnostics subscriptions, and async observers
+when the run completes. Complete Stryker bootstrap before enabling test
+observations and deliver adapter results after those observations stop. Validate
+that Stryker-owned logging and transport do not become test-policy violations
+when in-process execution shares the plugin worker.
+
+Keep a surviving plugin worker after an unsafe invocation once its owned scopes,
+observations, and invocation bookkeeping are closed. Do not automatically enable
+fresh-state execution or retire that worker because of a case timeout, leak, or
+unattributed error. This does not promise removal of leaked work or mutable module
+state. Later observations still require safe attribution to the current attempt;
+unattributed failures remain errors. Stryker handles workers that exit, crash,
+exceed its invocation deadline, or require its normal environment reload.
+
+The native-observation implementation merged in
+[PR #531](https://github.com/enormora/overkill/pull/531) removes process-method
+patches. It does not make diagnostics case-local: out-of-test console output and
+new IPC listeners can still produce run errors while observation is active.
+Fresh-state and supervised execution separate those activities by process.
+Normal in-process execution must preserve their ownership within a shared worker.
+
+### Identity And Result Contract
+
+Dry-run collection establishes the eligible test catalog and fixed selection.
+Normalize sandbox file origins to canonical project-relative paths. Encode
+`CaseId` structurally, including parameter identity; display names and source
+positions are presentation data. Use the complete executable identity when a
+valid microtest plan distinguishes executions of the same logical case; never
+collapse distinct `WorkId` values into one Stryker ID. Other test families and
+their runtime or workload features remain outside this integration's scope.
+
+Each invocation validates its executable catalog against that catalog and runs
+Stryker's requested IDs exactly. An absent filter means the complete eligible
+suite; an explicit empty filter means no tests. Unknown IDs, duplicate IDs,
+changed case identities or selection metadata, or a requested test becoming
+skipped are adapter errors, never successful survival. Empty mutant selections
+execute nothing and return an error rather than claiming survival or coverage.
+Mutated collection failures are reported as
+errors rather than silently changing the catalog or widening an invalid filter.
+
+| Overkill observation                                                                                         | Stryker result                                                                 |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Dry run completes normally                                                                                   | Individual success, failure, and skipped results with stable IDs and durations |
+| Dry-run timeout or infrastructure failure                                                                    | Dry-run timeout or error; no mutation score                                    |
+| Mutant causes a safely attributed case failure, including an assertion, body error, or test-policy violation | `Killed`, with the failing IDs and structured diagnostic rendered as a message |
+| All requested runnable cases complete successfully                                                           | `Survived`, with the number actually executed                                  |
+| Execution deadline expires, a case times out, or Stryker's hit limit is exceeded                             | `Timeout`                                                                      |
+| Pre-case loading or collection failure, infrastructure failure, or failure without safe case attribution     | `Error`, with its diagnostic                                                   |
+| Inconclusive result, unexpected skip, identity drift, or incomplete result delivery                          | `Error`                                                                        |
+
+Test-policy violations count as kills only when safely attributed to an eligible
+case and its active attempt. Permission violations, forbidden console output,
+and unhandled errors can therefore kill a mutant without an assertion failure.
+Unattributed observations, attribution drift, and adapter, reporter, transport,
+or persistence failures remain errors. Do not infer attribution merely because
+cases execute serially. A failure before any case can be identified remains an
+error even after a successful dry run.
+
+Result precedence is `Error`, then `Timeout`, then `Killed`, then `Survived`.
+An infrastructure failure invalidates the invocation even after a confirmed
+kill. A timeout during cleanup or continued execution also overrides an earlier
+kill, including when `disableBail` is enabled. Preserve earlier confirmed case
+failures in diagnostics when returning an error or timeout.
+Stop scheduling further cases after a confirmed kill unless Stryker's
+`disableBail` requests complete execution. Finish admitted work, case cleanup,
+observer shutdown, and final result delivery before returning the kill. Cases
+not executed because of this explicit early stop do not become missing-result
+errors. Report the actual executed count and confirmed killing IDs.
+
+The dry run must establish the complete eligible catalog. An intentionally
+skipped case is reported as skipped during the dry run and never demonstrates
+a kill.
+Stryker owns score policy, including its treatment of timeouts and errors.
+
+### Alternatives And Evidence
+
+- **Stryker with adapter-owned execution:** selected. Its public plugin contract
+  already provides dry runs, exact selection, activation modes, and structured
+  results. Current [Vitest source](https://github.com/stryker-mutator/stryker-js/blob/f2a49ff02437e3b7fe2682dba808ac93039895bf/packages/vitest-runner/src/vitest-test-runner.ts)
+  forces one worker and `maxConcurrency: 1`; its setup hooks attribute per-case
+  counters. It retains a Vitest context, so it does not establish that fresh OS
+  processes are required by Stryker.
+- **Reuse Jest's execution model:** Jest runs files in band and wraps the test
+  environment for attribution. Its module environment can reload between runs;
+  native Overkill ESM imports provide no equivalent transitive reset guarantee.
+  `runInBand` alone does not establish serial concurrent test bodies.
+- **Execute directly in Stryker's reused worker:** selected for normal
+  in-process runs to avoid mandatory startup overhead. Native ESM can report
+  `reloadEnvironment: false` so Stryker restarts for required reloads.
+  Runtime mutant runs still reuse state; repeatability is a suite requirement.
+  Fresh-state mode is the opt-in alternative for cache-dependent results.
+- **Require fresh execution for every mutant:** rejected as the default because
+  process startup and collection add cost to every mutation invocation. Offer
+  this guarantee through `freshState: true` instead. Stryker's
+  `maxTestRunnerReuse: 1` alone is insufficient: its reuse counter counts mutant
+  runs, leaving the first mutant able to reuse dry-run state.
+- **File-level attribution:** the [TAP adapter used with AVA](https://stryker-mutator.io/docs/stryker-js/tap-runner/)
+  uses a fresh process per file and selects files. This avoids requiring serial
+  cases but loses Overkill's case-level selection and killer identities.
+- **Always execute the full suite:** rejected as the complete design because
+  it loses selective reruns. Stryker's `off` mode remains available when a user
+  requests full-suite execution without coverage optimization, retaining the
+  adapter's execution policy.
+  The command runner also loses structured failure classification.
+- **Different mutation engine:** [Mutagen](https://github.com/brandoncorrea/mutagen)
+  offers physical source copies and a custom runner, but only `0.1.0` was
+  published at the assessment date. [Mutode](https://github.com/TheSoftwareDesignLab/mutode/commits/master/)
+  has no default-branch commits after January 2020.
+  [LLMorpheus](https://github.com/neu-se/llmorpheus) still executes through a
+  Stryker fork. None currently provides stronger evidence for replacing Stryker.
+
+Maintenance assessed on 2026-10-05: [Stryker 10.0.0](https://github.com/stryker-mutator/stryker-js/releases/tag/v10.0.0)
+was released on 2026-08-14, with substantive runner and instrumenter work also
+merged in September. This supports retaining it; it does not promise future
+maintenance or timely issue resolution. The
+[plugin API](https://github.com/stryker-mutator/stryker-js/tree/v10.0.0/packages/api/src/test-runner)
+is the compatibility contract, ahead of simplified documentation examples.
+
+### Assumptions And Release Gates
+
+This resolution preserves the concept's microtest-only scope, API-first
+boundary, stable identity model, and aggregate V8 coverage policy. Mutation
+execution is a separate, explicitly reported orchestration policy.
+
+Current code has exact `case-id` filters, structured outcomes, awaited local case
+events, and supervised processes. It does not yet expose the complete public
+adapter lifecycle: initialization before user imports, child-local attribution,
+counter transport, and execution of a collected plan without importing again.
+Provide the smallest reusable runner extension needed for that lifecycle.
+Each invocation needs fresh scopes, observers, and result collection even when
+it reuses an already collected plan and module graph. Selection applies to the
+frozen eligible catalog without reimporting modules merely to rerun cases.
+Keep Stryker types, globals, and score semantics inside the adapter package.
+
+Before release, demonstrate sandbox-relative and parameterized IDs, runtime and
+static activation, exact filtered execution, worker reuse, opt-in state reset,
+capability enforcement, counter delivery, and complete timeout termination on
+the repository's pinned Node version. Compare optimized results against full
+suite results on repeatable representative suites. Measure worker-reuse and
+fresh-state costs separately, including startup, collection, and test execution.
+
+Probes with the published Stryker 10 instrumenter confirmed counter attribution,
+activation timing, and transitive ESM cache behavior. On Node 26.10, a covered
+arithmetic mutant remained hidden by a cache in a reused graph and became
+observable in a fresh process. Current Overkill policy also preserved native
+process methods and removed its observation listeners after completion. These
+are focused probes, not end-to-end adapter validation. Release validation must
+also exercise native early exit, abort, and result-less termination, preserving
+the configured process model's documented observation gaps.
+
+Revisit this answer if those checks show incorrect selection, if maintaining
+restrictions requires private engine imports, if process startup removes the
+benefit of opt-in reset, or if Stryker no longer supports the project's toolchain.
+Changing vendors would reopen the concept's first-party Stryker commitment;
+it is not an adapter implementation detail.
