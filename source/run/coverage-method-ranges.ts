@@ -1,52 +1,126 @@
-import { parse } from 'acorn';
-import { simple } from 'acorn-walk';
 import { z } from 'zod/v4';
+import { coverageTokens, type CoverageToken } from './coverage-tokens.ts';
 
-type MethodRange = {
-    readonly start: number;
-    readonly parameters: number;
-};
 const rangeSchema = z.object({ count: z.number(), endOffset: z.number(), startOffset: z.number() });
 const functionsSchema = z.array(z.object({
     functionName: z.string(),
     isBlockCoverage: z.boolean(),
     ranges: z.tuple([ rangeSchema ]).rest(rangeSchema)
 }));
+const keyTypes = new Set([ 'IdentifierName', 'PrivateIdentifier', 'StringLiteral', 'NumericLiteral' ]);
 
-function coverageMethods(source: string): ReadonlyMap<number, MethodRange> {
-    const methods = new Map<number, MethodRange>();
-    const program = parse(source, { allowReturnOutsideFunction: true, ecmaVersion: 'latest', sourceType: 'module' });
+function closingToken(tokens: readonly CoverageToken[], start: number, opening: string, closing: string): number {
+    let depth = 0;
 
-    simple(program, {
-        Property(node) {
-            if (node.value.type === 'FunctionExpression' && (node.method || node.kind !== 'init')) {
-                methods.set(node.end, { parameters: node.value.start, start: node.start });
+    for (let index = start; index < tokens.length; index += 1) {
+        const value = tokens[index]?.value;
+
+        if (value === opening) {
+            depth += 1;
+        } else if (value === closing) {
+            depth -= 1;
+            if (depth === 0) {
+                return index;
             }
-        },
-        MethodDefinition(node) {
-            methods.set(node.end, { parameters: node.value.start, start: node.start });
         }
-    });
-    return methods;
+    }
+    return tokens.length;
 }
 
-type CoverageRange = Readonly<z.infer<typeof functionsSchema>[number]['ranges'][number]>;
+function enclosingDelimiter(tokens: readonly CoverageToken[], start: number): string | undefined {
+    const delimiters: string[] = [];
 
-function startsInsideMethod(range: CoverageRange, method: MethodRange): boolean {
-    return range.startOffset >= method.start && range.startOffset <= method.parameters;
+    for (const token of tokens.slice(0, start)) {
+        if ([ '(', '[', '{' ].includes(token.value)) {
+            delimiters.push(token.value);
+        } else if ([ ')', ']', '}' ].includes(token.value)) {
+            delimiters.pop();
+        }
+    }
+    return delimiters.at(-1);
+}
+
+function startsMethod(tokens: readonly CoverageToken[], start: number): boolean {
+    const previous = tokens[start - 1]?.value ?? '';
+
+    return enclosingDelimiter(tokens, start) === '{' && [ '{', '}', ';', ',', 'static' ].includes(previous);
+}
+
+function isMethodPrefix(tokens: readonly CoverageToken[], start: number): boolean {
+    return [ 'async', 'get', 'set' ].includes(tokens[start]?.value ?? '') && tokens[start + 1]?.value !== '(';
+}
+
+function methodKeyStart(tokens: readonly CoverageToken[], start: number): number {
+    const index = isMethodPrefix(tokens, start) ? start + 1 : start;
+    return tokens[index]?.value === '*' ? index + 1 : index;
+}
+
+function methodKeyEnd(tokens: readonly CoverageToken[], start: number): number | null {
+    const key = tokens[start];
+
+    if (key?.value === '[') {
+        return closingToken(tokens, start, '[', ']') + 1;
+    }
+    return key !== undefined && keyTypes.has(key.type) ? start + 1 : null;
+}
+
+function parametersAfterKey(tokens: readonly CoverageToken[], start: number): number | null {
+    const token = tokens[start];
+
+    if (token?.value !== '(') {
+        return null;
+    }
+    const end = closingToken(tokens, start, '(', ')');
+
+    return tokens[end + 1]?.value === '{' ? token.start : null;
+}
+
+function methodParameters(tokens: readonly CoverageToken[], start: number): number | null {
+    const keyStart = methodKeyStart(tokens, start);
+
+    if (tokens[keyStart]?.value === 'function' && !startsMethod(tokens, start)) {
+        return null;
+    }
+    const keyEnd = methodKeyEnd(tokens, keyStart);
+
+    return keyEnd === null ? null : parametersAfterKey(tokens, keyEnd);
+}
+
+export function createCoverageMethodNormalizer(
+    tokens: readonly CoverageToken[]
+): (functions: unknown) => z.infer<typeof functionsSchema> {
+    const positions = new Map(tokens.map(function tokenPosition(token, index) {
+        return [ token.start, index ];
+    }));
+    const methods = new Map<number, number | null>();
+
+    function parametersAt(offset: number): number | null {
+        const start = positions.get(offset);
+
+        if (start === undefined) {
+            return null;
+        }
+        if (!methods.has(start)) {
+            methods.set(start, methodParameters(tokens, start));
+        }
+        return methods.get(start) ?? null;
+    }
+
+    return function normalizeMethods(functions) {
+        const normalized = functionsSchema.parse(functions);
+
+        for (const fn of normalized) {
+            const [ range ] = fn.ranges;
+            const parameters = parametersAt(range.startOffset);
+
+            if (parameters !== null && parameters < range.endOffset) {
+                range.startOffset = parameters;
+            }
+        }
+        return normalized;
+    };
 }
 
 export function normalizeCoverageMethodRanges(functions: unknown, source: string): z.infer<typeof functionsSchema> {
-    const methods = coverageMethods(source);
-    const normalized = functionsSchema.parse(functions);
-
-    for (const fn of normalized) {
-        const [ range ] = fn.ranges;
-        const method = methods.get(range.endOffset);
-
-        if (method !== undefined && startsInsideMethod(range, method)) {
-            range.startOffset = method.parameters;
-        }
-    }
-    return normalized;
+    return createCoverageMethodNormalizer(Array.from(coverageTokens(source)))(functions);
 }

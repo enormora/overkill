@@ -9,7 +9,7 @@ import {
 } from '@jridgewell/trace-mapping';
 import convertSourceMap from 'convert-source-map';
 import { z } from 'zod/v4';
-import { inspectCoverageSource } from './coverage-runtime-source.ts';
+import type { CoverageSourceCache } from './coverage-runtime-source.ts';
 
 const sourceMapVersion = 3;
 const namedMappingSize = 5;
@@ -52,6 +52,7 @@ const sourceMapSchema: z.ZodType<CoverageMap> = z.lazy(function coverageMapSchem
 const cachedMapSchema = z.object({ data: z.unknown().default(null) });
 
 type CoverageMapRequest = {
+    readonly cache: CoverageSourceCache;
     readonly cached: unknown;
     readonly source: string;
     readonly url: string;
@@ -118,7 +119,7 @@ async function readMapReference(reference: string, scriptUrl: string): Promise<T
 }
 
 async function declaredCoverageMap(request: CoverageMapRequest): Promise<TraceMap | null> {
-    const inspection = inspectCoverageSource(request.source, fileURLToPath(request.url));
+    const inspection = request.cache.inspect(request.source, fileURLToPath(request.url));
     const comments = inspection.comments.join('\n');
     const inline = convertSourceMap.fromSource(comments);
 
@@ -147,7 +148,7 @@ async function resolveValidatedCoverageMap(request: CoverageMapRequest): Promise
     const map = await resolveCoverageMap(request);
 
     if (map !== null) {
-        validateMappings(map, inspectCoverageSource(request.source, fileURLToPath(request.url)).hasRuntime);
+        validateMappings(map, request.cache.inspect(request.source, fileURLToPath(request.url)).hasRuntime);
     }
     return map;
 }

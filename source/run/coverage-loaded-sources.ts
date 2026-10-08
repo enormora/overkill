@@ -1,10 +1,9 @@
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { TraceMap } from '@jridgewell/trace-mapping';
 import { isPathInside } from './path-containment.ts';
 import type { CoverageNativeBatch } from './coverage-native-data.ts';
-import { inspectCoverageSource, isSupportedCoverageSource } from './coverage-runtime-source.ts';
+import { isSupportedCoverageSource, type CoverageSourceCache } from './coverage-runtime-source.ts';
 import { normalizedCoverageSourceMap, readCoverageSourceMap, type CoverageMap } from './coverage-source-map.ts';
 
 type LoadedCoverageEntry = {
@@ -14,6 +13,7 @@ type LoadedCoverageEntry = {
     readonly url: string;
 };
 type LoadedCoverageRequest = {
+    readonly cache: CoverageSourceCache;
     readonly batches: readonly CoverageNativeBatch[];
     readonly excludedFiles: ReadonlySet<string>;
     readonly includeSource: (filePath: string) => boolean;
@@ -39,15 +39,16 @@ function projectScriptPath(url: string, projectRoot: string): string | null {
 async function readLoadedEntry(
     url: string,
     cached: unknown,
-    projectRoot: string
+    projectRoot: string,
+    cache: CoverageSourceCache
 ): Promise<LoadedCoverageEntry | null> {
     const filePath = projectScriptPath(url, projectRoot);
 
     if (filePath === null) {
         return null;
     }
-    const source = await readFile(filePath, 'utf8');
-    const map = await readCoverageSourceMap({ cached, source, url });
+    const source = await cache.read(filePath);
+    const map = await readCoverageSourceMap({ cache, cached, source, url });
 
     return { filePath, map, source, url };
 }
@@ -57,7 +58,12 @@ async function loadedCoverageEntries(request: LoadedCoverageRequest): Promise<re
 
     for (const batch of request.batches) {
         for (const entry of batch.entries) {
-            const loaded = await readLoadedEntry(entry.url, batch.sourceMaps[entry.url], request.projectRoot);
+            const loaded = await readLoadedEntry(
+                entry.url,
+                batch.sourceMaps[entry.url],
+                request.projectRoot,
+                request.cache
+            );
 
             if (loaded !== null) {
                 entries.set(entry.url, loaded);
@@ -124,8 +130,8 @@ async function originalSourceContent(
     if (filePath === null) {
         return { content: original.content ?? '', filePath: null };
     }
-    const content = original.content ?? await readFile(filePath, 'utf8');
-    const hasRuntime = isSupportedCoverageSource(filePath) && inspectCoverageSource(content, filePath).hasRuntime;
+    const content = original.content ?? await request.cache.read(filePath);
+    const hasRuntime = isSupportedCoverageSource(filePath) && request.cache.inspect(content, filePath).hasRuntime;
 
     return { content, filePath: hasRuntime ? filePath : null };
 }
@@ -135,7 +141,7 @@ async function selectLoadedEntry(
     request: LoadedCoverageRequest
 ): Promise<SelectedCoverageEntry | null> {
     if (entry.map === null) {
-        return request.includeSource(entry.filePath) && inspectCoverageSource(entry.source, entry.filePath).hasRuntime
+        return request.includeSource(entry.filePath) && request.cache.inspect(entry.source, entry.filePath).hasRuntime
             ? { map: null, sources: [ entry.filePath ], url: entry.url }
             : null;
     }

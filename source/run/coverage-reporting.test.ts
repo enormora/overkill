@@ -40,7 +40,7 @@ async function writeRawCoverage(rawDataDirectory: string, source: string): Promi
                 rawCoverageEntry(path.resolve(excludedSourcePath), '2', source.length),
                 rawCoverageEntry('relative-source.ts', '3', source.length),
                 rawCoverageEntry(
-                    pathToFileURL(path.resolve('node_modules/sucrase/dist/index.js')).href,
+                    pathToFileURL(path.resolve('node_modules/js-tokens/index.js')).href,
                     '4',
                     source.length
                 )
