@@ -361,13 +361,32 @@ const sharedCommandArguments = {
     })
 };
 
+const benchmarkProfileType: Type<string[], string | null> = {
+    displayName: 'name',
+    async from([ profile, ...remainingProfiles ]) {
+        if (remainingProfiles.length > 0) {
+            throw new TypeError('--profile may only be provided once.');
+        }
+
+        return profile ?? null;
+    }
+};
+
 const benchmarkCommandArguments = {
     configPath: configPathArgument,
+    profile: multioption({
+        long: 'profile',
+        type: benchmarkProfileType,
+        defaultValue() {
+            return null;
+        }
+    }),
     paths: restPositionals({ displayName: 'path' })
 };
 
 type BenchmarkCommandArguments = {
     readonly configPath: string | null;
+    readonly profile: string | null;
     readonly paths: readonly string[];
 };
 
@@ -448,7 +467,8 @@ export async function dispatchOverkillCommand(
                     const runner = await loadRunner();
 
                     return await runner.bench.listBenchmarks({
-                        arguments: args.paths,
+                        paths: args.paths,
+                        profile: args.profile,
                         configPath: args.configPath,
                         cwd
                     });
@@ -461,7 +481,8 @@ export async function dispatchOverkillCommand(
                     const runner = await loadRunner();
 
                     return await runner.bench.runBenchmarks({
-                        arguments: args.paths,
+                        paths: args.paths,
+                        profile: args.profile,
                         configPath: args.configPath,
                         cwd
                     });

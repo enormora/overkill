@@ -2,7 +2,6 @@ import { RunResolutionError } from './run-errors.ts';
 import {
     createCommandLineErrorResultFromUnknown,
     type CommandLineBaselineCommands,
-    type CommandLineBenchmarkCommands,
     type CommandLineCommand,
     type CommandLineCommandContext,
     type CommandLineRunnerResult
@@ -31,7 +30,7 @@ export function createUnimplementedCommand(command: string): CommandLineCommand 
     };
 }
 
-function createUnimplementedBaselineCommands(namespace: string): CommandLineBaselineCommands {
+export function createUnimplementedBaselineCommands(namespace: string): CommandLineBaselineCommands {
     return {
         apply: createUnimplementedCommand(`${namespace} apply`),
         bootstrap: createUnimplementedCommand(`${namespace} bootstrap`),
@@ -43,12 +42,4 @@ function createUnimplementedBaselineCommands(namespace: string): CommandLineBase
 
 export async function loadUnimplementedBaselineCommands(): Promise<CommandLineBaselineCommands> {
     return createUnimplementedBaselineCommands('baseline');
-}
-
-export async function loadUnimplementedBenchmarkCommands(): Promise<CommandLineBenchmarkCommands> {
-    return {
-        baseline: createUnimplementedBaselineCommands('bench baseline'),
-        listBenchmarks: createUnimplementedCommand('bench list'),
-        runBenchmarks: createUnimplementedCommand('bench run')
-    };
 }

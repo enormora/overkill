@@ -1,7 +1,8 @@
 import type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
-    CommandLineCommand
+    CommandLineCommand,
+    CommandLineRunnerResult
 } from './command-line-command.ts';
 
 export type CommandLineCommandLoaders = {
@@ -15,7 +16,8 @@ export type CommandLineCommandNamespace = {
 };
 
 type SelectBaselineCommand = (commands: CommandLineBaselineCommands) => CommandLineCommand;
-type SelectBenchmarkCommand = (commands: CommandLineBenchmarkCommands) => CommandLineCommand;
+type BenchmarkCommand<Request> = (request: Request) => Promise<CommandLineRunnerResult>;
+type SelectBenchmarkCommand<Request> = (commands: CommandLineBenchmarkCommands) => BenchmarkCommand<Request>;
 
 function routeBaselineCommand(
     loadBaselineCommands: CommandLineCommandLoaders['loadBaselineCommands'],
@@ -28,10 +30,10 @@ function routeBaselineCommand(
     };
 }
 
-function routeBenchmarkCommand(
+function routeBenchmarkCommand<Request>(
     loadBenchmarkCommands: CommandLineCommandLoaders['loadBenchmarkCommands'],
-    selectCommand: SelectBenchmarkCommand
-): CommandLineCommand {
+    selectCommand: SelectBenchmarkCommand<Request>
+): BenchmarkCommand<Request> {
     return async function runBenchmarkCommandRoute(context) {
         const commands = await loadBenchmarkCommands();
 

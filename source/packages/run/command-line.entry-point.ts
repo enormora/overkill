@@ -3,8 +3,7 @@ import type { NodeCommandLineRunnerOptions } from '../../run/node-command-line-r
 import { createCommandLineCommandNamespace } from '../../run/command-line-command-namespace.ts';
 import {
     createUnimplementedCommand,
-    loadUnimplementedBaselineCommands,
-    loadUnimplementedBenchmarkCommands
+    loadUnimplementedBaselineCommands
 } from '../../run/command-line-unimplemented-commands.ts';
 import { loadConfig } from './config.entry-point.ts';
 
@@ -20,7 +19,11 @@ export {
 
 const commandLoaders = {
     loadBaselineCommands: loadUnimplementedBaselineCommands,
-    loadBenchmarkCommands: loadUnimplementedBenchmarkCommands
+    async loadBenchmarkCommands() {
+        const { createBenchmarkCommands } = await import('../../run/benchmark-commands.ts');
+
+        return createBenchmarkCommands(loadConfig);
+    }
 };
 
 export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOptions): CommandLineRunner {
@@ -122,6 +125,8 @@ export const commandLineRunner: CommandLineRunner = {
 export type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
+    CommandLineBenchmarkCommand,
+    CommandLineBenchmarkRequest,
     CommandLineCommand,
     CommandLineCommandContext,
     CommandLineExitCode,

@@ -145,7 +145,10 @@ Benchmarks use a dedicated namespace because their primary artifact is
 measurement data plus policy evaluation, not an ordinary test verdict.
 Ordinary `run` and `list` reject a selected profile with `testFamily: 'benchmark'`
 as an argument error. Names remain arbitrary, so a microtest profile named
-`benchmark` is valid.
+`benchmark` is valid. Both `bench run` and `bench list` accept `--profile <name>`
+(or `--profile=<name>`). When omitted, the sole benchmark profile is selected
+from the complete registry. Zero or multiple benchmark profiles require an
+explicit name; unknown names and other families are argument errors.
 
 | Command                                        | Behavior                                                                      | Reference                                                          |
 | ---------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |

@@ -8,7 +8,6 @@ import {
 import type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
-    CommandLineCommand,
     CommandLineCommandContext,
     CommandLineRunnerResult
 } from './command-line-command.ts';
@@ -47,7 +46,7 @@ const commandLineRunnerResultFactory = createFactory<CommandLineRunnerResultData
     }
 );
 
-function createCommandReturningDiagnostic(diagnostic: string): CommandLineCommand {
+function createCommandReturningDiagnostic(diagnostic: string): () => Promise<CommandLineRunnerResult> {
     return async function runCommand() {
         return commandLineRunnerResultFactory.build({
             fallbackDiagnostics: [ diagnostic ]
@@ -99,7 +98,12 @@ export const testNode = createOverkillSuite({
                 };
                 const commands = createCommandLineCommandNamespace(loaders);
                 const baseline = await commands.baseline.update(commandLineCommandContextFactory.build());
-                const benchmark = await commands.bench.listBenchmarks(commandLineCommandContextFactory.build());
+                const benchmark = await commands.bench.listBenchmarks({
+                    configPath: null,
+                    cwd: '/project',
+                    paths: [],
+                    profile: null
+                });
 
                 scope.assert(doubleUsage.callCount, loaders.loadBaselineCommands, 1);
                 scope.assert(doubleUsage.callCount, loaders.loadBenchmarkCommands, 1);
@@ -132,8 +136,8 @@ export const testNode = createOverkillSuite({
                     commands.bench.baseline.diff(context),
                     commands.bench.baseline.list(context),
                     commands.bench.baseline.update(context),
-                    commands.bench.listBenchmarks(context),
-                    commands.bench.runBenchmarks(context)
+                    commands.bench.listBenchmarks({ configPath: null, cwd: '/project', paths: [], profile: null }),
+                    commands.bench.runBenchmarks({ configPath: null, cwd: '/project', paths: [], profile: null })
                 ]);
                 const diagnostics = results.map(function readFallbackDiagnostic(result) {
                     return result.fallbackDiagnostics[0];

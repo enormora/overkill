@@ -10,8 +10,7 @@ import {
     type CurrentProcessRunOrchestratorDependencies
 } from './current-process-run-orchestrator.ts';
 import {
-    loadUnimplementedBaselineCommands,
-    loadUnimplementedBenchmarkCommands
+    loadUnimplementedBaselineCommands
 } from './command-line-unimplemented-commands.ts';
 
 type NodeCommandLineRunDiscovery = CurrentProcessRunOrchestratorDependencies['discoverRunFilesWithProjectRoot'];
@@ -39,7 +38,11 @@ export function createNodeCommandLineRunner(input: NodeCommandLineRunnerInput): 
     return createCommandLineRunner({
         createDefaultReporter: loadDefaultLineReporter,
         loadBaselineCommands: loadUnimplementedBaselineCommands,
-        loadBenchmarkCommands: loadUnimplementedBenchmarkCommands,
+        async loadBenchmarkCommands() {
+            const { createBenchmarkCommands } = await import('./benchmark-commands.ts');
+
+            return createBenchmarkCommands(input.dependencies.loadConfig);
+        },
         loadConfig: input.dependencies.loadConfig,
         orchestrator: createCurrentProcessRunOrchestrator(input.defaultEngine, {
             discoverRunFilesWithProjectRoot: input.dependencies.discoverRunFilesWithProjectRoot,

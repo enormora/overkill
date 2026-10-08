@@ -34,9 +34,11 @@ Public types include `AuthoringAnnotations`, `AuthoringControls`,
 `TestScopeAssertContext`.
 
 The `@overkill-dev/test` binary recognizes `overkill bench run [paths...]` and
-`overkill bench list [paths...]` with `--config`. These commands currently
-return exit code `3` because benchmark execution is not implemented. Benchmark
-profile selection and execution are separate implementation milestones.
+`overkill bench list [paths...]` with `--config` and `--profile <name>`.
+Omitting `--profile` selects the sole configured `testFamily: 'benchmark'`
+profile. Missing, ambiguous, unknown, or ordinary-family selections return
+argument error `3`. Valid selection also returns `3` because workload listing
+and execution are not implemented; config loads, but workloads are not imported.
 
 This facade does not yet measure performance. `benchmark(...)`, workloads,
 measurement strategies, and budgets are separate implementation milestones.

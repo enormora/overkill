@@ -15,7 +15,7 @@ import type { CommandLineCommandContext } from './command-line-command.ts';
 import {
     createUnimplementedCommand,
     loadUnimplementedBaselineCommands,
-    loadUnimplementedBenchmarkCommands
+    createUnimplementedBaselineCommands
 } from './command-line-unimplemented-commands.ts';
 import type { RunOrchestrator } from './run-types.ts';
 
@@ -83,7 +83,13 @@ function createTestRunner(): CommandLineRunner {
             return memoryReporter;
         },
         loadBaselineCommands: loadUnimplementedBaselineCommands,
-        loadBenchmarkCommands: loadUnimplementedBenchmarkCommands,
+        async loadBenchmarkCommands() {
+            const { createBenchmarkCommands } = await import('./benchmark-commands.ts');
+
+            return createBenchmarkCommands(async function loadConfig() {
+                return { ...config, configPath: null };
+            });
+        },
         async loadConfig() {
             return {
                 configPath: null,
@@ -130,16 +136,16 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const baseline = await loadUnimplementedBaselineCommands();
-                const benchmark = await loadUnimplementedBenchmarkCommands();
+                const benchmark = createUnimplementedBaselineCommands('bench baseline');
                 const context = commandLineCommandContextFactory.build();
                 const baselineResult = await baseline.update(context);
-                const benchmarkResult = await benchmark.runBenchmarks(context);
+                const benchmarkResult = await benchmark.update(context);
 
                 scope.assert.deepEqual(baselineResult.fallbackDiagnostics, [
                     'Overkill argument error: Command "baseline update" is not implemented yet.'
                 ]);
                 scope.assert.deepEqual(benchmarkResult.fallbackDiagnostics, [
-                    'Overkill argument error: Command "bench run" is not implemented yet.'
+                    'Overkill argument error: Command "bench baseline update" is not implemented yet.'
                 ]);
 
                 return scope.assert.collect();
@@ -147,14 +153,19 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner singleton uses unimplemented command families',
+            title: 'commandLineRunner rejects benchmark selection without configured benchmark profiles',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const result = await createTestRunner().bench.listBenchmarks(commandLineCommandContextFactory.build());
+                const result = await createTestRunner().bench.listBenchmarks({
+                    configPath: null,
+                    cwd: fixtureCwd,
+                    paths: [],
+                    profile: null
+                });
 
                 scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill argument error: Command "bench list" is not implemented yet.'
+                    'Overkill argument error: No benchmark profiles are configured. Configure a benchmark profile and use --profile.'
                 ]);
 
                 return scope.assert.collect();

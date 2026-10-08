@@ -12,6 +12,8 @@ import {
     type defineConfig,
     type CommandLineBaselineCommands,
     type CommandLineBenchmarkCommands,
+    type CommandLineBenchmarkCommand,
+    type CommandLineBenchmarkRequest,
     type CommandLineCommand,
     type CommandLineCommandContext,
     type CommandLineExitCode,
@@ -63,6 +65,8 @@ describe('@overkill-dev/run/command-line', function () {
         expect<typeof commandLineRunner.replayWitness>().type.toBe<CommandLineCommand>();
         expect<typeof commandLineRunner.baseline>().type.toBe<CommandLineBaselineCommands>();
         expect<typeof commandLineRunner.bench>().type.toBe<CommandLineBenchmarkCommands>();
+        expect<typeof commandLineRunner.bench.runBenchmarks>().type.toBe<CommandLineBenchmarkCommand>();
+        expect<typeof commandLineRunner.bench.listBenchmarks>().type.toBe<CommandLineBenchmarkCommand>();
     });
 
     test('keeps command-line run input explicit', function () {
@@ -94,6 +98,21 @@ describe('@overkill-dev/run/command-line', function () {
         expect<CommandLineExitCode>().type.toBe<ExpectedCommandLineExitCode>();
         expect<CommandLineRunnerResult['fallbackDiagnostics']>().type.toBe<readonly string[]>();
         expect<CommandLineRunnerResult['stdoutLines']>().type.toBe<readonly string[]>();
+    });
+
+    test('requires typed benchmark paths and nullable explicit profile selection', function () {
+        expect<keyof CommandLineBenchmarkRequest>().type.toBe<'configPath' | 'cwd' | 'paths' | 'profile'>();
+        expect<CommandLineBenchmarkRequest['paths']>().type.toBe<readonly string[]>();
+        expect<CommandLineBenchmarkRequest['profile']>().type.toBe<string | null>();
+        expect<CommandLineBenchmarkCommand>().type.toBe<
+            (request: CommandLineBenchmarkRequest) => Promise<CommandLineRunnerResult>
+        >();
+        expect<CommandLineBenchmarkRequest>().type.not.toBeAssignableFrom<CommandLineCommandContext>();
+        expect<CommandLineBenchmarkRequest>().type.not.toBeAssignableFrom<{
+            readonly configPath: null;
+            readonly cwd: string;
+            readonly paths: readonly string[];
+        }>();
     });
 
     test('exposes typed config helpers', function () {

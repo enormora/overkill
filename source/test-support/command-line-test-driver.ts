@@ -1,6 +1,6 @@
 import type {
     CommandLineCommand,
-    CommandLineCommandContext,
+    CommandLineBenchmarkRequest,
     CommandLineExitCode,
     CommandLineListTestsRequest,
     CommandLineRunTestsRequest,
@@ -22,8 +22,8 @@ type RecordedExitCodes = {
 };
 
 type RequestRecorder = {
-    readonly recordBenchmarkList: (context: CommandLineCommandContext) => void;
-    readonly recordBenchmarkRun: (context: CommandLineCommandContext) => void;
+    readonly recordBenchmarkList: (context: CommandLineBenchmarkRequest) => void;
+    readonly recordBenchmarkRun: (context: CommandLineBenchmarkRequest) => void;
     readonly recordList: (commandLineRequest: CommandLineListTestsRequest) => void;
     readonly recordRun: (commandLineRequest: CommandLineRunTestsRequest) => void;
 };
@@ -131,8 +131,8 @@ export async function runCommandLine(
     args: readonly string[],
     runnerResult: CommandLineRunnerResult | Error
 ): Promise<{
-    readonly benchmarkListRequests: readonly CommandLineCommandContext[];
-    readonly benchmarkRunRequests: readonly CommandLineCommandContext[];
+    readonly benchmarkListRequests: readonly CommandLineBenchmarkRequest[];
+    readonly benchmarkRunRequests: readonly CommandLineBenchmarkRequest[];
     readonly exitCode: CommandLineExitCode;
     readonly exitCodes: readonly number[];
     readonly listRequests: readonly CommandLineListTestsRequest[];
@@ -146,8 +146,8 @@ export async function runCommandLine(
     const exitCodes = createRecordedExitCodes();
     const listRequests: CommandLineListTestsRequest[] = [];
     const runRequests: CommandLineRunTestsRequest[] = [];
-    const benchmarkListRequests: CommandLineCommandContext[] = [];
-    const benchmarkRunRequests: CommandLineCommandContext[] = [];
+    const benchmarkListRequests: CommandLineBenchmarkRequest[] = [];
+    const benchmarkRunRequests: CommandLineBenchmarkRequest[] = [];
     let runnerLoadCount = 0;
 
     const exitCode = await runOverkillCommandLine({

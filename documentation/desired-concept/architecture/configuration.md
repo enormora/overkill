@@ -379,6 +379,10 @@ Benchmark profiles share the project registry with ordinary profiles.
 `overkill run` and `overkill list` reject selected benchmark profiles and direct
 callers to `overkill bench`. A microtest profile named `benchmark` remains valid.
 Benchmark profiles currently configure only `testFamily` and `files`.
+Benchmark commands accept explicit `--profile <name>` selection or infer the
+sole benchmark profile in the complete registry when omitted. Zero or multiple
+benchmark profiles require explicit selection. Path operands do not influence
+profile inference.
 
 Direct `NormalizedConfig` values can choose worker-pool host shape with
 `execution.hostProcess`. Project configuration files do not expose that key
