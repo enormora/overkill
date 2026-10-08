@@ -1,12 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fromObject } from 'convert-source-map';
-import { transform } from 'sucrase';
 import { encodedMap, presortedDecodedMap } from '@jridgewell/trace-mapping';
+import * as typescript from 'typescript';
+import { createCoverageTranspiler } from '../test-support/coverage-transpilation.ts';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { collectCoverageScript, withCoverageSources } from '../test-support/coverage-source-fixture.ts';
 import { generateCoverageReports } from './coverage-reporting.ts';
 
+const transformCoverageFixture = createCoverageTranspiler(typescript);
 const source = 'export function value(): number { return 42; }\nvalue();\n';
 const typeOnlySource = '/** Domain type. */\nexport type Value = number;\n';
 
@@ -24,10 +26,9 @@ export const testNode = createSuite({
                 title: `coverage handles ${scenario} originals without counting generated containers`,
                 async body(scope) {
                     const original = scenario === 'type-only' ? typeOnlySource : source;
-                    const compiled = transform(original, {
+                    const compiled = transformCoverageFixture(original, {
                         filePath: 'value.ts',
-                        sourceMapOptions: { compiledFilename: 'compiled.mjs' },
-                        transforms: [ 'typescript' ]
+                        sourceMapOptions: { compiledFilename: 'compiled.mjs' }
                     });
                     const map = {
                         ...compiled.sourceMap,
@@ -73,7 +74,10 @@ export const testNode = createSuite({
                 definitionLocations: [ { kind: 'unknown' } ],
                 title: `coverage rejects an out-of-range ${scenario}`,
                 async body(scope) {
-                    const compiled = transform(source, { transforms: [ 'typescript' ] });
+                    const compiled = transformCoverageFixture(source, {
+                        filePath: 'value.ts',
+                        sourceMapOptions: { compiledFilename: 'value.mjs' }
+                    });
                     const map = encodedMap(presortedDecodedMap({
                         version: 3,
                         sources: [ 'value.ts' ],

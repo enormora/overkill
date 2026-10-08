@@ -1,8 +1,9 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
+import { z } from 'zod/v4';
 
 export type CoverageFixtureSource = {
     readonly file: string;
@@ -80,4 +81,27 @@ export async function collectCoverageScript(fixture: CoverageSourceFixture, file
             }
         });
     });
+}
+
+export async function cacheCoverageSourceMap(
+    fixture: CoverageSourceFixture,
+    file: string,
+    map: unknown
+): Promise<void> {
+    const files = await readdir(fixture.rawDataDirectory);
+
+    for (const entry of files) {
+        const location = path.join(fixture.rawDataDirectory, entry);
+        const data = z.record(z.string(), z.unknown()).parse(JSON.parse(await readFile(location, 'utf8')));
+
+        await writeFile(
+            location,
+            JSON.stringify({
+                ...data,
+                'source-map-cache': {
+                    [pathToFileURL(path.join(fixture.projectRoot, file)).href]: { data: map }
+                }
+            })
+        );
+    }
 }
