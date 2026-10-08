@@ -11,6 +11,7 @@ import {
     coverageGeneratedScript,
     coverageSourceFile,
     coverageTypeScriptSource,
+    coverageNativeTypeScriptSource,
     type CoverageSourceKind
 } from './package-coverage-scripts.test.ts';
 
@@ -44,6 +45,27 @@ async function runPackagedCoverage(): Promise<{ readonly stderr: string; readonl
     });
 }
 
+function assertCoverageDiagnostics(scope: TestScope, stderr: string, sourceKind: CoverageSourceKind): void {
+    if (sourceKind === 'native') {
+        scope.assert.match(
+            stderr,
+            /^(?:\(node:\d+\) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n\(Use `node --trace-warnings \.\.\.` to show where the warning was created\)\n)?$/u
+        );
+    } else {
+        scope.assert.equal(stderr, '');
+    }
+}
+
+function assertGenericBranches(scope: TestScope, sourceCoverage: string): void {
+    scope.assert.deepEqual(
+        Array.from(sourceCoverage.matchAll(/^BRDA:3,0,[01],(?<count>\d+)$/gmu), function branchCount(match) {
+            return Number(match.groups?.count);
+        }),
+        [ 2, 1 ]
+    );
+    scope.assert.includes(sourceCoverage, 'BRF:2\nBRH:2\n');
+}
+
 function assertConsumerCoverage(scope: TestScope, lcov: string, sourceKind: CoverageSourceKind): void {
     const file = coverageSourceFile(sourceKind);
     const sourceCoverage = lcov.split('end_of_record').find(function describesConsumerSource(record) {
@@ -51,10 +73,13 @@ function assertConsumerCoverage(scope: TestScope, lcov: string, sourceKind: Cove
     });
 
     scope.require.defined(sourceCoverage);
-    scope.assert.includes(sourceCoverage, sourceKind === 'unloaded' ? 'DA:1,0\n' : 'DA:2,1\n');
+    const coveredLines = { javascript: 'DA:2,1\n', mapped: 'DA:2,1\n', native: 'DA:3,3\n', unloaded: 'DA:1,0\n' };
+    scope.assert.includes(sourceCoverage, coveredLines[sourceKind]);
     scope.assert.false(lcov.includes('SF:coverage-smoke.test.mjs'));
     scope.assert.false(lcov.includes('coverage-types.ts'));
-    if (sourceKind === 'mapped') {
+    if (sourceKind === 'native') {
+        assertGenericBranches(scope, sourceCoverage);
+    } else if (sourceKind === 'mapped') {
         scope.assert.false(lcov.includes('SF:coverage-source.mjs'));
     }
 }
@@ -67,7 +92,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: processModels.flatMap(function coverageProcess(processModel) {
-        return ([ 'javascript', 'mapped', 'unloaded' ] as const).map(function coverageTest(sourceKind) {
+        return ([ 'javascript', 'mapped', 'native', 'unloaded' ] as const).map(function coverageTest(sourceKind) {
             return createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
                 title: `${processModel} ${sourceKind}`,
@@ -84,7 +109,10 @@ export const testNode = createSuite({
                             path.join(packageSmokeFolder, 'coverage-source.mjs'),
                             coverageGeneratedScript(sourceKind)
                         ),
-                        fs.writeFile(path.join(packageSmokeFolder, 'coverage-source.ts'), coverageTypeScriptSource),
+                        fs.writeFile(
+                            path.join(packageSmokeFolder, 'coverage-source.ts'),
+                            sourceKind === 'native' ? coverageNativeTypeScriptSource : coverageTypeScriptSource
+                        ),
                         fs.writeFile(
                             path.join(packageSmokeFolder, 'coverage-types.ts'),
                             '/** Domain type. */\nexport type Value = number;\n'
@@ -93,13 +121,16 @@ export const testNode = createSuite({
                             path.join(packageSmokeFolder, 'coverage-unloaded.ts'),
                             'export function untouched(): number { return 42; }\n'
                         ),
-                        fs.writeFile(path.join(packageSmokeFolder, 'coverage-smoke.test.mjs'), coverageSmokeScript)
+                        fs.writeFile(
+                            path.join(packageSmokeFolder, 'coverage-smoke.test.mjs'),
+                            coverageSmokeScript(sourceKind)
+                        )
                     ]);
 
                     const result = await runPackagedCoverage();
                     const lcov = await fs.readFile(path.join(packageSmokeFolder, 'coverage-smoke/lcov.info'), 'utf8');
 
-                    scope.assert.equal(result.stderr, '');
+                    assertCoverageDiagnostics(scope, result.stderr, sourceKind);
                     scope.assert.includes(result.stdout, '1 discovered, 1 planned, 1 executed');
                     assertConsumerCoverage(scope, lcov, sourceKind);
 

@@ -61,7 +61,7 @@ type SupervisedAssignmentExecution = {
 };
 
 export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
-    readonly disconnect: () => void;
+    readonly disconnect: () => Promise<void> | void;
     readonly discoverRunFiles: SupervisedChildTestPlanDependencies['discoverRunFiles'];
     readonly dropBodyReadPermission: (command: SupervisedRunCommand) => void;
     readonly loadRunEngineModule: SupervisedChildTestPlanDependencies['loadRunEngineModule'];
@@ -372,7 +372,7 @@ async function runReceivedCommand(
         sendFailure(error, host);
         host.setExitCode(1);
     } finally {
-        host.disconnect();
+        await host.disconnect();
     }
 }
 

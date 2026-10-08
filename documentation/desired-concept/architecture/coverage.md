@@ -94,6 +94,8 @@ declared map or reference fails coverage rather than falling back to generated
 locations. Native raw data remains available in the run record's coverage directory.
 Native TypeScript reporting uses Node's whitespace-preserving type stripping
 to match source branch arms to V8 ranges without moving their locations.
+Method function ranges are matched to the stripped JavaScript AST so erased
+generic parameters do not discard branch execution counts.
 
 The integration aggregates raw coverage from the complete run process tree.
 It supports every valid microtest process model. Today those models are

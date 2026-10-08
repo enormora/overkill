@@ -1,10 +1,15 @@
 import { fromObject } from 'convert-source-map';
 import { transform } from 'sucrase';
 
-export type CoverageSourceKind = 'javascript' | 'mapped' | 'unloaded';
+export type CoverageSourceKind = 'javascript' | 'mapped' | 'native' | 'unloaded';
 
 export function coverageSourceFile(sourceKind: CoverageSourceKind): string {
-    const files = { javascript: 'coverage-source.mjs', mapped: 'coverage-source.ts', unloaded: 'coverage-unloaded.ts' };
+    const files = {
+        javascript: 'coverage-source.mjs',
+        mapped: 'coverage-source.ts',
+        native: 'coverage-source.ts',
+        unloaded: 'coverage-unloaded.ts'
+    };
 
     return files[sourceKind];
 }
@@ -51,6 +56,17 @@ export const coverageTypeScriptSource = [
 ]
     .join('\n');
 
+export const coverageNativeTypeScriptSource = [
+    'const calculator = {',
+    '    replace<Target extends number>(value: Target): number {',
+    '        return value > 0 ? value * 2 : 0;',
+    '    }',
+    '};',
+    'export const double = calculator.replace;',
+    ''
+]
+    .join('\n');
+
 export function coverageGeneratedScript(sourceKind: CoverageSourceKind): string {
     if (sourceKind !== 'mapped') {
         return coverageSourceScript;
@@ -65,14 +81,19 @@ export function coverageGeneratedScript(sourceKind: CoverageSourceKind): string 
     return `${compiled.code}\n${fromObject(map).toComment()}\n`;
 }
 
-export const coverageSmokeScript = [
-    "import { test } from '@overkill-dev/test';",
-    "import { double } from './coverage-source.mjs';",
-    '',
-    "export const testNode = test('covers consumer source', (scope) => {",
-    '    scope.assert.equal(double(21), 42);',
-    '    return scope.assert.collect();',
-    '});',
-    ''
-]
-    .join('\n');
+export function coverageSmokeScript(sourceKind: CoverageSourceKind): string {
+    return [
+        "import { test } from '@overkill-dev/test';",
+        `import { double } from './coverage-source.${sourceKind === 'native' ? 'ts' : 'mjs'}';`,
+        '',
+        "export const testNode = test('covers consumer source', (scope) => {",
+        '    scope.assert.equal(double(21), 42);',
+        ...sourceKind === 'native'
+            ? [ '    scope.assert.equal(double(21), 42);', '    scope.assert.equal(double(0), 0);' ]
+            : [],
+        '    return scope.assert.collect();',
+        '});',
+        ''
+    ]
+        .join('\n');
+}
