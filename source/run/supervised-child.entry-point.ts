@@ -1,7 +1,7 @@
 import { createClock } from '@enormora/clock';
+import { createChildProcessOutbox } from './child-process-outbox.ts';
 import { supervisedParentMessageSchema } from './supervised-protocol-schema.ts';
 import {
-    childProcessEnvelope,
     envelopeMessage
 } from './child-process-protocol.ts';
 import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
@@ -24,15 +24,17 @@ import {
 
 const ownedMessageListeners = new WeakSet<(message: unknown) => void>();
 
-const sendMessage = process.send?.bind(process);
-const disconnectProcess = process.disconnect?.bind(process);
+const outbox = createChildProcessOutbox(supervisedChildCorrelationId, {
+    disconnect: process.disconnect?.bind(process) ?? null,
+    send: process.send?.bind(process) ?? null
+});
 
 function send(message: Parameters<SupervisedChildHost['send']>[0]): void {
-    sendMessage?.(childProcessEnvelope(supervisedChildCorrelationId, message));
+    outbox.send(message);
 }
 
-function disconnect(): void {
-    disconnectProcess?.();
+async function disconnect(): Promise<void> {
+    await outbox.disconnect();
 }
 
 function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand | SupervisedChildCommand | null {
