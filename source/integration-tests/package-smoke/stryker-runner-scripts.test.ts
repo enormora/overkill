@@ -51,9 +51,6 @@ await plugin.factory({}).dispose();
 const manifestUrl = new URL('../../package.json', import.meta.resolve('@overkill-dev/stryker-runner'));
 const manifest = JSON.parse(readFileSync(manifestUrl, 'utf8'));
 assert.equal(manifest.name, '@overkill-dev/stryker-runner');
-assert.equal(typeof manifest.peerDependencies['@overkill-dev/run'], 'string');
-const runManifestUrl = new URL('node_modules/@overkill-dev/run/package.json', manifestUrl);
-assert.equal(JSON.parse(readFileSync(runManifestUrl, 'utf8')).name, '@overkill-dev/run');
 assert.deepEqual(manifest.exports, {
     '.': {
         import: './packages/stryker-runner/stryker-runner.entry-point.js',

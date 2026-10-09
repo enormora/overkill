@@ -6,6 +6,7 @@ const { tmpdir } = await import('node:os');
 const { join } = await import('node:path');
 const { pathToFileURL } = await import('node:url');
 const { strykerPlugins } = await import('@overkill-dev/stryker-runner');
+const configApiUrl = import.meta.resolve('@overkill-dev/run/config');
 
 const [plugin] = strykerPlugins;
 const launchCwd = process.cwd();
@@ -24,7 +25,9 @@ let fixtureNumber = 0;
 
 async function configuredRunner(profiles, profile) {
     const path = join(cwd, 'policy-' + fixtureNumber++ + '.mjs');
-    await writeFile(path, 'export const config = ' + JSON.stringify({ profiles }) + ';');
+    await writeFile(path,
+        'import { defineConfig } from ' + JSON.stringify(configApiUrl) + ';' +
+        'export const config = defineConfig(' + JSON.stringify({ profiles }) + ');');
     return makeRunner({ configPath: path, profile });
 }
 
