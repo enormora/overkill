@@ -2,7 +2,7 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import { createCaseId, createDefaultWorkId, type CaseId } from '../engine/identity.ts';
 import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
-import type { RunOrder, TestProfileConfig } from '../config/types.ts';
+import type { RunOrder, ProfileConfig } from '../config/types.ts';
 import type {
     RunRequest,
     CollectedRunCase,
@@ -95,7 +95,7 @@ function microtestCaptureControlsMessage(): string {
     return 'Run profile "microtest" cannot run test cases with authored capture controls.';
 }
 
-function assertMicrotestCaseHasNoCaptureControls(testCase: ProfileControlledRunCase, profile: TestProfileConfig): void {
+function assertMicrotestCaseHasNoCaptureControls(testCase: ProfileControlledRunCase, profile: ProfileConfig): void {
     if (profile.testFamily === 'microtest' && testCase.controls.capture !== null) {
         throw new RunCollectionError(microtestCaptureControlsMessage(), { cause: null }, 'loader');
     }
@@ -105,7 +105,7 @@ function isPositiveSafeInteger(value: number): boolean {
     return Number.isSafeInteger(value) && value > 0;
 }
 
-function timeoutControlsMessage(timeoutMilliseconds: number, profile: TestProfileConfig): string {
+function timeoutControlsMessage(timeoutMilliseconds: number, profile: ProfileConfig): string {
     return [
         `Run profile "${profile.testFamily}" cannot run test case timeoutMilliseconds ${timeoutMilliseconds};`,
         `expected positive safe integer <= ${profile.timeouts.softMilliseconds}.`
@@ -113,7 +113,7 @@ function timeoutControlsMessage(timeoutMilliseconds: number, profile: TestProfil
         .join(' ');
 }
 
-function assertCaseTimeoutControls(testCase: ProfileControlledRunCase, profile: TestProfileConfig): void {
+function assertCaseTimeoutControls(testCase: ProfileControlledRunCase, profile: ProfileConfig): void {
     const { timeoutMilliseconds } = testCase.controls;
 
     if (timeoutMilliseconds === null) {
@@ -128,7 +128,7 @@ function assertCaseTimeoutControls(testCase: ProfileControlledRunCase, profile: 
     }
 }
 
-function assertCaseControlsMatchProfile(testCase: ProfileControlledRunCase, profile: TestProfileConfig): void {
+function assertCaseControlsMatchProfile(testCase: ProfileControlledRunCase, profile: ProfileConfig): void {
     assertMicrotestCaseHasNoCaptureControls(testCase, profile);
     assertCaseTimeoutControls(testCase, profile);
 }
@@ -149,7 +149,7 @@ export function assertCollectedRunPlanMatchesTestFamily(plan: CollectedRunPlan, 
     }
 }
 
-export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profile: TestProfileConfig): void {
+export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profile: ProfileConfig): void {
     for (const testCase of testPlan.cases) {
         assertCaseControlsMatchProfile(testCase, profile);
     }
@@ -157,7 +157,7 @@ export function assertTestPlanCasesMatchProfilePolicy(testPlan: TestPlan, profil
 
 export function assertCollectedRunPlanCasesMatchProfilePolicy(
     plan: CollectedRunPlan,
-    profile: TestProfileConfig
+    profile: ProfileConfig
 ): void {
     for (const file of plan.files) {
         for (const testCase of file.cases) {

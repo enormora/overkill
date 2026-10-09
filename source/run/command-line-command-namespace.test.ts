@@ -1,4 +1,5 @@
 import { createFactory } from '@enormora/objectory';
+import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { doubleUsage, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
@@ -101,8 +102,16 @@ export const testNode = createOverkillSuite({
                 const benchmark = await commands.bench.listBenchmarks({
                     configPath: null,
                     cwd: '/project',
-                    paths: [],
-                    profile: null
+                    listRequest: {
+                        order: 'seeded',
+                        paths: [],
+                        profile: null,
+                        seed: { value: null },
+                        selection: { kind: 'all' },
+                        shard: { index: 1, total: 1 },
+                        withLocations: false,
+                        withOrphans: false
+                    }
                 });
 
                 scope.assert(doubleUsage.callCount, loaders.loadBaselineCommands, 1);
@@ -136,8 +145,25 @@ export const testNode = createOverkillSuite({
                     commands.bench.baseline.diff(context),
                     commands.bench.baseline.list(context),
                     commands.bench.baseline.update(context),
-                    commands.bench.listBenchmarks({ configPath: null, cwd: '/project', paths: [], profile: null }),
-                    commands.bench.runBenchmarks({ configPath: null, cwd: '/project', paths: [], profile: null })
+                    commands.bench.listBenchmarks({
+                        configPath: null,
+                        cwd: '/project',
+                        listRequest: {
+                            order: 'seeded',
+                            paths: [],
+                            profile: null,
+                            seed: { value: null },
+                            selection: { kind: 'all' },
+                            shard: { index: 1, total: 1 },
+                            withLocations: false,
+                            withOrphans: false
+                        }
+                    }),
+                    commands.bench.runBenchmarks({
+                        configPath: null,
+                        cwd: '/project',
+                        runRequest: { ...defaultRunRequest(), profile: null }
+                    })
                 ]);
                 const diagnostics = results.map(function readFallbackDiagnostic(result) {
                     return result.fallbackDiagnostics[0];

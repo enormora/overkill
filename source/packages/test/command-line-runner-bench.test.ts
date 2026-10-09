@@ -1,5 +1,4 @@
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
-import type { CommandLineBenchmarkRequest } from '../run/command-line.entry-point.ts';
 import { passingResult, runCommandLine } from '../../test-support/command-line-test-driver.ts';
 
 type CapturedCommandLineRun = Awaited<ReturnType<typeof runCommandLine>>;
@@ -11,8 +10,29 @@ const benchmarkVerbs: readonly BenchmarkVerb[] = [ 'run', 'list' ];
 function benchmarkRequests(
     result: CapturedCommandLineRun,
     verb: BenchmarkVerb
-): readonly CommandLineBenchmarkRequest[] {
-    return verb === 'run' ? result.benchmarkRunRequests : result.benchmarkListRequests;
+): readonly {
+    readonly configPath: string | null;
+    readonly cwd: string;
+    readonly paths: readonly string[];
+    readonly profile: string | null;
+}[] {
+    return verb === 'run'
+        ? result.benchmarkRunRequests.map(function commandSelection(request) {
+            return {
+                configPath: request.configPath,
+                cwd: request.cwd,
+                paths: request.runRequest.paths,
+                profile: request.runRequest.profile
+            };
+        })
+        : result.benchmarkListRequests.map(function commandSelection(request) {
+            return {
+                configPath: request.configPath,
+                cwd: request.cwd,
+                paths: request.listRequest.paths,
+                profile: request.listRequest.profile
+            };
+        });
 }
 
 export const testNode = createSuite({
@@ -20,6 +40,99 @@ export const testNode = createSuite({
     title: 'source/packages/test/command-line-runner-bench.test.ts',
     ...emptyTestData,
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'bench run carries shared selection and execution flags',
+            ...emptyTestData,
+            async body(scope: TestScope) {
+                const result = await runCommandLine([
+                    'bench',
+                    'run',
+                    '--file',
+                    'startup.bench.ts',
+                    '--title',
+                    'startup',
+                    '--filter',
+                    'tag=fast',
+                    '--runtime',
+                    'browser',
+                    '--order',
+                    'lexical',
+                    '--seed',
+                    '42',
+                    '--shard',
+                    '1/2',
+                    '--timings',
+                    '--workers',
+                    '4',
+                    '--no-capture',
+                    '--resource-budget',
+                    'residentSetBytes=1000'
+                ], passingResult());
+                const request = result.benchmarkRunRequests[0]?.runRequest;
+                scope.require.defined(request);
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.deepEqual({
+                    profile: request.profile,
+                    capture: request.capture,
+                    workers: request.workers,
+                    measureResourceUsage: request.measureResourceUsage,
+                    residentSetBytes: request.resourceBudgetOverrides?.residentSetBytes,
+                    timingCollection: request.timingCollection,
+                    order: request.order,
+                    seed: request.seed,
+                    shard: request.shard,
+                    selectionKind: request.selection.kind
+                }, {
+                    profile: null,
+                    capture: 'live',
+                    workers: 4,
+                    measureResourceUsage: true,
+                    residentSetBytes: 1000,
+                    timingCollection: 'precise',
+                    order: 'lexical',
+                    seed: { value: 42n },
+                    shard: { index: 1, total: 2 },
+                    selectionKind: 'filter'
+                });
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'bench list carries shared selection and display flags',
+            ...emptyTestData,
+            async body(scope: TestScope) {
+                const result = await runCommandLine([
+                    'bench',
+                    'list',
+                    '--file',
+                    'startup.bench.ts',
+                    '--title',
+                    'startup',
+                    '--filter',
+                    'tag=fast',
+                    '--runtime',
+                    'browser',
+                    '--order',
+                    'lexical',
+                    '--seed',
+                    '42',
+                    '--shard',
+                    '1/2',
+                    '--with-locations',
+                    '--with-orphans'
+                ], passingResult());
+                const request = result.benchmarkListRequests[0]?.listRequest;
+                scope.require.defined(request);
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.true(request.withLocations);
+                scope.assert.true(request.withOrphans);
+                scope.assert.deepEqual(request.shard, { index: 1, total: 2 });
+                scope.assert.equal(request.selection.kind, 'filter');
+                return scope.assert.collect();
+            }
+        }),
         ...benchmarkVerbs.flatMap(function createBenchmarkCommandTests(verb) {
             return [
                 createTestCase({
@@ -167,20 +280,15 @@ export const testNode = createSuite({
                     async body(scope: TestScope) {
                         const unsupportedArguments: readonly (readonly [string, ...string[]])[] = [
                             [ '--coverage' ],
-                            [ '--filter', 'tag=fast' ],
-                            [ '--file', 'a.bench.ts' ],
-                            [ '--title', 'cold start' ],
-                            [ '--runtime', 'browser' ],
-                            [ '--order', 'lexical' ],
-                            [ '--seed', '42' ],
-                            [ '--shard', '1/2' ],
-                            [ '--timings' ],
-                            [ '--workers', '2' ],
-                            [ '--no-capture' ],
-                            [ '--measure-resource-usage' ],
-                            [ '--resource-budget', 'residentSetBytes=1000' ],
-                            [ '--with-locations' ],
-                            [ '--with-orphans' ]
+                            [ '--record' ],
+                            [ '--debug' ],
+                            ...(verb === 'run' ? [ [ '--with-locations' ], [ '--with-orphans' ] ] : [
+                                [ '--timings' ],
+                                [ '--workers', '2' ],
+                                [ '--no-capture' ],
+                                [ '--measure-resource-usage' ],
+                                [ '--resource-budget', 'residentSetBytes=1000' ]
+                            ]) as readonly (readonly [string, ...string[]])[]
                         ];
 
                         for (const flagArguments of unsupportedArguments) {

@@ -8,6 +8,7 @@ import {
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
+    unexpectedBenchmarkOrchestrator,
     defaultMicrotestProfile,
     defaultRunRequest,
     testRunExecutionFacts
@@ -94,6 +95,7 @@ function createRecordedRunCommands(): RecordedRunCommands {
 
 function createRunnerDependencies(recordedCommands: RecordedRunCommands): CommandLineRunnerDependencies {
     const orchestrator: RunOrchestrator = {
+        bench: unexpectedBenchmarkOrchestrator,
         async resolve(command) {
             const profile = selectTestProfile(command.request.profile, command.config);
 

@@ -198,7 +198,7 @@ export function sanitizedChildEnvironment(
     environmentVariables: RuntimeCapabilityPolicyEnvironment,
     testFamily: RunTestFamily
 ): Record<string, string> {
-    if (testFamily === 'integration') {
+    if (testFamily !== 'microtest') {
         return definedEnvironmentVariables(environmentVariables);
     }
 

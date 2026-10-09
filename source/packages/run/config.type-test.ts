@@ -24,7 +24,18 @@ describe('@overkill-dev/run/config', function () {
         expect<typeof normalizeConfig>().type.toBe<(config: Config) => NormalizedConfig>();
         expect<ProfileConfig['testFamily']>().type.toBe<'benchmark' | 'integration' | 'microtest'>();
         expect<TestProfileConfig['testFamily']>().type.toBe<'integration' | 'microtest'>();
-        expect<keyof ProjectBenchmarkProfileConfig>().type.toBe<'files' | 'testFamily'>();
+        expect<keyof ProjectBenchmarkProfileConfig>().type.toBe<
+            keyof {
+                readonly attachments: true;
+                readonly execution: true;
+                readonly files: true;
+                readonly reporters: true;
+                readonly resourceUsage: true;
+                readonly testFamily: true;
+                readonly timings: true;
+                readonly timeouts: true;
+            }
+        >();
         expect<ProjectBenchmarkProfileConfig>().type.toBeAssignableFrom<{
             readonly testFamily: 'benchmark';
             readonly files: { readonly include: readonly ['source/startup.bench.ts']; };

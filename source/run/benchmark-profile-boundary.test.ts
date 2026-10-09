@@ -1,7 +1,7 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { ConfigError, normalizeConfig, type NormalizedConfig } from '../packages/run/config.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
-import { defaultRunRequest } from '../test-support/run-command-factory.ts';
+import { unexpectedBenchmarkOrchestrator, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { createDirectRunFixture } from '../test-support/direct-run-fixture.ts';
 import { copyConfig } from '../config/snapshot.ts';
 import { RunResolutionError } from './run-errors.ts';
@@ -58,6 +58,7 @@ export const testNode = suite('benchmark profile command boundaries', [
                         return { ...config, configPath: null };
                     },
                     orchestrator: {
+                        bench: unexpectedBenchmarkOrchestrator,
                         resolve: rejectUnexpectedInvocation,
                         run: rejectUnexpectedInvocation,
                         runWithReporterDelivery: rejectUnexpectedInvocation

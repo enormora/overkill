@@ -214,25 +214,41 @@ const workDistributionSchema = z.discriminatedUnion('mode', [
         .readonly()
 ]);
 
+const workerPoolExecutionFields = {
+    assignmentPolicy: z.optional(workerPoolAssignmentPolicySchema),
+    dispatchPolicy: z.optional(workerPoolDispatchPolicySchema),
+    hedging: z.optional(workerPoolHedgingSchema),
+    maxConcurrency: z.optional(maxConcurrencySchema),
+    maxWorkers: z.optional(positiveSafeIntegerSchema),
+    processModel: z.literal('worker-pool'),
+    scheduling: z.optional(z.enum([ 'concurrent', 'serial' ])),
+    workDistribution: z.optional(workDistributionSchema),
+    workerLifecycle: z.optional(workerLifecycleSchema)
+};
+
 export const integrationExecutionSchema = z.discriminatedUnion('processModel', [
     z
         .strictObject({
             maxConcurrency: z.optional(maxConcurrencySchema),
             processModel: z.literal('supervised-process'),
-            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ]))
+            scheduling: z.optional(z.enum([ 'concurrent', 'serial' ]))
         })
         .readonly(),
+    z.strictObject(workerPoolExecutionFields).readonly()
+]);
+
+const benchmarkAdmissionFields = {
+    maxConcurrency: z.optional(z.literal(1)),
+    scheduling: z.optional(z.literal('serial'))
+};
+
+const benchmarkExecutionSchema = z.discriminatedUnion('processModel', [
+    z.strictObject({ ...benchmarkAdmissionFields, processModel: z.literal('supervised-process') }).readonly(),
     z
         .strictObject({
-            assignmentPolicy: z.optional(workerPoolAssignmentPolicySchema),
-            dispatchPolicy: z.optional(workerPoolDispatchPolicySchema),
-            hedging: z.optional(workerPoolHedgingSchema),
-            maxConcurrency: z.optional(maxConcurrencySchema),
-            maxWorkers: z.optional(positiveSafeIntegerSchema),
-            processModel: z.literal('worker-pool'),
-            scheduling: z.optional(z.union([ z.literal('concurrent'), z.literal('serial') ])),
-            workDistribution: z.optional(workDistributionSchema),
-            workerLifecycle: z.optional(workerLifecycleSchema)
+            ...workerPoolExecutionFields,
+            ...benchmarkAdmissionFields,
+            hedging: z.optional(z.strictObject({ mode: z.literal('off') }).readonly())
         })
         .readonly()
 ]);
@@ -276,14 +292,20 @@ export const integrationProfileSchema = z
     })
     .readonly();
 
-export const benchmarkProfileSchema = z
+const benchmarkProfileSchema = z
     .strictObject({
+        attachments: attachmentLimitsSchema,
+        execution: z.optional(benchmarkExecutionSchema),
+        files: profileFilesSchema,
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        resourceUsage: z.optional(resourceUsageSchema),
         testFamily: z.literal('benchmark'),
-        files: profileFilesSchema
+        timings: z.optional(timingProfilePolicySchema),
+        timeouts: z.optional(timeoutSchema)
     })
     .readonly();
 
-export type ProjectBenchmarkProfileConfig = z.infer<typeof benchmarkProfileSchema>;
+export type ProjectBenchmarkProfileConfig = z.input<typeof benchmarkProfileSchema>;
 
 const profileSchema = z.discriminatedUnion('testFamily', [
     benchmarkProfileSchema,

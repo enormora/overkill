@@ -1,6 +1,6 @@
 import { validateNormalizedConfig } from '../config/validation.ts';
 import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
-import type { TestProfileConfig, ResourceBudgets } from '../config/types.ts';
+import type { ProfileConfig, ResourceBudgets } from '../config/types.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
@@ -119,6 +119,6 @@ export function validateRunInput(command: RunCommand): void {
     validateNormalizedConfig(command.config);
 }
 
-export function assertSupportedProcessEngine(command: RunCommand, profile: TestProfileConfig): void {
+export function assertSupportedProcessEngine(command: RunCommand, profile: ProfileConfig): void {
     assertSupportedProcessEngineSelection(command, profile);
 }

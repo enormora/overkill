@@ -110,6 +110,20 @@ complete registry, independent of path operands. Zero or multiple benchmark
 profiles require an explicit selection; unknown names and other families are
 argument errors. There is no reserved or default benchmark profile name.
 
+Current runner integration executes the family-neutral facade through the regular
+planning, placement, resource/runtime lifecycle, result, artifact, and reporter
+pipeline. `orchestrator.bench.list` returns the resolved plan without executing
+bodies or acquiring resources. `bench.run` and `bench.runWithReporterDelivery`
+use ordinary assertion outcomes. Measurement APIs and generated budgets remain
+later milestones.
+
+Current profiles admit serial execution with one lane, `maxConcurrency: 1`, and
+hedging off. Worker pools and supervised processes are supported; worker caps
+and requests remain recorded even when placement resolves one lane. Parallel
+placement remains gated on measurement strategy and calibration. Timeout
+defaults are collection 5000 ms, soft 40000 ms, and hard 60000 ms. Explicit
+policies may lower these limits; hard cannot exceed 60000 ms.
+
 It also confirms that Overkill should support:
 
 - benchmark registries or service handles as resources

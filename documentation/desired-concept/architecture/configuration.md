@@ -378,7 +378,13 @@ admission. Serial scheduling always admits one case at a time.
 Benchmark profiles share the project registry with ordinary profiles.
 `overkill run` and `overkill list` reject selected benchmark profiles and direct
 callers to `overkill bench`. A microtest profile named `benchmark` remains valid.
-Benchmark profiles currently configure only `testFamily` and `files`.
+Benchmark profiles configure `testFamily`, `files`, `execution`, `reporters`,
+`attachments`, `resourceUsage`, `timings`, and `timeouts`. Current runner
+integration supports isolated serial execution with one lane and hedging off.
+Collection, soft, and hard timeouts default to 5000, 40000, and 60000 ms;
+soft must not exceed hard, and hard must not exceed 60000 ms. Concurrent work
+groups are rejected until measurement strategy and calibration establish safe
+parallel placement.
 Benchmark commands accept explicit `--profile <name>` selection or infer the
 sole benchmark profile in the complete registry when omitted. Zero or multiple
 benchmark profiles require explicit selection. Path operands do not influence

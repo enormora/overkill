@@ -1,5 +1,5 @@
 import type { LoadedConfig } from '../config/config.ts';
-import { selectTestProfile } from './test-profile.ts';
+import { selectProfile } from './test-profile.ts';
 
 export type CommandLineReporterFallback = {
     readonly kind: 'configured';
@@ -16,7 +16,7 @@ export function selectCommandLineReporterFallback(
 ): CommandLineReporterFallback {
     const profile = loadedConfig.profiles[profileName] === undefined
         ? undefined
-        : selectTestProfile(profileName, loadedConfig);
+        : selectProfile(profileName, loadedConfig);
 
     if (loadedConfig.reporters !== null) {
         return { kind: 'configured', reporters: loadedConfig.reporters };

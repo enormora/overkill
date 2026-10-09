@@ -9,6 +9,7 @@ import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
+    unexpectedBenchmarkOrchestrator,
     defaultMicrotestProfile,
     defaultRunRequest,
     testRunExecutionFacts
@@ -126,6 +127,7 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
 
 function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator {
     return {
+        bench: unexpectedBenchmarkOrchestrator,
         resolve: resolvePassingRun,
         run,
         async runWithReporterDelivery(command) {

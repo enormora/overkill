@@ -278,7 +278,7 @@ function normalizeResourceConstraints(constraints: WorkUnitResourceConstraints):
         : constraints;
 }
 
-function mergeResourceConstraints(
+export function mergeResourceConstraints(
     left: WorkUnitResourceConstraints,
     right: WorkUnitResourceConstraints
 ): WorkUnitResourceConstraints {

@@ -336,6 +336,7 @@ function assertWorkerPoolPlanHelpers(scope: OverkillScope, collectedPlan: Collec
 function assertWorkUnitPlanning(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
     scope.assert.deepEqual(
         workUnitsFromCollectedPlan({
+            runConstraints: emptyWorkUnitResourceConstraints,
             fileSetForFile,
             order: 'plan',
             seed: { value: 1n },
@@ -348,6 +349,7 @@ function assertWorkUnitPlanning(scope: OverkillScope, collectedPlan: CollectedRu
     );
     scope.assert.deepEqual(
         workUnitsFromCollectedPlan({
+            runConstraints: emptyWorkUnitResourceConstraints,
             fileSetForFile,
             order: 'plan',
             seed: { value: 1n },
@@ -365,6 +367,7 @@ function assertWorkUnitPlanning(scope: OverkillScope, collectedPlan: CollectedRu
 function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
     scope.assert.deepEqual(
         createWorkerPoolPlacementPlan({
+            runConstraints: emptyWorkUnitResourceConstraints,
             assignmentPolicy: 'case-count-balanced',
             availableParallelism: 3,
             profileMaximumWorkers: null,
@@ -381,6 +384,7 @@ function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedR
     );
     scope.assert.deepEqual(
         createWorkerPoolPlacementResolution({
+            runConstraints: emptyWorkUnitResourceConstraints,
             assignmentPolicy: 'duration-history-balanced',
             availableParallelism: 3,
             profileMaximumWorkers: null,
@@ -474,6 +478,7 @@ export const testNode = createOverkillSuite({
             title: 'resource constraints resolve containing work-unit scheduling',
             body(scope: OverkillScope) {
                 const serialUnits = workUnitsFromCollectedPlan({
+                    runConstraints: emptyWorkUnitResourceConstraints,
                     fileSetForFile,
                     order: 'plan',
                     seed: { value: 1n },
@@ -483,6 +488,7 @@ export const testNode = createOverkillSuite({
                     workerLifecycle: 'reuse'
                 });
                 const singleWorkerUnits = workUnitsFromCollectedPlan({
+                    runConstraints: emptyWorkUnitResourceConstraints,
                     fileSetForFile,
                     order: 'plan',
                     seed: { value: 1n },

@@ -1,12 +1,14 @@
-import type { NormalizedConfig, TestProfileConfig } from '../config/types.ts';
+import type { BenchmarkProfileConfig, NormalizedConfig, ProfileConfig, TestProfileConfig } from '../config/types.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 
-export function selectTestProfile(profileName: string, config: NormalizedConfig): TestProfileConfig {
-    const profile = config.profiles[profileName];
+export function selectProfile(profileName: string, config: NormalizedConfig): ProfileConfig {
+    const profile = Object.hasOwn(config.profiles, profileName) ? config.profiles[profileName] : undefined;
 
-    if (profile === undefined) {
-        return invalidRequest(`Unknown run profile: ${profileName}`);
-    }
+    return profile ?? invalidRequest(`Unknown run profile: ${profileName}`);
+}
+
+export function selectTestProfile(profileName: string, config: NormalizedConfig): TestProfileConfig {
+    const profile = selectProfile(profileName, config);
 
     if (profile.testFamily === 'benchmark') {
         throw new RunResolutionError(
@@ -14,6 +16,17 @@ export function selectTestProfile(profileName: string, config: NormalizedConfig)
             undefined,
             'unsupported-request'
         );
+    }
+
+    return profile;
+}
+
+export function selectBenchmarkProfile(profileName: string, config: NormalizedConfig): BenchmarkProfileConfig {
+    const profile = selectProfile(profileName, config);
+
+    if (profile.testFamily !== 'benchmark') {
+        const requirement = 'Benchmark commands require testFamily "benchmark".';
+        return invalidRequest(`Profile "${profileName}" has testFamily "${profile.testFamily}". ${requirement}`);
     }
 
     return profile;

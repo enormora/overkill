@@ -3,7 +3,7 @@ import {
     createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
-import { readResolvedRunInput } from './run-input-resolution.ts';
+import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
 import {
     type LocalRunCollectionSource as RunCollectionSource,
@@ -20,6 +20,7 @@ import type { ResolvedRun, RunCommand, RunOrchestrator } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type LocalRunOptions = {
+    readonly input: ResolvedRunInput;
     readonly source: RunCollectionSource;
     readonly timing: RunTimingMeasurement;
 };
@@ -45,7 +46,7 @@ async function createLocalRunResult(
             'collection.resolve',
             emptyTimingSpanMetadata(),
             async function createTimedLocalRunOrEmptySelectionResult() {
-                return await createLocalRunOrEmptySelectionResult(command, dependencies, options.source);
+                return await createLocalRunOrEmptySelectionResult(command, dependencies, options.source, options.input);
             }
         );
     };
@@ -100,12 +101,11 @@ async function runLocalWithPolicy(
 async function runOrdinaryLocalCommand(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    timing: RunTimingMeasurement,
-    source: RunCollectionSource
+    options: LocalRunOptions
 ): Promise<RunResult> {
     const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
     try {
-        return await runLocalWithPolicy(command, dependencies, { source, timing }, runtimePolicy);
+        return await runLocalWithPolicy(command, dependencies, options, runtimePolicy);
     } finally {
         runtimePolicy?.takeRunErrors();
     }
@@ -114,13 +114,11 @@ async function runOrdinaryLocalCommand(
 export async function runLocalCommand(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    timing: RunTimingMeasurement,
-    source: RunCollectionSource
+    options: LocalRunOptions
 ): Promise<RunResult> {
     if (command.request.coverage) {
-        const input = await readResolvedRunInput(command, dependencies);
         const coverage = await import('./run-local-coverage.ts');
-        return await coverage.createCoverageLocalRunResult({ command, dependencies, input, source, timing });
+        return await coverage.createCoverageLocalRunResult({ command, dependencies, ...options });
     }
-    return await runOrdinaryLocalCommand(command, dependencies, timing, source);
+    return await runOrdinaryLocalCommand(command, dependencies, options);
 }

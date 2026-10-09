@@ -1,9 +1,9 @@
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 
-import type { NormalizedConfig, TestProfileConfig, Scheduling } from '../config/types.ts';
+import type { NormalizedConfig, ProfileConfig, Scheduling } from '../config/types.ts';
 import { resolveResourceUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
-import { selectTestProfile } from './test-profile.ts';
+import { selectProfile } from './test-profile.ts';
 
 import { hostProcessFacts } from './run-host-process.ts';
 import { runShardHashAlgorithm } from './run-shard-hash-algorithm.ts';
@@ -43,10 +43,10 @@ function resolvedSeed(request: RunRequest, dependencies: RunFactsDependencies): 
 
 function createRunExecutionFacts(
     input: RunFactsInput,
-    profile: TestProfileConfig
+    profile: ProfileConfig
 ): RunExecutionFacts {
     const facts = {
-        attachments: profile.testFamily === 'integration' ? profile.attachments : null,
+        attachments: profile.testFamily === 'microtest' ? null : profile.attachments,
         baselineUpdateMode: input.request.baselineUpdateMode,
         capture: input.request.capture,
         coverage: input.request.coverage,
@@ -105,7 +105,7 @@ export function runCaseFactsFromTestPlan(
 }
 
 export function createRunFacts(input: RunFactsInput): RunFacts {
-    const profile = selectTestProfile(input.request.profile, input.config);
+    const profile = selectProfile(input.request.profile, input.config);
 
     return {
         cases: input.cases,

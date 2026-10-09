@@ -9,7 +9,14 @@ import type {
 import {
     collectedRunCaseEntries
 } from './collected-run-plan.ts';
-import type { CollectedRunPlan, PlacementPlan, RunSeed, RunShard, RunWorkerCountFacts } from './run-types.ts';
+import type {
+    CollectedRunPlan,
+    PlacementPlan,
+    RunSeed,
+    RunShard,
+    RunWorkerCountFacts,
+    WorkUnitResourceConstraints
+} from './run-types.ts';
 import {
     selectDurationHistoryPlacement,
     type DurationHistoryIndex,
@@ -39,6 +46,7 @@ type WorkerPoolPlacementShardInput = {
 };
 
 type WorkerPoolPlacementBaseInput = {
+    readonly runConstraints: WorkUnitResourceConstraints;
     readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
     readonly fileSetForFile: (file: string) => string | null;

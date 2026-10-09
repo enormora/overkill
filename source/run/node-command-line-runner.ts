@@ -35,21 +35,27 @@ export type NodeCommandLineRunnerInput = NodeCommandLineRunnerOptions & {
 };
 
 export function createNodeCommandLineRunner(input: NodeCommandLineRunnerInput): CommandLineRunner {
+    const orchestrator = createCurrentProcessRunOrchestrator(input.defaultEngine, {
+        discoverRunFilesWithProjectRoot: input.dependencies.discoverRunFilesWithProjectRoot,
+        loadRunEngineModule: input.dependencies.loadRunEngineModule,
+        loadRunTestModules: input.dependencies.loadRunTestModules,
+        startSupervisedChild: input.dependencies.startSupervisedChild,
+        startWorkerPoolHost: input.dependencies.startWorkerPoolHost
+    });
+
     return createCommandLineRunner({
         createDefaultReporter: loadDefaultLineReporter,
         loadBaselineCommands: loadUnimplementedBaselineCommands,
         async loadBenchmarkCommands() {
             const { createBenchmarkCommands } = await import('./benchmark-commands.ts');
 
-            return createBenchmarkCommands(input.dependencies.loadConfig);
+            return createBenchmarkCommands({
+                createDefaultReporter: loadDefaultLineReporter,
+                loadConfig: input.dependencies.loadConfig,
+                orchestrator
+            });
         },
         loadConfig: input.dependencies.loadConfig,
-        orchestrator: createCurrentProcessRunOrchestrator(input.defaultEngine, {
-            discoverRunFilesWithProjectRoot: input.dependencies.discoverRunFilesWithProjectRoot,
-            loadRunEngineModule: input.dependencies.loadRunEngineModule,
-            loadRunTestModules: input.dependencies.loadRunTestModules,
-            startSupervisedChild: input.dependencies.startSupervisedChild,
-            startWorkerPoolHost: input.dependencies.startWorkerPoolHost
-        })
+        orchestrator
     });
 }

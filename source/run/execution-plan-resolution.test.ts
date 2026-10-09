@@ -10,7 +10,7 @@ import {
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
 import { RunExecutionPlanError } from './run-errors.ts';
-import type { CollectedRunPlan } from './run-types.ts';
+import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import {
     createWorkerPoolPlacementPlan,
     type WorkerPoolPlacementPlanInput
@@ -138,6 +138,7 @@ function workerPoolPlacementInput(
     selectedPlan: CollectedRunPlan
 ): WorkerPoolPlacementPlanInput {
     return {
+        runConstraints: emptyWorkUnitResourceConstraints,
         assignmentPolicy: 'case-count-balanced',
         availableParallelism: 3,
         fileSetForFile,

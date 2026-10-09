@@ -84,6 +84,7 @@ function planningInput(
     workDistribution: WorkDistribution
 ): WorkUnitPlanningInput {
     return {
+        runConstraints: emptyWorkUnitResourceConstraints,
         fileSetForFile() {
             return null;
         },

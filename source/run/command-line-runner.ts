@@ -4,19 +4,14 @@ import type {
     LoadedConfig,
     ConfigLoadRequest
 } from '../config/config.ts';
-import {
-    createCommandLineConfig,
-    createCommandLineListConfig,
-    type CommandLineConfigDependencies
+import type {
+    CommandLineConfigDependencies
 } from './command-line-config.ts';
-import type { RunCommand, RunOrchestrator } from './run-types.ts';
+import type { RunOrchestrator } from './run-types.ts';
 
 import {
     createCommandLineErrorResultFromUnknown,
-    formatRunnerErrorDiagnostics,
-    commandLineExitCodes,
     type CommandLineListTestsRequest,
-    readExitCodeFromRunResult,
     type CommandLineBaselineCommands,
     type CommandLineBenchmarkCommands,
     type CommandLineCommand,
@@ -29,12 +24,15 @@ import {
 } from './command-line-command-namespace.ts';
 import { createUnimplementedCommand } from './command-line-unimplemented-commands.ts';
 
-import { renderResolvedRunList } from './run-list-renderer.ts';
+import {
+    assertOrdinaryCommandProfile,
+    runTestsWithLoadedConfig,
+    listTestsWithLoadedConfig
+} from './command-line-execution.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import {
     createSystemRunTimingMeasurement,
-    emptyTimingSpanMetadata,
-    type RunInvocationTimingOptions
+    emptyTimingSpanMetadata
 } from './run-timing-collection.ts';
 
 export type CommandLineRunner = {
@@ -53,101 +51,6 @@ export type CommandLineRunnerDependencies = CommandLineCommandLoaders & CommandL
     readonly orchestrator: RunOrchestrator;
 };
 
-async function createCommandFromRequest(
-    request: CommandLineRunTestsRequest,
-    loadedConfig: LoadedConfig,
-    dependencies: CommandLineRunnerDependencies
-): Promise<RunCommand> {
-    return {
-        config: await createCommandLineConfig(loadedConfig, request, dependencies),
-        cwd: request.cwd,
-        engine: { kind: 'default' },
-        request: {
-            ...request.runRequest,
-            capabilityRestrictions: { mode: 'enabled' }
-        }
-    };
-}
-
-function createCommandFromListRequest(
-    request: CommandLineListTestsRequest,
-    loadedConfig: LoadedConfig
-): RunCommand {
-    return {
-        config: createCommandLineListConfig(loadedConfig, request.listRequest.profile),
-        cwd: request.cwd,
-        engine: { kind: 'default' },
-        request: {
-            baselineUpdateMode: 'none',
-            capabilityRestrictions: { mode: 'enabled' },
-            capture: 'buffered',
-            coverage: false,
-            debug: {
-                mode: 'off',
-                selectors: []
-            },
-            execution: { mode: 'profile-default' },
-            measureResourceUsage: null,
-            order: request.listRequest.order,
-            paths: request.listRequest.paths,
-            profile: request.listRequest.profile,
-            resourceBudgetOverrides: null,
-            resourceUsageSamplingIntervalMilliseconds: null,
-            seed: request.listRequest.seed,
-            selection: request.listRequest.selection,
-            shard: request.listRequest.shard,
-            timingCollection: 'profile-default',
-            verbose: false,
-            workers: null
-        }
-    };
-}
-
-async function runTestsWithLoadedConfig(
-    request: CommandLineRunTestsRequest,
-    dependencies: CommandLineRunnerDependencies,
-    loadedConfig: LoadedConfig,
-    options: RunInvocationTimingOptions
-): Promise<CommandLineRunnerResult> {
-    const command = await createCommandFromRequest(request, loadedConfig, dependencies);
-    const runResult = await dependencies.orchestrator.runWithReporterDelivery(command, options);
-
-    return {
-        exitCode: readExitCodeFromRunResult(runResult.result),
-        fallbackDiagnostics: formatRunnerErrorDiagnostics(runResult.undeliveredRunnerErrors),
-        runResult: runResult.result,
-        stdoutLines: []
-    };
-}
-
-async function listTestsWithLoadedConfig(
-    request: CommandLineListTestsRequest,
-    dependencies: CommandLineRunnerDependencies,
-    loadedConfig: LoadedConfig
-): Promise<CommandLineRunnerResult> {
-    const command = createCommandFromListRequest(request, loadedConfig);
-    const resolvedRun = await dependencies.orchestrator.resolve(command);
-
-    if (resolvedRun.collectionRunnerErrors.length > 0) {
-        return {
-            exitCode: commandLineExitCodes.runnerError,
-            fallbackDiagnostics: formatRunnerErrorDiagnostics(resolvedRun.collectionRunnerErrors),
-            runResult: null,
-            stdoutLines: []
-        };
-    }
-
-    return {
-        exitCode: commandLineExitCodes.pass,
-        fallbackDiagnostics: [],
-        runResult: null,
-        stdoutLines: renderResolvedRunList(resolvedRun, {
-            withLocations: request.listRequest.withLocations,
-            withOrphans: request.listRequest.withOrphans
-        })
-    };
-}
-
 export function createCommandLineRunner(dependencies: CommandLineRunnerDependencies): CommandLineRunner {
     const commandNamespace = createCommandLineCommandNamespace(dependencies);
 
@@ -157,6 +60,7 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
         async listTests(request) {
             try {
                 const loadedConfig = await dependencies.loadConfig(request);
+                assertOrdinaryCommandProfile(request.listRequest.profile, loadedConfig);
                 return await listTestsWithLoadedConfig(request, dependencies, loadedConfig);
             } catch (error: unknown) {
                 return createCommandLineErrorResultFromUnknown(error);
@@ -176,6 +80,7 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
                     }
                 );
 
+                assertOrdinaryCommandProfile(request.runRequest.profile, loadedConfig);
                 return await runTestsWithLoadedConfig(request, dependencies, loadedConfig, { timing });
             } catch (error: unknown) {
                 return createCommandLineErrorResultFromUnknown(error);

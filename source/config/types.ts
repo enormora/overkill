@@ -160,9 +160,26 @@ export type IntegrationProfileConfig = {
     readonly timeouts: TimeoutPolicy;
 };
 
+export type BenchmarkExecution = IntegrationExecutionShape<
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolDispatchPolicy,
+    Extract<WorkerPoolHedgingPolicy, { readonly mode: 'off'; }>,
+    HostProcess,
+    1,
+    'serial',
+    WorkerLifecycle,
+    WorkDistribution
+>;
+
 export type BenchmarkProfileConfig = {
-    readonly testFamily: 'benchmark';
+    readonly attachments: AttachmentLimits;
+    readonly execution: BenchmarkExecution;
     readonly files: ProfileFiles;
+    readonly reporters: readonly DefinedReporter[] | null;
+    readonly resourceUsage: ResourceUsagePolicy;
+    readonly testFamily: 'benchmark';
+    readonly timings: TimingProfilePolicy;
+    readonly timeouts: TimeoutPolicy;
 };
 
 export type TestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig;

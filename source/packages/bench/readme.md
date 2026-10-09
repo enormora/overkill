@@ -33,12 +33,33 @@ Public types include `AuthoringAnnotations`, `AuthoringControls`,
 `Table`, `TestBody`, `TestCase`, `TestNode`, `TestScope`, and
 `TestScopeAssertContext`.
 
-The `@overkill-dev/test` binary recognizes `overkill bench run [paths...]` and
-`overkill bench list [paths...]` with `--config` and `--profile <name>`.
-Omitting `--profile` selects the sole configured `testFamily: 'benchmark'`
-profile. Missing, ambiguous, unknown, or ordinary-family selections return
-argument error `3`. Valid selection also returns `3` because workload listing
-and execution are not implemented; config loads, but workloads are not imported.
+The `@overkill-dev/test` binary runs benchmark profiles through
+`overkill bench run [paths...]` and lists their resolved plan through
+`overkill bench list [paths...]`. Configure a shared project profile:
+
+```ts
+export const config = defineConfig({
+    profiles: {
+        startup: { testFamily: 'benchmark', files: { include: [ 'source/**/*.bench.ts' ] } }
+    }
+});
+```
+
+Omitting `--profile` selects the sole benchmark profile. Missing, ambiguous,
+unknown, or ordinary-family selections return argument error `3`.
+Both commands accept shared file, title, filter, runtime, order, seed, and shard
+selection flags. Run also supports capture, precise timings, worker requests,
+and diagnostic resource usage. List supports locations and orphans.
+
+Benchmarks use the regular resource lifecycle, assertion results, attachments,
+and configured reporters. Listing imports definitions but does not run bodies,
+acquire resources, instantiate reporters, or write run history.
+Execution defaults to a reused worker pool with serial scheduling, one case at
+a time, and one executor lane across the run. Worker requests and profile caps
+remain visible in execution facts. Supervised execution and fresh workers are
+also supported. Hedging and concurrent groups are rejected.
+Default timeouts are 5000 ms for collection, 40000 ms soft, and 60000 ms hard.
+Overrides must keep soft at or below hard and hard at or below 60000 ms.
 
 This facade does not yet measure performance. `benchmark(...)`, workloads,
 measurement strategies, and budgets are separate implementation milestones.

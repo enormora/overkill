@@ -1,4 +1,4 @@
-import type { NormalizedConfig, MaxConcurrency, TestProfileConfig, Scheduling } from '../config/types.ts';
+import type { NormalizedConfig, MaxConcurrency, ProfileConfig, Scheduling } from '../config/types.ts';
 import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
 import type { TestRuntimePolicy, RunResult, TestPlanCase } from './run-engine-primitives.ts';
 import { currentAttachmentCoordinator } from './attachment-coordinator-context.ts';
@@ -145,7 +145,7 @@ export function freezeValue<Value>(value: Value): Value {
 }
 
 export function resolveRunReporters(
-    profile: TestProfileConfig,
+    profile: ProfileConfig,
     fallbackReporters: NormalizedConfig['reporters']
 ): NonNullable<NormalizedConfig['reporters']> {
     return profile.reporters ?? fallbackReporters ?? [];

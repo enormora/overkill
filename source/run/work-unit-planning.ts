@@ -19,10 +19,12 @@ import {
     type CollectedRunPlan,
     type RunSeed,
     type RunShard,
-    type WorkUnit
+    type WorkUnit,
+    type WorkUnitResourceConstraints
 } from './run-types.ts';
 import {
     constrainedScheduling,
+    mergeResourceConstraints,
     workResourceConstraints
 } from './work-unit-resource-constraints.ts';
 import {
@@ -41,6 +43,7 @@ type WorkUnitShardInput = {
 };
 
 type WorkUnitPlanningBaseInput = {
+    readonly runConstraints: WorkUnitResourceConstraints;
     readonly fileSetForFile: (file: string) => string | null;
     readonly order: RunOrder;
     readonly seed: RunSeed;
@@ -164,8 +167,12 @@ function caseWorkUnit(work: WorkId, policy: WorkUnitPolicy, group: string | null
     };
 }
 
-function workUnitWithResourceConstraints(unit: WorkUnit, plan: CollectedRunPlan): WorkUnit {
-    const resourceConstraints = workResourceConstraints(unit.work, plan);
+function workUnitWithResourceConstraints(
+    unit: WorkUnit,
+    plan: CollectedRunPlan,
+    runConstraints: WorkUnitResourceConstraints
+): WorkUnit {
+    const resourceConstraints = mergeResourceConstraints(runConstraints, workResourceConstraints(unit.work, plan));
 
     return {
         ...unit,
@@ -174,9 +181,13 @@ function workUnitWithResourceConstraints(unit: WorkUnit, plan: CollectedRunPlan)
     };
 }
 
-function workUnitsWithResourceConstraints(units: readonly WorkUnit[], plan: CollectedRunPlan): readonly WorkUnit[] {
+function workUnitsWithResourceConstraints(
+    units: readonly WorkUnit[],
+    plan: CollectedRunPlan,
+    runConstraints: WorkUnitResourceConstraints
+): readonly WorkUnit[] {
     return units.map(function withResourceConstraints(unit) {
-        return workUnitWithResourceConstraints(unit, plan);
+        return workUnitWithResourceConstraints(unit, plan, runConstraints);
     });
 }
 
@@ -521,6 +532,7 @@ export function workUnitsFromCollectedPlan(
 
     return workUnitsWithResourceConstraints(
         unitsWithLocalOrder(shardedUnits, input.selectedPlan, input.order, input.seed),
-        input.selectedPlan
+        input.selectedPlan,
+        input.runConstraints
     );
 }

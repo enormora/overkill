@@ -1,22 +1,22 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { TestProfileConfig } from '../config/types.ts';
+import type { ProfileConfig } from '../config/types.ts';
 import { invalidRequest } from './run-errors.ts';
 import type { RunCommand } from './run-types.ts';
 
-function separateRuntime(profile: TestProfileConfig): boolean {
+function separateRuntime(profile: ProfileConfig): boolean {
     return profile.execution.processModel !== 'in-process';
 }
 
-function processModelLabel(profile: TestProfileConfig): string {
+function processModelLabel(profile: ProfileConfig): string {
     return profile.execution.processModel;
 }
 
-function customEngineLabel(profile: TestProfileConfig): string {
+function customEngineLabel(profile: ProfileConfig): string {
     return profile.execution.processModel === 'supervised-process' ? 'Supervised' : profile.execution.processModel;
 }
 
-function assertSupportedSeparateRuntimeEngine(command: RunCommand, profile: TestProfileConfig): void {
+function assertSupportedSeparateRuntimeEngine(command: RunCommand, profile: ProfileConfig): void {
     if (command.engine.kind === 'instance') {
         invalidRequest(
             `Instance engines are not supported with ${processModelLabel(profile)} execution. Use a module engine.`
@@ -40,7 +40,7 @@ function insideCwd(cwd: string, filePath: string): boolean {
     return !relativeModulePath.startsWith('..') && !path.isAbsolute(relativeModulePath);
 }
 
-function assertSupportedSeparateRuntimeModule(command: RunCommand, profile: TestProfileConfig): void {
+function assertSupportedSeparateRuntimeModule(command: RunCommand, profile: ProfileConfig): void {
     if (command.engine.kind !== 'module') {
         return;
     }
@@ -50,7 +50,7 @@ function assertSupportedSeparateRuntimeModule(command: RunCommand, profile: Test
     }
 }
 
-export function assertSupportedProcessEngine(command: RunCommand, profile: TestProfileConfig): void {
+export function assertSupportedProcessEngine(command: RunCommand, profile: ProfileConfig): void {
     if (!separateRuntime(profile)) {
         return;
     }

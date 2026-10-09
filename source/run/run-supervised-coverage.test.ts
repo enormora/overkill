@@ -66,9 +66,9 @@ async function assertSupervisedAttempt(
         ...fixture.request.command,
         request: { ...fixture.request.command.request, paths: [ passingFile ] }
     };
-    const result = await createSupervisedRunResult(
+    const result = await createSupervisedRunResult({
         command,
-        {
+        dependencies: {
             ...fixture
                 .request
                 .dependencies,
@@ -93,9 +93,14 @@ async function assertSupervisedAttempt(
                 });
             }
         },
-        null,
-        configuredFilesRunCollectionSource
-    );
+        timing: null,
+        source: configuredFilesRunCollectionSource,
+        input: {
+            ...fixture.request.input,
+            files: [ { file: passingFile, fileSet: null, href: `virtual:${passingFile}`, path: passingFile } ],
+            request: command.request
+        }
+    });
     scope.assert.equal(executed, !failFacts);
     scope.assert.equal(result.status, 'failed');
     scope.assert.equal(result.runnerErrors[0]?.subtype, failFacts ? 'runtime-state' : 'coverage');

@@ -2,7 +2,7 @@ import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
 import { ConfigError } from '../config/config-error.ts';
 import type { ConfigLoadRequest } from '../config/config.ts';
-import type { RunRequest } from './run-types.ts';
+import type { ProfileRunRequest, RunRequest } from './run-types.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 
 type CommandLineRunOrder = Exclude<RunRequest['order'], 'plan'>;
@@ -28,17 +28,19 @@ export type CommandLineRunTestsRequest = ConfigLoadRequest & {
     readonly runRequest: RunRequest;
 };
 
+type CommandLineListRequest<Profile extends string | null> = {
+    readonly order: CommandLineRunOrder;
+    readonly paths: readonly string[];
+    readonly profile: Profile;
+    readonly seed: RunRequest['seed'];
+    readonly selection: RunRequest['selection'];
+    readonly shard: RunRequest['shard'];
+    readonly withLocations: boolean;
+    readonly withOrphans: boolean;
+};
+
 export type CommandLineListTestsRequest = ConfigLoadRequest & {
-    readonly listRequest: {
-        readonly order: CommandLineRunOrder;
-        readonly paths: readonly string[];
-        readonly profile: string;
-        readonly seed: RunRequest['seed'];
-        readonly selection: RunRequest['selection'];
-        readonly shard: RunRequest['shard'];
-        readonly withLocations: boolean;
-        readonly withOrphans: boolean;
-    };
+    readonly listRequest: CommandLineListRequest<string>;
 };
 
 export type CommandLineCommandContext = ConfigLoadRequest & {
@@ -62,19 +64,20 @@ export type CommandLineBaselineCommands = {
     readonly update: CommandLineCommand;
 };
 
-export type CommandLineBenchmarkRequest = ConfigLoadRequest & {
-    readonly paths: readonly string[];
-    readonly profile: string | null;
+export type BenchmarkRunRequest = ProfileRunRequest<string | null>;
+
+export type CommandLineBenchmarkRunRequest = ConfigLoadRequest & {
+    readonly runRequest: BenchmarkRunRequest;
 };
 
-export type CommandLineBenchmarkCommand = (
-    request: CommandLineBenchmarkRequest
-) => Promise<CommandLineRunnerResult>;
+export type CommandLineBenchmarkListRequest = ConfigLoadRequest & {
+    readonly listRequest: CommandLineListRequest<string | null>;
+};
 
 export type CommandLineBenchmarkCommands = {
     readonly baseline: CommandLineBaselineCommands;
-    readonly listBenchmarks: CommandLineBenchmarkCommand;
-    readonly runBenchmarks: CommandLineBenchmarkCommand;
+    readonly listBenchmarks: (request: CommandLineBenchmarkListRequest) => Promise<CommandLineRunnerResult>;
+    readonly runBenchmarks: (request: CommandLineBenchmarkRunRequest) => Promise<CommandLineRunnerResult>;
 };
 
 function formatRunnerError(error: RunnerError): string {

@@ -246,6 +246,7 @@ function assertEmptyCollectedFiles(scope: OverkillScope): void {
 
     scope.assert.deepEqual(
         workUnitsFromCollectedPlan({
+            runConstraints: emptyWorkUnitResourceConstraints,
             fileSetForFile,
             order: 'plan',
             seed: { value: 1n },
@@ -262,6 +263,7 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
     const emptyPlan = collectedPlanWithFiles([]);
     const manyPlan = collectedPlanWithFiles(manyCollectedFiles());
     const singleWorkerPlan = createWorkerPoolPlacementPlan({
+        runConstraints: emptyWorkUnitResourceConstraints,
         assignmentPolicy: 'case-count-balanced',
         availableParallelism: 1,
         profileMaximumWorkers: null,
@@ -275,6 +277,7 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
         workerLifecycle: 'reuse'
     });
     const cappedWorkerPlan = createWorkerPoolPlacementPlan({
+        runConstraints: emptyWorkUnitResourceConstraints,
         assignmentPolicy: 'case-count-balanced',
         availableParallelism: 99,
         profileMaximumWorkers: null,
@@ -290,6 +293,7 @@ function assertWorkerCountBounds(scope: OverkillScope): void {
 
     scope.assert.deepEqual(
         createWorkerPoolPlacementPlan({
+            runConstraints: emptyWorkUnitResourceConstraints,
             assignmentPolicy: 'case-count-balanced',
             availableParallelism: 8,
             profileMaximumWorkers: null,

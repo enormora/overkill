@@ -5,7 +5,12 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
-import type { WorkerLifecycle } from '../config/types.ts';
+import {
+    emptyWorkUnitResourceConstraints,
+    type CollectedRunPlan,
+    type PlacementPlan,
+    type ResolvedRun
+} from './run-types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import type {
     CreatedWorkerPool,
@@ -18,9 +23,7 @@ import {
 } from './worker-pool-runtime.ts';
 import { createWorkerPoolPlacementPlan } from './worker-pool-placement-planning.ts';
 
-type CollectedRunPlan = WorkerPoolRunRuntime['collectedPlan'];
-type ResolvedRun = WorkerPoolRunRuntime['resolvedRun'];
-type PlacementPlan = NonNullable<ResolvedRun['facts']['execution']['placementPlan']>;
+type WorkerLifecycle = WorkerPoolCreationOptions['workerLifecycle'];
 export type CreatedWorkerPools = {
     readonly push: (...options: readonly WorkerPoolCreationOptions[]) => number;
 };
@@ -97,6 +100,7 @@ function baseResolvedRun(): ResolvedRun {
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({
+                    runConstraints: emptyWorkUnitResourceConstraints,
                     assignmentPolicy: 'case-count-balanced',
                     availableParallelism: 2,
                     profileMaximumWorkers: null,

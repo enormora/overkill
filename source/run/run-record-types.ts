@@ -2,7 +2,7 @@ import type { Except } from 'type-fest';
 import type { RuntimeId, WorkId } from '../engine/identity.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
-import type { CoveragePolicy, LoaderConfig, TestProfileConfig } from '../config/types.ts';
+import type { CoveragePolicy, LoaderConfig, ProfileConfig } from '../config/types.ts';
 import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest } from './run-types.ts';
@@ -47,7 +47,7 @@ type RunRecordInputs = {
     readonly cwd: string;
     readonly engine: RunEngineFacts;
     readonly environment: RunEnvironmentFacts;
-    readonly execution: TestProfileConfig['execution'];
+    readonly execution: ProfileConfig['execution'];
     readonly facts: RunFacts | null;
     readonly id: string;
     readonly identities: readonly WorkId[];

@@ -1,6 +1,6 @@
 import type { RunResult } from '../engine/run-result.ts';
 import type { CoverageRunnerErrorCause } from '../engine/coverage-artifact.ts';
-import type { CoveragePolicy, TestProfileConfig } from '../config/types.ts';
+import type { CoveragePolicy, ProfileConfig } from '../config/types.ts';
 import type { CoverageSession, CoverageSessionRequest } from './coverage-session.ts';
 import { RunCollectionError } from './run-errors.ts';
 
@@ -53,7 +53,7 @@ export async function startCoverageSession(request: CoverageSessionRequest): Pro
     }
 }
 
-export function microtestCoveragePolicy(profile: TestProfileConfig): CoveragePolicy {
+export function microtestCoveragePolicy(profile: ProfileConfig): CoveragePolicy {
     if (profile.testFamily !== 'microtest') {
         throw new Error('Coverage policy requires a microtest profile.');
     }

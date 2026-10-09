@@ -62,7 +62,7 @@ export type RunDebugRequest = {
     readonly selectors: readonly [];
 };
 
-export type RunTestFamily = 'integration' | 'microtest';
+export type RunTestFamily = 'benchmark' | 'integration' | 'microtest';
 type RunHostProcessReasonKey = {
     readonly 'benchmark-isolation': true;
     readonly debugging: true;
@@ -161,7 +161,7 @@ export type DurationHistoryInput = {
     readonly source: 'runtime-state-index';
 };
 
-export type RunRequest = {
+export type ProfileRunRequest<Profile extends string | null> = {
     readonly baselineUpdateMode: 'none';
     readonly capabilityRestrictions: RunCapabilityRestrictionsRequest;
     readonly capture: 'buffered' | 'live';
@@ -171,7 +171,7 @@ export type RunRequest = {
     readonly measureResourceUsage: boolean | null;
     readonly order: RunOrder;
     readonly paths: readonly string[];
-    readonly profile: string;
+    readonly profile: Profile;
     readonly resourceBudgetOverrides: ResourceBudgets | null;
     readonly resourceUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
@@ -181,6 +181,8 @@ export type RunRequest = {
     readonly verbose: false;
     readonly workers: number | null;
 };
+
+export type RunRequest = ProfileRunRequest<string>;
 
 export type RunCommand = {
     readonly config: NormalizedConfig;
@@ -343,14 +345,29 @@ export type ResolvedRun = {
     readonly request: RunRequest;
 };
 
+export type RunReporterDeliveryResult = {
+    readonly deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
+    readonly result: RunResult;
+    readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
+};
+
+export type BenchmarkOrchestrator = {
+    readonly list: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>;
+    readonly run: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunResult>;
+    readonly runWithReporterDelivery: (
+        command: RunCommand,
+        options: RunInvocationTimingOptions
+    ) => Promise<RunReporterDeliveryResult>;
+};
+
 export type RunOrchestrator = {
+    readonly bench: BenchmarkOrchestrator;
     readonly resolve: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>;
-    readonly runWithReporterDelivery: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<{
-        readonly deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
-        readonly result: RunResult;
-        readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
-    }>;
+    readonly runWithReporterDelivery: (
+        command: RunCommand,
+        options?: RunInvocationTimingOptions
+    ) => Promise<RunReporterDeliveryResult>;
 };
 
 export type RunRuntimeAttachments = AttachmentCoordinator | null;

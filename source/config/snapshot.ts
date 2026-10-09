@@ -12,6 +12,7 @@ import type {
     WorkGroup,
     WorkDistribution,
     HostProcess,
+    BenchmarkExecution,
     IntegrationExecution,
     CoveragePolicy
 } from './types.ts';
@@ -184,9 +185,29 @@ function copyReporters(reporters: NormalizedConfig['reporters']): NormalizedConf
     return reporters === null ? null : Array.from(reporters);
 }
 
+function copyBenchmarkExecution(execution: BenchmarkExecution): BenchmarkExecution {
+    return execution.processModel === 'worker-pool'
+        ? {
+            ...execution,
+            hedging: { mode: 'off' },
+            hostProcess: copyHostProcess(execution.hostProcess),
+            workDistribution: copyWorkDistribution(execution.workDistribution)
+        }
+        : { ...execution };
+}
+
 function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
     if (profile.testFamily === 'benchmark') {
-        return { testFamily: 'benchmark', files: copyProfileFiles(profile.files) };
+        return {
+            attachments: { ...profile.attachments },
+            execution: copyBenchmarkExecution(profile.execution),
+            files: copyProfileFiles(profile.files),
+            reporters: copyReporters(profile.reporters),
+            resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
+            testFamily: profile.testFamily,
+            timings: copyTimingProfilePolicy(profile.timings),
+            timeouts: copyTimeoutPolicy(profile.timeouts)
+        };
     }
 
     if (profile.testFamily === 'integration') {

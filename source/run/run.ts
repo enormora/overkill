@@ -1,5 +1,6 @@
 import {
-    readResolvedRunInput
+    readResolvedRunInput,
+    type RunInvocation
 } from './run-input-resolution.ts';
 import {
     createIsolatedResolvedRun,
@@ -50,20 +51,21 @@ function commandWithResolvedSeed(command: RunCommand, dependencies: RunOrchestra
 }
 
 async function createResolvedRun(
-    command: RunCommand,
+    invocation: RunInvocation,
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement | null,
     source: RunCollectionSource
 ): Promise<ResolvedRun> {
-    const seededCommand = commandWithResolvedSeed(command, dependencies);
+    const seededCommand = commandWithResolvedSeed(invocation.command, dependencies);
     const input = await (timing?.measureAsync(
         'profile.resolve',
         emptyTimingSpanMetadata(),
         async function readTimedResolvedRunInput() {
-            return await readResolvedRunInput(seededCommand, dependencies);
+            return await readResolvedRunInput({ ...invocation, command: seededCommand }, dependencies);
         }
-    ) ?? readResolvedRunInput(seededCommand, dependencies));
-    const isolatedRun = createIsolatedResolvedRun(seededCommand, dependencies, input, { source, timing });
+    ) ?? readResolvedRunInput({ ...invocation, command: seededCommand }, dependencies));
+    const resolvedCommand = { ...seededCommand, config: input.config, engine: input.engine, request: input.request };
+    const isolatedRun = createIsolatedResolvedRun(resolvedCommand, dependencies, input, { source, timing });
 
     if (isolatedRun !== null) {
         return await isolatedRun;
@@ -73,9 +75,9 @@ async function createResolvedRun(
         'resolution.freeze',
         emptyTimingSpanMetadata(),
         async function createTimedLocalResolvedRun() {
-            return await createLocalResolvedRun(seededCommand, dependencies, input, source);
+            return await createLocalResolvedRun(resolvedCommand, dependencies, input, source);
         }
-    ) ?? createLocalResolvedRun(seededCommand, dependencies, input, source));
+    ) ?? createLocalResolvedRun(resolvedCommand, dependencies, input, source));
 }
 
 function invocationTiming(
@@ -86,26 +88,39 @@ function invocationTiming(
 }
 
 async function runCommand(
-    command: RunCommand,
+    invocation: RunInvocation,
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement,
     source: RunCollectionSource
 ): Promise<RunResult> {
-    const seededCommand = commandWithResolvedSeed(command, dependencies);
-    const isolatedResult = runIsolatedProcessCommand(seededCommand, dependencies, { source, timing });
+    const seededCommand = commandWithResolvedSeed(invocation.command, dependencies);
+    const input = await timing.measureAsync(
+        'profile.resolve',
+        emptyTimingSpanMetadata(),
+        async function readTimedRunInput() {
+            return await readResolvedRunInput({ ...invocation, command: seededCommand }, dependencies);
+        }
+    );
+    const resolvedCommand = { ...seededCommand, config: input.config, engine: input.engine, request: input.request };
+    const isolatedResult = runIsolatedProcessCommand(resolvedCommand, dependencies, { source, timing }, input);
 
     if (isolatedResult !== null) {
         return await isolatedResult;
     }
 
-    return await runLocalCommand(seededCommand, dependencies, timing, source);
+    return await runLocalCommand(resolvedCommand, dependencies, { input, source, timing });
 }
 
-export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
+type RunOperations = Pick<RunOrchestrator, 'resolve' | 'run' | 'runWithReporterDelivery'>;
+
+function createRunOperations(
+    dependencies: RunOrchestratorDependencies,
+    namespace: RunInvocation['namespace']
+): RunOperations {
     return {
         async resolve(command, options) {
             return await createResolvedRun(
-                command,
+                { command, namespace },
                 dependencies,
                 invocationTiming(options, dependencies),
                 configuredFilesRunCollectionSource
@@ -114,7 +129,7 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
 
         async run(command, options) {
             return await runCommand(
-                command,
+                { command, namespace },
                 dependencies,
                 invocationTiming(options, dependencies),
                 configuredFilesRunCollectionSource
@@ -125,7 +140,12 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
             const timing = invocationTiming(options, dependencies);
             const delivery = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(
                 async function runAndTrackReporterDelivery() {
-                    return await runCommand(command, dependencies, timing, configuredFilesRunCollectionSource);
+                    return await runCommand(
+                        { command, namespace },
+                        dependencies,
+                        timing,
+                        configuredFilesRunCollectionSource
+                    );
                 }
             );
 
@@ -138,12 +158,25 @@ export function createRunOrchestrator(dependencies: RunOrchestratorDependencies)
     };
 }
 
+export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
+    const benchmark = createRunOperations(dependencies, 'bench');
+
+    return {
+        ...createRunOperations(dependencies, 'test'),
+        bench: {
+            list: benchmark.resolve,
+            run: benchmark.run,
+            runWithReporterDelivery: benchmark.runWithReporterDelivery
+        }
+    };
+}
+
 export function createDirectEntrypointRunner(dependencies: RunOrchestratorDependencies): DirectEntrypointRunner {
     return async function runDirectEntrypoint(command, source, options) {
         const timing = invocationTiming(options, dependencies);
         const delivery = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(
             async function runAndTrackReporterDelivery() {
-                return await runCommand(command, dependencies, timing, source);
+                return await runCommand({ command, namespace: 'test' }, dependencies, timing, source);
             }
         );
 

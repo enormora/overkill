@@ -8,6 +8,7 @@ import {
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
+    unexpectedBenchmarkOrchestrator,
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
@@ -122,6 +123,7 @@ function createRunnerDependencies(
             return config;
         },
         orchestrator: {
+            bench: unexpectedBenchmarkOrchestrator,
             async resolve() {
                 throw new Error('Resolve is not used by the command-line runner.');
             },

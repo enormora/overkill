@@ -6,6 +6,7 @@ import {
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
+import { emptyWorkUnitResourceConstraints } from './run-types.ts';
 import type {
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
@@ -129,6 +130,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 hostProcess: { kind: 'direct' },
                 order: 'seeded',
                 placementPlan: createWorkerPoolPlacementPlan({
+                    runConstraints: emptyWorkUnitResourceConstraints,
                     assignmentPolicy: 'case-count-balanced',
                     availableParallelism: 2,
                     profileMaximumWorkers: null,

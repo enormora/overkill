@@ -1,12 +1,11 @@
-import { parse } from '@schema-hub/zod-error-formatter';
 import { ConfigError } from './config-error.ts';
 import { validateHostProcess } from './host-process.ts';
 import { assertValidProfileName, normalizeRequiredProfileFiles } from './profile-normalization.ts';
-import { benchmarkProfileSchema } from './schema.ts';
+import { validateBenchmarkExecution } from './benchmark-execution.ts';
 import type {
     NormalizedConfig,
     BenchmarkProfileConfig,
-    TestProfileConfig,
+    ProfileConfig,
     ResourceBudgets,
     ResourceUsagePolicy,
     TimeoutPolicy
@@ -55,13 +54,13 @@ export function validateResourceUsagePolicy(policy: ResourceUsagePolicy): void {
     }
 }
 
-function validateMicrotestProfile(profile: TestProfileConfig): void {
+function validateMicrotestProfile(profile: ProfileConfig): void {
     validateResourceUsagePolicy(profile.resourceUsage);
     validateTimeoutPolicy(profile.timeouts);
 }
 
-function validateAttachmentLimits(profile: TestProfileConfig): void {
-    if (profile.testFamily !== 'integration') {
+function validateAttachmentLimits(profile: ProfileConfig): void {
+    if (profile.testFamily === 'microtest') {
         return;
     }
     for (const [ name, value ] of Object.entries(profile.attachments)) {
@@ -69,7 +68,7 @@ function validateAttachmentLimits(profile: TestProfileConfig): void {
     }
 }
 
-function validateIntegrationProfile(profile: TestProfileConfig): void {
+function validateIntegrationProfile(profile: ProfileConfig): void {
     validateAttachmentLimits(profile);
     validateResourceUsagePolicy(profile.resourceUsage);
     validateTimeoutPolicy(profile.timeouts);
@@ -82,8 +81,9 @@ function validateIntegrationProfile(profile: TestProfileConfig): void {
 
 function validateBenchmarkProfile(profileName: string, profile: BenchmarkProfileConfig): void {
     try {
-        const benchmark = parse(benchmarkProfileSchema, profile);
-        normalizeRequiredProfileFiles(benchmark.files);
+        normalizeRequiredProfileFiles(profile.files);
+        validateIntegrationProfile(profile);
+        validateBenchmarkExecution(profile.execution, profile.timeouts);
     } catch (error: unknown) {
         throw new ConfigError(`Invalid benchmark profile "${profileName}": ${String(error)}`, { cause: error });
     }
