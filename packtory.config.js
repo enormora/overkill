@@ -198,7 +198,7 @@ export const config = {
         {
             name: 'stryker-runner',
             description: 'First-party Stryker TestRunner plugin for Overkill.',
-            additionalFiles: []
+            bundlePeerDependencies: [ '@overkill-dev/run' ]
         },
         {
             name: 'test',

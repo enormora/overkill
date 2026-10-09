@@ -656,6 +656,13 @@ profile or duplicated discovery policy is required. When exactly one microtest
 profile exists, its name is optional in Stryker's adapter configuration. When
 there are several, an explicit name is required. No eligible profile, an unknown
 name, or selection of a non-microtest profile fails before collection.
+Eligibility uses the complete normalized profile registry, including the built-in
+`microtest` fallback. No-config projects can infer that fallback. A custom
+microtest profile normally makes inference ambiguous with the fallback; explicitly
+configuring the `microtest` entry replaces it. Other profile families may coexist
+in the registry, but one invocation selects exactly one microtest profile.
+Pre-collection rejection covers profile and configuration selections; incompatible
+test nodes in selected files remain subject to collection-time validation.
 
 ### Execution And Coverage
 
