@@ -152,8 +152,8 @@ explicit name; unknown names and other families are argument errors.
 
 | Command                                        | Behavior                                                                      | Reference                                                          |
 | ---------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `overkill bench run [paths...]`                | Discover, plan, execute, measure, and evaluate benchmark workloads.           | [Benchmarking](../authoring/benchmarking.md)                       |
-| `overkill bench list [paths...]`               | Print the resolved benchmark workload plan without executing measurements.    | [Benchmarking](../authoring/benchmarking.md)                       |
+| `overkill bench run [paths...]`                | Execute benchmark profiles through regular runner planning and results.       | [Benchmarking](../authoring/benchmarking.md)                       |
+| `overkill bench list [paths...]`               | Print the resolved benchmark plan without executing bodies or resources.      | [Benchmarking](../authoring/benchmarking.md)                       |
 | `overkill bench baseline update [paths...]`    | Update changed or missing performance baselines; leave stale baselines alone. | [Baselines And Snapshots](../authoring/baselines-and-snapshots.md) |
 | `overkill bench baseline apply [paths...]`     | Reconcile performance baselines, including stale removals.                    | same                                                               |
 | `overkill bench baseline bootstrap [paths...]` | Create missing performance baselines without overwriting existing baselines.  | same                                                               |
@@ -281,3 +281,10 @@ Terminal width detection uses `process.stdout.columns`; updates on
 An explicitly configured `@overkill-dev/reporter-dot` still streams compact
 progress marks in non-interactive output. Non-interactive mode disables
 cursor-control reflow only; it does not silence dot progress.
+
+Current `bench run` and `bench list` share `--file`, `--title`, `--filter`,
+`--runtime`, `--order`, `--seed`, and `--shard` with ordinary commands.
+`bench run` also supports `--no-capture`, `--timings`, `--workers`,
+`--measure-resource-usage`, and `--resource-budget`; `bench list` supports
+`--with-locations` and `--with-orphans`. `--coverage` remains microtest-only.
+Benchmark measurement, debug, record, and baseline surfaces remain later work.

@@ -61,18 +61,32 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `loadConfig({ cwd, configPath })`
 
 The binary recognizes `overkill bench run [paths...]` and
-`overkill bench list [paths...]` with `--config` and `--profile`. Both methods
-accept `CommandLineBenchmarkRequest`: `{ cwd, configPath, paths, profile }`.
-Pass `null` for an omitted config path or profile. An omitted profile selects
-the sole configured benchmark profile; zero or multiple benchmark profiles
-require explicit selection. Unknown names and ordinary profile families return
-argument error `3`.
+`overkill bench list [paths...]`. Run accepts `CommandLineBenchmarkRunRequest`
+with `{ cwd, configPath, runRequest }`; list accepts
+`CommandLineBenchmarkListRequest` with `{ cwd, configPath, listRequest }`.
+Nested requests share the ordinary selection and execution fields, with
+`profile: string | null`. An omitted profile selects the sole benchmark profile.
+Unknown, missing, ambiguous, or ordinary-family selections return argument error
+`3`. Ordinary run/list and direct-file execution reject the benchmark family.
 
-Benchmark profiles load from shared `profiles` with `testFamily: 'benchmark'`.
-Ordinary run/list and direct-file execution reject that family. Valid benchmark
-selection still returns exit code `3` identifying the selected profile because
-workload listing and execution are not implemented. Selection loads config but
-does not discover files or import workload modules.
+Benchmark profiles use `testFamily: 'benchmark'` in the same registry and support
+`execution`, `reporters`, `attachments`, `resourceUsage`, `timings`, and
+`timeouts`. `orchestrator.bench.list(command, { timing: null })` returns a
+`ResolvedRun`; `bench.run` and `bench.runWithReporterDelivery` return the regular
+result and reporter-delivery shapes. These methods require an explicit profile
+in `RunCommand` and explicit invocation timing options. Ordinary methods reject
+benchmark profiles before discovery. CLI benchmark commands infer the sole
+benchmark profile when `--profile` is omitted.
+
+Benchmark execution supports worker pools and supervised processes. It defaults
+to reused workers, file work units, serial scheduling, `maxConcurrency: 1`, and
+hedging off. Placement resolves one lane across all work units even when more
+workers are requested. Concurrent groups and hedging are rejected. Timeout
+defaults are collection 5000 ms, soft 40000 ms, and hard 60000 ms; hard overrides
+cannot exceed 60000 ms. Resources, runtime descriptors, artifacts, assertion
+outcomes, and reporter selection follow the regular runner flow. Listing imports
+definitions without executing bodies or acquiring resources. Measurement,
+calibration, and benchmark budgets are not provided by this integration.
 
 Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 

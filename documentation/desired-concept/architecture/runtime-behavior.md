@@ -1211,3 +1211,15 @@ This document is the runtime counterpart to several others. Cross-links:
   the resolved identities, and partitioning that collected set. Overkill
   should not independently recollect dynamic test trees on each shard and
   hope they match.
+
+## Current benchmark runner integration
+
+Benchmark profiles enter the same collection, placement, resource/runtime,
+execution, result, attachment, and reporter flow through `orchestrator.bench`.
+Worker-pool placement contributes a run-wide serial and single-worker
+constraint, so all units use one lane. Supervised execution also admits one
+case at a time. Fresh workers and hosted pools retain their ordinary lifecycle
+semantics. Microtest permission restrictions do not apply to benchmark bodies.
+Listing imports definitions without bodies, resource acquisition, reporter
+creation, or persisted run history. Measurement strategies and calibration
+will determine whether future benchmark workloads can use parallel placement.

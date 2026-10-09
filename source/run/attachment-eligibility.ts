@@ -3,7 +3,7 @@ import { collectedRunCaseEntries } from './collected-run-plan.ts';
 import type { ResolvedRun } from './run-types.ts';
 
 export function runHasAttachmentScopes(resolved: ResolvedRun): boolean {
-    if (resolved.facts.execution.testFamily !== 'integration' || resolved.facts.cases.length === 0) {
+    if (resolved.facts.execution.testFamily === 'microtest' || resolved.facts.cases.length === 0) {
         return false;
     }
     const selected = new Set(resolved.facts.cases.map(function selectedWork(entry) {

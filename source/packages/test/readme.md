@@ -539,18 +539,21 @@ Supported command-line surface:
 - `--with-locations`
 - `--with-orphans`
 
-`bench run` and `bench list` currently accept path operands and `--config`
-only. They dispatch to the benchmark command namespace. Its default handlers
-return exit code `3` because benchmark execution is not implemented.
-Benchmark profiles, selection flags, measurements, and baseline
-commands belong to subsequent milestones.
+`bench run` and `bench list` select shared profiles with `testFamily: 'benchmark'`
+and use regular planning, execution, results, and reporters. They accept
+`--config`, `--profile`, and the same selection flags as ordinary commands.
+Run accepts `--no-capture`, `--timings`, `--workers`,
+`--measure-resource-usage`, and `--resource-budget`; list accepts
+`--with-locations` and `--with-orphans`. Coverage remains microtest-only.
+Benchmarks execute serially in one lane. Measurement and baseline commands
+remain separate milestones. See [`@overkill-dev/bench`](../bench/readme.md).
 
 `--resource-budget` accepts `activeResourceCount`,
 `javaScriptEngineHeapBytes`, `residentSetBytes`, and
 `residentSetGrowthBytesPerSecond`. Supplying a resource budget enables
 resource usage measurement for that run.
 
-`--workers` applies to `run` only and accepts a positive safe integer. The
+`--workers` applies to `run` and `bench run` and accepts a positive safe integer. The
 selected profile must use `worker-pool` execution.
 
 `--coverage` applies to `run` only. It requests coverage for the selected

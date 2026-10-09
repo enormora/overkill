@@ -22,7 +22,16 @@ const commandLoaders = {
     async loadBenchmarkCommands() {
         const { createBenchmarkCommands } = await import('../../run/benchmark-commands.ts');
 
-        return createBenchmarkCommands(loadConfig);
+        const [ runnerModule, orchestratorModule ] = await Promise.all([
+            import('../../run/command-line-runner.ts'),
+            import('../../run/run-orchestrator.entry-point.ts')
+        ]);
+
+        return createBenchmarkCommands({
+            createDefaultReporter: runnerModule.loadDefaultLineReporter,
+            loadConfig,
+            orchestrator: orchestratorModule.orchestrator
+        });
     }
 };
 
@@ -61,7 +70,17 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
 
     return {
         baseline: nodeCommandNamespace.baseline,
-        bench: nodeCommandNamespace.bench,
+        bench: {
+            baseline: nodeCommandNamespace.bench.baseline,
+            async listBenchmarks(request) {
+                const loadedRunner = await loadRunner();
+                return await loadedRunner.bench.listBenchmarks(request);
+            },
+            async runBenchmarks(request) {
+                const loadedRunner = await loadRunner();
+                return await loadedRunner.bench.runBenchmarks(request);
+            }
+        },
         async listTests(request) {
             const loadedRunner = await loadRunner();
 
@@ -125,8 +144,9 @@ export const commandLineRunner: CommandLineRunner = {
 export type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
-    CommandLineBenchmarkCommand,
-    CommandLineBenchmarkRequest,
+    BenchmarkRunRequest,
+    CommandLineBenchmarkRunRequest,
+    CommandLineBenchmarkListRequest,
     CommandLineCommand,
     CommandLineCommandContext,
     CommandLineExitCode,

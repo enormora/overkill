@@ -27,6 +27,8 @@ import {
     type ProjectUnmeasuredResourceUsage as ParsedProjectUnmeasuredResourceUsage
 } from './schema.ts';
 import type {
+    BenchmarkExecution,
+    BenchmarkProfileConfig,
     IntegrationExecution,
     IntegrationProfileConfig,
     MicrotestProfileConfig,
@@ -50,7 +52,9 @@ import {
     normalizedWorkDistribution
 } from './profile-normalization.ts';
 import { ConfigError } from './config-error.ts';
+import { validateBenchmarkExecution } from './benchmark-execution.ts';
 import {
+    defaultBenchmarkTimeoutPolicy,
     defaultConfigFileNames,
     defaultIntegrationProcessModel,
     defaultIntegrationScheduling,
@@ -426,9 +430,44 @@ function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): 
     };
 }
 
+function normalizeBenchmarkExecution(
+    execution: ProjectBenchmarkProfileConfig['execution']
+): BenchmarkExecution {
+    const serialExecution = {
+        ...normalizeIntegrationExecution(execution),
+        maxConcurrency: 1 as const,
+        scheduling: 'serial' as const
+    };
+
+    return serialExecution.processModel === 'worker-pool'
+        ? { ...serialExecution, hedging: { mode: 'off' } }
+        : serialExecution;
+}
+
+function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): BenchmarkProfileConfig {
+    const timeouts = normalizeTimeouts(profile.timeouts, defaultBenchmarkTimeoutPolicy);
+    const execution = normalizeBenchmarkExecution(profile.execution);
+    const files = normalizeRequiredProfileFiles(profile.files);
+
+    assertValidTimeouts(timeouts);
+    validateBenchmarkExecution(execution, timeouts);
+    assertValidWorkDistribution(execution, files);
+
+    return {
+        attachments: attachmentLimitsSchema.parse(profile.attachments),
+        execution,
+        files,
+        reporters: normalizeReporters(profile.reporters),
+        resourceUsage: normalizeResourceUsage(profile.resourceUsage),
+        testFamily: 'benchmark',
+        timings: normalizeTimings(profile.timings),
+        timeouts
+    };
+}
+
 function normalizeProfile(profile: ProjectProfileConfig, configPath: string | null): ProfileConfig {
     if (profile.testFamily === 'benchmark') {
-        return { testFamily: 'benchmark', files: normalizeRequiredProfileFiles(profile.files) };
+        return normalizeBenchmarkProfile(profile);
     }
 
     if (profile.testFamily === 'integration') {

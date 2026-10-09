@@ -46,6 +46,8 @@ import {
     type ProcessModel,
     type ProfileConfig,
     type BenchmarkProfileConfig,
+    type BenchmarkOrchestrator,
+    type RunReporterDeliveryResult,
     type ProfileFiles,
     type Config,
     type ProjectIntegrationProfileConfig,
@@ -174,6 +176,16 @@ type ExpectedRunHostProcessFacts = {
 
 function assertOrchestratorTypes(): void {
     expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
+    expect<typeof orchestrator.bench>().type.toBe<BenchmarkOrchestrator>();
+    expect<typeof orchestrator.bench.list>().type.toBe<
+        (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>
+    >();
+    expect<typeof orchestrator.bench.run>().type.toBe<
+        (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunResult>
+    >();
+    expect<typeof orchestrator.bench.runWithReporterDelivery>().type.toBe<
+        (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunReporterDeliveryResult>
+    >();
     expect<typeof orchestrator.resolve>().type.toBe<
         (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
     >();

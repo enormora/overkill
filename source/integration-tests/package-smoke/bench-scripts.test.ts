@@ -129,7 +129,7 @@ import { defineConfig } from '@overkill-dev/test/config';
 export const config = defineConfig({
     profiles: {
         benchmark: { testFamily: 'microtest' },
-        startup: { testFamily: 'benchmark', files: { include: ['never-imported.bench.mjs'] } }
+        startup: { testFamily: 'benchmark', files: { include: ['startup.bench.mjs'] } }
     }
 });
 `;
@@ -139,29 +139,53 @@ import assert from 'node:assert/strict';
 import { createEngine } from '@overkill-dev/engine';
 import { commandLineRunner, createNodeCommandLineRunner } from '@overkill-dev/run/command-line';
 
-const cwd = process.argv[1];
+const cwd = process.argv[2];
+const runRequest = {
+    baselineUpdateMode: 'none', capabilityRestrictions: { mode: 'enabled' }, capture: 'buffered',
+    coverage: false, debug: { mode: 'off', selectors: [] }, execution: { mode: 'profile-default' },
+    measureResourceUsage: null, order: 'lexical', paths: [], profile: null,
+    resourceBudgetOverrides: null, resourceUsageSamplingIntervalMilliseconds: null,
+    seed: { value: 42n }, selection: { kind: 'all' }, shard: { index: 1, total: 1 },
+    timingCollection: 'profile-default', verbose: false, workers: null
+};
 for (const runner of [commandLineRunner, createNodeCommandLineRunner({ defaultEngine: createEngine() })]) {
-    for (const [method, command] of [['runBenchmarks', 'bench run'], ['listBenchmarks', 'bench list']]) {
-        for (const profile of [null, 'startup']) {
-            const result = await runner.bench[method]({
-                configPath: null, cwd, paths: ['never-imported.bench.mjs'], profile
-            });
-            assert.deepEqual(result, {
-                exitCode: 3,
-                fallbackDiagnostics: [
-                    'Overkill argument error: Command "' + command + '" for profile "startup" is not implemented yet.'
-                ],
-                runResult: null,
-                stdoutLines: []
-            });
-        }
-        const rejected = await runner.bench[method]({ configPath: null, cwd, paths: [], profile: 'benchmark' });
-        assert.equal(rejected.exitCode, 3);
-        assert.deepEqual(rejected.fallbackDiagnostics, [
-            'Overkill argument error: Profile "benchmark" has testFamily "microtest". ' +
-                'Benchmark commands require testFamily "benchmark".'
+    for (const profile of [null, 'startup']) {
+        const result = await runner.bench.runBenchmarks({
+            configPath: null, cwd, runRequest: { ...runRequest, profile }
+        });
+        assert.equal(result.exitCode, 0);
+        assert.equal(result.runResult.summary.passed, 4);
+        assert.equal(result.runResult.summary.skipped, 1);
+        assert.deepEqual(result.fallbackDiagnostics, []);
+        const listed = await runner.bench.listBenchmarks({ configPath: null, cwd, listRequest: {
+            order: 'lexical', paths: [], profile, seed: { value: 42n }, selection: { kind: 'all' },
+            shard: { index: 1, total: 1 }, withLocations: false, withOrphans: true
+        } });
+        assert.equal(listed.exitCode, 0);
+        assert.equal(listed.runResult, null);
+        assert.deepEqual(listed.stdoutLines, [
+            'order=lexical seed=42',
+            'startup.bench.mjs',
+            '  standard distribution',
+            '    bench authoring',
+            '      parameterized',
+            '      rows',
+            '        case 1 [{"kind":"number","value":2}]',
+            '        case 2 [{"kind":"number","value":4}]',
+            '      skips',
+            '    composes with ordinary authoring',
+            'Orphans',
+            '  (none)'
         ]);
     }
+    const rejected = await runner.bench.runBenchmarks({
+        configPath: null, cwd, runRequest: { ...runRequest, profile: 'benchmark' }
+    });
+    assert.equal(rejected.exitCode, 3);
+    assert.deepEqual(rejected.fallbackDiagnostics, [
+        'Overkill argument error: Profile "benchmark" has testFamily "microtest". ' +
+            'Benchmark commands require testFamily "benchmark".'
+    ]);
 }
 console.log('benchmark selection passed');
 `;

@@ -5,7 +5,11 @@ import {
     defineReporter,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
+import {
+    unexpectedBenchmarkOrchestrator,
+    defaultRunConfig,
+    defaultRunRequest
+} from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     createCommandLineRunner,
@@ -53,6 +57,7 @@ const memoryReporter = defineReporter(function createMemoryReporter() {
 
 function createPassingOrchestrator(): RunOrchestrator {
     return {
+        bench: unexpectedBenchmarkOrchestrator,
         async resolve() {
             throw new Error('List resolution is not used.');
         },
@@ -86,8 +91,14 @@ function createTestRunner(): CommandLineRunner {
         async loadBenchmarkCommands() {
             const { createBenchmarkCommands } = await import('./benchmark-commands.ts');
 
-            return createBenchmarkCommands(async function loadConfig() {
-                return { ...config, configPath: null };
+            return createBenchmarkCommands({
+                async createDefaultReporter() {
+                    return memoryReporter;
+                },
+                async loadConfig() {
+                    return { ...config, configPath: null };
+                },
+                orchestrator: createPassingOrchestrator()
             });
         },
         async loadConfig() {
@@ -160,8 +171,16 @@ export const testNode = createOverkillSuite({
                 const result = await createTestRunner().bench.listBenchmarks({
                     configPath: null,
                     cwd: fixtureCwd,
-                    paths: [],
-                    profile: null
+                    listRequest: {
+                        order: 'seeded',
+                        paths: [],
+                        profile: null,
+                        seed: { value: null },
+                        selection: { kind: 'all' },
+                        shard: { index: 1, total: 1 },
+                        withLocations: false,
+                        withOrphans: false
+                    }
                 });
 
                 scope.assert.deepEqual(result.fallbackDiagnostics, [

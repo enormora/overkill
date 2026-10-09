@@ -1,5 +1,5 @@
 import type { Clock } from '@enormora/clock';
-import type { HostProcess, TestProfileConfig } from '../config/types.ts';
+import type { HostProcess, ProfileConfig } from '../config/types.ts';
 import type {
     Engine,
     Execute,
@@ -37,7 +37,7 @@ export type WorkerPoolHostOutputSink = (
 export type WorkerPoolCreationOptions = {
     readonly cwd: string;
     readonly hostProcess: HostProcess;
-    readonly testFamily: TestProfileConfig['testFamily'];
+    readonly testFamily: ProfileConfig['testFamily'];
     readonly timing?: RunTimingMeasurement | null;
     readonly workerCount: number;
     readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
@@ -47,7 +47,7 @@ export type WorkerPoolHostProcessStartOptions = {
     readonly cwd: string;
     readonly environmentVariables: RuntimeCapabilityPolicyEnvironment;
     readonly nodeArguments: readonly string[];
-    readonly testFamily: TestProfileConfig['testFamily'];
+    readonly testFamily: ProfileConfig['testFamily'];
 };
 
 export type WorkerPoolHostProcessStarter = (

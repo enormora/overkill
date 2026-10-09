@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import {
     command,
     flag,
@@ -40,7 +41,7 @@ type ResourceBudgetOverride = {
     readonly value: number;
 };
 
-type RunCommandArguments = {
+type RunCommandArguments<Profile extends string | null> = {
     readonly configPath: string | null;
     readonly coverage: boolean;
     readonly file: string | null;
@@ -49,7 +50,7 @@ type RunCommandArguments = {
     readonly noCapture: boolean;
     readonly order: RunOrder;
     readonly paths: readonly string[];
-    readonly profile: string;
+    readonly profile: Profile;
     readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly runtimeFilters: readonly RunFilter[];
     readonly seed: RunSeed;
@@ -59,13 +60,13 @@ type RunCommandArguments = {
     readonly workers: CommandLineRunTestsRequest['runRequest']['workers'];
 };
 
-type ListCommandArguments = {
+type ListCommandArguments<Profile extends string | null> = {
     readonly configPath: string | null;
     readonly file: string | null;
     readonly filter: RunFilter | null;
     readonly order: RunOrder;
     readonly paths: readonly string[];
-    readonly profile: string;
+    readonly profile: Profile;
     readonly runtimeFilters: readonly RunFilter[];
     readonly seed: RunSeed;
     readonly shard: RunShard;
@@ -233,7 +234,7 @@ const titleSelectionType: Type<string, string | null> = {
     }
 };
 
-function readMeasureResourceUsage(args: RunCommandArguments): boolean | null {
+function readMeasureResourceUsage(args: RunCommandArguments<string | null>): boolean | null {
     if (args.measureResourceUsage || args.resourceBudgetOverrides !== null) {
         return true;
     }
@@ -241,11 +242,16 @@ function readMeasureResourceUsage(args: RunCommandArguments): boolean | null {
     return null;
 }
 
-function readCapture(args: RunCommandArguments): CommandLineRunTestsRequest['runRequest']['capture'] {
+function readCapture(args: RunCommandArguments<string | null>): CommandLineRunTestsRequest['runRequest']['capture'] {
     return args.noCapture ? 'live' : 'buffered';
 }
 
-function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandLineRunTestsRequest {
+function createRunTestsRequest<Profile extends string | null>(
+    args: RunCommandArguments<Profile>,
+    cwd: string
+): Except<CommandLineRunTestsRequest, 'runRequest'> & {
+    readonly runRequest: Except<CommandLineRunTestsRequest['runRequest'], 'profile'> & { readonly profile: Profile; };
+} {
     return {
         configPath: args.configPath,
         cwd,
@@ -275,7 +281,14 @@ function createRunTestsRequest(args: RunCommandArguments, cwd: string): CommandL
     };
 }
 
-function createListTestsRequest(args: ListCommandArguments, cwd: string): CommandLineListTestsRequest {
+function createListTestsRequest<Profile extends string | null>(
+    args: ListCommandArguments<Profile>,
+    cwd: string
+): Except<CommandLineListTestsRequest, 'listRequest'> & {
+    readonly listRequest: Except<CommandLineListTestsRequest['listRequest'], 'profile'> & {
+        readonly profile: Profile;
+    };
+} {
     return {
         configPath: args.configPath,
         cwd,
@@ -373,21 +386,39 @@ const benchmarkProfileType: Type<string[], string | null> = {
 };
 
 const benchmarkCommandArguments = {
-    configPath: configPathArgument,
+    ...sharedCommandArguments,
     profile: multioption({
         long: 'profile',
         type: benchmarkProfileType,
         defaultValue() {
             return null;
         }
-    }),
-    paths: restPositionals({ displayName: 'path' })
+    })
 };
 
-type BenchmarkCommandArguments = {
-    readonly configPath: string | null;
-    readonly profile: string | null;
-    readonly paths: readonly string[];
+const runExecutionArguments = {
+    measureResourceUsage: flag({ long: 'measure-resource-usage' }),
+    noCapture: flag({ long: 'no-capture' }),
+    resourceBudgetOverrides: multioption({
+        long: 'resource-budget',
+        type: resourceBudgetOverridesType,
+        defaultValue() {
+            return null;
+        }
+    }),
+    timings: flag({ long: 'timings' }),
+    workers: option({
+        long: 'workers',
+        type: runWorkersType,
+        defaultValue() {
+            return null;
+        }
+    })
+};
+
+const listDisplayArguments = {
+    withLocations: flag({ long: 'with-locations' }),
+    withOrphans: flag({ long: 'with-orphans' })
 };
 
 export type CommandLineParserExit = {
@@ -418,25 +449,9 @@ export async function dispatchOverkillCommand(
         args: {
             ...sharedCommandArguments,
             coverage: flag({ long: 'coverage' }),
-            measureResourceUsage: flag({ long: 'measure-resource-usage' }),
-            noCapture: flag({ long: 'no-capture' }),
-            resourceBudgetOverrides: multioption({
-                long: 'resource-budget',
-                type: resourceBudgetOverridesType,
-                defaultValue() {
-                    return null;
-                }
-            }),
-            timings: flag({ long: 'timings' }),
-            workers: option({
-                long: 'workers',
-                type: runWorkersType,
-                defaultValue() {
-                    return null;
-                }
-            })
+            ...runExecutionArguments
         },
-        async handler(args: RunCommandArguments) {
+        async handler(args: RunCommandArguments<string>) {
             const runner = await loadRunner();
 
             return await runner.runTests(createRunTestsRequest(args, cwd));
@@ -446,10 +461,9 @@ export async function dispatchOverkillCommand(
         name: 'list',
         args: {
             ...sharedCommandArguments,
-            withLocations: flag({ long: 'with-locations' }),
-            withOrphans: flag({ long: 'with-orphans' })
+            ...listDisplayArguments
         },
-        async handler(args: ListCommandArguments) {
+        async handler(args: ListCommandArguments<string>) {
             const runner = await loadRunner();
 
             return await runner.listTests(createListTestsRequest(args, cwd));
@@ -462,30 +476,20 @@ export async function dispatchOverkillCommand(
         cmds: {
             list: command({
                 name: 'list',
-                args: benchmarkCommandArguments,
-                async handler(args: BenchmarkCommandArguments) {
+                args: { ...benchmarkCommandArguments, ...listDisplayArguments },
+                async handler(args: ListCommandArguments<string | null>) {
                     const runner = await loadRunner();
 
-                    return await runner.bench.listBenchmarks({
-                        paths: args.paths,
-                        profile: args.profile,
-                        configPath: args.configPath,
-                        cwd
-                    });
+                    return await runner.bench.listBenchmarks(createListTestsRequest(args, cwd));
                 }
             }),
             run: command({
                 name: 'run',
-                args: benchmarkCommandArguments,
-                async handler(args: BenchmarkCommandArguments) {
+                args: { ...benchmarkCommandArguments, ...runExecutionArguments },
+                async handler(args: Except<RunCommandArguments<string | null>, 'coverage'>) {
                     const runner = await loadRunner();
 
-                    return await runner.bench.runBenchmarks({
-                        paths: args.paths,
-                        profile: args.profile,
-                        configPath: args.configPath,
-                        cwd
-                    });
+                    return await runner.bench.runBenchmarks(createRunTestsRequest({ ...args, coverage: false }, cwd));
                 }
             })
         }

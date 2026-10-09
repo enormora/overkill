@@ -223,6 +223,7 @@ function planningInput(
     fileSetLookup: (file: string) => string | null
 ): WorkUnitPlanningInput {
     return {
+        runConstraints: emptyWorkUnitResourceConstraints,
         fileSetForFile: fileSetLookup,
         order: 'plan',
         seed: { value: 1n },
@@ -462,6 +463,7 @@ export const testNode = createOverkillSuite({
                 for (const availableParallelism of [ Number.NaN, 0 ]) {
                     scope.assert.throws(function rejectInvalidParallelism() {
                         createWorkerPoolPlacementPlan({
+                            runConstraints: emptyWorkUnitResourceConstraints,
                             assignmentPolicy: 'case-count-balanced',
                             availableParallelism,
                             profileMaximumWorkers: null,

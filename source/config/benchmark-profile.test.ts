@@ -2,6 +2,40 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { ConfigError, defineConfig, normalizeConfig } from '../packages/run/config.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
 
+const benchmarkPolicy = {
+    attachments: {
+        maxInlineBytes: 1_048_576,
+        maxArtifactBytes: 10_485_760,
+        maxScopeBytes: 10_485_760,
+        maxScopeAttachments: 100
+    },
+    execution: {
+        processModel: 'worker-pool',
+        scheduling: 'serial',
+        maxConcurrency: 1,
+        maxWorkers: null,
+        assignmentPolicy: 'case-count-balanced',
+        dispatchPolicy: 'dynamic-lease',
+        hedging: { mode: 'off' },
+        hostProcess: { kind: 'direct' },
+        workDistribution: { mode: 'file' },
+        workerLifecycle: 'reuse'
+    },
+    reporters: null,
+    resourceUsage: {
+        measure: false,
+        samplingIntervalMilliseconds: 100,
+        budgets: {
+            activeResourceCount: null,
+            javaScriptEngineHeapBytes: null,
+            residentSetBytes: null,
+            residentSetGrowthBytesPerSecond: null
+        }
+    },
+    timings: { collection: 'summary' },
+    timeouts: { collectionMilliseconds: 5000, hardMilliseconds: 60_000, softMilliseconds: 40_000 }
+} as const;
+
 const benchmarkFiles = { include: [ 'source/startup.bench.ts' ] } as const;
 
 export const testNode = suite('benchmark profile configuration', [
@@ -23,6 +57,7 @@ export const testNode = suite('benchmark profile configuration', [
             scope.assert.deepEqual(
                 normalized.profiles.startup,
                 {
+                    ...benchmarkPolicy,
                     testFamily: 'benchmark',
                     files: { include: [ 'source/startup.bench.ts' ], exclude: [] }
                 } as const
@@ -30,6 +65,7 @@ export const testNode = suite('benchmark profile configuration', [
             scope.assert.deepEqual(
                 normalized.profiles.benchmark,
                 {
+                    ...benchmarkPolicy,
                     testFamily: 'benchmark',
                     files: { sets: { cold: { include: [ 'source/startup.bench.ts' ], exclude: [] } } }
                 } as const
@@ -60,6 +96,7 @@ export const testNode = suite('benchmark profile configuration', [
             scope.assert.deepEqual(
                 loaded.profiles.startup,
                 {
+                    ...benchmarkPolicy,
                     testFamily: 'benchmark',
                     files: { include: [ 'source/startup.bench.ts' ], exclude: [] }
                 } as const
@@ -77,7 +114,28 @@ export const testNode = suite('benchmark profile configuration', [
             { testFamily: 'benchmark', files: { sets: {} } },
             { testFamily: 'benchmark', files: { include: [ 'source/*.ts' ], sets: { cold: benchmarkFiles } } },
             { testFamily: 'benchmark', files: benchmarkFiles, coverage: {} },
-            { testFamily: 'benchmark', files: benchmarkFiles, execution: {} },
+            { testFamily: 'benchmark', files: benchmarkFiles, execution: { processModel: 'in-process' } },
+            {
+                testFamily: 'benchmark',
+                files: benchmarkFiles,
+                execution: { processModel: 'worker-pool', scheduling: 'concurrent' }
+            },
+            {
+                testFamily: 'benchmark',
+                files: benchmarkFiles,
+                execution: { processModel: 'worker-pool', maxConcurrency: 2 }
+            },
+            {
+                testFamily: 'benchmark',
+                files: benchmarkFiles,
+                execution: { processModel: 'worker-pool', hedging: { mode: 'tail' } }
+            },
+            { testFamily: 'benchmark', files: benchmarkFiles, timeouts: { hardMilliseconds: 60_001 } },
+            {
+                testFamily: 'benchmark',
+                files: benchmarkFiles,
+                timeouts: { hardMilliseconds: 100, softMilliseconds: 101 }
+            },
             { testFamily: 'benchmark', files: benchmarkFiles, reporters: [] }
         ];
         for (const profile of invalidProfiles) {

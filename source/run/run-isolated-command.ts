@@ -91,7 +91,7 @@ function supervisedCapabilityRestrictions(
     profile: ResolvedRunInput['profile'],
     command: RunCommand
 ): SupervisedCommandBase['capabilityRestrictions'] {
-    if (profile.testFamily === 'integration') {
+    if (profile.testFamily !== 'microtest') {
         return { mode: 'disabled' };
     }
 

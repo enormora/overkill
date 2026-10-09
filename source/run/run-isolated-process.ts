@@ -6,9 +6,8 @@ import {
     createResolvedRunFromCollection,
     type CollectionDurationHistoryIndex
 } from './run-collected-resolution.ts';
-import {
-    readResolvedRunInput,
-    type ResolvedRunInput
+import type {
+    ResolvedRunInput
 } from './run-input-resolution.ts';
 import {
     assertExpectedDirectEntrypointCollection,
@@ -233,11 +232,10 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
 async function createWorkerPoolRunResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    timing: RunTimingMeasurement | null,
-    source: RunCollectionSource
+    options: IsolatedRunOptions,
+    input: ResolvedRunInput
 ): Promise<RunResult> {
-    const input = await readResolvedRunInput(command, dependencies);
-
+    const { source, timing } = options;
     if (input.profile.execution.processModel !== 'worker-pool') {
         throw new Error('Expected worker-pool profile.');
     }
@@ -257,17 +255,23 @@ async function createWorkerPoolRunResult(
 export function runIsolatedProcessCommand(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    options: IsolatedRunOptions
+    options: IsolatedRunOptions,
+    input: ResolvedRunInput
 ): Promise<RunResult> | null {
-    const profile = command.config.profiles[command.request.profile];
-    const processModel = profile?.testFamily === 'benchmark' ? null : profile?.execution.processModel;
+    const { processModel } = input.profile.execution;
 
     if (processModel === 'supervised-process') {
-        return createSupervisedRunResult(command, dependencies, options.timing, options.source);
+        return createSupervisedRunResult({
+            command,
+            dependencies,
+            input,
+            source: options.source,
+            timing: options.timing
+        });
     }
 
     if (processModel === 'worker-pool') {
-        return createWorkerPoolRunResult(command, dependencies, options.timing, options.source);
+        return createWorkerPoolRunResult(command, dependencies, options, input);
     }
 
     return null;

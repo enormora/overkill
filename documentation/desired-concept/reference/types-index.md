@@ -873,9 +873,24 @@ type TypeTestProfileConfig = {
     readonly runRecords: RunRecordProfilePolicy;
 };
 
+type BenchmarkExecution =
+    & (
+        | Extract<IntegrationExecutionConfig, { processModel: 'supervised-process'; }>
+        | (Extract<IntegrationExecutionConfig, { processModel: 'worker-pool'; }> & {
+            readonly hedging: { readonly mode: 'off'; };
+        })
+    )
+    & { readonly scheduling: 'serial'; readonly maxConcurrency: 1; };
+
 type BenchmarkProfileConfig = {
     readonly testFamily: 'benchmark';
     readonly files: ProfileFiles;
+    readonly execution: BenchmarkExecution;
+    readonly reporters: ReadonlyArray<Reporter> | null;
+    readonly attachments: AttachmentLimits;
+    readonly resourceUsage: ResourceUsagePolicy;
+    readonly timeouts: TimeoutPolicy;
+    readonly timings: TimingProfilePolicy;
 };
 
 type ProfileFiles = {

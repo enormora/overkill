@@ -45,7 +45,7 @@ const metadataSchema = z
         ]),
         profile: z.string(),
         scheduling: z.union([ z.literal('concurrent'), z.literal('serial') ]),
-        testFamily: z.union([ z.literal('integration'), z.literal('microtest') ]),
+        testFamily: z.enum([ 'benchmark', 'integration', 'microtest' ]),
         workerLifecycle: z.union([ z.literal('fresh-worker-per-unit'), z.literal('reuse') ]).nullable()
     })
     .readonly();

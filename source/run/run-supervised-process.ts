@@ -3,9 +3,8 @@ import {
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
 import { createResolvedRunFromCollection } from './run-collected-resolution.ts';
-import {
-    readResolvedRunInput,
-    type ResolvedRunInput
+import type {
+    ResolvedRunInput
 } from './run-input-resolution.ts';
 import {
     assertExpectedDirectEntrypointCollection,
@@ -187,16 +186,10 @@ async function runStartedSupervisedExecution(execution: StartedSupervisedExecuti
     });
 }
 
-export async function createSupervisedRunResult(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    timing: RunTimingMeasurement | null,
-    source: IsolatedRunCollectionSource
-): Promise<RunResult> {
-    const input = await readResolvedRunInput(command, dependencies);
-
+export async function createSupervisedRunResult(execution: StartedSupervisedExecution): Promise<RunResult> {
+    const { command, dependencies, timing } = execution;
     try {
-        return await runStartedSupervisedExecution({ command, dependencies, input, source, timing });
+        return await runStartedSupervisedExecution(execution);
     } catch (error: unknown) {
         return await reportCollectionErrorResult(
             command,

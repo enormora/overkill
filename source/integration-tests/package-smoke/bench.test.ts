@@ -126,15 +126,24 @@ export const testNode = createSuite({
                 const consumerFolder = await createStandardBenchConsumer(scope);
                 await writeFile(path.join(consumerFolder, 'overkill.config.js'), benchmarkSelectionConfigScript);
                 await writeFile(
-                    path.join(consumerFolder, 'never-imported.bench.mjs'),
-                    'throw new Error("Workloads must not be imported during profile selection.");'
+                    path.join(consumerFolder, 'startup.bench.mjs'),
+                    standardBenchConsumerScript
                 );
+                await writeFile(
+                    path.join(import.meta.dirname, 'benchmark-command-consumer.mjs'),
+                    benchmarkCommandsScript
+                );
+                scope.cleanup(async function removeBenchmarkConsumer() {
+                    await rm(path.join(import.meta.dirname, 'benchmark-command-consumer.mjs'), { force: true });
+                });
                 const result = await executeNode(
-                    [ '--input-type=module', '--eval', benchmarkCommandsScript, consumerFolder ],
+                    [ path.join(import.meta.dirname, 'benchmark-command-consumer.mjs'), consumerFolder ],
                     import.meta.dirname
                 );
 
-                scope.assert.deepEqual(result, { exitCode: 0, stdout: 'benchmark selection passed\n', stderr: '' });
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.includes(result.stdout, 'benchmark selection passed\n');
+                scope.assert.equal(result.stderr, '');
                 return scope.assert.collect();
             },
             controls: {},
@@ -152,8 +161,8 @@ export const testNode = createSuite({
                             benchmarkSelectionConfigScript
                         );
                         await writeFile(
-                            path.join(consumerFolder, 'never-imported.bench.mjs'),
-                            'throw new Error("Workloads must not be imported during profile selection.");'
+                            path.join(consumerFolder, 'startup.bench.mjs'),
+                            standardBenchConsumerScript
                         );
                         for (const selection of [ [], [ '--profile=startup', '--config', 'overkill.config.js' ] ]) {
                             const result = await executeNode([
@@ -164,25 +173,20 @@ export const testNode = createSuite({
                                 'bench',
                                 verb,
                                 ...selection,
-                                'never-imported.bench.mjs'
+                                'startup.bench.mjs'
                             ], consumerFolder);
 
-                            scope.assert.equal(result.exitCode, 3);
-                            scope.assert.equal(result.stdout, '');
-                            const diagnostic = `Overkill argument error: Command "bench ${verb}"` +
-                                ' for profile "startup" is not implemented yet.\n';
-
-                            scope.assert.equal(
-                                result.stderr,
-                                diagnostic
-                            );
+                            scope.assert.equal(result.exitCode, 0);
+                            scope.assert.equal(result.stderr, '');
+                            scope.assert.includes(result.stdout, 'parameterized');
                         }
 
                         return scope.assert.collect();
                     },
                     controls: {},
                     definitionLocations: [ { kind: 'unknown' } ],
-                    title: `standard-only installation selects bench ${verb} profiles without importing workloads`
+                    title:
+                        `standard-only installation selects bench ${verb} profiles and executes the shared runner flow`
                 }),
                 createTestCase({
                     annotations: {},

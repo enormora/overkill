@@ -13,6 +13,7 @@ import {
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
+    unexpectedBenchmarkOrchestrator,
     defaultIntegrationProfile,
     defaultMicrotestProfile,
     testRunExecutionFacts
@@ -199,6 +200,7 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
 
 export function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrchestrator {
     return {
+        bench: unexpectedBenchmarkOrchestrator,
         resolve,
         async run() {
             throw new Error('List must not execute tests.');

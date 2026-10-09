@@ -1,5 +1,5 @@
 import { copyResourceBudgets } from '../config/snapshot.ts';
-import type { ResourceBudgets, ResourceUsagePolicy, TestProfileConfig, TimingCollectionMode } from '../config/types.ts';
+import type { ResourceBudgets, ResourceUsagePolicy, ProfileConfig, TimingCollectionMode } from '../config/types.ts';
 import type { RunRequest } from './run-types.ts';
 import { invalidRequest } from './run-errors.ts';
 
@@ -59,7 +59,7 @@ function assertResourceBudgetOverridesAllowed(
 
 export function resolveResourceUsagePolicy(
     request: RunRequest,
-    profile: TestProfileConfig
+    profile: ProfileConfig
 ): ResourceUsagePolicy {
     const configuredPolicy = profile.resourceUsage;
     const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measure;
@@ -78,7 +78,7 @@ export function resolveResourceUsagePolicy(
     };
 }
 
-function strategyRequiresPreciseTiming(profile: TestProfileConfig): boolean {
+function strategyRequiresPreciseTiming(profile: ProfileConfig): boolean {
     return profile.execution.processModel === 'worker-pool' &&
         (
             profile.execution.assignmentPolicy === 'duration-history-balanced' ||
@@ -88,7 +88,7 @@ function strategyRequiresPreciseTiming(profile: TestProfileConfig): boolean {
 
 export function resolveTimingCollection(
     request: RunRequest,
-    profile: TestProfileConfig
+    profile: ProfileConfig
 ): TimingCollectionMode {
     if (request.timingCollection === 'precise' || strategyRequiresPreciseTiming(profile)) {
         return 'precise';

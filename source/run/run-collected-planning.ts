@@ -1,4 +1,4 @@
-import type { TestProfileConfig, Scheduling, WorkerPoolAssignmentPolicy } from '../config/types.ts';
+import type { ProfileConfig, Scheduling, WorkerPoolAssignmentPolicy } from '../config/types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import {
     createRunShardHasher,
@@ -7,7 +7,12 @@ import {
 import {
     orderedRunItems
 } from './run-ordering.ts';
-import type { CollectedRunPlan, RunRequest, RunWorkerCountFacts } from './run-types.ts';
+import {
+    emptyWorkUnitResourceConstraints,
+    type CollectedRunPlan,
+    type RunRequest,
+    type RunWorkerCountFacts
+} from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     collectedRunCaseEntriesFromWorkUnits,
@@ -30,7 +35,7 @@ type CollectedExecutionPlanInput = {
     readonly durationHistoryIndex: WorkerPoolPlacementResolutionInput['durationHistoryIndex'];
     readonly files: ResolvedRunInput['files'];
     readonly planKind: CollectedPlanKind;
-    readonly profile: TestProfileConfig;
+    readonly profile: ProfileConfig;
     readonly request: RunRequest;
 };
 
@@ -52,25 +57,25 @@ function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: str
     };
 }
 
-function workerPoolAssignmentPolicy(profile: TestProfileConfig): WorkerPoolAssignmentPolicy {
+function workerPoolAssignmentPolicy(profile: ProfileConfig): WorkerPoolAssignmentPolicy {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.assignmentPolicy
         : 'case-count-balanced';
 }
 
-function workDistribution(profile: TestProfileConfig): WorkerPoolPlacementResolutionInput['workDistribution'] {
+function workDistribution(profile: ProfileConfig): WorkerPoolPlacementResolutionInput['workDistribution'] {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.workDistribution
         : { mode: 'file' };
 }
 
-function workerLifecycle(profile: TestProfileConfig): WorkerPoolPlacementResolutionInput['workerLifecycle'] {
+function workerLifecycle(profile: ProfileConfig): WorkerPoolPlacementResolutionInput['workerLifecycle'] {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.workerLifecycle
         : 'reuse';
 }
 
-function profileMaximumWorkers(profile: TestProfileConfig): number | null {
+function profileMaximumWorkers(profile: ProfileConfig): number | null {
     return profile.execution.processModel === 'worker-pool'
         ? profile.execution.maxWorkers
         : null;
@@ -84,7 +89,16 @@ function createPlacementResolution(
         return null;
     }
 
+    const runConstraints = input.profile.testFamily === 'benchmark'
+        ? {
+            ...emptyWorkUnitResourceConstraints,
+            serialKeys: [ 'run:benchmark-serialization' ],
+            singleWorkerKeys: [ 'run:benchmark-serialization' ]
+        }
+        : emptyWorkUnitResourceConstraints;
+
     return createWorkerPoolPlacementResolution({
+        runConstraints,
         assignmentPolicy: workerPoolAssignmentPolicy(input.profile),
         availableParallelism: input.dependencies.availableParallelism,
         durationHistoryIndex: input.durationHistoryIndex,

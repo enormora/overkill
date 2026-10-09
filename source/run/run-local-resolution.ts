@@ -7,9 +7,8 @@ import {
     createRunResultFromCollectedPlan,
     collectedRunPlanFromTestPlanCases
 } from './collected-run-plan.ts';
-import {
-    readResolvedRunInput,
-    type ResolvedRunInput
+import type {
+    ResolvedRunInput
 } from './run-input-resolution.ts';
 import { createLocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
 import { shardedLocalCases } from './run-local-sharding.ts';
@@ -221,10 +220,9 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
 export async function createLocalRunOrEmptySelectionResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    source: LocalTestPlanInput['source']
+    source: LocalTestPlanInput['source'],
+    input: ResolvedRunInput
 ): Promise<ResolvedRun | RunResult> {
-    const input = await readResolvedRunInput(command, dependencies);
-
     const resolved = await createLocalRunOrEmptySelectionResultFromInput(command, dependencies, input, source);
 
     return resolved.run;

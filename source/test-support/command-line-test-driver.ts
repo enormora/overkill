@@ -1,6 +1,7 @@
 import type {
     CommandLineCommand,
-    CommandLineBenchmarkRequest,
+    CommandLineBenchmarkRunRequest,
+    CommandLineBenchmarkListRequest,
     CommandLineExitCode,
     CommandLineListTestsRequest,
     CommandLineRunTestsRequest,
@@ -22,8 +23,8 @@ type RecordedExitCodes = {
 };
 
 type RequestRecorder = {
-    readonly recordBenchmarkList: (context: CommandLineBenchmarkRequest) => void;
-    readonly recordBenchmarkRun: (context: CommandLineBenchmarkRequest) => void;
+    readonly recordBenchmarkList: (context: CommandLineBenchmarkListRequest) => void;
+    readonly recordBenchmarkRun: (context: CommandLineBenchmarkRunRequest) => void;
     readonly recordList: (commandLineRequest: CommandLineListTestsRequest) => void;
     readonly recordRun: (commandLineRequest: CommandLineRunTestsRequest) => void;
 };
@@ -131,8 +132,8 @@ export async function runCommandLine(
     args: readonly string[],
     runnerResult: CommandLineRunnerResult | Error
 ): Promise<{
-    readonly benchmarkListRequests: readonly CommandLineBenchmarkRequest[];
-    readonly benchmarkRunRequests: readonly CommandLineBenchmarkRequest[];
+    readonly benchmarkListRequests: readonly CommandLineBenchmarkListRequest[];
+    readonly benchmarkRunRequests: readonly CommandLineBenchmarkRunRequest[];
     readonly exitCode: CommandLineExitCode;
     readonly exitCodes: readonly number[];
     readonly listRequests: readonly CommandLineListTestsRequest[];
@@ -146,8 +147,8 @@ export async function runCommandLine(
     const exitCodes = createRecordedExitCodes();
     const listRequests: CommandLineListTestsRequest[] = [];
     const runRequests: CommandLineRunTestsRequest[] = [];
-    const benchmarkListRequests: CommandLineBenchmarkRequest[] = [];
-    const benchmarkRunRequests: CommandLineBenchmarkRequest[] = [];
+    const benchmarkListRequests: CommandLineBenchmarkListRequest[] = [];
+    const benchmarkRunRequests: CommandLineBenchmarkRunRequest[] = [];
     let runnerLoadCount = 0;
 
     const exitCode = await runOverkillCommandLine({

@@ -12,8 +12,8 @@ import {
     type defineConfig,
     type CommandLineBaselineCommands,
     type CommandLineBenchmarkCommands,
-    type CommandLineBenchmarkCommand,
-    type CommandLineBenchmarkRequest,
+    type CommandLineBenchmarkRunRequest,
+    type CommandLineBenchmarkListRequest,
     type CommandLineCommand,
     type CommandLineCommandContext,
     type CommandLineExitCode,
@@ -65,8 +65,12 @@ describe('@overkill-dev/run/command-line', function () {
         expect<typeof commandLineRunner.replayWitness>().type.toBe<CommandLineCommand>();
         expect<typeof commandLineRunner.baseline>().type.toBe<CommandLineBaselineCommands>();
         expect<typeof commandLineRunner.bench>().type.toBe<CommandLineBenchmarkCommands>();
-        expect<typeof commandLineRunner.bench.runBenchmarks>().type.toBe<CommandLineBenchmarkCommand>();
-        expect<typeof commandLineRunner.bench.listBenchmarks>().type.toBe<CommandLineBenchmarkCommand>();
+        expect<typeof commandLineRunner.bench.runBenchmarks>().type.toBe<
+            (request: CommandLineBenchmarkRunRequest) => Promise<CommandLineRunnerResult>
+        >();
+        expect<typeof commandLineRunner.bench.listBenchmarks>().type.toBe<
+            (request: CommandLineBenchmarkListRequest) => Promise<CommandLineRunnerResult>
+        >();
     });
 
     test('keeps command-line run input explicit', function () {
@@ -100,19 +104,12 @@ describe('@overkill-dev/run/command-line', function () {
         expect<CommandLineRunnerResult['stdoutLines']>().type.toBe<readonly string[]>();
     });
 
-    test('requires typed benchmark paths and nullable explicit profile selection', function () {
-        expect<keyof CommandLineBenchmarkRequest>().type.toBe<'configPath' | 'cwd' | 'paths' | 'profile'>();
-        expect<CommandLineBenchmarkRequest['paths']>().type.toBe<readonly string[]>();
-        expect<CommandLineBenchmarkRequest['profile']>().type.toBe<string | null>();
-        expect<CommandLineBenchmarkCommand>().type.toBe<
-            (request: CommandLineBenchmarkRequest) => Promise<CommandLineRunnerResult>
-        >();
-        expect<CommandLineBenchmarkRequest>().type.not.toBeAssignableFrom<CommandLineCommandContext>();
-        expect<CommandLineBenchmarkRequest>().type.not.toBeAssignableFrom<{
-            readonly configPath: null;
-            readonly cwd: string;
-            readonly paths: readonly string[];
-        }>();
+    test('requires benchmark run and list intent with nullable profile selection', function () {
+        expect<keyof CommandLineBenchmarkRunRequest>().type.toBe<'configPath' | 'cwd' | 'runRequest'>();
+        expect<keyof CommandLineBenchmarkListRequest>().type.toBe<'configPath' | 'cwd' | 'listRequest'>();
+        expect<CommandLineBenchmarkRunRequest['runRequest']['profile']>().type.toBe<string | null>();
+        expect<CommandLineBenchmarkListRequest['listRequest']['profile']>().type.toBe<string | null>();
+        expect<CommandLineBenchmarkRunRequest>().type.not.toBeAssignableFrom<CommandLineCommandContext>();
     });
 
     test('exposes typed config helpers', function () {

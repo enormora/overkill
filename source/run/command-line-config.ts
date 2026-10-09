@@ -2,7 +2,7 @@ import type { DefinedReporter } from '../engine/reporter.ts';
 import type { NormalizedConfig, ProfileConfig } from '../config/types.ts';
 import type { LoadedConfig } from '../config/config.ts';
 import type { CommandLineRunTestsRequest } from './command-line-command.ts';
-import { selectTestProfile } from './test-profile.ts';
+import { selectProfile } from './test-profile.ts';
 import { selectCommandLineReporterFallback, type CommandLineReporterFallback } from './run-reporter-resolution.ts';
 
 export type CommandLineConfigDependencies = { readonly createDefaultReporter: () => Promise<DefinedReporter>; };
@@ -64,7 +64,7 @@ function listProfiles(profiles: NormalizedConfig['profiles']): NormalizedConfig[
 }
 
 export function createCommandLineListConfig(loadedConfig: LoadedConfig, profileName: string): NormalizedConfig {
-    selectTestProfile(profileName, loadedConfig);
+    selectProfile(profileName, loadedConfig);
     return {
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,

@@ -1,7 +1,7 @@
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
-import type { RunCommand, RunExecutionFacts, RunRequest } from '../run/run-types.ts';
+import type { BenchmarkOrchestrator, RunCommand, RunExecutionFacts, RunRequest } from '../run/run-types.ts';
 import type {
     NormalizedConfig,
     CoveragePolicy,
@@ -361,3 +361,13 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         ...overrides
     };
 }
+
+async function rejectUnexpectedBenchmark(): Promise<never> {
+    throw new Error('Unexpected benchmark invocation.');
+}
+
+export const unexpectedBenchmarkOrchestrator: BenchmarkOrchestrator = {
+    list: rejectUnexpectedBenchmark,
+    run: rejectUnexpectedBenchmark,
+    runWithReporterDelivery: rejectUnexpectedBenchmark
+};

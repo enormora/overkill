@@ -1,23 +1,25 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { normalizeConfig, type Config } from '../packages/run/config.entry-point.ts';
-import type { ConfigLoadRequest } from '../config/config.ts';
-import { copyConfig } from '../config/snapshot.ts';
 import {
-    configFixtureCwd,
-    createSingleConfigModuleLoader
-} from '../test-support/run-config-module-loader.ts';
+    normalizeConfig,
+    type Config,
+    type ConfigLoader,
+    type ConfigLoadRequest
+} from '../packages/run/config.entry-point.ts';
+import { createNullReporter } from '../reporters/null-reporter.ts';
+import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
+import { defaultRunRequest } from '../test-support/run-command-factory.ts';
+import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
 import { createBenchmarkCommands } from './benchmark-commands.ts';
-import type { CommandLineBenchmarkRequest } from './command-line-command.ts';
+import type { CommandLineBenchmarkCommands, CommandLineRunnerResult } from './command-line-command.ts';
+import type { RunCommand } from './run-types.ts';
 
-const benchmark = { testFamily: 'benchmark', files: { include: [ 'missing.bench.ts' ] } } as const;
+const benchmark = {
+    testFamily: 'benchmark',
+    files: { include: [ 'missing.bench.ts' ] },
+    execution: { processModel: 'supervised-process' }
+} as const;
 const ordinary = { testFamily: 'microtest' } as const;
 const verbs = [ 'runBenchmarks', 'listBenchmarks' ] as const;
-const request: CommandLineBenchmarkRequest = {
-    configPath: null,
-    cwd: configFixtureCwd,
-    paths: [ 'missing.bench.ts' ],
-    profile: null
-};
 
 type SelectionScenario = {
     readonly config: Config;
@@ -73,13 +75,75 @@ const selectionErrors: readonly SelectionScenario[] = [
     }
 ];
 
-export const testNode = suite(
-    'benchmark command profile selection',
-    verbs.flatMap(function benchmarkCommandTests(verb) {
-        const command = verb === 'runBenchmarks' ? 'bench run' : 'bench list';
+type BenchmarkCommandFixture = {
+    readonly benchmark: CommandLineBenchmarkCommands;
+    readonly commands: readonly RunCommand[];
+};
 
+function createCommandFixture(
+    loadConfig: ConfigLoader
+): BenchmarkCommandFixture {
+    const defaultReporter = createNullReporter();
+    const orchestrator = createDeterministicRunOrchestrator();
+    const commands: RunCommand[] = [];
+    const runner = {
+        ...orchestrator,
+        bench: {
+            ...orchestrator.bench,
+            async list(command: RunCommand) {
+                commands.push(command);
+                return await orchestrator.bench.list(command, { timing: null });
+            },
+            async runWithReporterDelivery(command: RunCommand) {
+                commands.push(command);
+                return await orchestrator.bench.runWithReporterDelivery(command, { timing: null });
+            }
+        }
+    };
+
+    return {
+        commands,
+        benchmark: createBenchmarkCommands({
+            async createDefaultReporter() {
+                return defaultReporter;
+            },
+            loadConfig,
+            orchestrator: runner
+        })
+    };
+}
+
+async function invokeBenchmark(
+    commands: CommandLineBenchmarkCommands,
+    verb: typeof verbs[number],
+    profile: string | null,
+    configPath: string | null
+): Promise<CommandLineRunnerResult> {
+    const request = defaultRunRequest({ paths: [ 'missing.bench.ts' ] });
+    const context = { configPath, cwd: configFixtureCwd };
+
+    return verb === 'runBenchmarks'
+        ? await commands.runBenchmarks({ ...context, runRequest: { ...request, profile } })
+        : await commands.listBenchmarks({
+            ...context,
+            listRequest: {
+                order: 'seeded',
+                paths: request.paths,
+                profile,
+                seed: request.seed,
+                selection: request.selection,
+                shard: request.shard,
+                withLocations: false,
+                withOrphans: false
+            }
+        });
+}
+
+export const testNode = suite(
+    'benchmark commands',
+    verbs.flatMap(function commandTests(verb) {
         return [
-            test(`${command} selects explicit and sole benchmark profiles`, async function (scope) {
+            test(`${verb} selects explicit and sole benchmark profiles`, async function (scope) {
                 const scenarios: readonly SelectedProfileScenario[] = [
                     { profiles: { startup: benchmark, benchmark: ordinary }, profile: null, selected: 'startup' },
                     { profiles: { startup: benchmark, benchmark: ordinary }, profile: 'startup', selected: 'startup' },
@@ -89,96 +153,85 @@ export const testNode = suite(
                 ];
 
                 for (const scenario of scenarios) {
-                    const commands = createBenchmarkCommands(createSingleConfigModuleLoader(
+                    const fixture = createCommandFixture(createSingleConfigModuleLoader(
                         'overkill.config.ts',
                         { config: { profiles: scenario.profiles } }
                     ));
-                    const result = await commands[verb]({ ...request, profile: scenario.profile });
-
-                    scope.assert.deepEqual(result, {
-                        exitCode: 3,
-                        fallbackDiagnostics: [
-                            `Overkill argument error: Command "${command}" for profile "${scenario.selected}" ` +
-                            'is not implemented yet.'
-                        ],
-                        runResult: null,
-                        stdoutLines: []
-                    });
+                    const result = await invokeBenchmark(fixture.benchmark, verb, scenario.profile, null);
+                    scope.assert.equal(result.exitCode, 0);
+                    scope.assert.deepEqual(result.fallbackDiagnostics, []);
+                    scope.assert.deepEqual(
+                        fixture.commands.map(function selectedProfile(command) {
+                            return command.request.profile;
+                        }),
+                        [ scenario.selected ]
+                    );
+                    scope.assert.equal(result.runResult === null, verb === 'listBenchmarks');
+                    scope.assert.equal(result.stdoutLines.length > 0, verb === 'listBenchmarks');
                 }
-
                 return scope.assert.collect();
             }),
-            test(`${command} loads requested config once and preserves complete policy`, async function (scope) {
+            test(`${verb} loads config once and preserves complete policy`, async function (scope) {
                 const config = {
                     ...normalizeConfig({ profiles: { startup: benchmark, benchmark: ordinary } }),
                     configPath: null
                 };
-                const snapshot = copyConfig(config);
+                const snapshot = {
+                    ...normalizeConfig({ profiles: { startup: benchmark, benchmark: ordinary } }),
+                    outputRenderer: config.outputRenderer
+                };
                 const loads: ConfigLoadRequest[] = [];
-                const commands = createBenchmarkCommands(async function loadConfig(input) {
-                    loads.push(input);
-
+                const fixture = createCommandFixture(async function loadConfig(request) {
+                    loads.push({ configPath: request.configPath, cwd: request.cwd });
                     return config;
                 });
-                await commands[verb]({ ...request, configPath: 'custom.config.ts' });
-
+                const result = await invokeBenchmark(fixture.benchmark, verb, null, 'custom.config.ts');
+                scope.assert.equal(result.exitCode, 0);
                 scope.assert.deepEqual(loads, [ { configPath: 'custom.config.ts', cwd: configFixtureCwd } ]);
                 scope.assert.deepEqual(config, { ...snapshot, configPath: null });
                 scope.assert.equal(Object.isFrozen(config), false);
                 return scope.assert.collect();
             }),
-            test(`${command} rejects unknown, wrong-family, missing, and ambiguous selections`, async function (scope) {
+            test(`${verb} rejects invalid selections before planning`, async function (scope) {
                 for (const scenario of selectionErrors) {
-                    const commands = createBenchmarkCommands(
-                        createSingleConfigModuleLoader('overkill.config.ts', { config: scenario.config })
-                    );
-                    const result = await commands[verb]({ ...request, profile: scenario.profile });
-
+                    const fixture = createCommandFixture(createSingleConfigModuleLoader(
+                        'overkill.config.ts',
+                        { config: scenario.config }
+                    ));
+                    const result = await invokeBenchmark(fixture.benchmark, verb, scenario.profile, null);
                     scope.assert.deepEqual(result, {
                         exitCode: 3,
                         fallbackDiagnostics: [ `Overkill argument error: ${scenario.diagnostic}` ],
                         runResult: null,
                         stdoutLines: []
                     });
+                    scope.assert.deepEqual(fixture.commands, []);
                 }
-
                 return scope.assert.collect();
             }),
-            test(`${command} discovers config and loads explicit config paths`, async function (scope) {
+            test(`${verb} discovers and loads explicit config paths`, async function (scope) {
                 for (const configPath of [ null, 'custom.config.ts' ]) {
-                    const commands = createBenchmarkCommands(createSingleConfigModuleLoader(
+                    const fixture = createCommandFixture(createSingleConfigModuleLoader(
                         configPath ?? 'overkill.config.ts',
                         { config: { profiles: { startup: benchmark } } }
                     ));
-                    const result = await commands[verb]({ ...request, configPath });
-
-                    scope.assert.deepEqual(result.fallbackDiagnostics, [
-                        `Overkill argument error: Command "${command}" for profile "startup" is not implemented yet.`
-                    ]);
-                    scope.assert.equal(result.exitCode, 3);
+                    const result = await invokeBenchmark(fixture.benchmark, verb, null, configPath);
+                    scope.assert.equal(result.exitCode, 0);
+                    scope.assert.equal(fixture.commands.length, 1);
                 }
-
                 return scope.assert.collect();
             }),
-            test(
-                `${command} reports config failures before unknown profile selection`,
-                async function (scope: TestScope) {
-                    const commands = createBenchmarkCommands(createSingleConfigModuleLoader(
-                        'overkill.config.ts',
-                        { config: { profiles: { startup: { testFamily: 'benchmark' } } } }
-                    ));
-                    const result = await commands[verb]({ ...request, profile: 'unknown' });
-
-                    scope.assert.equal(result.exitCode, 3);
-                    scope.assert.includes(result.fallbackDiagnostics[0] ?? '', 'Overkill configuration error:');
-                    scope.assert.deepEqual({ runResult: result.runResult, stdoutLines: result.stdoutLines }, {
-                        runResult: null,
-                        stdoutLines: []
-                    });
-
-                    return scope.assert.collect();
-                }
-            )
+            test(`${verb} reports malformed policy before profile selection`, async function (scope: TestScope) {
+                const fixture = createCommandFixture(createSingleConfigModuleLoader(
+                    'overkill.config.ts',
+                    { config: { profiles: { startup: { testFamily: 'benchmark' } } } }
+                ));
+                const result = await invokeBenchmark(fixture.benchmark, verb, 'unknown', null);
+                scope.assert.equal(result.exitCode, 3);
+                scope.assert.includes(result.fallbackDiagnostics[0] ?? '', 'Overkill configuration error:');
+                scope.assert.deepEqual(fixture.commands, []);
+                return scope.assert.collect();
+            })
         ];
     })
 );

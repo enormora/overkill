@@ -71,6 +71,12 @@ export const defaultTimeoutPolicy: TimeoutPolicy = {
     softMilliseconds: defaultMicrotestTimeoutMilliseconds
 };
 
+export const defaultBenchmarkTimeoutPolicy: TimeoutPolicy = {
+    collectionMilliseconds: 5000,
+    hardMilliseconds: 60_000,
+    softMilliseconds: 40_000
+};
+
 export const defaultIntegrationTimeoutPolicy: TimeoutPolicy = {
     collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,
     hardMilliseconds: defaultIntegrationHardTimeoutMilliseconds,

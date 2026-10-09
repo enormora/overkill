@@ -10,6 +10,7 @@ import {
 
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
+    unexpectedBenchmarkOrchestrator,
     defaultRunConfig,
     defaultRunRequest,
     testRunExecutionFacts
@@ -135,6 +136,7 @@ async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrato
 
 function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator {
     return {
+        bench: unexpectedBenchmarkOrchestrator,
         async resolve(command) {
             return await resolveRunCommand(command);
         },
