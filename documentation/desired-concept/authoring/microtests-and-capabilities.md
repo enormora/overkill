@@ -335,8 +335,10 @@ Microtest profile policy may include:
   activating it
 - profile-specific reporters that replace global reporter defaults
 
-The no-config built-in `microtest` profile is only the small direct-run
-fallback. It uses supervised concurrent execution and no discovery policy.
+The no-config built-in `microtest` profile is the small direct-run fallback.
+It uses supervised concurrent execution and no discovery policy. Mutation profile
+selection also counts this fallback in the normalized registry; see
+[Mutation Runner Contract](./higher-test-layers.md#mutation-runner-contract).
 Configured profiles are explicit project policy.
 
 Implementation details such as exact permission flags, exact temporary

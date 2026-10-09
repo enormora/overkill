@@ -1,24 +1,24 @@
+import { strykerProfileScript } from './stryker-profile-scripts.test.ts';
+
 export const strykerRunnerScript = `
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import * as adapter from '@overkill-dev/stryker-runner';
 
-assert.deepEqual(Object.keys(adapter), ['strykerPlugins']);
+assert.deepEqual(Object.keys(adapter), ['strykerPlugins', 'strykerValidationSchema']);
 assert.equal(adapter.strykerPlugins.length, 1);
 const [plugin] = adapter.strykerPlugins;
 assert.equal(plugin.kind, 'TestRunner');
 assert.equal(plugin.name, 'overkill');
-const runner = plugin.factory();
-assert.notEqual(runner, plugin.factory());
+assert.deepEqual(plugin.factory.inject, ['options']);
+const runner = plugin.factory({});
+assert.notEqual(runner, plugin.factory({}));
 
 assert.throws(() => runner.capabilities(), {
     name: 'Error',
     message: '@overkill-dev/stryker-runner: capabilities() is not implemented.'
 });
-await assert.rejects(runner.init(), {
-    name: 'Error',
-    message: '@overkill-dev/stryker-runner: init() is not implemented.'
-});
+await runner.init();
 await assert.rejects(runner.dryRun({
     coverageAnalysis: 'perTest',
     disableBail: false,
@@ -46,7 +46,7 @@ await assert.rejects(runner.mutantRun({
 });
 await runner.dispose();
 await runner.dispose();
-await plugin.factory().dispose();
+await plugin.factory({}).dispose();
 
 const manifestUrl = new URL('../../package.json', import.meta.resolve('@overkill-dev/stryker-runner'));
 const manifest = JSON.parse(readFileSync(manifestUrl, 'utf8'));
@@ -61,6 +61,7 @@ const apiManifestUrl = new URL('node_modules/@stryker-mutator/api/package.json',
 const apiManifest = JSON.parse(readFileSync(apiManifestUrl, 'utf8'));
 assert.equal(apiManifest.version, '10.0.0');
 assert.equal(existsSync(new URL('LICENSE', manifestUrl)), true);
+assert.match(readFileSync(new URL('readme.md', manifestUrl), 'utf8'), /requires an explicit name/);
 const standardManifestUrl = new URL('../../package.json', import.meta.resolve('@overkill-dev/test'));
 const standardManifest = JSON.parse(readFileSync(standardManifestUrl, 'utf8'));
 for (const dependencies of [standardManifest.dependencies, standardManifest.peerDependencies]) {
@@ -69,5 +70,6 @@ for (const dependencies of [standardManifest.dependencies, standardManifest.peer
 }
 assert.equal(existsSync(new URL('node_modules/@overkill-dev/stryker-runner', standardManifestUrl)), false);
 assert.equal(existsSync(new URL('node_modules/@stryker-mutator', standardManifestUrl)), false);
-console.log('stryker runner skeleton passed');
+${strykerProfileScript}
+console.log('stryker profile initialization passed');
 `;

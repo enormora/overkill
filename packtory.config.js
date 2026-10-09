@@ -197,8 +197,7 @@ export const config = {
         },
         {
             name: 'stryker-runner',
-            description: 'First-party Stryker TestRunner plugin for Overkill.',
-            additionalFiles: []
+            description: 'First-party Stryker TestRunner plugin for Overkill.'
         },
         {
             name: 'test',
