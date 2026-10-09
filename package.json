@@ -24,6 +24,7 @@
         "@jridgewell/trace-mapping": "0.3.31",
         "@overkill-dev/reporter-line": "0.0.42",
         "@schema-hub/zod-error-formatter": "0.0.19",
+        "@stryker-mutator/api": "10.0.0",
         "ansi-escapes": "7.3.0",
         "cmd-ts": "0.15.0",
         "convert-source-map": "2.0.0",

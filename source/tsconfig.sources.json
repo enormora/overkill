@@ -1,6 +1,7 @@
 {
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
+        "skipLibCheck": true,
         "tsBuildInfoFile": "../target/buildcache/sources.tsbuildinfo",
         "rootDir": "..",
         "types": ["node"]
