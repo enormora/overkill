@@ -194,6 +194,11 @@ export const config = {
             ]
         },
         {
+            name: 'stryker-runner',
+            description: 'First-party Stryker TestRunner plugin for Overkill.',
+            additionalFiles: []
+        },
+        {
             name: 'test',
             description: 'Standard Overkill distribution and command-line binary.',
             bundleDependencies: [
