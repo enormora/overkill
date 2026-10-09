@@ -54,7 +54,7 @@
         "@overkill-dev/doubles": "0.0.39",
         "@overkill-dev/engine": "0.0.49",
         "@packtory/cli": "0.0.119",
-        "@packtory/github-release-gate": "0.0.79",
+        "@packtory/github-release-gate": "0.0.80",
         "@types/convert-source-map": "2.0.3",
         "@types/node": "26.6.4",
         "c8": "12.0.0",
