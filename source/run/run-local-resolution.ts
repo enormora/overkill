@@ -1,4 +1,4 @@
-import type { TestPlan } from '../engine/test-plan.ts';
+import { resolveRunScheduling } from './run-profile-facts.ts';
 import {
     createRunFacts,
     runCaseFactsFromTestPlan
@@ -10,7 +10,7 @@ import {
 import type {
     ResolvedRunInput
 } from './run-input-resolution.ts';
-import { createLocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
+import { createLocalTestPlan, type LocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
 import { shardedLocalCases } from './run-local-sharding.ts';
 import {
     orderedTestPlan,
@@ -64,7 +64,7 @@ function createLocalResolvedRunFromTestPlan(
         placementPlan: null,
         projectRoot: input.projectRoot,
         request: input.request,
-        scheduling: input.profile.execution.scheduling,
+        scheduling: resolveRunScheduling(input.request, input.profile),
         workerCount: null
     }));
 
@@ -84,7 +84,7 @@ function createLocalResolvedRunFromTestPlan(
 }
 
 function createEmptySelectionResult(
-    testPlan: TestPlan,
+    testPlan: LocalTestPlan,
     dependencies: RunOrchestratorDependencies
 ): RunResult {
     const startedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
@@ -107,7 +107,7 @@ function createEmptyShardResolvedRunFromTestPlan(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput,
-    selectedPlan: TestPlan
+    selectedPlan: LocalTestPlan
 ): ResolvedRun {
     const collectedPlan = collectedRunPlanFromTestPlanCases(selectedPlan, []);
     const facts = freezeValue(createRunFacts({
@@ -120,7 +120,7 @@ function createEmptyShardResolvedRunFromTestPlan(
         placementPlan: null,
         projectRoot: input.projectRoot,
         request: input.request,
-        scheduling: input.profile.execution.scheduling,
+        scheduling: resolveRunScheduling(input.request, input.profile),
         workerCount: null
     }));
 
@@ -143,7 +143,7 @@ async function createShardedLocalResolvedRunFromTestPlan(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput,
-    selectedPlan: TestPlan
+    selectedPlan: LocalTestPlan
 ): Promise<ResolvedRun> {
     const plannedCases = await shardedLocalCases(selectedPlan, input);
     const firstCase = plannedCases[0];

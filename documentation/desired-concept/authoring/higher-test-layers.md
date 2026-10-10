@@ -656,13 +656,23 @@ profile or duplicated discovery policy is required. When exactly one microtest
 profile exists, its name is optional in Stryker's adapter configuration. When
 there are several, an explicit name is required. No eligible profile, an unknown
 name, or selection of a non-microtest profile fails before collection.
+Eligibility uses the complete normalized profile registry, including the built-in
+`microtest` fallback. No-config projects can infer that fallback. A custom
+microtest profile normally makes inference ambiguous with the fallback; explicitly
+configuring the `microtest` entry replaces it. Other profile families may coexist
+in the registry, but one invocation selects exactly one microtest profile.
+Pre-collection rejection covers profile and configuration selections; incompatible
+test nodes in selected files remain subject to collection-time validation.
 
 ### Execution And Coverage
 
 - Mutation execution has an explicit adapter-owned policy: serial cases.
   Preserve the configured profile's process model and
   restrictions. Stryker parallelizes mutants. Resolve and expose the scheduling
-  override before running; no dedicated mutation profile is required.
+  override before running through `RunRequest.execution: { mode: 'serial' }`;
+  no dedicated mutation profile is required. The resolved request retains this
+  intent, the configured profile remains unchanged, and
+  `RunFacts.execution.scheduling` exposes the effective scheduling.
 - Reuse the profile's discovery, loader, capability restrictions, and resource
   policies. Keep ordinary V8 coverage disabled and disable retries and baseline
   updates. Use one campaign seed across the dry run, all mutants, workers, and

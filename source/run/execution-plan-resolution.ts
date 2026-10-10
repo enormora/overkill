@@ -6,7 +6,7 @@ import {
     resourceScopes,
     type ResourceOwnershipBoundary
 } from './resource-lifecycle-boundaries.ts';
-import type { RunExecutionPlanConflict } from './run-errors.ts';
+import { RunExecutionPlanError, type RunExecutionPlanConflict } from './run-errors.ts';
 import { collectedRunCaseEntries, type CollectedRunCaseEntry } from './collected-run-plan.ts';
 import type {
     CollectedRunPlan,
@@ -468,6 +468,14 @@ export function collectedPlanCompatibilityConflicts(
     plan: CollectedRunPlan
 ): readonly RunExecutionPlanConflict[] {
     return sortedConflicts([ ...identityConflicts(plan), ...dependencyScopeConflicts(plan) ]);
+}
+
+export function assertCollectedPlanCompatible(plan: CollectedRunPlan): void {
+    const conflicts = collectedPlanCompatibilityConflicts(plan);
+
+    if (conflicts.length > 0) {
+        throw new RunExecutionPlanError(conflicts, undefined);
+    }
 }
 
 export function executionPlanCompatibilityConflicts(

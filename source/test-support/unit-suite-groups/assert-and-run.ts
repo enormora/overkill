@@ -5,8 +5,8 @@ import { testNode as evaluationTestNode } from '../../assertion-protocol/evaluat
 import { testNode as partialMatchingTestNode } from '../../assertion-protocol/partial-matching.test.ts';
 import { testNode as sourceLocationTestNode } from '../../assertion-protocol/source-location.test.ts';
 import { testNode as commandLineListRunnerSuiteTestNode } from '../../run/command-line-list-runner-suite.test.ts';
-import { testNode as runTestNode } from '../../run/run-suite.test.ts';
 import { testNode as runResultFactoryTestNode } from '../run-result-factory.test.ts';
+import { testNode as runTestNode } from './run.ts';
 import { testNode as authoringTestNode } from './authoring.ts';
 
 export const testNode = createSuite({

@@ -94,7 +94,9 @@ Source: [Runtime Behavior](../architecture/runtime-behavior.md).
 ## Scheduling
 
 A profile-level or group-level decision about how selected cases are started
-inside the chosen process boundary. Common values are `serial` and
+inside the chosen process boundary. Programmatic microtest requests can
+strengthen scheduling to serial without changing the profile or process model.
+Common values are `serial` and
 `concurrent`. Concurrent scheduling uses a sliding per-executor admission
 limit, configured by `execution.maxConcurrency` and defaulting to `5`.
 `'unlimited'` disables the bound. Scheduling is distinct from process

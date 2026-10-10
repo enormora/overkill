@@ -30,13 +30,13 @@ export const testNode = createSuite({
                     );
                 });
 
-                scope.assert.equal(result.stdout, 'stryker runner skeleton passed\n');
+                scope.assert.equal(result.stdout, 'stryker profile initialization passed\n');
                 scope.assert.equal(result.stderr, '');
                 return scope.assert.collect();
             },
             controls: {},
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'packaged Stryker runner registers an isolated, throwing skeleton'
+            title: 'packaged Stryker runner validates profiles before test imports'
         })
     ],
     controls: {},

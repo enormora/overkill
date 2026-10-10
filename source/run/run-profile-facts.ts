@@ -1,7 +1,17 @@
 import { copyResourceBudgets } from '../config/snapshot.ts';
-import type { ResourceBudgets, ResourceUsagePolicy, ProfileConfig, TimingCollectionMode } from '../config/types.ts';
+import type {
+    ResourceBudgets,
+    ResourceUsagePolicy,
+    ProfileConfig,
+    Scheduling,
+    TimingCollectionMode
+} from '../config/types.ts';
 import type { RunRequest } from './run-types.ts';
 import { invalidRequest } from './run-errors.ts';
+
+export function resolveRunScheduling(request: RunRequest, profile: ProfileConfig): Scheduling {
+    return request.execution.mode === 'serial' ? 'serial' : profile.execution.scheduling;
+}
 
 function disabledResourceBudgets(): ResourceBudgets {
     return {
