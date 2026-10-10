@@ -103,6 +103,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 config: command.config,
                 cwd: command.cwd,
                 facts: {
+                    benchmarkCalibration: null,
                     coveragePolicy: null,
                     durationHistory: null,
                     cases: [],

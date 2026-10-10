@@ -1,5 +1,5 @@
 import { createExecute } from '../engine/execution.ts';
-import { createNodeRuntimeStateStore } from './node-runtime-state-store.ts';
+import { createNodeFileStore } from '../file-store.ts';
 import { createWorkerPoolWithHostProcess } from './node-worker-pool-factory.ts';
 import { createNodeResourceUsageTracker } from './resource-usage.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -34,6 +34,6 @@ export function createNodeExecutionDependencies(input: NodeExecutionInput): Node
             reporterDispatcher: input.reporterDispatcher,
             wallClock: input.wallClock
         }),
-        runtimeStateStore: createNodeRuntimeStateStore()
+        runtimeStateStore: createNodeFileStore()
     };
 }

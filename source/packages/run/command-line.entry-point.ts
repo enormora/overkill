@@ -144,6 +144,9 @@ export const commandLineRunner: CommandLineRunner = {
 export type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
+    CommandLineBenchmarkBaselineCommands,
+    CommandLineBenchmarkBaselineListRequest,
+    CommandLineBenchmarkBaselineRequest,
     BenchmarkRunRequest,
     CommandLineBenchmarkRunRequest,
     CommandLineBenchmarkListRequest,

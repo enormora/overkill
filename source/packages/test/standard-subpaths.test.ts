@@ -516,16 +516,11 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: '@overkill-dev/test/baselines exposes only the reserved sentinel',
+            title: '@overkill-dev/test/baselines exposes contracts without loading storage',
             annotations: {},
             controls: {},
             body(scope: TestScope) {
-                scope.assert.deepEqual(sortedKeys(baselinesSubpath), [ 'unavailable' ]);
-                scope.assert.throws(function invokeUnavailableSubpath() {
-                    baselinesSubpath.unavailable('ignored');
-                }, {
-                    message: 'The @overkill-dev/test/baselines subpath is reserved until its leaf package exists.'
-                });
+                scope.assert.deepEqual(sortedKeys(baselinesSubpath), []);
 
                 return scope.assert.collect();
             }

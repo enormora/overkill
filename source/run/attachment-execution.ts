@@ -9,6 +9,7 @@ import type {
     RuntimeAttachments
 } from '../engine/runtime-attachment.ts';
 import type { AttachmentContext } from '../packages/resources/attachment-context.entry-point.ts';
+import { snapshotJson } from '../attachments/json-snapshot.ts';
 import { AttachmentOperationError, createAttachmentFailure, type AttachmentRejection } from './attachment-failure.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import type {
@@ -17,7 +18,6 @@ import type {
     AttachmentOwner,
     AttachmentResponse
 } from './attachment-protocol.ts';
-import { snapshotAttachmentJson } from './attachment-json.ts';
 import { createAttachmentStream, copyAttachmentFile, type AttachmentStream } from './attachment-writer.ts';
 
 type AttachmentAttempt = {
@@ -222,11 +222,11 @@ function attachmentJsonLimit(state: AttachmentExecutionSessionState): number {
 function attachmentExecutionSessionJsonSnapshot(
     state: AttachmentExecutionSessionState,
     value: unknown
-): ReturnType<typeof snapshotAttachmentJson> {
+): ReturnType<typeof snapshotJson> {
     const { currentAttempt } = state;
     const limit = attachmentJsonLimit(state);
     try {
-        return snapshotAttachmentJson(value, limit);
+        return snapshotJson(value, limit);
     } catch (error: unknown) {
         const owner = currentAttempt.getStore()?.owner ?? { kind: 'run' };
         throw attachmentExecutionSessionFail(state, {

@@ -5,11 +5,11 @@ import {
 import type { AttemptId, WorkId } from '../engine/identity.ts';
 import type { RuntimeAttachments, RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import type { FailureArtifactAttachments } from '../resources/failure-artifacts.ts';
-import { snapshotAttachmentJson } from './attachment-json.ts';
+import { snapshotJson } from '../attachments/json-snapshot.ts';
 
 async function retainWitness(
     target: RuntimeAttachments,
-    snapshot: ReturnType<typeof snapshotAttachmentJson>,
+    snapshot: ReturnType<typeof snapshotJson>,
     witness: unknown
 ): Promise<RuntimeAttachmentArtifact> {
     const metadata = { name: 'scenario-witness', mediaType: 'application/json' };
@@ -51,7 +51,7 @@ export function simulationWitnessAttachments(
                 resource: { name: resource },
                 seed: input.seed === null ? null : input.seed.toString()
             };
-            const snapshot = snapshotAttachmentJson(witness, limits.maxArtifactBytes);
+            const snapshot = snapshotJson(witness, limits.maxArtifactBytes);
             const artifact = await retainWitness(target, snapshot, witness);
             return { ...artifact, id: { ...artifact.id, subtype: 'witness' }, source: 'native' };
         }

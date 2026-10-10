@@ -9,6 +9,7 @@ import {
 import type {
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
+    CommandLineBenchmarkBaselineCommands,
     CommandLineCommandContext,
     CommandLineRunnerResult
 } from './command-line-command.ts';
@@ -65,12 +66,14 @@ const baselineCommandsFactory = createFactory<CommandLineBaselineCommands>(funct
     };
 });
 
-const benchmarkBaselineCommandsFactory = baselineCommandsFactory.withOverrides({
-    apply: createCommandReturningDiagnostic('bench baseline apply'),
-    bootstrap: createCommandReturningDiagnostic('bench baseline bootstrap'),
-    diff: createCommandReturningDiagnostic('bench baseline diff'),
-    list: createCommandReturningDiagnostic('bench baseline list'),
-    update: createCommandReturningDiagnostic('bench baseline update')
+const benchmarkBaselineCommandsFactory = createFactory<CommandLineBenchmarkBaselineCommands>(function () {
+    return {
+        apply: createCommandReturningDiagnostic('bench baseline apply'),
+        bootstrap: createCommandReturningDiagnostic('bench baseline bootstrap'),
+        diff: createCommandReturningDiagnostic('bench baseline diff'),
+        list: createCommandReturningDiagnostic('bench baseline list'),
+        update: createCommandReturningDiagnostic('bench baseline update')
+    };
 });
 
 const benchmarkCommandsFactory = createFactory<CommandLineBenchmarkCommands>(function createBenchmarkCommands() {
@@ -140,11 +143,20 @@ export const testNode = createOverkillSuite({
                     commands.baseline.diff(context),
                     commands.baseline.list(context),
                     commands.baseline.update(context),
-                    commands.bench.baseline.apply(context),
-                    commands.bench.baseline.bootstrap(context),
-                    commands.bench.baseline.diff(context),
-                    commands.bench.baseline.list(context),
-                    commands.bench.baseline.update(context),
+                    commands.bench.baseline.apply({
+                        ...context,
+                        runRequest: { ...defaultRunRequest(), profile: null }
+                    }),
+                    commands.bench.baseline.bootstrap({
+                        ...context,
+                        runRequest: { ...defaultRunRequest(), profile: null }
+                    }),
+                    commands.bench.baseline.diff({ ...context, runRequest: { ...defaultRunRequest(), profile: null } }),
+                    commands.bench.baseline.list({ ...context, listRequest: { paths: [], profile: null } }),
+                    commands.bench.baseline.update({
+                        ...context,
+                        runRequest: { ...defaultRunRequest(), profile: null }
+                    }),
                     commands.bench.listBenchmarks({
                         configPath: null,
                         cwd: '/project',

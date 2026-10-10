@@ -1,6 +1,7 @@
 const childRoleArgumentPrefix = '--overkill-child-role=';
 
 export const supervisedChildRole = 'supervised';
+export const benchmarkCalibrationRole = 'benchmark-calibration';
 export const workerPoolHostRole = 'worker-pool-host';
 
 export function childRole(childArguments: readonly string[]): string | null {

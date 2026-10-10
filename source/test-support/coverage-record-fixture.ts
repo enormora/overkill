@@ -59,6 +59,7 @@ async function createCoverageRecordFixture(
     const records: RecordSnapshot[] = [];
     let writes = 0;
     const input = {
+        benchmarkCalibration: null,
         config: { ...config, runtimeStateDir: directory },
         engine: { kind: 'default' as const },
         files: [ { file: 'fixture.ts', fileSet: null, href: 'file:///fixture.ts', path: '/fixture.ts' } ] as const,
@@ -99,6 +100,7 @@ async function createCoverageRecordFixture(
             await rm(path.resolve(directory), { force: true, recursive: true });
         },
         facts: createRunFacts({
+            benchmarkCalibration: null,
             cases: [],
             config: input.config,
             dependencies,

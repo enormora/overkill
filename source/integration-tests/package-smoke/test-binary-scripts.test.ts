@@ -305,6 +305,7 @@ export const standardSubpathImportScript = [
     "const simulationPackageModule = await import('@overkill-dev/simulation');",
     "const simulationHttpPackageModule = await import('@overkill-dev/simulation/http');",
     "const baselinesModule = await import('@overkill-dev/test/baselines');",
+    "const baselinesPackageModule = await import('@overkill-dev/baselines');",
     'console.log(JSON.stringify(Object.keys(configModule)));',
     'console.log(JSON.stringify(Object.keys(reportersModule)));',
     'console.log(JSON.stringify(Object.keys(assertModule)));',
@@ -367,16 +368,8 @@ export const standardSubpathImportScript = [
     'console.log(Object.isFrozen(database));',
     'console.log(Object.isFrozen(runtime));',
     'console.log(JSON.stringify(Object.keys(benchModule)));',
-    'for (const [name, module] of [',
-    "    [ 'baselines', baselinesModule ]",
-    ']) {',
-    '    console.log(JSON.stringify(Object.keys(module)));',
-    '    try {',
-    '        module.unavailable();',
-    '    } catch (error) {',
-    '        console.log(error instanceof Error ? error.message : String(error));',
-    '    }',
-    '}'
+    'console.log(JSON.stringify(Object.keys(baselinesModule)));',
+    'console.log(JSON.stringify(Object.keys(baselinesPackageModule)));'
 ]
     .join('\n');
 
@@ -482,8 +475,8 @@ export const expectedStandardSubpathImportOutput = [
     'true',
     'true',
     '["defineMacro","defineParameterizedTestBody","skippedTest","suite","table","test"]',
-    '["unavailable"]',
-    'The @overkill-dev/test/baselines subpath is reserved until its leaf package exists.',
+    '[]',
+    '[]',
     ''
 ]
     .join('\n');

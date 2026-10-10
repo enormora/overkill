@@ -15,6 +15,7 @@
     "include": [
         "./integration-tests/**/*.ts",
         "./test-support/run-command-factory.ts",
+        "./test-support/benchmark-baseline-fixture.ts",
         "./test-support/coverage-transpilation.ts"
     ]
 }

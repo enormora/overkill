@@ -138,6 +138,7 @@ export function createResolvedRun(
         cwd: command.cwd,
         engine: command.engine,
         facts: {
+            benchmarkCalibration: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: caseFactsFromPlan(testPlan),

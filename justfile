@@ -1,5 +1,5 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
-package-smoke-packages := '@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+package-smoke-packages := '@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
 
 default:
     @just --list
@@ -33,6 +33,9 @@ test-unit:
     node source/overkill.test.ts
 
 test-runner-integration:
+    node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts
+    node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
+    node source/integration-tests/run/runner-benchmark-baselines.test.ts
     node source/integration-tests/run/runner-benchmarks.test.ts
     node source/integration-tests/run/runner-attachments.test.ts
     node source/integration-tests/run/runner-attachment-retention.test.ts

@@ -7,7 +7,7 @@ import {
     sourceLocationsSchema,
     suitePathSchema,
     workIdSchema
-} from './run-identity-schema.ts';
+} from '../engine/identity-schema.ts';
 import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
 import { runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';

@@ -1,5 +1,5 @@
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
-import { createStoredRunValue } from './supervised-run-state.ts';
+import { createStoredValue } from '../stored-value.ts';
 
 type JsonSnapshot = { readonly value: ReadonlyDeep<JsonValue>; readonly encoded: string; };
 type JsonContainer = Readonly<Record<PropertyKey, unknown>> | readonly unknown[];
@@ -20,7 +20,7 @@ class JsonByteLimitError extends Error {
 }
 function createJsonSnapshotBudget(maxBytes: number): JsonSnapshotBudget {
     const ancestors = new Set<JsonContainer>();
-    const remaining = createStoredRunValue(maxBytes);
+    const remaining = createStoredValue(maxBytes);
     return {
         reserve(bytes) {
             if (bytes > remaining.read()) {
@@ -129,7 +129,7 @@ function boundedJsonSnapshot(value: unknown, maxBytes: number): JsonSnapshot {
     const copy = createJsonVisit(createJsonSnapshotBudget(maxBytes))(value, 0);
     return { value: copy, encoded: JSON.stringify(copy) };
 }
-export function snapshotAttachmentJson(value: unknown, maxBytes: number): JsonSnapshot | null {
+export function snapshotJson(value: unknown, maxBytes: number): JsonSnapshot | null {
     try {
         return boundedJsonSnapshot(value, maxBytes);
     } catch (error: unknown) {

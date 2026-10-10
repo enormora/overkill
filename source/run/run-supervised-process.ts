@@ -36,6 +36,7 @@ type SupervisedExecution = SupervisedCoverageExecution & {
     readonly timing: RunTimingMeasurement | null;
 };
 type StartedSupervisedExecution = {
+    readonly baseline: SupervisedCoverageExecution['baseline'];
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly input: ResolvedRunInput;
@@ -75,6 +76,7 @@ async function resolvedSupervisedExecution(resolution: SupervisedResolution): Pr
     assertExpectedDirectEntrypointCollection(expectedDirectPlan, collection.collectedPlan);
 
     return await createResolvedRunFromCollection({
+        benchmarkCalibration: input.benchmarkCalibration,
         allowEmptySelection,
         collection,
         command,
@@ -155,6 +157,7 @@ async function runStartedSupervisedExecution(execution: StartedSupervisedExecuti
     const { command, dependencies, input, source, timing } = execution;
     if (!command.request.coverage) {
         return await runSupervisedExecution({
+            baseline: execution.baseline,
             command,
             coverageSession: null,
             dependencies,
@@ -172,6 +175,7 @@ async function runStartedSupervisedExecution(execution: StartedSupervisedExecuti
         dependencies,
         async execute({ record, session }) {
             return await runSupervisedExecution({
+                baseline: execution.baseline,
                 command,
                 coverageSession: session,
                 dependencies,

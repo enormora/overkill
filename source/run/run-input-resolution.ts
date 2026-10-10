@@ -1,5 +1,6 @@
 import { copyConfig } from '../config/snapshot.ts';
 import type { NormalizedConfig, ProfileConfig } from '../config/types.ts';
+import type { BenchmarkCalibrationResult } from '../packages/run/benchmark-calibration.entry-point.ts';
 import { selectBenchmarkProfile, selectTestProfile } from './test-profile.ts';
 import { copyRunEngineSelection, freezeValue } from './run-support.ts';
 import { copyRunRequest } from './request-snapshot.ts';
@@ -17,6 +18,7 @@ export type RunInvocation = {
 };
 
 export type ResolvedRunInput = {
+    readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
     readonly config: NormalizedConfig;
     readonly engine: RunCommand['engine'];
     readonly files: Awaited<ReturnType<RunOrchestratorDependencies['discoverRunFilesWithProjectRoot']>>['files'];
@@ -46,7 +48,20 @@ function assertCoverageSupported(request: RunRequest, profile: ProfileConfig): v
     }
 }
 
-function assertProfileRequestSupported(request: RunRequest, profile: ProfileConfig): void {
+function assertBaselineRequestSupported(namespace: RunInvocation['namespace'], request: RunRequest): void {
+    if (namespace !== 'bench' && request.baselineUpdateMode !== 'none') {
+        invalidRequest(
+            'Ordinary baseline updates are not implemented. Use benchmark baseline commands for performance baselines.'
+        );
+    }
+}
+
+function assertProfileRequestSupported(
+    request: RunRequest,
+    profile: ProfileConfig,
+    namespace: RunInvocation['namespace']
+): void {
+    assertBaselineRequestSupported(namespace, request);
     assertCoverageSupported(request, profile);
     assertMicrotestCaptureSupported(request, profile);
     assertWorkerCountSupported(request, profile);
@@ -63,7 +78,7 @@ export async function readResolvedRunInput(
     const profile = namespace === 'bench'
         ? selectBenchmarkProfile(request.profile, config)
         : selectTestProfile(request.profile, config);
-    assertProfileRequestSupported(request, profile);
+    assertProfileRequestSupported(request, profile, namespace);
     assertSupportedProcessEngine(command, profile);
     const engine = freezeValue(copyRunEngineSelection(command.engine));
     const discovery = freezeValue(
@@ -73,5 +88,13 @@ export async function readResolvedRunInput(
             profileFiles: profile.files
         })
     );
-    return { config, engine, files: discovery.files, profile, projectRoot: discovery.projectRoot, request };
+    return {
+        benchmarkCalibration: null,
+        config,
+        engine,
+        files: discovery.files,
+        profile,
+        projectRoot: discovery.projectRoot,
+        request
+    };
 }

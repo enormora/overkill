@@ -21,6 +21,7 @@ import {
     parseRunFilterExpression,
     type RunFilter
 } from '../run/filters.entry-point.ts';
+import { benchmarkProfileType } from './benchmark-profile-parser.ts';
 import {
     createCommandLineSelection,
     runtimeSelectionFiltersType
@@ -374,17 +375,6 @@ const sharedCommandArguments = {
     })
 };
 
-const benchmarkProfileType: Type<string[], string | null> = {
-    displayName: 'name',
-    async from([ profile, ...remainingProfiles ]) {
-        if (remainingProfiles.length > 0) {
-            throw new TypeError('--profile may only be provided once.');
-        }
-
-        return profile ?? null;
-    }
-};
-
 const benchmarkCommandArguments = {
     ...sharedCommandArguments,
     profile: multioption({
@@ -439,6 +429,18 @@ type ParserExitResult = {
 
 type CommandLineDispatchResult = DispatchedCommandResult | ParserExitResult;
 
+type ParsedBenchmarkRun = { readonly command: 'list' | 'run'; readonly value: Promise<CommandLineRunnerResult>; };
+type ParsedBenchmarkBaseline = {
+    readonly command: 'baseline';
+    readonly value: { readonly value: Promise<CommandLineRunnerResult>; };
+};
+
+async function benchmarkCommandResult(
+    parsed: ParsedBenchmarkBaseline | ParsedBenchmarkRun
+): Promise<CommandLineRunnerResult> {
+    return parsed.command === 'baseline' ? await parsed.value.value : await parsed.value;
+}
+
 export async function dispatchOverkillCommand(
     commandArguments: readonly string[],
     loadRunner: () => Promise<CommandLineRunner>,
@@ -474,6 +476,44 @@ export async function dispatchOverkillCommand(
         name: 'bench',
         description: 'Benchmark commands.',
         cmds: {
+            baseline: subcommands({
+                name: 'baseline',
+                description: 'Performance baseline commands.',
+                cmds: {
+                    ...Object.fromEntries(
+                        ([ 'apply', 'bootstrap', 'diff', 'update' ] as const).map(function baselineVerb(verb) {
+                            return [
+                                verb,
+                                command({
+                                    name: verb,
+                                    args: { ...benchmarkCommandArguments, ...runExecutionArguments },
+                                    async handler(args: Except<RunCommandArguments<string | null>, 'coverage'>) {
+                                        const runner = await loadRunner();
+                                        const request = createRunTestsRequest({ ...args, coverage: false }, cwd);
+                                        return await runner.bench.baseline[verb](request);
+                                    }
+                                })
+                            ];
+                        })
+                    ),
+                    list: command({
+                        name: 'list',
+                        args: {
+                            configPath: benchmarkCommandArguments.configPath,
+                            paths: benchmarkCommandArguments.paths,
+                            profile: benchmarkCommandArguments.profile
+                        },
+                        async handler(args) {
+                            const runner = await loadRunner();
+                            return await runner.bench.baseline.list({
+                                configPath: args.configPath,
+                                cwd,
+                                listRequest: { paths: args.paths, profile: args.profile }
+                            });
+                        }
+                    })
+                }
+            }),
             list: command({
                 name: 'list',
                 args: { ...benchmarkCommandArguments, ...listDisplayArguments },
@@ -501,7 +541,6 @@ export async function dispatchOverkillCommand(
     });
     const result = await runSafely(commandLine, Array.from(commandArguments));
     const { _tag: parserStatus } = result;
-
     if (parserStatus === 'error') {
         return { kind: 'parser-exit', exit: result.error.config };
     }
@@ -509,7 +548,7 @@ export async function dispatchOverkillCommand(
     return {
         kind: 'command-result',
         result: result.value.command === 'bench'
-            ? await result.value.value.value
+            ? await benchmarkCommandResult(result.value.value)
             : await result.value.value
     };
 }

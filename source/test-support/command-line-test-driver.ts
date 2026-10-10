@@ -1,6 +1,8 @@
 import type {
-    CommandLineCommand,
     CommandLineBenchmarkRunRequest,
+    CommandLineBenchmarkBaselineRequest,
+    CommandLineBenchmarkBaselineListRequest,
+    CommandLineBenchmarkBaselineCommands,
     CommandLineBenchmarkListRequest,
     CommandLineExitCode,
     CommandLineListTestsRequest,
@@ -22,14 +24,21 @@ type RecordedExitCodes = {
     readonly apply: (exitCode: number) => void;
 };
 
+type BaselineExecutionRequest = {
+    readonly request: CommandLineBenchmarkBaselineRequest;
+    readonly verb: 'apply' | 'bootstrap' | 'diff' | 'update';
+};
+
 type RequestRecorder = {
+    readonly recordBaselineExecution: (request: BaselineExecutionRequest) => void;
+    readonly recordBaselineList: (request: CommandLineBenchmarkBaselineListRequest) => void;
     readonly recordBenchmarkList: (context: CommandLineBenchmarkListRequest) => void;
     readonly recordBenchmarkRun: (context: CommandLineBenchmarkRunRequest) => void;
     readonly recordList: (commandLineRequest: CommandLineListTestsRequest) => void;
     readonly recordRun: (commandLineRequest: CommandLineRunTestsRequest) => void;
 };
 
-const unexpectedCommand: CommandLineCommand = async function runUnexpectedCommand() {
+const unexpectedCommand = async function runUnexpectedCommand(): Promise<CommandLineRunnerResult> {
     throw new Error('Unexpected command.');
 };
 
@@ -82,6 +91,28 @@ function readRunnerResult(result: CommandLineRunnerResult | Error): CommandLineR
     return result;
 }
 
+function createBenchmarkBaselineCommands(
+    recorder: RequestRecorder,
+    result: CommandLineRunnerResult | Error
+): CommandLineBenchmarkBaselineCommands {
+    function execute(verb: BaselineExecutionRequest['verb']): CommandLineBenchmarkBaselineCommands['update'] {
+        return async function executeBaseline(request) {
+            recorder.recordBaselineExecution({ request, verb });
+            return readRunnerResult(result);
+        };
+    }
+    return {
+        apply: execute('apply'),
+        bootstrap: execute('bootstrap'),
+        diff: execute('diff'),
+        update: execute('update'),
+        async list(request) {
+            recorder.recordBaselineList(request);
+            return readRunnerResult(result);
+        }
+    };
+}
+
 function createRunner(
     requestRecorder: RequestRecorder,
     result: CommandLineRunnerResult | Error
@@ -95,13 +126,7 @@ function createRunner(
             update: unexpectedCommand
         },
         bench: {
-            baseline: {
-                apply: unexpectedCommand,
-                bootstrap: unexpectedCommand,
-                diff: unexpectedCommand,
-                list: unexpectedCommand,
-                update: unexpectedCommand
-            },
+            baseline: createBenchmarkBaselineCommands(requestRecorder, result),
             async listBenchmarks(context) {
                 requestRecorder.recordBenchmarkList(context);
 
@@ -128,10 +153,63 @@ function createRunner(
     };
 }
 
+type CapturedRequests = {
+    readonly captured: {
+        readonly baselineExecutionRequests: readonly BaselineExecutionRequest[];
+        readonly baselineListRequests: readonly CommandLineBenchmarkBaselineListRequest[];
+        readonly benchmarkListRequests: readonly CommandLineBenchmarkListRequest[];
+        readonly benchmarkRunRequests: readonly CommandLineBenchmarkRunRequest[];
+        readonly listRequests: readonly CommandLineListTestsRequest[];
+        readonly runRequests: readonly CommandLineRunTestsRequest[];
+    };
+    readonly recorder: RequestRecorder;
+};
+
+function createCapturedRequests(): CapturedRequests {
+    const listRequests: CommandLineListTestsRequest[] = [];
+    const runRequests: CommandLineRunTestsRequest[] = [];
+    const benchmarkListRequests: CommandLineBenchmarkListRequest[] = [];
+    const benchmarkRunRequests: CommandLineBenchmarkRunRequest[] = [];
+    const baselineExecutionRequests: BaselineExecutionRequest[] = [];
+    const baselineListRequests: CommandLineBenchmarkBaselineListRequest[] = [];
+    return {
+        captured: {
+            baselineExecutionRequests,
+            baselineListRequests,
+            benchmarkListRequests,
+            benchmarkRunRequests,
+            listRequests,
+            runRequests
+        },
+        recorder: {
+            recordBaselineExecution(request) {
+                baselineExecutionRequests.push(request);
+            },
+            recordBaselineList(request) {
+                baselineListRequests.push(request);
+            },
+            recordBenchmarkList(context) {
+                benchmarkListRequests.push(context);
+            },
+            recordBenchmarkRun(context) {
+                benchmarkRunRequests.push(context);
+            },
+            recordList(request) {
+                listRequests.push(request);
+            },
+            recordRun(request) {
+                runRequests.push(request);
+            }
+        }
+    };
+}
+
 export async function runCommandLine(
     args: readonly string[],
     runnerResult: CommandLineRunnerResult | Error
 ): Promise<{
+    readonly baselineExecutionRequests: readonly BaselineExecutionRequest[];
+    readonly baselineListRequests: readonly CommandLineBenchmarkBaselineListRequest[];
     readonly benchmarkListRequests: readonly CommandLineBenchmarkListRequest[];
     readonly benchmarkRunRequests: readonly CommandLineBenchmarkRunRequest[];
     readonly exitCode: CommandLineExitCode;
@@ -145,10 +223,7 @@ export async function runCommandLine(
     const stdout = createCapturedOutput();
     const stderr = createCapturedOutput();
     const exitCodes = createRecordedExitCodes();
-    const listRequests: CommandLineListTestsRequest[] = [];
-    const runRequests: CommandLineRunTestsRequest[] = [];
-    const benchmarkListRequests: CommandLineBenchmarkListRequest[] = [];
-    const benchmarkRunRequests: CommandLineBenchmarkRunRequest[] = [];
+    const requests = createCapturedRequests();
     let runnerLoadCount = 0;
 
     const exitCode = await runOverkillCommandLine({
@@ -158,32 +233,16 @@ export async function runCommandLine(
         async loadRunner() {
             runnerLoadCount += 1;
 
-            return createRunner({
-                recordBenchmarkList(context) {
-                    benchmarkListRequests.push(context);
-                },
-                recordBenchmarkRun(context) {
-                    benchmarkRunRequests.push(context);
-                },
-                recordList(request) {
-                    listRequests.push(request);
-                },
-                recordRun(request) {
-                    runRequests.push(request);
-                }
-            }, runnerResult);
+            return createRunner(requests.recorder, runnerResult);
         },
         stderr: stderr.output,
         stdout: stdout.output
     });
 
     return {
-        benchmarkListRequests,
-        benchmarkRunRequests,
+        ...requests.captured,
         exitCode,
         exitCodes: exitCodes.values,
-        listRequests,
-        runRequests,
         runnerLoadCount,
         stderr: stderr.chunks.join(''),
         stdout: stdout.chunks.join('')

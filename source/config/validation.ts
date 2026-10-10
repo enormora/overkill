@@ -1,4 +1,5 @@
 import { ConfigError } from './config-error.ts';
+import { performanceBaselinePolicySchema } from './performance-baselines.ts';
 import { validateHostProcess } from './host-process.ts';
 import { assertValidProfileName, normalizeRequiredProfileFiles } from './profile-normalization.ts';
 import { validateBenchmarkExecution } from './benchmark-execution.ts';
@@ -82,6 +83,7 @@ function validateIntegrationProfile(profile: ProfileConfig): void {
 function validateBenchmarkProfile(profileName: string, profile: BenchmarkProfileConfig): void {
     try {
         normalizeRequiredProfileFiles(profile.files);
+        performanceBaselinePolicySchema.parse(profile.baselines);
         validateIntegrationProfile(profile);
         validateBenchmarkExecution(profile.execution, profile.timeouts);
     } catch (error: unknown) {

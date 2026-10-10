@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { workIdSchema, attemptIdSchema } from '../engine/identity-schema.ts';
 import type {
     WorkerPoolHostCommand,
     WorkerPoolHostMessage,
@@ -9,7 +10,6 @@ import { workerPoolTaskSchema } from './worker-pool-task-schema.ts';
 import { runnerErrorSchema } from './run-result-schema.ts';
 import { resourceUsageSchema, resourceUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
-import { workIdSchema, attemptIdSchema } from './run-identity-schema.ts';
 
 const serializedWorkerMessageSchema: z.ZodType<SerializedWorkerPoolMessage> = z.discriminatedUnion('kind', [
     z.strictObject({

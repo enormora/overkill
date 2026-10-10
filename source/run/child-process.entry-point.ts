@@ -1,5 +1,6 @@
 import {
     childRole,
+    benchmarkCalibrationRole,
     supervisedChildRole,
     workerPoolHostRole
 } from './child-process-roles.ts';
@@ -7,6 +8,10 @@ import {
 export const childProcessEntryPointUrl = import.meta.url;
 
 async function runChildProcessRole(role: string | null): Promise<void> {
+    if (role === benchmarkCalibrationRole) {
+        await import('./benchmark-calibration.entry-point.ts');
+        return;
+    }
     if (role === supervisedChildRole) {
         await import('./supervised-child.entry-point.ts');
 

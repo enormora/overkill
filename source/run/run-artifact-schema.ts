@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunArtifact } from '../engine/run-result.ts';
+import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
-import { attemptIdSchema, workIdSchema } from './run-identity-schema.ts';
 import { artifactIdentityFields, runArtifactIdSchema } from './run-artifact-id-schema.ts';
 import { runtimeAttachmentArtifactSchema } from './attachment-wire-schema.ts';
 

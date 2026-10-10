@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
+import { workIdSchema, runtimeIdSchema, workloadIdSchema, attemptIdSchema } from '../engine/identity-schema.ts';
 import type { WorkerPoolTaskWithoutPort } from './worker-pool-host-protocol.ts';
-import { workIdSchema, runtimeIdSchema, workloadIdSchema, attemptIdSchema } from './run-identity-schema.ts';
 import { executionCommandFields, hostProcessSchema } from './run-command-schema.ts';
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 

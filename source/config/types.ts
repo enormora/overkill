@@ -1,8 +1,13 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { BenchmarkBaselinePolicy } from '../baselines/performance-adapter.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
-import type { IntegrationRetryPolicy, IntegrationExecutionShape, MicrotestExecutionShape } from './execution.ts';
+import type {
+    IntegrationRetryPolicy as IntegrationRetryPolicyDefinition,
+    IntegrationExecutionShape,
+    MicrotestExecutionShape
+} from './execution.ts';
 
 export type LoaderConfig = {
     readonly sourceMaps: boolean;
@@ -172,6 +177,7 @@ export type BenchmarkExecution = IntegrationExecutionShape<
 >;
 
 export type BenchmarkProfileConfig = {
+    readonly baselines: BenchmarkBaselinePolicy;
     readonly attachments: AttachmentLimits;
     readonly execution: BenchmarkExecution;
     readonly files: ProfileFiles;
@@ -195,3 +201,5 @@ export type NormalizedConfig = {
     readonly runtimeStateDir: string;
 };
 export type RunOrder = 'lexical' | 'plan' | 'seeded';
+
+export type IntegrationRetryPolicy = IntegrationRetryPolicyDefinition;

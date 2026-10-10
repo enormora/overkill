@@ -200,6 +200,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
     if (profile.testFamily === 'benchmark') {
         return {
             attachments: { ...profile.attachments },
+            baselines: { adapters: Array.from(profile.baselines.adapters), directory: profile.baselines.directory },
             execution: copyBenchmarkExecution(profile.execution),
             files: copyProfileFiles(profile.files),
             reporters: copyReporters(profile.reporters),

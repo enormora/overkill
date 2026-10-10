@@ -77,6 +77,7 @@ function baseResolvedRun(): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            benchmarkCalibration: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: [],

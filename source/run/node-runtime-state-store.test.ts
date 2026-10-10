@@ -2,10 +2,10 @@ import { chmod, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { createNodeRuntimeStateStore } from './node-runtime-state-store.ts';
+import { createNodeFileStore } from '../file-store.ts';
 
 async function assertBlockedReplacement(scope: TestScope, directory: string): Promise<void> {
-    const store = createNodeRuntimeStateStore();
+    const store = createNodeFileStore();
     const blockedPath = path.join(directory, 'runs', 'blocked.json');
     await mkdir(blockedPath);
     await scope.assert.rejects(async function writeBlockedRecord() {
@@ -25,7 +25,7 @@ async function assertBlockedReplacement(scope: TestScope, directory: string): Pr
 
 async function assertWriteAndCleanupFailures(scope: TestScope, filePath: string): Promise<void> {
     try {
-        await createNodeRuntimeStateStore().write(filePath, 'record');
+        await createNodeFileStore().write(filePath, 'record');
     } catch (error: unknown) {
         scope.require.instanceOf(error, AggregateError);
         const failures: readonly unknown[] = error.errors;
@@ -80,10 +80,10 @@ export const testNode = createSuite({
                 const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-record-'));
                 const filePath = path.join(directory, 'runs', 'record.json');
                 try {
-                    scope.assert.equal(await createNodeRuntimeStateStore().read(filePath), null);
-                    await createNodeRuntimeStateStore().write(filePath, '{"status":"started"}');
-                    await createNodeRuntimeStateStore().write(filePath, '{"status":"completed"}');
-                    scope.assert.equal(await createNodeRuntimeStateStore().read(filePath), '{"status":"completed"}');
+                    scope.assert.equal(await createNodeFileStore().read(filePath), null);
+                    await createNodeFileStore().write(filePath, '{"status":"started"}');
+                    await createNodeFileStore().write(filePath, '{"status":"completed"}');
+                    scope.assert.equal(await createNodeFileStore().read(filePath), '{"status":"completed"}');
                     await assertBlockedReplacement(scope, directory);
                 } finally {
                     await rm(directory, { force: true, recursive: true });

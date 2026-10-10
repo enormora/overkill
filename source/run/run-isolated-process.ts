@@ -2,6 +2,7 @@ import {
     createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
+import type { BenchmarkBaselineSession } from './benchmark-baseline-session.ts';
 import {
     createResolvedRunFromCollection,
     type CollectionDurationHistoryIndex
@@ -43,6 +44,7 @@ type CollectedExecution = {
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
 };
 type IsolatedRunOptions = {
+    readonly baseline: BenchmarkBaselineSession | null;
     readonly source: RunCollectionSource;
     readonly timing: RunTimingMeasurement | null;
 };
@@ -73,6 +75,7 @@ async function createResolvedExecutionRun(resolution: ExecutionResolutionInput):
     }
 
     return await createResolvedRunFromCollection({
+        benchmarkCalibration: resolution.input.benchmarkCalibration,
         allowEmptySelection: resolution.allowEmptySelection,
         collection: resolution.collection,
         command: resolution.command,
@@ -180,6 +183,7 @@ export function createIsolatedResolvedRun(
 }
 
 type WorkerPoolRunResultInput = {
+    readonly baseline: BenchmarkBaselineSession | null;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly input: ResolvedRunInput;
@@ -217,12 +221,13 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
         },
         {
             async finalizeResult(resolvedRun, completion) {
-                return await finalizeResultWithDurationHistory(
+                const finalized = await finalizeResultWithDurationHistory(
                     dependencies,
                     resolvedRun,
                     completion.result,
                     timing
                 );
+                return options.baseline === null ? finalized : await options.baseline.finalize(finalized);
             },
             timing
         }
@@ -241,7 +246,14 @@ async function createWorkerPoolRunResult(
     }
 
     try {
-        return await executeWorkerPoolRunResult({ command, dependencies, input, source, timing });
+        return await executeWorkerPoolRunResult({
+            baseline: options.baseline,
+            command,
+            dependencies,
+            input,
+            source,
+            timing
+        });
     } catch (error: unknown) {
         return await reportCollectionErrorResult(
             command,
@@ -262,6 +274,7 @@ export function runIsolatedProcessCommand(
 
     if (processModel === 'supervised-process') {
         return createSupervisedRunResult({
+            baseline: options.baseline,
             command,
             dependencies,
             input,

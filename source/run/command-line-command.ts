@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
 import { ConfigError } from '../config/config-error.ts';
@@ -75,9 +76,25 @@ export type CommandLineBenchmarkListRequest = ConfigLoadRequest & {
 };
 
 export type CommandLineBenchmarkCommands = {
-    readonly baseline: CommandLineBaselineCommands;
+    readonly baseline: CommandLineBenchmarkBaselineCommands;
     readonly listBenchmarks: (request: CommandLineBenchmarkListRequest) => Promise<CommandLineRunnerResult>;
     readonly runBenchmarks: (request: CommandLineBenchmarkRunRequest) => Promise<CommandLineRunnerResult>;
+};
+
+export type CommandLineBenchmarkBaselineRequest = ConfigLoadRequest & {
+    readonly runRequest: Except<BenchmarkRunRequest, 'baselineUpdateMode'>;
+};
+
+export type CommandLineBenchmarkBaselineListRequest = ConfigLoadRequest & {
+    readonly listRequest: { readonly paths: readonly string[]; readonly profile: string | null; };
+};
+
+export type CommandLineBenchmarkBaselineCommands = {
+    readonly apply: (request: CommandLineBenchmarkBaselineRequest) => Promise<CommandLineRunnerResult>;
+    readonly bootstrap: (request: CommandLineBenchmarkBaselineRequest) => Promise<CommandLineRunnerResult>;
+    readonly diff: (request: CommandLineBenchmarkBaselineRequest) => Promise<CommandLineRunnerResult>;
+    readonly list: (request: CommandLineBenchmarkBaselineListRequest) => Promise<CommandLineRunnerResult>;
+    readonly update: (request: CommandLineBenchmarkBaselineRequest) => Promise<CommandLineRunnerResult>;
 };
 
 function formatRunnerError(error: RunnerError): string {

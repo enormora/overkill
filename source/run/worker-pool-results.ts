@@ -193,7 +193,8 @@ export async function finishWorkerPoolRun(
 export async function createEmptyWorkerPoolResult(
     resolvedRun: WorkerPoolRunRuntime['resolvedRun'],
     dependencies: RunOrchestratorDependencies,
-    collectionRunState: SupervisedRunState
+    collectionRunState: SupervisedRunState,
+    finalizeResult: (result: RunResult) => Promise<RunResult>
 ): Promise<RunResult> {
     const reporterDelivery = await createReporterDelivery(resolvedRun, dependencies);
     const startedAtMilliseconds = dependencies.wallClock.currentUnixEpochMilliseconds;
@@ -220,5 +221,8 @@ export async function createEmptyWorkerPoolResult(
         ),
         collectionRunState.artifacts()
     );
-    return await reportResultWithDelivery(resultWithResolvedTimingCollection(resolvedRun, result), reporterDelivery);
+    return await reportResultWithDelivery(
+        await finalizeResult(resultWithResolvedTimingCollection(resolvedRun, result)),
+        reporterDelivery
+    );
 }

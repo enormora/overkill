@@ -35,11 +35,73 @@ function benchmarkRequests(
         });
 }
 
+function assertBaselineRequest(
+    scope: TestScope,
+    result: CapturedCommandLineRun,
+    verb: 'apply' | 'bootstrap' | 'diff' | 'update'
+): void {
+    const [ entry ] = result.baselineExecutionRequests;
+    scope.require.defined(entry);
+    scope.assert.equal(entry.verb, verb);
+    scope.assert.deepEqual(entry.request.runRequest.paths, [ 'source/startup.bench.ts' ]);
+    scope.assert.equal(entry.request.runRequest.profile, 'startup');
+    scope.assert.equal(entry.request.configPath, 'overkill.config.ts');
+    scope.assert.equal(result.exitCode, 0);
+    scope.assert.deepEqual(result.baselineListRequests, []);
+}
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/packages/test/command-line-runner-bench.test.ts',
     ...emptyTestData,
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'benchmark baseline execution verbs carry typed selection requests',
+            ...emptyTestData,
+            async body(scope: TestScope) {
+                for (const verb of [ 'apply', 'bootstrap', 'diff', 'update' ] as const) {
+                    const result = await runCommandLine([
+                        'bench',
+                        'baseline',
+                        verb,
+                        'source/startup.bench.ts',
+                        '--profile',
+                        'startup',
+                        '--title',
+                        'first',
+                        '--config',
+                        'overkill.config.ts'
+                    ], passingResult());
+                    assertBaselineRequest(scope, result, verb);
+                }
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'benchmark baseline listing accepts disk selection flags only',
+            ...emptyTestData,
+            async body(scope: TestScope) {
+                const result = await runCommandLine(
+                    [ 'bench', 'baseline', 'list', 'source', '--profile', 'startup' ],
+                    passingResult()
+                );
+                scope.assert.deepEqual(result.baselineListRequests, [ {
+                    configPath: null,
+                    cwd: '/project',
+                    listRequest: { paths: [ 'source' ], profile: 'startup' }
+                } ]);
+                scope.assert.deepEqual(result.baselineExecutionRequests, []);
+                const invalid = await runCommandLine(
+                    [ 'bench', 'baseline', 'list', '--title', 'first' ],
+                    passingResult()
+                );
+                scope.assert.equal(invalid.exitCode, 3);
+                scope.assert.equal(invalid.runnerLoadCount, 0);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'bench run carries shared selection and execution flags',
@@ -342,7 +404,10 @@ export const testNode = createSuite({
                     [ 'bench' ],
                     [ 'bench', '--help' ],
                     [ 'bench', 'run', '--help' ],
-                    [ 'bench', 'list', '--help' ]
+                    [ 'bench', 'list', '--help' ],
+                    [ 'bench', 'baseline' ],
+                    [ 'bench', 'baseline', '--help' ],
+                    [ 'bench', 'baseline', 'update', '--help' ]
                 ];
 
                 for (const args of helpArguments) {
@@ -364,7 +429,7 @@ export const testNode = createSuite({
             title: 'benchmark namespace rejects unknown verbs before loading the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
-                for (const verb of [ 'unknown', 'baseline' ]) {
+                for (const verb of [ 'unknown' ]) {
                     const result = await runCommandLine([ 'bench', verb ], passingResult());
 
                     scope.assert.equal(result.exitCode, 3);
