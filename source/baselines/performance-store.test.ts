@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
@@ -130,6 +130,95 @@ export const testNode = suite('performance baseline storage', [
                     await store.apply({ baseline, kind: 'update', previous: baseline });
                 }, { message: 'Performance baseline changed during execution. Run the command again.' });
                 await assertPersistedBaseline(scope, filePath, edited);
+            });
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'rejects directories that escape the project root, including symlink targets',
+        async function (scope: TestScope) {
+            await withStore(async function rejectEscapedStore({ directory }) {
+                for (const location of [ '../escaped-baselines', 'escaped-baselines' ]) {
+                    if (location === 'escaped-baselines') {
+                        await symlink(tmpdir(), path.join(directory, location));
+                    }
+                    await scope.assert.rejects(async function outsideRoot() {
+                        await createPerformanceBaselineStore({
+                            directory: location,
+                            maxBytes: 4096,
+                            projectRoot: directory
+                        });
+                    }, { message: 'Performance baseline directory must remain inside the project root.' });
+                }
+            });
+            return scope.assert.collect();
+        }
+    ),
+    test('rejects non-directory ancestors and non-directory stores', async function (scope: TestScope) {
+        await withStore(async function rejectFilesAsDirectories({ directory, store }) {
+            await mkdir(path.join(directory, 'baselines'));
+            await writeFile(path.join(directory, 'baselines', 'performance'), 'not a directory');
+            await scope.assert.rejects(async function listFile() {
+                await store.list();
+            }, { code: 'ENOTDIR' });
+            await writeFile(path.join(directory, 'blocked'), 'not a directory');
+            await scope.assert.rejects(async function blockedAncestor() {
+                await createPerformanceBaselineStore({
+                    directory: 'blocked/baselines',
+                    maxBytes: 4096,
+                    projectRoot: directory
+                });
+            }, { code: 'ENOTDIR' });
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects non-file entries', async function (scope: TestScope) {
+        await withStore(async function rejectDirectoryEntry({ directory, store }) {
+            await store.apply({ baseline, kind: 'create' });
+            const [ entry ] = await store.list();
+            scope.require.defined(entry);
+            const filePath = path.join(directory, entry.path);
+            await rm(filePath);
+            await mkdir(filePath);
+            await scope.assert.rejects(async function directoryEntry() {
+                await store.list();
+            }, { message: /Invalid performance baseline file:/ });
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects filenames that do not match persisted identities', async function (scope: TestScope) {
+        await withStore(async function rejectWrongIdentity({ directory, store }) {
+            await store.apply({ baseline, kind: 'create' });
+            const [ entry ] = await store.list();
+            scope.require.defined(entry);
+            const filePath = path.join(directory, entry.path);
+            await rename(filePath, path.join(path.dirname(filePath), 'wrong.benchmark.json'));
+            await scope.assert.rejects(async function wrongIdentity() {
+                await store.list();
+            }, { message: /Performance baseline path does not match its identity:/ });
+        });
+        return scope.assert.collect();
+    }),
+    test(
+        'rejects vanished expectations and oversized writes without publishing files',
+        async function (scope: TestScope) {
+            await withStore(async function preserveAbsentFiles({ directory, store }) {
+                await store.apply({ baseline, kind: 'create' });
+                const [ entry ] = await store.list();
+                scope.require.defined(entry);
+                await rm(path.join(directory, entry.path));
+                await scope.assert.rejects(async function vanishedExpectation() {
+                    await store.apply({ baseline, kind: 'update', previous: baseline });
+                }, { message: 'Performance baseline disappeared during execution.' });
+                const bounded = await createPerformanceBaselineStore({
+                    directory: 'small',
+                    maxBytes: 1,
+                    projectRoot: directory
+                });
+                await scope.assert.rejects(async function oversizedWrite() {
+                    await bounded.apply({ baseline, kind: 'create' });
+                }, { message: 'Performance baseline exceeds the configured artifact byte limit.' });
+                scope.assert.deepEqual(await bounded.list(), []);
             });
             return scope.assert.collect();
         }

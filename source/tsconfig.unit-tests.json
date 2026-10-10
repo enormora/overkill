@@ -11,7 +11,10 @@
         "rootDir": "..",
         "types": ["node"]
     },
-    "references": [{ "path": "./tsconfig.sources.json" }],
+    "references": [
+        { "path": "./tsconfig.sources.json" },
+        { "path": "./tsconfig.integration-tests.json" }
+    ],
     "include": ["./**/*.test.ts", "./test-support/**/*.ts"],
     "exclude": ["./**/*.type-test.ts", "./integration-tests/**/*.ts"]
 }
