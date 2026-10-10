@@ -1990,24 +1990,130 @@ type DebugStats = {
     readonly softTimeoutHeadroomMs: number;
 };
 
-// see failure-artifacts.md § Witnesses And Replay Artifacts
-type WitnessFile = {
+import type { JsonValue } from 'type-fest';
+
+type WitnessHeader = {
     readonly version: 1;
-    readonly producedBy: { library: string; libraryVersion: string; };
+    readonly producedBy: { readonly library: string; readonly libraryVersion: string; };
     readonly case: CaseId;
-    readonly kind: 'property' | 'simulation';
-    readonly seed: bigint;
-    readonly shrinkPath?: ReadonlyArray<unknown>;
-    readonly counterexample?: unknown;
-    readonly simulation?: { name: string; payload: unknown; };
-    readonly resource?: { name: string; };
-    readonly scenario?: string;
-    readonly runtimeSnapshot?: RuntimeSnapshot;
-    readonly faultConfiguration?: unknown;
 };
+
+type EncodedPropertyInput = {
+    readonly format: { readonly name: string; readonly version: number; };
+    readonly codec: { readonly name: string; readonly version: number; };
+    readonly payload: JsonValue;
+};
+
+type PropertyWitnessTarget =
+    | { readonly kind: 'property-value'; }
+    | {
+        readonly kind: 'forall';
+        readonly location: SourceLocation;
+        readonly occurrence: number;
+        readonly key: string | null;
+    };
+
+type PropertyWitnessFile = WitnessHeader & {
+    readonly kind: 'property';
+    readonly seed: string;
+    readonly runtimes: ReadonlyArray<RuntimeId>;
+    readonly target: PropertyWitnessTarget;
+    readonly counterexample: EncodedPropertyInput;
+    readonly failureIdentity: JsonValue | null;
+    readonly shrinkPath: ReadonlyArray<number> | null;
+};
+
+type SimulationWitnessFile = WitnessHeader & {
+    readonly kind: 'simulation';
+    readonly seed: string | null;
+    readonly simulation: { readonly name: string; readonly payload: JsonValue; };
+    readonly resource: { readonly name: string; } | null;
+    readonly scenario: string | null;
+    readonly runtimeSnapshot: JsonValue;
+    readonly faultConfiguration: JsonValue;
+};
+
+type WitnessFile = PropertyWitnessFile | SimulationWitnessFile;
 ```
 
 Canonical: [Failure Artifacts](../authoring/failure-artifacts.md).
+
+## Property Testing
+
+```ts
+type PropertyCodecPayload =
+    | null | undefined | boolean | string | number | bigint
+    | ReadonlyArray<PropertyCodecPayload>
+    | { readonly [key: string]: PropertyCodecPayload; }
+    | Date | RegExp | ReadonlyMap<PropertyCodecPayload, PropertyCodecPayload>
+    | ReadonlySet<PropertyCodecPayload> | ArrayBuffer | ArrayBufferView;
+
+type PropertyCodecDecoder<Value> = {
+    readonly version: number;
+    readonly decode: (payload: unknown) => Value;
+};
+
+type PropertyInputCodec<Value> = PropertyCodecDecoder<Value> & {
+    readonly name: string;
+    readonly encode: (value: Value) => PropertyCodecPayload;
+    readonly previousDecoders: ReadonlyArray<PropertyCodecDecoder<Value>>;
+};
+
+type Generator<Value> = {
+    readonly map: <Output>(transform: (value: Value) => Output) => Generator<Output>;
+    readonly flatMap: <Output>(transform: (value: Value) => Generator<Output>) => Generator<Output>;
+    readonly filter: (predicate: (value: Value) => boolean) => Generator<Value>;
+    readonly withCodec: (codec: PropertyInputCodec<Value>) => Generator<Value>;
+};
+
+type PropertySampleScope = TestScope & {
+    readonly target: (label: string, score: number) => void;
+    readonly cover: (label: string, condition: boolean) => void;
+};
+
+type PropertyBody<Value> = (
+    value: Value,
+    sample: PropertySampleScope
+) => AssertionResult | Promise<AssertionResult>;
+
+type PropertyDefinition<Value> = {
+    readonly title: string;
+    readonly generator: Generator<Value>;
+    readonly test: PropertyBody<Value>;
+};
+
+type PropertyCaseScope = TestScope & {
+    readonly forall: <Value>(
+        generator: Generator<Value>,
+        body: PropertyBody<Value>
+    ) => Promise<AssertionResult>;
+};
+
+type GeneratorSampleRequest = {
+    readonly seed: bigint;
+    readonly count: number;
+    readonly size: number;
+    readonly depth: number;
+};
+
+declare function property<Value>(definition: PropertyDefinition<Value>): TestCase;
+declare function defineCodec<Value>(definition: PropertyInputCodec<Value>): PropertyInputCodec<Value>;
+declare function withProperties(
+    body: (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>
+): TestBody;
+declare function sampleGenerator<Value>(
+    generator: Generator<Value>,
+    request: GeneratorSampleRequest
+): ReadonlyArray<Value>;
+```
+
+These are the primitive authoring forms. Collected property settings supply
+explicit examples, input-coverage requirements, failure-key overrides, and
+profile-bounded exploration policy. Codec versions and standard payload shapes
+are validated at runtime; custom decoders validate external payloads before
+returning a reconstructed value.
+
+Canonical: [Property-Based Testing Resolution](../authoring/higher-test-layers.md#property-based-testing-resolution).
 
 ## Simulation Definitions
 

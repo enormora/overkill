@@ -453,23 +453,28 @@ The first-party ergonomics layer exposes `defineMacro(...)` as the canonical
 source-aware declaration form:
 
 ```ts
-import { defineMacro, suite, test } from '@overkill-dev/test';
+import { defineMacro, suite } from '@overkill-dev/test';
+import { property } from '@overkill-dev/test/property';
 
 const lawsOfMonoid = defineMacro(
     <T>(parameters: MonoidLaws<T>) => {
         const { name, empty, concat, gen, eq } = parameters;
         return suite(`monoid laws: ${name}`, [
-            test('left identity', (scope) => {
-                return scope.forall(gen, (x, sample) => {
+            property({
+                title: 'left identity',
+                generator: gen,
+                test(x, sample) {
                     sample.assert.equal(eq(concat(empty, x), x), true);
                     return sample.assert.collect();
-                });
+                }
             }),
-            test('right identity', (scope) => {
-                return scope.forall(gen, (x, sample) => {
+            property({
+                title: 'right identity',
+                generator: gen,
+                test(x, sample) {
                     sample.assert.equal(eq(concat(x, empty), x), true);
                     return sample.assert.collect();
-                });
+                }
             })
         ]);
     }
@@ -505,32 +510,39 @@ assertion construction site. That keeps reused tests and failures attributable
 to the authored callsite that selected the reusable behavior.
 
 ```ts
-import { suite, test } from '@overkill-dev/test';
+import { suite } from '@overkill-dev/test';
+import { gen as generators, property } from '@overkill-dev/test/property';
 
 function lawsOfMonoid<T>(parameters: MonoidLaws<T>): TestNode {
     const { name, empty, concat, gen, eq } = parameters;
     return suite(`monoid laws: ${name}`, [
-        test('left identity', (scope) => {
-            return scope.forall(gen, (x, sample) => {
+        property({
+            title: 'left identity',
+            generator: gen,
+            test(x, sample) {
                 sample.assert.equal(eq(concat(empty, x), x), true);
                 return sample.assert.collect();
-            });
+            }
         }),
-        test('right identity', (scope) => {
-            return scope.forall(gen, (x, sample) => {
+        property({
+            title: 'right identity',
+            generator: gen,
+            test(x, sample) {
                 sample.assert.equal(eq(concat(x, empty), x), true);
                 return sample.assert.collect();
-            });
+            }
         }),
-        test('associativity', (scope) => {
-            return scope.forall([ gen, gen, gen ], (values, sample) => {
+        property({
+            title: 'associativity',
+            generator: generators.tuple(gen, gen, gen),
+            test(values, sample) {
                 const [ a, b, c ] = values;
                 sample.assert.equal(
                     eq(concat(concat(a, b), c), concat(a, concat(b, c))),
                     true
                 );
                 return sample.assert.collect();
-            });
+            }
         })
     ]);
 }

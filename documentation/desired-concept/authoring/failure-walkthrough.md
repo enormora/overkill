@@ -18,38 +18,44 @@ A property test exported as a `Suite` value (see [Tests As Values § What It Loo
 value rather than relying on registration side effects:
 
 ```ts
-// source/users.test.ts
-import { gen } from '@overkill-dev/property'; // proposed package, see types-index
-import { suite, test } from '@overkill-dev/test';
+import { gen, property } from '@overkill-dev/test/property';
+import { suite } from '@overkill-dev/test';
 import { parse, serialize } from './users.ts';
 
+const userGenerator = gen.record({
+    id: gen.constant('42'),
+    name: gen.string({ minLength: 0, maxLength: 64 })
+});
+
 export const testNode = suite('users', [
-    test('round-trip preserves values', (scope) => {
-        return scope.forall(gen.user(), (user, sample) => {
+    property({
+        title: 'round-trip preserves values',
+        generator: userGenerator,
+        test(user, sample) {
             sample.assert.equal(parse(serialize(user)), user);
             return sample.assert.collect();
-        });
+        }
     })
 ]);
 ```
 
 The test passes for thousands of generated inputs, then fails on a
-shrunk minimal counterexample: a `User` whose `name` contains a
+shrunk counterexample: a `User` whose `name` contains a
 combining accent. `parse(serialize(...))` roundtrips Unicode in decomposed
 form when the input used composed form. The structures compare unequal.
 
 The important part for this walkthrough is not the property helper
 itself; it is the authoring shape around it: the file exports a suite
-value, the case body returns a `scope.forall(...)` invocation that uses a
-nested injected assertion context, and the failure still enters the
+value containing a first-class property node whose body uses an injected
+property-local assertion context, and the failure still enters the
 pipeline as a recorded `FailedCheck`.
 
-## Stage 1 - `scope.forall` Shrinks And Records
+## Stage 1 - The Property Shrinks And Records
 
-`scope.forall(generator, body)` evaluates the body for each generated
+The property executor evaluates the body for each generated
 input, giving that body a nested assertion context for the sampled input.
-Once `scope.forall` sees a failing sample, it shrinks the input to a
-minimal counterexample and records a single `FailedCheck` for that
+Once it sees a failing sample, it confirms and shrinks the original failure and
+records a single `FailedCheck` for the retained
 counterexample into the case's assertion log (see
 [Assertions And Results § Diff And Diagnostic Shape](./assertions-and-results.md#diff-and-diagnostic-shape), and
 § Property Tests And The Assertion Boundary for the boundary rule):
@@ -102,8 +108,8 @@ Canonical: [Assertions And Results](./assertions-and-results.md).
 
 ## Stage 2 - Test Body Returns; Outcome Constructed
 
-`scope.forall` returns the test body's terminal value (the
-property-test analogue of `scope.assert.collect()`). The engine reads
+The property executor returns its aggregated terminal value after trial
+cleanup and failure confirmation. The engine reads
 the case's recorded log and constructs the `TestOutcome` (see
 [Assertions And Results § The Protocol Shape](./assertions-and-results.md#the-protocol-shape), also
 [Types Index](../reference/types-index.md)):
@@ -120,9 +126,9 @@ const outcome: TestOutcome = {
 };
 ```
 
-`scope.forall` is the **assertion-recording boundary** for property
+The property executor is the **assertion-recording boundary** for property
 tests: regardless of how many generated inputs the body runs against,
-the call records one assertion's worth of activity in the case's log
+the executor records one assertion's worth of activity in the case's log
 on success, or one `FailedCheck` for the shrunk counterexample on
 failure. The walkthrough does not write `scope.plan(1)` because the
 boundary rule already satisfies zero-assertion detection; the
@@ -225,7 +231,7 @@ If the user had explicitly enabled debug for this case - typically via
 `TestDebugArtifact` (see [Test Debug Mode](./debug-mode.md))
 would also exist at
 `.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the
-timeline showing `forall` iteration counts up to the failure. The
+timeline showing property trial counts up to the failure. The
 `RunFacts.debugMode` field records that debug data was collected.
 
 Canonical: [Reproducibility](../architecture/reproducibility.md), [Failure Artifacts](./failure-artifacts.md),
@@ -264,9 +270,11 @@ The next morning, on a different machine, the developer runs:
 overkill replay-witness .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
 ```
 
-The replay-witness command reads the file (stage 5) and replays that
-single failing case directly. Stages 1–7 repeat with `verdict === 'fail'`
-and the same failed check.
+The replay-witness command reads the file (stage 5), decodes the retained input,
+and executes the declared property body directly without generation or
+shrinking. With compatible code and runtime, it records the same failed check.
+If the code has changed, replay reports the actual result rather than promising
+that a historical failure still reproduces.
 
 Canonical: [Failure Artifacts § Witnesses And Replay Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts),
 [Reproducibility § Replay Witnesses For Properties And Simulations](../architecture/reproducibility.md#replay-witnesses-for-properties-and-simulations).

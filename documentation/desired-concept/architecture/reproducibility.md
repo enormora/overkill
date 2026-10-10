@@ -339,12 +339,26 @@ Limitations:
 
 ## Replay Witnesses For Properties And Simulations
 
-For property tests and deterministic-simulation tests, a run record is
-overkill - a witness is enough. `overkill replay-witness <path>` loads the
-witness JSON and replays that single failing case directly.
+For first-class property tests and deterministic-simulation tests, a witness
+can reproduce family-owned inputs without a complete run record.
+`overkill replay-witness <path>` loads the
+witness JSON and replays a first-class property body with the stored input,
+without generation or shrinking. Advanced nested `scope.forall` witnesses
+execute the enclosing case normally and substitute the target input only;
+missing, ambiguous, or unreached targets are replay errors. The command reports
+the current outcome when source code has changed.
+
+Nested property witnesses reproduce only the target input; they do not
+promise to freeze surrounding executions, corpus contents, or captured state.
+Use complete run recording when reproducing that enclosing run is necessary.
 
 For the witness schema and versioning rules, see
 [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).
+
+Property witnesses and promoted corpus entries use lossless, versioned graph
+JSON with supported historical built-in decoders. Their compatibility,
+promotion, and execution rules live in
+[Property-Based Testing Resolution](../authoring/higher-test-layers.md#property-based-testing-resolution).
 
 ## Scope
 

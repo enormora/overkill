@@ -164,6 +164,11 @@ The settled package split is:
 - `@overkill-dev/property` for generator-driven property testing
 - `@overkill-dev/model` for rule-based/state-machine testing above that core
 
+The primary authoring form is `property({ title, generator, test })`, exported
+as a test value directly or inside a suite. Standard users import it from
+`@overkill-dev/test/property`; the underlying property package owns its
+semantics. Nested `scope.forall` remains an advanced composition form.
+
 Related advanced styles such as metamorphic, differential, and
 linearizability-oriented testing also belong in that higher-layer family.
 Contract-oriented suites belong there too, but primarily through

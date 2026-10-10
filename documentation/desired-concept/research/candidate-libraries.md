@@ -339,9 +339,12 @@ Freshness note:
 
 Assessment:
 
-- strong idea donor
-- possible short-term experimentation backend
-- not the conceptual target to build around blindly
+- selected initial generator and contextual-shrinking backend, behind the
+  independent Overkill API
+- Overkill owns execution, reconstruction, budgets, corpus workflows, and
+  reporting rather than adopting the foreign runner
+- see [Property-Based Testing Resolution](../authoring/higher-test-layers.md#property-based-testing-resolution)
+  for the contract and probe limitations
 
 Source:
 
@@ -408,8 +411,8 @@ Source:
 
 Recommended direction:
 
-- keep `fast-check` as the main JS reference point and experimental
-  comparison baseline
+- use `fast-check` as the initial internal generator/shrinking backend while
+  preserving Overkill's execution and replay contracts
 - evaluate `pure-rand` for the seeded/splittable randomness layer
 - treat `gentest` as an API-shape donor for keeping generator primitives
   small and compositional
