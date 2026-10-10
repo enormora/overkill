@@ -62,7 +62,7 @@
         "dependency-cruiser": "18.5.0",
         "eslint": "10.7.0",
         "jscpd": "5.4.0",
-        "knip": "6.39.0",
+        "knip": "6.40.0",
         "rust-just": "1.57.0",
         "tstyche": "7.2.5",
         "typescript": "6.0.3"
