@@ -9,6 +9,7 @@ import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
 const minimumSeedValue = 0n;
+const executionModes: ReadonlySet<string> = new Set([ 'profile-default', 'serial' ]);
 
 function validateRunShard(request: RunRequest): void {
     if (!Number.isSafeInteger(request.shard.total) || request.shard.total <= 0) {
@@ -90,6 +91,12 @@ function validateTimingCollection(request: RunRequest): void {
     }
 }
 
+function validateExecution(request: RunRequest): void {
+    if (!executionModes.has(request.execution.mode)) {
+        invalidRequest('Execution mode must be "profile-default" or "serial".');
+    }
+}
+
 function assertValidRunProfileName(profileName: string): void {
     const message = invalidProfileNameMessage(profileName);
 
@@ -106,6 +113,7 @@ function validateRunRequest(request: RunRequest): void {
     validateRunSeed(request);
     validateRunSelection(request);
     validateTimingCollection(request);
+    validateExecution(request);
     validateRunResourceUsageRequest(request);
 }
 

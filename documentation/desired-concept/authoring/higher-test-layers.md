@@ -669,7 +669,10 @@ test nodes in selected files remain subject to collection-time validation.
 - Mutation execution has an explicit adapter-owned policy: serial cases.
   Preserve the configured profile's process model and
   restrictions. Stryker parallelizes mutants. Resolve and expose the scheduling
-  override before running; no dedicated mutation profile is required.
+  override before running through `RunRequest.execution: { mode: 'serial' }`;
+  no dedicated mutation profile is required. The resolved request retains this
+  intent, the configured profile remains unchanged, and
+  `RunFacts.execution.scheduling` exposes the effective scheduling.
 - Reuse the profile's discovery, loader, capability restrictions, and resource
   policies. Keep ordinary V8 coverage disabled and disable retries and baseline
   updates. Use one campaign seed across the dry run, all mutants, workers, and

@@ -51,7 +51,7 @@ export type RunShard = {
 
 export type RunShardHashAlgorithm = 'xxh3-64-canonical-json-v1';
 
-export type RunExecutionRequest = { readonly mode: 'profile-default'; };
+export type RunExecutionRequest = { readonly mode: 'profile-default'; } | { readonly mode: 'serial'; };
 
 type RunCapabilityRestrictionsRequest = { readonly mode: 'disabled' | 'enabled'; };
 

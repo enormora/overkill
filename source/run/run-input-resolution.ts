@@ -9,7 +9,7 @@ import {
     assertSupportedProcessEngine,
     validateRunInput
 } from './run-validation.ts';
-import { invalidRequest } from './run-errors.ts';
+import { invalidRequest, RunResolutionError } from './run-errors.ts';
 
 export type RunInvocation = {
     readonly command: RunCommand;
@@ -47,6 +47,13 @@ function assertCoverageSupported(request: RunRequest, profile: ProfileConfig): v
 }
 
 function assertProfileRequestSupported(request: RunRequest, profile: ProfileConfig): void {
+    if (request.execution.mode === 'serial' && profile.testFamily !== 'microtest') {
+        throw new RunResolutionError(
+            'Serial execution overrides require a microtest profile.',
+            undefined,
+            'unsupported-request'
+        );
+    }
     assertCoverageSupported(request, profile);
     assertMicrotestCaptureSupported(request, profile);
     assertWorkerCountSupported(request, profile);

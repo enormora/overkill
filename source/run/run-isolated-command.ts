@@ -1,7 +1,7 @@
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 import { createLocalTestPlan, type LocalTestPlan } from './run-local-test-plan.ts';
-import { resolveResourceUsagePolicy } from './run-profile-facts.ts';
+import { resolveResourceUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunCommand, CollectedRunPlan, RunRequest } from './run-types.ts';
 import type {
@@ -120,7 +120,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         resourceBudgets: resourceUsagePolicy.budgets,
         resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
         root: runCollectionRoot(input.source, input.command.cwd),
-        scheduling: input.profile.execution.scheduling,
+        scheduling: resolveRunScheduling(input.command.request, input.profile),
         testFamily: input.profile.testFamily,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds

@@ -88,6 +88,14 @@ outcomes, and reporter selection follow the regular runner flow. Listing imports
 definitions without executing bodies or acquiring resources. Measurement,
 calibration, and benchmark budgets are not provided by this integration.
 
+Programmatic microtest requests accept `execution: { mode: 'serial' }` to run
+cases serially through cleanup while preserving the selected profile's process
+model and other policy. `mode: 'profile-default'` retains configured scheduling.
+Serial overrides are rejected for other test families before discovery. The
+resolved request records the override; `RunFacts.execution.scheduling` records
+effective scheduling while the configured profile stays unchanged. Coverage
+remains a separate request field. There is no CLI scheduling override flag.
+
 Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 
 - `all(filters)`

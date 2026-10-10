@@ -240,7 +240,7 @@ describe('@overkill-dev/run', function () {
     test('keeps request fields explicit for the implemented runner slice', function () {
         expect<keyof RunRequest>().type.toBe<ExpectedRunRequestKey>();
         expect<RunRequest['capabilityRestrictions']['mode']>().type.toBe<'disabled' | 'enabled'>();
-        expect<RunRequest['execution']['mode']>().type.toBe<'profile-default'>();
+        expect<RunRequest['execution']['mode']>().type.toBe<'profile-default' | 'serial'>();
         expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
         expect<RunRequest['profile']>().type.toBe<string>();
         expect<RunRequest['resourceBudgetOverrides']>().type.toBe<ResourceBudgets | null>();
@@ -268,6 +268,11 @@ describe('@overkill-dev/run', function () {
 
     test('exposes case file set facts', function () {
         expect<RunFacts['cases'][number]['fileSet']>().type.toBe<string | null>();
+    });
+
+    test('only exposes profile-default and serial execution requests', function () {
+        expect<RunRequest['execution']>().type.not.toBeAssignableFrom<{ readonly mode: 'concurrent'; }>();
+        expect<RunRequest['execution']>().type.not.toBeAssignableFrom<{ readonly mode: 'supervised-process'; }>();
     });
 
     test('exposes run scheduling and family facts', function () {
