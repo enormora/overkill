@@ -270,24 +270,70 @@ This is the canonical witness schema; other documents reference it rather
 than restating fields.
 
 ```ts
-type WitnessFile = {
+import type { JsonValue } from 'type-fest';
+
+type WitnessHeader = {
     readonly version: 1;
-    readonly producedBy: { library: string; libraryVersion: string; };
+    readonly producedBy: { readonly library: string; readonly libraryVersion: string; };
     readonly case: CaseId;
-    readonly kind: 'property' | 'simulation';
-    readonly seed: bigint;
-    // present for property tests
-    readonly shrinkPath?: ReadonlyArray<unknown>;
-    readonly counterexample?: unknown;
-    // present for deterministic-simulation tests
-    readonly simulation?: { name: string; payload: unknown; };
-    readonly resource?: { name: string; };
-    readonly scenario?: string;
-    // present when the runtime supports it
-    readonly runtimeSnapshot?: unknown;
-    readonly faultConfiguration?: unknown;
 };
+
+type EncodedPropertyInput = {
+    readonly format: { readonly name: string; readonly version: number; };
+    readonly codec: { readonly name: string; readonly version: number; };
+    readonly payload: JsonValue;
+};
+
+type PropertyWitnessTarget =
+    | { readonly kind: 'property-value'; }
+    | {
+        readonly kind: 'forall';
+        readonly location: SourceLocation;
+        readonly occurrence: number;
+        readonly key: string | null;
+    };
+
+type PropertyWitnessFile = WitnessHeader & {
+    readonly kind: 'property';
+    readonly seed: string;
+    readonly runtimes: ReadonlyArray<RuntimeId>;
+    readonly target: PropertyWitnessTarget;
+    readonly counterexample: EncodedPropertyInput;
+    readonly failureIdentity: JsonValue | null;
+    readonly shrinkPath: ReadonlyArray<number> | null;
+};
+
+type SimulationWitnessFile = WitnessHeader & {
+    readonly kind: 'simulation';
+    readonly seed: string | null;
+    readonly simulation: { readonly name: string; readonly payload: JsonValue; };
+    readonly resource: { readonly name: string; } | null;
+    readonly scenario: string | null;
+    readonly runtimeSnapshot: JsonValue;
+    readonly faultConfiguration: JsonValue;
+};
+
+type WitnessFile = PropertyWitnessFile | SimulationWitnessFile;
 ```
+
+Persisted seeds are decimal strings, matching the existing simulation
+producer; loaders restore numeric seed values internally. Property input
+payloads carry separate transport-format and application-codec versions.
+The `payload` is lossless graph JSON, not a truncated assertion value.
+`shrinkPath` is nullable diagnostic provenance and is not needed for direct
+input replay. `failureIdentity` is nullable when reliable classification is
+unavailable. The property package validates its producer-specific payload;
+the engine owns the shared envelope and attachment identity.
+
+First-class property targets replay their declared body directly. Nested
+`forall` targets also record the invocation location and occurrence or an
+explicit key, and replay enters the enclosing case. The source and runtime
+identities are resolved against the current project rather than importing
+executable decoder code from a witness. Replay reports the current outcome;
+historical evidence does not guarantee that changed code still fails.
+
+Compatibility, corpus promotion, and codec behavior are defined in
+[Property-Based Testing Resolution](./higher-test-layers.md#property-based-testing-resolution).
 
 A witness is also a failure artifact - it attaches to the failing case via
 `ArtifactId` and is rendered by reporters as a replay command line:

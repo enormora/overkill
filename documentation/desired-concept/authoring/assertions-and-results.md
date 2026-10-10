@@ -813,39 +813,46 @@ bundle.
 
 ## Property Tests And The Assertion Boundary
 
-Property primitives like `scope.forall(gen, body)` (proposed package
-`@overkill-dev/property`) call `body` many times - once per generated
-input - but count as **one assertion at the boundary** for both
-zero-assertion detection and `plan(n)`:
+`property({ title, generator, test })` is the primary property-test constructor.
+It calls its body for each input with a fresh property-local assertion context.
+Its internal checks aggregate into **one assertion at the boundary** for both
+zero-assertion detection and `plan(n)`. The advanced composition primitive
+`scope.forall(generator, body)` follows the same boundary rule:
 
 - on success: `scope.forall` records one assertion's worth of
   activity in the case's log; a property test that completes
   successfully therefore satisfies § Zero-Assertion Detection
   without forcing the author to write `scope.plan(1)`
-- on failure: `scope.forall` records exactly one `FailedCheck` for
-  the shrunk minimal counterexample, regardless of how many failing
+- on assertion-target failure: the executor records one primary `FailedCheck` for
+  the retained shrunk counterexample, regardless of how many failing
   inputs were seen during shrinking
 - `plan(n)` counts boundary assertions: a test with one
   `scope.forall` call satisfies `scope.plan(1)`; a test with two
   `scope.forall` calls satisfies `scope.plan(2)`
 
-The body passed to `scope.forall` should use an injected property-local
+Body errors and native lifecycle or supervision failures retain their own
+outcome kinds; they are not converted into assertion checks. Other failed
+checks remain diagnostics beside the primary assertion target.
+
+The property body uses an injected property-local
 assertion context rather than importing a separate low-level assertion
 package. A typical shape is:
 
 ```ts
-test('round-trips', (scope) => {
-    return scope.forall(gen.user(), (user, sample) => {
+property({
+    title: 'round-trips',
+    generator: userGenerator,
+    test(user, sample) {
         sample.assert.equal(parse(serialize(user)), user);
         return sample.assert.collect();
-    });
+    }
 });
 ```
 
 The property helper owns the internal aggregation and decides what to record
 at the boundary. User code stays on the same injected-assertion model as
 ordinary tests. See
-[Tests As Values § Macros And Parameterized Tests](./tests-as-values.md#macros-and-parameterized-tests) for the
+[Higher Test Layers § Property-Based Testing Resolution](./higher-test-layers.md#property-based-testing-resolution) for the
 canonical authoring shape, and [Failure Walkthrough](./failure-walkthrough.md) for an
 end-to-end walked example.
 

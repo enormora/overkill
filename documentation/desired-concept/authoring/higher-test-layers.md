@@ -204,6 +204,10 @@ rather than treated as unrelated concepts:
 These styles should reuse the same shrinking, witness, corpus, and
 reporting infrastructure rather than inventing parallel systems.
 
+Generator composition must preserve constraints during shrinking. See
+[Property-Based Testing Resolution](#property-based-testing-resolution)
+for the resolution and its implementation acceptance criteria.
+
 The canonical helper names for these layers should be treated as settled:
 
 - `relation(...)` in `@overkill-dev/property`
@@ -939,3 +943,382 @@ restrictions requires private engine imports, if process startup removes the
 benefit of opt-in reset, or if Stryker no longer supports the project's toolchain.
 Changing vendors would reopen the concept's first-party Stryker commitment;
 it is not an adapter implementation detail.
+
+## Property-Based Testing Resolution
+
+### Question And Constraints
+
+What authoring, execution, shrinking, and replay contract defines property
+testing in Overkill?
+
+The existing concept requires integrated shrinking, dependent generators,
+deterministic reproduction, witnesses, and reuse by `@overkill-dev/model`.
+The property family remains separate from microtests, with microtest-like
+capability restrictions. The initial shrinking deep dive expanded into the
+property family contract through the decisions recorded below.
+
+### Resolution
+
+Public generators use fluent composition. Primitive constructors live under
+`gen`; generator values expose `map`, `flatMap`, and `filter`. Custom domain
+generators return values built from those constructors and methods.
+`property({ title, generator, test })` is the primary constructor and returns
+an ordinary property-family test node usable directly or inside `suite(...)`.
+Its generator and body are available during collection; generation starts
+only during execution. Each body receives its input and a fresh injected
+property-local assertion context. The standard import is
+`@overkill-dev/test/property`; semantic ownership stays in
+`@overkill-dev/property`.
+
+`scope.forall(generator, body)` remains an advanced composition form. It is
+not a runtime subtest and does not add cases to the collected tree. Its
+witness replay executes the enclosing case normally, including setup and
+non-target property calls, substituting the saved input only at the target
+invocation. Target identity is source location plus invocation occurrence,
+with an explicit stable key available. Missing, ambiguous, or unreached targets
+produce a replay error. This preserves surrounding behavior rather than
+promising independent access to an inline callback. First-class property
+witnesses replay the declared property body directly.
+
+Nested authoring uses the family-owned `withProperties(body)` scope wrapper
+around an ordinary `test(...)` value. It supplies typed `scope.forall` support
+without widening the base microtest scope or registering runtime subtests.
+Both replay forms retain normal case and suite lifecycle, runtime selection,
+capability enforcement, cleanup, and supervision. Direct replay bypasses
+generation and shrinking, not those execution boundaries.
+
+First-party generator composition carries shrinking automatically. Every
+newly generated input and shrink candidate submitted to the property body
+satisfies the constraints declared by the composed generator. This guarantees
+domain validity, not that a candidate still fails or that its displayed value
+becomes smaller. Decoded regression inputs have the separate replay policy
+below.
+
+- `map` reapplies its pure transformation to source candidates. It does not
+  require an inverse or a separate shrinker for the mapped output.
+- Tuples and records preserve each component's declared domain.
+- `flatMap` retains the dependency. When the source changes, candidates come
+  from the dependent generator constructed for that new source. With the
+  source fixed, that dependent generator may shrink its own output.
+- Recursive generators retain declared size and depth limits throughout
+  generation and shrinking.
+- Filtering rejects candidates outside the predicate. Rejection is bounded
+  and never counts as a passing trial.
+
+For an array and an index generated within its length, shrinking the array
+cannot leave an out-of-range index. The index must be generated or shrunk
+under the new length constraint. An empty array is unavailable if the
+declared domain requires an index into it.
+
+Generator callbacks are pure and deterministic under their generation
+context. Dependent regeneration uses retained deterministic context, never
+ambient randomness. If changed bounds make retained choices incompatible,
+the backend must deterministically reject or reconstruct the candidate under
+the new bounds before invoking the property body. Reproducing the old value
+after the domain changes is not a requirement.
+
+The generator retains enough state to reconstruct a fresh input for every
+trial. Property bodies may mutate their input without corrupting the retained
+counterexample or later candidates. Arbitrary output cloning is insufficient
+for custom classes and aliasing; reconstruction belongs to the generator.
+Custom generators must satisfy the same validity, reconstruction, and bounded
+shrinking contract. Provenance need not have one prescribed representation.
+
+Fresh reconstruction also applies to corpus replay, explicit examples,
+automatic edges, direct witness replay, and failure confirmations. Stored
+payloads and retained generation state stay untouched; every execution receives
+its own decoded or reconstructed graph.
+
+The initial custom-generator API composes the provided primitives and
+combinators, inheriting shrinking automatically. Authors do not supply a
+separate shrinker. Opaque sampling-only callbacks are outside the initial API;
+concrete values remain regression examples. A singleton domain may have no
+smaller candidates without violating the contract.
+
+A property invocation stops generating new inputs at its first failure and
+shrinks that failure into one primary counterexample and witness. It does not
+continue searching for additional failures during that invocation.
+
+Corpus replay, edge-case execution, new trials, failure confirmations, and
+shrinking execute sequentially within a property invocation. Each trial's
+assertion, input, and cleanup state finishes before the next begins. Separate
+property cases may execute in parallel under the runner's ordinary scheduling
+and isolation policy; there is no initial within-property concurrency option.
+
+Before shrinking, a fresh reconstruction must reproduce the original failure.
+If rechecking the same retained input passes or produces an unrelated failure,
+the run stays failed, reports a non-reproducible failure, retains both observed
+outcomes, and stops shrinking. The same rule applies if a later confirmation
+of the retained counterexample disagrees. Available input evidence may still
+be saved, but it must not be presented as a reliably reproducing witness or
+automatically added to the regression corpus.
+
+Shrinking preserves the original failure. A candidate replaces the retained
+counterexample only when it reproduces that failure. Passing inputs, rejected
+inputs, and unrelated failures do not replace it. Other observed failures keep
+separate diagnostics without changing the shrink target. Generator callback
+exceptions and execution infrastructure failures are not generator rejections
+and must remain visible as errors.
+
+Failure identity is automatic by default: assertion kind and source location,
+or exception type and originating throw location. Input-dependent values and
+messages do not participate in matching. Authors can supply an explicit stable
+failure key when automatic identity is too broad. Assertion failures and body
+errors remain distinct. If no reliable identity is available, shrinking stops
+and retains the original failure with a diagnostic explaining the limitation.
+
+When a trial collects several failed checks, its first failed assertion in
+recording order is the primary shrink target. A replacement must reproduce
+that check, not the complete original failure set. Other checks remain
+diagnostics. With no failed assertion, the user body error supplies the target.
+An explicit failure key may define a broader semantic target. Cleanup,
+supervision, resource, and scope-contract failures keep their native outcomes
+and stop execution rather than becoming ordinary assertion shrink targets.
+
+The requested new-trial count excludes corpus replays and injected edge cases.
+Those known inputs run in addition to new exploration, with separate reported
+counts. “New” denotes the exploration phase, not globally distinct values;
+accepted repeated values may count as trials. A growing corpus cannot satisfy
+the new-trial target. Rejected inputs,
+shrink attempts, and failure confirmations also do not count as accepted new
+trials. A separate total-work budget bounds all phases; exhausting it before
+required successful trials complete is inconclusive unless a failure has
+already been established.
+
+Execution order is checked-in corpus, compatible local corpus, explicit
+examples, bounded automatic edge cases, then new exploration. Every explicit
+example is a required check unless an earlier failure stops the invocation.
+If the work budget prevents required examples from completing without an
+established failure, the result is inconclusive. Automatic edge cases use a
+deterministic representative set bounded by profile policy; composed generators
+do not require the Cartesian product of all component edge cases.
+
+Small, exactly enumerable domains automatically use exhaustive testing when
+complete enumeration fits a configured limit. After required corpus and
+edge-case checks pass, testing every domain value successfully satisfies the
+property even below its requested new-trial count. Report exhaustive completion
+and the number of domain values checked. A truncated traversal, sampled subset,
+or unknown domain cannot claim exhaustive success; larger and unknown domains
+retain the requested new-trial target.
+
+Targeted search is explicit and opt-in. Property-local numeric scores guide
+which inputs are explored; they are not required coverage conditions. Missing
+a high-scoring input does not invalidate otherwise completed passing trials.
+Required input coverage is declared separately and reports inconclusive when
+unmet. Input coverage describes generated-input conditions, not the code
+coverage feature excluded from the property profile. Scores and coverage
+observations are local to each trial and do not survive into later trials as
+mutable user state. Targeting obeys the same deterministic context and budgets
+as ordinary generation.
+
+`sample.target(label, score)` records a finite numeric score to maximize;
+authors negate a score when lower values are preferable. `sample.cover(label,
+condition)` records input-coverage observations against declared requirements.
+Invalid scores and labels are contract errors. Labels, retained search state,
+input sizes, and recursive depth are bounded by collected property policy.
+
+Coverage requirements count accepted new exploration only, including targeted
+exploration. In exhaustive mode, their denominator is the complete enumerated
+domain. Corpus replay, explicit examples, automatic edges, rejected candidates,
+failure confirmation, and shrinking do not contribute to that denominator or
+satisfy its thresholds. Report their observations separately. Exhaustive
+completion still has to satisfy explicitly declared input coverage; checking
+all values does not override a requirement that the domain cannot meet.
+
+Traversal budgets bound candidate production, reconstruction, rejection,
+duplicate processing, and property-body evaluations. Execution also obeys
+cancellation and supervision. Repeated outputs, including constant mappings,
+cannot cause unbounded search. Generation exhaustion before the required
+accepted trial count is inconclusive. Shrink budget exhaustion retains the
+last confirmed failure; a supervisor interruption keeps its native execution
+outcome and any available confirmed evidence.
+
+Reporting distinguishes exhausted search, exhausted budget, and interruption.
+Use “shrunk counterexample”, not an unqualified claim of minimality. Even an
+exhausted candidate search does not prove a global minimum.
+
+### Replay Boundary
+
+A witness and its promoted regression use reviewable, versioned JSON rather
+than an opaque binary replay payload. The payload explicitly represents
+non-JSON types and graph references. It records its codec identity and version;
+serialization-library upgrades cannot silently change the stored format.
+
+The JSON transport uses `devalue` behind Overkill's codec boundary. Its
+reference table is retained as JSON data, not executable source or a binary
+blob. Promotion presents a decoded value preview alongside the reference
+table so authors can inspect both values and graph relationships. The preview
+is diagnostic; replay always uses the lossless payload.
+
+The probe with `devalue` 6.0.2 preserved a cyclic record, shared references,
+object Map keys, a custom class through its codec, bigint, sparse arrays, and
+negative zero. The library explicitly makes
+[cross-version format stability and human-readable output non-goals](https://github.com/sveltejs/devalue).
+Overkill therefore owns format versioning, decoder compatibility, and review
+presentation rather than treating an unversioned library dump as the contract.
+
+Built-in readers retain supported historical format decoders. Writers use the
+current format; migration is an explicit operation and never a side effect of
+test execution. Each stored entry identifies its transport format and input
+codec version so the reader selects the matching decoder. Dependency upgrades
+must pass compatibility fixtures for every supported historical format.
+Custom codec authors declare the versions they support. Unsupported versions
+follow the strict checked-in corpus, tolerant local cache, and strict direct
+replay policies below.
+
+A first-class property witness replays the retained input directly without
+generation or shrinking. The targeted invocation of a nested witness also
+uses the retained input without shrinking; other enclosing-case execution
+follows the normal replay policy described above.
+Replay requires a lossless, versioned input codec; diagnostic assertion
+serialization is not a replay codec. Unsupported or incompatible inputs must
+produce an explicit replay error rather than a lossy substitute.
+
+Supported standard values have built-in codecs that preserve shared references
+and cycles. Replay restores the input graph, including aliasing, rather than
+duplicating shared objects or cutting back-references. The initial set covers
+null, undefined, booleans, strings, numbers including non-finite values and
+negative zero, bigint, ordinary mutable arrays including holes, plain and
+null-prototype records, Date including invalid dates, RegExp, Map, Set,
+ArrayBuffer, typed arrays, and DataView. Shared backing stores, offsets, Map
+iteration order, and RegExp `lastIndex` are part of the preserved state.
+
+The wrapper must supplement or reject transformations that lose state.
+`devalue`'s default RegExp encoding omits `lastIndex`, so the built-in regex
+codec records it explicitly. Node Buffer requires an explicit codec; treating
+it as Uint8Array is not lossless. Functions, symbols, proxies, accessors,
+nonstandard property descriptors, and unsupported native brands are outside
+the default set. Default encoding must not invoke getters or silently discard
+state. Custom codecs may support additional values by reconstructing them from
+supported data, within the same supervision and purity contract.
+
+A generator producing a custom type supplies an explicit versioned codec with
+encode and decode operations.
+Decoding reconstructs the type and preserves behavior, values, and any identity
+relationships the generator promises. Codec payloads are validated before
+replay; custom class instances are never silently reduced to plain objects.
+Codec failures retain the property failure and report that its witness is not
+replayable when a failure has already been established; before that point they
+are execution errors, never rejected or passing trials. `defineCodec(...)`
+constructs an ordinary versioned codec value;
+`generator.withCodec(codec)` attaches it to the complete generated input.
+Codec callbacks are pure, execute within the supervised property boundary,
+and reconstruct the full input graph, including cross-component aliases.
+
+A corpus entry containing only a decoded value can replay as a regression
+without being shrinkable. Further shrinking requires retained compatible
+generation state or explicit support from the generator for that value.
+
+Replayable confirmed failures are automatically saved in the local corpus
+under `runtimeStateDir/corpus`. Authors explicitly promote selected entries
+into a checked-in regression corpus; a test run never promotes entries or
+changes repository files automatically. Fresh CI runs replay the checked-in
+corpus without depending on a restored local cache. Both corpora replay before
+novel generation, and promotion preserves the input and its codec version.
+The runner owns persistence outside the restricted property-body scope.
+
+Incompatible checked-in entries fail the run until explicitly migrated or
+removed. Incompatible local cache entries are skipped with diagnostics.
+Neither policy permits lossy decoding. Direct witness replay remains strict:
+an incompatible witness reports a replay error. Corpus incompatibility is
+distinct from a decoded regression input that executes and fails the property.
+
+Successfully decoded checked-in regressions replay independently of current
+generation limits. Narrowing a generator does not retire those regressions.
+If the property no longer applies, an author must explicitly update or remove
+the entry. Such inputs are direct regression trials; shrinking them requires
+compatible generation state or explicit generator support under its current
+constraints. An entry without that support remains a terminal counterexample.
+
+Property witness payloads use the schema in
+[Failure Artifacts](./failure-artifacts.md#witnesses-and-replay-artifacts).
+Checked-in corpora contain the same encoded input and target identity in
+versioned JSON entries, keyed to the owning case and nested invocation when
+present. `overkill corpus promote <witness> --to <path>` and the runner-owned
+`promoteWitness(...)` API expose the same explicit promotion operation.
+Promotion verifies decoding and displays the selected input before writing the
+chosen destination. No staging, commit, or push is part of promotion. Explicit
+inspection and migration operations likewise belong to the runner; property
+bodies receive no persistence capability.
+
+Corpus entries are associated with stable case and invocation identities,
+ordered deterministically within each phase, and saved atomically. Local
+storage may deduplicate identical encoded inputs under the same target and
+codec versions; phase counts describe actual executed trials. Checked-in
+entries are retained until explicit editing or removal; the local cache
+follows bounded runtime-state policy. Corpus changes do not consume or reseed
+the new-exploration random stream. The stream derives from the run seed,
+case/runtime identity, and stable invocation identity; witnesses record the
+resolved property seed. Backends and collected policies are versioned so
+identical context reproduces the same candidate sequence.
+
+Profiles own default new-trial counts, growth/depth limits, edge and exhaustive
+limits, traversal and shrink budgets, and existing timeout/resource policy.
+Explicit per-property settings are resolved and validated during collection;
+they never bypass profile capability restrictions or hard supervision limits.
+`sampleGenerator(generator, request)` previews fresh generated values using an
+explicit seed, count, size, and depth. It uses the same bounded generation
+contract, without executing the property body.
+
+One declared property remains one engine case and one boundary assertion.
+Trial phase, index, resolved seed, accepted/rejected counts, coverage, and
+shrink termination belong to property result metadata and diagnostics, not
+additional engine cases or frozen plan facts. Primitive constructors cover
+bounded integers, floating-point values, bigint, booleans, strings, bytes,
+constants, choices, arrays, tuples, records, and bounded recursive composition.
+String limits use UTF-16 code units; generators can exercise lone surrogates
+as well as valid Unicode. Byte generation uses owned Uint8Array storage.
+
+### Alternatives And Trade-offs
+
+- Value plus shrinker: supports domain-specific extensions directly, but
+  separate output shrinkers alone cannot recover generic `map` and `flatMap`
+  dependencies. Keep it as a backend baseline when composition retains the
+  necessary context. Reject making authors supply a second shrinker for every
+  first-party composition.
+- Lazy generation trees: retain source candidates for mapped and dependent
+  composition. They fit the contract, but branch rebuilding and retained
+  state need memory bounds; they do not establish global minimality.
+- Typed choice traces: rerun generation from reduced choices and can share
+  reduction across generator shapes. They fit the contract, but changing
+  dependent bounds and trace compatibility add complexity. Hypothesis uses
+  this representation in its [internals](https://github.com/HypothesisWorks/hypothesis/blob/master/guides/internals.rst).
+- Sampling-only custom generators: simpler extensions, but weaken integrated
+  shrinking and input reconstruction. Excluded from the initial custom API;
+  concrete regression examples remain distinct from generators.
+
+The initial implementation uses `fast-check` behind Overkill's generator API.
+Its public [`Arbitrary`](https://fast-check.dev/docs/api/classes/Arbitrary/)
+generation and contextual shrinking operations supply the backend; its runner
+does not own property execution. Overkill owns trial reconstruction, failure
+identity, traversal budgets, finite-domain metadata, edge cases, targeted
+search, corpus persistence, codecs, and reporting. Backend-specific types and
+shrink state do not become the public generator or durable replay contract.
+
+Focused probes with `fast-check` 4.10.2 preserved dependent-input validity.
+Dependent shrinking retained a larger input than an available smaller failure,
+which is permitted by the contract. Raw mapped-value mutation corrupted the
+reported counterexample; trial reconstruction around the contextual shrink
+driver preserved a custom class input and its clean witness. Counting filter
+predicate invocations bounded an impossible filter. These probes establish
+feasibility, not complete engine integration or composition-wide budget safety.
+
+### Assumptions And Invalidation
+
+The decision assumes pure generator callbacks, reconstructible inputs, and
+bounded repeated property execution. Reconsider it if required custom
+generators cannot meet those constraints, or all evaluated backends exceed
+acceptable memory or runtime costs. An adapter for effectful property tests
+must define trial isolation before claiming the same guarantees.
+
+The runtime currently has property-family identity, structured inconclusive
+outcomes, and scope-owned assertion and cleanup state. It has no implemented
+property generator engine. The spike must demonstrate fresh trial state,
+dependency-preserving array/index shrinking, changing dependent element bounds,
+non-injective mappings, impossible filters, recursive limits, mutation
+isolation, deterministic candidate sequences, and lossless witness replay.
+Measure candidate evaluations and peak retained memory on the same workloads.
+
+No unresolved behavioral choices remain in this resolution. Implementation
+must still satisfy the integration and compatibility acceptance criteria;
+the focused probes are not proof of every edge case.

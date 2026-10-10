@@ -142,6 +142,12 @@ APIs, baseline APIs, custom assertion builder APIs, or command implementation
 APIs. Those belong behind explicit subpaths or leaf packages so ordinary
 microtest imports stay small.
 
+Property authoring belongs behind `@overkill-dev/test/property`, which
+re-exports the surface owned by `@overkill-dev/property`. Its primary
+`property({ title, generator, test })` constructor returns an ordinary
+property-family test node; `gen` supplies fluent generator composition.
+Generation and shrinking dependencies stay outside the root microtest import.
+
 Tables or parameterized-case helpers may still exist, but they should be
 framed as specialized helpers built on the macro/value model rather than as
 a second competing first-party reuse philosophy.

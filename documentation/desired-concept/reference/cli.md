@@ -93,6 +93,21 @@ final-result reporter remains. There is no `--reporter` lookup flag; reporters
 are selected through imported configuration values, not package-name discovery
 or a CLI registry.
 
+### Property Corpus
+
+Corpus commands use the typed runner APIs `inspectCorpus(...)`,
+`promoteWitness(...)`, and `migrateCorpus(...)`. They are explicit operations;
+test execution never rewrites checked-in entries.
+
+| Command                                         | Purpose                                                                                       |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `overkill corpus inspect <path>`                | Show a decoded preview, graph references, and codec versions.                                 |
+| `overkill corpus promote <witness> --to <path>` | Verify a witness input and save it as a checked-in regression entry at the named destination. |
+| `overkill corpus migrate <path> --to <path>`    | Explicitly decode an entry with its historical reader and write the selected current format.  |
+
+Semantics and compatibility policy:
+[Property-Based Testing Resolution](../authoring/higher-test-layers.md#property-based-testing-resolution).
+
 ### History
 
 The `history` namespace operates on runtime-owned run history under
