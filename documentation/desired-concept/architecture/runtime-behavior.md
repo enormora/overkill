@@ -650,7 +650,14 @@ Selection rules:
 - resource execution requirements ([Higher Test Layers § Resource Factories](../authoring/higher-test-layers.md#1-resource-factories-as-the-main-higher-layer-primitive)) can
   upgrade the execution plan, for example exclusive resource forces serialization within
   its scope)
-- there is no request-level execution override in the current concept
+- programmatic microtest requests may strengthen scheduling with
+  `execution: { mode: 'serial' }`; `mode: 'profile-default'` retains the
+  configured scheduling
+- the serial override preserves the configured process model, capabilities,
+  resource policy, and timeouts; it is rejected for other test families before
+  discovery
+- resolved request intent records the override separately from the unchanged
+  profile; `RunFacts.execution.scheduling` records the effective scheduling
 
 Grouped distribution requires named profile file sets (see
 [Configuration § Recommended File Story](./configuration.md#recommended-file-story)).

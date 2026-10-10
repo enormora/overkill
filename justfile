@@ -33,6 +33,7 @@ test-unit:
     node source/overkill.test.ts
 
 test-runner-integration:
+    node source/integration-tests/run/runner-mutation-policy.test.ts
     node source/integration-tests/run/runner-benchmarks.test.ts
     node source/integration-tests/run/runner-attachments.test.ts
     node source/integration-tests/run/runner-attachment-retention.test.ts

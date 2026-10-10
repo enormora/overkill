@@ -1,8 +1,8 @@
 # `@overkill-dev/stryker-runner`
 
 Optional first-party Stryker `TestRunner` plugin for Node microtest profiles.
-Profile initialization is available; dry runs, mutant execution, and capability
-reporting are not implemented yet.
+Profile initialization prepares the mutation execution policy. Dry runs, mutant
+execution, and capability reporting are not implemented yet.
 
 ```js
 export default {
@@ -27,5 +27,13 @@ Browser-oriented integration profiles and multi-profile selections are rejected.
 Other profile families may coexist in the project registry. Profile names do not
 determine eligibility. Incompatible test nodes are checked during collection.
 
-Initialization preserves the selected profile's policy and imports no test
-modules. Repeated initialization shares one result, including failures.
+Initialization prepares a public runner command with explicit serial scheduling,
+ordinary V8 coverage disabled, and baseline updates disabled. Microtest profiles
+have no Overkill retry policy. Discovery, loaders, capability restrictions,
+resource policies, timeouts, and the configured process model are preserved.
+The original profile remains unchanged; the command records the override as
+`request.execution: { mode: 'serial' }`.
+
+Initialization imports no test modules. Repeated initialization shares one
+result, including failures. Campaign policy freezing and invocation execution
+are not implemented yet.

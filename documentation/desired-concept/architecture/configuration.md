@@ -280,6 +280,9 @@ So, for example:
 - microtest `coverage` policy lives on the selected profile because source
   scope, outputs, thresholds, and output are persistent project policy;
   presence of that policy does not activate coverage
+- programmatic microtest `execution: { mode: 'serial' }` strengthens scheduling
+  for one invocation without changing configured process model or other policy;
+  `mode: 'profile-default'` retains profile scheduling
 
 Timing policy follows the same split. `profiles.<name>.timings.collection`
 sets the project default for that profile. `--timings` and programmatic

@@ -11,6 +11,7 @@ import {
 } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
+import { testNode as serialRequestTestNode } from './run-serial-request.test.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;
@@ -44,6 +45,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        serialRequestTestNode,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects invalid sharding',
