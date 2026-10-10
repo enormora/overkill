@@ -13,6 +13,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import {
     createRunRuntimePolicy,
     finalizeResultWithDurationHistory,
+    type RunResultSession,
     type RunRuntimePolicy
 } from './run-support.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
@@ -20,6 +21,7 @@ import type { ResolvedRun, RunCommand, RunOrchestrator } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type LocalRunOptions = {
+    readonly baseline: RunResultSession | null;
     readonly input: ResolvedRunInput;
     readonly source: RunCollectionSource;
     readonly timing: RunTimingMeasurement;
@@ -67,14 +69,15 @@ async function executeResolvedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
     runtimePolicy: RunRuntimePolicy | null,
-    timing: RunTimingMeasurement
+    options: LocalRunOptions
 ): Promise<RunResult> {
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {
         async finalizeResult(run, result) {
-            return await finalizeResultWithDurationHistory(dependencies, run, result, timing);
+            const finalized = await finalizeResultWithDurationHistory(dependencies, run, result, options.timing);
+            return options.baseline === null ? finalized : await options.baseline.finalize(finalized);
         },
         runtimePolicy,
-        timing
+        timing: options.timing
     });
 }
 
@@ -94,7 +97,7 @@ async function runLocalWithPolicy(
         }, options.timing);
     }
     return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentRun() {
-        return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, options.timing);
+        return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, options);
     });
 }
 

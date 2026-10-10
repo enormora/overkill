@@ -186,6 +186,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.throws(function createFactsWithoutWorkerCount() {
                     createRunFacts({
+                        benchmarkCalibration: null,
                         cases: [],
                         config: defaultRunConfig({ profiles: { integration: profile } }),
                         dependencies: {

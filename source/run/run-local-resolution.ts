@@ -55,6 +55,7 @@ function createLocalResolvedRunFromTestPlan(
     assertTestPlanCasesMatchProfilePolicy(plannedTestPlan, input.profile);
 
     const facts = freezeValue(createRunFacts({
+        benchmarkCalibration: input.benchmarkCalibration,
         cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies,
@@ -110,6 +111,7 @@ function createEmptyShardResolvedRunFromTestPlan(
 ): ResolvedRun {
     const collectedPlan = collectedRunPlanFromTestPlanCases(selectedPlan, []);
     const facts = freezeValue(createRunFacts({
+        benchmarkCalibration: input.benchmarkCalibration,
         cases: [],
         config: input.config,
         dependencies,

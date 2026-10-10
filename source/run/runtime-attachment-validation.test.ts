@@ -7,7 +7,7 @@ import {
     type RuntimeAttachments
 } from '../engine/runtime-attachment.ts';
 import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
-import { snapshotAttachmentJson } from './attachment-json.ts';
+import { snapshotJson } from '../attachments/json-snapshot.ts';
 import { createAttachmentExecution } from './attachment-execution.ts';
 import { createAttachmentStream } from './attachment-writer.ts';
 
@@ -151,7 +151,7 @@ function assertJsonDescriptors(scope: TestScope): void {
     });
     for (const value of [ accessor, { [Symbol('key')]: true } ]) {
         scope.assert.throws(function rejectInvalidJson() {
-            snapshotAttachmentJson(value, 1024);
+            snapshotJson(value, 1024);
         }, { name: 'TypeError' });
     }
     const shared = { ready: true };
@@ -159,14 +159,14 @@ function assertJsonDescriptors(scope: TestScope): void {
     Object.setPrototypeOf(value, null);
     Object.defineProperty(value, 'ignored', { value: undefined });
     scope.assert.equal(
-        snapshotAttachmentJson(value, 1024)?.encoded,
+        snapshotJson(value, 1024)?.encoded,
         '{"first":{"ready":true},"second":{"ready":true}}'
     );
     const nested: unknown = Array.from({ length: 66 }).reduce<unknown>(function nest(child) {
         return [ child ];
     }, null);
     scope.assert.throws(function rejectDeepJson() {
-        snapshotAttachmentJson(nested, 1024);
+        snapshotJson(nested, 1024);
     }, { message: 'Attachments require finite, acyclic JSON values with depth at most 64.' });
 }
 

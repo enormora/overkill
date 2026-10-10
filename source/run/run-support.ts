@@ -1,6 +1,6 @@
 import type { NormalizedConfig, MaxConcurrency, ProfileConfig, Scheduling } from '../config/types.ts';
 import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
-import type { TestRuntimePolicy, RunResult, TestPlanCase } from './run-engine-primitives.ts';
+import type { TestRuntimePolicy, RunResult, TestPlanCase, ReporterDispatcher } from './run-engine-primitives.ts';
 import { currentAttachmentCoordinator } from './attachment-coordinator-context.ts';
 import {
     createResourceLifecycleRuntimePolicy,
@@ -19,6 +19,11 @@ import {
     type DurationHistoryTimingMeasurement,
     type DurationHistoryIndex
 } from './duration-history.ts';
+
+export type RunResultSession = {
+    readonly finalize: (result: RunResult) => Promise<RunResult>;
+    readonly reporterDispatcher: ReporterDispatcher;
+};
 
 export type RunRuntimePolicy = TestRuntimePolicy;
 type RunEngineSelection = RunCommand['engine'];

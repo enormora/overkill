@@ -11,12 +11,13 @@ import type {
     TestCase,
     TestScope
 } from '../engine/engine.entry-point.ts';
+import type { PerformanceBaselineAdapter } from '../baselines/baselines.entry-point.ts';
 import type {
     CompositeAssertionDefinition,
     CompositeCheckBuilder,
     NarrowingCompositeAssertionDefinition
 } from './assert.entry-point.ts';
-import type { unavailable as baselinesUnavailable } from './baselines.entry-point.ts';
+import type { PerformanceBaselineAdapter as StandardBaselineAdapter } from './baselines.entry-point.ts';
 import {
     throwingTest,
     type ThrowingTestAuthor,
@@ -80,7 +81,6 @@ import {
     type TableTestBody
 } from './test.entry-point.ts';
 
-type UnavailableStandardSubpathApi = (...parameters: readonly unknown[]) => never;
 type LineReporterFactory = (options?: LineReporterOptions) => DefinedReporter<RealTimeReporter>;
 type LineProgressReporterFactory = (
     options?: LineProgressReporterOptions
@@ -481,7 +481,7 @@ describe('@overkill-dev/test standard subpaths', function () {
         });
     });
 
-    test('exposes only unavailable sentinel types for reserved subpaths', function () {
-        expect<typeof baselinesUnavailable>().type.toBe<UnavailableStandardSubpathApi>();
+    test('reexports the leaf performance baseline contract', function () {
+        expect<StandardBaselineAdapter>().type.toBe<PerformanceBaselineAdapter>();
     });
 });

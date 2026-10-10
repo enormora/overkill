@@ -1,10 +1,10 @@
 import { z } from 'zod/v4';
+import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import type {
     SupervisedChildCommand,
     SupervisedAssignmentCommand,
     SupervisedChildMessage
 } from './supervised-protocol.ts';
-import { caseIdSchema, workIdSchema } from './run-identity-schema.ts';
 import { executionCommandFields } from './run-command-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';

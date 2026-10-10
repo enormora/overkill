@@ -241,7 +241,10 @@ async function workerPoolFinalizationResults(): Promise<{
     const emptyResult = await createEmptyWorkerPoolResult(
         workerPoolResolvedRun(createCollectedPlan()),
         runtime.dependencies,
-        createSupervisedRunState('first-failure-and-final')
+        createSupervisedRunState('first-failure-and-final'),
+        async function (unreportedResult) {
+            return unreportedResult;
+        }
     );
 
     const placementTrace = placementTraces[0];
@@ -293,7 +296,10 @@ export const testNode = createOverkillSuite({
                             events.push(event);
                         }
                     }),
-                    createSupervisedRunState('first-failure-and-final')
+                    createSupervisedRunState('first-failure-and-final'),
+                    async function (unreportedResult) {
+                        return unreportedResult;
+                    }
                 );
 
                 scope.assert.equal(result.planStatus, 'empty-shard');

@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { attemptIdSchema, caseIdSchema, runtimeIdSchema, workloadIdSchema } from './run-identity-schema.ts';
+import { attemptIdSchema, caseIdSchema, runtimeIdSchema, workloadIdSchema } from '../engine/identity-schema.ts';
 
 export const artifactIdentityFields = {
     runtimes: z.array(runtimeIdSchema),

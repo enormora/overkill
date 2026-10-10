@@ -1,13 +1,13 @@
 import { z } from 'zod/v4';
 import { createDefaultWorkId } from '../engine/identity.ts';
-import type { CollectedRunPlan } from './run-types.ts';
 import {
     annotationsSchema,
     controlsSchema,
     sourceLocationsSchema,
     suitePathSchema,
     workIdSchema
-} from './run-identity-schema.ts';
+} from '../engine/identity-schema.ts';
+import type { CollectedRunPlan } from './run-types.ts';
 
 const requirementSchema = z.record(z.string(), z.unknown());
 const directResourceSchema = z.strictObject({ key: z.string(), resourceName: z.string() });

@@ -152,6 +152,13 @@ export const config = {
                 attachmentConnection: { js: 'run/attachment-connection.js' },
                 attachmentRun: { js: 'run/attachment-run.js' },
                 benchmarkCommands: moduleRoot('run/benchmark-commands'),
+                benchmarkBaselineCommands: { js: 'run/benchmark-baseline-commands.js' },
+                benchmarkBaselineOperations: { js: 'run/benchmark-baseline-operations.js' },
+                benchmarkBaselineRun: { js: 'run/benchmark-baseline-run.js' },
+                benchmarkBaselineSession: { js: 'run/benchmark-baseline-session.js' },
+                benchmarkCalibration: { js: 'run/benchmark-calibration.js' },
+                benchmarkCalibrationChild: { js: 'run/benchmark-calibration.entry-point.js' },
+                hostCalibration: moduleRoot('packages/run/benchmark-calibration.entry-point'),
                 commandLine: moduleRoot('packages/run/command-line.entry-point'),
                 config: moduleRoot('packages/run/config.entry-point'),
                 coverageSession: { js: 'run/coverage-session.js' },
@@ -167,6 +174,7 @@ export const config = {
             packageInterface: {
                 modules: packageModules({
                     '.': 'main',
+                    './benchmark-calibration': 'hostCalibration',
                     './command-line': 'commandLine',
                     './config': 'config',
                     './filters': 'filters',
@@ -177,6 +185,12 @@ export const config = {
                     'attachmentConnection',
                     'attachmentRun',
                     'benchmarkCommands',
+                    'benchmarkBaselineCommands',
+                    'benchmarkBaselineOperations',
+                    'benchmarkBaselineRun',
+                    'benchmarkBaselineSession',
+                    'benchmarkCalibration',
+                    'benchmarkCalibrationChild',
                     'coverageSession',
                     'localCoverage',
                     'nodeCommandLineRunner',
@@ -186,8 +200,18 @@ export const config = {
             }
         },
         {
+            name: 'baselines',
+            description: 'Shared Overkill baseline models and performance adapter contracts.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ]
+        },
+        {
             name: 'bench',
             description: 'Ordinary test-node authoring for Overkill benchmark suites.',
+            roots: {
+                main: moduleRoot('packages/bench/bench.entry-point'),
+                calibration: moduleRoot('packages/bench/calibration.entry-point')
+            },
+            packageInterface: { modules: packageModules({ '.': 'main', './calibration': 'calibration' }) },
             bundlePeerDependencies: [
                 '@overkill-dev/engine',
                 '@overkill-dev/simulation',
@@ -206,6 +230,7 @@ export const config = {
             bundleDependencies: [
                 '@overkill-dev/assert',
                 '@overkill-dev/bench',
+                '@overkill-dev/baselines',
                 '@overkill-dev/doubles',
                 '@overkill-dev/engine',
                 '@overkill-dev/output-renderer-github-actions',

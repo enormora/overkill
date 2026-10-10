@@ -4,8 +4,8 @@ import { attachmentFixture, attachmentWork as work } from '../test-support/attac
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits, type RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { attachmentsForProducer } from '../attachments/attachment-context.ts';
+import { snapshotJson } from '../attachments/json-snapshot.ts';
 import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
-import { snapshotAttachmentJson } from './attachment-json.ts';
 
 const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const metadata = { mediaType: 'text/plain', name: 'service-log' };
@@ -22,13 +22,13 @@ async function assertRetainedBinary(scope: TestScope, artifact: RuntimeAttachmen
 function assertInvalidJson(scope: TestScope): void {
     for (const invalid of [ undefined, 1n, Number.NaN, new Date(), { value: undefined }, Array.from({ length: 1 }) ]) {
         scope.assert.throws(function rejectInvalidJson() {
-            snapshotAttachmentJson(invalid, 1024);
+            snapshotJson(invalid, 1024);
         }, { name: 'TypeError' });
     }
     const cyclic: Record<string, unknown> = {};
     cyclic.self = cyclic;
     scope.assert.throws(function rejectCyclicJson() {
-        snapshotAttachmentJson(cyclic, 1024);
+        snapshotJson(cyclic, 1024);
     }, { name: 'TypeError' });
 }
 
@@ -131,7 +131,7 @@ export const testNode = createSuite({
             title: 'JSON snapshots preserve schemas and reject values JSON would silently change',
             body(scope: TestScope) {
                 const value = { violations: [ { id: 'contrast', impact: 'serious' } ], shared: [ 1, 2 ] };
-                const snapshot = snapshotAttachmentJson(value, 1024);
+                const snapshot = snapshotJson(value, 1024);
                 value.violations.length = 0;
                 scope.require.defined(snapshot);
                 if (snapshot.value === null || typeof snapshot.value !== 'object') {
@@ -141,7 +141,7 @@ export const testNode = createSuite({
                     violations: [ { id: 'contrast', impact: 'serious' } ],
                     shared: [ 1, 2 ]
                 });
-                scope.assert.equal(snapshotAttachmentJson('large', 3), null);
+                scope.assert.equal(snapshotJson('large', 3), null);
                 assertInvalidJson(scope);
                 return scope.assert.collect();
             }

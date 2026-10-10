@@ -455,6 +455,7 @@ function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): Benc
 
     return {
         attachments: attachmentLimitsSchema.parse(profile.attachments),
+        baselines: profile.baselines ?? { adapters: [], directory: 'test-baselines' },
         execution,
         files,
         reporters: normalizeReporters(profile.reporters),

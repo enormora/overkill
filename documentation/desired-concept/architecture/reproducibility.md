@@ -296,8 +296,8 @@ Some metrics inherently vary across machines. Overkill's policy:
   baseline subtype's adapter declares the tolerance; differences within
   tolerance pass.
 - **Performance baselines** explicitly do _not_ require exact
-  reproducibility. Calibration normalises against a reference workload
-  on the current machine; baselines are stored as
+  reproducibility. Calibration records a reference workload on the current machine. Adapters
+  explicitly select normalization appropriate to their metrics; baselines are stored as
   machine-class-stratified (e.g. `linux-x64-ci-shared` vs
   `darwin-arm64-dev`). See [Benchmarking § Calibration And Normalization](../authoring/benchmarking.md#calibration-and-normalization).
 - **Witnesses from deterministic-simulation tests** require exact
@@ -305,7 +305,9 @@ Some metrics inherently vary across machines. Overkill's policy:
 
 When machine-class stratification is in effect, the run record includes
 the resolved machine class so reports can show "this baseline was set on
-machine class X."
+machine class X." Performance expectations retain their calibration metadata
+and reference samples. A missing or non-comparable calibration fails the run;
+there is no fallback to another machine class.
 
 ## Replay
 

@@ -67,6 +67,29 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'standard-only installation runs real calibration through benchmark baseline commands',
+            async body(scope) {
+                const consumerFolder = await createStandardBenchConsumer(scope);
+                await writeFile(path.join(consumerFolder, 'overkill.config.js'), benchmarkSelectionConfigScript);
+                await writeFile(path.join(consumerFolder, 'startup.bench.mjs'), standardBenchConsumerScript);
+                const result = await executeNode([
+                    path.join(consumerFolder, 'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'),
+                    'bench',
+                    'baseline',
+                    'bootstrap',
+                    '--profile',
+                    'startup'
+                ], consumerFolder);
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.includes(result.stdout, '(4 pass, 0 fail, 1 skip)');
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            annotations: {},
             async body(scope) {
                 const result = await executeNode(
                     [ '--input-type=module', '--eval', benchAuthoringScript ],

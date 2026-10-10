@@ -54,7 +54,11 @@ The concept should assume the runner can detect:
 - obsolete files for removed or renamed tests
 - orphaned performance budgets
 
-Stale baselines fail the run by default; removing them requires an explicit `overkill baseline apply`.
+Stale baselines fail the run by default after a complete successful profile
+inventory; removing them requires the relevant explicit `baseline apply` command.
+Filtered, path-selected, sharded, incomplete, or failed runs cannot establish
+staleness. Cleanup preserves skipped cases and entries outside the selected
+profile, machine class, and baseline subtype.
 
 Vitest’s CI behavior around obsolete snapshots is a useful reference point.
 
@@ -133,6 +137,15 @@ what the workflow author intended. The author of the workflow is
 responsible for not putting `baseline apply` in a check-only pipeline.
 This is a settled policy choice, not something configurable via
 `process.env.CI` or a configuration-level opt-in flag.
+
+Performance write verbs defer all writes until selected cases, observations,
+comparisons required by bootstrap, and prewrite validation succeed. A failure
+blocks the whole pending batch. Files are published atomically one at a time;
+a later I/O or final reporter failure preserves completed writes and reports
+which writes completed. Diff previews the same changes as apply and exits `1`
+for any proposed change, including one accepted by comparison tolerance. List
+reads persisted identities across machine classes without collection, resource
+acquisition, reporters, or calibration.
 
 ### Review-Then-Commit Flow
 

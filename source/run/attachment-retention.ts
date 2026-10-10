@@ -1,8 +1,8 @@
 import { mkdir, open, type FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 import type { AttachmentCompletion, AttachmentContent } from '../engine/runtime-attachment.ts';
+import { snapshotJson } from '../attachments/json-snapshot.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
-import { snapshotAttachmentJson } from './attachment-json.ts';
 
 export type AttachmentRetention = {
     readonly content: () => AttachmentContent;
@@ -57,7 +57,7 @@ function inlineAttachmentRetentionJson(state: InlineAttachmentRetentionState, te
         return { kind: 'omitted', limit: state.limit, reason: 'byte-limit' };
     }
     const value: unknown = JSON.parse(text);
-    const snapshot = snapshotAttachmentJson(value, state.limit);
+    const snapshot = snapshotJson(value, state.limit);
     return snapshot === null
         ? { kind: 'omitted', limit: state.limit, reason: 'byte-limit' }
         : { byteLength: budget.bytes.read(), kind: 'json', value: snapshot.value };

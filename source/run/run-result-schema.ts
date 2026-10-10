@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
+import { attemptIdSchema, caseIdSchema, sourceLocationsSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
-import { attemptIdSchema, caseIdSchema, sourceLocationsSchema, workIdSchema } from './run-identity-schema.ts';
 import { runArtifactSchema, testAttemptSchema, verdictSchema } from './run-artifact-schema.ts';
 import { resourceUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
 
@@ -13,6 +13,7 @@ export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
     diagnostics: z.array(z.strictObject({ label: z.string(), value: z.string() })),
     message: z.string(),
     subtype: z.enum([
+        'artifact',
         'attribution-drift',
         'coverage',
         'crash',

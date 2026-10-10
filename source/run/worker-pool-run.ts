@@ -158,11 +158,17 @@ async function executeWorkerPoolRunWithoutAttachments(
     state: WorkerPoolExecutionState
 ): Promise<RunResult> {
     if (workerPoolPlacementPlan(resolvedRun).units.length === 0) {
-        const result = await createEmptyWorkerPoolResult(resolvedRun, dependencies, state.collectionRunState);
-        return await state.finalizeResult(resolvedRun, {
-            placementTrace: createWorkerPoolPlacementTraceRecorder().finish(),
-            result
-        });
+        return await createEmptyWorkerPoolResult(
+            resolvedRun,
+            dependencies,
+            state.collectionRunState,
+            async function finalizeEmptyResult(result) {
+                return await state.finalizeResult(resolvedRun, {
+                    placementTrace: createWorkerPoolPlacementTraceRecorder().finish(),
+                    result
+                });
+            }
+        );
     }
 
     const runtime = await createRuntime(resolvedRun, dependencies, state);

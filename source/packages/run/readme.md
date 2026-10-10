@@ -70,8 +70,8 @@ Unknown, missing, ambiguous, or ordinary-family selections return argument error
 `3`. Ordinary run/list and direct-file execution reject the benchmark family.
 
 Benchmark profiles use `testFamily: 'benchmark'` in the same registry and support
-`execution`, `reporters`, `attachments`, `resourceUsage`, `timings`, and
-`timeouts`. `orchestrator.bench.list(command, { timing: null })` returns a
+`execution`, `reporters`, `attachments`, `resourceUsage`, `timings`,
+`timeouts`, and `baselines`. `orchestrator.bench.list(command, { timing: null })` returns a
 `ResolvedRun`; `bench.run` and `bench.runWithReporterDelivery` return the regular
 result and reporter-delivery shapes. These methods require an explicit profile
 in `RunCommand` and explicit invocation timing options. Ordinary methods reject
@@ -85,8 +85,21 @@ workers are requested. Concurrent groups and hedging are rejected. Timeout
 defaults are collection 5000 ms, soft 40000 ms, and hard 60000 ms; hard overrides
 cannot exceed 60000 ms. Resources, runtime descriptors, artifacts, assertion
 outcomes, and reporter selection follow the regular runner flow. Listing imports
-definitions without executing bodies or acquiring resources. Measurement,
-calibration, and benchmark budgets are not provided by this integration.
+definitions without executing bodies or acquiring resources. Measurement and
+benchmark budget authoring remain separate milestones.
+
+`orchestrator.bench.baseline` provides `update`, `apply`, `bootstrap`, `diff`,
+and `list`. Execution methods accept a `RunCommand` and explicit timing options;
+results include baseline changes and the write outcome. `list` accepts config,
+`cwd`, and `{ paths, profile }`, and reads persisted files without importing
+benchmarks. See [benchmark baseline commands](../bench/readme.md) for write and
+comparison behavior, and [adapter contracts](../baselines/readme.md) for profile
+configuration.
+
+`@overkill-dev/run/benchmark-calibration` exposes `calibrateBenchmarkHost` and
+`normalizeBenchmarkDuration`, also available from
+`@overkill-dev/bench/calibration`. Baseline runs collect real reference samples
+in a separate process; adapters choose whether to normalize their observations.
 
 Programmatic microtest requests accept `execution: { mode: 'serial' }` to run
 cases serially through cleanup while preserving the selected profile's process

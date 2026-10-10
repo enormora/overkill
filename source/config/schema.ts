@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
+import { performanceBaselinePolicySchema } from './performance-baselines.ts';
 import {
     coveragePolicySchema,
     type ProjectCoverageOutput as CoverageOutput,
@@ -294,6 +295,7 @@ export const integrationProfileSchema = z
 
 const benchmarkProfileSchema = z
     .strictObject({
+        baselines: performanceBaselinePolicySchema.default({ adapters: [], directory: 'test-baselines' }),
         attachments: attachmentLimitsSchema,
         execution: z.optional(benchmarkExecutionSchema),
         files: profileFilesSchema,

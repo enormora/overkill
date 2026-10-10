@@ -107,6 +107,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            benchmarkCalibration: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: [],

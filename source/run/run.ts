@@ -3,10 +3,9 @@ import {
     type RunInvocation
 } from './run-input-resolution.ts';
 import {
-    createIsolatedResolvedRun,
-    runIsolatedProcessCommand
+    createIsolatedResolvedRun
 } from './run-isolated-process.ts';
-import { runLocalCommand } from './run-local-command.ts';
+import { executeRunCommand } from './run-execution.ts';
 import { createLocalResolvedRun } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -23,6 +22,7 @@ import {
 import type {
     ResolvedRun,
     RunCommand,
+    BenchmarkBaselineCommand,
     RunOrchestrator
 } from './run-types.ts';
 
@@ -65,7 +65,11 @@ async function createResolvedRun(
         }
     ) ?? readResolvedRunInput({ ...invocation, command: seededCommand }, dependencies));
     const resolvedCommand = { ...seededCommand, config: input.config, engine: input.engine, request: input.request };
-    const isolatedRun = createIsolatedResolvedRun(resolvedCommand, dependencies, input, { source, timing });
+    const isolatedRun = createIsolatedResolvedRun(resolvedCommand, dependencies, input, {
+        baseline: null,
+        source,
+        timing
+    });
 
     if (isolatedRun !== null) {
         return await isolatedRun;
@@ -93,22 +97,15 @@ async function runCommand(
     timing: RunTimingMeasurement,
     source: RunCollectionSource
 ): Promise<RunResult> {
-    const seededCommand = commandWithResolvedSeed(invocation.command, dependencies);
-    const input = await timing.measureAsync(
-        'profile.resolve',
-        emptyTimingSpanMetadata(),
-        async function readTimedRunInput() {
-            return await readResolvedRunInput({ ...invocation, command: seededCommand }, dependencies);
-        }
+    return await executeRunCommand(
+        {
+            ...invocation,
+            command: commandWithResolvedSeed(invocation.command, dependencies)
+        },
+        dependencies,
+        timing,
+        source
     );
-    const resolvedCommand = { ...seededCommand, config: input.config, engine: input.engine, request: input.request };
-    const isolatedResult = runIsolatedProcessCommand(resolvedCommand, dependencies, { source, timing }, input);
-
-    if (isolatedResult !== null) {
-        return await isolatedResult;
-    }
-
-    return await runLocalCommand(resolvedCommand, dependencies, { input, source, timing });
 }
 
 type RunOperations = Pick<RunOrchestrator, 'resolve' | 'run' | 'runWithReporterDelivery'>;
@@ -160,10 +157,29 @@ function createRunOperations(
 
 export function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     const benchmark = createRunOperations(dependencies, 'bench');
+    function baselineVerb(verb: 'apply' | 'bootstrap' | 'diff' | 'update') {
+        return async function executeBaselineVerb(
+            command: BenchmarkBaselineCommand,
+            options: RunInvocationTimingOptions
+        ) {
+            const { runBenchmarkBaselineVerb } = await import('./benchmark-baseline-operations.ts');
+            return await runBenchmarkBaselineVerb({ command, operations: benchmark, options, verb });
+        };
+    }
 
     return {
         ...createRunOperations(dependencies, 'test'),
         bench: {
+            baseline: {
+                apply: baselineVerb('apply'),
+                bootstrap: baselineVerb('bootstrap'),
+                diff: baselineVerb('diff'),
+                async list(command) {
+                    const { listBenchmarkBaselines } = await import('./benchmark-baseline-operations.ts');
+                    return await listBenchmarkBaselines(command);
+                },
+                update: baselineVerb('update')
+            },
             list: benchmark.resolve,
             run: benchmark.run,
             runWithReporterDelivery: benchmark.runWithReporterDelivery

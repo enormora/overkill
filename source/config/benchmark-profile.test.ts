@@ -3,6 +3,7 @@ import { ConfigError, defineConfig, normalizeConfig } from '../packages/run/conf
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
 
 const benchmarkPolicy = {
+    baselines: { adapters: [], directory: 'test-baselines' },
     attachments: {
         maxInlineBytes: 1_048_576,
         maxArtifactBytes: 10_485_760,

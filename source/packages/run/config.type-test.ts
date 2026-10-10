@@ -27,6 +27,7 @@ describe('@overkill-dev/run/config', function () {
         expect<keyof ProjectBenchmarkProfileConfig>().type.toBe<
             keyof {
                 readonly attachments: true;
+                readonly baselines: true;
                 readonly execution: true;
                 readonly files: true;
                 readonly reporters: true;

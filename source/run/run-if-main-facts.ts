@@ -73,6 +73,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     const profile = selectTestProfile(input.profileName, input.config);
 
     return {
+        benchmarkCalibration: null,
         cases: runCaseFactsFromTestPlan(input.testPlan, function directRunFileSet() {
             return input.fileSet;
         }),

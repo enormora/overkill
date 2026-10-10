@@ -1,10 +1,10 @@
 import { z } from 'zod/v4';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestOutcome } from '../engine/run-result.ts';
+import { sourceLocationsSchema } from '../engine/identity-schema.ts';
 import { diffPathSchema, diffSchema } from './diff-schema.ts';
 import { serializedValueSchema } from './serialized-value-schema.ts';
 import { runArtifactIdSchema } from './run-artifact-id-schema.ts';
-import { sourceLocationsSchema } from './run-identity-schema.ts';
 
 const thrownErrorSchema = z.strictObject({
     message: z.string(),

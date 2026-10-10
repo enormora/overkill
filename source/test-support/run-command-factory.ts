@@ -367,6 +367,13 @@ async function rejectUnexpectedBenchmark(): Promise<never> {
 }
 
 export const unexpectedBenchmarkOrchestrator: BenchmarkOrchestrator = {
+    baseline: {
+        apply: rejectUnexpectedBenchmark,
+        bootstrap: rejectUnexpectedBenchmark,
+        diff: rejectUnexpectedBenchmark,
+        list: rejectUnexpectedBenchmark,
+        update: rejectUnexpectedBenchmark
+    },
     list: rejectUnexpectedBenchmark,
     run: rejectUnexpectedBenchmark,
     runWithReporterDelivery: rejectUnexpectedBenchmark

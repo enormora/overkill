@@ -41,6 +41,7 @@ export const testNode = createSuite({
                     await attempt.start();
                     const result = await finalizeSupervisedResult(run, runResultFactory.build({ status: 'passed' }), {
                         ...fixture.request,
+                        baseline: null,
                         record: attempt.record,
                         coverageSession: {
                             childProcess: null,

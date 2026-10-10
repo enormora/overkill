@@ -118,6 +118,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            benchmarkCalibration: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: testPlan.cases.map(function toCaseFacts(testCase) {

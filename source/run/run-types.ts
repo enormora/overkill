@@ -1,6 +1,13 @@
 import type { Except } from 'type-fest';
-import type { IntegrationRetryPolicy } from '../config/execution.ts';
 import type {
+    BenchmarkCalibrationResult,
+    BaselineChange,
+    BaselineEntry,
+    BaselineUpdateMode,
+    BaselineWriteOutcome
+} from '../baselines/performance-baseline.ts';
+import type {
+    IntegrationRetryPolicy,
     LoaderConfig,
     ResourceBudgets,
     TimingCollectionMode,
@@ -162,7 +169,7 @@ export type DurationHistoryInput = {
 };
 
 export type ProfileRunRequest<Profile extends string | null> = {
-    readonly baselineUpdateMode: 'none';
+    readonly baselineUpdateMode: BaselineUpdateMode;
     readonly capabilityRestrictions: RunCapabilityRestrictionsRequest;
     readonly capture: 'buffered' | 'live';
     readonly coverage: boolean;
@@ -192,6 +199,7 @@ export type RunCommand = {
 };
 
 export type RunFacts = {
+    readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
     readonly coveragePolicy: CoveragePolicy | null;
     readonly cases: readonly RunCaseFacts[];
     readonly durationHistory: DurationHistoryInput | null;
@@ -222,7 +230,7 @@ export type RunEnvironmentFacts = {
 type RunExecutionBaseFacts = {
     readonly attachments: AttachmentLimits | null;
     readonly retries: IntegrationRetryPolicy | null;
-    readonly baselineUpdateMode: 'none';
+    readonly baselineUpdateMode: BaselineUpdateMode;
     readonly capture: 'buffered' | 'live';
     readonly coverage: boolean;
     readonly debug: RunDebugRequest;
@@ -351,7 +359,41 @@ export type RunReporterDeliveryResult = {
     readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
 };
 
+export type BenchmarkBaselineCommand = Except<RunCommand, 'request'> & {
+    readonly request: Except<RunRequest, 'baselineUpdateMode'>;
+};
+
+export type BenchmarkBaselineListCommand = Pick<RunCommand, 'config' | 'cwd'> & {
+    readonly request: Pick<RunRequest, 'paths' | 'profile'>;
+};
+
+export type BenchmarkBaselineRunResult = RunReporterDeliveryResult & {
+    readonly changes: readonly BaselineChange[];
+    readonly writeOutcome: BaselineWriteOutcome;
+};
+
+export type BenchmarkBaselineOrchestrator = {
+    readonly apply: (
+        command: BenchmarkBaselineCommand,
+        options: RunInvocationTimingOptions
+    ) => Promise<BenchmarkBaselineRunResult>;
+    readonly bootstrap: (
+        command: BenchmarkBaselineCommand,
+        options: RunInvocationTimingOptions
+    ) => Promise<BenchmarkBaselineRunResult>;
+    readonly diff: (
+        command: BenchmarkBaselineCommand,
+        options: RunInvocationTimingOptions
+    ) => Promise<BenchmarkBaselineRunResult>;
+    readonly list: (command: BenchmarkBaselineListCommand) => Promise<readonly BaselineEntry[]>;
+    readonly update: (
+        command: BenchmarkBaselineCommand,
+        options: RunInvocationTimingOptions
+    ) => Promise<BenchmarkBaselineRunResult>;
+};
+
 export type BenchmarkOrchestrator = {
+    readonly baseline: BenchmarkBaselineOrchestrator;
     readonly list: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunResult>;
     readonly runWithReporterDelivery: (
