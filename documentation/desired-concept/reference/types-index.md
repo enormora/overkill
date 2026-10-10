@@ -2042,11 +2042,20 @@ Canonical: [Failure Artifacts](../authoring/failure-artifacts.md).
 
 ```ts
 type PropertyCodecPayload =
-    | null | undefined | boolean | string | number | bigint
+    | null
+    | undefined
+    | boolean
+    | string
+    | number
+    | bigint
     | ReadonlyArray<PropertyCodecPayload>
     | { readonly [key: string]: PropertyCodecPayload; }
-    | Date | RegExp | ReadonlyMap<PropertyCodecPayload, PropertyCodecPayload>
-    | ReadonlySet<PropertyCodecPayload> | ArrayBuffer | ArrayBufferView;
+    | Date
+    | RegExp
+    | ReadonlyMap<PropertyCodecPayload, PropertyCodecPayload>
+    | ReadonlySet<PropertyCodecPayload>
+    | ArrayBuffer
+    | ArrayBufferView;
 
 type PropertyCodecDecoder<Value> = {
     readonly version: number;
