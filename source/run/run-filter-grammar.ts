@@ -24,7 +24,8 @@ const runFilterFields: ReadonlySet<string> = new Set([
     'params',
     'suite',
     'tag',
-    'title'
+    'title',
+    'workload'
 ]);
 
 const syntaxCharacters: ReadonlySet<string> = new Set([ '(', ')', '!', '|', '=', '~', ':' ]);

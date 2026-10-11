@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
@@ -11,10 +12,7 @@ import {
     type CaseId,
     type WorkId
 } from './identity.ts';
-import {
-    readTestBodyResourceAttachments,
-    type TestBodyResourceAttachments
-} from './test-body-resource-attachment.ts';
+import { readTestBodyResourceAttachments, type TestBodyResourceAttachments } from './test-body-resource-attachment.ts';
 import {
     resolveRootTestAnnotations,
     resolveRootTestControls,
@@ -38,13 +36,15 @@ import {
     type TestBody,
     type TestCase,
     type TestCaseExecution,
+    type BodyTestCaseExecution,
+    type SkippedTestCaseExecution,
     type TestNode,
     type TestNodeOwner,
     type TestRoot
 } from './test-node.ts';
 
 export type TestPlanCaseBody = TestBody;
-export type TestPlanCaseExecution = TestCaseExecution;
+export type TestPlanCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution;
 
 export type TestPlanSuitePathEntry = {
     readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
@@ -62,6 +62,31 @@ export type TestPlanCase = {
     readonly testFamily: TestFamily | null;
     readonly workId: WorkId;
 };
+
+type LogicalTestPlanCase = Except<TestPlanCase, 'execution' | 'resourceAttachments' | 'workId'> & {
+    readonly execution: TestCaseExecution;
+};
+
+function plannedCase(testCase: LogicalTestPlanCase, execution: TestPlanCaseExecution): TestPlanCase {
+    return {
+        ...testCase,
+        execution,
+        resourceAttachments: readTestBodyResourceAttachments(execution.kind === 'body' ? execution.body : null),
+        workId: createDefaultWorkId(testCase.id)
+    };
+}
+
+function expandWorkloadCases(cases: readonly LogicalTestPlanCase[]): readonly TestPlanCase[] {
+    return cases.flatMap(function expandCase(testCase) {
+        if (testCase.execution.kind !== 'workloads') {
+            return [ plannedCase(testCase, testCase.execution) ];
+        }
+        return testCase.execution.workloads.map(function workloadCase(workload) {
+            const result = plannedCase(testCase, { body: workload.body, bodyMode: 'builder', kind: 'body' });
+            return { ...result, workId: { ...result.workId, workload: workload.id } };
+        });
+    });
+}
 
 export type TestPlan = {
     readonly defined: number;
@@ -97,7 +122,7 @@ export type TestPlanFromTestFilesFactory = (options: TestPlanFromTestFilesOption
 type FileBackedTestNodeInput = TestPlanFromTestFilesOptions['files'][number];
 
 type CollectedTestCases = {
-    readonly cases: readonly TestPlanCase[];
+    readonly cases: readonly LogicalTestPlanCase[];
     readonly reachedNodes: readonly TestNode[];
 };
 
@@ -128,14 +153,6 @@ function duplicateTitleMessage(title: string, path: readonly string[]): string {
     const location = path.length === 0 ? '<root>' : path.join(' > ');
 
     return `Duplicate test node title under ${location}: ${title}.`;
-}
-
-function resourceAttachmentsFromExecution(execution: TestCaseExecution): TestBodyResourceAttachments {
-    if (execution.kind !== 'body') {
-        return readTestBodyResourceAttachments(null);
-    }
-
-    return readTestBodyResourceAttachments(execution.body);
 }
 
 function assertUniqueSiblingTitles(nodes: readonly TitledNode[], path: readonly string[]): void {
@@ -170,10 +187,8 @@ function collectTestCase(
                 definitionLocations: testCase.definitionLocations,
                 execution: testCase.execution,
                 id,
-                resourceAttachments: resourceAttachmentsFromExecution(testCase.execution),
                 suitePath: context.suitePath,
-                testFamily: testNodeFamily(testCase),
-                workId: createDefaultWorkId(id)
+                testFamily: testNodeFamily(testCase)
             }
         ],
         reachedNodes: [ testCase ]
@@ -200,7 +215,7 @@ function collectTable(
     const tableControls = resolveTestControls(context.controls, table.controls);
 
     return {
-        cases: table.cases.map(function collectTableCase(tableCase): TestPlanCase {
+        cases: table.cases.map(function collectTableCase(tableCase): LogicalTestPlanCase {
             const annotations = resolveTestAnnotations(tableAnnotations, tableCase.annotations);
             const controls = resolveTestControls(tableControls, tableCase.controls);
             const id = createCaseId(
@@ -216,10 +231,8 @@ function collectTable(
                 definitionLocations: table.definitionLocations,
                 execution: { body: tableCase.body, bodyMode: 'builder', kind: 'body' },
                 id,
-                resourceAttachments: readTestBodyResourceAttachments(tableCase.body),
                 suitePath: tablePath,
-                testFamily: testNodeFamily(table),
-                workId: createDefaultWorkId(id)
+                testFamily: testNodeFamily(table)
             };
         }),
         reachedNodes: [ table ]
@@ -346,7 +359,7 @@ function collectOrphans(
         .map(createOrphanedNode);
 }
 
-function assertUniqueCaseIds(cases: readonly TestPlanCase[]): void {
+function assertUniqueCaseIds(cases: readonly LogicalTestPlanCase[]): void {
     const seenCaseIds = new Set<string>();
 
     for (const testCase of cases) {
@@ -378,9 +391,10 @@ export function createTestPlanFactory(owner: TestNodeOwner, constructedNodes: Re
         const rootAnnotations = resolveRootTestAnnotations(root.annotations);
         const rootControls = resolveRootTestControls(root.controls);
         const collection = collectRoot(root, rootAnnotations, rootControls);
-        const { cases: discoveredCases, reachedNodes } = collection;
+        const { cases, reachedNodes } = collection;
+        assertUniqueCaseIds(cases);
+        const discoveredCases = expandWorkloadCases(cases);
         assertNonEmptyCases(discoveredCases);
-        assertUniqueCaseIds(discoveredCases);
 
         return {
             cases: discoveredCases,
@@ -445,14 +459,15 @@ export function createTestPlanFromTestFilesFactory(
         });
         const rootAnnotations = resolveRootTestAnnotations(root.annotations);
         const rootControls = resolveRootTestControls(root.controls);
-        const { cases: discoveredCases, reachedNodes } = collectTestFiles(
+        const { cases, reachedNodes } = collectTestFiles(
             root,
             options.files,
             rootAnnotations,
             rootControls
         );
+        assertUniqueCaseIds(cases);
+        const discoveredCases = expandWorkloadCases(cases);
         assertNonEmptyCases(discoveredCases);
-        assertUniqueCaseIds(discoveredCases);
 
         return {
             cases: discoveredCases,

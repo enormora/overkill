@@ -270,16 +270,21 @@ export const testNode = createOverkillSuite({
                 };
 
                 scope.assert.equal(
-                    contextPrefix([ plainRuntime ], [], { color: false, wrap: false }),
+                    contextPrefix([ plainRuntime ], null, [], { color: false, wrap: false }),
                     '[api]'
                 );
+                scope.assert.equal(
+                    contextPrefix([ plainRuntime ], { name: 'small', params: {} }, [], { color: false, wrap: false }),
+                    '[api] [workload=small]'
+                );
                 scope.assert.includes(
-                    contextPrefix([ plainRuntime ], [], { color: true, wrap: false }),
+                    contextPrefix([ plainRuntime ], null, [], { color: true, wrap: false }),
                     'api'
                 );
                 scope.assert.equal(
                     contextPrefix(
                         [ { ...plainRuntime, scenarios: { api: 'payments-500' } } ],
+                        null,
                         [],
                         { color: false, wrap: false }
                     ),
@@ -288,6 +293,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     contextPrefix(
                         [ { ...plainRuntime, variantId: 'node-26' } ],
+                        null,
                         [],
                         { color: false, wrap: false }
                     ),
@@ -301,6 +307,7 @@ export const testNode = createOverkillSuite({
                             scenarios: { database: 'empty', api: 'payments-500' },
                             variantId: null
                         } ],
+                        null,
                         [],
                         { color: false, wrap: false }
                     ),

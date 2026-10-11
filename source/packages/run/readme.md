@@ -121,6 +121,7 @@ Programmatic selection helpers are exposed through `@overkill-dev/run/filters`:
 - `file(pattern)`
 - `owner(value)`
 - `params(value)`
+- `workload(name)`
 - `parseRunFilterExpression(expression)`
 - `runtime(name)`
 - `runtimeDimension(name, dimensionName, value)`
@@ -157,7 +158,7 @@ child process to load the engine without parent-side user-module execution.
 
 Programmatic selection filters are supported through `RunRequest.selection`.
 The current helpers select by stable case id, file, title, suite, table params,
-tag, ownership, public runtime key, runtime matrix variant id, runtime
+workload name, tag, ownership, public runtime key, runtime matrix variant id, runtime
 dimension, and exact runner-visible runtime scenario bindings. Runtime identity
 filters use case-sensitive equality. Scenario filtering is programmatic and has
 no CLI grammar. Test family matching is intentionally absent because one run is

@@ -44,6 +44,7 @@ export const defaultRunEngine: Engine = {
     createTable: engine.createTable,
     createTestCase: engine.createTestCase,
     createThrowingTestCase: engine.createThrowingTestCase,
+    createWorkloadTestCase: engine.createWorkloadTestCase,
     createTestPlan: engine.createTestPlan,
     createTestPlanFromTestFiles: engine.createTestPlanFromTestFiles,
     execute: engine.execute,

@@ -21,6 +21,7 @@ export type RunStringFilterField = keyof {
     readonly suite: true;
     readonly tag: true;
     readonly title: true;
+    readonly workload: true;
 };
 
 export type RunRuntimeScenarioFilter = {

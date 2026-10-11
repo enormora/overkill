@@ -22,13 +22,14 @@ type FilterPackageValueExport = keyof {
     readonly suite: true;
     readonly tag: true;
     readonly title: true;
+    readonly workload: true;
 };
 
 describe('@overkill-dev/run/filters', function () {
     test('exposes the typed filter helper surface without test-family matching', function () {
         expect<keyof typeof filters>().type.toBe<FilterPackageValueExport>();
         expect<RunStringFilterField>().type.toBe<
-            'file' | 'owner' | 'params' | 'suite' | 'tag' | 'title'
+            'file' | 'owner' | 'params' | 'suite' | 'tag' | 'title' | 'workload'
         >();
     });
 
@@ -95,6 +96,7 @@ describe('@overkill-dev/run/filters', function () {
         expect<typeof filters.suite>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.tag>().type.toBe<(value: string) => RunFilter>();
         expect<typeof filters.title>().type.toBe<(value: string) => RunFilter>();
+        expect<typeof filters.workload>().type.toBe<(value: string) => RunFilter>();
     });
 
     test('keeps invalid fields and stability markers out of helper calls', function () {

@@ -188,7 +188,7 @@ function expandCase(testCase: TestPlanCase): readonly TestPlanCase[] {
                 runtimes: sortedRuntimeIds(combination.map(function selectedRuntime(selection) {
                     return selection.runtimeId;
                 })),
-                workload: null
+                workload: testCase.workId.workload
             }
         };
     });

@@ -23,7 +23,8 @@ const filterFields: ReadonlySet<string> = new Set([
     'params',
     'suite',
     'tag',
-    'title'
+    'title',
+    'workload'
 ]);
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -124,6 +125,10 @@ export function tag(value: string): RunFilter {
 
 export function title(value: string): RunFilter {
     return contains('title', value);
+}
+
+export function workload(name: string): RunFilter {
+    return equals('workload', name);
 }
 
 export function runtime(name: string): RunFilter {
@@ -457,6 +462,9 @@ function suitePath(suiteParts: readonly string[]): readonly string[] {
 }
 
 const candidateFieldReaders: CandidateFieldReaders = {
+    workload(candidate) {
+        return candidate.workId.workload === null ? [] : [ candidate.workId.workload.name ];
+    },
     file(candidate) {
         return candidate.id.file === null ? [] : [ candidate.id.file ];
     },

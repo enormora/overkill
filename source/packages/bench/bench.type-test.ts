@@ -137,3 +137,28 @@ describe('@overkill-dev/test/bench', function () {
         expect(standard.test('parameterized', body(parameterValue))).type.toBe<standard.TestCase>();
     });
 });
+
+describe('workload types', function () {
+    test('preserves named JSON inputs and deep immutability', function () {
+        const packages = 5;
+        const firstValue = 1;
+        const secondValue = 2;
+        const small = bench.workload('small', { packages, nested: { values: [ firstValue, secondValue ] } });
+        expect(small.name).type.toBe<'small'>();
+        expect(small.parameters.packages).type.toBe<typeof packages>();
+        expect(small.parameters.nested.values).type.toBe<readonly [typeof firstValue, typeof secondValue]>();
+        const mutable = { nested: { values: [ firstValue, secondValue ] } };
+        const snapshot = standard.workload('mutable', mutable);
+        expect(snapshot.parameters.nested.values).type.toBe<readonly number[]>();
+    });
+    test('rejects non-JSON input types and non-string names', function () {
+        const invalidName = 42;
+        expect(bench.workload).type.not.toBeCallableWith('bad', {
+            callback() {
+                return 1;
+            }
+        });
+        expect(bench.workload).type.not.toBeCallableWith('bad', []);
+        expect(bench.workload).type.not.toBeCallableWith(invalidName, {});
+    });
+});

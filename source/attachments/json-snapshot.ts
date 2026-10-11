@@ -108,8 +108,9 @@ function containerSnapshot(
         ? arraySnapshot(value, budget, depth, visit)
         : objectSnapshot(value, budget, depth, visit);
 }
-function createJsonVisit(budget: JsonSnapshotBudget): JsonVisit {
+function createJsonVisit(budget: JsonSnapshotBudget, validate: (value: unknown) => void): JsonVisit {
     return function visit(value, depth) {
+        validate(value);
         if (scalar(value)) {
             budget.reserve(Buffer.byteLength(JSON.stringify(value)));
             return value;
@@ -126,7 +127,13 @@ function createJsonVisit(budget: JsonSnapshotBudget): JsonVisit {
     };
 }
 function boundedJsonSnapshot(value: unknown, maxBytes: number): JsonSnapshot {
-    const copy = createJsonVisit(createJsonSnapshotBudget(maxBytes))(value, 0);
+    const copy = createJsonVisit(createJsonSnapshotBudget(maxBytes), function allowJsonValue() {
+        return undefined;
+    })(value, 0);
+    return { value: copy, encoded: JSON.stringify(copy) };
+}
+export function snapshotValidatedJson(value: unknown, validate: (value: unknown) => void): JsonSnapshot {
+    const copy = createJsonVisit(createJsonSnapshotBudget(Number.POSITIVE_INFINITY), validate)(value, 0);
     return { value: copy, encoded: JSON.stringify(copy) };
 }
 export function snapshotJson(value: unknown, maxBytes: number): JsonSnapshot | null {

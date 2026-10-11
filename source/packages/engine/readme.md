@@ -6,6 +6,7 @@ Top-level API:
 
 - `createTestCase(options)`
 - `createThrowingTestCase(options)`
+- `createWorkloadTestCase(options)`
 - `createSkippedTestCase(options)`
 - `createRoot(options)`
 - `createSuite(options)`
@@ -35,6 +36,24 @@ The top-level constructors share one default engine instance, including
 installed package copies in the same process. Use
 `createEngine()` when a collection needs isolated construction state for
 `defined` counts and orphan detection.
+
+`createWorkloadTestCase({ title, annotations, controls, definitionLocations,
+workloads })` creates one logical test node with a non-empty list of
+`{ id: WorkloadId, body: TestBody }` entries. Names must be unique, including
+Unicode normalization equivalents. Identity records are copied and frozen.
+Each body retains its own resource metadata and becomes an executable work
+item during planning. All entries share one `CaseId`; their `WorkId.workload`
+values distinguish execution, artifacts, and assignments. `defined` counts
+the node once; `discovered` and `planned` count expanded work items.
+
+The constructor is family-neutral. Structural custom `Engine` implementations
+must expose it along with the existing constructors.
+
+`canonicalIdentityJson(value)` encodes JSON identity data with canonical key
+ordering and Unicode normalization. `snapshotValidatedJson(value, validate)`
+copies and deeply freezes finite, acyclic JSON data while applying a validator
+to each value. Workload authoring shares these operations with runner data
+handling through the engine package.
 
 Direct execution:
 
