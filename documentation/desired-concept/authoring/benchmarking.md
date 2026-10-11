@@ -167,6 +167,36 @@ arrives with its workload, measurement, and budget contracts. The standard
 distribution includes the leaf package and exposes these constructors and
 their public types through explicit `@overkill-dev/test/bench` re-exports.
 
+The workload model now exports `workload(name, parameters)` through both bench
+import paths. It creates a branded, immutable descriptor with `name`, typed
+`parameters`, and a structured `id`. Parameters are copied from a plain JSON
+record and deeply frozen without freezing the caller's data. Unsupported or
+lossy values, accessors, cycles, non-JSON properties, canonical key collisions,
+and nesting beyond the shared JSON depth limit of 64 are definition errors.
+Names remain verbatim and reject blank strings and control characters.
+The engine exports the shared `canonicalIdentityJson` and
+`snapshotValidatedJson` operations so descriptor encoding and runner JSON
+handling remain shared across installed packages.
+
+The permanent low-level `engine.createWorkloadTestCase(...)` constructor takes
+a non-empty list of `{ id: WorkloadId, body: TestBody }` entries with unique
+names, including Unicode normalization equivalents. It creates one logical
+node; planning lowers its bodies into distinct workload `WorkId`s that share
+the same `CaseId`. Each body retains ordinary resource/runtime descriptors.
+Runtime expansion preserves workload identity and forms their Cartesian
+product before selection and placement.
+
+`--filter 'workload=small'` selects by resolved workload name through the
+existing filter grammar. `workload(name)` from `@overkill-dev/run/filters`
+builds the equivalent typed equality filter. Logical case filters select all
+workloads of that case. List and human failure output identify workloads with
+`[workload=<name>]`.
+
+The later measurement and budget milestones complete `benchmark(...)` using
+this model. The workload milestone adds no public assertion-based wrapper or
+alternate benchmark authoring constructor. Workload-aware fixture acquisition
+remains owned by Benchmark Resource And Runtime Integration.
+
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”
 
 A benchmark definition should be able to describe:

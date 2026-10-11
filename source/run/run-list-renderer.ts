@@ -6,7 +6,8 @@ import {
     type ReportingContext
 } from '../engine/reporting-context.ts';
 import type { OrphanedNode } from '../engine/run-result.ts';
-import { caseIdentityKey } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
+import { workloadLabel } from '../engine/workload-label.ts';
 import {
     collectedRunCaseEntries,
     collectedRunPlanFromTestPlan,
@@ -50,7 +51,8 @@ function sharedPrefixLength(left: CollectedRunCase['suitePath'], right: Collecte
 }
 
 function formatCaseName(testCase: CollectedRunCase): string {
-    return testCase.params === null ? testCase.title : `${testCase.title} [${testCase.params}]`;
+    const name = testCase.params === null ? testCase.title : `${testCase.title} [${testCase.params}]`;
+    return `${name}${workloadLabel(testCase.workId?.workload ?? null)}`;
 }
 
 function locationSuffix(location: ResolvableSourceLocation, options: RenderOptions, context: ReportingContext): string {
@@ -238,12 +240,12 @@ function factsCaseEntries(resolvedRun: ResolvedRun, plan: CollectedRunPlan): rea
 
     const casesByKey = new Map(
         collectedRunCaseEntries(plan).map(function toEntry(testCase) {
-            return [ caseIdentityKey(testCase.id), testCase ];
+            return [ workIdentityKey(testCase.workId), testCase ];
         })
     );
 
     const entries = factsCases.flatMap(function toOrderedCase(testCase) {
-        const entry = casesByKey.get(caseIdentityKey(testCase.id));
+        const entry = casesByKey.get(workIdentityKey(testCase.workId));
 
         return entry === undefined ? [] : [ entry ];
     });

@@ -23,6 +23,7 @@ const engineMethodNames = [
     'createSuite',
     'createTable',
     'createTestCase',
+    'createWorkloadTestCase',
     'createTestPlan',
     'createTestPlanFromTestFiles',
     'execute',

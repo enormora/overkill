@@ -1,5 +1,6 @@
 import colors from 'yoctocolors';
-import { workIdentityKey, formatCaseId, type RuntimeId } from '../engine/identity.ts';
+import { workIdentityKey, formatCaseId, type RuntimeId, type WorkloadId } from '../engine/identity.ts';
+import { workloadLabel } from '../engine/workload-label.ts';
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
 import { formatFailure } from './line-failure-rendering.ts';
@@ -158,10 +159,11 @@ function suitePrefix(suite: readonly string[], options: HumanReporterFormatOptio
 
 export function contextPrefix(
     runtimes: readonly RuntimeId[],
+    workload: WorkloadId | null,
     suite: readonly string[],
     options: HumanReporterFormatOptions
 ): string {
-    return [ runtimePrefixes(runtimes, options), suitePrefix(suite, options) ]
+    return [ runtimePrefixes(runtimes, options), workloadLabel(workload).trimStart(), suitePrefix(suite, options) ]
         .filter(function present(value) {
             return value.length > 0;
         })
@@ -169,7 +171,9 @@ export function contextPrefix(
 }
 
 function formatRunnerError(error: RunnerError): readonly string[] {
-    const attribution = error.attributedTo === null ? [] : [ `test: ${formatCaseId(error.attributedTo)}` ];
+    const attribution = error.attributedTo === null ? [] : [
+        `test: ${formatCaseId(error.attributedTo)}${workloadLabel(error.attributedToWork?.workload ?? null)}`
+    ];
     const diagnostics = error.diagnostics.map(function formatDiagnostic(diagnostic) {
         return `${diagnostic.label}: ${diagnostic.value}`;
     });
@@ -260,7 +264,10 @@ function unreportedArtifactLines(artifact: RunArtifact): readonly string[] {
     }
     const runtimes = artifact.id.runtimes.map(runtimeLabel).join(', ');
     const suffix = runtimes === '' ? '' : ` [${runtimes}]`;
-    return [ `${formatCaseId(artifact.id.scope.case)}${suffix}`, ...details.map(indentDetail) ];
+    return [
+        `${formatCaseId(artifact.id.scope.case)}${suffix}${workloadLabel(artifact.id.workload)}`,
+        ...details.map(indentDetail)
+    ];
 }
 function caseArtifactDetails(result: RunResult, testResult: RunResult['perTest'][number]): readonly string[] {
     return caseArtifacts(result, testResult).flatMap(function detail(artifact) {
@@ -304,7 +311,7 @@ function testProblemHeading(testResult: RunResult['perTest'][number], context: R
     const location = formatDefinitionLocations(testResult.definitionLocations, context).primary;
     const locationText = location === null ? '' : ` (${location})`;
 
-    return `${formatCaseId(testResult.id)}${locationText}`;
+    return `${formatCaseId(testResult.id)}${workloadLabel(testResult.workId.workload)}${locationText}`;
 }
 
 function knownOutcomeProblemLines(input: KnownOutcomeProblemInput): readonly string[] {

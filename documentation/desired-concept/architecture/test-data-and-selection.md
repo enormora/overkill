@@ -130,6 +130,7 @@ Filterable dimensions:
 - title
 - suite path
 - params
+- resolved workload name
 - tag
 - owner
 - public runtime key
@@ -154,8 +155,16 @@ term      := dimension '=' value
           |  '(' expr ')'
           |  expr '|' expr
 value     := identifier | quoted-string
-dimension := 'tag' | 'owner' | 'file' | 'title' | 'suite' | 'params'
+dimension := 'tag' | 'owner' | 'file' | 'title' | 'suite' | 'params' | 'workload'
 ```
+
+Workload selection uses the existing grammar: `--filter 'workload=small'`,
+`workload~small`, and `workload:s*` match resolved workload names. Matching
+uses the same case-insensitive rules as other string filter fields. Cases
+without a workload do not match positive workload filters. Programmatic
+`workload(name)` from `@overkill-dev/run/filters` is equivalent to
+`equals('workload', name)`; `caseId(id)` selects every workload of that logical
+case. No dedicated workload flag is introduced.
 
 Runtime selection may also be expressed through dedicated CLI sugar instead of
 the general filter grammar:

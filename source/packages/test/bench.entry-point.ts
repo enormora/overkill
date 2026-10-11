@@ -4,9 +4,12 @@ export {
     skippedTest,
     suite,
     table,
-    test
+    test,
+    workload
 } from '../bench/bench.entry-point.ts';
 export type {
+    Workload,
+    WorkloadParameters,
     AuthoringAnnotations,
     AuthoringControls,
     ParameterizedTestScope,

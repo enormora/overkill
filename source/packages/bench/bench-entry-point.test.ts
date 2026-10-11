@@ -103,7 +103,8 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
                 'skippedTest',
                 'suite',
                 'table',
-                'test'
+                'test',
+                'workload'
             ]
         );
         return scope.assert.collect();

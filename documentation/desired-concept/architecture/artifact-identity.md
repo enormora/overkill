@@ -199,6 +199,14 @@ To make identity stable across machines and runs:
 - **workload names** are taken from the workload definition, not from
   fixture state
 
+Authored benchmark workload parameters are immutable JSON records.
+`WorkloadId.params` retains its string-record shape: each top-level parameter
+value is encoded as canonical JSON with sorted object keys, preserved array
+order, and canonical Unicode normalization. A number `5` therefore encodes as
+`5`, while a string `"5"` encodes as `"5"` with its JSON quotes. Canonical key
+collisions and lossy inputs are definition errors. Workload names must be
+unique within their logical case, including normalization equivalents.
+
 A change in canonicalisation rules is a baseline-breaking change and
 requires a migration; the rules should be considered stable.
 

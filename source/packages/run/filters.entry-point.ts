@@ -15,7 +15,8 @@ export {
     runtimeVariant,
     suite,
     tag,
-    title
+    title,
+    workload
 } from '../../run/run-selection-filters.ts';
 export {
     parseRunFilterExpression

@@ -776,6 +776,46 @@ Canonical: [Reporters](../architecture/reporters.md).
 
 ## Run Request, Resolution, And Record
 
+### Workload Definitions
+
+```ts
+import type { JsonObject, ReadonlyDeep } from 'type-fest';
+
+type WorkloadParameters = ReadonlyDeep<JsonObject>;
+
+type Workload<Name extends string, Parameters extends WorkloadParameters> = {
+    readonly name: Name;
+    readonly parameters: ReadonlyDeep<Parameters>;
+    readonly id: WorkloadId;
+};
+
+declare function workload<const Name extends string, const Parameters extends WorkloadParameters>(
+    name: Name,
+    parameters: Parameters
+): Workload<Name, Parameters>;
+
+type WorkloadTestCaseVariant = {
+    readonly id: WorkloadId;
+    readonly body: TestBody;
+};
+
+type WorkloadTestCaseOptions = {
+    readonly title: string;
+    readonly annotations: TestAnnotationsInput;
+    readonly controls: TestControlsInput;
+    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
+    readonly workloads: NonEmptyReadonlyArray<WorkloadTestCaseVariant>;
+};
+
+declare function createWorkloadTestCase(options: WorkloadTestCaseOptions): TestCase;
+```
+
+Workload descriptors carry a private factory brand omitted from this sketch.
+The low-level constructor creates one logical case with distinct workload
+work identities. Canonical: [Benchmarking](../authoring/benchmarking.md#benchmark-definition-model).
+
+### Runner Contracts
+
 Direct engine consumers can create builder body-backed `TestCase` values with
 `createTestCase`, throwing body-backed values with `createThrowingTestCase`,
 and visible skipped `TestCase` values with `createSkippedTestCase`. They attach
@@ -1026,7 +1066,8 @@ type RunStringFilterField =
     | 'params'
     | 'suite'
     | 'tag'
-    | 'title';
+    | 'title'
+    | 'workload';
 
 type RunFilter =
     | { readonly filters: NonEmptyReadonlyArray<RunFilter>; readonly kind: 'all'; }
@@ -1058,6 +1099,7 @@ type RunFilter =
 declare function runtime(name: string): RunFilter;
 declare function runtimeVariant(name: string, variantId: string): RunFilter;
 declare function runtimeDimension(name: string, dimensionName: string, value: string): RunFilter;
+declare function workload(name: string): RunFilter;
 declare function runtimeScenario(runtime: string, scenario: string, value: string): RunFilter;
 
 type RunSelection =

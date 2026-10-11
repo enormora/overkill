@@ -509,7 +509,8 @@ export const testNode = createSuite({
                     'skippedTest',
                     'suite',
                     'table',
-                    'test'
+                    'test',
+                    'workload'
                 ]);
                 return scope.assert.collect();
             }

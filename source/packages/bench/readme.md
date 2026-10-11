@@ -7,7 +7,7 @@ import the same authoring surface from `@overkill-dev/test/bench`; advanced
 consumers can install and import `@overkill-dev/bench` directly. Bench code
 stays outside root `@overkill-dev/test` imports and ordinary microtest startup.
 
-The current facade exports `test`, `skippedTest`, `suite`, `table`,
+The current facade exports `workload`, `test`, `skippedTest`, `suite`, `table`,
 `defineMacro`, and `defineParameterizedTestBody`. These are the same
 family-neutral constructors used by `@overkill-dev/test`, with the same
 assertion, validation, and source-location behavior.
@@ -27,6 +27,29 @@ export const testNode = suite('fixture validation', [
 
 Nodes compose with ordinary `@overkill-dev/test` suites, tables, and macros.
 Creating a node does not execute its body or select a test family.
+
+`workload(name, parameters)` snapshots a named JSON parameter record:
+
+```ts
+import { workload } from '@overkill-dev/test/bench';
+
+const small = workload('small', { packages: 5 });
+```
+
+`small.parameters` preserves inferred fields and is deeply immutable. The
+caller-owned input stays mutable. `small.id` is its structured `WorkloadId`;
+each parameter is encoded as canonical JSON, so numbers and strings remain
+distinct. Names preserve their spelling and reject blank strings and control
+characters. Parameters reject lossy values, classes, accessors, cycles,
+non-JSON properties, and nesting beyond the shared JSON depth limit of 64.
+
+Advanced DSL authors can pass `{ id: small.id, body }` entries to
+`createWorkloadTestCase` from `@overkill-dev/engine`. It requires at least one
+workload and unique workload names. Planning produces one executable `WorkId`
+per workload, sharing the logical `CaseId`. Runtime matrices expand each
+workload independently. Bodies retain ordinary resource/runtime descriptors.
+Use `--filter 'workload=small'` to select a named workload; a case filter
+selects every workload of that case.
 
 Public types include `AuthoringAnnotations`, `AuthoringControls`,
 `ParameterizedTestScope`, `TableDefinition`, `TableTestBody`, `Suite`,
@@ -61,8 +84,9 @@ also supported. Hedging and concurrent groups are rejected.
 Default timeouts are 5000 ms for collection, 40000 ms soft, and 60000 ms hard.
 Overrides must keep soft at or below hard and hard at or below 60000 ms.
 
-This facade does not yet measure performance. `benchmark(...)`, workloads,
-measurement strategies, and budgets are separate implementation milestones.
+This facade does not yet measure performance. The workload model supports the
+future `benchmark(title, { workloads, measure, budgets })` API. Measurement
+strategies and budgets complete that authoring surface in later milestones.
 Advanced authoring and runtime binding remain available from
 `@overkill-dev/test` and its resources subpath.
 

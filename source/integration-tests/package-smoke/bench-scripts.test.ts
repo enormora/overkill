@@ -4,12 +4,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import * as bench from '@overkill-dev/bench';
 import * as ordinary from '@overkill-dev/test';
 import * as standard from '@overkill-dev/test/bench';
-import { createRoot, createTestPlan, execute } from '@overkill-dev/engine';
+import { createRoot, createTestPlan, createWorkloadTestCase, execute } from '@overkill-dev/engine';
 
 const benchManifest = new URL('../../package.json', import.meta.resolve('@overkill-dev/bench'));
 const manifest = JSON.parse(readFileSync(benchManifest, 'utf8'));
 assert.deepEqual(Object.keys(bench).sort(), [
-    'defineMacro', 'defineParameterizedTestBody', 'skippedTest', 'suite', 'table', 'test'
+    'defineMacro', 'defineParameterizedTestBody', 'skippedTest', 'suite', 'table', 'test', 'workload'
 ]);
 assert.deepEqual(Object.keys(standard).sort(), Object.keys(bench).sort());
 assert.deepEqual(manifest.exports['.'], {
@@ -61,6 +61,19 @@ assert.equal(result.summary.failed, 1);
 assert.equal(result.summary.skipped, 1);
 assert.equal(result.summary.defined, 6);
 assert.deepEqual(result.runnerErrors, []);
+const small = standard.workload('small', { packages: 5 });
+const workloadNode = createWorkloadTestCase({
+    annotations: {}, controls: {}, definitionLocations: [{kind: 'unknown'}], title: 'workload',
+    workloads: [{id: small.id, body(scope) {
+        scope.assert.equal(small.parameters.packages, 5);
+        return scope.assert.collect();
+    }}]
+});
+const workloadPlan = createTestPlan(createRoot({
+    annotations: {}, controls: {}, title: 'root', children: [workloadNode]
+}));
+assert.equal(workloadPlan.cases[0].workId.workload.name, 'small');
+assert.equal((await execute(workloadPlan)).summary.passed, 1);
 console.log('bench authoring passed');
 `;
 
@@ -196,7 +209,7 @@ import { suite, test } from '@overkill-dev/test';
 import * as bench from '@overkill-dev/test/bench';
 
 assert.deepEqual(Object.keys(bench).sort(), [
-    'defineMacro', 'defineParameterizedTestBody', 'skippedTest', 'suite', 'table', 'test'
+    'defineMacro', 'defineParameterizedTestBody', 'skippedTest', 'suite', 'table', 'test', 'workload'
 ]);
 let calls = 0;
 const body = bench.defineParameterizedTestBody((scope, value) => {

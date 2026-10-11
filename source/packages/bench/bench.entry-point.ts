@@ -1,3 +1,6 @@
+export { workload } from '../../bench/workload.ts';
+export type { Workload } from '../../bench/workload.ts';
+export type { WorkloadParameters } from '../../bench/workload-parameters.ts';
 export {
     defineMacro,
     defineParameterizedTestBody,

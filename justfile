@@ -33,6 +33,7 @@ test-unit:
     node source/overkill.test.ts
 
 test-runner-integration:
+    node source/integration-tests/run/runner-workloads.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
     node source/integration-tests/run/runner-benchmark-baselines.test.ts

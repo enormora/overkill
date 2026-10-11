@@ -16,7 +16,8 @@ import {
     type TestCaseOptions,
     type TestNode,
     type TestRoot,
-    type ThrowingTestCaseOptions
+    type ThrowingTestCaseOptions,
+    type WorkloadTestCaseOptions
 } from '../../engine/test-node.ts';
 
 export type {
@@ -69,6 +70,7 @@ const engineMethods: readonly (keyof Engine)[] = [
     'createTable',
     'createTestCase',
     'createThrowingTestCase',
+    'createWorkloadTestCase',
     'createTestPlan',
     'createTestPlanFromTestFiles',
     'execute',
@@ -121,6 +123,10 @@ export function createThrowingTestCase(options: ThrowingTestCaseOptions): Return
     return defaultEngine.createThrowingTestCase(options);
 }
 
+export function createWorkloadTestCase(options: WorkloadTestCaseOptions): ReturnType<Engine['createWorkloadTestCase']> {
+    return defaultEngine.createWorkloadTestCase(options);
+}
+
 export function createTestPlan(root: TestRoot): ReturnType<Engine['createTestPlan']> {
     return defaultEngine.createTestPlan(root);
 }
@@ -158,6 +164,8 @@ export type {
     TestPlanFromTestFilesOptions
 } from '../../engine/test-plan.ts';
 export { formatCaseId, workIdentityKey } from '../../engine/identity.ts';
+export { canonicalIdentityJson } from '../../canonical-identity.ts';
+export { snapshotValidatedJson } from '../../attachments/json-snapshot.ts';
 export type {
     CaseId,
     RuntimeDimensions,
@@ -381,7 +389,11 @@ export type {
     TableOptions,
     TestBody,
     TestCase,
+    TestCaseDefinition,
     TestCaseExecution,
+    WorkloadTestCaseExecution,
+    WorkloadTestCaseOptions,
+    WorkloadTestCaseVariant,
     TestCaseOptions,
     DefinitionLocations,
     TestRoot,

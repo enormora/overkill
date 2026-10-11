@@ -105,11 +105,11 @@ Standard subpaths:
 - `@overkill-dev/test/simulation` re-exports simulation descriptors from
   `@overkill-dev/simulation`. Import `@overkill-dev/simulation/http` directly
   for the standalone HTTP launcher.
-- `@overkill-dev/test/bench` re-exports ordinary node-authoring helpers from
+- `@overkill-dev/test/bench` re-exports workload descriptors and ordinary node-authoring helpers from
   [`@overkill-dev/bench`](../bench/readme.md), included in the standard
   distribution. These constructors are family-neutral and do not measure
-  performance. Benchmark measurement and `overkill bench` commands are separate
-  implementation milestones. Bench code stays behind this explicit subpath,
+  performance. The workload model supports the future benchmark measurement
+  and budget authoring API. Bench code stays behind this explicit subpath,
   outside root imports and ordinary microtest startup.
 - `@overkill-dev/test/baselines` is reserved and exports only `unavailable()`.
 
@@ -545,8 +545,9 @@ and use regular planning, execution, results, and reporters. They accept
 Run accepts `--no-capture`, `--timings`, `--workers`,
 `--measure-resource-usage`, and `--resource-budget`; list accepts
 `--with-locations` and `--with-orphans`. Coverage remains microtest-only.
-Benchmarks execute serially in one lane. Measurement and baseline commands
-remain separate milestones. See [`@overkill-dev/bench`](../bench/readme.md).
+Benchmarks execute serially in one lane. `--filter 'workload=small'` selects
+resolved workloads. Measurement and budgets remain separate milestones.
+See [`@overkill-dev/bench`](../bench/readme.md).
 
 `--resource-budget` accepts `activeResourceCount`,
 `javaScriptEngineHeapBytes`, `residentSetBytes`, and

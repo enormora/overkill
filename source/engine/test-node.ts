@@ -7,6 +7,8 @@ import type {
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
+import type { WorkloadId } from './identity.ts';
+import { readWorkloadTestCaseVariants } from './workload-test-case.ts';
 import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
@@ -72,7 +74,17 @@ export type SkippedTestCaseExecution = {
 
 export type BodyTestCaseExecution = BuilderTestCaseExecution | ThrowingTestCaseExecution;
 
-export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution;
+export type WorkloadTestCaseVariant = {
+    readonly id: WorkloadId;
+    readonly body: TestBody;
+};
+
+export type WorkloadTestCaseExecution = {
+    readonly kind: 'workloads';
+    readonly workloads: NonEmptyReadonlyArray<WorkloadTestCaseVariant>;
+};
+
+export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution | WorkloadTestCaseExecution;
 
 export type TestCase = {
     readonly [testNodeBrand]: true;
@@ -142,6 +154,7 @@ export type TestNodeFactory = {
     readonly createTable: (options: TableOptions) => Table;
     readonly createTestCase: (options: TestCaseOptions) => TestCase;
     readonly createThrowingTestCase: (options: ThrowingTestCaseOptions) => TestCase;
+    readonly createWorkloadTestCase: (options: WorkloadTestCaseOptions) => TestCase;
 };
 
 export type TestNodeFactoryOptions = {
@@ -149,20 +162,23 @@ export type TestNodeFactoryOptions = {
     readonly recordConstructedNode: (node: TestNode) => void;
 };
 
-export type TestCaseOptions = {
+export type TestCaseDefinition = {
     readonly annotations: TestAnnotationsInput;
-    readonly body: TestBody;
     readonly controls: TestControlsInput;
     readonly definitionLocations: DefinitionLocations;
     readonly title: string;
 };
 
-export type ThrowingTestCaseOptions = {
-    readonly annotations: TestAnnotationsInput;
+export type TestCaseOptions = TestCaseDefinition & {
+    readonly body: TestBody;
+};
+
+export type ThrowingTestCaseOptions = TestCaseDefinition & {
     readonly body: ThrowingTestBody;
-    readonly controls: TestControlsInput;
-    readonly definitionLocations: DefinitionLocations;
-    readonly title: string;
+};
+
+export type WorkloadTestCaseOptions = TestCaseDefinition & {
+    readonly workloads: NonEmptyReadonlyArray<WorkloadTestCaseVariant>;
 };
 
 export type SkippedTestCaseOptions = {
@@ -370,12 +386,14 @@ function toTestNode(
 export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): TestNodeFactory {
     const { owner, recordConstructedNode } = factoryOptions;
 
-    function createTestCase(options: TestCaseOptions): TestCase {
+    function createExecutableTestCase(
+        options: TestCaseDefinition,
+        execution: TestCaseExecution
+    ): TestCase {
         ensureTitleValue(options.title);
         ensureTitle(options.title);
         normalizeTestAnnotations(options.annotations);
         normalizeTestControls(options.controls);
-        ensureTestBody(options.body);
         ensureDefinitionLocations(options.definitionLocations);
 
         const testCase: TestCase = {
@@ -385,32 +403,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
             annotations: options.annotations,
             controls: options.controls,
             definitionLocations: options.definitionLocations,
-            execution: { body: options.body, bodyMode: 'builder', kind: 'body' },
-            kind: 'test',
-            title: options.title
-        };
-
-        recordConstructedNode(testCase);
-
-        return testCase;
-    }
-
-    function createThrowingTestCase(options: ThrowingTestCaseOptions): TestCase {
-        ensureTitleValue(options.title);
-        ensureTitle(options.title);
-        normalizeTestAnnotations(options.annotations);
-        normalizeTestControls(options.controls);
-        ensureTestBody(options.body);
-        ensureDefinitionLocations(options.definitionLocations);
-
-        const testCase: TestCase = {
-            [testNodeBrand]: true,
-            [testNodeFamilyBrand]: null,
-            [testNodeOwnerBrand]: owner,
-            annotations: options.annotations,
-            controls: options.controls,
-            definitionLocations: options.definitionLocations,
-            execution: { body: options.body, bodyMode: 'throwing', kind: 'body' },
+            execution,
             kind: 'test',
             title: options.title
         };
@@ -543,7 +536,23 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         createSuite,
         createSkippedTestCase,
         createTable,
-        createTestCase,
-        createThrowingTestCase
+        createTestCase(options: TestCaseOptions): TestCase {
+            ensureTestBody(options.body);
+            return createExecutableTestCase(options, { body: options.body, bodyMode: 'builder', kind: 'body' });
+        },
+
+        createThrowingTestCase(options: ThrowingTestCaseOptions): TestCase {
+            ensureTestBody(options.body);
+            return createExecutableTestCase(options, { body: options.body, bodyMode: 'throwing', kind: 'body' });
+        },
+
+        createWorkloadTestCase(options: WorkloadTestCaseOptions): TestCase {
+            return createExecutableTestCase(options, {
+                kind: 'workloads',
+                workloads: readWorkloadTestCaseVariants(options.workloads, function isBody(value): value is TestBody {
+                    return typeof value === 'function';
+                })
+            });
+        }
     };
 }
