@@ -126,6 +126,17 @@ export const testNode = suite('frozen microtest policy', [
             [ 'charges card' ]
         );
         scope.assert.equal(resolved.request.seed.value, 7n);
+        await scope.assert.rejects(async function rejectDisjointInvocation() {
+            await orchestrator.resolve({
+                kind: 'frozen-policy',
+                policy,
+                reporting: config,
+                invocation: {
+                    seed: { value: 7n },
+                    selection: { kind: 'filter', filter: { kind: 'equals', field: 'tag', value: 'Slow' } }
+                }
+            });
+        }, { message: /matched no test cases/ });
         return scope.assert.collect();
     }),
     test('rejects non-microtest policy and engine instances before discovery', async function (scope) {
