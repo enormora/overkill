@@ -2,11 +2,7 @@ import os from 'node:os';
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createNodeExecutionDependencies } from './node-run-execution.ts';
-import {
-    createDirectEntrypointRunner,
-    createRunOrchestrator,
-    type DirectEntrypointRunner
-} from './run.ts';
+import { createRunCoordinator, type RunCoordinator } from './run.ts';
 import { createRandomRunSeed } from './run-seed.ts';
 import type {
     RunOrchestratorDependencies,
@@ -40,7 +36,7 @@ export type NodeRunOrchestratorInput = {
 
 export type NodeRunCoordinator = {
     readonly orchestrator: RunOrchestrator;
-    readonly runDirectEntrypoint: DirectEntrypointRunner;
+    readonly runDirectEntrypoint: RunCoordinator['runDirectEntrypoint'];
 };
 
 export function createNodeRunCoordinator(input: NodeRunOrchestratorInput): NodeRunCoordinator {
@@ -81,10 +77,7 @@ export function createNodeRunCoordinator(input: NodeRunOrchestratorInput): NodeR
         wallClock
     };
 
-    return {
-        orchestrator: createRunOrchestrator(dependencies),
-        runDirectEntrypoint: createDirectEntrypointRunner(dependencies)
-    };
+    return createRunCoordinator(dependencies);
 }
 
 export function createNodeRunOrchestrator(input: NodeRunOrchestratorInput): RunOrchestrator {

@@ -5,18 +5,17 @@ import {
     withDefinitionLocationCapture,
     type DefinitionLocationCapture
 } from './definition-location-capture.ts';
-import type { DiscoveredRunFile, RunDiscovery } from './run-discovery-types.ts';
-import { RunCollectionError } from './run-errors.ts';
-import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
-import type { RunTestModuleLoader } from './run-test-modules.ts';
+import type { RunDiscovery } from './run-discovery-types.ts';
 import type {
+    DiscoveredRunFile,
     DirectEntrypointRunCollectionSource,
-    RunCollectionSource
-} from './run-collection-source-types.ts';
-import type {
+    RunCollectionSource,
     RunCollectionRoot,
     RunTestFamily
 } from './run-types.ts';
+import { RunCollectionError } from './run-errors.ts';
+import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
+import type { RunTestModuleLoader } from './run-test-modules.ts';
 
 export type RunTestPlanCollectionSource = RunCollectionSource;
 

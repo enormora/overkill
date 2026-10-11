@@ -17,6 +17,8 @@ Top-level API:
 - `orchestrator.resolve(command)`
 - `orchestrator.run(command)`
 - `orchestrator.runWithReporterDelivery(command)`
+- `orchestrator.freezePolicy({ command, source })`
+- `parseFrozenMicrotestPolicy(value)`
 
 `Config` describes authored policy. `normalizeConfig` produces a
 command-independent `NormalizedConfig` without reading files; `loadConfig`
@@ -26,6 +28,29 @@ accept normalized policy. The old run-prefixed config names are removed.
 Configuration loading and authoring are also exposed through
 `@overkill-dev/run/config` for packages that need the config-owned surface
 without importing orchestration.
+
+`freezePolicy` resolves Node microtest discovery and policy without importing
+tests or custom engines. It returns an immutable, serializable
+`FrozenMicrotestPolicy` containing the selected profile, loader declarations,
+discovered descriptors, baseline request, portable engine, and source identity.
+Engine instances and other profile families are unsupported.
+
+Use `source: { kind: 'memory' }` for supplied config, or
+`{ kind: 'config-file', request: { cwd, configPath }, resolvedPath }` for loaded
+config. `resolvedPath` is the loaded config's `configPath`, including `null` for
+the no-config fallback. File-backed policy is revalidated in the execution host
+before collection using native module caching. Conflicting effective policy
+fails before test imports. Discovery and loader declarations are compared even
+when they resolve to the same files. Reporters and unrelated valid profiles are
+excluded from the comparison.
+
+`resolve`, `run`, and `runWithReporterDelivery` also accept
+`{ kind: 'frozen-policy', policy, invocation: { seed, selection }, reporting }`.
+The invocation selection narrows the frozen baseline selection. Supply
+`reporting: { reporters, outputRenderer }` explicitly; callbacks and the seed
+are excluded from the snapshot. Ordinary runtime guards and resource policies
+still apply. `parseFrozenMicrotestPolicy` validates transported data, including
+descriptor roots and file-set ownership, and freezes the result.
 
 `runIfMain(import.meta, testNode, options?)` is the supported companion for
 bare `node path/to/file.test.ts` execution. It returns immediately when the

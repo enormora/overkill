@@ -1,11 +1,7 @@
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/resource-usage.ts';
-import {
-    createDirectEntrypointRunner,
-    createRunOrchestrator,
-    type DirectEntrypointRunner
-} from '../run/run.ts';
+import { createRunCoordinator, type RunCoordinator } from '../run/run.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import type { CollectedRunPlan, RunOrchestrator, WorkId } from '../run/run-types.ts';
 import { supervisedAssignedWork } from '../run/supervised-protocol.ts';
@@ -276,7 +272,7 @@ function runDeterministicSupervisedChild(context: FakeSupervisedChildRunContext)
 
 type DeterministicRunCoordinator = {
     readonly orchestrator: RunOrchestrator;
-    readonly runDirectEntrypoint: DirectEntrypointRunner;
+    readonly runDirectEntrypoint: RunCoordinator['runDirectEntrypoint'];
 };
 
 function createDeterministicRunCoordinatorWithDependencies(
@@ -414,10 +410,7 @@ function createDeterministicRunCoordinatorWithDependencies(
         wallClock
     };
 
-    return {
-        orchestrator: createRunOrchestrator(dependencies),
-        runDirectEntrypoint: createDirectEntrypointRunner(dependencies)
-    };
+    return createRunCoordinator(dependencies);
 }
 
 function createDeterministicRunCoordinatorWithSeed(

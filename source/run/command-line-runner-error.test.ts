@@ -17,7 +17,7 @@ import {
 import type { LoadedConfig } from '../config/config.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, ConfiguredRunOrchestrator, RunRequest } from './run-types.ts';
 
 const memoryReporter = defineFixedReporter({
     dispose: null,
@@ -49,7 +49,7 @@ async function loadDefaultRunConfig(): Promise<LoadedConfig> {
     };
 }
 
-function createRunnerDependencies(orchestrator: RunOrchestrator): CommandLineRunnerDependencies {
+function createRunnerDependencies(orchestrator: ConfiguredRunOrchestrator): CommandLineRunnerDependencies {
     return {
         async createDefaultReporter() {
             return memoryReporter;
@@ -90,7 +90,9 @@ function createPassingPlan(): TestPlan {
     );
 }
 
-async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnType<RunOrchestrator['resolve']>>> {
+async function resolvePassingRun(
+    command: RunCommand
+): Promise<Awaited<ReturnType<ConfiguredRunOrchestrator['resolve']>>> {
     const profile = selectTestProfile(command.request.profile, command.config);
 
     return {
@@ -126,7 +128,7 @@ async function resolvePassingRun(command: RunCommand): Promise<Awaited<ReturnTyp
     };
 }
 
-function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator {
+function createRunOnlyOrchestrator(run: ConfiguredRunOrchestrator['run']): ConfiguredRunOrchestrator {
     return {
         bench: unexpectedBenchmarkOrchestrator,
         resolve: resolvePassingRun,
@@ -153,7 +155,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const run = testDouble.rejects<RunOrchestrator['run']>('unexpected string failure');
+                const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>('unexpected string failure');
                 const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
                 const result = await runner.runTests({
                     configPath: null,
@@ -174,7 +176,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const run = testDouble.rejects<RunOrchestrator['run']>(new Error('Unexpected failure.'));
+                const run = testDouble.rejects<ConfiguredRunOrchestrator['run']>(new Error('Unexpected failure.'));
                 const runner = createCommandLineRunner(createRunnerDependencies(createRunOnlyOrchestrator(run)));
                 const result = await runner.runTests({
                     configPath: null,

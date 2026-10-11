@@ -1,8 +1,8 @@
 import type {
     ConfiguredFilesRunCollectionSource,
-    RunCollectionSource
-} from './run-collection-source-types.ts';
-import type { RunCollectionRoot } from './run-types.ts';
+    RunCollectionSource,
+    RunCollectionRoot
+} from './run-types.ts';
 
 export type CollectionSource = RunCollectionSource;
 export type DirectEntrypointCollectionSource = Extract<RunCollectionSource, { readonly kind: 'direct-entrypoint'; }>;

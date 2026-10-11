@@ -2,10 +2,17 @@ import type { Clock } from '@enormora/clock';
 import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type { IntegrationProfileConfig, MaxConcurrency, ResourceBudgets, Scheduling } from '../config/types.ts';
+import type {
+    FrozenMicrotestPolicy,
+    CollectedRunPlan,
+    RunCommand,
+    RunRequest,
+    RunCollectionRoot,
+    RunTestFamily
+} from './run-types.ts';
 import type { ReporterEvent, RunResult, ResourceUsageSnapshot } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
-import type { CollectedRunPlan, RunCommand, RunRequest, RunCollectionRoot, RunTestFamily } from './run-types.ts';
 import {
     childProcessEnvelope,
     type ChildProcessEnvelope
@@ -38,13 +45,15 @@ type SupervisedCommandBase = {
     readonly timeoutMilliseconds: number;
 };
 
-export type SupervisedCollectCommand = SupervisedCommandBase & {
+type SupervisedCollectionMode = {
     readonly kind: 'collect';
-};
-
-export type SupervisedRunCommand = SupervisedCommandBase & {
+} | { readonly kind: 'collect-frozen'; readonly policy: FrozenMicrotestPolicy; };
+type SupervisedExecutionMode = {
     readonly kind: 'run';
-};
+} | { readonly kind: 'run-frozen'; readonly policy: FrozenMicrotestPolicy; };
+
+export type SupervisedCollectCommand = SupervisedCollectionMode & SupervisedCommandBase;
+export type SupervisedRunCommand = SupervisedCommandBase & SupervisedExecutionMode;
 
 export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCommand;
 
@@ -113,4 +122,8 @@ export function supervisedChildEnvelope(
     message: SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage
 ): ChildProcessEnvelope<SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage> {
     return childProcessEnvelope(supervisedChildCorrelationId, message);
+}
+
+export function frozenSupervisedPolicy(command: SupervisedChildCommand): FrozenMicrotestPolicy | null {
+    return command.kind === 'collect-frozen' || command.kind === 'run-frozen' ? command.policy : null;
 }

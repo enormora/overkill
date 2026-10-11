@@ -16,18 +16,21 @@ export const testNode = suite('Stryker adapter settings', [
     }),
     test('normalizes omitted settings and preserves explicit names and paths', function (scope) {
         for (const value of [ undefined, {}, { profile: null, configPath: null } ]) {
-            scope.assert.deepEqual(parseRunnerOptions(value), { configPath: null, profile: null });
+            scope.assert.deepEqual(parseRunnerOptions(value), { configPath: null, paths: [], profile: null });
         }
 
         scope.assert.deepEqual(parseRunnerOptions({ profile: 'unit-fast' }), {
             configPath: null,
+            paths: [],
             profile: 'unit-fast'
         });
         scope.assert.deepEqual(parseRunnerOptions({ configPath: 'policy.ts' }), {
             configPath: 'policy.ts',
+            paths: [],
             profile: null
         });
         scope.assert.equal(parseRunnerOptions({ profile: ' unit-fast ' }).profile, ' unit-fast ');
+        scope.assert.deepEqual(parseRunnerOptions({ paths: [ 'unit.test.ts' ] }).paths, [ 'unit.test.ts' ]);
         return scope.assert.collect();
     }),
     test('rejects malformed settings and multi-profile selections', function (scope) {
@@ -38,6 +41,10 @@ export const testNode = suite('Stryker adapter settings', [
             { configPath: '' },
             { configPath: ' ' },
             { configPath: 1 },
+            { paths: '' },
+            { paths: [ '' ] },
+            { paths: [ ' ' ] },
+            { paths: [ 1 ] },
             { profile: 1 },
             { profile: [ 'unit', 'integration' ] },
             { profiles: [ 'unit' ] },

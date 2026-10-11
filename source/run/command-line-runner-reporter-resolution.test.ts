@@ -20,7 +20,7 @@ import {
 } from './command-line-runner.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, ConfiguredRunOrchestrator, RunRequest } from './run-types.ts';
 
 type ReporterLoader = {
     readonly createDefaultReporter: () => Promise<DefinedReporter>;
@@ -109,7 +109,7 @@ function createDefaultReporterLoader(reporter: DefinedReporter): ReporterLoader 
 function createRunnerDependencies(
     config: LoadedConfig,
     defaultReporterLoader: ReporterLoader,
-    run: RunOrchestrator['run']
+    run: ConfiguredRunOrchestrator['run']
 ): CommandLineRunnerDependencies {
     return {
         createDefaultReporter: defaultReporterLoader.createDefaultReporter,
@@ -145,7 +145,7 @@ async function runScenario(
     config: LoadedConfig,
     defaultReporterLoader: ReporterLoader,
     request: RunRequest,
-    run: RunOrchestrator['run']
+    run: ConfiguredRunOrchestrator['run']
 ): Promise<CommandLineScenario> {
     const receivedCommands: RunCommand[] = [];
     const runner = createCommandLineRunner(createRunnerDependencies(
@@ -167,18 +167,18 @@ async function runScenario(
     return { command, result };
 }
 
-async function passingRun(): ReturnType<RunOrchestrator['run']> {
+async function passingRun(): ReturnType<ConfiguredRunOrchestrator['run']> {
     return runResultFactory.build({
         perTest: [ { outcome: { kind: 'pass' } } ],
         summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
     });
 }
 
-async function unknownProfileRun(): ReturnType<RunOrchestrator['run']> {
+async function unknownProfileRun(): ReturnType<ConfiguredRunOrchestrator['run']> {
     throw new RunResolutionError('Unknown run profile: missing', undefined, 'invalid-request');
 }
 
-async function runWithRunnerErrors(): ReturnType<RunOrchestrator['run']> {
+async function runWithRunnerErrors(): ReturnType<ConfiguredRunOrchestrator['run']> {
     return runResultFactory.build({
         runnerErrors: [
             { message: 'Loader failed.', subtype: 'loader' },

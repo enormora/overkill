@@ -25,6 +25,7 @@ import {
 } from './run-support.ts';
 import {
     createSupervisedChildTestPlan,
+    validateSupervisedPolicy,
     runnerErrorFromSupervisedChildFailure,
     runObservedSupervisedChildCommand,
     type SupervisedChildTestPlanDependencies
@@ -251,6 +252,7 @@ function sendCollectedPlan(collectedPlan: CollectedTestPlan, host: SupervisedChi
 
 async function collect(command: SupervisedChildCommand, host: SupervisedChildHost): Promise<CollectedTestPlan> {
     host.validatePermissionHost(command);
+    await validateSupervisedPolicy(command, host);
     const runtimePolicy = createRuntimePolicy(command, host);
     const collectedPlan = await createCollectedTestPlan(command, host, runtimePolicy);
     sendCollectedPlan(collectedPlan, host);
@@ -350,7 +352,7 @@ async function completeReceivedCommand(
     host: SupervisedChildHost,
     dependencies: SupervisedChildDependencies
 ): Promise<void> {
-    if (command.kind === 'collect') {
+    if (command.kind === 'collect' || command.kind === 'collect-frozen') {
         await collect(command, host);
     } else {
         await run(command, host, dependencies);

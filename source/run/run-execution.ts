@@ -68,7 +68,7 @@ export async function executeRunCommand(
         'profile.resolve',
         emptyTimingSpanMetadata(),
         async function readTimedRunInput() {
-            return await readResolvedRunInput({ ...invocation, command: seededCommand }, dependencies);
+            return await readResolvedRunInput({ ...invocation, command: seededCommand }, dependencies, source);
         }
     );
     const resolvedCommand = {

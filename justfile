@@ -37,6 +37,8 @@ test-runner-integration:
     node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
     node source/integration-tests/run/runner-benchmark-baselines.test.ts
     node source/integration-tests/run/runner-mutation-policy.test.ts
+    node source/integration-tests/run/runner-frozen-policy.test.ts
+    node source/integration-tests/run/runner-frozen-policy-activation.test.ts
     node source/integration-tests/run/runner-benchmarks.test.ts
     node source/integration-tests/run/runner-attachments.test.ts
     node source/integration-tests/run/runner-attachment-retention.test.ts

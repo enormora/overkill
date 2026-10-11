@@ -6,7 +6,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
-import type { DiscoveredRunFile } from './run-discovery-types.ts';
+import type { DiscoveredRunFile } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { createRunTestModuleLoader, type RunTestModuleLoader } from './run-test-modules.ts';
 

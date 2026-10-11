@@ -1,7 +1,7 @@
 import type { TestNode } from '../engine/test-node.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { formatRunnerErrorDiagnostics } from './command-line-command.ts';
-import type { DirectEntrypointRunner } from './run.ts';
+import type { DirectEntrypointRunner } from './run-operations.ts';
 import {
     rootAnnotations,
     rootControls,

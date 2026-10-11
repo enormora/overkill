@@ -58,3 +58,9 @@ export const executionCommandFields = {
     testFamily: z.enum([ 'benchmark', 'integration', 'microtest' ]),
     timeoutMilliseconds: z.number()
 };
+
+export const supervisedCommandFields = {
+    ...executionCommandFields,
+    capabilityRestrictions: z.strictObject({ mode: z.enum([ 'disabled', 'enabled' ]) }),
+    capture: z.enum([ 'buffered', 'live' ])
+};

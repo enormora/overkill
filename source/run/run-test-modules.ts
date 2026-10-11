@@ -1,7 +1,7 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from '../engine/engine.ts';
 import type { TestPlanFromTestFilesOptions } from '../engine/test-plan.ts';
-import type { DiscoveredRunFile } from './run-discovery-types.ts';
+import type { DiscoveredRunFile } from './run-types.ts';
 import { invalidRequest, RunCollectionError } from './run-errors.ts';
 
 type TestModuleNamespace = Readonly<Record<string, unknown>>;

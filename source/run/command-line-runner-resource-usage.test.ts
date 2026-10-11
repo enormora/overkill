@@ -17,7 +17,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import type { LoadedConfig } from '../config/config.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, ConfiguredRunOrchestrator, RunRequest } from './run-types.ts';
 
 type RecordedRunCommands = {
     readonly first: () => RunCommand | undefined;
@@ -94,7 +94,7 @@ function createRecordedRunCommands(): RecordedRunCommands {
 }
 
 function createRunnerDependencies(recordedCommands: RecordedRunCommands): CommandLineRunnerDependencies {
-    const orchestrator: RunOrchestrator = {
+    const orchestrator: ConfiguredRunOrchestrator = {
         bench: unexpectedBenchmarkOrchestrator,
         async resolve(command) {
             const profile = selectTestProfile(command.request.profile, command.config);

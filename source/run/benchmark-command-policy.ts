@@ -53,5 +53,5 @@ export function selectBenchmarkCommandProfile(name: string | null, config: Norma
 
 export type BenchmarkCommandDependencies = CommandLineConfigDependencies & {
     readonly loadConfig: ConfigLoader;
-    readonly orchestrator: RunOrchestrator;
+    readonly orchestrator: Pick<RunOrchestrator, 'bench'>;
 };

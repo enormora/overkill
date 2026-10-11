@@ -203,3 +203,8 @@ export type NormalizedConfig = {
 export type RunOrder = 'lexical' | 'plan' | 'seeded';
 
 export type IntegrationRetryPolicy = IntegrationRetryPolicyDefinition;
+
+export type ConfigLoadRequest = {
+    readonly configPath: string | null;
+    readonly cwd: string;
+};

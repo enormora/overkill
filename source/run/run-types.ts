@@ -25,6 +25,8 @@ import type {
     ResourceUsagePolicy,
     TimeoutPolicy,
     NormalizedConfig,
+    MicrotestProfileConfig,
+    ConfigLoadRequest,
     RunOrder
 } from '../config/types.ts';
 import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
@@ -36,12 +38,13 @@ import type {
     OrphanedNode,
     RunResult,
     TestPlan,
+    Engine,
     TestPlanRootOptions,
     WorkId as EngineWorkId,
     RuntimeId,
     WorkloadId
 } from './run-engine-primitives.ts';
-import type { RunEngineSelection, RunSelection } from './run-request-types.ts';
+import type { RunEngineSelection, RunSelection as SelectedCases } from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
@@ -402,14 +405,86 @@ export type BenchmarkOrchestrator = {
     ) => Promise<RunReporterDeliveryResult>;
 };
 
-export type RunOrchestrator = {
-    readonly bench: BenchmarkOrchestrator;
-    readonly resolve: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>;
-    readonly run: (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>;
+type RunOperations<Command> = {
+    readonly resolve: (command: Command, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>;
+    readonly run: (command: Command, options?: RunInvocationTimingOptions) => Promise<RunResult>;
     readonly runWithReporterDelivery: (
-        command: RunCommand,
+        command: Command,
         options?: RunInvocationTimingOptions
     ) => Promise<RunReporterDeliveryResult>;
 };
 
+export type ConfiguredRunOrchestrator = RunOperations<RunCommand> & {
+    readonly bench: BenchmarkOrchestrator;
+};
+
+export type RunOrchestrator = RunOperations<FrozenRunCommand | RunCommand> & {
+    readonly bench: BenchmarkOrchestrator;
+    readonly freezePolicy: (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>;
+};
+
 export type RunRuntimeAttachments = AttachmentCoordinator | null;
+
+export type DiscoveredRunFile = {
+    readonly file: string;
+    readonly fileSet: string | null;
+    readonly href: string;
+    readonly path: string;
+};
+
+export type DiscoveredRunFiles = {
+    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
+    readonly projectRoot: string;
+};
+
+export type RunPolicySource = {
+    readonly kind: 'config-file';
+    readonly request: ConfigLoadRequest;
+    readonly resolvedPath: string | null;
+} | {
+    readonly kind: 'memory';
+};
+
+export type FrozenMicrotestPolicy = {
+    readonly source: RunPolicySource;
+    readonly cwd: string;
+    readonly projectRoot: string;
+    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
+    readonly loader: NormalizedConfig['loader'];
+    readonly profile: Except<MicrotestProfileConfig, 'reporters'>;
+    readonly request: Except<RunRequest, 'seed'>;
+    readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
+    readonly runtimeStateDir: string;
+};
+
+export type FreezePolicyInput = {
+    readonly command: RunCommand;
+    readonly source: RunPolicySource;
+};
+
+export type FrozenRunCommand = {
+    readonly kind: 'frozen-policy';
+    readonly policy: FrozenMicrotestPolicy;
+    readonly invocation: {
+        readonly seed: RunSeed;
+        readonly selection: RunSelection;
+    };
+    readonly reporting: Pick<NormalizedConfig, 'outputRenderer' | 'reporters'>;
+};
+
+export type ConfiguredFilesRunCollectionSource = {
+    readonly kind: 'configured-files';
+};
+
+export type DirectEntrypointRunCollectionSource = {
+    readonly kind: 'direct-entrypoint';
+    readonly root: RunCollectionRoot;
+    readonly testNode: Parameters<Engine['createTestPlanFromTestFiles']>[0]['files'][number]['testNode'];
+};
+
+export type RunCollectionSource = ConfiguredFilesRunCollectionSource | DirectEntrypointRunCollectionSource | {
+    readonly kind: 'frozen-policy';
+    readonly policy: FrozenMicrotestPolicy;
+};
+
+export type RunSelection = SelectedCases;

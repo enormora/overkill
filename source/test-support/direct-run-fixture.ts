@@ -12,7 +12,7 @@ import {
     createSeededTestPlan,
     type OrderedSeededTestPlan
 } from '../run/run-selection.ts';
-import type { DirectEntrypointRunner } from '../run/run.ts';
+import type { DirectEntrypointRunner } from '../run/run-operations.ts';
 
 type FixtureRunCommand = Parameters<DirectEntrypointRunner>[0];
 type FixtureCollectionSource = Parameters<DirectEntrypointRunner>[1];
