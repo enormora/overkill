@@ -18,7 +18,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunOrchestrator, RunRequest } from './run-types.ts';
+import type { ConfiguredRunOrchestrator, RunRequest } from './run-types.ts';
 
 const plainOutputRenderer = defineFixedOutputRenderer({
     render(intent): string {
@@ -113,7 +113,7 @@ function runnerError(
 
 function createRunnerDependencies(
     reporter: DefinedReporter,
-    run: RunOrchestrator['run'],
+    run: ConfiguredRunOrchestrator['run'],
     undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
 ): CommandLineRunnerDependencies {
     return {
@@ -148,7 +148,7 @@ function createRunnerDependencies(
 
 async function runTests(
     reporter: DefinedReporter,
-    run: RunOrchestrator['run'],
+    run: ConfiguredRunOrchestrator['run'],
     undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][]
 ): Promise<CommandLineRunnerResult> {
     const runner = createCommandLineRunner(createRunnerDependencies(reporter, run, undeliveredRunnerErrors));

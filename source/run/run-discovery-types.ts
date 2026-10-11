@@ -1,5 +1,6 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { ProfileFiles } from '../config/types.ts';
+import type { DiscoveredRunFile, DiscoveredRunFiles } from './run-types.ts';
 
 export type RunDiscoveryRequest = {
     readonly cwd: string;
@@ -25,18 +26,6 @@ export type RunDiscoveryDependencies = {
     ) => AsyncIterable<string>;
     readonly realpath: (filePath: string) => Promise<string>;
     readonly stat: (filePath: string) => Promise<RunDiscoveryPathStats>;
-};
-
-export type DiscoveredRunFile = {
-    readonly file: string;
-    readonly fileSet: string | null;
-    readonly href: string;
-    readonly path: string;
-};
-
-export type DiscoveredRunFiles = {
-    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
-    readonly projectRoot: string;
 };
 
 export type RunDiscovery = {

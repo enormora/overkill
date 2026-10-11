@@ -26,7 +26,7 @@ import {
 } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
 import type { RunSelection } from './run-request-types.ts';
-import type { ResolvedRun, RunCommand, RunOrchestrator } from './run-types.ts';
+import type { ResolvedRun, RunCommand, ConfiguredRunOrchestrator } from './run-types.ts';
 
 const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
     return {
@@ -199,7 +199,7 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
     };
 }
 
-export function createListOnlyOrchestrator(resolve: RunOrchestrator['resolve']): RunOrchestrator {
+export function createListOnlyOrchestrator(resolve: ConfiguredRunOrchestrator['resolve']): ConfiguredRunOrchestrator {
     return {
         bench: unexpectedBenchmarkOrchestrator,
         resolve,
@@ -225,7 +225,7 @@ async function createTerminalReporter(): Promise<DefinedReporter> {
 }
 
 export function createDependencies(
-    orchestrator: RunOrchestrator,
+    orchestrator: ConfiguredRunOrchestrator,
     createDefaultReporter: () => Promise<DefinedReporter>
 ): CommandLineRunnerDependencies {
     return {
@@ -242,7 +242,7 @@ export function createDependencies(
 }
 
 export function createListDependencies(
-    resolve: RunOrchestrator['resolve'],
+    resolve: ConfiguredRunOrchestrator['resolve'],
     createDefaultReporter: () => Promise<DefinedReporter>
 ): CommandLineRunnerDependencies {
     return createDependencies(createListOnlyOrchestrator(resolve), createDefaultReporter);

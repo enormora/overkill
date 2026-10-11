@@ -4,14 +4,13 @@ const { default: assert } = await import('node:assert/strict');
 const { mkdtemp, readFile, rm, writeFile } = await import('node:fs/promises');
 const { tmpdir } = await import('node:os');
 const { join } = await import('node:path');
-const { pathToFileURL } = await import('node:url');
 const { strykerPlugins } = await import('@overkill-dev/stryker-runner');
 const configApiUrl = import.meta.resolve('@overkill-dev/run/config');
 
 const [plugin] = strykerPlugins;
 const launchCwd = process.cwd();
 const cwd = await mkdtemp(join(tmpdir(), 'overkill-stryker-profile-'));
-const configPath = join(cwd, 'overkill.config.mjs');
+const configPath = join(cwd, 'overkill.config.js');
 const sentinel = join(cwd, 'never-imported.test.mjs');
 await writeFile(sentinel, 'throw new Error("test module imported during initialization");');
 const makeRunner = (overkill) => plugin.factory({ overkill });
@@ -33,7 +32,8 @@ async function configuredRunner(profiles, profile) {
 
 try {
     process.chdir(cwd);
-    await makeRunner(undefined).init();
+    await assert.rejects(makeRunner(undefined).init(), { name: 'RunResolutionError' });
+    await makeRunner({ paths: ['never-imported.test.mjs'] }).init();
     await writeFile(configPath, 'export const config = ' + JSON.stringify({ profiles: { microtest } }) + ';');
     await makeRunner({}).init();
 
@@ -88,10 +88,10 @@ try {
         'import { appendFileSync } from "node:fs";' +
         'appendFileSync(' + JSON.stringify(countPath) + ', "load");' +
         'export const config = {};');
-    const once = makeRunner({ configPath: oncePath });
+    const once = makeRunner({ configPath: oncePath, paths: ['never-imported.test.mjs'] });
     await Promise.all([once.init(), once.init()]);
-    const { config: changedPolicy } = await import(pathToFileURL(oncePath).href);
-    changedPolicy.profiles = { microtest: integration };
+    await writeFile(oncePath,
+        'export const config = ' + JSON.stringify({ profiles: { microtest: integration } }) + ';');
     await once.init();
     assert.equal(await readFile(countPath, 'utf8'), 'load');
     await assert.rejects(makeRunner({ configPath: oncePath }).init(), {
@@ -102,7 +102,59 @@ try {
     await assert.rejects(failed.init(), { name: 'ConfigError' });
     await writeFile(join(cwd, 'later.config.mjs'), 'export const config = {};');
     await assert.rejects(failed.init(), { name: 'ConfigError' });
-    await makeRunner({ configPath: 'later.config.mjs' }).init();
+    await makeRunner({ configPath: 'later.config.mjs', paths: ['never-imported.test.mjs'] }).init();
+
+    for (const [name, source, message] of [
+        ['malformed', 'process.send({ kind: "policy", policy: {} }); export const config = {};', /./],
+        ['exited', 'process.exit(17);', /resolver exited without a result/]
+    ]) {
+        const path = join(cwd, name + '.config.mjs');
+        await writeFile(path, source);
+        const runner = makeRunner({ configPath: path, paths: ['never-imported.test.mjs'] });
+        await assert.rejects(runner.init(), { message });
+        await runner.dispose();
+    }
+
+    const pidPath = join(cwd, 'pending.pid');
+    const pendingPath = join(cwd, 'pending.config.mjs');
+    await writeFile(pendingPath,
+        'import { writeFileSync } from "node:fs";' +
+        'writeFileSync(' + JSON.stringify(pidPath) + ', String(process.pid));' +
+        'setInterval(() => {}, 1000); await new Promise(() => {}); export const config = {};');
+    const pending = makeRunner({ configPath: pendingPath });
+    const canceled = assert.rejects(pending.init(), { name: 'AbortError' });
+    let pid;
+    for (let attempt = 0; attempt < 1000 && pid === undefined; attempt++) {
+        try { pid = Number(await readFile(pidPath, 'utf8')); }
+        catch { await new Promise((resolve) => setTimeout(resolve, 10)); }
+    }
+    assert.notEqual(pid, undefined);
+    await pending.dispose();
+    await canceled;
+    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+    await assert.rejects(pending.init(), { name: 'ConfigError', message: /disposed/ });
+
+    const activeVariable = '__STRYKER_ACTIVE_MUTANT__';
+    const instrumented = join(cwd, 'instrumented-policy.mjs');
+    const activeConfig = join(cwd, 'active.config.mjs');
+    await writeFile(instrumented,
+        'globalThis.__stryker__ = globalThis.__stryker__ || {};' +
+        'globalThis.__stryker__.activeMutant = process.env.' + activeVariable + ';' +
+        'export const microtest = globalThis.__stryker__.activeMutant === "0"' +
+        '? {testFamily:"integration",files:{include:["never-imported.test.mjs"]}}' +
+        ': ' + JSON.stringify(microtest) + ';');
+    await writeFile(activeConfig,
+        'import { microtest } from "./instrumented-policy.mjs";' +
+        'export const config = { profiles: { microtest } };');
+    const previousActive = process.env[activeVariable];
+    process.env[activeVariable] = '0';
+    try {
+        await makeRunner({ configPath: activeConfig }).init();
+        assert.equal(globalThis.__stryker__, undefined);
+    } finally {
+        if (previousActive === undefined) delete process.env[activeVariable];
+        else process.env[activeVariable] = previousActive;
+    }
 } finally {
     process.chdir(launchCwd);
     await rm(cwd, { recursive: true, force: true });

@@ -6,12 +6,12 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import type { ProfileFileSet, ProfileFiles } from '../config/types.ts';
 import { invalidRequest, noTestsCollected } from './run-errors.ts';
 import type {
-    DiscoveredRunFile,
-    DiscoveredRunFiles,
     RunDiscovery,
     RunDiscoveryDependencies,
     RunDiscoveryRequest
 } from './run-discovery-types.ts';
+
+import type { DiscoveredRunFile, DiscoveredRunFiles } from './run-types.ts';
 
 type ProfileFileSets = {
     readonly sets: Readonly<Record<string, ProfileFileSet>>;

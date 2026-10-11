@@ -142,7 +142,9 @@ export function createSupervisedCollectCommand(
             profile,
             source
         }),
-        kind: 'collect'
+        ...source.kind === 'frozen-policy'
+            ? { kind: 'collect-frozen', policy: source.policy }
+            : { kind: 'collect' }
     };
 }
 
@@ -161,7 +163,9 @@ export function createSupervisedRunCommand(
             profile,
             source
         }),
-        kind: 'run'
+        ...source.kind === 'frozen-policy'
+            ? { kind: 'run-frozen', policy: source.policy }
+            : { kind: 'run' }
     };
 }
 

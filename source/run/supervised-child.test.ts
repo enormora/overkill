@@ -75,7 +75,7 @@ function supervisedChildDependencies(): SupervisedChildDependencies {
     };
 }
 
-function command(kind: SupervisedChildCommand['kind'], path: string): SupervisedChildCommand {
+function command(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
     return {
         retryPolicy: null,
         capabilityRestrictions: { mode: 'disabled' },

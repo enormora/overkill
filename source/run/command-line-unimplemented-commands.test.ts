@@ -21,7 +21,7 @@ import {
     loadUnimplementedBaselineCommands,
     createUnimplementedBaselineCommands
 } from './command-line-unimplemented-commands.ts';
-import type { RunOrchestrator } from './run-types.ts';
+import type { ConfiguredRunOrchestrator } from './run-types.ts';
 
 const fixtureCwd = '/project';
 
@@ -55,7 +55,7 @@ const memoryReporter = defineReporter(function createMemoryReporter() {
     };
 });
 
-function createPassingOrchestrator(): RunOrchestrator {
+function createPassingOrchestrator(): ConfiguredRunOrchestrator {
     return {
         bench: unexpectedBenchmarkOrchestrator,
         async resolve() {

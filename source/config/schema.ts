@@ -18,7 +18,7 @@ const outputRendererSchema = z.custom<DefinedOutputRenderer>(
     'must be created with defineOutputRenderer(...)'
 );
 
-const loaderSchema = z
+export const loaderSchema = z
     .strictObject({
         sourceMaps: z.boolean(),
         stripMode: z.literal('strip-only')
@@ -65,7 +65,7 @@ const profileFileSetsSchema = z
     })
     .readonly();
 
-const profileFilesSchema = z.union([ profileFilePatternsSchema, profileFileSetsSchema ]).readonly();
+export const profileFilesSchema = z.union([ profileFilePatternsSchema, profileFileSetsSchema ]).readonly();
 
 export const resourceBudgetsSchema = z
     .strictObject({

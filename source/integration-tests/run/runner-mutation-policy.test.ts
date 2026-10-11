@@ -9,7 +9,8 @@ import {
     orchestrator,
     type MicrotestProfileConfig,
     type ResolvedRun,
-    type RunCommand
+    type RunCommand,
+    type FrozenRunCommand
 } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
@@ -70,26 +71,44 @@ function assertSerialResults(scope: TestScope, result: RunResult): void {
     scope.assert.notEqual(result.resourceUsage, null);
 }
 
+async function mutationInput(command: RunCommand, frozen: boolean): Promise<FrozenRunCommand | RunCommand> {
+    if (!frozen) {
+        return command;
+    }
+    const policy = await orchestrator.freezePolicy({ command, source: { kind: 'memory' } });
+    return {
+        kind: 'frozen-policy',
+        policy,
+        reporting: command.config,
+        invocation: { seed: { value: 11n }, selection: { kind: 'all' } }
+    };
+}
+
 export const testNode = createSuite({
     title: 'mutation execution policy through the public runner',
     ...metadata,
-    children: ([ 'in-process', 'supervised-process' ] as const).map(function mutationProcessModel(processModel) {
-        return createTestCase({
-            title: `serial cases and cleanup preserve ${processModel} execution`,
-            ...metadata,
-            async body(scope: TestScope) {
-                const command = mutationCommand(processModel);
-                const resolved = await orchestrator.resolve(command);
-                const result = await orchestrator.run({
-                    ...command,
-                    request: { ...command.request, order: 'lexical' }
-                });
+    children: ([ 'in-process', 'supervised-process' ] as const).flatMap(function mutationProcessModel(processModel) {
+        return [ false, true ].map(function frozenPolicy(frozen) {
+            return createTestCase({
+                title: `${
+                    frozen ? 'frozen' : 'configured'
+                } serial cases and cleanup preserve ${processModel} execution`,
+                ...metadata,
+                async body(scope: TestScope) {
+                    const command = mutationCommand(processModel);
+                    const input = await mutationInput(
+                        { ...command, request: { ...command.request, order: 'lexical' } },
+                        frozen
+                    );
+                    const resolved = await orchestrator.resolve(input);
+                    const result = await orchestrator.run(input);
 
-                scope.assert.equal(resolved.facts.execution.processModel, processModel);
-                assertDiscoveredPolicy(scope, resolved);
-                assertSerialResults(scope, result);
-                return scope.assert.collect();
-            }
+                    scope.assert.equal(resolved.facts.execution.processModel, processModel);
+                    assertDiscoveredPolicy(scope, resolved);
+                    assertSerialResults(scope, result);
+                    return scope.assert.collect();
+                }
+            });
         });
     })
 });

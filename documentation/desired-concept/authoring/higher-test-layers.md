@@ -692,6 +692,16 @@ test nodes in selected files remain subject to collection-time validation.
   facts into execution hosts. Worker initialization must not import user
   configuration or its dependencies into that graph before the invocation's
   activation mode is established. This also applies to replacement workers.
+  Each plugin worker freezes once in a fresh resolver process; replacement
+  workers resolve independently until campaign coordination supplies a shared
+  authority. Transport immutable `FrozenMicrotestPolicy` data through the public
+  runner's `FrozenRunCommand`, with invocation seed, narrowing selection, and
+  reporting supplied separately. Revalidate file-backed configuration in the
+  execution host before collection. Compare effective policy, discovery and
+  loader declarations; ignore reporters, valid unrelated profiles, disabled
+  coverage settings, and overridden scheduling. Retain native module caching.
+  `overkill.paths` supplies explicit discovery input when the selected profile
+  has no file policy and otherwise follows ordinary discovery rules.
 - Performance is the default priority. The Stryker adapter's `freshState`
   configuration defaults to `false`. Normal in-process runs reuse the loaded
   module graph and assume the suite can be rerun in the same process. Persistent

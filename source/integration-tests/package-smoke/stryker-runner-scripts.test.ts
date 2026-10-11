@@ -11,7 +11,7 @@ const [plugin] = adapter.strykerPlugins;
 assert.equal(plugin.kind, 'TestRunner');
 assert.equal(plugin.name, 'overkill');
 assert.deepEqual(plugin.factory.inject, ['options']);
-const runner = plugin.factory({});
+const runner = plugin.factory({ overkill: { paths: ['stryker-runner.test.js'] } });
 assert.notEqual(runner, plugin.factory({}));
 
 assert.throws(() => runner.capabilities(), {

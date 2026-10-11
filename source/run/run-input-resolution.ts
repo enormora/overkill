@@ -4,13 +4,15 @@ import type { BenchmarkCalibrationResult } from '../packages/run/benchmark-calib
 import { selectBenchmarkProfile, selectTestProfile } from './test-profile.ts';
 import { copyRunEngineSelection, freezeValue } from './run-support.ts';
 import { copyRunRequest } from './request-snapshot.ts';
-import type { RunCommand, RunRequest } from './run-types.ts';
+import type { RunCommand, RunRequest, RunCollectionSource } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     assertSupportedProcessEngine,
     validateRunInput
 } from './run-validation.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
+
+export type RunInputResolutionDependencies = Pick<RunOrchestratorDependencies, 'discoverRunFilesWithProjectRoot'>;
 
 export type RunInvocation = {
     readonly command: RunCommand;
@@ -76,7 +78,8 @@ function assertProfileRequestSupported(
 
 export async function readResolvedRunInput(
     invocation: RunInvocation,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunInputResolutionDependencies,
+    source: RunCollectionSource
 ): Promise<ResolvedRunInput> {
     const { command, namespace } = invocation;
     validateRunInput(command);
@@ -89,11 +92,16 @@ export async function readResolvedRunInput(
     assertSupportedProcessEngine(command, profile);
     const engine = freezeValue(copyRunEngineSelection(command.engine));
     const discovery = freezeValue(
-        await dependencies.discoverRunFilesWithProjectRoot({
-            cwd: command.cwd,
-            paths: request.paths,
-            profileFiles: profile.files
-        })
+        source.kind === 'frozen-policy'
+            ? {
+                files: source.policy.files,
+                projectRoot: source.policy.projectRoot
+            }
+            : await dependencies.discoverRunFilesWithProjectRoot({
+                cwd: command.cwd,
+                paths: request.paths,
+                profileFiles: profile.files
+            })
     );
     return {
         benchmarkCalibration: null,

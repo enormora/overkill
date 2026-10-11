@@ -7,7 +7,7 @@ import type {
 import type {
     CommandLineConfigDependencies
 } from './command-line-config.ts';
-import type { RunOrchestrator } from './run-types.ts';
+import type { ConfiguredRunOrchestrator } from './run-types.ts';
 
 import {
     createCommandLineErrorResultFromUnknown,
@@ -48,7 +48,7 @@ export type CommandLineRunnerResult = CommandLineRunnerResultShape;
 
 export type CommandLineRunnerDependencies = CommandLineCommandLoaders & CommandLineConfigDependencies & {
     readonly loadConfig: (request: ConfigLoadRequest) => Promise<LoadedConfig>;
-    readonly orchestrator: RunOrchestrator;
+    readonly orchestrator: ConfiguredRunOrchestrator;
 };
 
 export function createCommandLineRunner(dependencies: CommandLineRunnerDependencies): CommandLineRunner {

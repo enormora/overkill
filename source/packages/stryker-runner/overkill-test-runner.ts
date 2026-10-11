@@ -5,23 +5,18 @@ import type {
     TestRunner,
     TestRunnerCapabilities
 } from '@stryker-mutator/api/test-runner';
-import { loadConfig } from '../run/config.entry-point.ts';
-import type { RunCommand } from '../run/run.entry-point.ts';
-import { selectMicrotestProfile } from './microtest-profile.ts';
-import { createMutationRunCommand } from './mutation-execution-policy.ts';
+import { ConfigError } from '../run/config.entry-point.ts';
+import type { FrozenMicrotestPolicy } from '../run/run.entry-point.ts';
+import { initializeMutationPolicy } from './mutation-policy-process.ts';
 import { parseRunnerOptions } from './runner-options.ts';
 
 export function createOverkillTestRunner(options: Readonly<Record<string, unknown>>): Required<TestRunner> {
-    let initialization: Promise<RunCommand> | null = null;
+    let initialization: Promise<FrozenMicrotestPolicy> | null = null;
+    const controller = new AbortController();
 
-    async function initializeRunCommand(): Promise<RunCommand> {
+    async function initializePolicy(): Promise<FrozenMicrotestPolicy> {
         const settings = parseRunnerOptions(options.overkill);
-        const cwd = process.cwd();
-        const config = await loadConfig({ configPath: settings.configPath, cwd });
-
-        const selected = selectMicrotestProfile(config, settings.profile);
-
-        return createMutationRunCommand({ config, cwd, profile: selected.name });
+        return await initializeMutationPolicy({ cwd: process.cwd(), settings, signal: controller.signal });
     }
 
     return {
@@ -29,7 +24,10 @@ export function createOverkillTestRunner(options: Readonly<Record<string, unknow
             throw new Error('@overkill-dev/stryker-runner: capabilities() is not implemented.');
         },
         async init(): Promise<void> {
-            initialization = initialization ?? initializeRunCommand();
+            if (controller.signal.aborted) {
+                throw new ConfigError('Stryker runner has been disposed.');
+            }
+            initialization = initialization ?? initializePolicy();
             await initialization;
         },
         async dryRun(): Promise<DryRunResult> {
@@ -39,7 +37,11 @@ export function createOverkillTestRunner(options: Readonly<Record<string, unknow
             throw new Error('@overkill-dev/stryker-runner: mutantRun() is not implemented.');
         },
         async dispose(): Promise<void> {
-            await Promise.resolve();
+            controller.abort();
+            try {
+                await initialization;
+            } catch {
+            }
         }
     };
 }

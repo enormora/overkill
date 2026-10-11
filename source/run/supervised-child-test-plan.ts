@@ -5,15 +5,15 @@ import {
 import { defaultRunEngine } from './default-run-engine.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
-import { createRunTestPlan } from './run-test-plan.ts';
-import type { RunDiscovery } from './run-discovery-types.ts';
+import { createRunTestPlan, createRunTestPlanFromFiles, type RunTestPlanInput } from './run-test-plan.ts';
+import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
-import type { SupervisedChildCommand } from './supervised-protocol.ts';
+import { frozenSupervisedPolicy, type SupervisedChildCommand } from './supervised-protocol.ts';
 
 export type SupervisedChildTestPlanDependencies = {
-    readonly discoverRunFiles: RunDiscovery['discoverRunFiles'];
+    readonly discoverRunFiles: RunTestPlanInput['discoverRunFiles'];
     readonly loadRunEngineModule: RunEngineModuleLoader;
     readonly loadRunTestModules: RunTestModuleLoader;
 };
@@ -89,7 +89,7 @@ export async function createSupervisedChildTestPlan(
     dependencies: SupervisedChildTestPlanDependencies
 ): Promise<TestPlan> {
     const engine = await selectedEngine(command, dependencies);
-    const testPlan = await createRunTestPlan({
+    const input = {
         cwd: command.cwd,
         definitionLocationCapture: command.definitionLocationCapture,
         discoverRunFiles: dependencies.discoverRunFiles,
@@ -98,9 +98,27 @@ export async function createSupervisedChildTestPlan(
         paths: command.paths,
         root: command.root,
         testFamily: command.testFamily
-    });
+    };
+    const policy = frozenSupervisedPolicy(command);
+    const testPlan = policy === null
+        ? await createRunTestPlan(input)
+        : await createRunTestPlanFromFiles({ ...input, files: policy.files });
 
     assertTestPlanMatchesTestFamily(testPlan, command.testFamily);
 
     return testPlan;
+}
+
+export async function validateSupervisedPolicy(
+    command: SupervisedChildCommand,
+    dependencies: SupervisedChildTestPlanDependencies
+): Promise<void> {
+    const policy = frozenSupervisedPolicy(command);
+    if (policy !== null) {
+        await validateFrozenPolicySource(policy, {
+            async discoverRunFilesWithProjectRoot(request) {
+                return { files: await dependencies.discoverRunFiles(request), projectRoot: policy.projectRoot };
+            }
+        });
+    }
 }

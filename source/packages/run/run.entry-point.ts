@@ -29,6 +29,13 @@ export const runIfMain = createRunIfMain({
 });
 
 export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+export { parseFrozenMicrotestPolicy } from '../../run/frozen-run-policy.ts';
+export type {
+    FreezePolicyInput,
+    FrozenMicrotestPolicy,
+    FrozenRunCommand,
+    RunPolicySource
+} from '../../run/run-types.ts';
 export {
     defineConfig,
     normalizeConfig,

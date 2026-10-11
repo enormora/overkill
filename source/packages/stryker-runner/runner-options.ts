@@ -5,10 +5,11 @@ import { ConfigError } from '../run/config.entry-point.ts';
 const runnerOptionsSchema = z
     .strictObject({
         configPath: z.string().regex(/\S/u, 'must not be blank').nullable().default(null),
+        paths: z.array(z.string().regex(/\S/u, 'must not be blank')).readonly().default([]),
         profile: z.string().nullable().default(null)
     })
     .readonly()
-    .default({ configPath: null, profile: null });
+    .default({ configPath: null, paths: [], profile: null });
 
 export type OverkillRunnerOptions = z.output<typeof runnerOptionsSchema>;
 

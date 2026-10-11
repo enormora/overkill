@@ -43,7 +43,7 @@ function supervisedParentMessage(message: unknown): SupervisedAssignmentCommand 
 
 function readCommand(message: unknown): SupervisedChildCommand {
     const decoded = supervisedParentMessage(message);
-    if (decoded?.kind === 'run' || decoded?.kind === 'collect') {
+    if (decoded !== null && decoded.kind !== 'assign') {
         return decoded;
     }
     throw new Error('Expected a supervised child command.');

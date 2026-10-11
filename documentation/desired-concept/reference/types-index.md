@@ -1151,6 +1151,46 @@ type RunCommand = {
     readonly request: RunRequest;
 };
 
+type RunPolicySource =
+    | { readonly kind: 'memory'; }
+    | {
+        readonly kind: 'config-file';
+        readonly request: ConfigLoadRequest;
+        readonly resolvedPath: string | null;
+    };
+
+type FrozenMicrotestPolicy = {
+    readonly source: RunPolicySource;
+    readonly cwd: string;
+    readonly projectRoot: string;
+    readonly files: NonEmptyReadonlyArray<{
+        readonly file: string;
+        readonly fileSet: string | null;
+        readonly href: string;
+        readonly path: string;
+    }>;
+    readonly loader: LoaderConfig;
+    readonly profile: Omit<MicrotestProfileConfig, 'reporters'>;
+    readonly request: Omit<RunRequest, 'seed'>;
+    readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
+    readonly runtimeStateDir: string;
+};
+
+type FreezePolicyInput = {
+    readonly command: RunCommand;
+    readonly source: RunPolicySource;
+};
+
+type FrozenRunCommand = {
+    readonly kind: 'frozen-policy';
+    readonly policy: FrozenMicrotestPolicy;
+    readonly invocation: { readonly seed: RunSeed; readonly selection: RunSelection; };
+    readonly reporting: Pick<NormalizedConfig, 'outputRenderer' | 'reporters'>;
+};
+
+declare function freezePolicy(input: FreezePolicyInput): Promise<FrozenMicrotestPolicy>;
+declare function parseFrozenMicrotestPolicy(value: unknown): FrozenMicrotestPolicy;
+
 type MergeResultsInput =
     | { readonly kind: 'file'; readonly path: string; }
     | { readonly kind: 'directory'; readonly path: string; };
@@ -1161,8 +1201,8 @@ type MergeResultsCommand = {
     readonly inputs: NonEmptyReadonlyArray<MergeResultsInput>;
 };
 
-declare function resolveRun(command: RunCommand): Promise<ResolvedRun>;
-declare function run(command: RunCommand): Promise<RunResult>;
+declare function resolveRun(command: FrozenRunCommand | RunCommand): Promise<ResolvedRun>;
+declare function run(command: FrozenRunCommand | RunCommand): Promise<RunResult>;
 declare function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord>;
 
 type TestPlanSuitePathEntry = {

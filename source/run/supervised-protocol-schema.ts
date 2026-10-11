@@ -1,23 +1,22 @@
 import { z } from 'zod/v4';
 import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { frozenSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
 import type {
     SupervisedChildCommand,
     SupervisedAssignmentCommand,
     SupervisedChildMessage
 } from './supervised-protocol.ts';
-import { executionCommandFields } from './run-command-schema.ts';
+import { supervisedCommandFields } from './run-command-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
 import { resourceUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
-const commandSchema: z.ZodType<SupervisedChildCommand> = z.strictObject({
-    ...executionCommandFields,
-    kind: z.enum([ 'collect', 'run' ]),
-    capabilityRestrictions: z.strictObject({ mode: z.enum([ 'disabled', 'enabled' ]) }),
-    capture: z.enum([ 'buffered', 'live' ])
-});
+const commandSchema: z.ZodType<SupervisedChildCommand> = z.union([
+    z.strictObject({ ...supervisedCommandFields, kind: z.enum([ 'collect', 'run' ]) }),
+    frozenSupervisedCommandSchema
+]);
 const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
     z.strictObject({
         kind: z.literal('assign'),

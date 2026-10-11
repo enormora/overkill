@@ -35,6 +35,7 @@ import type {
     ProfileConfig,
     ProfilesConfig,
     NormalizedConfig,
+    ConfigLoadRequest as ConfigLoaderRequest,
     ResourceBudgets,
     ResourceUsagePolicy,
     TimingProfilePolicy,
@@ -114,10 +115,7 @@ export type Config = {
     readonly runtimeStateDir?: ParsedProjectConfig['runtimeStateDir'];
 };
 
-export type ConfigLoadRequest = {
-    readonly configPath: string | null;
-    readonly cwd: string;
-};
+export type ConfigLoadRequest = ConfigLoaderRequest;
 
 export type ConfigLoaderDependencies = {
     readonly fileExists: (filePath: string) => Promise<boolean>;

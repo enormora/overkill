@@ -13,6 +13,7 @@ describe('Stryker profile initialization', function () {
         expect<SelectedMicrotestProfile['profile']>().type.toBe<MicrotestProfileConfig>();
         expect<OverkillRunnerOptions>().type.toBe<{
             readonly configPath: string | null;
+            readonly paths: readonly string[];
             readonly profile: string | null;
         }>();
     });

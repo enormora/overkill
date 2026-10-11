@@ -20,6 +20,9 @@ import {
     type PlacementTrace,
     type ResolvedRun,
     type RunCommand,
+    type FrozenRunCommand,
+    type FreezePolicyInput,
+    type FrozenMicrotestPolicy,
     type NormalizedConfig,
     type ConfigLoadRequest,
     type RunEngineSelection,
@@ -175,6 +178,9 @@ type ExpectedRunHostProcessFacts = {
 };
 
 function assertOrchestratorTypes(): void {
+    expect<typeof orchestrator.freezePolicy>().type.toBe<
+        (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>
+    >();
     expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
     expect<typeof orchestrator.bench>().type.toBe<BenchmarkOrchestrator>();
     expect<typeof orchestrator.bench.list>().type.toBe<
@@ -187,10 +193,10 @@ function assertOrchestratorTypes(): void {
         (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunReporterDeliveryResult>
     >();
     expect<typeof orchestrator.resolve>().type.toBe<
-        (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
+        (command: FrozenRunCommand | RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
     >();
     expect<typeof orchestrator.run>().type.toBe<
-        (command: RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>
+        (command: FrozenRunCommand | RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>
     >();
 }
 

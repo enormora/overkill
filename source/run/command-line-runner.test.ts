@@ -22,7 +22,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunCommand, RunOrchestrator } from './run-types.ts';
+import type { RunCommand, ConfiguredRunOrchestrator } from './run-types.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { selectTestProfile } from './test-profile.ts';
 
@@ -99,7 +99,7 @@ function createPassingPlan(): PassingTestPlan {
     });
 }
 
-async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrator['resolve']> {
+async function resolveRunCommand(command: RunCommand): ReturnType<ConfiguredRunOrchestrator['resolve']> {
     const profile = selectTestProfile(command.request.profile, command.config);
 
     return {
@@ -135,7 +135,7 @@ async function resolveRunCommand(command: RunCommand): ReturnType<RunOrchestrato
     };
 }
 
-function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator {
+function createRunOnlyOrchestrator(run: ConfiguredRunOrchestrator['run']): ConfiguredRunOrchestrator {
     return {
         bench: unexpectedBenchmarkOrchestrator,
         async resolve(command) {
@@ -157,7 +157,7 @@ function createRunOnlyOrchestrator(run: RunOrchestrator['run']): RunOrchestrator
 function createRunnerDependencies(
     overrides: Partial<CommandLineRunnerDependencies>
 ): CommandLineRunnerDependencies {
-    const runPassing = async function runPassingTests(): ReturnType<RunOrchestrator['run']> {
+    const runPassing = async function runPassingTests(): ReturnType<ConfiguredRunOrchestrator['run']> {
         return runResultFactory.build({
             perTest: [ { outcome: { kind: 'pass' } } ],
             summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
