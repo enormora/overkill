@@ -1,5 +1,5 @@
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
-import { orchestrator } from '../packages/run/run.entry-point.ts';
+import { orchestrator, RunCollectionError, type InitializedRun } from '../packages/run/run.entry-point.ts';
 import { collectedRunCommand, collectLifecycleRun } from '../test-support/collected-run-fixtures.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { equals } from './run-selection-filters.ts';
@@ -7,10 +7,49 @@ import { equals } from './run-selection-filters.ts';
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const all = { selection: { kind: 'all' } } as const;
 
+async function collectionFailure(initialized: InitializedRun): Promise<unknown> {
+    try {
+        await initialized.collect();
+        return null;
+    } catch (error: unknown) {
+        return error;
+    }
+}
+
 export const testNode = createSuite({
     ...metadata,
     title: 'collected runner boundaries',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'collection aggregates import and runtime-policy failures without losing the original error',
+            async body(scope) {
+                const command = collectedRunCommand();
+                const ready = await orchestrator.initialize({
+                    ...command,
+                    request: {
+                        ...command.request,
+                        paths: [ 'source/integration-tests/run/fixtures/collected-policy-error.test.ts' ]
+                    }
+                });
+                const failure = await collectionFailure(ready);
+                if (!(failure instanceof AggregateError)) {
+                    throw new Error('Expected combined collection failures.', { cause: failure });
+                }
+                scope.assert.deepEqual({
+                    errorCount: failure.errors.length,
+                    message: failure.message,
+                    originalPreserved: failure.cause instanceof RunCollectionError,
+                    sameCachedFailure: await collectionFailure(ready) === failure
+                }, {
+                    errorCount: 2,
+                    message: 'Test collection failed.',
+                    originalPreserved: true,
+                    sameCachedFailure: true
+                });
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'collection timeout is cached and releases observers',
