@@ -119,6 +119,7 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
     );
 
     input.context.dependencies.globalErrorObserver.stop();
+    input.context.dependencies.asyncLeakMonitor.stop();
 
     const finalizedResult = await input.options.finalizeResult(result);
     const runEndErrors = await input.context.reporterDelivery.reportEvent({
@@ -156,29 +157,31 @@ function prepareExecution(
     };
 }
 
+async function executeWithReporterDelivery(prepared: PreparedExecution, testPlan: TestPlan): Promise<RunResult> {
+    const reporterDelivery = await prepared.dependencies.reporterDispatcher.createDelivery(
+        prepared.options.reporters,
+        prepared.options.outputRenderer
+    );
+    const reporterDisposal = createReporterDisposal(reporterDelivery.disposeReporters);
+    try {
+        return await prepared.globalErrorObserver.runBoundary(async function runObservedExecution() {
+            return await executeRun({
+                context: { dependencies: prepared.dependencies, reporterDelivery },
+                options: prepared.options,
+                reporterDisposal,
+                testPlan
+            });
+        });
+    } catch (error: unknown) {
+        return await throwWithCleanupErrors(error, reporterDisposal.disposeOnce);
+    }
+}
+
 export function createExecute(dependencies: ExecuteDependencies): Execute {
     return async function execute(testPlan, options) {
         const prepared = prepareExecution(dependencies, options, testPlan);
-        const reporterDelivery = await dependencies.reporterDispatcher.createDelivery(
-            prepared.options.reporters,
-            prepared.options.outputRenderer
-        );
-        const reporterDisposal = createReporterDisposal(reporterDelivery.disposeReporters);
-
         try {
-            return await prepared.globalErrorObserver.runBoundary(async function runObservedExecution() {
-                return await executeRun({
-                    context: {
-                        dependencies: prepared.dependencies,
-                        reporterDelivery
-                    },
-                    options: prepared.options,
-                    reporterDisposal,
-                    testPlan
-                });
-            });
-        } catch (error: unknown) {
-            return await throwWithCleanupErrors(error, reporterDisposal.disposeOnce);
+            return await executeWithReporterDelivery(prepared, testPlan);
         } finally {
             prepared.asyncLeakMonitor.stop();
             prepared.globalErrorObserver.stop();
