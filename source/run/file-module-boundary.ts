@@ -44,18 +44,15 @@ export async function withFileModuleBoundary<Result>(
         return await operation();
     }
     validateFileModuleBoundary(boundary);
-    const roots = await Promise.all(
-        [ boundary.projectRoot, ...boundary.sharedRoots ].map(async function canonicalRoot(root) {
+    const [ projectRoot, sharedRoots ] = await Promise.all([
+        realpath(boundary.projectRoot),
+        Promise.all(boundary.sharedRoots.map(async function canonicalRoot(root) {
             return realpath(root);
-        })
-    );
-    const [ projectRoot, ...sharedRoots ] = roots;
-    if (projectRoot === undefined) {
-        return invalidRequest('Module boundary requires a project root.');
-    }
+        }))
+    ]);
     validateFileModuleBoundary({ projectRoot, sharedRoots });
 
-    return await activeModuleRoots.run(roots, async function runBoundedOperation() {
+    return await activeModuleRoots.run([ projectRoot, ...sharedRoots ], async function runBoundedOperation() {
         function validateModule(url: string): void {
             const currentRoots = activeModuleRoots.getStore();
             if (currentRoots === undefined || !url.startsWith('file:')) {

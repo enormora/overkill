@@ -28,6 +28,38 @@ async function withProjectDirectories(operation: (paths: ProjectDirectories) => 
 }
 
 export const testNode = suite('file module boundaries', [
+    test('rejects shared roots that contain the project after resolving symlinks', async function (scope) {
+        await withProjectDirectories(async function assertCanonicalRoots({ root, other }) {
+            const shared = join(other, 'shared');
+            await symlink(join(root, '..'), shared);
+            let executed = false;
+            await scope.assert.rejects(async function useOverlappingRoots() {
+                await withFileModuleBoundary(
+                    { projectRoot: root, sharedRoots: [ shared ] },
+                    async function runOperation() {
+                        executed = true;
+                    }
+                );
+            }, { type: RunResolutionError, message: /Shared module roots must not contain/ });
+            scope.assert.equal(executed, false);
+        });
+        return scope.assert.collect();
+    }),
+    test('allows built-in and data modules inside a file boundary', async function (scope) {
+        await withProjectDirectories(async function assertNonFileModules({ root }) {
+            const value = await withFileModuleBoundary(
+                { projectRoot: root, sharedRoots: [] },
+                async function loadNonFileModules() {
+                    const path = await import('node:path');
+                    const source = 'data:text/javascript,export default "sandbox"';
+                    await import(source);
+                    return path.join(root, 'sandbox');
+                }
+            );
+            scope.assert.equal(value, join(root, 'sandbox'));
+        });
+        return scope.assert.collect();
+    }),
     test('rejects absolute ESM and CommonJS imports before evaluating original files', async function (scope) {
         await withProjectDirectories(async function assertEscapes({ root, other }) {
             const boundary = { projectRoot: root, sharedRoots: [] };
@@ -41,6 +73,31 @@ export const testNode = suite('file module boundaries', [
                     createRequire(pathToFileURL(join(root, 'config.mjs')))(join(other, 'escape.cjs'));
                 });
             }, { type: RunResolutionError, message: /Module import escapes/ });
+        });
+        return scope.assert.collect();
+    }),
+    test('does not restrict unrelated operations while a boundary is active', async function (scope) {
+        await withProjectDirectories(async function assertIndependentOperation({ root, other }) {
+            await writeFile(join(other, 'config.mjs'), 'export const config = {runtimeStateDir:"unbounded"};');
+            const ready = Promise.withResolvers<undefined>();
+            const release = Promise.withResolvers<undefined>();
+            const bounded = withFileModuleBoundary(
+                { projectRoot: root, sharedRoots: [] },
+                async function keepBoundaryActive() {
+                    ready.resolve(undefined);
+                    await release.promise;
+                }
+            );
+            await ready.promise;
+            try {
+                const config = await withFileModuleBoundary(null, async function loadUnrelatedConfig() {
+                    return await loadConfig({ cwd: other, configPath: 'config.mjs' });
+                });
+                scope.assert.equal(config.runtimeStateDir, 'unbounded');
+            } finally {
+                release.resolve(undefined);
+                await bounded;
+            }
         });
         return scope.assert.collect();
     }),
