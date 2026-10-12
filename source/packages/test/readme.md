@@ -533,8 +533,6 @@ Supported command-line surface:
 - `--profile <name>`
 - `--coverage`
 - `--no-capture`
-- `--measure-resource-usage`
-- `--resource-budget <name=value>`
 - `--workers <n>`
 - `--with-locations`
 - `--with-orphans`
@@ -542,17 +540,15 @@ Supported command-line surface:
 `bench run` and `bench list` select shared profiles with `testFamily: 'benchmark'`
 and use regular planning, execution, results, and reporters. They accept
 `--config`, `--profile`, and the same selection flags as ordinary commands.
-Run accepts `--no-capture`, `--timings`, `--workers`,
-`--measure-resource-usage`, and `--resource-budget`; list accepts
+Run accepts `--no-capture`, `--timings`, and `--workers`; list accepts
 `--with-locations` and `--with-orphans`. Coverage remains microtest-only.
 Benchmarks execute serially in one lane. `--filter 'workload=small'` selects
 resolved workloads. Measurement and budgets remain separate milestones.
 See [`@overkill-dev/bench`](../bench/readme.md).
 
-`--resource-budget` accepts `activeResourceCount`,
-`javaScriptEngineHeapBytes`, `residentSetBytes`, and
-`residentSetGrowthBytesPerSecond`. Supplying a resource budget enables
-resource usage measurement for that run.
+Configure resource usage measurement and budgets through the selected
+profile's `resourceUsage.measure` and `resourceUsage.budgets` fields.
+Budgets require `measure: true`.
 
 `--workers` applies to `run` and `bench run` and accepts a positive safe integer. The
 selected profile must use `worker-pool` execution.

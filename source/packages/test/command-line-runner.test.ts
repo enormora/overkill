@@ -179,59 +179,30 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper parses resource usage flags',
+            title: 'overkill wrapper rejects resource usage flags before loading the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
-                const result = await runCommandLine(
-                    [
-                        'run',
-                        '--measure-resource-usage',
-                        '--resource-budget',
-                        'activeResourceCount=8',
-                        '--resource-budget=javaScriptEngineHeapBytes=100',
-                        'source/a.test.ts'
-                    ],
-                    passingResult()
-                );
-                const [ commandLineRequest ] = result.runRequests;
+                for (const verb of [ 'run', 'list' ]) {
+                    for (
+                        const flagArguments of [
+                            [ '--measure-resource-usage' ],
+                            [ '--resource-budget', 'activeResourceCount=8' ],
+                            [ '--resource-budget=residentSetBytes=200' ]
+                        ] as const
+                    ) {
+                        const result = await runCommandLine([ verb, ...flagArguments ], passingResult());
 
-                scope.require.defined(commandLineRequest);
-                scope.assert.equal(commandLineRequest.runRequest.measureResourceUsage, true);
-                const { resourceBudgetOverrides } = commandLineRequest.runRequest;
-
-                scope.require.notNull(resourceBudgetOverrides);
-                scope.assert.deepEqual(resourceBudgetOverrides, {
-                    activeResourceCount: 8,
-                    javaScriptEngineHeapBytes: 100,
-                    residentSetBytes: null,
-                    residentSetGrowthBytesPerSecond: null
-                });
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper resource budget enables measurement',
-            ...emptyTestData,
-            async body(scope: TestScope) {
-                const result = await runCommandLine(
-                    [ 'run', '--resource-budget', 'residentSetBytes=200', 'source/a.test.ts' ],
-                    passingResult()
-                );
-                const [ commandLineRequest ] = result.runRequests;
-
-                scope.require.defined(commandLineRequest);
-                scope.assert.equal(commandLineRequest.runRequest.measureResourceUsage, true);
-                const { resourceBudgetOverrides } = commandLineRequest.runRequest;
-
-                scope.require.notNull(resourceBudgetOverrides);
-                scope.assert.deepEqual(resourceBudgetOverrides, {
-                    activeResourceCount: null,
-                    javaScriptEngineHeapBytes: null,
-                    residentSetBytes: 200,
-                    residentSetGrowthBytesPerSecond: null
-                });
+                        scope.assert.deepEqual(result.exitCodes, [ 3 ]);
+                        scope.assert.equal(result.runnerLoadCount, 0);
+                        scope.assert.deepEqual({ run: result.runRequests, list: result.listRequests }, {
+                            run: [],
+                            list: []
+                        });
+                        scope.assert.equal(result.stdout, '');
+                        scope.assert.includes(result.stderr, 'Unknown arguments');
+                        scope.assert.includes(result.stderr, flagArguments[0]);
+                    }
+                }
 
                 return scope.assert.collect();
             }
@@ -363,46 +334,6 @@ export const testNode = createSuite({
                 scope.assert.equal(result.runRequests.length, 0);
                 scope.assert.equal(result.stdout, '');
                 scope.assert.true(result.stderr.includes('Unknown run filter dimension: kind'));
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper rejects duplicate resource budget names',
-            ...emptyTestData,
-            async body(scope: TestScope) {
-                const result = await runCommandLine(
-                    [
-                        'run',
-                        '--resource-budget',
-                        'activeResourceCount=8',
-                        '--resource-budget',
-                        'activeResourceCount=9'
-                    ],
-                    passingResult()
-                );
-
-                scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.runRequests.length, 0);
-                scope.assert.true(result.stderr.includes('Duplicate resource budget name: activeResourceCount'));
-
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper rejects unknown resource budget names',
-            ...emptyTestData,
-            async body(scope: TestScope) {
-                const result = await runCommandLine(
-                    [ 'run', '--resource-budget', 'heap=8' ],
-                    passingResult()
-                );
-
-                scope.assert.deepEqual(result.exitCodes, [ 3 ]);
-                scope.assert.equal(result.runRequests.length, 0);
-                scope.assert.true(result.stderr.includes('Unknown resource budget name: heap'));
 
                 return scope.assert.collect();
             }

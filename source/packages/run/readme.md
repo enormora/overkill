@@ -309,9 +309,8 @@ Resource usage measurement is explicit. Project config can enable it under
 `profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`
 can override that policy for one run. `resourceUsage.budgets` are thresholds
 and require measurement, while `RunRequest.resourceBudgetOverrides` changes
-individual thresholds for one run. The `@overkill-dev/test` binary parses
-`--measure-resource-usage` and `--resource-budget <name=value>` into those
-typed request fields.
+individual thresholds for one run. CLI commands use the selected profile's
+resource usage policy.
 
 Runner timing collection is explicit beyond the always-present summary.
 Project config can set `profiles.<name>.timings.collection` to `summary` or

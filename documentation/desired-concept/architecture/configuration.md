@@ -263,10 +263,6 @@ So, for example:
 - `--profile <name>` chooses which runner profile to use for this run
 - `--coverage` requests coverage for this run and is valid only with a
   microtest profile
-- `--measure-resource-usage` chooses per-run diagnostic resource usage
-  measurement
-- `--resource-budget <name=value>` chooses per-run resource-budget overrides
-  and enables resource usage measurement
 - `--timings` requests precise runner timing collection for this run
 - `--record` requests a detailed run record and compact-history update for
   this run
@@ -274,9 +270,9 @@ So, for example:
   intent through `@overkill-dev/run`
 - an optional global assertion budget policy lives in configuration because
   it is centrally enforced suite policy rather than per-test authoring
-- resource-budget defaults live in configuration because they describe suite
-  policy; per-run overrides are allowed for intentionally heavy runs and must
-  be visible in failure messages
+- CLI resource usage measurement and budgets live in profile configuration
+  because they describe suite policy; programmatic requests can override them
+  for one run
 - microtest `coverage` policy lives on the selected profile because source
   scope, outputs, thresholds, and output are persistent project policy;
   presence of that policy does not activate coverage
