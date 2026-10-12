@@ -25,7 +25,7 @@ function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: str
     };
 }
 
-function createLocalResolvedRunFromTestPlan(
+export function createLocalResolvedRunFromTestPlan(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput,

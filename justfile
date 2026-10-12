@@ -33,6 +33,7 @@ test-unit:
     node source/overkill.test.ts
 
 test-runner-integration:
+    node source/integration-tests/run/runner-collected-lifecycle.test.ts
     node source/integration-tests/run/runner-workloads.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
@@ -71,6 +72,7 @@ test-package-smoke: compile
     PACKTORY_INCLUDED_PACKAGES={{package-smoke-packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
+    node target/build/source/integration-tests/package-smoke/run-lifecycle.test.js
     node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js

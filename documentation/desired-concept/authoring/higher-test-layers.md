@@ -938,10 +938,10 @@ boundary, stable identity model, and aggregate V8 coverage policy. Mutation
 execution is a separate, explicitly reported orchestration policy.
 
 Current code has exact `case-id` filters, structured outcomes, awaited local case
-events, and supervised processes. It does not yet expose the complete public
-adapter lifecycle: initialization before user imports, child-local attribution,
-counter transport, and execution of a collected plan without importing again.
-Provide the smallest reusable runner extension needed for that lifecycle.
+events, and supervised processes. The public in-process lifecycle now supports
+initialization before user imports and repeated execution of a collected plan.
+Child-local attribution, counter transport, and adapter integration remain
+release gates for the complete mutation runner lifecycle.
 Each invocation needs fresh scopes, observers, and result collection even when
 it reuses an already collected plan and module graph. Selection applies to the
 frozen eligible catalog without reimporting modules merely to rerun cases.

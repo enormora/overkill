@@ -12,7 +12,7 @@ import { validateRunInput } from './run-validation.ts';
 import { resolveResourceUsagePolicy } from './run-profile-facts.ts';
 import { validateFrozenPolicyOrigins } from './frozen-policy-origins.ts';
 
-function intersectSelection(baseline: RunSelection, selected: RunSelection): RunSelection {
+export function intersectSelection(baseline: RunSelection, selected: RunSelection): RunSelection {
     if (baseline.kind === 'all') {
         return selected;
     }

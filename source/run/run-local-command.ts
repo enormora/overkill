@@ -110,7 +110,7 @@ async function runOrdinaryLocalCommand(
     try {
         return await runLocalWithPolicy(command, dependencies, options, runtimePolicy);
     } finally {
-        runtimePolicy?.takeRunErrors();
+        runtimePolicy.takeRunErrors();
     }
 }
 

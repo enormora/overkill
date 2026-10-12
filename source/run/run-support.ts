@@ -196,7 +196,7 @@ export function runEngineFacts(engine: RunEngineSelection): RunEngineFacts {
 export function createRunRuntimePolicy(
     request: RunRequest,
     dependencies: RunOrchestratorDependencies
-): RunRuntimePolicy | null {
+): RunRuntimePolicy {
     return request.capabilityRestrictions.mode === 'enabled'
         ? createRuntimeCapabilityPolicy({
             dependencies: dependencies.runtimeCapabilityPolicy,

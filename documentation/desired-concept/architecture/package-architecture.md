@@ -611,6 +611,15 @@ local workers, subprocesses, or remote executors. When an execution boundary
 must own user-module imports, it sends the orchestrator a minimal collected
 plan instead of executable test bodies.
 
+The public in-process lifecycle is `orchestrator.initialize(command)`, then
+`initialized.collect()`, then `collected.run({ selection })` or
+`collected.runWithReporterDelivery({ selection })`. Initialization precedes user
+imports, allowing caller bootstrap before collection. Collection caches success
+or failure. Invocations narrow the fixed eligible catalog and preserve order,
+seed, shard, and runtime policy. Each invocation owns fresh scopes, observers,
+reporters, and results; module state stays shared. Overlapping invocations of
+one handle reject. An idle handle owns no runtime observers.
+
 Supervision and termination policy should also be execution-strategy-dependent:
 
 - in-process runs may support leak diagnostics and cooperative timeouts

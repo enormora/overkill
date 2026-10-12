@@ -18,6 +18,7 @@ Top-level API:
 - `orchestrator.run(command)`
 - `orchestrator.runWithReporterDelivery(command)`
 - `orchestrator.freezePolicy({ command, source, moduleBoundary })`
+- `orchestrator.initialize(command)`
 - `parseFrozenMicrotestPolicy(value)`
 - `withFileModuleBoundary(boundary, operation)`
 
@@ -50,6 +51,31 @@ file imports whose real paths escape the allowed roots, including symlink
 escapes. Hooks are scoped to the asynchronous operation and removed on success
 or failure. A `null` boundary installs no hook. Native module caching remains
 unchanged.
+
+`initialize` accepts an ordinary or frozen-policy command and prepares discovery
+without importing config again, custom engines, or tests. The selected profile
+must use `in-process` execution. Caller bootstrap can run before
+`await initialized.collect()`. Collection validates file-backed frozen policy,
+imports modules under ordinary runtime policy, and caches either the collected
+handle or the failure. Collection failures may expose `RunCollectionError` or
+an `AggregateError` containing the original runtime-policy errors.
+An initial selection matching no cases rejects collection with
+`no-tests-collected`, as `resolve` does.
+
+The collected handle exposes immutable `facts` and a body-free `plan` catalog.
+`await collected.run({ selection: { kind: 'all' } })` executes that plan without
+reimporting modules. Invocation selection may only narrow the original eligible
+cases; seed, shard, order, and policy remain fixed. Empty selection and empty
+shards retain ordinary runner semantics. `runWithReporterDelivery` returns the
+usual result and reporter-delivery tracking.
+
+Each invocation creates fresh scopes, assertions, cleanup, runtime observers,
+reporter instances, and result collection. Observers close before the handle
+becomes idle, including on failures. Overlapping invocations of the same handle
+reject with `invalid-request`. Module state remains shared between invocations.
+Explicit ordinary coverage creates a fresh session and run record each time;
+previous collection imports are not repeated for coverage. No disposal call is
+required for an idle handle.
 
 Use `source: { kind: 'memory' }` for supplied config, or
 `{ kind: 'config-file', request: { cwd, configPath }, resolvedPath }` for loaded
