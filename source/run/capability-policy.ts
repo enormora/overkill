@@ -102,7 +102,7 @@ const asyncFileResourceTypes = new Set([
 const processExecuteChannel = [ 'process.', 'exec', 've' ].join('');
 const randomResourceReport: RuntimePolicyReport = {
     capability: runtimePolicyCapabilities.cryptoRandom,
-    message: 'Runtime policy violation: asynchronous random resource.',
+    message: 'Runtime policy violation: asynchronous random operation.',
     strictness: 'observed'
 };
 const staticAsyncResourceReports: Readonly<Record<string, RuntimePolicyReport>> = {
@@ -110,7 +110,7 @@ const staticAsyncResourceReports: Readonly<Record<string, RuntimePolicyReport>> 
     RANDOMPRIMEREQUEST: randomResourceReport,
     WORKER: {
         capability: runtimePolicyCapabilities.worker,
-        message: 'Runtime policy violation: worker resource created.',
+        message: 'Runtime policy violation: Node worker created.',
         strictness: 'observed'
     }
 };
@@ -152,7 +152,7 @@ function asyncResourceReport(
     if (asyncFileResourceTypes.has(type)) {
         return {
             capability: runtimePolicyCapabilities.fileRead,
-            message: `Runtime policy violation: asynchronous file resource ${type}.`,
+            message: `Runtime policy violation: asynchronous file operation ${type}.`,
             strictness: 'observed'
         };
     }

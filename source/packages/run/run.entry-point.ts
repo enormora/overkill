@@ -68,17 +68,17 @@ export type {
     Config,
     ProjectIntegrationExecution,
     ProjectIntegrationProfileConfig,
-    ProjectMeasuredResourceUsage,
+    ProjectMeasuredProcessUsage,
     ProjectMicrotestExecution,
     ProjectMicrotestProfileConfig,
     ProjectProfileFiles,
     ProjectProfileConfig,
     ProjectProfilesConfig,
-    ProjectResourceBudgets,
-    ProjectResourceUsageConfig,
+    ProjectProcessBudgets,
+    ProjectProcessUsageConfig,
     ProjectTimingProfilePolicy,
     ProjectTimeoutConfig,
-    ProjectUnmeasuredResourceUsage
+    ProjectUnmeasuredProcessUsage
 } from '../../config/config.ts';
 export type {
     RunIfMain,
@@ -179,8 +179,8 @@ export type {
     TestProfileConfig,
     ProfileFiles,
     ProfilesConfig,
-    ResourceBudgets,
-    ResourceUsagePolicy,
+    ProcessBudgets,
+    ProcessUsagePolicy,
     Scheduling,
     TimeoutPolicy,
     TimingCollectionMode,

@@ -21,7 +21,7 @@ type TapPoint = {
 
 function statusForOutcome(outcome: TapPoint['outcome'], verdict: TapPoint['verdict']): 'not ok' | 'ok' {
     if (outcome === null) {
-        return verdict === 'resource-exhausted' || verdict === 'crashed' ? 'not ok' : 'ok';
+        return verdict === 'process-exhausted' || verdict === 'crashed' ? 'not ok' : 'ok';
     }
 
     if (outcome.kind === 'fail' || outcome.kind === 'inconclusive') {

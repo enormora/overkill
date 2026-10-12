@@ -19,7 +19,7 @@ const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pa
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';
 const envPolicyFixturePath = 'source/integration-tests/run/fixtures/env-policy.test.ts';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
-const generousResourceBudget = Number.MAX_SAFE_INTEGER;
+const generousProcessBudget = Number.MAX_SAFE_INTEGER;
 const hardTimeoutMilliseconds = 50;
 const resourceGrowthBudgetBytesPerSecond = 1;
 const samplingIntervalMilliseconds = 1;
@@ -32,12 +32,12 @@ const restrictedMicrotestProfile = defaultMicrotestProfile({
     timeouts: { collectionMilliseconds: 5000 }
 });
 const generousMeasuredProfile = defaultMicrotestProfile({
-    resourceUsage: {
+    processUsage: {
         budgets: {
-            activeResourceCount: generousResourceBudget,
-            javaScriptEngineHeapBytes: generousResourceBudget,
-            residentSetBytes: generousResourceBudget,
-            residentSetGrowthBytesPerSecond: generousResourceBudget
+            activeResourceCount: generousProcessBudget,
+            javaScriptEngineHeapBytes: generousProcessBudget,
+            residentSetBytes: generousProcessBudget,
+            residentSetGrowthBytesPerSecond: generousProcessBudget
         },
         measure: true,
         samplingIntervalMilliseconds
@@ -176,21 +176,21 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(error.subtype, 'crash');
                 scope.assert.equal(error.attributedTo.title, 'loops');
                 scope.assert.equal(result.summary.crashed, 1);
-                scope.assert.equal(result.summary.resourceExhausted, 0);
+                scope.assert.equal(result.summary.processExhausted, 0);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports sampled resource exhaustion from the supervised child',
+            title: 'orchestrator.run() reports sampled process exhaustion from the supervised child',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
                     ...microtestProfile,
-                    resourceUsage: {
+                    processUsage: {
                         budgets: {
                             activeResourceCount: null,
                             javaScriptEngineHeapBytes: null,
@@ -205,24 +205,24 @@ export const testNode = createOverkillSuite({
 
                 scope.require.defined(error);
                 scope.require.defined(error.attributedTo);
-                scope.assert.equal(error.subtype, 'resource-exhaustion');
+                scope.assert.equal(error.subtype, 'process-exhaustion');
                 scope.assert.equal(error.attributedTo.title, 'delays');
                 scope.assert.equal(result.summary.crashed, 0);
-                scope.assert.equal(result.summary.resourceExhausted, 1);
+                scope.assert.equal(result.summary.processExhausted, 1);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports supervised active resource count exhaustion',
+            title: 'orchestrator.run() reports supervised active Node resource count exhaustion',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, {
                     ...microtestProfile,
-                    resourceUsage: {
+                    processUsage: {
                         budgets: {
                             activeResourceCount: 1,
                             javaScriptEngineHeapBytes: null,
@@ -233,8 +233,8 @@ export const testNode = createOverkillSuite({
                         samplingIntervalMilliseconds
                     }
                 }));
-                const error = result.runnerErrors.find(function isResourceExhaustion(runnerError) {
-                    return runnerError.subtype === 'resource-exhaustion';
+                const error = result.runnerErrors.find(function isProcessExhaustion(runnerError) {
+                    return runnerError.subtype === 'process-exhaustion';
                 });
 
                 scope.require.defined(error);
@@ -257,7 +257,7 @@ export const testNode = createOverkillSuite({
                 ));
 
                 scope.assert.equal(result.summary.passed, 1);
-                scope.assert.equal(result.summary.resourceExhausted, 0);
+                scope.assert.equal(result.summary.processExhausted, 0);
                 scope.assert.equal(result.runnerErrors.length, 0);
 
                 return scope.assert.collect();
@@ -331,19 +331,19 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() records supervised resource usage from injected dependencies',
+            title: 'orchestrator.run() records supervised process usage from injected dependencies',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand(delayedPassFixturePath, microtestProfile, {
                     ...createRunRequest(delayedPassFixturePath),
-                    measureResourceUsage: true,
+                    measureProcessUsage: true,
                     profile: 'microtest',
                     seed: { value: null }
                 }));
 
-                scope.require.defined(result.resourceUsage);
+                scope.require.defined(result.processUsage);
                 scope.assert.equal(result.summary.passed, 1);
                 scope.assert.equal(result.runnerErrors.length, 0);
 

@@ -13,8 +13,8 @@ The core reason is that benchmark suites need a richer model:
 - calibration
 - budgets
 
-The benchmark family should stay focused on **performance and
-resource-consumption** questions.
+The benchmark family should stay focused on **performance and process usage**
+questions.
 
 That includes:
 
@@ -22,7 +22,7 @@ That includes:
 - throughput
 - latency percentiles
 - responsiveness / jank
-- memory and resource usage
+- process usage, including memory
 - startup and cold-load cost
 - bundle-size and artifact-size budgets
 
@@ -33,7 +33,7 @@ It does **not** mean "any numeric scoring problem." For example:
 - quality or relevance leaderboards
 
 are outside the intended first-party benchmark scope unless they are clearly
-framed as performance/resource benchmarks.
+framed as performance or process usage benchmarks.
 
 ## Benchmark Design Consequences
 
@@ -526,8 +526,8 @@ Noise handling has three levels:
 - high-noise calibration may automatically reduce benchmark parallelism or
   switch to serial placement before measured samples begin
 
-Node APIs are the first source for portable noise and resource metadata, such
-as `os.availableParallelism()`, `os.loadavg()`, `os.freemem()`,
+Node APIs are the first source for portable host metadata and process usage,
+such as `os.availableParallelism()`, `os.loadavg()`, `os.freemem()`,
 `process.cpuUsage()`, `process.resourceUsage()`, and process memory APIs.
 Platform probes such as POSIX or Darwin tools may add detail when they are
 available, but their source and unavailable state must be recorded explicitly
@@ -651,8 +651,8 @@ level:
   required
 - Lighthouse-style adapters where page-flow auditing is the better fit
 
-The important conceptual point is that these are still **performance and
-resource-consumption** benchmarks. They belong in the benchmark family.
+The important conceptual point is that these are still **performance and process
+usage** benchmarks. They belong in the benchmark family.
 
 Relevant platform/tooling influences:
 

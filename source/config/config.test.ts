@@ -35,11 +35,11 @@ async function loadConfigValue(config: unknown): Promise<LoadedConfig> {
     return await loadConfigFromModule('overkill.config.js', configModule(config));
 }
 
-function assertDefaultMicrotestResourceUsage(scope: OverkillScope, config: LoadedConfig): void {
+function assertDefaultMicrotestProcessUsage(scope: OverkillScope, config: LoadedConfig): void {
     const profile = selectTestProfile('microtest', config);
 
     scope.require.defined(profile);
-    scope.assert.deepEqual(profile.resourceUsage, defaultMicrotestProfile().resourceUsage);
+    scope.assert.deepEqual(profile.processUsage, defaultMicrotestProfile().processUsage);
 }
 
 function assertProfileTiming(
@@ -227,7 +227,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.equal(config.configPath, resolvedConfigFixturePath('overkill.config.ts'));
                 scope.assert.deepEqual(config.loader, { sourceMaps: true, stripMode: 'strip-only' });
-                assertDefaultMicrotestResourceUsage(scope, config);
+                assertDefaultMicrotestProcessUsage(scope, config);
                 scope.assert.equal(config.reporters, null);
                 scope.assert.equal(config.runtimeStateDir, 'target/overkill-state');
 
@@ -250,7 +250,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() loads microtest resource usage policy',
+            title: 'loadConfig() loads microtest process usage policy',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -258,7 +258,7 @@ export const testNode = createOverkillSuite({
                     profiles: {
                         microtest: {
                             testFamily: 'microtest',
-                            resourceUsage: {
+                            processUsage: {
                                 measure: true,
                                 budgets: {
                                     activeResourceCount: 4,
@@ -277,7 +277,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(
                     profile,
                     defaultMicrotestProfile({
-                        resourceUsage: {
+                        processUsage: {
                             budgets: {
                                 activeResourceCount: 4,
                                 javaScriptEngineHeapBytes: 100,
@@ -303,7 +303,7 @@ export const testNode = createOverkillSuite({
                     profiles: {
                         microtest: {
                             testFamily: 'microtest',
-                            resourceUsage: {
+                            processUsage: {
                                 measure: true,
                                 samplingIntervalMilliseconds: 25
                             }
@@ -315,7 +315,7 @@ export const testNode = createOverkillSuite({
                                 processModel: 'in-process',
                                 scheduling: 'serial'
                             },
-                            resourceUsage: {
+                            processUsage: {
                                 measure: true,
                                 budgets: { residentSetBytes: null }
                             },
@@ -334,7 +334,7 @@ export const testNode = createOverkillSuite({
                             processModel: 'in-process',
                             scheduling: 'serial'
                         },
-                        resourceUsage: {
+                        processUsage: {
                             budgets: { residentSetBytes: null },
                             measure: true
                         },
@@ -388,7 +388,7 @@ export const testNode = createOverkillSuite({
                     profiles: {
                         safe: {
                             testFamily: 'microtest',
-                            resourceUsage: { measure: false }
+                            processUsage: { measure: false }
                         }
                     }
                 });
@@ -447,7 +447,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() rejects resource budgets without measurement',
+            title: 'loadConfig() rejects process budgets without measurement',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -456,7 +456,7 @@ export const testNode = createOverkillSuite({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
-                                resourceUsage: {
+                                processUsage: {
                                     budgets: { residentSetBytes: 200 }
                                 }
                             }
@@ -469,7 +469,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'loadConfig() rejects invalid resource usage numbers',
+            title: 'loadConfig() rejects invalid process usage numbers',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -478,7 +478,7 @@ export const testNode = createOverkillSuite({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
-                                resourceUsage: {
+                                processUsage: {
                                     measure: true,
                                     samplingIntervalMilliseconds: 0
                                 }
@@ -501,7 +501,7 @@ export const testNode = createOverkillSuite({
                         profiles: {
                             microtest: {
                                 testFamily: 'microtest',
-                                resourceUsage: {
+                                processUsage: {
                                     measure: true,
                                     budgets: {}
                                 },

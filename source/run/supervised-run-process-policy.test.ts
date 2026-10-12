@@ -4,14 +4,14 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
-import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
-import type { ResourceBudgets } from '../config/types.ts';
+import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
+import type { ProcessBudgets } from '../config/types.ts';
 import {
     crashError,
-    findResourceBudgetBreach,
-    resourceExhaustionError,
-    type ResourceBudgetBreach
-} from './supervised-run-resource-policy.ts';
+    findProcessBudgetBreach,
+    processExhaustionError,
+    type ProcessBudgetBreach
+} from './supervised-run-process-policy.ts';
 import { createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 
 const firstCaseId: CaseId = {
@@ -26,28 +26,28 @@ const secondCaseId: CaseId = {
     params: null,
     suite: []
 };
-const previousSample: ResourceUsageSnapshot = {
+const previousSample: ProcessUsageSnapshot = {
     activeResourceCount: 1,
     activeResourceTypes: [],
     capturedAtMicroseconds: 1_000_000,
     javaScriptEngineHeapBytes: 100,
     residentSetBytes: 100
 };
-const sample: ResourceUsageSnapshot = {
+const sample: ProcessUsageSnapshot = {
     activeResourceCount: 2,
     activeResourceTypes: [ 'Timeout' ],
     capturedAtMicroseconds: 2_000_000,
     javaScriptEngineHeapBytes: 200,
     residentSetBytes: 300
 };
-const noBudgetsExceeded: ResourceBudgets = {
+const noBudgetsExceeded: ProcessBudgets = {
     activeResourceCount: 2,
     javaScriptEngineHeapBytes: 200,
     residentSetBytes: 300,
     residentSetGrowthBytesPerSecond: 200
 };
 
-function noBudgets(): ResourceBudgets {
+function noBudgets(): ProcessBudgets {
     return {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,
@@ -58,8 +58,8 @@ function noBudgets(): ResourceBudgets {
 
 function assertBreach(
     scope: OverkillScope,
-    actual: ResourceBudgetBreach | null,
-    expected: ResourceBudgetBreach
+    actual: ProcessBudgetBreach | null,
+    expected: ProcessBudgetBreach
 ): void {
     scope.require.defined(actual);
     scope.assert.deepEqual(actual, expected);
@@ -83,19 +83,19 @@ function assertCaseId(scope: OverkillScope, actual: CaseId | null, expected: Cas
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/supervised-run-resource-policy.test.ts',
+    title: 'source/run/supervised-run-process-policy.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'findResourceBudgetBreach() selects the first exceeded resource budget',
+            title: 'findProcessBudgetBreach() selects the first exceeded process budget',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 assertBreach(
                     scope,
-                    findResourceBudgetBreach(
+                    findProcessBudgetBreach(
                         {
                             ...noBudgets(),
                             activeResourceCount: 1,
@@ -108,7 +108,7 @@ export const testNode = createOverkillSuite({
                 );
                 assertBreach(
                     scope,
-                    findResourceBudgetBreach(
+                    findProcessBudgetBreach(
                         {
                             ...noBudgets(),
                             residentSetGrowthBytesPerSecond: 150
@@ -118,14 +118,14 @@ export const testNode = createOverkillSuite({
                     ),
                     { budget: 150, metric: 'residentSetGrowthBytesPerSecond', observed: 200, sample }
                 );
-                scope.assert.equal(findResourceBudgetBreach(noBudgetsExceeded, sample, previousSample), null);
+                scope.assert.equal(findProcessBudgetBreach(noBudgetsExceeded, sample, previousSample), null);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'resource policy errors attribute active case boundaries',
+            title: 'process usage policy errors attribute active case boundaries',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
@@ -137,7 +137,7 @@ export const testNode = createOverkillSuite({
                     sample
                 };
 
-                scope.assert.deepEqual(resourceExhaustionError(breach, emptyState), {
+                scope.assert.deepEqual(processExhaustionError(breach, emptyState), {
                     attributedToAttempt: null,
                     attributedTo: null,
                     attributedToWork: null,
@@ -153,12 +153,12 @@ export const testNode = createOverkillSuite({
                         { label: 'observed', value: '2' },
                         { label: 'budget', value: '1' }
                     ],
-                    message: 'Resource budget exceeded: activeResourceCount observed 2, budget 1.',
-                    subtype: 'resource-exhaustion'
+                    message: 'Process budget exceeded: activeResourceCount observed 2, budget 1.',
+                    subtype: 'process-exhaustion'
                 });
-                assertCaseId(scope, resourceExhaustionError(breach, singleState).attributedTo, firstCaseId);
+                assertCaseId(scope, processExhaustionError(breach, singleState).attributedTo, firstCaseId);
                 assertCaseId(scope, crashError(singleState, 'Crashed.').attributedTo, firstCaseId);
-                scope.assert.equal(resourceExhaustionError(breach, multiState).attributedTo, null);
+                scope.assert.equal(processExhaustionError(breach, multiState).attributedTo, null);
                 scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
                     activeAttempts: [
                         { work: { case: firstCaseId, runtimes: [], workload: null }, attempt: { index: 0 } },

@@ -1,5 +1,5 @@
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
-import { crashError } from './supervised-run-resource-policy.ts';
+import { crashError } from './supervised-run-process-policy.ts';
 import type { SupervisedRunState } from './supervised-run-state.ts';
 
 export function recordChildProtocolFailure(

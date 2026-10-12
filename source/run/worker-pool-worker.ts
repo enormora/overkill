@@ -6,7 +6,7 @@ import {
     withProjectedFailurePreparation,
     acquireWorkerRunResources,
     completeWorkerResourceOwnerWork,
-    createWorkerResourceUsageTracker,
+    createWorkerProcessUsageTracker,
     disposeWorkerLaneLifecycle,
     disposeWorkerRunResources,
     laneResourceSession
@@ -57,10 +57,10 @@ import {
 
 type TimedAssignmentPlanTask = WorkerPoolAcquireRunResourcesTask | WorkerPoolRunTask;
 
-function workerResourceBudgets(command: WorkerPoolCommand): WorkerPoolCommand['resourceBudgets'] {
+function workerProcessBudgets(command: WorkerPoolCommand): WorkerPoolCommand['processBudgets'] {
     return {
-        activeResourceCount: command.resourceBudgets.activeResourceCount,
-        javaScriptEngineHeapBytes: command.resourceBudgets.javaScriptEngineHeapBytes,
+        activeResourceCount: command.processBudgets.activeResourceCount,
+        javaScriptEngineHeapBytes: command.processBudgets.javaScriptEngineHeapBytes,
         residentSetBytes: null,
         residentSetGrowthBytesPerSecond: null
     };
@@ -138,8 +138,8 @@ async function runAssignment(
                 outputRenderer: createPlainOutputRenderer(),
                 reporters: [ createWorkerPoolReporter(task) ],
                 retryPolicy: task.command.retryPolicy,
-                resourceBudgets: workerResourceBudgets(task.command),
-                resourceUsageTracker: createWorkerResourceUsageTracker(task.command),
+                processBudgets: workerProcessBudgets(task.command),
+                processUsageTracker: createWorkerProcessUsageTracker(task.command),
                 runtimePolicy: composeRunRuntimePolicies(
                     createRunPermissionRuntimePolicy(),
                     withProjectedFailurePreparation(resourceSession.runtimePolicy, task)

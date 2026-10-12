@@ -14,7 +14,7 @@ export type LoaderConfig = {
     readonly stripMode: 'strip-only';
 };
 
-export type ResourceBudgets = {
+export type ProcessBudgets = {
     readonly activeResourceCount: number | null;
     readonly javaScriptEngineHeapBytes: number | null;
     readonly residentSetBytes: number | null;
@@ -113,8 +113,8 @@ export type IntegrationExecution = IntegrationExecutionShape<
     WorkDistribution
 >;
 
-export type ResourceUsagePolicy = {
-    readonly budgets: ResourceBudgets;
+export type ProcessUsagePolicy = {
+    readonly budgets: ProcessBudgets;
     readonly measure: boolean;
     readonly samplingIntervalMilliseconds: number;
 };
@@ -147,7 +147,7 @@ export type MicrotestProfileConfig = {
     readonly execution: MicrotestExecution;
     readonly files: ProfileFiles | null;
     readonly reporters: readonly DefinedReporter[] | null;
-    readonly resourceUsage: ResourceUsagePolicy;
+    readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'microtest';
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
@@ -159,7 +159,7 @@ export type IntegrationProfileConfig = {
     readonly execution: IntegrationExecution;
     readonly files: ProfileFiles;
     readonly reporters: readonly DefinedReporter[] | null;
-    readonly resourceUsage: ResourceUsagePolicy;
+    readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'integration';
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
@@ -182,7 +182,7 @@ export type BenchmarkProfileConfig = {
     readonly execution: BenchmarkExecution;
     readonly files: ProfileFiles;
     readonly reporters: readonly DefinedReporter[] | null;
-    readonly resourceUsage: ResourceUsagePolicy;
+    readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'benchmark';
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;

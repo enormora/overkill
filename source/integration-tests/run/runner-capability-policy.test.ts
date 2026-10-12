@@ -53,12 +53,12 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
-        measureResourceUsage: null,
+        measureProcessUsage: null,
         order: 'seeded',
         paths,
         profile: 'microtest',
-        resourceBudgetOverrides: null,
-        resourceUsageSamplingIntervalMilliseconds: null,
+        processBudgetOverrides: null,
+        processUsageSamplingIntervalMilliseconds: null,
         seed: { value: 42n },
         selection: { kind: 'all' },
         shard: { index: 1, total: 1 },
@@ -95,7 +95,7 @@ function createRunConfig(
                 execution: { maxConcurrency: 5, processModel, scheduling },
                 files: null,
                 reporters: null,
-                resourceUsage: {
+                processUsage: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -143,7 +143,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): NormalizedConfig
                     include: [ integrationUnrestrictedRuntimeFixturePath ]
                 },
                 reporters: null,
-                resourceUsage: {
+                processUsage: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,

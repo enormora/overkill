@@ -41,17 +41,17 @@ export type {
     Config,
     ProjectIntegrationExecution,
     ProjectIntegrationProfileConfig,
-    ProjectMeasuredResourceUsage,
+    ProjectMeasuredProcessUsage,
     ProjectMicrotestExecution,
     ProjectMicrotestProfileConfig,
     ProjectProfileConfig,
     ProjectProfileFiles,
     ProjectProfilesConfig,
-    ProjectResourceBudgets,
-    ProjectResourceUsageConfig,
+    ProjectProcessBudgets,
+    ProjectProcessUsageConfig,
     ProjectTimingProfilePolicy,
     ProjectTimeoutConfig,
-    ProjectUnmeasuredResourceUsage
+    ProjectUnmeasuredProcessUsage
 } from '../../config/config.ts';
 
 export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';

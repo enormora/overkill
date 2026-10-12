@@ -4,8 +4,8 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import type { RunResourceUsageTracker } from '../engine/resource-usage.ts';
-import { createResourceUsageTracker } from './resource-usage.ts';
+import type { RunProcessUsageTracker } from '../engine/process-usage.ts';
+import { createProcessUsageTracker } from './process-usage.ts';
 
 function readSequence(values: readonly number[]): () => number {
     let index = 0;
@@ -18,8 +18,8 @@ function readSequence(values: readonly number[]): () => number {
     };
 }
 
-function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
-    return createResourceUsageTracker({
+function createEmptyProcessUsageTracker(): RunProcessUsageTracker {
+    return createProcessUsageTracker({
         readActiveResourceTypes() {
             return [];
         },
@@ -35,12 +35,12 @@ function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
     });
 }
 
-function createChangingResourceUsageTracker(
+function createChangingProcessUsageTracker(
     wallClock: DeterministicClock
-): RunResourceUsageTracker {
+): RunProcessUsageTracker {
     let activeResourceReadCount = 0;
 
-    return createResourceUsageTracker({
+    return createProcessUsageTracker({
         readActiveResourceTypes() {
             activeResourceReadCount += 1;
 
@@ -60,29 +60,29 @@ function createChangingResourceUsageTracker(
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/resource-usage.test.ts',
+    title: 'source/run/process-usage.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'resource usage tracker summarizes sampled memory and start/end active resources',
+            title: 'process usage tracker summarizes sampled memory and start/end active resources',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const tracker = createChangingResourceUsageTracker(wallClock);
+                const tracker = createChangingProcessUsageTracker(wallClock);
                 const observedActiveResourceCounts: number[] = [];
 
-                tracker.start(function recordSample(resourceSample) {
-                    observedActiveResourceCounts.push(resourceSample.activeResourceCount);
+                tracker.start(function recordSample(processUsageSample) {
+                    observedActiveResourceCounts.push(processUsageSample.activeResourceCount);
                 });
                 for (const milliseconds of [ 100, 100 ]) {
                     wallClock.advanceByMilliseconds(milliseconds);
                 }
-                const resourceUsage = tracker.finish();
+                const processUsage = tracker.finish();
 
-                scope.assert.deepEqual(resourceUsage, {
+                scope.assert.deepEqual(processUsage, {
                     activeResourceTypes: [ 'TCPServerWrap', 'Timeout', 'TTYWrap' ],
                     end: {
                         activeResourceCount: 3,
@@ -111,24 +111,24 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'resource usage tracker rejects invalid lifecycle calls',
+            title: 'process usage tracker rejects invalid lifecycle calls',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                const unfinishedTracker = createEmptyResourceUsageTracker();
-                const startedTracker = createEmptyResourceUsageTracker();
+                const unfinishedTracker = createEmptyProcessUsageTracker();
+                const startedTracker = createEmptyProcessUsageTracker();
 
                 startedTracker.start();
 
                 scope.assert.throws(function finishBeforeStart() {
                     unfinishedTracker.finish();
                 }, {
-                    message: 'Resource usage tracking must start before it can finish.'
+                    message: 'Process usage tracking must start before it can finish.'
                 });
                 scope.assert.throws(function startTwice() {
                     startedTracker.start();
                 }, {
-                    message: 'Resource usage tracking already started.'
+                    message: 'Process usage tracking already started.'
                 });
 
                 return scope.assert.collect();

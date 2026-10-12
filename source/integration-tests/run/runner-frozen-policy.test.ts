@@ -136,8 +136,8 @@ const changes = [
         loader: { sourceMaps: false, stripMode: 'strip-only' }
     },
     {
-        domain: 'resources',
-        config: { resourceUsage: { measure: true } },
+        domain: 'processUsage',
+        config: { processUsage: { measure: true } },
         loader: { sourceMaps: false, stripMode: 'strip-only' }
     },
     { domain: 'loader', config: {}, loader: { sourceMaps: true, stripMode: 'strip-only' } }

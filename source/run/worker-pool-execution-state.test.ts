@@ -15,7 +15,7 @@ import type {
 } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
-import { reportRunStart, startPoolResourceTracking } from './worker-pool-resource-tracking.ts';
+import { reportRunStart, startPoolProcessUsageTracking } from './worker-pool-process-usage-tracking.ts';
 import {
     createWorkerPoolPlacementTraceRecorder,
     type WorkerPoolRunRuntime,
@@ -220,7 +220,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
                 placementPlan: placementPlan(),
                 processModel: 'worker-pool',
                 profile: 'integration',
-                resourceUsagePolicy: {
+                processUsagePolicy: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -292,7 +292,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
         availableParallelism: 2,
-        createResourceUsageTracker: testOnlyDependency,
+        createProcessUsageTracker: testOnlyDependency,
         createSeed() {
             return 42n;
         },
@@ -371,7 +371,7 @@ export function fakeWorkerRuntime(collectedPlan: CollectedRunPlan): WorkerPoolRu
             return completion.result;
         },
         pool: createFakePool(1, false),
-        poolResourceUsageTracker: null,
+        poolProcessUsageTracker: null,
         placementTrace,
         get placementTraceEntries() {
             return placementTrace.entries();
@@ -445,7 +445,7 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
         ...runtime,
         attachments: null,
         activeTasks: new Set([ taskRun ]),
-        poolResourceUsageTracker: {
+        poolProcessUsageTracker: {
             finish: testOnlyDependency,
             start(recordSample) {
                 recordSample?.({
@@ -463,7 +463,7 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
                 ...runtime.resolvedRun.facts,
                 execution: {
                     ...runtime.resolvedRun.facts.execution,
-                    resourceUsagePolicy: {
+                    processUsagePolicy: {
                         budgets: {
                             activeResourceCount: null,
                             javaScriptEngineHeapBytes: null,
@@ -503,7 +503,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             ...testCaseMetadata,
-            title: 'worker-pool resource tracking stops active tasks on pool budget breach',
+            title: 'worker-pool process usage tracking stops active tasks on pool budget breach',
             async body(scope: OverkillScope) {
                 const activeTask = createTaskRun(createSupervisedRunState('first-failure-and-final'));
                 const runtime = budgetedRuntime(activeTask);
@@ -516,11 +516,11 @@ export const testNode = createOverkillSuite({
                     100
                 ));
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
-                await startPoolResourceTracking(runtime);
+                await startPoolProcessUsageTracking(runtime);
 
                 scope.assert.equal(runtime.terminalFailure.read(), true);
                 scope.assert.equal(activeTask.controller.signal.aborted, true);
-                scope.assert.equal(activeTask.state.perTestResults()[0]?.verdict, 'resource-exhausted');
+                scope.assert.equal(activeTask.state.perTestResults()[0]?.verdict, 'process-exhausted');
 
                 return scope.assert.collect();
             }

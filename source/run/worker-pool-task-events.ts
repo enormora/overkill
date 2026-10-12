@@ -7,7 +7,7 @@ import {
     type SupervisedCase,
     type ActiveSupervisedCase
 } from './supervised-run-state.ts';
-import { crashError } from './supervised-run-resource-policy.ts';
+import { crashError } from './supervised-run-process-policy.ts';
 import type { PlacementRecoveryDecision } from './placement-trace.ts';
 import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
 import {

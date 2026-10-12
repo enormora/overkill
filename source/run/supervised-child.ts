@@ -3,7 +3,7 @@ import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type {
     RunResult,
     RunnerError,
-    RunResourceUsageTracker,
+    RunProcessUsageTracker,
     TestPlan
 } from './run-engine-primitives.ts';
 import {
@@ -74,26 +74,26 @@ export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly validatePermissionHost: (command: SupervisedChildCommand) => void;
 };
 
-type SupervisedChildResourceUsageOptions = {
+type SupervisedChildProcessUsageOptions = {
     readonly samplingIntervalMilliseconds: number;
 };
 
 export type SupervisedChildDependencies = {
-    readonly createResourceUsageTracker: (
+    readonly createProcessUsageTracker: (
         wallClock: Clock,
-        options: SupervisedChildResourceUsageOptions
-    ) => RunResourceUsageTracker;
+        options: SupervisedChildProcessUsageOptions
+    ) => RunProcessUsageTracker;
     readonly createClock: () => Clock;
 };
 
-function createForwardingResourceUsageTracker(
+function createForwardingProcessUsageTracker(
     command: SupervisedRunCommand,
     host: SupervisedChildHost,
     dependencies: SupervisedChildDependencies,
     wallClock: Clock
-): RunResourceUsageTracker {
-    const tracker = dependencies.createResourceUsageTracker(wallClock, {
-        samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
+): RunProcessUsageTracker {
+    const tracker = dependencies.createProcessUsageTracker(wallClock, {
+        samplingIntervalMilliseconds: command.processUsageSamplingIntervalMilliseconds
     });
 
     return {
@@ -120,7 +120,7 @@ function createEmptyAssignmentResult(
         {
             completedAtMicroseconds: Number(wallClock.currentMonotonicMicroseconds),
             planStatus: 'empty-selection',
-            resourceUsage: null,
+            processUsage: null,
             startedAtMicroseconds,
             testExecutionWallTimeMicroseconds: 0
         }
@@ -245,8 +245,8 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
         outputRenderer: createPlainOutputRenderer(),
         reporters: [ createSupervisedChildReporter(input.host) ],
         retryPolicy: input.command.retryPolicy,
-        resourceBudgets: input.command.resourceBudgets,
-        resourceUsageTracker: createForwardingResourceUsageTracker(
+        processBudgets: input.command.processBudgets,
+        processUsageTracker: createForwardingProcessUsageTracker(
             input.command,
             input.host,
             input.dependencies,

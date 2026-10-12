@@ -4,7 +4,7 @@ import type { TestPlan } from '../engine/test-plan.ts';
 import type { LoadedConfig } from '../config/config.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { runCaseFactsFromTestPlan } from './run-facts.ts';
-import { resolveResourceUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
+import { resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
 import { resultWithTimingCollection } from './run-timing-collection.ts';
 import type { RunFacts, RunRequest } from './run-types.ts';
 import { selectTestProfile } from './test-profile.ts';
@@ -33,12 +33,12 @@ function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunReque
             selectors: []
         },
         execution: { mode: 'profile-default' },
-        measureResourceUsage: null,
+        measureProcessUsage: null,
         order: 'seeded',
         paths: [],
         profile: profileName,
-        resourceBudgetOverrides: null,
-        resourceUsageSamplingIntervalMilliseconds: null,
+        processBudgetOverrides: null,
+        processUsageSamplingIntervalMilliseconds: null,
         seed,
         selection: { kind: 'all' },
         shard: {
@@ -100,7 +100,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             placementPlan: null,
             processModel: 'in-process',
             profile: input.profileName,
-            resourceUsagePolicy: resolveResourceUsagePolicy(request, profile),
+            processUsagePolicy: resolveProcessUsagePolicy(request, profile),
             scheduling: profile.execution.scheduling,
             testFamily: profile.testFamily,
             retries: profile.testFamily === 'integration' ? profile.retries : null,

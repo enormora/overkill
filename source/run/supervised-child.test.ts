@@ -4,7 +4,7 @@ import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type RunnerError,
-    type RunResourceUsageTracker,
+    type RunProcessUsageTracker,
     type TestPlan,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
@@ -53,10 +53,10 @@ function installNoPolicyRestriction(): () => void {
     };
 }
 
-function createEmptyResourceUsageTracker(): RunResourceUsageTracker {
+function createEmptyProcessUsageTracker(): RunProcessUsageTracker {
     return {
         finish() {
-            throw new Error('Supervised child test does not finish resource usage tracking.');
+            throw new Error('Supervised child test does not finish process usage tracking.');
         },
         start() {
             return undefined;
@@ -70,7 +70,7 @@ function createTestClock(): DeterministicClock {
 
 function supervisedChildDependencies(): SupervisedChildDependencies {
     return {
-        createResourceUsageTracker: createEmptyResourceUsageTracker,
+        createProcessUsageTracker: createEmptyProcessUsageTracker,
         createClock: createTestClock
     };
 }
@@ -88,13 +88,13 @@ function command(kind: 'collect' | 'run', path: string): SupervisedChildCommand 
         maxConcurrency: 5,
         kind,
         paths: [ path ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 10,
+        processUsageSamplingIntervalMilliseconds: 10,
         root: { annotations: {}, controls: {}, title: cwd },
         scheduling: 'concurrent',
         testFamily: 'microtest',

@@ -1,4 +1,4 @@
-import { validateResourceUsagePolicy } from '../config/validation.ts';
+import { validateProcessUsagePolicy } from '../config/validation.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import {
     executeEmptyShardRun
@@ -30,7 +30,7 @@ export async function executeInProcessResolvedRun(
     dependencies: RunOrchestratorDependencies,
     options: LocalExecutionOptions
 ): Promise<RunResult> {
-    validateResourceUsagePolicy(resolvedRun.facts.execution.resourceUsagePolicy);
+    validateProcessUsagePolicy(resolvedRun.facts.execution.processUsagePolicy);
 
     if (resolvedRun.plan.kind === 'empty-shard') {
         return await executeEmptyShardRun(

@@ -1,7 +1,7 @@
 import { createClock } from '@enormora/clock';
 import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
 import { resourcePreparationError } from './resource-failure-preparation.ts';
-import type { TestRuntimePolicy, RunnerError, RunResourceUsageTracker, TestPlanCase } from './run-engine-primitives.ts';
+import type { TestRuntimePolicy, RunnerError, RunProcessUsageTracker, TestPlanCase } from './run-engine-primitives.ts';
 import {
     acquireResourceLifecycleScopes,
     createResourceLifecycleSession,
@@ -10,7 +10,7 @@ import {
 } from './resource-lifecycle.ts';
 import { resourceLifecycleBoundaryUseCounts } from './resource-lifecycle-boundaries.ts';
 import type { ResourceWrapperStep } from './resource-lifecycle-composition.ts';
-import { createNodeResourceUsageTracker } from './resource-usage.ts';
+import { createNodeProcessUsageTracker } from './process-usage.ts';
 import type {
     WorkerPoolAcquireRunResourcesTask,
     WorkerPoolCommand,
@@ -38,9 +38,9 @@ const laneDisposalScopes = new Set([ 'per-case', 'per-file', 'per-suite' ] as co
 const runResourceOwners = new Map<string, ResourceLifecycleSession>();
 const laneResourceSessions = new Map<string, ResourceLifecycleSession>();
 
-export function createWorkerResourceUsageTracker(command: WorkerPoolCommand): RunResourceUsageTracker {
-    return createNodeResourceUsageTracker(createClock(), {
-        samplingIntervalMilliseconds: command.resourceUsageSamplingIntervalMilliseconds
+export function createWorkerProcessUsageTracker(command: WorkerPoolCommand): RunProcessUsageTracker {
+    return createNodeProcessUsageTracker(createClock(), {
+        samplingIntervalMilliseconds: command.processUsageSamplingIntervalMilliseconds
     });
 }
 

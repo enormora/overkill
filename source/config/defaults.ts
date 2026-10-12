@@ -2,7 +2,7 @@ import type {
     CoveragePolicy,
     MaxConcurrency,
     MicrotestExecution,
-    ResourceUsagePolicy,
+    ProcessUsagePolicy,
     TimingProfilePolicy,
     TimeoutPolicy,
     WorkerPoolAssignmentPolicy,
@@ -21,7 +21,7 @@ export function normalizedMaxConcurrency(
 }
 
 export const defaultConfigFileNames = [ 'overkill.config.ts', 'overkill.config.js' ];
-export const defaultResourceUsageSamplingIntervalMilliseconds = 100;
+export const defaultProcessUsageSamplingIntervalMilliseconds = 100;
 const defaultMicrotestCollectionTimeoutMilliseconds = 1000;
 const defaultMicrotestHardTimeoutMilliseconds = 1000;
 const defaultMicrotestTimeoutMilliseconds = 500;
@@ -36,7 +36,7 @@ export const defaultLoader = {
     stripMode: 'strip-only'
 } as const;
 
-export const defaultResourceUsagePolicy: ResourceUsagePolicy = {
+export const defaultProcessUsagePolicy: ProcessUsagePolicy = {
     budgets: {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,
@@ -44,7 +44,7 @@ export const defaultResourceUsagePolicy: ResourceUsagePolicy = {
         residentSetGrowthBytesPerSecond: null
     },
     measure: false,
-    samplingIntervalMilliseconds: defaultResourceUsageSamplingIntervalMilliseconds
+    samplingIntervalMilliseconds: defaultProcessUsageSamplingIntervalMilliseconds
 };
 
 export const defaultTimingProfilePolicy: TimingProfilePolicy = {

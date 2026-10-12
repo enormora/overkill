@@ -178,7 +178,7 @@ Source: [Runtime Behavior § Pending-Unit Splitting](../architecture/runtime-beh
 ## Runner Profile
 
 A project-owned run target in configuration. A profile has a required
-`testFamily` and may define discovery, reporters, resource usage policy,
+`testFamily` and may define discovery, reporters, process usage policy,
 timeouts, coverage policy, process model, and scheduling. Users select a
 profile per run via CLI or programmatic request. Global configuration may
 provide fallback reporters, but profile reporters replace them when present.
@@ -224,7 +224,7 @@ Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-r
 The reporter-facing category for a test run. Verdicts are derived by
 orchestration from `TestOutcome` plus runner/error context. One additional
 common verdict is `crashed`, where the engine never produced an outcome.
-Another is `resource-exhausted`, where an enforced resource budget was
+Another is `process-exhausted`, where an enforced process budget was
 breached while the test was active.
 
 Source: [Assertions And Results § Protocol Layer](../authoring/assertions-and-results.md#protocol-layer-structured-outcomes), [Failure Artifacts](../authoring/failure-artifacts.md),
@@ -482,22 +482,22 @@ before aborting with a runner error.
 
 Source: [Runtime Behavior § Process Crash Handling](../architecture/runtime-behavior.md#process-crash-handling).
 
-## Resource Budget
+## Process Budget
 
-A per-profile ceiling for runtime resources such as JavaScript engine heap,
-resident set size, resident-set growth, or active resource count. Node-first
-resource budgets are enforced strongly in supervised process-boundary profiles
+A per-profile ceiling for process usage such as JavaScript engine heap,
+resident set size, resident-set growth, or active Node resource count. Node-first
+process budgets are enforced strongly in supervised process-boundary profiles
 and on a best-effort basis in in-process profiles.
 
-Source: [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
+Source: [Runtime Behavior § Process Budgets](../architecture/runtime-behavior.md#process-budgets).
 
-## Resource Exhaustion
+## Process Exhaustion
 
 A distinct test verdict and runner-error subtype used when an active test
-exceeds an enforced resource budget. It is not an assertion failure and not a
+exceeds an enforced process budget. It is not an assertion failure and not a
 timeout.
 
-Source: [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets), [Failure Artifacts § Resource Exhaustion Artifacts](../authoring/failure-artifacts.md#resource-exhaustion-artifacts).
+Source: [Runtime Behavior § Process Budgets](../architecture/runtime-behavior.md#process-budgets), [Failure Artifacts § Process Exhaustion Artifacts](../authoring/failure-artifacts.md#process-exhaustion-artifacts).
 
 ## Attribution Drift
 

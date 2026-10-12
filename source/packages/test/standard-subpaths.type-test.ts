@@ -33,7 +33,7 @@ import type {
     ProjectProfileConfig,
     ProjectBenchmarkProfileConfig,
     ProjectProfileFiles,
-    ProjectResourceBudgets
+    ProjectProcessBudgets
 } from './config.entry-point.ts';
 import type {
     BriefReporterSinks,
@@ -172,7 +172,7 @@ describe('@overkill-dev/test standard subpaths', function () {
         >();
         expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
         expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
-        expect<keyof ProjectResourceBudgets>().type.toBe<
+        expect<keyof ProjectProcessBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
         >();
     });

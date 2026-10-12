@@ -4,8 +4,8 @@ import type {
     ProfileConfig,
     ProfileFiles,
     LoaderConfig,
-    ResourceBudgets,
-    ResourceUsagePolicy,
+    ProcessBudgets,
+    ProcessUsagePolicy,
     TimingProfilePolicy,
     TimeoutPolicy,
     MicrotestExecution,
@@ -28,18 +28,18 @@ function copyLoaderConfig(loader: LoaderConfig): LoaderConfig {
     };
 }
 
-export function copyResourceBudgets(resourceBudgets: ResourceBudgets): ResourceBudgets {
+export function copyProcessBudgets(processBudgets: ProcessBudgets): ProcessBudgets {
     return {
-        activeResourceCount: resourceBudgets.activeResourceCount,
-        javaScriptEngineHeapBytes: resourceBudgets.javaScriptEngineHeapBytes,
-        residentSetBytes: resourceBudgets.residentSetBytes,
-        residentSetGrowthBytesPerSecond: resourceBudgets.residentSetGrowthBytesPerSecond
+        activeResourceCount: processBudgets.activeResourceCount,
+        javaScriptEngineHeapBytes: processBudgets.javaScriptEngineHeapBytes,
+        residentSetBytes: processBudgets.residentSetBytes,
+        residentSetGrowthBytesPerSecond: processBudgets.residentSetGrowthBytesPerSecond
     };
 }
 
-function copyResourceUsagePolicy(policy: ResourceUsagePolicy): ResourceUsagePolicy {
+function copyProcessUsagePolicy(policy: ProcessUsagePolicy): ProcessUsagePolicy {
     return {
-        budgets: copyResourceBudgets(policy.budgets),
+        budgets: copyProcessBudgets(policy.budgets),
         measure: policy.measure,
         samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
     };
@@ -204,7 +204,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
             execution: copyBenchmarkExecution(profile.execution),
             files: copyProfileFiles(profile.files),
             reporters: copyReporters(profile.reporters),
-            resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
+            processUsage: copyProcessUsagePolicy(profile.processUsage),
             testFamily: profile.testFamily,
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
@@ -218,7 +218,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
             files: copyIntegrationFiles(profile.files),
             reporters: copyReporters(profile.reporters),
             retries: profile.retries === null ? null : { ...profile.retries },
-            resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
+            processUsage: copyProcessUsagePolicy(profile.processUsage),
             testFamily: profile.testFamily,
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
@@ -230,7 +230,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
         execution: copyMicrotestExecution(profile.execution),
         files: profile.files === null ? null : copyProfileFiles(profile.files),
         reporters: copyReporters(profile.reporters),
-        resourceUsage: copyResourceUsagePolicy(profile.resourceUsage),
+        processUsage: copyProcessUsagePolicy(profile.processUsage),
         testFamily: profile.testFamily,
         timings: copyTimingProfilePolicy(profile.timings),
         timeouts: copyTimeoutPolicy(profile.timeouts)

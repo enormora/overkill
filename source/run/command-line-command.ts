@@ -13,7 +13,7 @@ export const commandLineExitCodes = Object.freeze({
     internalCrash: 70,
     noTestsCollected: 4,
     pass: 0,
-    resourceExhaustion: 5,
+    processExhaustion: 5,
     runnerError: 2,
     testFailure: 1
 });
@@ -169,17 +169,17 @@ function formatErrorDiagnostics(label: string, error: unknown): readonly string[
     ];
 }
 
-function hasResourceExhaustion(result: RunResult): boolean {
-    return result.runnerErrors.some(function isResourceExhaustion(error) {
-        return error.subtype === 'resource-exhaustion';
+function hasProcessExhaustion(result: RunResult): boolean {
+    return result.runnerErrors.some(function isProcessExhaustion(error) {
+        return error.subtype === 'process-exhaustion';
     });
 }
 
 const exitCodeRules: readonly ExitCodeRule[] = [
     {
-        exitCode: commandLineExitCodes.resourceExhaustion,
+        exitCode: commandLineExitCodes.processExhaustion,
         matches(result) {
-            return hasResourceExhaustion(result) || result.summary.resourceExhausted > 0;
+            return hasProcessExhaustion(result) || result.summary.processExhausted > 0;
         }
     },
     {

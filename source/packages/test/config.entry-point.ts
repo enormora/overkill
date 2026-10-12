@@ -14,16 +14,16 @@ export type {
     ProjectIntegrationExecution,
     ProjectIntegrationProfileConfig,
     ProjectBenchmarkProfileConfig,
-    ProjectMeasuredResourceUsage,
+    ProjectMeasuredProcessUsage,
     ProjectMicrotestExecution,
     ProjectMicrotestProfileConfig,
     ProjectProfileConfig,
     ProjectProfileFiles,
     ProjectProfilesConfig,
-    ProjectResourceBudgets,
-    ProjectResourceUsageConfig,
+    ProjectProcessBudgets,
+    ProjectProcessUsageConfig,
     ProjectTimeoutConfig,
-    ProjectUnmeasuredResourceUsage
+    ProjectUnmeasuredProcessUsage
 } from '../run/config.entry-point.ts';
 
 export type {

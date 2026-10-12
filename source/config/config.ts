@@ -16,15 +16,15 @@ import {
     type ProjectCoverageThresholds as ParsedProjectCoverageThresholds,
     type ProjectIntegrationExecution as ParsedProjectIntegrationExecution,
     type ProjectIntegrationProfileConfig as ParsedProjectIntegrationProfileConfig,
-    type ProjectMeasuredResourceUsage as ParsedProjectMeasuredResourceUsage,
+    type ProjectMeasuredProcessUsage as ParsedProjectMeasuredProcessUsage,
     type ProjectMicrotestExecution as ParsedProjectMicrotestExecution,
     type ProjectMicrotestProfileConfig as ParsedProjectMicrotestProfileConfig,
     type ProjectProfileFiles as ParsedProjectProfileFiles,
-    type ProjectResourceBudgets as ParsedProjectResourceBudgets,
-    type ProjectResourceUsageConfig as ParsedProjectResourceUsageConfig,
+    type ProjectProcessBudgets as ParsedProjectProcessBudgets,
+    type ProjectProcessUsageConfig as ParsedProjectProcessUsageConfig,
     type ProjectTimingProfilePolicy as ParsedProjectTimingProfilePolicy,
     type ProjectTimeoutConfig as ParsedProjectTimeoutConfig,
-    type ProjectUnmeasuredResourceUsage as ParsedProjectUnmeasuredResourceUsage
+    type ProjectUnmeasuredProcessUsage as ParsedProjectUnmeasuredProcessUsage
 } from './schema.ts';
 import type {
     BenchmarkExecution,
@@ -36,8 +36,8 @@ import type {
     ProfilesConfig,
     NormalizedConfig,
     ConfigLoadRequest as ConfigLoaderRequest,
-    ResourceBudgets,
-    ResourceUsagePolicy,
+    ProcessBudgets,
+    ProcessUsagePolicy,
     TimingProfilePolicy,
     TimeoutPolicy,
     WorkerPoolAssignmentPolicy,
@@ -63,8 +63,8 @@ import {
     defaultLoader,
     normalizeMicrotestExecution,
     normalizedMaxConcurrency,
-    defaultResourceUsagePolicy,
-    defaultResourceUsageSamplingIntervalMilliseconds,
+    defaultProcessUsagePolicy,
+    defaultProcessUsageSamplingIntervalMilliseconds,
     defaultTimingProfilePolicy,
     defaultTimeoutPolicy,
     defaultWorkerLifecycle,
@@ -86,7 +86,7 @@ export type ProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
     readonly execution?: ProjectIntegrationExecution | undefined;
     readonly files: ParsedProjectIntegrationProfileConfig['files'];
     readonly reporters?: ParsedProjectIntegrationProfileConfig['reporters'];
-    readonly resourceUsage?: ParsedProjectIntegrationProfileConfig['resourceUsage'];
+    readonly processUsage?: ParsedProjectIntegrationProfileConfig['processUsage'];
     readonly testFamily: ParsedProjectIntegrationProfileConfig['testFamily'];
     readonly timings?: ParsedProjectIntegrationProfileConfig['timings'];
     readonly timeouts?: ParsedProjectIntegrationProfileConfig['timeouts'];
@@ -101,10 +101,10 @@ export type ProjectProfileFiles = ParsedProjectProfileFiles;
 type ProjectTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
 export type ProjectProfileConfig = ProjectBenchmarkProfileConfig | ProjectTestProfileConfig;
 export type ProjectProfilesConfig = Readonly<Record<string, ProjectProfileConfig>>;
-export type ProjectResourceBudgets = ParsedProjectResourceBudgets;
-export type ProjectMeasuredResourceUsage = ParsedProjectMeasuredResourceUsage;
-export type ProjectUnmeasuredResourceUsage = ParsedProjectUnmeasuredResourceUsage;
-export type ProjectResourceUsageConfig = ParsedProjectResourceUsageConfig;
+export type ProjectProcessBudgets = ParsedProjectProcessBudgets;
+export type ProjectMeasuredProcessUsage = ParsedProjectMeasuredProcessUsage;
+export type ProjectUnmeasuredProcessUsage = ParsedProjectUnmeasuredProcessUsage;
+export type ProjectProcessUsageConfig = ParsedProjectProcessUsageConfig;
 export type ProjectTimingProfilePolicy = ParsedProjectTimingProfilePolicy;
 export type ProjectTimeoutConfig = ParsedProjectTimeoutConfig;
 export type Config = {
@@ -215,16 +215,16 @@ function normalizeBudgetValue(value: number | null | undefined): number | null {
     return value ?? null;
 }
 
-function normalizeResourceBudgets(resourceBudgets: ProjectResourceBudgets | undefined): ResourceBudgets {
+function normalizeProcessBudgets(processBudgets: ProjectProcessBudgets | undefined): ProcessBudgets {
     return {
-        activeResourceCount: normalizeBudgetValue(resourceBudgets?.activeResourceCount),
-        javaScriptEngineHeapBytes: normalizeBudgetValue(resourceBudgets?.javaScriptEngineHeapBytes),
-        residentSetBytes: normalizeBudgetValue(resourceBudgets?.residentSetBytes),
-        residentSetGrowthBytesPerSecond: normalizeBudgetValue(resourceBudgets?.residentSetGrowthBytesPerSecond)
+        activeResourceCount: normalizeBudgetValue(processBudgets?.activeResourceCount),
+        javaScriptEngineHeapBytes: normalizeBudgetValue(processBudgets?.javaScriptEngineHeapBytes),
+        residentSetBytes: normalizeBudgetValue(processBudgets?.residentSetBytes),
+        residentSetGrowthBytesPerSecond: normalizeBudgetValue(processBudgets?.residentSetGrowthBytesPerSecond)
     };
 }
 
-function disabledResourceBudgets(): ResourceBudgets {
+function disabledProcessBudgets(): ProcessBudgets {
     return {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,
@@ -233,52 +233,52 @@ function disabledResourceBudgets(): ResourceBudgets {
     };
 }
 
-function copyResourceBudgets(resourceBudgets: ResourceBudgets): ResourceBudgets {
+function copyProcessBudgets(processBudgets: ProcessBudgets): ProcessBudgets {
     return {
-        activeResourceCount: resourceBudgets.activeResourceCount,
-        javaScriptEngineHeapBytes: resourceBudgets.javaScriptEngineHeapBytes,
-        residentSetBytes: resourceBudgets.residentSetBytes,
-        residentSetGrowthBytesPerSecond: resourceBudgets.residentSetGrowthBytesPerSecond
+        activeResourceCount: processBudgets.activeResourceCount,
+        javaScriptEngineHeapBytes: processBudgets.javaScriptEngineHeapBytes,
+        residentSetBytes: processBudgets.residentSetBytes,
+        residentSetGrowthBytesPerSecond: processBudgets.residentSetGrowthBytesPerSecond
     };
 }
 
-function copyResourceUsagePolicy(policy: ResourceUsagePolicy): ResourceUsagePolicy {
+function copyProcessUsagePolicy(policy: ProcessUsagePolicy): ProcessUsagePolicy {
     return {
-        budgets: copyResourceBudgets(policy.budgets),
+        budgets: copyProcessBudgets(policy.budgets),
         measure: policy.measure,
         samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
     };
 }
 
-function normalizeUnmeasuredResourceUsage(): ResourceUsagePolicy {
+function normalizeUnmeasuredProcessUsage(): ProcessUsagePolicy {
     return {
-        budgets: disabledResourceBudgets(),
+        budgets: disabledProcessBudgets(),
         measure: false,
-        samplingIntervalMilliseconds: defaultResourceUsageSamplingIntervalMilliseconds
+        samplingIntervalMilliseconds: defaultProcessUsageSamplingIntervalMilliseconds
     };
 }
 
-function normalizeMeasuredResourceUsage(profile: ProjectMeasuredResourceUsage): ResourceUsagePolicy {
+function normalizeMeasuredProcessUsage(profile: ProjectMeasuredProcessUsage): ProcessUsagePolicy {
     return {
-        budgets: normalizeResourceBudgets(profile.budgets),
+        budgets: normalizeProcessBudgets(profile.budgets),
         measure: true,
         samplingIntervalMilliseconds: profile.samplingIntervalMilliseconds ??
-            defaultResourceUsageSamplingIntervalMilliseconds
+            defaultProcessUsageSamplingIntervalMilliseconds
     };
 }
 
-function normalizeResourceUsage(
-    profile: ProjectResourceUsageConfig | undefined
-): ResourceUsagePolicy {
+function normalizeProcessUsage(
+    profile: ProjectProcessUsageConfig | undefined
+): ProcessUsagePolicy {
     if (profile === undefined) {
-        return copyResourceUsagePolicy(defaultResourceUsagePolicy);
+        return copyProcessUsagePolicy(defaultProcessUsagePolicy);
     }
 
     if (profile.measure !== true) {
-        return normalizeUnmeasuredResourceUsage();
+        return normalizeUnmeasuredProcessUsage();
     }
 
-    return normalizeMeasuredResourceUsage(profile);
+    return normalizeMeasuredProcessUsage(profile);
 }
 
 function normalizeTimings(timings: ProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
@@ -396,7 +396,7 @@ function normalizeMicrotestProfile(
         execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeProfileFiles(profile.files),
         reporters: normalizeReporters(profile.reporters),
-        resourceUsage: normalizeResourceUsage(profile.resourceUsage),
+        processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'microtest',
         timings: normalizeTimings(profile.timings),
         timeouts
@@ -421,7 +421,7 @@ function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): 
             artifacts: profile.retries.artifacts ?? 'first-failure-and-final',
             maxAttempts: profile.retries.maxAttempts
         },
-        resourceUsage: normalizeResourceUsage(profile.resourceUsage),
+        processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'integration',
         timings: normalizeTimings(profile.timings),
         timeouts
@@ -457,7 +457,7 @@ function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): Benc
         execution,
         files,
         reporters: normalizeReporters(profile.reporters),
-        resourceUsage: normalizeResourceUsage(profile.resourceUsage),
+        processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'benchmark',
         timings: normalizeTimings(profile.timings),
         timeouts

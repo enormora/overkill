@@ -1,8 +1,8 @@
 import type { NormalizedExecuteOptions } from './execution-options.ts';
 import {
-    executeResourceTrackedCases,
-    type ResourceTrackedCaseResult
-} from './execution-resource-tracked-cases.ts';
+    executeCasesAndMeasureProcessUsage,
+    type ProcessUsageCaseResult
+} from './execution-process-tracked-cases.ts';
 import { createExecutionSupervision } from './execution-supervision.ts';
 import {
     executeTestPlanCasesWithMode,
@@ -13,12 +13,12 @@ import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { TestPlan } from './test-plan.ts';
 import type { ExecutionCaseDependencies } from './case-attempt-execution.ts';
 
-export async function executeTestPlanCasesAndMeasureResourceUsage(
+export async function executeTestPlanCasesAndMeasureProcessUsage(
     testPlan: TestPlan,
     options: NormalizedExecuteOptions,
     dependencies: ExecutionCaseDependencies,
     reporterDelivery: ReporterDelivery
-): Promise<ResourceTrackedCaseResult<ExecutedTestPlan>> {
+): Promise<ProcessUsageCaseResult<ExecutedTestPlan>> {
     const supervision = createExecutionSupervision();
     const input: ExecuteTestPlanCasesInput = {
         context: { dependencies, reporterDelivery },
@@ -27,5 +27,5 @@ export async function executeTestPlanCasesAndMeasureResourceUsage(
         testPlan
     };
 
-    return await executeResourceTrackedCases(input, executeTestPlanCasesWithMode);
+    return await executeCasesAndMeasureProcessUsage(input, executeTestPlanCasesWithMode);
 }

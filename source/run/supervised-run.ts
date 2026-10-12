@@ -43,7 +43,7 @@ import {
 } from './run-timing-collection.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
-type ResourceUsageSnapshot = NonNullable<ReturnType<SupervisedRunRuntime['previousSample']['read']>>;
+type ProcessUsageSnapshot = NonNullable<ReturnType<SupervisedRunRuntime['previousSample']['read']>>;
 type RunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
 
 type SupervisedCollectionResult = {
@@ -79,7 +79,7 @@ type SupervisedLiveRun = {
     readonly dependencies: RunOrchestratorDependencies;
     readonly finishedSignal: Signal;
     readonly finalizeResult: RunResultFinalizer;
-    readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
+    readonly previousSample: StoredRunValue<ProcessUsageSnapshot | null>;
     readonly runtime: StoredRunValue<SupervisedRunRuntime | null>;
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
@@ -163,7 +163,7 @@ async function createLiveRun(
         dependencies,
         finishedSignal: createSignal(),
         finalizeResult: options.finalizeResult,
-        previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
+        previousSample: createStoredRunValue<ProcessUsageSnapshot | null>(null),
         runtime: createStoredRunValue<SupervisedRunRuntime | null>(null),
         state,
         terminalFailure,

@@ -73,12 +73,12 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
             },
         maxConcurrency: runtime.resolvedRun.facts.execution.maxConcurrency,
         paths: unitPaths(unit),
-        resourceBudgets: runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
-        resourceUsageSamplingIntervalMilliseconds: runtime
+        processBudgets: runtime.resolvedRun.facts.execution.processUsagePolicy.budgets,
+        processUsageSamplingIntervalMilliseconds: runtime
             .resolvedRun
             .facts
             .execution
-            .resourceUsagePolicy
+            .processUsagePolicy
             .samplingIntervalMilliseconds,
         root: runCollectionRootFromResolvedPlan(runtime.resolvedRun.plan),
         scheduling: unit.scheduling,

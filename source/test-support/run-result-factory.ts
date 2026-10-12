@@ -20,7 +20,7 @@ import {
     type TestOutcome,
     type TestVerdict
 } from '../engine/run-result.ts';
-import type { RunResourceUsage } from '../engine/resource-usage.ts';
+import type { RunProcessUsage } from '../engine/process-usage.ts';
 import { summaryRunTimings, type RunTimings } from '../engine/run-timings.ts';
 
 type FailedCheckOverrides = {
@@ -108,7 +108,7 @@ type RunResultOverrides = {
     readonly orphans?: readonly OrphanedNodeOverrides[];
     readonly perTest?: readonly PerTestResultOverrides[];
     readonly planStatus?: RunResult['planStatus'];
-    readonly resourceUsage?: RunResourceUsage | null;
+    readonly processUsage?: RunProcessUsage | null;
     readonly runnerErrors?: readonly RunnerErrorOverrides[];
     readonly status?: RunResult['status'];
     readonly summary?: Partial<RunSummary>;
@@ -116,7 +116,7 @@ type RunResultOverrides = {
     readonly totalWallTimeMicroseconds?: number;
 };
 
-type RunResultDefaultValues = Pick<RunResult, 'artifacts' | 'bySuite' | 'planStatus' | 'resourceUsage' | 'timings'>;
+type RunResultDefaultValues = Pick<RunResult, 'artifacts' | 'bySuite' | 'planStatus' | 'processUsage' | 'timings'>;
 
 const defaultLocation: KnownSourceLocation = {
     column: null,
@@ -133,7 +133,7 @@ const defaultSummary: RunSummary = {
     inconclusive: 0,
     passed: 0,
     planned: 0,
-    resourceExhausted: 0,
+    processExhausted: 0,
     runtimePolicy: 0,
     skipped: 0
 };
@@ -142,7 +142,7 @@ const defaultRunResultValues: RunResultDefaultValues = {
     artifacts: [],
     bySuite: {},
     planStatus: 'planned',
-    resourceUsage: null,
+    processUsage: null,
     timings: summaryRunTimings({
         testExecutionWallTimeMicroseconds: 0,
         totalWallTimeMicroseconds: 0
@@ -436,7 +436,7 @@ function buildRunResult(overrides: RunResultOverrides = {}): RunResult {
         orphans: buildOrphanedNodes(overrides.orphans),
         perTest: buildPerTestResults(overrides.perTest),
         planStatus: values.planStatus,
-        resourceUsage: values.resourceUsage,
+        processUsage: values.processUsage,
         runnerErrors,
         status: buildRunStatus(overrides, summary, runnerErrors),
         summary,

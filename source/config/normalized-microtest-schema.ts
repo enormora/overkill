@@ -3,7 +3,7 @@ import { coveragePolicySchema } from './coverage-schema.ts';
 import {
     microtestExecutionSchema,
     profileFilesSchema,
-    resourceBudgetsSchema,
+    processBudgetsSchema,
     timeoutSchema,
     timingProfilePolicySchema
 } from './schema.ts';
@@ -17,7 +17,7 @@ const files = z.union([
 const [ loadedSources, allSources ] = coveragePolicySchema.unwrap().shape.sources.unwrap().options;
 const thresholds = coveragePolicySchema.unwrap().shape.thresholds.unwrap().unwrap().shape;
 
-export const normalizedResourceBudgetsSchema = resourceBudgetsSchema.unwrap().required();
+export const normalizedProcessBudgetsSchema = processBudgetsSchema.unwrap().required();
 
 export const normalizedMicrotestProfileSchema = z.strictObject({
     coverage: z.strictObject({
@@ -35,8 +35,8 @@ export const normalizedMicrotestProfileSchema = z.strictObject({
         microtestExecutionSchema.options[1].unwrap().required()
     ]),
     files: files.nullable(),
-    resourceUsage: z.strictObject({
-        budgets: normalizedResourceBudgetsSchema,
+    processUsage: z.strictObject({
+        budgets: normalizedProcessBudgetsSchema,
         measure: z.boolean(),
         samplingIntervalMilliseconds: z.number().int().positive()
     }),

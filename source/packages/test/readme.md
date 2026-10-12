@@ -146,7 +146,7 @@ The root doubles exports are the current lightweight public surface from
 testing doubles package ownership.
 
 Nodes created through this root facade are family-neutral. The selected runner
-profile owns family policy, capture support, resource policy, and timeout
+profile owns family policy, capture support, process usage policy, and timeout
 validation.
 
 Use the object form when attaching annotations or controls. Annotations on the
@@ -546,8 +546,8 @@ Benchmarks execute serially in one lane. `--filter 'workload=small'` selects
 resolved workloads. Measurement and budgets remain separate milestones.
 See [`@overkill-dev/bench`](../bench/readme.md).
 
-Configure resource usage measurement and budgets through the selected
-profile's `resourceUsage.measure` and `resourceUsage.budgets` fields.
+Configure process usage measurement and budgets through the selected
+profile's `processUsage.measure` and `processUsage.budgets` fields.
 Budgets require `measure: true`.
 
 `--workers` applies to `run` and `bench run` and accepts a positive safe integer. The

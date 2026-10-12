@@ -47,13 +47,13 @@ function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): Worke
         maxConcurrency: 5,
         hostProcess,
         paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 1,
+        processUsageSamplingIntervalMilliseconds: 1,
         root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'integration',

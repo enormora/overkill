@@ -3,7 +3,7 @@ import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { attemptIdSchema, caseIdSchema, sourceLocationsSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { runArtifactSchema, testAttemptSchema, verdictSchema } from './run-artifact-schema.ts';
-import { resourceUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
+import { processUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
 
 export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
     attributedToAttempt: attemptIdSchema.nullable(),
@@ -21,7 +21,7 @@ export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
         'loader',
         'permission',
         'reporter',
-        'resource-exhaustion',
+        'process-exhaustion',
         'runtime-state',
         'runtime-policy',
         'uncaught-exception',
@@ -53,7 +53,7 @@ export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
         durationMicroseconds: z.number()
     })),
     planStatus: z.enum([ 'empty-selection', 'empty-shard', 'planned' ]),
-    resourceUsage: resourceUsageSchema.nullable(),
+    processUsage: processUsageSchema.nullable(),
     runnerErrors: z.array(runnerErrorSchema),
     status: z.enum([ 'failed', 'passed' ]),
     summary: z.strictObject({
@@ -64,7 +64,7 @@ export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
         inconclusive: z.number(),
         passed: z.number(),
         planned: z.number(),
-        resourceExhausted: z.number(),
+        processExhausted: z.number(),
         runtimePolicy: z.number(),
         skipped: z.number()
     }),

@@ -4,7 +4,7 @@
 
 This document fills in the runtime-shaped concerns most existing concept
 documentation names only in passing: console capture, exit codes, signal handling,
-unhandled rejections, leaked resources, resource budgets, parallelism semantics,
+unhandled rejections, leaked Node resources, process budgets, parallelism semantics,
 sharding, monorepo discovery, terminal capability detection, watch-mode
 targeting.
 
@@ -129,13 +129,13 @@ Default exit codes for the `overkill` CLI:
 | At least one runner error            | 2         |
 | Configuration / argument error       | 3         |
 | No tests collected                   | 4         |
-| At least one resource exhaustion     | 5         |
+| At least one process exhaustion      | 5         |
 | Runner crashed (internal bug)        | 70        |
 
 When multiple completed-run outcomes apply, the most specific non-zero code
-wins in this order: resource exhaustion, runner error, no tests collected,
-test failure. Resource exhaustion is checked before generic runner errors
-because `resource-exhaustion` is also a runner error subtype.
+wins in this order: process exhaustion, runner error, no tests collected,
+test failure. Process exhaustion is checked before generic runner errors
+because `process-exhaustion` is also a runner error subtype.
 
 Before exiting, the binary writes command-line fallback diagnostics to
 `stderr`. `@overkill-dev/run` returns diagnostics for runner errors that were
@@ -257,17 +257,21 @@ core-dump pointer where available, and the test identity that was active.
 This complements [Microtests And Capabilities](../authoring/microtests-and-capabilities.md)'s discussion of crash-
 only supervision.
 
-## Resource Budgets
+## Process Budgets
 
-Resource usage measurement observes how much process memory and runtime state a
-run used. Resource budgets are thresholds over that data. They are part of
+Process usage measurement observes how much process memory and runtime state a
+run used. Process budgets are thresholds over that data. They are part of
 runtime policy, not benchmark budgets: a benchmark asks "how much did this
-workload use?", while a resource budget asks "did this test exceed the ceiling
+workload use?", while a process budget asks "did this test exceed the ceiling
 for this profile?"
 
-Resource usage is distinct from runner timing. Resource usage answers "how
+Process usage is distinct from runner timing. Process usage answers "how
 much memory or runtime state was used?", while [Run Timings](./run-timings.md)
 answers "where did wall time go during orchestration and execution?"
+
+Resources are acquired dependencies with a lifecycle. Process usage measures
+the executing Node processes. Active-resource metrics describe Node runtime
+resources from `process.getActiveResourcesInfo()`, not acquired dependencies.
 
 Overkill uses Node runtime APIs first. The default implementation should not
 shell out to `ps`, read `/proc`, install native addons, or require cgroup
@@ -275,7 +279,7 @@ management. Useful built-ins include:
 
 - `node:child_process` for disposable supervised workers
 - `process.memoryUsage.rss()` for cheap resident-memory samples
-- `process.resourceUsage()` for completion-time resource usage
+- `process.resourceUsage()` for completion-time process usage
 - `process.constrainedMemory()` to derive defaults from host or container
   constraints when Node can see them
 - `process.getActiveResourcesInfo()` for active-resource diagnostics
@@ -286,7 +290,7 @@ management. Useful built-ins include:
 
 ### Metrics
 
-First-party resource budgets should start with metrics Node can observe or
+First-party process budgets should start with metrics Node can observe or
 influence portably:
 
 - `javaScriptEngineHeapBytes` checked by a child process heap ceiling and
@@ -316,20 +320,20 @@ outlive the test body. Therefore:
 
 - assertion value serialization and diff construction are always bounded
 - active test identity is emitted before the body starts
-- run-level resource usage may be sampled between turns of the event loop when
+- run-level process usage may be sampled between turns of the event loop when
   explicitly enabled
 - post-test heap, resident set, and active-resource deltas may be reported in
   verbose or debug output
-- configured resource budgets are enforced on a best-effort basis when
+- configured process budgets are enforced on a best-effort basis when
   measurement is enabled
 
-Single-process microtests do not produce a hard `resource-exhausted` kill
+Single-process microtests do not produce a hard `process-exhausted` kill
 for a CPU-bound loop or a synchronous allocation that prevents the event loop
 from reaching the sampler. If the process dies, the last streamed active test
 identity is useful evidence, but the runner process may not survive to turn it
 into a complete `RunResult`.
 
-When an `in-process` microtest profile configures resource budgets, orchestration
+When an `in-process` microtest profile configures process budgets, orchestration
 checks sampled usage while the event loop can run and checks the final usage
 snapshot after the run. A final-only breach is reported as a post-test
 diagnostic because the active test can no longer be attributed reliably.
@@ -337,17 +341,17 @@ diagnostic because the active test can no longer be attributed reliably.
 ### Supervised Execution
 
 Microtest profiles with `execution.processModel: 'supervised-process'` and
-other owned-boundary profiles enforce resource budgets through disposable
+other owned-boundary profiles enforce process budgets through disposable
 child processes:
 
 - the parent assigns one active case to a worker at a time
 - the worker sends an `active-case` event before evaluating the body
-- the worker streams resource usage samples while its event loop can run
+- the worker streams process usage samples while its event loop can run
 - the parent records the latest active `CaseId`, file, and display name
 - the parent kills the child with `process.kill(pid, 'SIGKILL')` when a
   streamed sample breaches policy
 - the parent replaces the worker and records the active case with verdict
-  `resource-exhausted`
+  `process-exhausted`
 
 For JavaScript heap pressure, the worker is also spawned with a V8 heap limit
 derived from the budget. This helps catch cases where allocation outruns the
@@ -365,16 +369,16 @@ enforcement mode in the failure artifact:
 
 ### Reporting
 
-A resource budget breach is neither an assertion failure nor a timeout. It is
+A process budget breach is neither an assertion failure nor a timeout. It is
 reported as:
 
-- test verdict `resource-exhausted`
-- runner error subtype `resource-exhaustion`
-- a `ResourceExhaustion` artifact containing the metric, budget, observed
+- test verdict `process-exhausted`
+- runner error subtype `process-exhaustion`
+- a `ProcessExhaustion` artifact containing the metric, budget, observed
   value, enforcement mode, sampling interval, worker id, and active case
 
 The default human message names the test file, test title, metric, budget,
-observed peak, and enforcement mode. Verbose mode may report peak resource
+observed peak, and enforcement mode. Verbose mode may report peak process
 usage even when no budget was exceeded, so growth is visible before it becomes
 a ceiling.
 
@@ -548,7 +552,7 @@ output from execution re-imports is suppressed so collection logs are not
 duplicated.
 
 Worker-thread pools can account for per-worker JavaScript heap and active
-resource samples, but resident set size is process-wide in Node. RSS budgets
+process usage samples, but resident set size is process-wide in Node. RSS budgets
 therefore apply to the aggregate pool process and are attributed to all active
 cases when the sample cannot identify a single owner.
 
@@ -654,7 +658,7 @@ Selection rules:
   `execution: { mode: 'serial' }`; `mode: 'profile-default'` retains the
   configured scheduling
 - the serial override preserves the configured process model, capabilities,
-  resource policy, and timeouts; it is rejected for other test families before
+  process usage policy, and timeouts; it is rejected for other test families before
   discovery
 - resolved request intent records the override separately from the unchanged
   profile; `RunFacts.execution.scheduling` records the effective scheduling
@@ -950,10 +954,10 @@ start. Run facts record only the duration-history inputs used by
 ### Runtime Reprioritization
 
 `dynamic-lease` may reorder only pending eligible work. It may use duration
-estimates, observed lane availability, completed work, resource pressure, and
+estimates, observed lane availability, completed work, process usage, and
 warm-lane data to pick the next unit. It must not preempt, cancel, or
 retroactively move active work; those are cancellation, retry, crash recovery,
-or resource-exhaustion policies.
+or process-exhaustion policies.
 
 Reprioritization changes the pending queue, not the frozen plan. The trace must
 show which unit actually started on which lane so reports and replay do not have
@@ -984,7 +988,7 @@ Splitting is invalid when the parent unit is indivisible because of group
 granularity, strict order, serial or single-worker constraints, resource
 sharing, worker lifecycle policy, or runtime/workload incompatibility. Running
 work is never split. If running work needs to stop, that belongs to timeout,
-crash recovery, cancellation, retry, or resource-exhaustion policy.
+crash recovery, cancellation, retry, or process-exhaustion policy.
 
 ### Hedging
 

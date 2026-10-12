@@ -2,7 +2,7 @@ import { serializeValue } from '../compare/serialized-value.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 
 import type { NormalizedConfig, ProfileConfig, Scheduling } from '../config/types.ts';
-import { resolveResourceUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
+import { resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
 import { selectProfile } from './test-profile.ts';
 
 import { hostProcessFacts } from './run-host-process.ts';
@@ -58,7 +58,7 @@ function createRunExecutionFacts(
         placementPlan: input.placementPlan,
         profile: input.request.profile,
         retries: profile.testFamily === 'integration' ? profile.retries : null,
-        resourceUsagePolicy: resolveResourceUsagePolicy(input.request, profile),
+        processUsagePolicy: resolveProcessUsagePolicy(input.request, profile),
         scheduling: input.scheduling,
         testFamily: profile.testFamily,
         timingCollection: resolveTimingCollection(input.request, profile),

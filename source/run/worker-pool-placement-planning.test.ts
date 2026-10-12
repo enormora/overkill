@@ -197,7 +197,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 placementPlan: null,
                 processModel: 'worker-pool',
                 profile: 'integration',
-                resourceUsagePolicy: {
+                processUsagePolicy: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,

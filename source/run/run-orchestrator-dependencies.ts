@@ -5,7 +5,7 @@ import type {
     Execute,
     ReporterDispatcher,
     RunnerError,
-    RunResourceUsageTracker
+    RunProcessUsageTracker
 } from './run-engine-primitives.ts';
 import type {
     RuntimeCapabilityPolicyDependencies,
@@ -21,11 +21,11 @@ import type {
     SupervisedChildProcessStarter
 } from './supervised-child-process.ts';
 
-type ResourceUsageTrackerOptions = {
+type ProcessUsageTrackerOptions = {
     readonly samplingIntervalMilliseconds: number;
 };
 
-export type WorkerPoolResourceUsageTracker = RunResourceUsageTracker & {
+export type WorkerPoolProcessUsageTracker = RunProcessUsageTracker & {
     readonly waitForStart?: () => Promise<void>;
 };
 
@@ -61,7 +61,7 @@ type WorkerPoolRunOptions = {
 };
 
 export type CreatedWorkerPool = {
-    readonly createResourceUsageTracker?: (options: ResourceUsageTrackerOptions) => WorkerPoolResourceUsageTracker;
+    readonly createProcessUsageTracker?: (options: ProcessUsageTrackerOptions) => WorkerPoolProcessUsageTracker;
     readonly destroy: () => Promise<void>;
     readonly options: {
         readonly isolateWorkers: boolean;
@@ -97,7 +97,7 @@ export function createHostRunnerErrors(): HostRunnerErrors {
 export type RunOrchestratorDependencies = {
     readonly availableParallelism: number;
     readonly createSeed: () => bigint;
-    readonly createResourceUsageTracker: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
+    readonly createProcessUsageTracker: (options: ProcessUsageTrackerOptions) => RunProcessUsageTracker;
     readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;
     readonly defaultEngine: Engine;
     readonly discoverRunFilesWithProjectRoot: RunDiscovery['discoverRunFilesWithProjectRoot'];

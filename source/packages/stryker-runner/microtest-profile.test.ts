@@ -49,7 +49,7 @@ export const testNode = suite('mutation microtest profile selection', [
                         testFamily: 'microtest',
                         files: { sets: { unit: { include: [ 'source/**/*.test.ts' ] } } },
                         execution: { processModel, scheduling: 'concurrent', maxConcurrency: 3 },
-                        resourceUsage: { measure: true, budgets: { residentSetBytes: 1024 } },
+                        processUsage: { measure: true, budgets: { residentSetBytes: 1024 } },
                         timeouts: { softMilliseconds: 10, hardMilliseconds: 20 },
                         timings: { collection: 'precise' },
                         coverage: { outputs: [ 'json' ] }

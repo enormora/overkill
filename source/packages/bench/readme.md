@@ -113,7 +113,7 @@ Omitting `--profile` selects the sole benchmark profile. Missing, ambiguous,
 unknown, or ordinary-family selections return argument error `3`.
 Both commands accept shared file, title, filter, runtime, order, seed, and shard
 selection flags. Run also supports capture, precise timings, worker requests,
-and diagnostic resource usage. List supports locations and orphans.
+and diagnostic process usage. List supports locations and orphans.
 
 Benchmarks use the regular resource lifecycle, assertion results, attachments,
 and configured reporters. Listing imports definitions but does not run bodies,

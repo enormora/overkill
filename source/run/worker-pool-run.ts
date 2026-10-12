@@ -16,8 +16,8 @@ import {
 } from './worker-pool-execution.ts';
 import {
     reportRunStart,
-    startPoolResourceTracking
-} from './worker-pool-resource-tracking.ts';
+    startPoolProcessUsageTracking
+} from './worker-pool-process-usage-tracking.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
 import {
     createEmptyWorkerPoolResult,
@@ -103,7 +103,7 @@ async function finishExecution(
     startedAtMicroseconds: number
 ): Promise<RunResult> {
     await reportRunStart(runtime, startedAtMilliseconds);
-    await startPoolResourceTracking(runtime);
+    await startPoolProcessUsageTracking(runtime);
 
     return await finishWorkerPoolRun(
         runtime,

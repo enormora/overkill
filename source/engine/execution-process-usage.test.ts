@@ -3,8 +3,8 @@ import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type RunResult,
-    type ResourceUsageSnapshot,
-    type RunResourceUsageTracker,
+    type ProcessUsageSnapshot,
+    type RunProcessUsageTracker,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -13,10 +13,10 @@ import {
     type InMemoryRealTimeReporter
 } from '../reporters/in-memory-reporter.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-import { executeResourceTrackedCases } from './execution-resource-tracked-cases.ts';
+import { executeCasesAndMeasureProcessUsage } from './execution-process-tracked-cases.ts';
 import {
     createExecutionSupervision,
-    recordResourceUsageSample,
+    recordProcessUsageSample,
     type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
 import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
@@ -38,12 +38,12 @@ const previousSample = {
     residentSetBytes: 30
 };
 
-type BreachingResourceUsageTracker = {
+type BreachingProcessUsageTracker = {
     readonly emitSamples: () => void;
-    readonly tracker: RunResourceUsageTracker;
+    readonly tracker: RunProcessUsageTracker;
 };
 
-type SampledResourceExhaustionFixture = {
+type SampledProcessExhaustionFixture = {
     readonly reporter: InMemoryRealTimeReporter;
     readonly result: RunResult;
 };
@@ -86,7 +86,7 @@ function executionDependencies(
     };
 }
 
-function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
+function createFinishedProcessUsageTracker(): RunProcessUsageTracker {
     return {
         finish() {
             return {
@@ -118,8 +118,8 @@ function createFinishedResourceUsageTracker(): RunResourceUsageTracker {
     };
 }
 
-function createBreachingResourceUsageTracker(): BreachingResourceUsageTracker {
-    let recordSample: ((resourceSample: ResourceUsageSnapshot) => void) | null = null;
+function createBreachingProcessUsageTracker(): BreachingProcessUsageTracker {
+    let recordSample: ((processUsageSample: ProcessUsageSnapshot) => void) | null = null;
 
     return {
         emitSamples() {
@@ -158,17 +158,17 @@ function createBreachingResourceUsageTracker(): BreachingResourceUsageTracker {
     };
 }
 
-async function executeSampledResourceExhaustion(): Promise<SampledResourceExhaustionFixture> {
+async function executeSampledProcessExhaustion(): Promise<SampledProcessExhaustionFixture> {
     const engine = createEngine();
     const reporter = createInMemoryRealTimeReporter();
-    const resourceUsageTracker = createBreachingResourceUsageTracker();
+    const processUsageTracker = createBreachingProcessUsageTracker();
     const testPlan = engine.createTestPlan(
         engine.createRoot({
             children: [
                 engine.createTestCase({
                     definitionLocations: [ { kind: 'unknown' as const } ],
                     body(testScope) {
-                        resourceUsageTracker.emitSamples();
+                        processUsageTracker.emitSamples();
                         testScope.assert.true(true);
                         return testScope.assert.collect();
                     },
@@ -186,13 +186,13 @@ async function executeSampledResourceExhaustion(): Promise<SampledResourceExhaus
         retryPolicy: null,
         execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
         reporters: [ reporter ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: 1,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageTracker: resourceUsageTracker.tracker,
+        processUsageTracker: processUsageTracker.tracker,
         runFacts: {},
         startedAt: '2026-07-15T00:00:00.000Z'
     });
@@ -202,13 +202,13 @@ async function executeSampledResourceExhaustion(): Promise<SampledResourceExhaus
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/engine/execution-resource-usage.test.ts',
+    title: 'source/engine/execution-process-usage.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() includes resource usage in the returned result and final reporter result',
+            title: 'execute() includes process usage in the returned result and final reporter result',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -237,13 +237,13 @@ export const testNode = createOverkillSuite({
                     retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [ reporter ],
-                    resourceUsageTracker: createFinishedResourceUsageTracker(),
+                    processUsageTracker: createFinishedProcessUsageTracker(),
                     runFacts: {},
                     startedAt: '2026-07-15T00:00:00.000Z'
                 });
                 const reportedResult = reporter.getRecordedEntries()[0]?.result ?? null;
 
-                scope.assert.deepEqual(plainDataShape(result.resourceUsage), {
+                scope.assert.deepEqual(plainDataShape(result.processUsage), {
                     activeResourceTypes: [ 'Timeout' ],
                     end: {
                         activeResourceCount: 1,
@@ -266,8 +266,8 @@ export const testNode = createOverkillSuite({
                     }
                 });
                 scope.assert.deepEqual(
-                    plainDataShape(reportedResult?.resourceUsage ?? null),
-                    plainDataShape(result.resourceUsage)
+                    plainDataShape(reportedResult?.processUsage ?? null),
+                    plainDataShape(result.processUsage)
                 );
 
                 return scope.assert.collect();
@@ -275,13 +275,13 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'execute() records sampled resource exhaustion against the active case',
+            title: 'execute() records sampled process exhaustion against the active case',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
-                const { reporter, result } = await executeSampledResourceExhaustion();
+                const { reporter, result } = await executeSampledProcessExhaustion();
 
-                scope.assert.equal(result.runnerErrors[0]?.subtype, 'resource-exhaustion');
+                scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
                 scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [
                     result.runnerErrors[0]?.message
                 ]);
@@ -299,7 +299,7 @@ export const testNode = createOverkillSuite({
                     inconclusive: 0,
                     passed: 0,
                     planned: 1,
-                    resourceExhausted: 1,
+                    processExhausted: 1,
                     runtimePolicy: 0,
                     skipped: 0
                 });
@@ -307,7 +307,7 @@ export const testNode = createOverkillSuite({
                     result.perTest.map(function toVerdict(testResult) {
                         return testResult.verdict;
                     }),
-                    [ 'resource-exhausted' ]
+                    [ 'process-exhausted' ]
                 );
 
                 return scope.assert.collect();
@@ -402,12 +402,12 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'recordResourceUsageSample() reports post-test resource diagnostics',
+            title: 'recordProcessUsageSample() reports post-test process usage diagnostics',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
-                const breached = recordResourceUsageSample({
+                const breached = recordProcessUsageSample({
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -423,7 +423,7 @@ export const testNode = createOverkillSuite({
 
                 scope.require.defined(error);
                 scope.assert.equal(breached, true);
-                scope.assert.equal(error.subtype, 'resource-exhaustion');
+                scope.assert.equal(error.subtype, 'process-exhaustion');
                 scope.assert.equal(error.attributedTo, null);
                 scope.assert.deepEqual(plainDataShape(error.cause), {
                     activeAttempts: [],
@@ -441,7 +441,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'recordResourceUsageSample() ignores omitted budgets',
+            title: 'recordProcessUsageSample() ignores omitted budgets',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
@@ -449,14 +449,14 @@ export const testNode = createOverkillSuite({
                 const dependencies = executionDependencies(
                     createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
                 );
-                const nullBudgetBreach = recordResourceUsageSample({
+                const nullBudgetBreach = recordProcessUsageSample({
                     budgets: null,
                     dependencies,
                     previousSample: null,
                     sample,
                     supervision
                 });
-                const undefinedBudgetBreach = recordResourceUsageSample({
+                const undefinedBudgetBreach = recordProcessUsageSample({
                     budgets: undefined,
                     dependencies,
                     previousSample: null,
@@ -473,14 +473,14 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'executeResourceTrackedCases() stops tracking after execution throws',
+            title: 'executeCasesAndMeasureProcessUsage() stops tracking after execution throws',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 let finishCount = 0;
 
                 await scope.assert.rejects(async function executeThrowingCases() {
-                    await executeResourceTrackedCases({
+                    await executeCasesAndMeasureProcessUsage({
                         context: {
                             dependencies: executionDependencies(
                                 createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
@@ -488,12 +488,12 @@ export const testNode = createOverkillSuite({
                             reporterDelivery: createSilentReporterDelivery()
                         },
                         options: {
-                            resourceBudgets: null,
-                            resourceUsageTracker: {
+                            processBudgets: null,
+                            processUsageTracker: {
                                 finish() {
                                     finishCount += 1;
 
-                                    return createFinishedResourceUsageTracker().finish();
+                                    return createFinishedProcessUsageTracker().finish();
                                 },
                                 start() {
                                     return undefined;

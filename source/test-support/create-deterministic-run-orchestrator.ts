@@ -1,6 +1,6 @@
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/resource-usage.ts';
+import type { ProcessUsageSnapshot, RunProcessUsage, RunProcessUsageTracker } from '../engine/process-usage.ts';
 import { createRunCoordinator, type RunCoordinator } from '../run/run.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import type { CollectedRunPlan, RunOrchestrator, WorkId } from '../run/run-types.ts';
@@ -72,11 +72,11 @@ function createCollectionOnlyWorkerPool(
     };
 }
 
-function resourceUsageSample(
+function processUsageSample(
     activeResourceCount: number,
     capturedAtMicroseconds: number,
     residentSetBytes: number
-): ResourceUsageSnapshot {
+): ProcessUsageSnapshot {
     return {
         activeResourceCount,
         activeResourceTypes: [],
@@ -86,16 +86,16 @@ function resourceUsageSample(
     };
 }
 
-function deterministicResourceUsage(): RunResourceUsage {
+function deterministicProcessUsage(): RunProcessUsage {
     return {
         activeResourceTypes: [],
-        end: resourceUsageSample(1, 1, sampledResidentSetBytes),
+        end: processUsageSample(1, 1, sampledResidentSetBytes),
         peakActiveResourceCount: sampledActiveResourceCount,
         peakJavaScriptEngineHeapBytes: 1,
         peakResidentSetBytes: sampledResidentSetBytes,
         peakResidentSetGrowthBytesPerSecond: 9,
         sampleCount: sampledActiveResourceCount,
-        start: resourceUsageSample(1, 0, 1)
+        start: processUsageSample(1, 0, 1)
     };
 }
 
@@ -172,9 +172,9 @@ function emitProcessEnvironmentPolicyRun(context: FakeSupervisedChildRunContext,
     return true;
 }
 
-function emitResourceUsageSamples(context: FakeSupervisedChildRunContext): void {
-    context.emitSample(resourceUsageSample(1, 0, 1));
-    context.emitSample(resourceUsageSample(sampledActiveResourceCount, 1, sampledResidentSetBytes));
+function emitProcessUsageSamples(context: FakeSupervisedChildRunContext): void {
+    context.emitSample(processUsageSample(1, 0, 1));
+    context.emitSample(processUsageSample(sampledActiveResourceCount, 1, sampledResidentSetBytes));
 }
 
 function collectedCaseIdentity(file: string, testCase: CollectedRunPlan['files'][number]['cases'][number]): string {
@@ -221,7 +221,7 @@ function completeDeterministicSupervisedChild(
         result: createDeterministicRunResult(
             collectedPlanForAssignedCases(collectedPlan, assignedWork),
             assignedWork,
-            deterministicResourceUsage()
+            deterministicProcessUsage()
         )
     });
     context.emitExit();
@@ -238,7 +238,7 @@ function assignedFirstWork(context: FakeSupervisedChildRunContext): WorkId | nul
 }
 
 function completeStartedDeterministicRun(context: FakeSupervisedChildRunContext, firstWork: WorkId): void {
-    emitResourceUsageSamples(context);
+    emitProcessUsageSamples(context);
 
     if (context.isKilled()) {
         return;
@@ -298,7 +298,7 @@ function createDeterministicRunCoordinatorWithDependencies(
 
     const dependencies: RunOrchestratorDependencies = {
         availableParallelism: 4,
-        createResourceUsageTracker(): RunResourceUsageTracker {
+        createProcessUsageTracker(): RunProcessUsageTracker {
             return {
                 finish() {
                     return {

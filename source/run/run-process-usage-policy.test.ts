@@ -49,13 +49,13 @@ function createRunCommand(config: NormalizedConfig, request: RunRequest): RunCom
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/run-resource-usage-policy.test.ts',
+    title: 'source/run/run-process-usage-policy.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() records resource usage policy from config and request overrides',
+            title: 'orchestrator.resolve() records process usage policy from config and request overrides',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -68,7 +68,7 @@ export const testNode = createOverkillSuite({
                                 execution: {
                                     processModel: 'in-process'
                                 },
-                                resourceUsage: {
+                                processUsage: {
                                     budgets: {
                                         activeResourceCount: 8,
                                         residentSetBytes: 200,
@@ -82,18 +82,18 @@ export const testNode = createOverkillSuite({
                     },
                     {
                         ...defaultRequest,
-                        resourceBudgetOverrides: {
+                        processBudgetOverrides: {
                             activeResourceCount: null,
                             javaScriptEngineHeapBytes: 100,
                             residentSetBytes: null,
                             residentSetGrowthBytesPerSecond: null
                         },
-                        resourceUsageSamplingIntervalMilliseconds: 10
+                        processUsageSamplingIntervalMilliseconds: 10
                     }
                 ));
 
-                scope.assert.equal(Object.isFrozen(resolvedRun.facts.execution.resourceUsagePolicy), true);
-                scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
+                scope.assert.equal(Object.isFrozen(resolvedRun.facts.execution.processUsagePolicy), true);
+                scope.assert.deepEqual(plainData(resolvedRun.facts.execution.processUsagePolicy), {
                     budgets: {
                         activeResourceCount: 8,
                         javaScriptEngineHeapBytes: 100,
@@ -109,7 +109,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() records run-level resource usage when measurement is enabled',
+            title: 'orchestrator.run() records run-level process usage when measurement is enabled',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -118,11 +118,11 @@ export const testNode = createOverkillSuite({
                     defaultConfig,
                     {
                         ...defaultRequest,
-                        measureResourceUsage: true
+                        measureProcessUsage: true
                     }
                 ));
 
-                scope.assert.deepEqual(plainData(result.resourceUsage), {
+                scope.assert.deepEqual(plainData(result.processUsage), {
                     activeResourceTypes: [],
                     end: {
                         activeResourceCount: 0,
@@ -164,7 +164,7 @@ export const testNode = createOverkillSuite({
                                 execution: {
                                     processModel: 'in-process'
                                 },
-                                resourceUsage: {
+                                processUsage: {
                                     budgets: {
                                         residentSetBytes: 4
                                     },
@@ -183,7 +183,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports final resource budget breaches for in-process microtests',
+            title: 'orchestrator.run() reports final process budget breaches for in-process microtests',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -197,7 +197,7 @@ export const testNode = createOverkillSuite({
                                 execution: {
                                     processModel: 'in-process'
                                 },
-                                resourceUsage: {
+                                processUsage: {
                                     budgets: {
                                         residentSetBytes: 1
                                     },
@@ -211,7 +211,7 @@ export const testNode = createOverkillSuite({
                 const error = result.runnerErrors[0];
 
                 scope.require.defined(error);
-                scope.assert.equal(error.subtype, 'resource-exhaustion');
+                scope.assert.equal(error.subtype, 'process-exhaustion');
                 scope.assert.equal(error.attributedTo, null);
                 scope.assert.deepEqual(plainData(error.cause), {
                     activeAttempts: [],
@@ -235,7 +235,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() rejects resource budget overrides without measurement',
+            title: 'orchestrator.resolve() rejects process budget overrides without measurement',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -246,7 +246,7 @@ export const testNode = createOverkillSuite({
                         defaultConfig,
                         {
                             ...defaultRequest,
-                            resourceBudgetOverrides: {
+                            processBudgetOverrides: {
                                 activeResourceCount: null,
                                 javaScriptEngineHeapBytes: null,
                                 residentSetBytes: 1,
@@ -255,7 +255,7 @@ export const testNode = createOverkillSuite({
                         }
                     ));
                 }, {
-                    message: 'Resource budget overrides require resource usage measurement.'
+                    message: 'Process budget overrides require process usage measurement.'
                 });
 
                 return scope.assert.collect();
@@ -263,7 +263,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() accepts disabled measurement with empty resource budget overrides',
+            title: 'orchestrator.resolve() accepts disabled measurement with empty process budget overrides',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -272,8 +272,8 @@ export const testNode = createOverkillSuite({
                     defaultConfig,
                     {
                         ...defaultRequest,
-                        measureResourceUsage: false,
-                        resourceBudgetOverrides: {
+                        measureProcessUsage: false,
+                        processBudgetOverrides: {
                             activeResourceCount: null,
                             javaScriptEngineHeapBytes: null,
                             residentSetBytes: null,
@@ -282,7 +282,7 @@ export const testNode = createOverkillSuite({
                     }
                 ));
 
-                scope.assert.deepEqual(plainData(resolvedRun.facts.execution.resourceUsagePolicy), {
+                scope.assert.deepEqual(plainData(resolvedRun.facts.execution.processUsagePolicy), {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -298,7 +298,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() rejects invalid resource usage request values',
+            title: 'orchestrator.resolve() rejects invalid process usage request values',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -309,19 +309,19 @@ export const testNode = createOverkillSuite({
                         defaultConfig,
                         {
                             ...defaultRequest,
-                            resourceUsageSamplingIntervalMilliseconds: 0
+                            processUsageSamplingIntervalMilliseconds: 0
                         }
                     ));
                 }, {
-                    message: 'Resource usage sampling interval must be a positive safe integer.'
+                    message: 'Process usage sampling interval must be a positive safe integer.'
                 });
                 await scope.assert.rejects(async function resolveInvalidBudgetOverride() {
                     await runOrchestrator.resolve(createRunCommand(
                         defaultConfig,
                         {
                             ...defaultRequest,
-                            measureResourceUsage: true,
-                            resourceBudgetOverrides: {
+                            measureProcessUsage: true,
+                            processBudgetOverrides: {
                                 activeResourceCount: 1.5,
                                 javaScriptEngineHeapBytes: null,
                                 residentSetBytes: null,
@@ -330,7 +330,7 @@ export const testNode = createOverkillSuite({
                         }
                     ));
                 }, {
-                    message: 'Active resource count budget must be a positive safe integer.'
+                    message: 'Active Node resource count budget must be a positive safe integer.'
                 });
 
                 return scope.assert.collect();
@@ -387,7 +387,7 @@ export const testNode = createOverkillSuite({
                                     execution: {
                                         processModel: 'in-process'
                                     },
-                                    resourceUsage: {
+                                    processUsage: {
                                         budgets: {
                                             activeResourceCount: 1
                                         },
@@ -399,7 +399,7 @@ export const testNode = createOverkillSuite({
                         defaultRequest
                     ));
                 }, {
-                    message: 'Resource budgets require resource usage measurement.'
+                    message: 'Process budgets require process usage measurement.'
                 });
 
                 return scope.assert.collect();

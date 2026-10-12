@@ -45,7 +45,7 @@ const testRootLazyModuleBoundaries = [
     '^source/resources/',
     '^source/run/(command-line|command-line-command|command-line-runner|config)',
     '^source/run/(current-process-run-orchestrator|default-direct-reporter|default-run-engine|node-)',
-    '^source/run/(resource-usage|run-config|run-discovery|run-input|run-orchestrator|run-process-engine)',
+    '^source/run/(process-usage|run-config|run-discovery|run-input|run-orchestrator|run-process-engine)',
     '^source/run/(run-selection|run-support|run-test|supervised)',
     '^source/.*/baseline',
     '^source/.*/bench',

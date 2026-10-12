@@ -1,22 +1,22 @@
 import { z } from 'zod/v4';
 import { resourceScopes, runTimingSpanKinds } from '../engine/run-timings.ts';
 
-export const resourceUsageSnapshotSchema = z.strictObject({
+export const processUsageSnapshotSchema = z.strictObject({
     activeResourceCount: z.number(),
     activeResourceTypes: z.array(z.string()),
     capturedAtMicroseconds: z.number(),
     javaScriptEngineHeapBytes: z.number(),
     residentSetBytes: z.number()
 });
-export const resourceUsageSchema = z.strictObject({
+export const processUsageSchema = z.strictObject({
     activeResourceTypes: z.array(z.string()),
-    end: resourceUsageSnapshotSchema,
+    end: processUsageSnapshotSchema,
     peakActiveResourceCount: z.number(),
     peakJavaScriptEngineHeapBytes: z.number(),
     peakResidentSetBytes: z.number(),
     peakResidentSetGrowthBytesPerSecond: z.number(),
     sampleCount: z.number(),
-    start: resourceUsageSnapshotSchema
+    start: processUsageSnapshotSchema
 });
 export const runTimingSpanSchema = z.strictObject({
     durationMicroseconds: z.number(),

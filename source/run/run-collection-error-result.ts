@@ -25,7 +25,7 @@ function createCollectionErrorRunResult(
         inconclusive: 0,
         passed: 0,
         planned: 0,
-        resourceExhausted: 0,
+        processExhausted: 0,
         runtimePolicy: 0,
         skipped: 0
     };
@@ -36,7 +36,7 @@ function createCollectionErrorRunResult(
         orphans: [],
         perTest: [],
         planStatus: 'empty-selection',
-        resourceUsage: null,
+        processUsage: null,
         runnerErrors,
         status: runStatusFromSummary(summary, runnerErrors),
         summary,

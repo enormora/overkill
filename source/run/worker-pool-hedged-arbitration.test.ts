@@ -100,7 +100,7 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
         orphans: [],
         perTest,
         planStatus: 'planned',
-        resourceUsage: null,
+        processUsage: null,
         runnerErrors: [],
         status: 'passed',
         summary: {
@@ -111,7 +111,7 @@ function emptyRunResult(perTest: readonly PerTestResult[]): RunResult {
             inconclusive: 0,
             passed: perTest.length,
             planned: perTest.length,
-            resourceExhausted: 0,
+            processExhausted: 0,
             runtimePolicy: 0,
             skipped: 0
         },

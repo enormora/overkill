@@ -13,7 +13,7 @@ import {
     type RunResult,
     type RunnerError
 } from '../engine/run-result.ts';
-import type { RunResourceUsage } from '../engine/resource-usage.ts';
+import type { RunProcessUsage } from '../engine/process-usage.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type {
@@ -72,7 +72,7 @@ function resolvedSuitePath(suitePath: TestPlan['cases'][number]['suitePath']): C
 type RunResultTiming = {
     readonly completedAtMicroseconds: number;
     readonly planStatus: RunPlanStatus;
-    readonly resourceUsage: RunResourceUsage | null;
+    readonly processUsage: RunProcessUsage | null;
     readonly startedAtMicroseconds: number;
     readonly testExecutionWallTimeMicroseconds: number;
 };
@@ -182,7 +182,7 @@ function countOutcomes(plan: CollectedRunPlan, perTest: readonly PerTestResult[]
         inconclusive: perTest.filter(hasVerdict('inconclusive')).length,
         passed: perTest.filter(hasVerdict('pass')).length,
         planned,
-        resourceExhausted: perTest.filter(hasVerdict('resource-exhausted')).length,
+        processExhausted: perTest.filter(hasVerdict('process-exhausted')).length,
         runtimePolicy: perTest.filter(hasVerdict('runtime-policy')).length,
         skipped: perTest.filter(hasVerdict('skip')).length
     };
@@ -361,7 +361,7 @@ export function createRunResultFromCollectedPlan(
         orphans: plan.orphans,
         perTest,
         planStatus: timing.planStatus,
-        resourceUsage: timing.resourceUsage,
+        processUsage: timing.processUsage,
         runnerErrors,
         status: runStatusFromPlan(summary, runnerErrors, timing.planStatus),
         summary,

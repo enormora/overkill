@@ -1,5 +1,5 @@
 import {
-    type ResourceUsageSnapshot,
+    type ProcessUsageSnapshot,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -8,7 +8,7 @@ import type { WorkerLifecycle } from '../config/types.ts';
 import type {
     CreatedWorkerPool,
     WorkerPoolCreationOptions,
-    WorkerPoolResourceUsageTracker
+    WorkerPoolProcessUsageTracker
 } from './run-orchestrator-dependencies.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import { createWorkerPoolRuntime, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
@@ -27,7 +27,7 @@ function measuredMixedLifecycleResolvedRun(): WorkerPoolRunRuntime['resolvedRun'
             ...resolvedRun.facts,
             execution: {
                 ...resolvedRun.facts.execution,
-                resourceUsagePolicy: {
+                processUsagePolicy: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -42,7 +42,7 @@ function measuredMixedLifecycleResolvedRun(): WorkerPoolRunRuntime['resolvedRun'
     };
 }
 
-function resourceSnapshot(workerLifecycle: WorkerLifecycle, capturedAtMicroseconds: number): ResourceUsageSnapshot {
+function resourceSnapshot(workerLifecycle: WorkerLifecycle, capturedAtMicroseconds: number): ProcessUsageSnapshot {
     return {
         activeResourceCount: workerLifecycle === 'reuse' ? 1 : 2,
         activeResourceTypes: [ workerLifecycle ],
@@ -52,7 +52,7 @@ function resourceSnapshot(workerLifecycle: WorkerLifecycle, capturedAtMicrosecon
     };
 }
 
-function resourceUsageTracker(workerLifecycle: WorkerLifecycle): WorkerPoolResourceUsageTracker {
+function processUsageTracker(workerLifecycle: WorkerLifecycle): WorkerPoolProcessUsageTracker {
     return {
         finish() {
             const start = resourceSnapshot(workerLifecycle, 1);
@@ -87,8 +87,8 @@ function trackingPool(options: WorkerPoolCreationOptions): CreatedWorkerPool {
             isolateWorkers: options.workerLifecycle === 'fresh-worker-per-unit',
             maxThreads: options.workerCount
         },
-        createResourceUsageTracker() {
-            return resourceUsageTracker(options.workerLifecycle);
+        createProcessUsageTracker() {
+            return processUsageTracker(options.workerLifecycle);
         },
         async run() {
             return options.workerLifecycle;
@@ -113,13 +113,13 @@ function trackingDependencies(createdWorkerPools: CreatedWorkerPools): WorkerPoo
     };
 }
 
-async function routedResourceUsage(): Promise<{
-    readonly samples: readonly ResourceUsageSnapshot[];
+async function routedProcessUsage(): Promise<{
+    readonly samples: readonly ProcessUsageSnapshot[];
     readonly sampleCount: number;
     readonly startActiveResourceTypes: readonly string[];
 }> {
     const createdWorkerPools: WorkerPoolCreationOptions[] = [];
-    const samples: ResourceUsageSnapshot[] = [];
+    const samples: ProcessUsageSnapshot[] = [];
     const runtime = await createWorkerPoolRuntime({
         attachments: null,
         collectionRunnerErrors: [],
@@ -132,15 +132,15 @@ async function routedResourceUsage(): Promise<{
         runState: createSupervisedRunState('first-failure-and-final')
     });
 
-    if (runtime.poolResourceUsageTracker === null) {
-        throw new Error('Mixed lifecycle resource usage test requires resource tracking.');
+    if (runtime.poolProcessUsageTracker === null) {
+        throw new Error('Mixed lifecycle process usage test requires process usage tracking.');
     }
 
-    runtime.poolResourceUsageTracker.start(function recordSample(sample) {
+    runtime.poolProcessUsageTracker.start(function recordSample(sample) {
         samples.push(sample);
     });
-    await runtime.poolResourceUsageTracker.waitForStart?.();
-    const usage = runtime.poolResourceUsageTracker.finish();
+    await runtime.poolProcessUsageTracker.waitForStart?.();
+    const usage = runtime.poolProcessUsageTracker.finish();
     await runtime.pool.destroy();
 
     return {
@@ -154,15 +154,15 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/worker-pool-lifecycle-resource-usage.test.ts',
+    title: 'source/run/worker-pool-lifecycle-process-usage.test.ts',
     children: [
         createOverkillTestCase({
             annotations: {},
             controls: {},
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime combines mixed lifecycle resource tracking',
+            title: 'worker-pool runtime combines mixed lifecycle process usage tracking',
             async body(scope: OverkillScope) {
-                const usage = await routedResourceUsage();
+                const usage = await routedProcessUsage();
 
                 scope.assert.equal(usage.sampleCount, 3);
                 scope.assert.deepEqual(usage.startActiveResourceTypes, [

@@ -53,7 +53,7 @@ function createRecordingDependencies(): RecordingDependencies {
 function preciseResult(runStatus: 'failed' | 'passed', timingStatus: 'success' | 'timeout'): RunResult {
     return runResultFactory.build({
         status: runStatus,
-        summary: runStatus === 'failed' ? { failed: 1 } : { passed: 1 },
+        summary: runStatus === 'failed' ? { failed: 1, processExhausted: 1 } : { passed: 1 },
         timings: {
             precise: preciseTimingReport({
                 aggregationMicroseconds: 7,
@@ -149,6 +149,7 @@ function assertRootSpan(scope: OverkillScope, span: Readonly<Record<string, unkn
     scope.assert.equal(span.endTimeUnixNano, '1700000000000050000');
     scope.assert.deepEqual(span.status, { code: 2 });
     scope.assert.deepEqual(attributeValue(span, 'overkill.run.summary.failed'), { intValue: '1' });
+    scope.assert.deepEqual(attributeValue(span, 'overkill.run.summary.process_exhausted'), { intValue: '1' });
     scope.assert.deepEqual(attributeValue(span, 'overkill.timing.aggregate.resource.acquire.count'), {
         intValue: '1'
     });

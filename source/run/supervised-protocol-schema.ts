@@ -10,7 +10,7 @@ import { supervisedCommandFields } from './run-command-schema.ts';
 import { collectedRunPlanSchema, workloadInputsSchema } from './collected-run-plan-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
-import { resourceUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
+import { processUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
 const commandSchema: z.ZodType<SupervisedChildCommand> = z.union([
@@ -42,6 +42,6 @@ export const supervisedChildMessageSchema: z.ZodType<SupervisedChildMessage> = z
     }),
     z.strictObject({ kind: z.literal('event'), event: reporterEventSchema }),
     z.strictObject({ kind: z.literal('result'), result: runResultSchema }),
-    z.strictObject({ kind: z.literal('sample'), sample: resourceUsageSnapshotSchema }),
+    z.strictObject({ kind: z.literal('sample'), sample: processUsageSnapshotSchema }),
     z.strictObject({ kind: z.literal('timing'), span: runTimingSpanSchema })
 ]);

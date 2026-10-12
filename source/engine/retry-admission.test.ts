@@ -4,8 +4,8 @@ import {
     defineReporter,
     type ReporterEvent,
     type DefinedReporter,
-    type ResourceUsageSnapshot,
-    type RunResourceUsageTracker,
+    type ProcessUsageSnapshot,
+    type RunProcessUsageTracker,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -16,12 +16,12 @@ const schedulingCases = [ { mode: 'serial-in-process' }, {
     maxConcurrency: 1
 } ] as const;
 
-type ResourceLimitProbe = {
+type ProcessLimitProbe = {
     readonly emit: () => void;
-    readonly tracker: RunResourceUsageTracker;
+    readonly tracker: RunProcessUsageTracker;
 };
 
-function resourceLimitProbe(sampleAtStart: boolean): ResourceLimitProbe {
+function processLimitProbe(sampleAtStart: boolean): ProcessLimitProbe {
     const sample = {
         activeResourceCount: 0,
         activeResourceTypes: [],
@@ -29,7 +29,7 @@ function resourceLimitProbe(sampleAtStart: boolean): ResourceLimitProbe {
         javaScriptEngineHeapBytes: 0,
         residentSetBytes: 2
     };
-    let recordSample: (sample: ResourceUsageSnapshot) => void = function () {
+    let recordSample: (sample: ProcessUsageSnapshot) => void = function () {
         return undefined;
     };
     return {
@@ -62,7 +62,7 @@ function resourceLimitProbe(sampleAtStart: boolean): ResourceLimitProbe {
     };
 }
 
-function matchesResourceTrigger(event: ReporterEvent, trigger: string): boolean {
+function matchesProcessTrigger(event: ReporterEvent, trigger: string): boolean {
     if (trigger === 'tracking-start') {
         return false;
     }
@@ -72,16 +72,16 @@ function matchesResourceTrigger(event: ReporterEvent, trigger: string): boolean 
     return event.kind === 'test-start' && event.attempt === (trigger === 'initial-start' ? 0 : 1);
 }
 
-function resourceLimitReporter(probe: ResourceLimitProbe, trigger: string): DefinedReporter {
+function processLimitReporter(probe: ProcessLimitProbe, trigger: string): DefinedReporter {
     return defineReporter(function () {
         return {
-            name: 'resource-admission',
+            name: 'process-admission',
             kind: 'real-time',
             sinks: [ { kind: 'memory' } ],
             dispose: null,
             onFinish: null,
             onEvent(event: ReporterEvent) {
-                if (matchesResourceTrigger(event, trigger)) {
+                if (matchesProcessTrigger(event, trigger)) {
                     probe.emit();
                 }
             }
@@ -182,20 +182,20 @@ export const testNode = createSuite({
                 }
             });
         }),
-        ...schedulingCases.flatMap(function resourceExecutionMode(execution) {
+        ...schedulingCases.flatMap(function processExecutionMode(execution) {
             return [ 'tracking-start', 'initial-start', 'retry-start', 'retry-end' ].map(
-                function resourceTrigger(trigger) {
+                function processTrigger(trigger) {
                     return createTestCase({
                         ...metadata,
-                        title: `resource exhaustion at ${trigger} stops retries under ${execution.mode}`,
+                        title: `process exhaustion at ${trigger} stops retries under ${execution.mode}`,
                         async body(scope: TestScope) {
                             const engine = createTestEngine();
-                            const probe = resourceLimitProbe(trigger === 'tracking-start');
+                            const probe = processLimitProbe(trigger === 'tracking-start');
                             let runs = 0;
                             const plan = engine.createTestPlan(engine.createRoot({
                                 annotations: {},
                                 controls: {},
-                                title: 'resource limit',
+                                title: 'process limit',
                                 children: [ engine.createTestCase({
                                     ...metadata,
                                     title: 'case',
@@ -208,12 +208,12 @@ export const testNode = createSuite({
                             }));
                             const result = await engine.execute(plan, {
                                 execution,
-                                reporters: [ resourceLimitReporter(probe, trigger) ],
+                                reporters: [ processLimitReporter(probe, trigger) ],
                                 retryPolicy: { maxAttempts: 3 },
                                 runFacts: {},
                                 startedAt: '1970-01-01T00:00:00.000Z',
-                                resourceUsageTracker: probe.tracker,
-                                resourceBudgets: {
+                                processUsageTracker: probe.tracker,
+                                processBudgets: {
                                     activeResourceCount: null,
                                     javaScriptEngineHeapBytes: null,
                                     residentSetBytes: 1,
@@ -222,7 +222,7 @@ export const testNode = createSuite({
                             });
                             scope.assert.equal(runs, [ 'initial-start', 'tracking-start' ].includes(trigger) ? 0 : 1);
                             scope.assert.equal(result.status, 'failed');
-                            scope.assert.equal(result.runnerErrors[0]?.subtype, 'resource-exhaustion');
+                            scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
                             scope.assert.equal(
                                 result
                                     .perTest

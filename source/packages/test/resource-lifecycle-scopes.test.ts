@@ -86,7 +86,7 @@ async function executeObservedPlan(testPlan: TestPlan): Promise<ObservedExecutio
         retryPolicy: null,
         execution: { mode: 'serial-in-process' },
         reporters: [ eventReporter() ],
-        resourceUsageTracker: null,
+        processUsageTracker: null,
         runFacts: {},
         runtimePolicy: createResourceLifecycleRuntimePolicy(testPlan.cases, timing),
         startedAt: epoch.toISOString()

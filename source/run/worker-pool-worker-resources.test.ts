@@ -23,7 +23,7 @@ import type {
 } from './worker-pool-protocol.ts';
 import {
     acquireWorkerRunResources,
-    createWorkerResourceUsageTracker,
+    createWorkerProcessUsageTracker,
     disposeWorkerLaneLifecycle,
     disposeWorkerRunResources,
     laneResourceSession
@@ -82,13 +82,13 @@ function command(): WorkerPoolCommand {
         maxConcurrency: 5,
         hostProcess: { kind: 'child', nodeArguments: [] },
         paths: [ 'test.ts' ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 10,
+        processUsageSamplingIntervalMilliseconds: 10,
         root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'integration',
@@ -368,7 +368,7 @@ export const testNode = createOverkillSuite({
             title: 'worker-pool worker resources reuse lane sessions',
             async body(scope: OverkillScope) {
                 await assertLaneSessionsAreReusedAndDisposed(scope);
-                createWorkerResourceUsageTracker(command());
+                createWorkerProcessUsageTracker(command());
 
                 return scope.assert.collect();
             }

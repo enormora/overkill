@@ -1,6 +1,6 @@
 import type { Clock } from '@enormora/clock';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { IntegrationProfileConfig, MaxConcurrency, ResourceBudgets, Scheduling } from '../config/types.ts';
+import type { IntegrationProfileConfig, MaxConcurrency, ProcessBudgets, Scheduling } from '../config/types.ts';
 import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
 import type {
     FrozenWorkloadInput,
@@ -11,7 +11,7 @@ import type {
     RunCollectionRoot,
     RunTestFamily
 } from './run-types.ts';
-import type { ReporterEvent, RunResult, ResourceUsageSnapshot, TestPlan } from './run-engine-primitives.ts';
+import type { ReporterEvent, RunResult, ProcessUsageSnapshot, TestPlan } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import {
@@ -38,8 +38,8 @@ type SupervisedCommandBase = {
     readonly paths: readonly string[];
     readonly hardTimeoutMilliseconds: number;
     readonly maxConcurrency: MaxConcurrency;
-    readonly resourceBudgets: ResourceBudgets;
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly processBudgets: ProcessBudgets;
+    readonly processUsageSamplingIntervalMilliseconds: number;
     readonly root: RunCollectionRoot;
     readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;
@@ -97,7 +97,7 @@ export type SupervisedChildMessage = {
     readonly result: RunResult;
 } | {
     readonly kind: 'sample';
-    readonly sample: ResourceUsageSnapshot;
+    readonly sample: ProcessUsageSnapshot;
 } | {
     readonly kind: 'timing';
     readonly span: NonNullable<RunResult['timings']['precise']>['spans'][number];

@@ -187,8 +187,8 @@ function formatTerminalTestResult(
     const context = prefix.length === 0 ? '' : `${prefix} `;
     const message = `${context}${formatCaseTitle(id)} (${formatDuration(durationMicroseconds)})`;
 
-    if (verdict === 'resource-exhausted') {
-        return [ errorSymbol, `${message}: resource exhausted` ];
+    if (verdict === 'process-exhausted') {
+        return [ errorSymbol, `${message}: process exhausted` ];
     }
 
     return [ errorSymbol, `${message}: crashed` ];

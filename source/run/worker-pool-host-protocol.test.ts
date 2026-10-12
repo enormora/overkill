@@ -63,13 +63,13 @@ function workerPoolCommand(): WorkerPoolCommand {
         maxConcurrency: 5,
         hostProcess: { kind: 'child', nodeArguments: [ '--expose-gc' ] },
         paths: [ 'test.ts' ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 10,
+        processUsageSamplingIntervalMilliseconds: 10,
         root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'integration',
@@ -192,8 +192,8 @@ function assertEntrypointDispatchesHostCommands(scope: OverkillScope): void {
         taskId: 'not-configured'
     });
     assertHostCommandDispatch(scope, { kind: 'abort-task', taskId: 'not-configured' });
-    assertHostCommandDispatch(scope, { kind: 'start-resource-tracking', samplingIntervalMilliseconds: 1000 });
-    assertHostCommandDispatch(scope, { kind: 'finish-resource-tracking' });
+    assertHostCommandDispatch(scope, { kind: 'start-process-usage-tracking', samplingIntervalMilliseconds: 1000 });
+    assertHostCommandDispatch(scope, { kind: 'finish-process-usage-tracking' });
     assertHostCommandDispatch(scope, { kind: 'destroy' });
 }
 

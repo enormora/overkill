@@ -13,7 +13,7 @@ import {
 import {
     observeProcessIpcListeners
 } from './node-process-policy-observation.ts';
-import { createNodeResourceUsageTracker } from './resource-usage.ts';
+import { createNodeProcessUsageTracker } from './process-usage.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
 import {
     supervisedChildCorrelationId,
@@ -129,7 +129,7 @@ await runSupervisedChild(
         validatePermissionHost
     },
     {
-        createResourceUsageTracker: createNodeResourceUsageTracker,
+        createProcessUsageTracker: createNodeProcessUsageTracker,
         createClock
     }
 );

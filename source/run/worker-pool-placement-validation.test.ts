@@ -234,7 +234,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
                 placementPlan: placement,
                 processModel: 'worker-pool',
                 profile: 'integration',
-                resourceUsagePolicy: {
+                processUsagePolicy: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -316,7 +316,7 @@ export function completedWorkerPoolOutput(task: CapturedWorkerTask): unknown {
                     {
                         completedAtMicroseconds: 0,
                         planStatus: 'planned',
-                        resourceUsage: null,
+                        processUsage: null,
                         startedAtMicroseconds: 0,
                         testExecutionWallTimeMicroseconds: 0
                     }
@@ -386,7 +386,7 @@ export function fakeWorkerRuntime(placement: PlacementPlan): WorkerPoolRunRuntim
             return completion.result;
         },
         pool: createFakePool(),
-        poolResourceUsageTracker: null,
+        poolProcessUsageTracker: null,
         placementTrace,
         get placementTraceEntries() {
             return placementTrace.entries();

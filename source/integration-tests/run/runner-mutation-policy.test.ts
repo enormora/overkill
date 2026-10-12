@@ -35,7 +35,7 @@ function mutationCommand(processModel: MicrotestProfileConfig['execution']['proc
                 },
                 execution: { processModel, scheduling: 'concurrent', maxConcurrency: 3 },
                 coverage: { outputs: [ 'json' ] },
-                resourceUsage: { measure: true },
+                processUsage: { measure: true },
                 timeouts: { collectionMilliseconds: 5000, softMilliseconds: 1000, hardMilliseconds: 2000 }
             }
         },
@@ -68,7 +68,7 @@ function assertSerialResults(scope: TestScope, result: RunResult): void {
         return testCase.attempts.length === 1;
     }));
     scope.assert.equal(result.artifacts.length, 0);
-    scope.assert.notEqual(result.resourceUsage, null);
+    scope.assert.notEqual(result.processUsage, null);
 }
 
 async function mutationInput(command: RunCommand, frozen: boolean): Promise<FrozenRunCommand | RunCommand> {

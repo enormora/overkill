@@ -50,13 +50,13 @@ function command(): WorkerPoolCommand {
         maxConcurrency: 5,
         hostProcess: { kind: 'child', nodeArguments: [] },
         paths: [ 'test.ts' ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 10,
+        processUsageSamplingIntervalMilliseconds: 10,
         root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'integration',

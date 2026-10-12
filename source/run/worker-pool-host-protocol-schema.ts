@@ -8,7 +8,7 @@ import type {
 import { hostProcessSchema } from './run-command-schema.ts';
 import { workerPoolTaskSchema } from './worker-pool-task-schema.ts';
 import { runnerErrorSchema } from './run-result-schema.ts';
-import { resourceUsageSchema, resourceUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
+import { processUsageSchema, processUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 
 const serializedWorkerMessageSchema: z.ZodType<SerializedWorkerPoolMessage> = z.discriminatedUnion('kind', [
@@ -59,15 +59,15 @@ export const workerPoolHostCommandSchema: z.ZodType<WorkerPoolHostCommand> = z.d
             workerLifecycle: z.enum([ 'fresh-worker-per-unit', 'reuse' ])
         })
     }),
-    z.strictObject({ kind: z.enum([ 'destroy', 'finish-resource-tracking' ]) }),
+    z.strictObject({ kind: z.enum([ 'destroy', 'finish-process-usage-tracking' ]) }),
     z.strictObject({ kind: z.literal('run-task'), task: workerPoolTaskSchema, taskId: z.string() }),
-    z.strictObject({ kind: z.literal('start-resource-tracking'), samplingIntervalMilliseconds: z.number() })
+    z.strictObject({ kind: z.literal('start-process-usage-tracking'), samplingIntervalMilliseconds: z.number() })
 ]);
 export const workerPoolHostMessageSchema: z.ZodType<WorkerPoolHostMessage> = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('runner-error'), error: runnerErrorSchema }),
     z.strictObject({ kind: z.enum([ 'configured', 'destroyed' ]) }),
-    z.strictObject({ kind: z.literal('resource-sample'), sample: resourceUsageSnapshotSchema }),
-    z.strictObject({ kind: z.literal('resource-usage'), resourceUsage: resourceUsageSchema }),
+    z.strictObject({ kind: z.literal('process-usage-sample'), sample: processUsageSnapshotSchema }),
+    z.strictObject({ kind: z.literal('process-usage'), processUsage: processUsageSchema }),
     z.strictObject({
         kind: z.literal('task-error'),
         error: z.strictObject({

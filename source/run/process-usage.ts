@@ -1,19 +1,19 @@
 import { getHeapStatistics } from 'node:v8';
 import type { Clock } from '@enormora/clock';
-import type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../engine/resource-usage.ts';
+import type { ProcessUsageSnapshot, RunProcessUsage, RunProcessUsageTracker } from '../engine/process-usage.ts';
 
 const microsecondsPerSecond = 1_000_000;
 
-type ResourceUsageSample = ResourceUsageSnapshot;
+type ProcessUsageSample = ProcessUsageSnapshot;
 
-type ResourceUsageTrackerDependencies = {
+type ProcessUsageTrackerDependencies = {
     readonly readActiveResourceTypes: () => readonly string[];
     readonly readJavaScriptEngineHeapBytes: () => number;
     readonly readResidentSetBytes: () => number;
     readonly wallClock: Clock;
 };
 
-export type ResourceUsageTrackerOptions = {
+export type ProcessUsageTrackerOptions = {
     readonly samplingIntervalMilliseconds: number;
 };
 
@@ -23,7 +23,7 @@ function sortedUnique(values: readonly string[]): readonly string[] {
     });
 }
 
-function readResourceUsageSample(dependencies: ResourceUsageTrackerDependencies): ResourceUsageSample {
+function readProcessUsageSample(dependencies: ProcessUsageTrackerDependencies): ProcessUsageSample {
     const activeResourceTypes = dependencies.readActiveResourceTypes();
 
     return {
@@ -36,15 +36,15 @@ function readResourceUsageSample(dependencies: ResourceUsageTrackerDependencies)
 }
 
 function maximumSampleValue(
-    samples: readonly ResourceUsageSample[],
-    readValue: (sample: ResourceUsageSample) => number
+    samples: readonly ProcessUsageSample[],
+    readValue: (sample: ProcessUsageSample) => number
 ): number {
     return Math.max(...samples.map(readValue));
 }
 
 function residentSetGrowthBytesPerSecond(
-    previousSample: ResourceUsageSample,
-    nextSample: ResourceUsageSample
+    previousSample: ProcessUsageSample,
+    nextSample: ProcessUsageSample
 ): number {
     const elapsedMicroseconds = nextSample.capturedAtMicroseconds - previousSample.capturedAtMicroseconds;
 
@@ -57,7 +57,7 @@ function residentSetGrowthBytesPerSecond(
     return Math.max(0, residentSetGrowthBytes * microsecondsPerSecond / elapsedMicroseconds);
 }
 
-function peakResidentSetGrowthBytesPerSecond(samples: readonly ResourceUsageSample[]): number {
+function peakResidentSetGrowthBytesPerSecond(samples: readonly ProcessUsageSample[]): number {
     let peakGrowthBytesPerSecond = 0;
 
     for (let sampleIndex = 1; sampleIndex < samples.length; sampleIndex += 1) {
@@ -75,11 +75,11 @@ function peakResidentSetGrowthBytesPerSecond(samples: readonly ResourceUsageSamp
     return peakGrowthBytesPerSecond;
 }
 
-export function createResourceUsageFromSamples(
-    start: ResourceUsageSnapshot,
-    end: ResourceUsageSnapshot,
-    samples: readonly ResourceUsageSample[]
-): RunResourceUsage {
+export function createProcessUsageFromSamples(
+    start: ProcessUsageSnapshot,
+    end: ProcessUsageSnapshot,
+    samples: readonly ProcessUsageSample[]
+): RunProcessUsage {
     return {
         activeResourceTypes: sortedUnique(samples.flatMap(function toActiveResourceTypes(sample) {
             return sample.activeResourceTypes;
@@ -109,18 +109,18 @@ export function createResourceUsageFromSamples(
     };
 }
 
-export function createResourceUsageTracker(
-    dependencies: ResourceUsageTrackerDependencies,
-    options: ResourceUsageTrackerOptions
-): RunResourceUsageTracker {
+export function createProcessUsageTracker(
+    dependencies: ProcessUsageTrackerDependencies,
+    options: ProcessUsageTrackerOptions
+): RunProcessUsageTracker {
     let intervalIdentifier: ReturnType<Clock['setInterval']> | null = null;
-    let samples: readonly ResourceUsageSample[] = [];
-    let startSnapshot: ResourceUsageSnapshot | null = null;
+    let samples: readonly ProcessUsageSample[] = [];
+    let startSnapshot: ProcessUsageSnapshot | null = null;
 
     return {
         finish() {
             if (startSnapshot === null) {
-                throw new Error('Resource usage tracking must start before it can finish.');
+                throw new Error('Process usage tracking must start before it can finish.');
             }
 
             if (intervalIdentifier !== null) {
@@ -128,21 +128,21 @@ export function createResourceUsageTracker(
                 intervalIdentifier = null;
             }
 
-            const endSnapshot = readResourceUsageSample(dependencies);
+            const endSnapshot = readProcessUsageSample(dependencies);
             samples = [ ...samples, endSnapshot ];
 
-            return createResourceUsageFromSamples(startSnapshot, endSnapshot, samples);
+            return createProcessUsageFromSamples(startSnapshot, endSnapshot, samples);
         },
         start(onSample) {
             if (startSnapshot !== null) {
-                throw new Error('Resource usage tracking already started.');
+                throw new Error('Process usage tracking already started.');
             }
 
-            startSnapshot = readResourceUsageSample(dependencies);
+            startSnapshot = readProcessUsageSample(dependencies);
             samples = [ startSnapshot ];
             onSample?.(startSnapshot);
-            intervalIdentifier = dependencies.wallClock.setInterval(function collectResourceUsageSample() {
-                const sample = readResourceUsageSample(dependencies);
+            intervalIdentifier = dependencies.wallClock.setInterval(function collectProcessUsageSample() {
+                const sample = readProcessUsageSample(dependencies);
                 samples = [ ...samples, sample ];
                 onSample?.(sample);
             }, options.samplingIntervalMilliseconds);
@@ -150,11 +150,11 @@ export function createResourceUsageTracker(
     };
 }
 
-export function createNodeResourceUsageTracker(
+export function createNodeProcessUsageTracker(
     wallClock: Clock,
-    options: ResourceUsageTrackerOptions
-): RunResourceUsageTracker {
-    return createResourceUsageTracker({
+    options: ProcessUsageTrackerOptions
+): RunProcessUsageTracker {
+    return createProcessUsageTracker({
         readActiveResourceTypes() {
             return process.getActiveResourcesInfo();
         },

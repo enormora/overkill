@@ -1,13 +1,13 @@
 import type { WorkerLifecycle } from '../config/types.ts';
 import type {
-    ResourceUsageSnapshot,
-    RunResourceUsage
+    ProcessUsageSnapshot,
+    RunProcessUsage
 } from './run-engine-primitives.ts';
 import type {
     CreatedWorkerPool,
-    WorkerPoolResourceUsageTracker
+    WorkerPoolProcessUsageTracker
 } from './run-orchestrator-dependencies.ts';
-import { createResourceUsageFromSamples } from './resource-usage.ts';
+import { createProcessUsageFromSamples } from './process-usage.ts';
 import type { WorkerPoolTask } from './worker-pool-protocol.ts';
 import { isWorkerPoolTaskKind } from './worker-pool-task-validation.ts';
 
@@ -105,11 +105,11 @@ function uniqueSorted(values: readonly string[]): readonly string[] {
     });
 }
 
-function combinedSnapshot(samples: readonly ResourceUsageSnapshot[]): ResourceUsageSnapshot {
+function combinedSnapshot(samples: readonly ProcessUsageSnapshot[]): ProcessUsageSnapshot {
     const firstSample = samples[0];
 
     if (firstSample === undefined) {
-        throw new Error('Routed worker-pool resource tracking requires at least one sample.');
+        throw new Error('Routed worker-pool process usage tracking requires at least one sample.');
     }
 
     return {
@@ -131,10 +131,10 @@ function combinedSnapshot(samples: readonly ResourceUsageSnapshot[]): ResourceUs
     };
 }
 
-function createRoutedResourceUsage(
-    usages: readonly RunResourceUsage[],
-    samples: readonly ResourceUsageSnapshot[]
-): RunResourceUsage {
+function createRoutedProcessUsage(
+    usages: readonly RunProcessUsage[],
+    samples: readonly ProcessUsageSnapshot[]
+): RunProcessUsage {
     const start = combinedSnapshot(usages.map(function toStart(usage) {
         return usage.start;
     }));
@@ -142,18 +142,18 @@ function createRoutedResourceUsage(
         return usage.end;
     }));
 
-    return createResourceUsageFromSamples(start, end, [ start, ...samples, end ]);
+    return createProcessUsageFromSamples(start, end, [ start, ...samples, end ]);
 }
 
-function createRoutedResourceUsageTracker(
-    trackers: readonly WorkerPoolResourceUsageTracker[]
-): WorkerPoolResourceUsageTracker {
-    const latestSamples = new Map<number, ResourceUsageSnapshot>();
-    let combinedSamples: readonly ResourceUsageSnapshot[] = [];
+function createRoutedProcessUsageTracker(
+    trackers: readonly WorkerPoolProcessUsageTracker[]
+): WorkerPoolProcessUsageTracker {
+    const latestSamples = new Map<number, ProcessUsageSnapshot>();
+    let combinedSamples: readonly ProcessUsageSnapshot[] = [];
 
     return {
         finish() {
-            return createRoutedResourceUsage(
+            return createRoutedProcessUsage(
                 trackers.map(function finishTracker(tracker) {
                     return tracker.finish();
                 }),
@@ -214,17 +214,17 @@ export function createRoutedPool(routes: readonly WorkerPoolRoute[]): CreatedWor
 
     if (
         routes.every(function routeProvidesTracker(route) {
-            return route.pool.createResourceUsageTracker !== undefined;
+            return route.pool.createProcessUsageTracker !== undefined;
         })
     ) {
         return {
             ...basePool,
-            createResourceUsageTracker(options) {
-                return createRoutedResourceUsageTracker(routes.map(function toTracker(route) {
-                    const tracker = route.pool.createResourceUsageTracker?.(options);
+            createProcessUsageTracker(options) {
+                return createRoutedProcessUsageTracker(routes.map(function toTracker(route) {
+                    const tracker = route.pool.createProcessUsageTracker?.(options);
 
                     if (tracker === undefined) {
-                        throw new Error('Routed worker-pool lost resource tracking support.');
+                        throw new Error('Routed worker-pool lost process usage tracking support.');
                     }
 
                     return tracker;

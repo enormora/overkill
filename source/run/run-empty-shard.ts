@@ -55,7 +55,7 @@ export async function executeEmptyShardRun(
             {
                 completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
                 planStatus: 'empty-shard',
-                resourceUsage: null,
+                processUsage: null,
                 startedAtMicroseconds,
                 testExecutionWallTimeMicroseconds: 0
             }

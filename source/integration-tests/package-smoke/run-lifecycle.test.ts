@@ -34,8 +34,8 @@ try {
         request: {
             baselineUpdateMode: 'none', capabilityRestrictions: {mode: 'enabled'}, capture: 'buffered',
             coverage: false, debug: {mode: 'off', selectors: []}, execution: {mode: 'profile-default'},
-            measureResourceUsage: null, order: 'plan', paths: [], profile: 'microtest',
-            resourceBudgetOverrides: null, resourceUsageSamplingIntervalMilliseconds: null,
+            measureProcessUsage: null, order: 'plan', paths: [], profile: 'microtest',
+            processBudgetOverrides: null, processUsageSamplingIntervalMilliseconds: null,
             seed: {value: 42n}, selection: {kind: 'all'}, shard: {index: 1, total: 1},
             timingCollection: 'profile-default', verbose: false, workers: null
         }

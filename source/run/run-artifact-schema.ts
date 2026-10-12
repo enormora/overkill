@@ -11,7 +11,7 @@ export const verdictSchema = z.enum([
     'skip',
     'inconclusive',
     'crashed',
-    'resource-exhausted',
+    'process-exhausted',
     'runtime-policy'
 ]);
 export const testAttemptSchema = z.strictObject({

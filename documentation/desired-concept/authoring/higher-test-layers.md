@@ -677,14 +677,14 @@ test nodes in selected files remain subject to collection-time validation.
   no dedicated mutation profile is required. The resolved request retains this
   intent, the configured profile remains unchanged, and
   `RunFacts.execution.scheduling` exposes the effective scheduling.
-- Reuse the profile's discovery, loader, capability restrictions, and resource
-  policies. Keep ordinary V8 coverage disabled and disable retries and baseline
+- Reuse the profile's discovery, loader, capability restrictions, and process
+  usage policies. Keep ordinary V8 coverage disabled and disable retries and baseline
   updates. Use one campaign seed across the dry run, all mutants, workers, and
   worker replacements. Accept an explicit seed or generate one once for the
   campaign and expose it for reproduction. Derive case seeds from that seed and
   stable executable identity, independently of scheduling and filtered selection.
 - Freeze authoritative discovery, loader declarations, selection, permissions,
-  and resource policy during unmutated initialization. Exclude configuration,
+  and process usage policy during unmutated initialization. Exclude configuration,
   test definitions, and adapter code from mutation targets. If configuration is
   evaluated again with a static mutant active, reject conflicting policy facts;
   unchanged test IDs alone are insufficient validation.
@@ -1278,7 +1278,7 @@ resolved property seed. Backends and collected policies are versioned so
 identical context reproduces the same candidate sequence.
 
 Profiles own default new-trial counts, growth/depth limits, edge and exhaustive
-limits, traversal and shrink budgets, and existing timeout/resource policy.
+limits, traversal and shrink budgets, and existing timeout and process usage policies.
 Explicit per-property settings are resolved and validated during collection;
 they never bypass profile capability restrictions or hard supervision limits.
 `sampleGenerator(generator, request)` previews fresh generated values using an

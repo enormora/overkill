@@ -12,8 +12,8 @@ import {
     integrationProfileSchema,
     microtestExecutionSchema,
     microtestProfileSchema,
-    resourceBudgetsSchema,
-    resourceUsageSchema,
+    processBudgetsSchema,
+    processUsageSchema,
     timeoutSchema
 } from './schema.ts';
 
@@ -109,14 +109,14 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
     {
         data: { measure: true, extra: true },
         expectedIssues: [ 'unexpected additional property: "extra"' ],
-        name: 'resourceUsage rejects extra',
-        schema: resourceUsageSchema
+        name: 'processUsage rejects extra',
+        schema: processUsageSchema
     },
     {
         data: { activeResourceCount: 1, extra: true },
         expectedIssues: [ 'unexpected additional property: "extra"' ],
-        name: 'resourceUsage.budgets rejects extra',
-        schema: resourceBudgetsSchema
+        name: 'processUsage.budgets rejects extra',
+        schema: processBudgetsSchema
     },
     {
         data: { softMilliseconds: 1, extra: true },
@@ -162,7 +162,7 @@ export const testNode = createOverkillSuite({
                         include: [ 'source/**/*.test.ts' ]
                     },
                     reporters: [ reporter ],
-                    resourceUsage: {
+                    processUsage: {
                         budgets: {
                             activeResourceCount: 1,
                             javaScriptEngineHeapBytes: null,
@@ -246,7 +246,7 @@ export const testNode = createOverkillSuite({
                         include: [ 'source/**/*.integration.test.ts' ]
                     },
                     reporters: [ reporter ],
-                    resourceUsage: { measure: false },
+                    processUsage: { measure: false },
                     testFamily: 'integration',
                     timings: { collection: 'summary' },
                     timeouts: {
@@ -475,12 +475,12 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'microtest resource usage schema accepts measured and unmeasured policies',
+            title: 'microtest process usage schema accepts measured and unmeasured policies',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
-                assertValidationSuccess(scope, resourceUsageSchema, { measure: false });
-                assertValidationSuccess(scope, resourceUsageSchema, {
+                assertValidationSuccess(scope, processUsageSchema, { measure: false });
+                assertValidationSuccess(scope, processUsageSchema, {
                     budgets: {
                         activeResourceCount: 1,
                         javaScriptEngineHeapBytes: 2,

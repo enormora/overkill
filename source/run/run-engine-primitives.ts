@@ -24,10 +24,10 @@ import type {
     RunnerError as RunnerErrorDefinition
 } from '../engine/run-result.ts';
 import type {
-    ResourceUsageSnapshot as ResourceUsageSnapshotDefinition,
-    RunResourceUsage as RunResourceUsageDefinition,
-    RunResourceUsageTracker as RunResourceUsageTrackerDefinition
-} from '../engine/resource-usage.ts';
+    ProcessUsageSnapshot as ProcessUsageSnapshotDefinition,
+    RunProcessUsage as RunProcessUsageDefinition,
+    RunProcessUsageTracker as RunProcessUsageTrackerDefinition
+} from '../engine/process-usage.ts';
 import type {
     TestPlanRootOptions as TestPlanRootOptionsDefinition,
     TestPlan as TestPlanDefinition,
@@ -41,10 +41,10 @@ export type PerTestResult = PerTestResultDefinition;
 export type ReporterDelivery = ReporterDeliveryDefinition;
 export type ReporterDispatcher = ReporterDispatcherDefinition;
 export type ReporterEvent = ReporterEventDefinition;
-export type ResourceUsageSnapshot = ResourceUsageSnapshotDefinition;
+export type ProcessUsageSnapshot = ProcessUsageSnapshotDefinition;
 export type RunArtifact = RunArtifactDefinition;
-export type RunResourceUsage = RunResourceUsageDefinition;
-export type RunResourceUsageTracker = RunResourceUsageTrackerDefinition;
+export type RunProcessUsage = RunProcessUsageDefinition;
+export type RunProcessUsageTracker = RunProcessUsageTrackerDefinition;
 export type RunResult = RunResultDefinition;
 export type RunnerError = RunnerErrorDefinition;
 export type TestPlan = TestPlanDefinition;

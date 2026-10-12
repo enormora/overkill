@@ -14,13 +14,13 @@ import {
     type RunnerError,
     type TestFailure
 } from './run-result.ts';
-import type { ResourceUsageSnapshot } from './resource-usage.ts';
+import type { ProcessUsageSnapshot } from './process-usage.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import {
-    findResourceBudgetBreach,
-    type ExecuteResourceBudgets,
-    type ResourceBudgetBreach
-} from './execution-resource-budget-breach.ts';
+    findProcessBudgetBreach,
+    type ExecuteProcessBudgets,
+    type ProcessBudgetBreach
+} from './execution-process-budget-breach.ts';
 import type { ExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 import {
     createExecutionSupervision as createExecutionSupervisionState,
@@ -44,7 +44,7 @@ export type ExecutionSupervisionDependencies = {
 };
 type TestFailures = readonly [TestFailure, ...TestFailure[]];
 
-type ResourceExhaustionCause = ResourceBudgetBreach & {
+type ProcessExhaustionCause = ProcessBudgetBreach & {
     readonly activeAttempts: readonly AttemptId[];
     readonly activeCases: readonly TestPlanCase['id'][];
     readonly activeWork: readonly WorkId[];
@@ -83,11 +83,11 @@ type CaseBodyInput = ActiveCaseInput & {
     readonly timeoutMilliseconds: number | null;
 };
 
-type ResourceUsageSampleInput = {
-    readonly budgets: ExecuteResourceBudgets | null | undefined;
+type ProcessUsageSampleInput = {
+    readonly budgets: ExecuteProcessBudgets | null | undefined;
     readonly dependencies: ExecutionSupervisionDependencies;
-    readonly previousSample: ResourceUsageSnapshot | null;
-    readonly sample: ResourceUsageSnapshot;
+    readonly previousSample: ProcessUsageSnapshot | null;
+    readonly sample: ProcessUsageSnapshot;
     readonly supervision: ExecutionSupervision;
 };
 
@@ -254,7 +254,7 @@ function soleActiveAttempt(attempts: readonly AttemptId[]): AttemptId | null {
     return attempts.length === 1 ? attempts[0] ?? null : null;
 }
 
-function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
+function processExhaustionError(cause: ProcessExhaustionCause): RunnerError {
     const [ activeCase = null ] = cause.activeCases;
     const [ activeWork = null ] = cause.activeWork;
 
@@ -268,8 +268,8 @@ function resourceExhaustionError(cause: ResourceExhaustionCause): RunnerError {
             { label: 'observed', value: String(cause.observed) },
             { label: 'budget', value: String(cause.budget) }
         ],
-        message: `Resource budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
-        subtype: 'resource-exhaustion'
+        message: `Process budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
+        subtype: 'process-exhaustion'
     };
 }
 
@@ -337,14 +337,14 @@ function completeActiveCasesAfterGlobalError(
     }
 }
 
-function completeActiveCasesWithResourceExhaustion(
-    breach: ResourceBudgetBreach,
+function completeActiveCasesWithProcessExhaustion(
+    breach: ProcessBudgetBreach,
     supervision: ExecutionSupervision,
     dependencies: ExecutionSupervisionDependencies
 ): void {
     supervision.stopAcceptingCases();
 
-    const cause: ResourceExhaustionCause = {
+    const cause: ProcessExhaustionCause = {
         ...breach,
         activeAttempts: Array.from(supervision.activeCases.values(), function attempt(active) {
             return active.attempt;
@@ -355,15 +355,15 @@ function completeActiveCasesWithResourceExhaustion(
     };
 
     if (cause.activeCases.length === 0) {
-        supervision.recordRunnerError(resourceExhaustionError({
+        supervision.recordRunnerError(processExhaustionError({
             ...cause,
             enforcement: 'post-test-diagnostic'
         }));
         return;
     }
 
-    supervision.recordRunnerError(resourceExhaustionError(cause));
-    completeActiveCasesAs(supervision, 'resource-exhausted', dependencies);
+    supervision.recordRunnerError(processExhaustionError(cause));
+    completeActiveCasesAs(supervision, 'process-exhausted', dependencies);
 }
 
 async function runCaseWithSoftTimeout(
@@ -513,14 +513,14 @@ function createActiveCaseInput(
     };
 }
 
-export function recordResourceUsageSample(input: ResourceUsageSampleInput): boolean {
-    const breach = findResourceBudgetBreach(input.budgets, input.sample, input.previousSample);
+export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolean {
+    const breach = findProcessBudgetBreach(input.budgets, input.sample, input.previousSample);
 
     if (breach === null) {
         return false;
     }
 
-    completeActiveCasesWithResourceExhaustion(breach, input.supervision, input.dependencies);
+    completeActiveCasesWithProcessExhaustion(breach, input.supervision, input.dependencies);
 
     return true;
 }
@@ -531,10 +531,10 @@ type CaseExecutionInput = Pick<
 >;
 
 function closedBoundaryVerdict(supervision: ExecutionSupervision): PerTestResult['verdict'] {
-    const exhausted = supervision.runnerErrors.some(function resourceExhausted(error) {
-        return error.subtype === 'resource-exhaustion';
+    const exhausted = supervision.runnerErrors.some(function processExhausted(error) {
+        return error.subtype === 'process-exhaustion';
     });
-    return exhausted ? 'resource-exhausted' : 'crashed';
+    return exhausted ? 'process-exhausted' : 'crashed';
 }
 
 export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {

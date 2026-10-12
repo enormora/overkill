@@ -1,7 +1,7 @@
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 import { createLocalTestPlan, type LocalTestPlan } from './run-local-test-plan.ts';
-import { resolveResourceUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
+import { resolveProcessUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunCommand, CollectedRunPlan, RunRequest } from './run-types.ts';
 import type {
@@ -27,8 +27,8 @@ type SupervisedCommandBase = {
     readonly hardTimeoutMilliseconds: number;
     readonly maxConcurrency: SupervisedRunCommand['maxConcurrency'];
     readonly paths: readonly string[];
-    readonly resourceBudgets: SupervisedRunCommand['resourceBudgets'];
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly processBudgets: SupervisedRunCommand['processBudgets'];
+    readonly processUsageSamplingIntervalMilliseconds: number;
     readonly root: SupervisedRunCommand['root'];
     readonly scheduling: SupervisedRunCommand['scheduling'];
     readonly testFamily: SupervisedRunCommand['testFamily'];
@@ -105,7 +105,7 @@ function resolvedPaths(files: ResolvedRunInput['files']): readonly string[] {
 }
 
 function createSupervisedCommandBase(input: SupervisedCommandBaseInput): SupervisedCommandBase {
-    const resourceUsagePolicy = resolveResourceUsagePolicy(input.command.request, input.profile);
+    const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
         capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
@@ -117,8 +117,8 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         hardTimeoutMilliseconds: input.profile.timeouts.hardMilliseconds,
         maxConcurrency: input.profile.execution.maxConcurrency,
         paths: resolvedPaths(input.files),
-        resourceBudgets: resourceUsagePolicy.budgets,
-        resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
+        processBudgets: processUsagePolicy.budgets,
+        processUsageSamplingIntervalMilliseconds: processUsagePolicy.samplingIntervalMilliseconds,
         root: runCollectionRoot(input.source, input.command.cwd),
         scheduling: resolveRunScheduling(input.command.request, input.profile),
         testFamily: input.profile.testFamily,
@@ -172,7 +172,7 @@ export function createSupervisedRunCommand(
 export function createWorkerPoolCommand(
     input: WorkerPoolCommandInput
 ): WorkerPoolCommand {
-    const resourceUsagePolicy = resolveResourceUsagePolicy(input.command.request, input.profile);
+    const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
         attachmentEndpoint: null,
@@ -187,8 +187,8 @@ export function createWorkerPoolCommand(
             : { kind: 'direct' },
         maxConcurrency: input.profile.execution.maxConcurrency,
         paths: resolvedPaths(input.files),
-        resourceBudgets: resourceUsagePolicy.budgets,
-        resourceUsageSamplingIntervalMilliseconds: resourceUsagePolicy.samplingIntervalMilliseconds,
+        processBudgets: processUsagePolicy.budgets,
+        processUsageSamplingIntervalMilliseconds: processUsagePolicy.samplingIntervalMilliseconds,
         root: runCollectionRoot(input.source, input.command.cwd),
         scheduling: input.profile.execution.scheduling,
         testFamily: input.profile.testFamily,

@@ -1,15 +1,15 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
-import { testNode as resourceUsageTestNode } from './resource-usage.test.ts';
-import { testNode as runResourceUsagePolicyTestNode } from './run-resource-usage-policy.test.ts';
+import { testNode as processUsageTestNode } from './process-usage.test.ts';
+import { testNode as runProcessUsagePolicyTestNode } from './run-process-usage-policy.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/resource-usage-suite.test.ts',
+    title: 'source/run/process-usage-suite.test.ts',
     annotations: {},
     controls: {},
     children: [
-        resourceUsageTestNode,
-        runResourceUsagePolicyTestNode
+        processUsageTestNode,
+        runProcessUsagePolicyTestNode
     ]
 });
 

@@ -7,7 +7,7 @@ import type {
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { CapturedOutputArtifact, RunArtifactId } from './run-artifact.ts';
 import type { RunTimings } from './run-timings.ts';
-import type { RunResourceUsage } from './resource-usage.ts';
+import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
 
@@ -20,7 +20,7 @@ type RunnerErrorSubtypeByName = {
     readonly loader: 'loader';
     readonly permission: 'permission';
     readonly reporter: 'reporter';
-    readonly resourceExhaustion: 'resource-exhaustion';
+    readonly processExhaustion: 'process-exhaustion';
     readonly runtimeState: 'runtime-state';
     readonly runtimePolicy: 'runtime-policy';
     readonly uncaughtException: 'uncaught-exception';
@@ -137,7 +137,7 @@ export type InconclusiveOutcome = {
 };
 
 export type TestOutcome = FailOutcome | InconclusiveOutcome | PassOutcome | SkipOutcome;
-export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
+export type TestVerdict = TestOutcome['kind'] | 'crashed' | 'process-exhausted' | 'runtime-policy';
 
 export type RunnerError = {
     readonly attributedToAttempt: AttemptId | null;
@@ -428,7 +428,7 @@ export type RunSummary = {
     readonly inconclusive: number;
     readonly passed: number;
     readonly planned: number;
-    readonly resourceExhausted: number;
+    readonly processExhausted: number;
     readonly runtimePolicy: number;
     readonly skipped: number;
 };
@@ -442,7 +442,7 @@ function failingRunConditions(summary: RunSummary, runnerErrors: readonly Runner
         summary.crashed > 0,
         summary.failed > 0,
         summary.planned === 0,
-        summary.resourceExhausted > 0,
+        summary.processExhausted > 0,
         summary.runtimePolicy > 0
     ];
 }
@@ -554,7 +554,7 @@ export type RunResult = {
     readonly orphans: readonly OrphanedNode[];
     readonly perTest: readonly PerTestResult[];
     readonly planStatus: RunPlanStatus;
-    readonly resourceUsage: RunResourceUsage | null;
+    readonly processUsage: RunProcessUsage | null;
     readonly runnerErrors: readonly RunnerError[];
     readonly status: RunStatus;
     readonly summary: RunSummary;

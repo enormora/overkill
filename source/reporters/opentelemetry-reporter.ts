@@ -63,7 +63,7 @@ function runSummaryAttributes(summary: RunSummary): Attributes {
         'overkill.run.summary.inconclusive': summary.inconclusive,
         'overkill.run.summary.passed': summary.passed,
         'overkill.run.summary.planned': summary.planned,
-        'overkill.run.summary.resource_exhausted': summary.resourceExhausted,
+        'overkill.run.summary.process_exhausted': summary.processExhausted,
         'overkill.run.summary.runtime_policy': summary.runtimePolicy,
         'overkill.run.summary.skipped': summary.skipped
     };

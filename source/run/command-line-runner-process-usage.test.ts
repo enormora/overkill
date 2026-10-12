@@ -168,7 +168,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 ...defaultLoadedConfig(),
                 profiles: {
                     microtest: defaultMicrotestProfile({
-                        resourceUsage: {
+                        processUsage: {
                             budgets: {
                                 activeResourceCount: 2,
                                 residentSetBytes: 200
@@ -184,7 +184,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
     };
 }
 
-function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): void {
+function assertProcessUsageCommand(scope: OverkillScope, command: RunCommand): void {
     const profile = command.config.profiles.microtest;
 
     scope.require.defined(profile);
@@ -202,7 +202,7 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
         },
         files: null,
         reporters: null,
-        resourceUsage: {
+        processUsage: {
             budgets: {
                 activeResourceCount: 2,
                 javaScriptEngineHeapBytes: null,
@@ -220,10 +220,10 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
             softMilliseconds: 500
         }
     });
-    const { resourceBudgetOverrides } = command.request;
+    const { processBudgetOverrides } = command.request;
 
-    scope.require.notNull(resourceBudgetOverrides);
-    scope.assert.deepEqual(resourceBudgetOverrides, {
+    scope.require.notNull(processBudgetOverrides);
+    scope.assert.deepEqual(processBudgetOverrides, {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: 100,
         residentSetBytes: null,
@@ -233,13 +233,13 @@ function assertResourceUsageCommand(scope: OverkillScope, command: RunCommand): 
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-runner-resource-usage.test.ts',
+    title: 'source/run/command-line-runner-process-usage.test.ts',
     annotations: {},
     controls: {},
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() carries resource usage config and request values',
+            title: 'commandLineRunner.runTests() carries process usage config and request values',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -250,7 +250,7 @@ export const testNode = createOverkillSuite({
                     cwd: process.cwd(),
                     runRequest: {
                         ...defaultRequest,
-                        resourceBudgetOverrides: {
+                        processBudgetOverrides: {
                             activeResourceCount: null,
                             javaScriptEngineHeapBytes: 100,
                             residentSetBytes: null,
@@ -262,7 +262,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(result.exitCode, 0);
                 const receivedCommand = recordedCommands.first();
                 scope.require.defined(receivedCommand);
-                assertResourceUsageCommand(scope, receivedCommand);
+                assertProcessUsageCommand(scope, receivedCommand);
 
                 return scope.assert.collect();
             }
