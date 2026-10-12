@@ -10,10 +10,6 @@ export type ResourceWorkloadParser<Parameters extends WorkloadParameters> = (
     parameters: WorkloadParameters
 ) => Parameters;
 
-export type ResourceWorkloadDeclaration<Parameters extends WorkloadParameters> = {
-    readonly workload: ResourceWorkloadParser<Parameters>;
-};
-
 export function hasWorkloadInput<Value extends Record<string, unknown>>(
     value: Value
 ): value is Value & { readonly workload: WorkloadInput; } {

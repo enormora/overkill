@@ -2,7 +2,7 @@ import type { Merge } from 'type-fest';
 import type { WorkloadParameters } from '../engine/workload-input.ts';
 import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
 import { normalizeResourceDefinition } from './resource-definition.ts';
-import type { ResourceWorkload, ResourceWorkloadDeclaration } from './resource-workload-types.ts';
+import type { ResourceWorkload } from './resource-workload-types.ts';
 import type {
     Awaitable,
     EmptyResourceDependencies,
@@ -406,7 +406,7 @@ export function defineLocalServiceResource<
             Dependencies,
             Parameters
         >,
-        ResourceWorkloadDeclaration<Parameters>
+        { readonly workload: (parameters: WorkloadParameters) => Parameters; }
     >
 ): ResourceDefinition<
     Name,
@@ -437,7 +437,7 @@ export function defineLocalServiceResource<
             Dependencies,
             Parameters
         >,
-        ResourceWorkloadDeclaration<Parameters>
+        { readonly workload: (parameters: WorkloadParameters) => Parameters; }
     >
 ): ResourceDefinition<
     Name,

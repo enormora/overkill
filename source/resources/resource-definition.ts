@@ -27,6 +27,8 @@ import type {
 } from './resource-definition-types.ts';
 import { resourceDefinitionBrand } from './resource-definition-brand.ts';
 
+import type { DefineResource } from './resource-authoring-types.ts';
+
 type ProjectedResourceScope = 'per-file' | 'per-run' | 'per-suite';
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -326,7 +328,10 @@ function defineResource(definition: Readonly<Record<string, unknown>>): unknown 
     return normalized;
 }
 
-export const resourceDefinitionApi = Object.freeze({
+export const resourceDefinitionApi: {
+    readonly defineResource: DefineResource;
+    readonly isDefinedResource: typeof isDefinedResource;
+} = Object.freeze({
     defineResource,
     isDefinedResource
 });
