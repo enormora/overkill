@@ -189,7 +189,7 @@ exist only at run scope.
 ### Definition Of "Executed"
 
 A case is counted as `executed` when it received any `TestOutcome`
-(pass, fail, skip, inconclusive), crashed mid-run, or exhausted a resource
+(pass, fail, skip, inconclusive), crashed mid-run, or exhausted a process
 budget after its body started. Filtered-out and sharded-out cases do not
 count because they never entered the final `TestPlan`.
 

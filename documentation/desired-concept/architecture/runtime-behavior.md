@@ -4,7 +4,7 @@
 
 This document fills in the runtime-shaped concerns most existing concept
 documentation names only in passing: console capture, exit codes, signal handling,
-unhandled rejections, leaked resources, process budgets, parallelism semantics,
+unhandled rejections, leaked Node resources, process budgets, parallelism semantics,
 sharding, monorepo discovery, terminal capability detection, watch-mode
 targeting.
 
@@ -378,7 +378,7 @@ reported as:
   value, enforcement mode, sampling interval, worker id, and active case
 
 The default human message names the test file, test title, metric, budget,
-observed peak, and enforcement mode. Verbose mode may report peak resource
+observed peak, and enforcement mode. Verbose mode may report peak process
 usage even when no budget was exceeded, so growth is visible before it becomes
 a ceiling.
 
@@ -658,7 +658,7 @@ Selection rules:
   `execution: { mode: 'serial' }`; `mode: 'profile-default'` retains the
   configured scheduling
 - the serial override preserves the configured process model, capabilities,
-  resource policy, and timeouts; it is rejected for other test families before
+  process usage policy, and timeouts; it is rejected for other test families before
   discovery
 - resolved request intent records the override separately from the unchanged
   profile; `RunFacts.execution.scheduling` records the effective scheduling

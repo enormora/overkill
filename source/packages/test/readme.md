@@ -146,7 +146,7 @@ The root doubles exports are the current lightweight public surface from
 testing doubles package ownership.
 
 Nodes created through this root facade are family-neutral. The selected runner
-profile owns family policy, capture support, resource policy, and timeout
+profile owns family policy, capture support, process usage policy, and timeout
 validation.
 
 Use the object form when attaching annotations or controls. Annotations on the

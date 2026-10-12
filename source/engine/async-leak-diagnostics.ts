@@ -127,7 +127,7 @@ export function activeResourceLeakError(input: ActiveResourceLeakInput): RunnerE
             { label: 'phase', value: cause.phase },
             { label: 'resources', value: resourceTypes.join(', ') }
         ],
-        message: `Runtime policy violation: active resources leaked: ${resourceTypes.join(', ')}.`,
+        message: `Runtime policy violation: active Node resources leaked: ${resourceTypes.join(', ')}.`,
         subtype: 'runtime-policy'
     };
 }

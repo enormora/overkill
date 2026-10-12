@@ -125,7 +125,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'resource policy errors attribute active case boundaries',
+            title: 'process usage policy errors attribute active case boundaries',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {

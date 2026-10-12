@@ -215,7 +215,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.run() reports supervised active resource count exhaustion',
+            title: 'orchestrator.run() reports supervised active Node resource count exhaustion',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {

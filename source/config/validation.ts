@@ -19,7 +19,7 @@ function validatePositiveSafeInteger(value: number | null, label: string): void 
 }
 
 function validateProcessBudgets(processBudgets: ProcessBudgets): void {
-    validatePositiveSafeInteger(processBudgets.activeResourceCount, 'Active resource count budget');
+    validatePositiveSafeInteger(processBudgets.activeResourceCount, 'Active Node resource count budget');
     validatePositiveSafeInteger(processBudgets.javaScriptEngineHeapBytes, 'JavaScript engine heap budget');
     validatePositiveSafeInteger(processBudgets.residentSetBytes, 'Resident set budget');
     validatePositiveSafeInteger(processBudgets.residentSetGrowthBytesPerSecond, 'Resident set growth budget');

@@ -484,8 +484,8 @@ Source: [Runtime Behavior § Process Crash Handling](../architecture/runtime-beh
 
 ## Process Budget
 
-A per-profile ceiling for runtime resources such as JavaScript engine heap,
-resident set size, resident-set growth, or active resource count. Node-first
+A per-profile ceiling for process usage such as JavaScript engine heap,
+resident set size, resident-set growth, or active Node resource count. Node-first
 process budgets are enforced strongly in supervised process-boundary profiles
 and on a best-effort basis in in-process profiles.
 

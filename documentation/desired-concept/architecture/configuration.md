@@ -60,7 +60,7 @@ Configuration should mainly cover orchestration and package wiring:
   no environment-based write gate)
 - microtest coverage policy (outputs, source scope, thresholds, output path)
 - process usage policy and process-budget thresholds (Node-first JavaScript
-  engine heap, resident set, resident-set growth, and active-resource limits by
+  engine heap, resident set, resident-set growth, and active Node resource limits by
   profile)
 - timing collection policy (`summary` by default, `precise` for detailed
   runner diagnostics)

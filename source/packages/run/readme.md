@@ -90,7 +90,7 @@ excluded from the comparison.
 `{ kind: 'frozen-policy', policy, invocation: { seed, selection }, reporting }`.
 The invocation selection narrows the frozen baseline selection. Supply
 `reporting: { reporters, outputRenderer }` explicitly; callbacks and the seed
-are excluded from the snapshot. Ordinary runtime guards and resource policies
+are excluded from the snapshot. Ordinary runtime guards and process usage policies
 still apply. `parseFrozenMicrotestPolicy` validates transported data, including
 descriptor roots and file-set ownership, and freezes the result.
 
@@ -351,7 +351,7 @@ includes the initial attempt; omission or `maxAttempts: 1` runs once.
 `retries.artifacts` accepts `first-failure-and-final` (default),
 `last-failure-and-final`, or `all`. Microtest profiles reject this setting.
 Only completed assertion failures, ordinary body errors, and cooperative soft
-timeouts can retry. Cleanup, contract, resource, runtime-policy, and crash
+timeouts can retry. Cleanup, contract, process-exhaustion, runtime-policy, and crash
 failures are terminal. Each attempt gets fresh per-case resources and timeout
 state; shared resources and the selected work identity stay unchanged.
 
@@ -488,7 +488,7 @@ diagnostics for the binary wrapper to write, and maps run outcomes to stable
 exit codes. Fallback diagnostics contain runner errors that were not delivered
 to any terminal-capable reporter callback during `orchestrator.runWithReporterDelivery(command)`.
 Raw terminal reporters are counted as delivered when their callback succeeds
-because their writes are intentionally opaque to the dispatcher. Resource
+because their writes are intentionally opaque to the dispatcher. Process
 exhaustion maps to exit code 5 before generic runner errors because
 `process-exhaustion` is also a runner error subtype. Profile reporters replace
 top-level project reporters for the selected run; otherwise top-level reporters

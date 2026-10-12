@@ -330,7 +330,7 @@ export const testNode = createOverkillSuite({
                         }
                     ));
                 }, {
-                    message: 'Active resource count budget must be a positive safe integer.'
+                    message: 'Active Node resource count budget must be a positive safe integer.'
                 });
 
                 return scope.assert.collect();

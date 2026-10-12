@@ -377,7 +377,7 @@ single-process microtest profile can keep assertion formatting bounded and
 report post-test or between-tick process usage diagnostics, but it cannot guarantee
 that the runner will survive a synchronous allocation that kills the process.
 Hard process budget enforcement requires the supervised microtest profile or
-another owned process boundary. In-process microtests only enforce resource
+another owned process boundary. In-process microtests only enforce process
 budgets on a best-effort basis with sampled and final usage diagnostics.
 
 Concept direction:

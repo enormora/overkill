@@ -35,7 +35,7 @@ determine eligibility. Incompatible test nodes are checked during collection.
 Initialization freezes a public runner policy with explicit serial scheduling,
 ordinary V8 coverage disabled, and baseline updates disabled. Microtest profiles
 have no Overkill retry policy. Discovery, loaders, capability restrictions,
-resource policies, timeouts, and the configured process model are preserved.
+process usage policies, timeouts, and the configured process model are preserved.
 The original profile remains unchanged; the command records the override as
 `request.execution: { mode: 'serial' }`.
 
