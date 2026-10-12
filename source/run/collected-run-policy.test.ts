@@ -12,6 +12,31 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             ...metadata,
+            title: 'explicit capability policy remains fixed while assertion requirements stay active',
+            async body(scope) {
+                const command = collectedRunCommand();
+                const { collected, state } = await collectLifecycleRun({
+                    ...command,
+                    request: {
+                        ...command.request,
+                        capabilityRestrictions: { mode: 'disabled' }
+                    }
+                });
+                state.mode = 'console';
+                const allowed = await collected.run(firstCase);
+                state.mode = 'no-assertions';
+                const missingAssertions = await collected.run(firstCase);
+                state.mode = 'pass';
+                const passed = await collected.run(firstCase);
+                scope.assert.deepEqual({
+                    allowedErrors: allowed.runnerErrors,
+                    statuses: [ allowed.status, missingAssertions.status, passed.status ]
+                }, { allowedErrors: [], statuses: [ 'passed', 'failed', 'passed' ] });
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
             title: 'console checks remain active on reruns and subscriptions stop before returning',
             async body(scope) {
                 const { collected, state } = await collectLifecycleRun(collectedRunCommand());
