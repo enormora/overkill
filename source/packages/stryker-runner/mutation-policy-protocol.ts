@@ -1,9 +1,11 @@
 import { z } from 'zod/v4';
 import { parseFrozenMicrotestPolicy } from '../run/run.entry-point.ts';
+import { mutationSandboxSchema } from './mutation-sandbox.ts';
 
 export const mutationPolicyRequestSchema = z.strictObject({
     kind: z.literal('resolve-policy'),
     cwd: z.string(),
+    sandbox: mutationSandboxSchema.nullable(),
     settings: z.unknown()
 });
 

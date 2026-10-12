@@ -75,7 +75,7 @@ async function mutationInput(command: RunCommand, frozen: boolean): Promise<Froz
     if (!frozen) {
         return command;
     }
-    const policy = await orchestrator.freezePolicy({ command, source: { kind: 'memory' } });
+    const policy = await orchestrator.freezePolicy({ moduleBoundary: null, command, source: { kind: 'memory' } });
     return {
         kind: 'frozen-policy',
         policy,

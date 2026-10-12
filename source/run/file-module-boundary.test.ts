@@ -1,0 +1,120 @@
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { suite, test } from '../packages/test/test.entry-point.ts';
+import { loadConfig } from '../packages/run/config.entry-point.ts';
+import { RunResolutionError, withFileModuleBoundary } from '../packages/run/run.entry-point.ts';
+
+type ProjectDirectories = {
+    readonly root: string;
+    readonly other: string;
+};
+
+async function withProjectDirectories(operation: (paths: ProjectDirectories) => Promise<void>): Promise<void> {
+    const directory = await realpath(await mkdtemp(join(tmpdir(), 'overkill-module-boundary-')));
+    const root = join(directory, 'sandbox');
+    const other = join(directory, 'original');
+    try {
+        await mkdir(root);
+        await mkdir(other);
+        await writeFile(join(other, 'escape.mjs'), 'throw new Error("original module evaluated");');
+        await writeFile(join(other, 'escape.cjs'), 'throw new Error("original module evaluated");');
+        await operation({ root, other });
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+}
+
+export const testNode = suite('file module boundaries', [
+    test('rejects absolute ESM and CommonJS imports before evaluating original files', async function (scope) {
+        await withProjectDirectories(async function assertEscapes({ root, other }) {
+            const boundary = { projectRoot: root, sharedRoots: [] };
+            await scope.assert.rejects(async function importOriginal() {
+                await withFileModuleBoundary(boundary, async function loadOriginal() {
+                    await import(pathToFileURL(join(other, 'escape.mjs')).href);
+                });
+            }, { type: RunResolutionError, message: /Module import escapes/ });
+            await scope.assert.rejects(async function requireOriginal() {
+                await withFileModuleBoundary(boundary, async function loadOriginal() {
+                    createRequire(pathToFileURL(join(root, 'config.mjs')))(join(other, 'escape.cjs'));
+                });
+            }, { type: RunResolutionError, message: /Module import escapes/ });
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects symlink escapes and allows sandbox dependencies', async function (scope) {
+        await withProjectDirectories(async function assertSymlink({ root, other }) {
+            await symlink(join(other, 'escape.mjs'), join(root, 'linked.mjs'));
+            await writeFile(join(root, 'directory.mjs'), 'export const directory = "bounded";');
+            await writeFile(
+                join(root, 'config.mjs'),
+                'import {directory} from "./directory.mjs"; export const config = {runtimeStateDir:directory};'
+            );
+            const boundary = { projectRoot: root, sharedRoots: [] };
+            await scope.assert.rejects(async function importSymlink() {
+                await withFileModuleBoundary(boundary, async function loadLinkedModule() {
+                    await import(pathToFileURL(join(root, 'linked.mjs')).href);
+                });
+            }, { type: RunResolutionError, message: /Module import escapes/ });
+            const config = await withFileModuleBoundary(boundary, async function loadSandboxConfig() {
+                return await loadConfig({ cwd: root, configPath: 'config.mjs' });
+            });
+            scope.assert.equal(config.runtimeStateDir, 'bounded');
+        });
+        return scope.assert.collect();
+    }),
+    test('isolates concurrent scopes and removes hooks after failure', async function (scope) {
+        await withProjectDirectories(async function assertConcurrentScopes({ root, other }) {
+            await writeFile(join(root, 'config.mjs'), 'export const config = {runtimeStateDir:"first"};');
+            await writeFile(join(other, 'config.mjs'), 'export const config = {runtimeStateDir:"second"};');
+            const configs = await Promise.all([ root, other ].map(async function loadOwnConfig(projectRoot) {
+                return await withFileModuleBoundary(
+                    { projectRoot, sharedRoots: [] },
+                    async function loadScopedConfig() {
+                        return await loadConfig({ cwd: projectRoot, configPath: 'config.mjs' });
+                    }
+                );
+            }));
+            scope.assert.deepEqual(
+                configs.map(function stateDirectory(config) {
+                    return config.runtimeStateDir;
+                }),
+                [ 'first', 'second' ]
+            );
+            await scope.assert.rejects(async function failOperation() {
+                await withFileModuleBoundary(
+                    { projectRoot: root, sharedRoots: [] },
+                    async function failInsideBoundary() {
+                        throw new Error('operation failed');
+                    }
+                );
+            }, { message: 'operation failed' });
+            const config = await loadConfig({ cwd: other, configPath: 'config.mjs' });
+            scope.assert.equal(config.runtimeStateDir, 'second');
+        });
+        return scope.assert.collect();
+    }),
+    test('allows explicit shared roots without broadening sibling project access', async function (scope) {
+        await withProjectDirectories(async function assertSharedRoots({ root, other }) {
+            const shared = join(other, 'installed-package');
+            await mkdir(shared);
+            await writeFile(join(shared, 'config.mjs'), 'export const config = {runtimeStateDir:"shared"};');
+            const boundary = { projectRoot: root, sharedRoots: [ shared ] };
+            const config = await withFileModuleBoundary(boundary, async function loadInstalledConfig() {
+                return await loadConfig({ cwd: shared, configPath: 'config.mjs' });
+            });
+            scope.assert.equal(config.runtimeStateDir, 'shared');
+            await scope.assert.rejects(async function importSibling() {
+                await withFileModuleBoundary(boundary, async function loadOriginalModule() {
+                    await import(pathToFileURL(join(other, 'escape.mjs')).href);
+                });
+            }, { message: /Module import escapes/ });
+        });
+        return scope.assert.collect();
+    })
+]);
+
+const { runIfMain } = await import('../test-support/run-if-main.ts');
+await runIfMain(import.meta, testNode);

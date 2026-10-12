@@ -106,6 +106,10 @@ Alternative: lazy plugin imports, pre-resolved file lists.
 Overkill does not require `module.register` / `module.registerHooks`
 hooks for ordinary use.
 
+Explicit mutation module boundaries use native synchronous hooks to prevent
+project imports escaping Stryker's sandbox. This does not add transforms or
+hooks to ordinary runs; see [Mutation Runner Contract](../authoring/higher-test-layers.md#mutation-runner-contract).
+
 Why: loader hooks add startup overhead and complicate cold-start
 budgets (see [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget)); they also
 tend to surprise tooling.

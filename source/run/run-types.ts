@@ -445,7 +445,13 @@ export type RunPolicySource = {
     readonly kind: 'memory';
 };
 
+export type FileModuleBoundary = {
+    readonly projectRoot: string;
+    readonly sharedRoots: readonly string[];
+};
+
 export type FrozenMicrotestPolicy = {
+    readonly moduleBoundary: FileModuleBoundary | null;
     readonly source: RunPolicySource;
     readonly cwd: string;
     readonly projectRoot: string;
@@ -458,6 +464,7 @@ export type FrozenMicrotestPolicy = {
 };
 
 export type FreezePolicyInput = {
+    readonly moduleBoundary: FileModuleBoundary | null;
     readonly command: RunCommand;
     readonly source: RunPolicySource;
 };

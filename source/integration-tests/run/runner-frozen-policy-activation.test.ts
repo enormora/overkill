@@ -41,6 +41,7 @@ async function assertStaticPolicy(
 ): Promise<void> {
     const controller = new AbortController();
     const policy = await initializeMutationPolicy({
+        sandbox: null,
         cwd,
         settings: { configPath: 'overkill.config.mjs', paths: [], profile: null },
         signal: controller.signal

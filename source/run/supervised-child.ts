@@ -367,7 +367,7 @@ async function runReceivedCommand(
     dependencies: SupervisedChildDependencies
 ): Promise<void> {
     try {
-        await runObservedSupervisedChildCommand(async function completeObservedCommand() {
+        await runObservedSupervisedChildCommand(command, async function completeObservedCommand() {
             await completeReceivedCommand(command, host, dependencies);
         });
     } catch (error: unknown) {

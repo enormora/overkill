@@ -6,7 +6,7 @@ import {
     createIsolatedResolvedRun
 } from './run-isolated-process.ts';
 import { executeRunCommand } from './run-execution.ts';
-import { prepareRunCommand } from './frozen-run-command.ts';
+import { prepareRunCommand, withRunCommandModuleBoundary } from './frozen-run-command.ts';
 import { createLocalResolvedRun } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
@@ -115,44 +115,50 @@ export function createRunOperations(
 ): RunOperations {
     return {
         async resolve(command, options) {
-            const prepared = await prepareRunCommand(command, namespace, dependencies);
-            return await createResolvedRun(
-                { command: prepared.command, namespace },
-                dependencies,
-                invocationTiming(options, dependencies),
-                prepared.source
-            );
+            return await withRunCommandModuleBoundary(command, async function collectBoundedRun() {
+                const prepared = await prepareRunCommand(command, namespace, dependencies);
+                return await createResolvedRun(
+                    { command: prepared.command, namespace },
+                    dependencies,
+                    invocationTiming(options, dependencies),
+                    prepared.source
+                );
+            });
         },
 
         async run(command, options) {
-            const prepared = await prepareRunCommand(command, namespace, dependencies);
-            return await runCommand(
-                { command: prepared.command, namespace },
-                dependencies,
-                invocationTiming(options, dependencies),
-                prepared.source
-            );
+            return await withRunCommandModuleBoundary(command, async function executeBoundedRun() {
+                const prepared = await prepareRunCommand(command, namespace, dependencies);
+                return await runCommand(
+                    { command: prepared.command, namespace },
+                    dependencies,
+                    invocationTiming(options, dependencies),
+                    prepared.source
+                );
+            });
         },
 
         async runWithReporterDelivery(command, options) {
-            const prepared = await prepareRunCommand(command, namespace, dependencies);
-            const timing = invocationTiming(options, dependencies);
-            const delivery = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(
-                async function runAndTrackReporterDelivery() {
-                    return await runCommand(
-                        { command: prepared.command, namespace },
-                        dependencies,
-                        timing,
-                        prepared.source
-                    );
-                }
-            );
+            return await withRunCommandModuleBoundary(command, async function deliverBoundedRun() {
+                const prepared = await prepareRunCommand(command, namespace, dependencies);
+                const timing = invocationTiming(options, dependencies);
+                const delivery = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(
+                    async function runAndTrackReporterDelivery() {
+                        return await runCommand(
+                            { command: prepared.command, namespace },
+                            dependencies,
+                            timing,
+                            prepared.source
+                        );
+                    }
+                );
 
-            return {
-                deliveredRunnerErrors: delivery.deliveredRunnerErrors,
-                result: delivery.result,
-                undeliveredRunnerErrors: delivery.undeliveredRunnerErrors
-            };
+                return {
+                    deliveredRunnerErrors: delivery.deliveredRunnerErrors,
+                    result: delivery.result,
+                    undeliveredRunnerErrors: delivery.undeliveredRunnerErrors
+                };
+            });
         }
     };
 }

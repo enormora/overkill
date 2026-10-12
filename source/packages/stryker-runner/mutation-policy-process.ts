@@ -9,8 +9,10 @@ import {
 } from './mutation-policy-process.entry-point.ts';
 import { mutationPolicyResponseSchema } from './mutation-policy-protocol.ts';
 import type { OverkillRunnerOptions } from './runner-options.ts';
+import type { MutationSandbox } from './mutation-sandbox.ts';
 
 type MutationPolicyInitialization = {
+    readonly sandbox: MutationSandbox | null;
     readonly cwd: string;
     readonly settings: OverkillRunnerOptions;
     readonly signal: AbortSignal;
@@ -66,7 +68,7 @@ export async function initializeMutationPolicy(input: MutationPolicyInitializati
                 }
             });
             child.send(
-                { kind: 'resolve-policy', cwd: input.cwd, settings: input.settings },
+                { kind: 'resolve-policy', cwd: input.cwd, sandbox: input.sandbox, settings: input.settings },
                 function policyRequestSent(error) {
                     if (error !== null) {
                         reject(error);

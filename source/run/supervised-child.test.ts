@@ -222,10 +222,13 @@ function emitUnhandledRejection(message: string): void {
 
 async function collectObservedSupervisedFailure(): Promise<unknown> {
     try {
-        await runObservedSupervisedChildCommand(async function collectChildPlan() {
-            emitUnhandledRejection('supervised collection failed');
-            await yieldToImmediate();
-        });
+        await runObservedSupervisedChildCommand(
+            command('collect', 'tests/first.test.ts'),
+            async function collectChildPlan() {
+                emitUnhandledRejection('supervised collection failed');
+                await yieldToImmediate();
+            }
+        );
     } catch (error: unknown) {
         return error;
     }

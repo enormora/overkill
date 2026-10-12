@@ -6,6 +6,7 @@ import { testNode as runtimeMatrixExpansionTestNode } from './runtime-matrix-exp
 
 import { testNode as frozenPolicyTestNode } from './frozen-run-policy.test.ts';
 import { testNode as frozenPolicyTransportTestNode } from './frozen-policy-transport.test.ts';
+import { testNode as moduleBoundaryTestNode } from './file-module-boundary.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -17,6 +18,7 @@ export const testNode = createOverkillSuite({
         collectedRunPlanTestNode,
         frozenPolicyTestNode,
         frozenPolicyTransportTestNode,
+        moduleBoundaryTestNode,
         runShardingTestNode,
         runtimeMatrixExpansionTestNode
     ]
