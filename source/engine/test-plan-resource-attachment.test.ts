@@ -19,6 +19,7 @@ function resourceAttachments(): TestBodyResourceAttachments {
         directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
         resourceGraph: [
             {
+                workload: 'independent' as const,
                 dependencies: [],
                 handleTransport: 'local',
                 name: 'scratch',

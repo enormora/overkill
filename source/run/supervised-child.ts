@@ -1,5 +1,4 @@
 import type { Clock } from '@enormora/clock';
-import { workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type {
     RunResult,
@@ -36,6 +35,7 @@ import {
 } from './supervised-child-execution.ts';
 import {
     createSupervisedResourceLifecycleTiming,
+    supervisedAssignedPlan,
     supervisedAssignedWork,
     type SupervisedAssignmentCommand,
     type SupervisedChildCommand,
@@ -85,46 +85,6 @@ export type SupervisedChildDependencies = {
     ) => RunResourceUsageTracker;
     readonly createClock: () => Clock;
 };
-
-function casesByIdentity(testPlan: TestPlan): ReadonlyMap<string, TestPlan['cases'][number]> {
-    return new Map(testPlan.cases.map(function toEntry(testCase) {
-        return [ workIdentityKey(testCase.workId), testCase ];
-    }));
-}
-
-function assignedTestPlanCase(
-    casesByKey: ReadonlyMap<string, TestPlan['cases'][number]>,
-    work: WorkId
-): TestPlan['cases'][number] {
-    const assigned = casesByKey.get(workIdentityKey(work));
-
-    if (assigned === undefined) {
-        throw new Error('Supervised child test plan did not match assigned work identities.');
-    }
-
-    return assigned;
-}
-
-function selectAssignedCases(
-    testPlan: TestPlan,
-    assignedWork: readonly WorkId[]
-): TestPlan {
-    const casesByKey = casesByIdentity(testPlan);
-    const cases = assignedWork.map(function toAssignedCase(work) {
-        return assignedTestPlanCase(casesByKey, work);
-    });
-
-    const first = cases[0];
-
-    if (first === undefined) {
-        throw new Error('Supervised child test plan did not match assigned work identities.');
-    }
-
-    return {
-        ...testPlan,
-        cases: [ first, ...cases.slice(1) ]
-    };
-}
 
 function createForwardingResourceUsageTracker(
     command: SupervisedRunCommand,
@@ -277,7 +237,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     const runtimePolicy = createRuntimePolicy(input.command, input.host);
     const execute = createSupervisedChildExecute(input.wallClock);
     input.host.dropBodyReadPermission(input.command);
-    const testPlan = selectAssignedCases(input.collectedPlan.testPlan, supervisedAssignedWork(input.assignment));
+    const testPlan = supervisedAssignedPlan(input.collectedPlan.testPlan, input.assignment);
     const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
     return await execute(testPlan, {

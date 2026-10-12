@@ -46,6 +46,7 @@ function close(server: Server): Promise<void> {
 
 async function exerciseTemporaryDirectoryResource(scope: TestScope): Promise<void> {
     const temporaryDirectory = await temporaryDirectoryResource.acquire({
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
@@ -61,6 +62,7 @@ async function exerciseTemporaryDirectoryResource(scope: TestScope): Promise<voi
         scope.assert.equal(temporaryDirectory.path.includes('overkill-temporary-directory-'), true);
     } finally {
         await temporaryDirectoryResource.dispose(temporaryDirectory, {
+        workload: null,
             attachments: resourceAttachments('test'),
             dependencies: {},
             scenarios: {},

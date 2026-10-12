@@ -50,6 +50,10 @@ import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
+export type FrozenWorkloadInput = {
+    readonly work: WorkId;
+    readonly parameters: TestPlan['cases'][number]['workloadParameters'];
+};
 export type RunCollectionRoot = TestPlanRootOptions;
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
 type RunReporters = RunExecuteOptions['reporters'];
@@ -306,6 +310,7 @@ type CollectedSuitePathEntry = {
 };
 
 export type CollectedRunCase = {
+    readonly workloadParameters: TestPlan['cases'][number]['workloadParameters'];
     readonly annotations: TestPlan['cases'][number]['annotations'];
     readonly controls: TestPlan['cases'][number]['controls'];
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;

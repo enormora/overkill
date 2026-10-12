@@ -59,6 +59,7 @@ function collectedCase(
     suitePath: CollectedRunPlan['files'][number]['cases'][number]['suitePath']
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        workloadParameters: null,
         annotations,
         controls,
         definitionLocations: [ { kind: 'unknown' as const } ],
@@ -122,6 +123,7 @@ function createConstrainedPlan(requirements: readonly TestBodyExecutionRequireme
                             ...firstCase.resourceAttachments,
                             resourceGraph: [
                                 {
+                                    workload: 'independent' as const,
                                     dependencies: [],
                                     handleTransport: 'local',
                                     name: 'database',

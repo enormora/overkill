@@ -1,4 +1,7 @@
+import type { WorkloadInput } from '../../engine/workload-input.ts';
 import {
+    createWorkloadResourceBinding,
+    bindRuntimeWorkload,
     isDefinedRuntimeGraph,
     runtimeGraphLeaves,
     type AnyResourceDefinition,
@@ -168,4 +171,20 @@ export function scopeWrapperStep(
     collision: ResourceWrapperScopeStep['collision'] = 'preserve-existing'
 ): ResourceWrapperScopeStep {
     return { collision, kind: 'scope', mapScope, name };
+}
+
+export function bindResourceWrapperActions(
+    actions: readonly ResourceWrapperAction[],
+    workload: WorkloadInput | null
+): readonly ResourceWrapperAction[] {
+    const binding = createWorkloadResourceBinding(workload);
+    return actions.map(function bindAction(action): ResourceWrapperAction {
+        if (action.kind === 'resources') {
+            return { ...action, resources: binding.resources(action.resources) };
+        }
+        if (action.kind === 'runtime') {
+            return { ...action, runtime: bindRuntimeWorkload(action.runtime, binding) };
+        }
+        return action;
+    });
 }

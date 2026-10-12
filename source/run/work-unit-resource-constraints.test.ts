@@ -22,6 +22,7 @@ function collectedCaseWithControls(
     caseControls: CollectedRunCase['controls']
 ): CollectedRunCase {
     return {
+        workloadParameters: null,
         annotations,
         controls: caseControls,
         definitionLocations: [ { kind: 'unknown' as const } ],
@@ -50,6 +51,7 @@ function resource(
     requirements: readonly TestBodyExecutionRequirementSummary[]
 ): CollectedRunCase['resourceAttachments']['resourceGraph'][number] {
     return {
+        workload: 'independent' as const,
         dependencies: [],
         handleTransport: 'local',
         name,

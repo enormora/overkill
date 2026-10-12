@@ -1,3 +1,4 @@
+import { testNode as resourceOwnerObservationTestNode } from '../../engine/resource-owner-observation.test.ts';
 import { testNode as workloadCasesTestNode } from '../../engine/workload-test-case.test.ts';
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testNode as testBodyResourceAttachmentTestNode } from '../../engine/test-body-resource-attachment.test.ts';
@@ -13,6 +14,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        resourceOwnerObservationTestNode,
         workloadCasesTestNode,
         testBodyResourceAttachmentTestNode,
         testPlanAuthoringRulesTestNode,

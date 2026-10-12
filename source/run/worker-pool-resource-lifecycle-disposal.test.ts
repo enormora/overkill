@@ -30,6 +30,7 @@ const testCaseMetadata = {
 
 function resource(name: string, scope: ResourceScope): ResourceSummary {
     return {
+        workload: 'independent' as const,
         dependencies: [],
         handleTransport: 'local',
         name,

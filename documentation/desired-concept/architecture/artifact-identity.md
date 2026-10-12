@@ -207,6 +207,14 @@ order, and canonical Unicode normalization. A number `5` therefore encodes as
 collisions and lossy inputs are definition errors. Workload names must be
 unique within their logical case, including normalization equivalents.
 
+Executable workload variants retain immutable original parameter snapshots
+separately from `WorkloadId.params`. Resource parsers receive these original
+values, including Unicode spelling, rather than decoded canonical identity.
+Executors reject snapshots that changed after collection. Workload-dependent
+resource acquisition keys include the full workload identity, and dependency
+keys carry that distinction into consumers. Equal canonical workload identities
+with unequal original inputs cannot share one resource boundary.
+
 A change in canonicalisation rules is a baseline-breaking change and
 requires a migration; the rules should be considered stable.
 

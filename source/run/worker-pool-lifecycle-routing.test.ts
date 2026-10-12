@@ -38,6 +38,7 @@ const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds:
 
 function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        workloadParameters: null,
         annotations,
         controls,
         definitionLocations: [ { kind: 'unknown' as const } ],

@@ -1,4 +1,9 @@
+import type { WorkloadParameters } from '../engine/workload-input.ts';
 import { emptyTranscriptView, type TranscriptView } from '../packages/simulation/transcript.entry-point.ts';
+import type {
+    ResourceWorkload as ResourceWorkloadShape,
+    ResourceWorkloadParser as ResourceWorkloadParserShape
+} from './resource-workload-types.ts';
 import {
     defineRuntime as createRuntimeDefinition,
     isDefinedRuntime as isRuntimeDefinition,
@@ -31,7 +36,6 @@ import type {
 } from './resource-definition-shape.ts';
 import { resourceDefinitionApi } from './resource-definition.ts';
 import type {
-    DefineResource as DefineResourceShape,
     ResourceContext as ResourceContextShape,
     ResourceCreationContext as ResourceCreationContextShape,
     ResourceDefinition as ResourceDefinitionShape,
@@ -89,26 +93,30 @@ export type RuntimeResourceMap = RuntimeResourceMapShape;
 export type ResourceContext<Resources extends ResourceDependencies> = ResourceContextShape<Resources>;
 export type ResourceCreationContext<
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
-    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>
-> = ResourceCreationContextShape<Dependencies, Scenarios>;
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>,
+    Parameters extends WorkloadParameters = never
+> = ResourceCreationContextShape<Dependencies, Scenarios, Parameters>;
 export type ResourceDefinition<
     Name extends string = string,
     OwnerHandle = unknown,
     Dependencies extends ResourceDependencies = ResourceDependencies,
     ConsumerHandle = OwnerHandle,
-    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>
-> = ResourceDefinitionShape<Name, OwnerHandle, Dependencies, ConsumerHandle, Scenarios>;
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>,
+    Parameters extends WorkloadParameters = never
+> = ResourceDefinitionShape<Name, OwnerHandle, Dependencies, ConsumerHandle, Scenarios, Parameters>;
 export type ResourceDefinitionInput<
     Name extends string,
     Handle,
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
     Projection extends ResourceProjectionPayload = ResourceProjectionPayload,
-    ConsumerHandle = Handle
-> = ResourceDefinitionInputShape<Name, Handle, Dependencies, Projection, ConsumerHandle>;
+    ConsumerHandle = Handle,
+    Parameters extends WorkloadParameters = never
+> = ResourceDefinitionInputShape<Name, Handle, Dependencies, Projection, ConsumerHandle, Parameters>;
 export type ResourceDisposalContext<
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
-    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>
-> = ResourceDisposalContextShape<Dependencies, Scenarios>;
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<PropertyKey, never>>,
+    Parameters extends WorkloadParameters = never
+> = ResourceDisposalContextShape<Dependencies, Scenarios, Parameters>;
 export type ResourceHandle<Resource extends AnyResourceDefinition> = ResourceHandleShape<Resource>;
 export type ResourceProjectionContext<
     Dependencies extends ResourceDependencies = EmptyResourceDependencies
@@ -252,7 +260,7 @@ type CreateTemporaryDirectoryResource = <const Name extends string>(
 export type ResourcesModule = {
     readonly composeRuntimeContext: typeof composeRuntimeContext;
     readonly createTemporaryDirectoryResource: CreateTemporaryDirectoryResource;
-    readonly defineResource: DefineResourceShape;
+    readonly defineResource: typeof resourceDefinitionApi.defineResource;
     readonly defineRuntime: typeof defineRuntime;
     readonly defineRuntimeMatrix: typeof createRuntimeMatrixDefinition;
     readonly composeRuntimes: typeof composeRuntimeGraphs;
@@ -341,3 +349,6 @@ export function runtimeGraphLeaves(runtime: RuntimeGraph): readonly RuntimeGraph
 
     return leaves;
 }
+
+export type ResourceWorkload<Parameters extends WorkloadParameters> = ResourceWorkloadShape<Parameters>;
+export type ResourceWorkloadParser<Parameters extends WorkloadParameters> = ResourceWorkloadParserShape<Parameters>;

@@ -1,3 +1,4 @@
+import { observeCaseResourceOwners } from './resource-owner-observation.ts';
 import {
     activeResourceLeakError,
     createAsyncLeakMonitor,
@@ -93,6 +94,28 @@ export async function caseWithAsyncLeakPolicy(input: CaseAsyncLeakPolicyInput): 
             : runtimePolicyCase(input.executedCase),
         runnerErrors
     };
+}
+
+type CaseCompletionInput = {
+    readonly dependencies: AsyncLeakDependencies;
+    readonly includeActiveResourceLeaks: boolean;
+    readonly testCase: TestPlanCase;
+    readonly complete: () => Promise<readonly RunnerError[]>;
+};
+
+export async function completeCaseWithAsyncLeakPolicy(input: CaseCompletionInput): Promise<readonly RunnerError[]> {
+    const observed = await observeCaseResourceOwners(input.dependencies.readActiveResourceTypes, input.complete);
+    await settleAsyncWork();
+    const leak = input.includeActiveResourceLeaks
+        ? activeResourceLeakError({
+            after: input.dependencies.readActiveResourceTypes(),
+            before: observed.baseline,
+            attributedTo: input.testCase.id,
+            attributedToWork: input.testCase.workId,
+            phase: 'body'
+        })
+        : null;
+    return leak === null ? observed.result : [ ...observed.result, leak ];
 }
 
 export function concurrentRunActiveResourceLeak(

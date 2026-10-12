@@ -148,3 +148,7 @@ export function scenarioBindingsForTiming(
         })
     ));
 }
+
+export type ResourceScenarioDeclaration<ScenarioInputs extends ResourceScenarioSlotInputs> = {
+    readonly scenarios: ScenarioInputs;
+};

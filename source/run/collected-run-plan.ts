@@ -17,6 +17,7 @@ import type { RunResourceUsage } from '../engine/resource-usage.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type {
+    FrozenWorkloadInput,
     CollectedRunCase,
     CollectedRunFile,
     CollectedOrphanedNode,
@@ -199,7 +200,8 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
                 suitePath: resolvedSuitePath(testCase.suitePath),
                 testFamily: testCase.testFamily,
                 title: testCase.id.title,
-                workId: testCase.workId
+                workId: testCase.workId,
+                workloadParameters: testCase.workloadParameters
             };
         }),
         file
@@ -368,4 +370,10 @@ export function createRunResultFromCollectedPlan(
             totalWallTimeMicroseconds: timing.completedAtMicroseconds - timing.startedAtMicroseconds
         })
     };
+}
+
+export function collectedWorkloadInputs(plan: CollectedRunPlan): readonly FrozenWorkloadInput[] {
+    return collectedRunCaseEntries(plan).map(function workloadInput(entry) {
+        return { work: entry.workId, parameters: entry.testCase.workloadParameters };
+    });
 }

@@ -263,3 +263,6 @@ export type {
     SimulationWitnessArtifact,
     SimulationWitnessInput
 } from '../resources/resources.entry-point.ts';
+
+export type { ResourceWorkload, ResourceWorkloadParser } from '../../resources/resources.ts';
+export type { WorkloadInput, WorkloadParameters } from '../../engine/workload-input.ts';

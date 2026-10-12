@@ -278,46 +278,40 @@ function assertDatabaseResourceDescriptor(scope: TestScope): void {
 }
 
 async function assertDatabaseResourceCallbacks(scope: TestScope): Promise<void> {
-    const database = await databaseResource.acquire({
+    const context = {
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
         signal: disposalSignal
-    });
+    };
+    const database = await databaseResource.acquire(context);
 
     scope.assert.deepEqual(database.query('select 1'), [ 'select 1' ]);
     if (databaseResource.dispose === null) {
         throw new Error('Expected resource disposal.');
     }
 
-    await databaseResource.dispose(database, {
-        attachments: resourceAttachments('test'),
-        dependencies: {},
-        scenarios: {},
-        signal: disposalSignal
-    });
+    await databaseResource.dispose(database, context);
 }
 
 async function assertServerResourceCallbacks(scope: TestScope): Promise<void> {
     const database = createDatabase();
-    const server = await serverResource.acquire({
+    const context = {
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: { database },
         scenarios: {},
         signal: disposalSignal
-    });
+    };
+    const server = await serverResource.acquire(context);
 
     scope.assert.deepEqual(server.results, [ 'server started' ]);
     if (serverResource.dispose === null) {
         throw new Error('Expected resource disposal.');
     }
 
-    await serverResource.dispose(server, {
-        attachments: resourceAttachments('test'),
-        dependencies: { database },
-        scenarios: {},
-        signal: disposalSignal
-    });
+    await serverResource.dispose(server, context);
 }
 
 function assertRuntimeDescriptor(scope: TestScope): void {
@@ -452,6 +446,7 @@ async function assertTemporaryDirectoryLifecycle(
     }
 
     const handle = await resource.acquire({
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
@@ -460,6 +455,7 @@ async function assertTemporaryDirectoryLifecycle(
 
     assertTemporaryDirectoryHandle(scope, handle);
     await resource.dispose(handle, {
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
@@ -482,6 +478,7 @@ async function assertTemporaryDirectoryAcquireAbort(
     controller.abort();
     await scope.assert.rejects(async function acquireAfterAbort() {
         await resource.acquire({
+            workload: null,
             attachments: resourceAttachments('test'),
             dependencies: {},
             scenarios: {},

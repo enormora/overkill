@@ -12,6 +12,7 @@ const attachments: TestBodyResourceAttachments = {
     directResources: [],
     resourceGraph: [
         {
+            workload: 'independent' as const,
             dependencies: [],
             handleTransport: 'local',
             name: 'database',

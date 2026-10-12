@@ -26,6 +26,7 @@ import {
     handleCollectionSample,
     reportRunStart,
     supervisedCollectedPlan,
+    supervisedWorkloadInputs,
     type SupervisedCollectionRuntime,
     type SupervisedRunRuntime
 } from './supervised-run-runtime.ts';
@@ -358,6 +359,7 @@ function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;
         }),
+        workloadInputs: supervisedWorkloadInputs(runtime.resolvedRun),
         kind: 'assign',
         attachmentEndpoint: runtime.attachments?.endpoint ?? null
     });

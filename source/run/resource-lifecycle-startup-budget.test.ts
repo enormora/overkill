@@ -13,6 +13,7 @@ type ResourceCreationContext = {
     readonly dependencies: Readonly<Record<string, never>>;
     readonly scenarios: Readonly<Record<string, string>>;
     readonly signal: AbortSignal;
+    readonly workload: null;
 };
 
 const testCaseMetadata = {
@@ -44,7 +45,7 @@ function resource(
 }
 
 function creationContext(signal: AbortSignal): ResourceCreationContext {
-    return { attachments: resourceAttachments('test'), dependencies: {}, scenarios: {}, signal };
+    return { workload: null, attachments: resourceAttachments('test'), dependencies: {}, scenarios: {}, signal };
 }
 
 async function neverResolvingResource(context: ResourceCreationContext): Promise<never> {

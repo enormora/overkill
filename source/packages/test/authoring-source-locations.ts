@@ -1,9 +1,7 @@
 import {
-    attachTestBodyResourceAttachments,
+    forwardTestBodyResources,
     captureSourceLocation,
     forwardAssertionSourceLocations,
-    hasTestBodyResourceAttachments,
-    readTestBodyResourceAttachments,
     unknownSourceLocation,
     type NonEmptyReadonlyArray,
     type ResolvableSourceLocation,
@@ -122,15 +120,6 @@ export function definitionLocationsForAuthoringCall(): NonEmptyReadonlyArray<Res
     );
 }
 
-function forwardResourceAttachments<Scope, Result>(
-    sourceBody: (scope: Scope) => Result,
-    forwardedBody: (scope: Scope) => Result
-): (scope: Scope) => Result {
-    return hasTestBodyResourceAttachments(sourceBody)
-        ? attachTestBodyResourceAttachments(forwardedBody, readTestBodyResourceAttachments(sourceBody))
-        : forwardedBody;
-}
-
 export function assertionBodyForActiveMacro(body: TestBody): TestBody {
     const sourceLocations = activeMacroSourceLocations();
 
@@ -138,10 +127,12 @@ export function assertionBodyForActiveMacro(body: TestBody): TestBody {
         return body;
     }
 
-    return forwardResourceAttachments(body, async function runMacroGeneratedTestBody(scope) {
-        return await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
-            return await body(scope);
-        });
+    return forwardTestBodyResources(body, function forwardBody(source) {
+        return async function runMacroGeneratedTestBody(scope) {
+            return await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
+                return await source(scope);
+            });
+        };
     });
 }
 
@@ -152,10 +143,12 @@ export function throwingBodyForActiveMacro(body: ThrowingTestBody): ThrowingTest
         return body;
     }
 
-    return forwardResourceAttachments(body, async function runMacroGeneratedThrowingTestBody(scope) {
-        await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
-            await body(scope);
-        });
+    return forwardTestBodyResources(body, function forwardBody(source) {
+        return async function runMacroGeneratedThrowingTestBody(scope) {
+            await runWithForwardedSourceLocations(sourceLocations, async function runBody() {
+                await source(scope);
+            });
+        };
     });
 }
 

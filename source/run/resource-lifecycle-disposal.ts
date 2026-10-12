@@ -34,27 +34,38 @@ async function disposeResourceRecord(
 ): Promise<void> {
     const { dispose } = callableResourceDefinition(record.descriptor);
 
-    if (record.external || dispose === null) {
+    if (record.external) {
         return;
     }
 
     const disposeHandle = async function disposeResourceHandle(): Promise<void> {
+        if (dispose === null) {
+            return;
+        }
         await dispose(record.ownerHandle, {
             attachments: resourceAttachments(record.descriptor.name),
             dependencies: record.dependencyContext,
             scenarios: lifecycleScenarioBindings(record.descriptor),
-            signal
+            signal,
+            workload: null
         });
     };
 
-    if (timing === null) {
-        await disposeHandle();
-    } else {
-        await timing.measure({
-            phase: 'dispose',
-            resource: { name: record.descriptor.name, scope: record.descriptor.scope },
-            signal
-        }, disposeHandle);
+    const finishDisposal = async function disposeWithTiming(): Promise<void> {
+        if (timing === null || dispose === null) {
+            await disposeHandle();
+        } else {
+            await timing.measure({
+                phase: 'dispose',
+                resource: { name: record.descriptor.name, scope: record.descriptor.scope },
+                signal
+            }, disposeHandle);
+        }
+    };
+    try {
+        await finishDisposal();
+    } finally {
+        record.releaseOwner();
     }
 }
 

@@ -3,6 +3,7 @@ import { createCaseId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import { defineResource } from '../resources/resources.ts';
 import { bindResourceScenarios } from '../resources/resource-scenario-binding.ts';
+import { testNode as workloadInputValidationTestNode } from './workload-input-validation.test.ts';
 import {
     caseResourceBoundaryKeys,
     resourceLifecycleBoundaryUseCounts
@@ -24,6 +25,7 @@ function scenarioCase(title: string, scope: string, value: string, options: Scen
     const timing = options.timing ?? 'acquire';
     const resourceGraph: TestPlanCase['resourceAttachments']['resourceGraph'] = [
         {
+            workload: 'independent' as const,
             dependencies: [],
             handleTransport: 'local' as const,
             name: 'database',
@@ -38,6 +40,7 @@ function scenarioCase(title: string, scope: string, value: string, options: Scen
         },
         ...options.dependent === true
             ? [ {
+                workload: 'independent' as const,
                 dependencies: [ 'database' ],
                 handleTransport: 'local' as const,
                 name: 'server',
@@ -50,6 +53,7 @@ function scenarioCase(title: string, scope: string, value: string, options: Scen
     const rootResourceName = options.dependent === true ? 'server' : 'database';
 
     return {
+        workloadParameters: null,
         annotations: { ownership: [], tags: [] },
         controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
         definitionLocations: [ { kind: 'unknown' } ],
@@ -132,9 +136,14 @@ function assertScenarioCacheIdentities(scope: TestScope): void {
     scope.assert.deepEqual(caseResourceBoundaryKeys(first, new Set()), []);
 }
 
+function reorderedCacheNode(node: ResourceCacheIdentityNode): ResourceCacheIdentityNode {
+    return { ...node, dependencies: node.dependencies.toReversed(), scenarios: node.scenarios.toReversed() };
+}
+
 function assertCacheIdentityNodes(scope: TestScope): void {
-    const empty: ResourceCacheIdentityNode = { dependencies: [], scenarios: [] };
+    const empty: ResourceCacheIdentityNode = { workload: null, dependencies: [], scenarios: [] };
     const emptyDependency: ResourceCacheIdentityNode = {
+        workload: null,
         dependencies: [ { key: 'empty', resource: empty } ],
         scenarios: []
     };
@@ -163,15 +172,18 @@ function assertCacheIdentityNodes(scope: TestScope): void {
     });
     const serverNode = resourceDescriptorCacheIdentityNode(server);
     const routed: ResourceCacheIdentityNode = {
+        workload: null,
         dependencies: [],
         scenarios: [ { name: 'database', timing: 'request-routed', value: 'replica' } ]
     };
     const ordered: ResourceCacheIdentityNode = {
+        workload: null,
         dependencies: [
             { key: 'routed', resource: routed },
             {
                 key: 'acquired',
                 resource: {
+                    workload: null,
                     dependencies: [],
                     scenarios: [ { name: 'database', timing: 'acquire', value: 'primary' } ]
                 }
@@ -193,10 +205,7 @@ function assertCacheIdentityNodes(scope: TestScope): void {
         resourceAcquisitionCacheIdentity(defaultedNode).includes('primary'),
         resourceAcquisitionCacheIdentity(routed),
         resourceHandleCacheIdentity(routed).includes('replica'),
-        resourceHandleCacheIdentity(ordered) === resourceHandleCacheIdentity({
-            dependencies: ordered.dependencies.toReversed(),
-            scenarios: ordered.scenarios.toReversed()
-        })
+        resourceHandleCacheIdentity(ordered) === resourceHandleCacheIdentity(reorderedCacheNode(ordered))
     ], [ '', '', '', true, true, true, '', true, true ]);
 }
 
@@ -206,6 +215,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        workloadInputValidationTestNode,
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'scenario timing controls reusable lifecycle cache identities',

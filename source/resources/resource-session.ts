@@ -1,4 +1,7 @@
+import type { WorkloadInput } from '../engine/workload-input.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
+import { hasWorkloadInput } from './resource-workload-types.ts';
+import { createWorkloadResourceBinding } from './resource-workload-binding.ts';
 import type {
     AnyResourceDefinition,
     Awaitable,
@@ -18,6 +21,7 @@ import {
 } from './resource-graph.ts';
 import {
     lifecycleFailures,
+    ResourceLifecycleError,
     resourceLifecycleError,
     type ResourceLifecycleFailure
 } from './resource-lifecycle-error.ts';
@@ -55,6 +59,10 @@ const directResourceAcquisitionContext: ResourceAcquisitionContext = {
 };
 
 export type StartResourcesRequest<Resources extends ResourceDependencies> = {
+    readonly resources: Resources;
+    readonly signal: AbortSignal;
+    readonly workload: WorkloadInput;
+} | {
     readonly resources: Resources;
     readonly signal: AbortSignal;
 };
@@ -114,7 +122,8 @@ async function disposeResource(
             attachments: resourceAttachments(node.descriptor.name),
             dependencies: acquiredDependencyHandles(node.descriptor.dependencies, resourceHandles),
             scenarios: acquisitionResourceScenarioBindings(node.descriptor),
-            signal
+            signal,
+            workload: null
         });
 
         return null;
@@ -221,7 +230,8 @@ function createResourceAcquisition(
                     attachments: resourceAttachments(resource.name),
                     dependencies,
                     scenarios: acquisitionResourceScenarioBindings(resource),
-                    signal: acquisitionSignal
+                    signal: acquisitionSignal,
+                    workload: null
                 });
                 ownerHandles.set(resource, ownerHandle);
                 const resourceHandle = exposeResourceHandle(resource, ownerHandle);
@@ -297,6 +307,28 @@ function isResourceSession<Resources extends ResourceDependencies>(
     return Reflect.has(session, runtimeAsyncDisposeSymbol());
 }
 
+function boundWorkloadResources(
+    request: StartResourcesRequest<ResourceDependencies>,
+    context: ResourceAcquisitionContext
+): ResourceDependencies {
+    const workload = hasWorkloadInput(request) ? request.workload : null;
+    try {
+        const binding = createWorkloadResourceBinding(workload);
+        return binding.resources(request.resources);
+    } catch (error: unknown) {
+        if (error instanceof ResourceLifecycleError) {
+            throw error;
+        }
+        throw resourceLifecycleError(
+            `${context.acquisitionFailureMessage} ${
+                error instanceof Error ? error.message : 'Invalid workload input.'
+            }`,
+            [ { cause: error, phase: 'acquire', resourceName: context.fallbackResourceName } ],
+            error
+        );
+    }
+}
+
 export async function acquireResourceGraph<Resources extends ResourceDependencies>(
     request: StartResourcesRequest<Resources>,
     context: ResourceAcquisitionContext
@@ -306,11 +338,22 @@ export async function acquireResourceGraph<Resources extends ResourceDependencie
     readonly order: readonly ResourceNode[];
     readonly resourceHandles: ReadonlyMap<AnyResourceDefinition, unknown>;
 }> {
-    const graph = createResourceGraph(request.resources);
+    const resources = boundWorkloadResources(request, context);
+    const graph = createResourceGraph(resources);
     const acquisition = await createResourceAcquisition(request.signal, context).acquire(graph);
 
     return {
-        context: resourceContext(request.resources, acquisition.resourceHandles),
+        context: resourceContext(
+            request.resources,
+            new Map(
+                Object.entries(request.resources).map(
+                    function originalResourceEntry([ key, resource ]) {
+                        const bound = resources[key];
+                        return [ resource, bound === undefined ? undefined : acquisition.resourceHandles.get(bound) ];
+                    }
+                )
+            )
+        ),
         ownerHandles: acquisition.ownerHandles,
         order: graph.order,
         resourceHandles: acquisition.resourceHandles

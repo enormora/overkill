@@ -14,7 +14,13 @@ import type { AttemptId, ReporterEvent, WorkId, RunnerError, RunResult } from '.
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
-import type { CollectedRunPlan, RunCommand, RunCollectionRoot, RunTestFamily } from './run-types.ts';
+import type {
+    FrozenWorkloadInput,
+    CollectedRunPlan,
+    RunCommand,
+    RunCollectionRoot,
+    RunTestFamily
+} from './run-types.ts';
 import type {
     ResourceBoundaryUseCount
 } from './resource-lifecycle-boundaries.ts';
@@ -63,6 +69,7 @@ export type WorkerPoolLifecycleIdentity = {
 };
 
 export type WorkerPoolRunTask = {
+    readonly workloadInputs: readonly FrozenWorkloadInput[];
     readonly assignedUnits: readonly WorkerPoolAssignedUnit[];
     readonly assignedWork: readonly WorkId[];
     readonly boundaryUseCounts: readonly ResourceBoundaryUseCount[];
@@ -77,6 +84,7 @@ export type WorkerPoolRunTask = {
 };
 
 export type WorkerPoolAcquireRunResourcesTask = {
+    readonly workloadInputs: readonly FrozenWorkloadInput[];
     readonly assignedWork: readonly WorkId[];
     readonly boundaryKeys: readonly string[];
     readonly boundaryUseCounts: readonly ResourceBoundaryUseCount[];

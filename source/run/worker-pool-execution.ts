@@ -43,7 +43,7 @@ import {
     createResourcePreparationChannel,
     acquireWorkerPoolResourceLifecycle,
     completeWorkerPoolResourceMembers,
-    createWorkerPoolBatchRunCommand,
+    createWorkerPoolBatchAssignment,
     disposeWorkerPoolResourceLifecycles,
     workerPoolProjectedResourcesForWork,
     workerPoolWorkHasStarted,
@@ -149,17 +149,16 @@ function isWorkerPoolRunOutput(value: unknown): value is WorkerPoolRunOutput {
 }
 
 async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolRunOutput> {
-    const assignedWork = request.taskRun.members.flatMap(function toWork(member) {
-        return member.unit.work;
-    });
+    const assignment = createWorkerPoolBatchAssignment(request.runtime, request.taskRun.members);
     const output: unknown = await request.runtime.pool.run({
         assignedUnits: request.taskRun.members.map(function toAssignedUnit(member) {
             return { attempt: member.attempt, traceUnit: member.traceUnit, work: member.unit.work };
         }),
-        assignedWork,
+        assignedWork: assignment.assignedWork,
+        workloadInputs: assignment.workloadInputs,
         boundaryUseCounts: [],
         command: {
-            ...createWorkerPoolBatchRunCommand(request.runtime, request.taskRun.members),
+            ...assignment.command,
             attachmentEndpoint: request
                 .runtime
                 .attachments
@@ -171,7 +170,7 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
             .id,
         lifecycle: request.runtime.lifecycle,
         port: request.channel.port,
-        projectedResources: workerPoolProjectedResourcesForWork(request.resourceLifecycle, assignedWork),
+        projectedResources: workerPoolProjectedResourcesForWork(request.resourceLifecycle, assignment.assignedWork),
         runWork: request.resourceLifecycle.runWork,
         startedAtMilliseconds: request.startedAtMilliseconds
     }, {

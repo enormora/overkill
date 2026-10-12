@@ -20,6 +20,7 @@ function resourceTaskWithoutPort(
     if (task.kind === 'acquire-run-resources') {
         return {
             assignedWork: task.assignedWork,
+            workloadInputs: task.workloadInputs,
             boundaryKeys: task.boundaryKeys,
             boundaryUseCounts: task.boundaryUseCounts,
             command: task.command,
@@ -44,6 +45,7 @@ function runTaskWithoutPort(task: Extract<WorkerPoolTask, { readonly kind: 'run'
     return {
         assignedUnits: task.assignedUnits,
         assignedWork: task.assignedWork,
+        workloadInputs: task.workloadInputs,
         boundaryUseCounts: task.boundaryUseCounts,
         command: task.command,
         kind: 'run',

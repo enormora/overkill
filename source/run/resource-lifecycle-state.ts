@@ -4,6 +4,7 @@ import { createTranscriptAttemptScope } from '../attachments/resource-failure-co
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import { workIdentityKey, type WorkId, type AttemptId } from '../engine/identity.ts';
+import { observeResourceOwnerAcquisition, releaseResourceOwner } from '../engine/resource-owner-observation.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type { AttachmentExecution } from './attachment-execution.ts';
 import type {
@@ -13,6 +14,19 @@ import type {
 } from './resource-lifecycle-composition.ts';
 
 export type ManagedRunnerError = RunnerError;
+
+export async function acquireOwnedResource<Value>(acquire: () => Promise<Value>): Promise<{
+    readonly value: Value;
+    readonly releaseOwner: () => void;
+}> {
+    const acquisition = await observeResourceOwnerAcquisition(acquire);
+    return {
+        value: acquisition.value,
+        releaseOwner() {
+            releaseResourceOwner(acquisition.owner);
+        }
+    };
+}
 
 type ManagedResourceScopeAcquisition = {
     readonly boundaryKeys: ReadonlySet<string>;

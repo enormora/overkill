@@ -1,8 +1,9 @@
 import type { Clock } from '@enormora/clock';
-import { createDefaultWorkId, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { RunTimingSpan } from '../engine/run-timings.ts';
+import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { IntegrationProfileConfig, MaxConcurrency, ResourceBudgets, Scheduling } from '../config/types.ts';
+import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
 import type {
+    FrozenWorkloadInput,
     FrozenMicrotestPolicy,
     CollectedRunPlan,
     RunCommand,
@@ -10,7 +11,7 @@ import type {
     RunCollectionRoot,
     RunTestFamily
 } from './run-types.ts';
-import type { ReporterEvent, RunResult, ResourceUsageSnapshot } from './run-engine-primitives.ts';
+import type { ReporterEvent, RunResult, ResourceUsageSnapshot, TestPlan } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import {
@@ -60,6 +61,7 @@ export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCom
 export const supervisedChildCorrelationId = 'supervised-run';
 
 type WorkAssignmentCommand = {
+    readonly workloadInputs: readonly FrozenWorkloadInput[];
     readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly assignedWork: readonly WorkId[];
     readonly kind: 'assign';
@@ -98,7 +100,7 @@ export type SupervisedChildMessage = {
     readonly sample: ResourceUsageSnapshot;
 } | {
     readonly kind: 'timing';
-    readonly span: RunTimingSpan;
+    readonly span: NonNullable<RunResult['timings']['precise']>['spans'][number];
 };
 
 export function createSupervisedResourceLifecycleTiming(
@@ -126,4 +128,57 @@ export function supervisedChildEnvelope(
 
 export function frozenSupervisedPolicy(command: SupervisedChildCommand): FrozenMicrotestPolicy | null {
     return command.kind === 'collect-frozen' || command.kind === 'run-frozen' ? command.policy : null;
+}
+
+function casesByIdentity(testPlan: TestPlan): ReadonlyMap<string, TestPlan['cases'][number]> {
+    return new Map(testPlan.cases.map(function toEntry(testCase) {
+        return [ workIdentityKey(testCase.workId), testCase ];
+    }));
+}
+
+function assignedTestPlanCase(
+    casesByKey: ReadonlyMap<string, TestPlan['cases'][number]>,
+    work: WorkId
+): TestPlan['cases'][number] {
+    const assigned = casesByKey.get(workIdentityKey(work));
+
+    if (assigned === undefined) {
+        throw new Error('Supervised child test plan did not match assigned work identities.');
+    }
+
+    return assigned;
+}
+
+function selectAssignedCases(
+    testPlan: TestPlan,
+    assignedWork: readonly WorkId[]
+): TestPlan {
+    const casesByKey = casesByIdentity(testPlan);
+    const cases = assignedWork.map(function toAssignedCase(work) {
+        return assignedTestPlanCase(casesByKey, work);
+    });
+
+    const first = cases[0];
+
+    if (first === undefined) {
+        throw new Error('Supervised child test plan did not match assigned work identities.');
+    }
+
+    return {
+        ...testPlan,
+        cases: [ first, ...cases.slice(1) ]
+    };
+}
+
+function isWorkAssignment(assignment: SupervisedAssignmentCommand): assignment is WorkAssignmentCommand {
+    return Object.hasOwn(assignment, 'assignedWork');
+}
+
+export function supervisedAssignedPlan(testPlan: TestPlan, assignment: SupervisedAssignmentCommand): TestPlan {
+    const selected = selectAssignedCases(testPlan, supervisedAssignedWork(assignment));
+    assertFrozenWorkloadInputs(
+        selected,
+        isWorkAssignment(assignment) ? assignment.workloadInputs : []
+    );
+    return selected;
 }

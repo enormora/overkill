@@ -1,3 +1,4 @@
+import { resourceWorkloadIdentity } from '../resources/resource-workload-binding.ts';
 import {
     runtimeGraphLeaves,
     type RuntimeGraph,
@@ -317,6 +318,7 @@ function resourceCacheIdentityNode(
     const bindings = bindingsByResource.get(resource) ?? defaultScenarioBindings(resource.scenarios);
 
     return {
+        workload: resourceWorkloadIdentity(resource),
         dependencies: entries(resource.dependencies).map(function dependencyNode([ , dependency ]) {
             return { key: dependency.name, resource: resourceCacheIdentityNode(dependency, bindingsByResource) };
         }),

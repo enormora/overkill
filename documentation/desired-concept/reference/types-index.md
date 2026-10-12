@@ -794,10 +794,14 @@ declare function workload<const Name extends string, const Parameters extends Wo
     parameters: Parameters
 ): Workload<Name, Parameters>;
 
-type WorkloadTestCaseVariant = {
+type WorkloadInput = {
     readonly id: WorkloadId;
-    readonly body: TestBody;
+    readonly parameters: WorkloadParameters;
 };
+
+type WorkloadTestCaseVariant =
+    | { readonly id: WorkloadId; readonly body: TestBody; }
+    | (WorkloadInput & { readonly body: TestBody; });
 
 type WorkloadTestCaseOptions = {
     readonly title: string;
@@ -2317,22 +2321,33 @@ type ResourceScenarioBindingsForTiming<
         Scenarios[Slot]['values'][number];
 };
 
+type ResourceWorkload<Parameters extends WorkloadParameters> = {
+    readonly id: WorkloadId;
+    readonly parameters: Parameters;
+};
+
+type ResourceWorkloadParser<Parameters extends WorkloadParameters> = (parameters: WorkloadParameters) => Parameters;
+
 type ResourceCreationContext<
     Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
-    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>,
+    Parameters extends WorkloadParameters = never
 > = {
     readonly dependencies: ResourceContext<Dependencies>;
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkload<Parameters>;
 };
 
 type ResourceDisposalContext<
     Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
-    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>,
+    Parameters extends WorkloadParameters = never
 > = {
     readonly dependencies: ResourceContext<Dependencies>;
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkload<Parameters>;
 };
 
 type ResourceHandleExposureContext<
@@ -2357,21 +2372,28 @@ type ResourceDefinition<
     OwnerHandle,
     Dependencies extends ResourceDependencies = Readonly<Record<never, never>>,
     ConsumerHandle = OwnerHandle,
-    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>
+    Scenarios extends ResourceScenarioSlots = Readonly<Record<never, never>>,
+    Parameters extends WorkloadParameters = never
 > = {
     readonly dependencies: Dependencies;
     readonly name: string;
     readonly scope: ResourceScope;
     readonly requirements: ReadonlyArray<ExecutionRequirement>;
     readonly scenarios: Scenarios;
-    readonly acquire: (context: ResourceCreationContext<Dependencies, Scenarios>) => OwnerHandle | Promise<OwnerHandle>;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkloadParser<Parameters>;
+    readonly acquire: (
+        context: ResourceCreationContext<Dependencies, Scenarios, Parameters>
+    ) => OwnerHandle | Promise<OwnerHandle>;
     readonly deserializeHandle?: (
         payload: ResourceProjectionPayload,
         context: ResourceProjectionContext<Dependencies>
     ) => ConsumerHandle;
     readonly dispose:
         | null
-        | ((handle: OwnerHandle, context: ResourceDisposalContext<Dependencies, Scenarios>) => void | Promise<void>);
+        | ((
+            handle: OwnerHandle,
+            context: ResourceDisposalContext<Dependencies, Scenarios, Parameters>
+        ) => void | Promise<void>);
     readonly exposeHandle:
         | null
         | ((handle: ConsumerHandle, context: ResourceHandleExposureContext<Scenarios>) => ConsumerHandle);
@@ -2502,6 +2524,10 @@ type StartRuntimeRequest<
 > = {
     readonly runtime: Runtime;
     readonly signal: AbortSignal;
+} | {
+    readonly runtime: Runtime;
+    readonly signal: AbortSignal;
+    readonly workload: WorkloadInput;
 };
 
 type RuntimeSessionDisposalContext = {

@@ -31,6 +31,7 @@ function collectedCase(
     suitePath: CollectedRunPlan['files'][number]['cases'][number]['suitePath']
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        workloadParameters: null,
         annotations,
         controls,
         definitionLocations: [ { kind: 'unknown' } ],
@@ -94,6 +95,7 @@ function createResourcePlan(
                             resourceGraph: [
                                 ...includeInvalidDependency
                                     ? [ {
+                                        workload: 'independent' as const,
                                         dependencies: [],
                                         handleTransport: 'projected' as const,
                                         name: 'case-dependency',
@@ -103,6 +105,7 @@ function createResourcePlan(
                                     } ]
                                     : [],
                                 {
+                                    workload: 'independent' as const,
                                     dependencies: includeInvalidDependency ? [ 'case-dependency' ] : [],
                                     handleTransport,
                                     name: 'shared',

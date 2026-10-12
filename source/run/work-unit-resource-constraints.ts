@@ -1,3 +1,4 @@
+import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { Scheduling } from '../config/types.ts';
 import {
@@ -69,25 +70,45 @@ function suitePlacementKey(testCase: CollectedRunCase): string {
     }));
 }
 
+function workloadPlacementSuffix(resource: ResourceSummary, testCase: CollectedRunCase): string {
+    const summaries = new Map(testCase.resourceAttachments.resourceGraph.map(function resourceEntry(summary) {
+        return [ summary.name, summary ];
+    }));
+    const visited = new Set<string>();
+    function dependsOnWorkload(summary: ResourceSummary): boolean {
+        if (visited.has(summary.name)) {
+            return false;
+        }
+        visited.add(summary.name);
+        return summary.workload === 'required' || summary.dependencies.some(function dependentWorkload(name) {
+            const dependency = summaries.get(name);
+            return dependency !== undefined && dependsOnWorkload(dependency);
+        });
+    }
+    return dependsOnWorkload(resource) ? `:workload:${canonicalIdentityJson(testCase.workId?.workload ?? null)}` : '';
+}
+
 function resourceScopePlacementKey(
     resource: ResourceSummary,
     testCase: CollectedRunCase,
     file: string
 ): string | null {
     if (resource.scope === 'per-file') {
-        return `resource:file:${file}:${resource.name}`;
+        return `resource:file:${file}:${resource.name}${workloadPlacementSuffix(resource, testCase)}`;
     }
 
     if (resource.scope === 'per-suite') {
-        return `resource:suite:${file}:${suitePlacementKey(testCase)}:${resource.name}`;
+        return `resource:suite:${file}:${suitePlacementKey(testCase)}:${resource.name}${
+            workloadPlacementSuffix(resource, testCase)
+        }`;
     }
 
     return null;
 }
 
-function resourceScopeAffinityKey(resource: ResourceSummary): string | null {
+function resourceScopeAffinityKey(resource: ResourceSummary, testCase: CollectedRunCase): string | null {
     return resource.scope === 'shared-per-worker'
-        ? `resource:worker:${resource.name}`
+        ? `resource:worker:${resource.name}${workloadPlacementSuffix(resource, testCase)}`
         : null;
 }
 
@@ -192,7 +213,7 @@ function resourceConstraintSets(
         return applyRequirement(nextSets, resource, requirement);
     }, {
         ...sets,
-        affinityKeys: withOptionalValue(sets.affinityKeys, resourceScopeAffinityKey(resource)),
+        affinityKeys: withOptionalValue(sets.affinityKeys, resourceScopeAffinityKey(resource, testCase)),
         singleWorkerKeys: withOptionalValue(
             sets.singleWorkerKeys,
             resourceScopePlacementKey(resource, testCase, file)

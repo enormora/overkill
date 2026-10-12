@@ -61,8 +61,22 @@ export type ResourceScenarioOwner = {
 
 export type ResolvedResourceScenarioBindings = Readonly<Record<string, string>>;
 
+const sources = new WeakMap<AnyResourceDefinition, AnyResourceDefinition>();
+
+export function inheritResourceDefinition(resource: AnyResourceDefinition, source: AnyResourceDefinition): void {
+    sources.set(resource, source);
+}
+
+export function parentResourceDefinition(resource: AnyResourceDefinition): AnyResourceDefinition | null {
+    return sources.get(resource) ?? null;
+}
+
+export function sourceResourceDefinition(resource: AnyResourceDefinition): AnyResourceDefinition {
+    const parent = parentResourceDefinition(resource);
+    return parent === null ? resource : sourceResourceDefinition(parent);
+}
+
 const boundResourceScenarios = new WeakMap<AnyResourceDefinition, ResolvedResourceScenarioBindings>();
-const sourceResourceDefinitions = new WeakMap<AnyResourceDefinition, AnyResourceDefinition>();
 
 function isScenarioTiming(value: unknown): boolean {
     return value === 'acquire' || value === 'request-routed';
@@ -164,10 +178,6 @@ export function resourceScenarioOwners(
     return owners;
 }
 
-export function sourceResourceDefinition(resource: AnyResourceDefinition): AnyResourceDefinition {
-    return sourceResourceDefinitions.get(resource) ?? resource;
-}
-
 export function bindResourceScenarios(
     resource: AnyResourceDefinition,
     bindings: ResolvedResourceScenarioBindings
@@ -175,7 +185,7 @@ export function bindResourceScenarios(
     const bound = Object.freeze({ ...resource });
 
     boundResourceScenarios.set(bound, bindings);
-    sourceResourceDefinitions.set(bound, sourceResourceDefinition(resource));
+    inheritResourceDefinition(bound, resource);
 
     return bound;
 }

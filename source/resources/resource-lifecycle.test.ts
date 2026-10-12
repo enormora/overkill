@@ -1,4 +1,5 @@
 import { createSuite, createTestCase, type TestNode, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { testNode as workloadResourceTestNode } from './workload-resource.test.ts';
 import {
     defineResource,
     defineRuntime,
@@ -527,6 +528,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        workloadResourceTestNode,
         lifecycleTestCase(
             'startRuntime acquires dependencies and disposes them once in reverse order',
             assertRuntimeLifecycle

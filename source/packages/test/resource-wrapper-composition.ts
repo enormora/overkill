@@ -2,6 +2,7 @@ import { attachmentsForProducer } from '../resources/attachment-context.entry-po
 import {
     type RuntimeAttachments,
     attachTestBodyResourceAttachments,
+    attachTestBodyWorkloadResolver,
     hasTestBodyResourceAttachments,
     type AssertionResult,
     type ResourceAttachedTestBody,
@@ -33,6 +34,7 @@ import {
 } from '../run/resource-lifecycle.entry-point.ts';
 import {
     directResourceEntries,
+    bindResourceWrapperActions,
     ensureResourceDescriptor,
     lifecycleMessages,
     resourceWrapperSteps,
@@ -128,7 +130,8 @@ function resourceSummary(resource: AnyResourceDefinition): TestBodyResourceSumma
                 values: scenario.values
             };
         }),
-        scope: resource.scope
+        scope: resource.scope,
+        workload: resource.workload === null ? 'independent' : 'required'
     };
 }
 
@@ -523,28 +526,34 @@ export function attachComposedResourceActions<Scope extends TestScope>(
     ensureBody(body, wrapperName);
     const composition = bodyComposition(body);
     const composedActions = Object.freeze([ ...actions, ...composition.actions ]);
-    const steps = resourceWrapperSteps(composedActions);
-    const messages = lifecycleMessages(composedActions);
+    const lifecycle = { steps: resourceWrapperSteps(composedActions), messages: lifecycleMessages(composedActions) };
     const wrappedBody = async function runWithComposedResources(scope: Scope): AsyncTestBodyResult {
-        if (steps.length === 0) {
+        if (lifecycle.steps.length === 0) {
             return await invokeTestBody(composition.body, composeMappedOnlyScopes(scope, composedActions));
         }
 
-        const session = await acquireCompositionSession(steps, scope.signal, messages);
+        const session = await acquireCompositionSession(lifecycle.steps, scope.signal, lifecycle.messages);
         const attachmentScope = Object.freeze({
             ...scope,
             attachments: attachmentsForProducer({ kind: 'case' })
         });
 
         scope.cleanup(async function cleanupComposedResources() {
-            await disposeCompositionSession(session, messages);
+            await disposeCompositionSession(session, lifecycle.messages);
         });
 
         return await invokeTestBody(composition.body, composeActionScopes(attachmentScope, composedActions, session));
     };
-    const composedBody = steps.length > 0
+    const composedBody = lifecycle.steps.length > 0
         ? attachResourceMetadata(wrappedBody, composedActions)
         : wrappedBody;
+
+    if (lifecycle.steps.length > 0) {
+        attachTestBodyWorkloadResolver(composedBody, function resolveWorkload(workload) {
+            const boundActions = bindResourceWrapperActions(composedActions, workload);
+            return attachComposedResourceActions<Scope>(boundActions, composition.body, wrapperName);
+        });
+    }
 
     defineComposedBodyBrand(composedBody, {
         actions: composedActions,

@@ -7,7 +7,7 @@ import type {
     SupervisedChildMessage
 } from './supervised-protocol.ts';
 import { supervisedCommandFields } from './run-command-schema.ts';
-import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
+import { collectedRunPlanSchema, workloadInputsSchema } from './collected-run-plan-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
 import { resourceUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
@@ -21,6 +21,7 @@ const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
     z.strictObject({
         kind: z.literal('assign'),
         assignedWork: z.array(workIdSchema),
+        workloadInputs: workloadInputsSchema.default([]),
         attachmentEndpoint: attachmentEndpointSchema.nullable()
     }),
     z.strictObject({

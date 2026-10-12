@@ -76,6 +76,7 @@ function resourceAttachedCase(): DirectTestNode {
             directResources: [ { key: 'database', resourceName: 'database' } ],
             resourceGraph: [
                 {
+                    workload: 'independent' as const,
                     dependencies: [],
                     handleTransport: 'local',
                     name: 'database',

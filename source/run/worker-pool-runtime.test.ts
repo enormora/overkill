@@ -40,6 +40,7 @@ export function createCollectedPlan(): CollectedRunPlan {
                 file: integrationPath,
                 cases: [
                     {
+                        workloadParameters: null,
                         annotations,
                         controls,
                         definitionLocations: [ { kind: 'unknown' as const } ],
@@ -84,6 +85,7 @@ function collectedPlanWithRunResource(): CollectedRunPlan {
                             ...firstCase.resourceAttachments,
                             resourceGraph: [
                                 {
+                                    workload: 'independent' as const,
                                     dependencies: [],
                                     handleTransport: 'local',
                                     name: 'database',

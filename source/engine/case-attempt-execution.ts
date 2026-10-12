@@ -1,5 +1,7 @@
+import { observeCaseResourceOwners } from './resource-owner-observation.ts';
 import {
     caseWithAsyncLeakPolicy,
+    completeCaseWithAsyncLeakPolicy,
     type AsyncLeakCheckedCase,
     type AsyncLeakDependencies
 } from './execution-async-leak-policy.ts';
@@ -92,30 +94,34 @@ async function reportTestEnd(
 }
 
 async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<TimedLeakCheckedCase> {
-    const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
     const startedAtMicroseconds = Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds);
-    const executedCase = await input.context.dependencies.asyncLeakMonitor.runCase(
-        input.testCase,
-        async function runCase() {
-            return await input.context.dependencies.globalErrorObserver.runCase(
+    const observedCase = await observeCaseResourceOwners(
+        input.context.dependencies.readActiveResourceTypes,
+        async function observeOwners() {
+            return await input.context.dependencies.asyncLeakMonitor.runCase(
                 input.testCase,
-                { index: input.attempt },
-                async function runObservedCase() {
-                    return await executeCaseBody({
-                        testCase: input.testCase,
-                        timeoutPolicy: input.options.timeoutPolicy,
-                        supervision: input.supervision,
-                        dependencies: input.context.dependencies,
-                        attempt: { index: input.attempt }
-                    });
+                async function runCase() {
+                    return await input.context.dependencies.globalErrorObserver.runCase(
+                        input.testCase,
+                        { index: input.attempt },
+                        async function runObservedCase() {
+                            return await executeCaseBody({
+                                testCase: input.testCase,
+                                timeoutPolicy: input.options.timeoutPolicy,
+                                supervision: input.supervision,
+                                dependencies: input.context.dependencies,
+                                attempt: { index: input.attempt }
+                            });
+                        }
+                    );
                 }
             );
         }
     );
     const leakCheckedCase = await caseWithAsyncLeakPolicy({
-        activeResourceTypesBefore,
+        activeResourceTypesBefore: observedCase.baseline,
         dependencies: input.context.dependencies,
-        executedCase,
+        executedCase: observedCase.result,
         includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
         testCase: input.testCase
     });
@@ -206,7 +212,14 @@ async function completeLogicalCase(input: ExecuteCaseInput, executed: ReportedCa
     if (input.testCase.execution.kind === 'skip' || policy === null || policy === undefined) {
         return executed;
     }
-    const errors = await completionErrors(input, policy);
+    const errors = await completeCaseWithAsyncLeakPolicy({
+        dependencies: input.context.dependencies,
+        includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
+        testCase: input.testCase,
+        async complete() {
+            return await completionErrors(input, policy);
+        }
+    });
     for (const error of errors) {
         input.supervision.recordRunnerError(error);
     }

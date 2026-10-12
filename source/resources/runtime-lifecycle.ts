@@ -1,3 +1,5 @@
+import type { WorkloadInput } from '../engine/workload-input.ts';
+import { hasWorkloadInput } from './resource-workload-types.ts';
 import {
     isDefinedRuntime,
     type AnyResourceDefinition,
@@ -32,6 +34,10 @@ const runtimeResourceAcquisitionContext = {
 };
 
 export type StartRuntimeRequest<Runtime extends RuntimeDefinition> = {
+    readonly runtime: Runtime;
+    readonly signal: AbortSignal;
+    readonly workload: WorkloadInput;
+} | {
     readonly runtime: Runtime;
     readonly signal: AbortSignal;
 };
@@ -210,7 +216,10 @@ export async function startRuntime<Runtime extends RuntimeDefinition>(
     const resources = boundRuntimeResources(request.runtime);
     const acquisition = await acquireResourceGraph({
         resources,
-        signal: request.signal
+        signal: request.signal,
+        ...hasWorkloadInput(request)
+            ? { workload: request.workload }
+            : {}
     }, runtimeResourceAcquisitionContext);
     const context = runtimeContext<Runtime['resources']>(request.runtime.resources, acquisition.context);
 

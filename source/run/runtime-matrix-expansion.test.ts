@@ -8,6 +8,7 @@ const caseId = createCaseId('matrix.test.ts', [], 'runs on every variant', null)
 
 function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachments']['runtimeGraphs']): TestPlanCase {
     return {
+        workloadParameters: null,
         annotations: { ownership: [], tags: [] },
         controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },
         definitionLocations: [ definitionLocation ],
@@ -17,6 +18,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
             directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
             resourceGraph: [
                 {
+                    workload: 'independent' as const,
                     dependencies: [ 'scratch-root' ],
                     handleTransport: 'local',
                     name: 'scratch',
@@ -25,6 +27,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                     scope: 'per-case'
                 },
                 {
+                    workload: 'independent' as const,
                     dependencies: [],
                     handleTransport: 'local',
                     name: 'scratch-root',
@@ -33,6 +36,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                     scope: 'per-case'
                 },
                 {
+                    workload: 'independent' as const,
                     dependencies: [],
                     handleTransport: 'local',
                     name: 'database-26',
@@ -41,6 +45,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                     scope: 'per-case'
                 },
                 {
+                    workload: 'independent' as const,
                     dependencies: [],
                     handleTransport: 'local',
                     name: 'database-27',
@@ -49,6 +54,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                     scope: 'per-case'
                 },
                 {
+                    workload: 'independent' as const,
                     dependencies: [],
                     handleTransport: 'local',
                     name: 'browser-chromium',
@@ -57,6 +63,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                     scope: 'per-case'
                 },
                 {
+                    workload: 'independent' as const,
                     dependencies: [],
                     handleTransport: 'local',
                     name: 'browser-firefox',
@@ -65,6 +72,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                     scope: 'per-case'
                 },
                 {
+                    workload: 'independent' as const,
                     dependencies: [ 'remote-sidecar' ],
                     handleTransport: 'local',
                     name: 'sidecar',
@@ -73,6 +81,7 @@ function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachme
                     scope: 'per-case'
                 },
                 {
+                    workload: 'independent' as const,
                     dependencies: [],
                     handleTransport: 'local',
                     name: 'unused',

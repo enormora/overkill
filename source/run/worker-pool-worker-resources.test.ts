@@ -179,6 +179,7 @@ function firstWorkId(plan: CollectedWorkerPlan): WorkId {
 
 function acquireTask(plan: CollectedWorkerPlan, lifecycle: WorkerPoolLifecycleIdentity): AcquireRunResourcesTask {
     return {
+        workloadInputs: [],
         assignedWork: [ firstWorkId(plan) ],
         boundaryKeys: [ 'run:database' ],
         boundaryUseCounts: [],
@@ -203,6 +204,7 @@ function runTask(plan: CollectedWorkerPlan, lifecycle: WorkerPoolLifecycleIdenti
     const workId = firstWorkId(plan);
 
     return {
+        workloadInputs: [],
         assignedUnits: [
             {
                 attempt: 'attempt-1',
