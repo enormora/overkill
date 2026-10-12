@@ -1567,6 +1567,21 @@ type ResolvedRun = {
     readonly reporters: ReadonlyArray<Reporter>;
 };
 
+type InitializedRun = {
+    readonly collect: () => Promise<CollectedRun>;
+};
+
+type CollectedRunInvocation = {
+    readonly selection: RunSelection;
+};
+
+type CollectedRun = {
+    readonly facts: RunFacts;
+    readonly plan: CollectedRunPlan;
+    readonly run: (invocation: CollectedRunInvocation) => Promise<RunResult>;
+    readonly runWithReporterDelivery: (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>;
+};
+
 type ResolvedRuntime = {
     readonly id: RuntimeId;
     readonly nodeVersion?: string;

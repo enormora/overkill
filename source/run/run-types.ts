@@ -426,6 +426,22 @@ export type ConfiguredRunOrchestrator = RunOperations<RunCommand> & {
 export type RunOrchestrator = RunOperations<FrozenRunCommand | RunCommand> & {
     readonly bench: BenchmarkOrchestrator;
     readonly freezePolicy: (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>;
+    readonly initialize: (command: FrozenRunCommand | RunCommand) => Promise<InitializedRun>;
+};
+
+export type InitializedRun = {
+    readonly collect: () => Promise<CollectedRun>;
+};
+
+export type CollectedRunInvocation = {
+    readonly selection: RunSelection;
+};
+
+export type CollectedRun = {
+    readonly facts: RunFacts;
+    readonly plan: CollectedRunPlan;
+    readonly run: (invocation: CollectedRunInvocation) => Promise<RunResult>;
+    readonly runWithReporterDelivery: (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>;
 };
 
 export type RunRuntimeAttachments = AttachmentCoordinator | null;

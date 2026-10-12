@@ -13,6 +13,17 @@ function isFrozenRunCommand(command: FrozenRunCommand | RunCommand): command is 
     return Reflect.get(command, 'kind') === 'frozen-policy';
 }
 
+export function snapshotRunCommand(command: FrozenRunCommand | RunCommand): PreparedRunCommand {
+    if (!isFrozenRunCommand(command)) {
+        return { command: { ...command }, source: configuredFilesRunCollectionSource };
+    }
+    const policy = parseFrozenMicrotestPolicy(command.policy);
+    return {
+        command: frozenPolicyCommand({ ...command, policy }),
+        source: { kind: 'frozen-policy', policy }
+    };
+}
+
 export async function withRunCommandModuleBoundary<Result>(
     command: FrozenRunCommand | RunCommand,
     operation: () => Promise<Result>

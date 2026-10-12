@@ -44,7 +44,7 @@ export {
     loadConfig,
     ConfigError
 } from './config.entry-point.ts';
-export { RunExecutionPlanError, RunResolutionError } from '../../run/run-errors.ts';
+export { RunCollectionError, RunExecutionPlanError, RunResolutionError } from '../../run/run-errors.ts';
 export type {
     IntegrationRetryPolicy,
     RetryArtifactPolicy,
@@ -117,6 +117,9 @@ export type {
     TraceWorkUnitId
 } from '../../run/placement-trace.ts';
 export type {
+    CollectedRun,
+    CollectedRunInvocation,
+    InitializedRun,
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,

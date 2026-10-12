@@ -112,7 +112,7 @@ export async function executeCoverageLocalRun(execution: CoverageLocalExecution)
     try {
         return await executeCoveredWithPolicy(execution, runtimePolicy);
     } finally {
-        runtimePolicy?.takeRunErrors();
+        runtimePolicy.takeRunErrors();
     }
 }
 

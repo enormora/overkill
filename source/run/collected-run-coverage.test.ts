@@ -1,0 +1,35 @@
+import { execFile } from 'node:child_process';
+import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+
+const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
+async function verifyCoveredInvocations(): Promise<string> {
+    return new Promise(function launchCoverageProbe(resolve, reject) {
+        execFile(process.execPath, [ 'source/integration-tests/run/fixtures/collected-coverage-probe.test.ts' ], {
+            cwd: process.cwd(),
+            timeout: 10_000
+        }, function collectProbeOutput(error, stdout) {
+            if (error instanceof Error) {
+                reject(error);
+            } else {
+                resolve(stdout);
+            }
+        });
+    });
+}
+
+export const testNode = createSuite({
+    ...metadata,
+    title: 'collected plan coverage',
+    children: [ createTestCase({
+        ...metadata,
+        title: 'explicit ordinary coverage creates a fresh session and completed record for each invocation',
+        async body(scope) {
+            scope.assert.equal(await verifyCoveredInvocations(), 'collected coverage sessions passed\n');
+            return scope.assert.collect();
+        }
+    }) ]
+});
+
+const { runIfMain } = await import('../test-support/run-if-main.ts');
+await runIfMain(import.meta, testNode);
