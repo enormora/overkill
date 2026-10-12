@@ -5,11 +5,20 @@ import type { RunInvocation, RunInputResolutionDependencies } from './run-input-
 import { configuredFilesRunCollectionSource, type CollectionSource } from './run-collection-source.ts';
 import { invalidRequest } from './run-errors.ts';
 import { validateRunInput } from './run-validation.ts';
+import { withFileModuleBoundary } from './file-module-boundary.ts';
 
 type PreparedRunCommand = { readonly command: RunCommand; readonly source: CollectionSource; };
 
 function isFrozenRunCommand(command: FrozenRunCommand | RunCommand): command is FrozenRunCommand {
     return Reflect.get(command, 'kind') === 'frozen-policy';
+}
+
+export async function withRunCommandModuleBoundary<Result>(
+    command: FrozenRunCommand | RunCommand,
+    operation: () => Promise<Result>
+): Promise<Result> {
+    const boundary = isFrozenRunCommand(command) ? parseFrozenMicrotestPolicy(command.policy).moduleBoundary : null;
+    return await withFileModuleBoundary(boundary, operation);
 }
 
 export async function prepareRunCommand(

@@ -17,8 +17,9 @@ Top-level API:
 - `orchestrator.resolve(command)`
 - `orchestrator.run(command)`
 - `orchestrator.runWithReporterDelivery(command)`
-- `orchestrator.freezePolicy({ command, source })`
+- `orchestrator.freezePolicy({ command, source, moduleBoundary })`
 - `parseFrozenMicrotestPolicy(value)`
+- `withFileModuleBoundary(boundary, operation)`
 
 `Config` describes authored policy. `normalizeConfig` produces a
 command-independent `NormalizedConfig` without reading files; `loadConfig`
@@ -34,6 +35,21 @@ tests or custom engines. It returns an immutable, serializable
 `FrozenMicrotestPolicy` containing the selected profile, loader declarations,
 discovered descriptors, baseline request, portable engine, and source identity.
 Engine instances and other profile families are unsupported.
+
+Pass `moduleBoundary: null` for ordinary freezing. A `FileModuleBoundary`
+contains an absolute `projectRoot` matching discovery and explicit absolute
+`sharedRoots` for installed dependencies and runner bootstrap. Shared roots
+must not contain the project root. Frozen runner operations enforce this
+additional module constraint in both process models, before config revalidation
+and through execution cleanup. It does not grant filesystem permissions.
+Older serialized policies without this field normalize it to `null`.
+
+`withFileModuleBoundary(boundary, operation)` applies the same constraint to
+configuration loading before freezing. Native synchronous module hooks reject
+file imports whose real paths escape the allowed roots, including symlink
+escapes. Hooks are scoped to the asynchronous operation and removed on success
+or failure. A `null` boundary installs no hook. Native module caching remains
+unchanged.
 
 Use `source: { kind: 'memory' }` for supplied config, or
 `{ kind: 'config-file', request: { cwd, configPath }, resolvedPath }` for loaded

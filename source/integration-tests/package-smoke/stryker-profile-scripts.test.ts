@@ -1,19 +1,21 @@
 export const strykerProfileScript = `
 {
 const { default: assert } = await import('node:assert/strict');
-const { mkdtemp, readFile, rm, writeFile } = await import('node:fs/promises');
-const { tmpdir } = await import('node:os');
+const { readFile, writeFile } = await import('node:fs/promises');
 const { join } = await import('node:path');
-const { strykerPlugins } = await import('@overkill-dev/stryker-runner');
-const configApiUrl = import.meta.resolve('@overkill-dev/run/config');
+const { strykerPlugins } = await import(process.argv[1]);
+const configApiUrl = process.argv[2];
 
 const [plugin] = strykerPlugins;
 const launchCwd = process.cwd();
-const cwd = await mkdtemp(join(tmpdir(), 'overkill-stryker-profile-'));
+const cwd = process.cwd();
 const configPath = join(cwd, 'overkill.config.js');
 const sentinel = join(cwd, 'never-imported.test.mjs');
 await writeFile(sentinel, 'throw new Error("test module imported during initialization");');
-const makeRunner = (overkill) => plugin.factory({ overkill });
+const { readdirSync } = await import('node:fs');
+const makeRunner = (overkill) => plugin.factory({ overkill }, Object.fromEntries(
+    readdirSync(cwd).map((file) => [join(cwd, file), { mutate: false }])
+));
 const integration = { testFamily: 'integration', files: { include: ['never-imported.test.mjs'] } };
 const microtest = {
     testFamily: 'microtest',
@@ -157,7 +159,6 @@ try {
     }
 } finally {
     process.chdir(launchCwd);
-    await rm(cwd, { recursive: true, force: true });
 }
 }
 `;

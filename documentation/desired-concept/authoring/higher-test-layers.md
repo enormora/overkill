@@ -688,6 +688,11 @@ test nodes in selected files remain subject to collection-time validation.
   test definitions, and adapter code from mutation targets. If configuration is
   evaluated again with a static mutant active, reject conflicting policy facts;
   unchanged test IDs alone are insufficient validation.
+  Stryker owns the `mutate` exclusions. Initialization rejects overlaps with
+  the loaded config entry, discovered test modules, and executing adapter code;
+  imported macros, suite fragments, and other definition helpers require
+  project-owned exclusions. Keep protected files in the sandbox rather than
+  removing them through `ignorePatterns`.
   Resolve policy outside the execution module graph and transport the frozen
   facts into execution hosts. Worker initialization must not import user
   configuration or its dependencies into that graph before the invocation's
@@ -702,6 +707,16 @@ test nodes in selected files remain subject to collection-time validation.
   coverage settings, and overridden scheduling. Retain native module caching.
   `overkill.paths` supplies explicit discovery input when the selected profile
   has no file policy and otherwise follows ordinary discovery rules.
+  Capture the original project root when Stryker loads the plugin, before the
+  worker changes cwd. Rebase original absolute config and discovery inputs to
+  sandbox copies; never fall back to original project files. Carry an explicit
+  nullable `FileModuleBoundary` through frozen policy. Native synchronous module
+  hooks enforce sandbox and trusted installed-package roots before configuration
+  revalidation and user imports in each execution process, including symlink
+  resolution. Shared roots must not admit original project files. Hook scopes
+  follow asynchronous operations and close on success or failure. Ordinary runs
+  use `null` and install no hook; preserve native module caching and existing
+  capability permissions.
 - Performance is the default priority. The Stryker adapter's `freshState`
   configuration defaults to `false`. Normal in-process runs reuse the loaded
   module graph and assume the suite can be rerun in the same process. Persistent

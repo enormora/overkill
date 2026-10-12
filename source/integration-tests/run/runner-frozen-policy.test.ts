@@ -81,6 +81,7 @@ async function withPolicy(processModel: ProcessModel, scope: TestScope, assertio
         await createProject(cwd, processModel);
         const cancellation = new AbortController();
         const policy = await initializeMutationPolicy({
+            sandbox: null,
             cwd,
             settings: { configPath: 'overkill.config.mjs', paths: [], profile: null },
             signal: cancellation.signal

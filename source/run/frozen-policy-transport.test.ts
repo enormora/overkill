@@ -15,6 +15,7 @@ const file = 'source/integration-tests/run/fixtures/throws-on-import.test.ts';
 
 async function freezePolicy(): Promise<FrozenMicrotestPolicy> {
     return await orchestrator.freezePolicy({
+        moduleBoundary: null,
         command: createMutationRunCommand({
             cwd: process.cwd(),
             profile: 'unit',
@@ -25,6 +26,35 @@ async function freezePolicy(): Promise<FrozenMicrotestPolicy> {
 }
 
 export const testNode = suite('frozen policy transport', [
+    test('transports module boundaries and accepts older unbounded policies', async function (scope) {
+        const policy = await freezePolicy();
+        const bounded = parseFrozenMicrotestPolicy({
+            ...policy,
+            moduleBoundary: { projectRoot: policy.projectRoot, sharedRoots: [] }
+        });
+        const serialized = JSON.stringify(bounded);
+        scope.assert.deepEqual(parseFrozenMicrotestPolicy(JSON.parse(serialized)), bounded);
+        scope.assert.equal(Object.isFrozen(bounded.moduleBoundary?.sharedRoots), true);
+        const { moduleBoundary: _boundary, ...legacy } = policy;
+        scope.assert.equal(parseFrozenMicrotestPolicy(legacy).moduleBoundary, null);
+        return scope.assert.collect();
+    }),
+    test('rejects inconsistent module roots before importing project code', async function (scope) {
+        const policy = await freezePolicy();
+        for (
+            const moduleBoundary of [
+                { projectRoot: '.', sharedRoots: [] },
+                { projectRoot: resolve(policy.projectRoot, 'other'), sharedRoots: [] },
+                { projectRoot: policy.projectRoot, sharedRoots: [ '.' ] },
+                { projectRoot: policy.projectRoot, sharedRoots: [ resolve(policy.projectRoot, '..') ] }
+            ]
+        ) {
+            scope.assert.throws(function rejectInvalidBoundary() {
+                parseFrozenMicrotestPolicy({ ...policy, moduleBoundary });
+            }, { type: Error });
+        }
+        return scope.assert.collect();
+    }),
     test('validates config identity and absolute roots', async function (scope) {
         const policy = await freezePolicy();
         const configPath = resolve(policy.cwd, 'overkill.config.js');

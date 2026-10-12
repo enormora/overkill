@@ -9,13 +9,13 @@ import { createRunTestPlan, createRunTestPlanFromFiles, type RunTestPlanInput } 
 import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
-import type { RunTestModuleLoader } from './run-test-modules.ts';
+import { withFileModuleBoundary } from './file-module-boundary.ts';
 import { frozenSupervisedPolicy, type SupervisedChildCommand } from './supervised-protocol.ts';
 
 export type SupervisedChildTestPlanDependencies = {
     readonly discoverRunFiles: RunTestPlanInput['discoverRunFiles'];
     readonly loadRunEngineModule: RunEngineModuleLoader;
-    readonly loadRunTestModules: RunTestModuleLoader;
+    readonly loadRunTestModules: RunTestPlanInput['loadRunTestModules'];
 };
 
 type SelectedSupervisedEngine = Awaited<ReturnType<SupervisedChildTestPlanDependencies['loadRunEngineModule']>>;
@@ -67,16 +67,22 @@ export function runnerErrorFromSupervisedChildFailure(error: unknown): RunnerErr
     };
 }
 
-export async function runObservedSupervisedChildCommand(run: () => Promise<void>): Promise<void> {
+export async function runObservedSupervisedChildCommand(
+    command: SupervisedChildCommand,
+    run: () => Promise<void>
+): Promise<void> {
     const globalErrorObserver = createExecutionGlobalErrorObserver('supervised-child');
+    const boundary = frozenSupervisedPolicy(command)?.moduleBoundary ?? null;
 
     try {
-        await globalErrorObserver.runBoundary(async function runObservedCommand() {
-            await globalErrorObserver.runPhase('collection', async function completeObservedCommand() {
-                await Promise.race([
-                    run(),
-                    waitForObservedChildError(globalErrorObserver)
-                ]);
+        await withFileModuleBoundary(boundary, async function completeBoundedCommand() {
+            await globalErrorObserver.runBoundary(async function runObservedCommand() {
+                await globalErrorObserver.runPhase('collection', async function completeObservedCommand() {
+                    await Promise.race([
+                        run(),
+                        waitForObservedChildError(globalErrorObserver)
+                    ]);
+                });
             });
         });
     } finally {

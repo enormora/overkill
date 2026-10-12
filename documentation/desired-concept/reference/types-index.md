@@ -1159,7 +1159,13 @@ type RunPolicySource =
         readonly resolvedPath: string | null;
     };
 
+type FileModuleBoundary = {
+    readonly projectRoot: string;
+    readonly sharedRoots: readonly string[];
+};
+
 type FrozenMicrotestPolicy = {
+    readonly moduleBoundary: FileModuleBoundary | null;
     readonly source: RunPolicySource;
     readonly cwd: string;
     readonly projectRoot: string;
@@ -1177,6 +1183,7 @@ type FrozenMicrotestPolicy = {
 };
 
 type FreezePolicyInput = {
+    readonly moduleBoundary: FileModuleBoundary | null;
     readonly command: RunCommand;
     readonly source: RunPolicySource;
 };
@@ -1190,6 +1197,10 @@ type FrozenRunCommand = {
 
 declare function freezePolicy(input: FreezePolicyInput): Promise<FrozenMicrotestPolicy>;
 declare function parseFrozenMicrotestPolicy(value: unknown): FrozenMicrotestPolicy;
+declare function withFileModuleBoundary<Result>(
+    boundary: FileModuleBoundary | null,
+    operation: () => Promise<Result>
+): Promise<Result>;
 
 type MergeResultsInput =
     | { readonly kind: 'file'; readonly path: string; }

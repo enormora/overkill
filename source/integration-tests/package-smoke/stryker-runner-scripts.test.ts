@@ -1,4 +1,5 @@
 import { strykerProfileScript } from './stryker-profile-scripts.test.ts';
+import { strykerSandboxScript } from './stryker-sandbox-scripts.test.ts';
 
 export const strykerRunnerScript = `
 import assert from 'node:assert/strict';
@@ -10,9 +11,11 @@ assert.equal(adapter.strykerPlugins.length, 1);
 const [plugin] = adapter.strykerPlugins;
 assert.equal(plugin.kind, 'TestRunner');
 assert.equal(plugin.name, 'overkill');
-assert.deepEqual(plugin.factory.inject, ['options']);
-const runner = plugin.factory({ overkill: { paths: ['stryker-runner.test.js'] } });
-assert.notEqual(runner, plugin.factory({}));
+assert.deepEqual(plugin.factory.inject, ['options', 'fileDescriptions']);
+const runner = plugin.factory({ overkill: { paths: ['stryker-runner.test.js'] } }, {
+    [process.cwd() + '/stryker-runner.test.js']: { mutate: false }
+});
+assert.notEqual(runner, plugin.factory({}, {}));
 
 assert.throws(() => runner.capabilities(), {
     name: 'Error',
@@ -46,7 +49,7 @@ await assert.rejects(runner.mutantRun({
 });
 await runner.dispose();
 await runner.dispose();
-await plugin.factory({}).dispose();
+await plugin.factory({}, {}).dispose();
 
 const manifestUrl = new URL('../../package.json', import.meta.resolve('@overkill-dev/stryker-runner'));
 const manifest = JSON.parse(readFileSync(manifestUrl, 'utf8'));
@@ -70,6 +73,19 @@ for (const dependencies of [standardManifest.dependencies, standardManifest.peer
 }
 assert.equal(existsSync(new URL('node_modules/@overkill-dev/stryker-runner', standardManifestUrl)), false);
 assert.equal(existsSync(new URL('node_modules/@stryker-mutator', standardManifestUrl)), false);
-${strykerProfileScript}
+const { execFileSync } = await import('node:child_process');
+const { mkdtempSync, rmSync } = await import('node:fs');
+const { tmpdir } = await import('node:os');
+const { join } = await import('node:path');
+const profileCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-profile-'));
+try {
+    execFileSync(process.execPath, ['--input-type=module', '--eval', ${JSON.stringify(strykerProfileScript)},
+        import.meta.resolve('@overkill-dev/stryker-runner'), import.meta.resolve('@overkill-dev/run/config')],
+        { cwd: profileCwd, stdio: 'pipe' });
+    execFileSync(process.execPath, ['--input-type=module', '--eval', ${JSON.stringify(strykerSandboxScript)},
+        import.meta.resolve('@overkill-dev/stryker-runner')], { cwd: profileCwd, stdio: 'pipe' });
+} finally {
+    rmSync(profileCwd, { recursive: true, force: true });
+}
 console.log('stryker profile initialization passed');
 `;

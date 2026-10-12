@@ -11,6 +11,7 @@ function policyFacts(policy: FrozenMicrotestPolicy): Readonly<Record<string, unk
     const command = policyBaselineCommand(policy);
     const profile = { ...policy.profile, reporters: null };
     return {
+        moduleBoundary: policy.moduleBoundary,
         source: policy.source,
         discovery: {
             cwd: policy.cwd,
@@ -61,6 +62,7 @@ async function reevaluatePolicy(
     try {
         const config = await loadConfig(policy.source.request);
         return await freezeRunPolicy({
+            moduleBoundary: policy.moduleBoundary,
             command: { ...policyBaselineCommand(policy), config },
             source: { ...policy.source, resolvedPath: config.configPath }
         }, dependencies);

@@ -47,6 +47,33 @@ does not enter the plugin worker's execution graph during initialization.
 Repeated initialization shares one result, including failures. Replacement
 workers resolve independently; this is not shared campaign coordination.
 
+Stryker owns mutation selection. Exclude configuration, test definitions,
+definition helpers such as macros and suite fragments, and adapter code through
+`mutate`, while keeping those files available in the sandbox. Use mutation
+exclusions rather than `ignorePatterns`, which removes files from the sandbox.
+Prefer a production-only include, with exclusions where production and test
+definitions share directories.
+
+Initialization rejects targets overlapping the loaded config entry, discovered
+test modules, or the executing adapter directory. Boolean targets and mutation
+ranges are both checked. Imported definition helpers require project-owned
+exclusions; initialization does not import tests or build an import graph to
+classify them. Installed adapter code is normally outside Stryker's targets.
+
+The plugin captures the launch cwd during loading, before Stryker changes the
+worker cwd. Original absolute `configPath` and `paths` inputs are rebased to
+sandbox copies; relative and already-sandboxed paths remain sandbox-local.
+Missing copies fail without loading originals. File identities remain canonical
+project-relative paths across sandbox names and replacement workers.
+
+Mutation policy carries an additional native module boundary. Configuration
+dependencies and test imports must resolve inside the sandbox or trusted
+installed dependency and bootstrap roots. Absolute project imports and symlinks
+escaping those roots fail before evaluation. Shared roots overlapping original
+project files are rejected; load the adapter from a separate installed package.
+The same boundary applies during config revalidation and both runner process
+models without widening capability permissions or resetting module caches.
+
 Execution hosts revalidate file-backed configuration before collecting tests.
 Changes to authoritative discovery, loader declarations, selection, permissions,
 execution, or resources fail even when test identities would remain unchanged.

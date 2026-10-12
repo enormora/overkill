@@ -1,4 +1,5 @@
 import { commonTokens, tokens } from '@stryker-mutator/api/plugin';
+import type { FileDescriptions } from '@stryker-mutator/api/core';
 import type {
     DryRunResult,
     MutantRunResult,
@@ -9,14 +10,22 @@ import { ConfigError } from '../run/config.entry-point.ts';
 import type { FrozenMicrotestPolicy } from '../run/run.entry-point.ts';
 import { initializeMutationPolicy } from './mutation-policy-process.ts';
 import { parseRunnerOptions } from './runner-options.ts';
+import { assertExcludedAdapter, createMutationSandbox } from './mutation-sandbox.ts';
 
-export function createOverkillTestRunner(options: Readonly<Record<string, unknown>>): Required<TestRunner> {
+const originalRoot = process.cwd();
+
+export function createOverkillTestRunner(
+    options: Readonly<Record<string, unknown>>,
+    fileDescriptions: FileDescriptions
+): Required<TestRunner> {
     let initialization: Promise<FrozenMicrotestPolicy> | null = null;
     const controller = new AbortController();
 
     async function initializePolicy(): Promise<FrozenMicrotestPolicy> {
         const settings = parseRunnerOptions(options.overkill);
-        return await initializeMutationPolicy({ cwd: process.cwd(), settings, signal: controller.signal });
+        const sandbox = await createMutationSandbox({ originalRoot, cwd: process.cwd(), fileDescriptions });
+        await assertExcludedAdapter(sandbox);
+        return await initializeMutationPolicy({ cwd: sandbox.root, sandbox, settings, signal: controller.signal });
     }
 
     return {
@@ -46,4 +55,4 @@ export function createOverkillTestRunner(options: Readonly<Record<string, unknow
     };
 }
 
-createOverkillTestRunner.inject = tokens(commonTokens.options);
+createOverkillTestRunner.inject = tokens(commonTokens.options, commonTokens.fileDescriptions);

@@ -30,6 +30,8 @@ export const runIfMain = createRunIfMain({
 
 export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 export { parseFrozenMicrotestPolicy } from '../../run/frozen-run-policy.ts';
+export { withFileModuleBoundary } from '../../run/file-module-boundary.ts';
+export type { FileModuleBoundary } from '../../run/run-types.ts';
 export type {
     FreezePolicyInput,
     FrozenMicrotestPolicy,

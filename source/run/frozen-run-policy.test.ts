@@ -29,7 +29,11 @@ export const testNode = suite('frozen microtest policy', [
                 exportKind: 'value'
             }
         } as const;
-        const policy = await orchestrator.freezePolicy({ command: input, source: { kind: 'memory' } });
+        const policy = await orchestrator.freezePolicy({
+            moduleBoundary: null,
+            command: input,
+            source: { kind: 'memory' }
+        });
         scope.assert.deepEqual(
             policy.files.map(function discoveredFile(descriptor) {
                 return descriptor.file;
@@ -44,7 +48,11 @@ export const testNode = suite('frozen microtest policy', [
         return scope.assert.collect();
     }),
     test('rejects malformed and conflicting discovery descriptors', async function (scope) {
-        const policy = await orchestrator.freezePolicy({ command: command(), source: { kind: 'memory' } });
+        const policy = await orchestrator.freezePolicy({
+            moduleBoundary: null,
+            command: command(),
+            source: { kind: 'memory' }
+        });
         const [ descriptor ] = policy.files;
         for (
             const files of [
@@ -67,7 +75,11 @@ export const testNode = suite('frozen microtest policy', [
         return scope.assert.collect();
     }),
     test('rejects conflicting supervised permissions before collection', async function (scope) {
-        const policy = await orchestrator.freezePolicy({ command: command(), source: { kind: 'memory' } });
+        const policy = await orchestrator.freezePolicy({
+            moduleBoundary: null,
+            command: command(),
+            source: { kind: 'memory' }
+        });
         const supervised = createSupervisedRunCommand(
             policyBaselineCommand(policy),
             { ...policy.profile, reporters: null },
@@ -100,6 +112,7 @@ export const testNode = suite('frozen microtest policy', [
             }
         });
         const policy = await orchestrator.freezePolicy({
+            moduleBoundary: null,
             command: {
                 ...input,
                 config,
@@ -144,10 +157,15 @@ export const testNode = suite('frozen microtest policy', [
             profiles: { unit: { testFamily: 'integration', files: { include: [ file ] } } }
         });
         await scope.assert.rejects(async function freezeIntegration() {
-            await orchestrator.freezePolicy({ command: { ...command(), config }, source: { kind: 'memory' } });
+            await orchestrator.freezePolicy({
+                moduleBoundary: null,
+                command: { ...command(), config },
+                source: { kind: 'memory' }
+            });
         }, { message: /requires a Node microtest profile/ });
         await scope.assert.rejects(async function freezeInstance() {
             await orchestrator.freezePolicy({
+                moduleBoundary: null,
                 command: { ...command(), engine: { kind: 'instance', engine: defaultRunEngine } },
                 source: { kind: 'memory' }
             });

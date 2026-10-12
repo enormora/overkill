@@ -30,6 +30,7 @@ export async function freezeRunPolicy(
     const { reporters: _reporters, ...profile } = resolved.profile;
     const { seed: _seed, ...request } = resolved.request;
     return parseFrozenMicrotestPolicy({
+        moduleBoundary: input.moduleBoundary,
         source: input.source,
         cwd: input.command.cwd,
         projectRoot: resolved.projectRoot,
