@@ -1,9 +1,4 @@
-import {
-    workIdentityKey,
-    type AttemptId,
-    observeResourceOwnerAcquisition,
-    releaseResourceOwner
-} from '../packages/engine/engine.entry-point.ts';
+import { workIdentityKey, type AttemptId } from '../engine/identity.ts';
 import { runWithResourceFailureContext } from '../attachments/resource-failure-context.ts';
 import type {
     AnyResourceDefinition,
@@ -31,6 +26,7 @@ import {
     type ResourceProjectionRecords
 } from './resource-lifecycle-projection.ts';
 import {
+    acquireOwnedResource,
     currentLifecycleAttempt,
     currentAttachmentExecution,
     type ManagedLifecycleState,
@@ -281,11 +277,9 @@ export function createManagedResourceAcquirer(
                     signal
                 }, acquireHandle);
         };
-        const acquisition = await observeResourceOwnerAcquisition(observeHandle);
+        const acquisition = await acquireOwnedResource(observeHandle);
         const record = {
-            releaseOwner() {
-                releaseResourceOwner(acquisition.owner);
-            },
+            releaseOwner: acquisition.releaseOwner,
             boundary,
             dependencyContext,
             descriptor: resource,
