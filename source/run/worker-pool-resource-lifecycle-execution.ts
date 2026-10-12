@@ -4,6 +4,7 @@ import {
 } from 'node:worker_threads';
 import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
+import { collectedWorkloadInputs } from './collected-run-plan.ts';
 import { workerPoolPlacementPlan, type WorkerPoolTaskRun, type WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 import type { PlacementPlan } from './run-types.ts';
 import {
@@ -182,12 +183,22 @@ function recordResourceLifecycleFailure(runtime: WorkerPoolRunRuntime, message: 
     });
 }
 
-export function createWorkerPoolBatchRunCommand(
+type WorkerPoolBatchAssignment = {
+    readonly command: WorkerPoolCommand;
+    readonly workloadInputs: ReturnType<typeof collectedWorkloadInputs>;
+    readonly assignedWork: readonly WorkId[];
+};
+
+export function createWorkerPoolBatchAssignment(
     runtime: WorkerPoolRunRuntime,
     members: readonly [WorkerPoolLeaseMember, ...readonly WorkerPoolLeaseMember[]]
-): WorkerPoolCommand {
+): WorkerPoolBatchAssignment {
     return {
-        ...createBatchRunCommand(runtime, members)
+        command: createBatchRunCommand(runtime, members),
+        assignedWork: members.flatMap(function memberWork(member) {
+            return member.unit.work;
+        }),
+        workloadInputs: collectedWorkloadInputs(runtime.collectedPlan)
     };
 }
 
@@ -213,6 +224,7 @@ async function acquireRunResourceOutput(
     try {
         return await runtime.pool.run({
             assignedWork: work,
+            workloadInputs: collectedWorkloadInputs(runtime.collectedPlan),
             boundaryKeys: externallyOwnedResources(plan).map(function ownerBoundaryKey(owner) {
                 return owner.boundaryKey;
             }),

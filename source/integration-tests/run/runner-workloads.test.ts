@@ -73,6 +73,20 @@ function assertWorkloadArtifacts(scope: TestScope, result: RunResult, count: num
     }
 }
 
+function assertFixtureLifetimes(scope: TestScope, result: RunResult, count: number): void {
+    for (
+        const [ name, expected ] of [ [ 'fixture-acquisition', count / 2 ], [ 'fixture-disposal', count / 2 ], [
+            'registry-disposal',
+            1
+        ] ] as const
+    ) {
+        const artifacts = result.artifacts.filter(function fixtureArtifact(artifact) {
+            return artifact.payload.kind === 'runtime-attachment' && artifact.payload.name === name;
+        });
+        scope.assert.equal(artifacts.length, expected);
+    }
+}
+
 function assertWorkloadResults(scope: TestScope, result: RunResult, count: number): void {
     scope.assert.equal(result.status, 'passed');
     scope.assert.equal(result.summary.discovered, 4);
@@ -84,6 +98,7 @@ function assertWorkloadResults(scope: TestScope, result: RunResult, count: numbe
     }));
     scope.assert.equal(identities.size, count);
     assertWorkloadArtifacts(scope, result, count);
+    assertFixtureLifetimes(scope, result, count);
 }
 
 async function assertWorkloadShards(scope: TestScope, command: RunCommand): Promise<void> {

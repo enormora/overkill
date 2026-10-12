@@ -36,6 +36,7 @@ const invalidGroupNameMessage = 'Invalid profile work group name "invalid/group"
 
 function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        workloadParameters: null,
         annotations,
         controls,
         definitionLocations: [ { kind: 'unknown' as const } ],

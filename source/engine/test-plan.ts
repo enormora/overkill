@@ -1,9 +1,11 @@
-import type { Except } from 'type-fest';
+import type { Except, Merge } from 'type-fest';
 import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
+import type { WorkloadInput, WorkloadParameters } from './workload-input.ts';
+import { resolveTestBodyWorkload } from './test-body-workload-resolution.ts';
 import {
     caseIdentityKey,
     createCaseId,
@@ -61,17 +63,29 @@ export type TestPlanCase = {
     readonly suitePath: readonly TestPlanSuitePathEntry[];
     readonly testFamily: TestFamily | null;
     readonly workId: WorkId;
+    readonly workloadParameters: WorkloadParameters | null;
 };
 
-type LogicalTestPlanCase = Except<TestPlanCase, 'execution' | 'resourceAttachments' | 'workId'> & {
-    readonly execution: TestCaseExecution;
-};
+type LogicalTestPlanCase = Merge<
+    Except<TestPlanCase, 'execution' | 'resourceAttachments' | 'workId' | 'workloadParameters'>,
+    { readonly execution: TestCaseExecution; }
+>;
 
-function plannedCase(testCase: LogicalTestPlanCase, execution: TestPlanCaseExecution): TestPlanCase {
+function plannedCase(
+    testCase: LogicalTestPlanCase,
+    execution: TestPlanCaseExecution,
+    workload: WorkloadInput | null
+): TestPlanCase {
+    const resolvedExecution: TestPlanCaseExecution = execution.kind === 'body' && execution.bodyMode === 'builder'
+        ? { ...execution, body: resolveTestBodyWorkload(execution.body, workload) }
+        : execution;
     return {
         ...testCase,
-        execution,
-        resourceAttachments: readTestBodyResourceAttachments(execution.kind === 'body' ? execution.body : null),
+        execution: resolvedExecution,
+        workloadParameters: workload?.parameters ?? null,
+        resourceAttachments: readTestBodyResourceAttachments(
+            resolvedExecution.kind === 'body' ? resolvedExecution.body : null
+        ),
         workId: createDefaultWorkId(testCase.id)
     };
 }
@@ -79,10 +93,14 @@ function plannedCase(testCase: LogicalTestPlanCase, execution: TestPlanCaseExecu
 function expandWorkloadCases(cases: readonly LogicalTestPlanCase[]): readonly TestPlanCase[] {
     return cases.flatMap(function expandCase(testCase) {
         if (testCase.execution.kind !== 'workloads') {
-            return [ plannedCase(testCase, testCase.execution) ];
+            return [ plannedCase(testCase, testCase.execution, null) ];
         }
         return testCase.execution.workloads.map(function workloadCase(workload) {
-            const result = plannedCase(testCase, { body: workload.body, bodyMode: 'builder', kind: 'body' });
+            const result = plannedCase(
+                testCase,
+                { body: workload.body, bodyMode: 'builder', kind: 'body' },
+                workload.parameters === null ? null : { id: workload.id, parameters: workload.parameters }
+            );
             return { ...result, workId: { ...result.workId, workload: workload.id } };
         });
     });

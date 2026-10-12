@@ -403,6 +403,13 @@ descriptors, `acquire`, and `dispose`. `startRuntime(...)` acquires declared
 dependencies before dependents, shares one handle per descriptor in a session,
 and disposes acquired resources once in reverse dependency order. Resource
 callbacks receive declared dependency handles through `context.dependencies`.
+Descriptors can declare a pure synchronous `workload` parser. Planning binds
+validated workload parameters without acquisition. Workload-dependent resources
+and their consumers share by scope and full workload identity; independent
+dependencies keep existing sharing. Acquisition and disposal receive the parsed
+input through `context.workload`. Direct sessions accept explicit workload input.
+Shared native handles are allowed during their resource lifetime and checked
+again after disposal by the existing leak diagnostics.
 Runtime context types are derived from the runtime's `resources` object keys,
 while resource `name` stays the stable identity for future scheduling,
 reporting, and artifact work.

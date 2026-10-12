@@ -1,6 +1,7 @@
 import { runtimeIdentityKey, workIdentityKey, type RuntimeId, type WorkId } from '../engine/identity.ts';
 import type { TestBodyResourceSummary, TestBodyRuntimeSummary } from '../engine/test-body-resource-attachment.ts';
 import { resourceDependencyScopeAllowed } from '../resources/resource-graph.ts';
+import { assertSharedWorkloadInputs } from './workload-input-validation.ts';
 import {
     caseResourceOwnershipBoundaries,
     resourceScopes,
@@ -110,7 +111,8 @@ function resourceDefinitionEnvelope(resource: TestBodyResourceSummary): unknown 
         handleTransport: resource.handleTransport,
         requirements: resource.requirements,
         scenarios: resource.scenarios,
-        scope: resource.scope
+        scope: resource.scope,
+        workload: resource.workload
     };
 }
 
@@ -471,6 +473,7 @@ export function collectedPlanCompatibilityConflicts(
 }
 
 export function assertCollectedPlanCompatible(plan: CollectedRunPlan): void {
+    assertSharedWorkloadInputs(plan);
     const conflicts = collectedPlanCompatibilityConflicts(plan);
 
     if (conflicts.length > 0) {

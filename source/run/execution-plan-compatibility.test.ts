@@ -34,6 +34,7 @@ function collectedPlan(): CollectedRunPlan {
         files: [ {
             cases: [ 'first', 'second' ].map(function collectedCase(title) {
                 return {
+                    workloadParameters: null,
                     annotations,
                     controls,
                     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -65,6 +66,7 @@ function resourcePlan(scope: 'per-file' | 'per-run'): CollectedRunPlan {
                         resourceAttachments: {
                             directResources: [ { key: 'shared', resourceName: 'shared' } ],
                             resourceGraph: [ {
+                                workload: 'independent' as const,
                                 dependencies: [],
                                 handleTransport: 'projected' as const,
                                 name: 'shared',
@@ -96,6 +98,7 @@ function identityConflictPlan(): CollectedRunPlan {
                             directResources: [],
                             resourceGraph: [
                                 {
+                                    workload: 'independent' as const,
                                     dependencies: index === 0 ? [ 'missing', 'run-dependency' ] : [],
                                     handleTransport: index === 0 ? 'local' as const : 'projected' as const,
                                     name: 'shared',
@@ -104,6 +107,7 @@ function identityConflictPlan(): CollectedRunPlan {
                                     scope: index === 0 ? 'per-run' : 'per-file'
                                 },
                                 {
+                                    workload: 'independent' as const,
                                     dependencies: [ 'run-dependency' ],
                                     handleTransport: 'projected' as const,
                                     name: 'invalid',
@@ -112,6 +116,7 @@ function identityConflictPlan(): CollectedRunPlan {
                                     scope: 'invalid'
                                 },
                                 {
+                                    workload: 'independent' as const,
                                     dependencies: [],
                                     handleTransport: 'projected' as const,
                                     name: 'run-dependency',

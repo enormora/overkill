@@ -259,6 +259,7 @@ function expectedLocalResource(
     requirements: readonly Readonly<Record<string, unknown>>[]
 ): TestBodyResourceSummary {
     return {
+        workload: 'independent' as const,
         dependencies: [],
         handleTransport: 'local',
         name,

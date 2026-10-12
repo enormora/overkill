@@ -1,5 +1,7 @@
 import type { Except, Merge } from 'type-fest';
+import type { WorkloadParameters } from '../engine/workload-input.ts';
 import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
+import type { ResourceWorkload, ResourceWorkloadParser } from './resource-workload-types.ts';
 import type {
     AnyResourceDefinition,
     Awaitable,
@@ -57,22 +59,26 @@ export type ResourceContext<Resources extends ResourceDependencies> = {
 
 export type ResourceCreationContext<
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
-    Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
+    Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots,
+    Parameters extends WorkloadParameters = never
 > = {
     readonly attachments: RuntimeAttachments;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkload<Parameters>;
 };
 
 export type ResourceDisposalContext<
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
-    Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
+    Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots,
+    Parameters extends WorkloadParameters = never
 > = {
     readonly attachments: RuntimeAttachments;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly scenarios: ResourceScenarioBindingsForTiming<Scenarios, 'acquire'>;
     readonly signal: AbortSignal;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkload<Parameters>;
 };
 
 type RequestRoutedScenarioNames<Scenarios extends ResourceScenarioSlots> = keyof {
@@ -185,137 +191,89 @@ export type ScenarioProjectedInput<
     ScenarioInputs
 >;
 
-export type DefineResource = {
-    <
-        const Name extends string,
-        Handle,
-        Scope extends Exclude<ResourceScope, 'per-run'>,
-        const Dependencies extends ResourceDependencies,
-        const ScenarioInputs extends ResourceScenarioSlotInputs
-    >(
-        definition: WithDependencies<
-            ScenarioLocalInput<Name, Handle, Scope, Dependencies, ScenarioInputs>,
-            Dependencies
-        >
-    ): ResourceDefinition<Name, Handle, Dependencies, Handle, ResourceScenarioSlotsFromInputs<ScenarioInputs>>;
-    <
-        const Name extends string,
-        OwnerHandle,
-        Projection extends ResourceProjectionPayload,
-        ConsumerHandle,
-        Scope extends ProjectedResourceScope,
-        const Dependencies extends ResourceDependencies,
-        const ScenarioInputs extends ResourceScenarioSlotInputs
-    >(
-        definition: WithDependencies<
-            ScenarioProjectedInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies, ScenarioInputs>,
-            Dependencies
-        >
-    ): ResourceDefinition<
-        Name,
-        OwnerHandle,
-        Dependencies,
-        ConsumerHandle,
-        ResourceScenarioSlotsFromInputs<ScenarioInputs>
-    >;
-    <
-        const Name extends string,
-        Handle,
-        Scope extends Exclude<ResourceScope, 'per-run'>,
-        const ScenarioInputs extends ResourceScenarioSlotInputs
-    >(
-        definition: Except<
-            ScenarioLocalInput<Name, Handle, Scope, EmptyResourceDependencies, ScenarioInputs>,
-            'dependencies'
-        >
-    ): ResourceDefinition<
-        Name,
-        Handle,
-        EmptyResourceDependencies,
-        Handle,
-        ResourceScenarioSlotsFromInputs<ScenarioInputs>
-    >;
-    <
-        const Name extends string,
-        OwnerHandle,
-        Projection extends ResourceProjectionPayload,
-        ConsumerHandle,
-        Scope extends ProjectedResourceScope,
-        const ScenarioInputs extends ResourceScenarioSlotInputs
-    >(
-        definition: Except<
-            ScenarioProjectedInput<
-                Name,
-                OwnerHandle,
-                Projection,
-                ConsumerHandle,
-                Scope,
-                EmptyResourceDependencies,
-                ScenarioInputs
-            >,
-            'dependencies'
-        >
-    ): ResourceDefinition<
-        Name,
-        OwnerHandle,
-        EmptyResourceDependencies,
-        ConsumerHandle,
-        ResourceScenarioSlotsFromInputs<ScenarioInputs>
-    >;
-    <const Name extends string, Handle, Scope extends Exclude<ResourceScope, 'per-run'>>(
-        definition: Except<LocalOnlyResourceDefinitionInput<Name, Handle, Scope>, 'scenarios'>
-    ): ResourceDefinition<Name, Handle, EmptyResourceDependencies, Handle>;
-    <
-        const Name extends string,
-        OwnerHandle,
-        Projection extends ResourceProjectionPayload,
-        ConsumerHandle,
-        Scope extends ProjectedResourceScope
-    >(
-        definition: Except<
-            ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope>,
-            'scenarios'
-        >
-    ): ResourceDefinition<Name, OwnerHandle, EmptyResourceDependencies, ConsumerHandle>;
-    <
-        const Name extends string,
-        Handle,
-        Scope extends Exclude<ResourceScope, 'per-run'>,
-        const Dependencies extends ResourceDependencies
-    >(
-        definition: WithDependencies<
-            Except<LocalOnlyResourceDefinitionInput<Name, Handle, Scope, Dependencies>, 'scenarios'>,
-            Dependencies
-        >
-    ): ResourceDefinition<Name, Handle, Dependencies, Handle>;
-    <
-        const Name extends string,
-        OwnerHandle,
-        Projection extends ResourceProjectionPayload,
-        ConsumerHandle,
-        Scope extends ProjectedResourceScope,
-        const Dependencies extends ResourceDependencies
-    >(
-        definition: WithDependencies<
-            Except<
-                ProjectedResourceDefinitionInput<Name, OwnerHandle, Projection, ConsumerHandle, Scope, Dependencies>,
-                'scenarios'
-            >,
-            Dependencies
-        >
-    ): ResourceDefinition<Name, OwnerHandle, Dependencies, ConsumerHandle>;
+type WorkloadResourceDispose<
+    Handle,
+    Dependencies extends ResourceDependencies,
+    Scenarios extends ResourceScenarioSlots,
+    Parameters extends WorkloadParameters
+> = (
+    handle: Handle,
+    context: ResourceDisposalContext<NoInfer<Dependencies>, NoInfer<Scenarios>, NoInfer<Parameters>>
+) => Awaitable<void>;
+
+type WorkloadResourceInput<
+    Input extends { readonly acquire: unknown; readonly dispose: unknown; },
+    Handle,
+    Dependencies extends ResourceDependencies,
+    Scenarios extends ResourceScenarioSlots,
+    Parameters extends WorkloadParameters
+> = Except<Input, 'acquire' | 'dispose'> & {
+    readonly acquire: (
+        context: ResourceCreationContext<NoInfer<Dependencies>, NoInfer<Scenarios>, NoInfer<Parameters>>
+    ) => Awaitable<Handle>;
+    readonly dispose: WorkloadResourceDispose<Handle, Dependencies, Scenarios, Parameters> | null;
+    readonly workload: ResourceWorkloadParser<Parameters>;
 };
+
+export type WorkloadLocalResourceInput<
+    Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    Dependencies extends ResourceDependencies,
+    Scenarios extends ResourceScenarioSlots,
+    Parameters extends WorkloadParameters
+> = WorkloadResourceInput<
+    LocalOnlyResourceDefinitionInput<Name, Handle, Scope, Dependencies, Scenarios>,
+    Handle,
+    Dependencies,
+    Scenarios,
+    Parameters
+>;
+
+export type WorkloadProjectedResourceInput<
+    Name extends string,
+    Handle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite',
+    Dependencies extends ResourceDependencies,
+    Scenarios extends ResourceScenarioSlots,
+    Parameters extends WorkloadParameters
+> = WorkloadResourceInput<
+    ProjectedResourceDefinitionInput<Name, Handle, Projection, ConsumerHandle, Scope, Dependencies, Scenarios>,
+    Handle,
+    Dependencies,
+    Scenarios,
+    Parameters
+>;
+
+type IndependentResourceDefinitionInput<
+    Name extends string,
+    Handle,
+    Dependencies extends ResourceDependencies,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle
+> = Except<
+    ValueOf<ResourceDefinitionInputOptions<Name, Handle, Dependencies, Projection, ConsumerHandle>>,
+    'scenarios'
+>;
 
 export type ResourceDefinitionInput<
     Name extends string,
     Handle,
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
     Projection extends ResourceProjectionPayload = ResourceProjectionPayload,
-    ConsumerHandle = Handle
-> = Except<
-    ValueOf<ResourceDefinitionInputOptions<Name, Handle, Dependencies, Projection, ConsumerHandle>>,
-    'scenarios'
->;
+    ConsumerHandle = Handle,
+    Parameters extends WorkloadParameters = never
+> = readonly [Parameters] extends readonly [never]
+    ? IndependentResourceDefinitionInput<Name, Handle, Dependencies, Projection, ConsumerHandle>
+    : WorkloadResourceInput<
+        IndependentResourceDefinitionInput<Name, Handle, Dependencies, Projection, ConsumerHandle>,
+        Handle,
+        Dependencies,
+        EmptyResourceScenarioSlots,
+        Parameters
+    >;
 
 type ResourceDefinitionInputOptions<
     Name extends string,
@@ -379,24 +337,36 @@ type ProjectedResourceInputOptions<
     >;
 };
 
+type ResourceOwnerDisposal<
+    Handle,
+    Dependencies extends ResourceDependencies,
+    Scenarios extends ResourceScenarioSlots,
+    Parameters extends WorkloadParameters
+> = (
+    handle: Handle,
+    context: ResourceDisposalContext<Dependencies, Scenarios, Parameters>
+) => Awaitable<void>;
+
 export type ResourceDefinition<
     Name extends string = string,
     OwnerHandle = unknown,
     Dependencies extends ResourceDependencies = ResourceDependencies,
     ConsumerHandle = OwnerHandle,
-    Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots
+    Scenarios extends ResourceScenarioSlots = EmptyResourceScenarioSlots,
+    Parameters extends WorkloadParameters = never
 > = ResourceHandleExposureDefinition<ConsumerHandle, Scenarios> & {
-    readonly acquire: (context: ResourceCreationContext<Dependencies, Scenarios>) => Awaitable<OwnerHandle>;
+    readonly acquire: (context: ResourceCreationContext<Dependencies, Scenarios, Parameters>) => Awaitable<OwnerHandle>;
     readonly dependencies: Dependencies;
     readonly deserializeHandle?: (
         payload: ResourceProjectionPayload,
         context: ResourceProjectionContext<Dependencies>
     ) => ConsumerHandle;
-    readonly dispose: ResourceDisposal<OwnerHandle, Dependencies, Scenarios>;
+    readonly dispose: ResourceOwnerDisposal<OwnerHandle, Dependencies, Scenarios, Parameters> | null;
     readonly name: Name;
     readonly requirements: readonly ExecutionRequirement[];
     readonly scenarios: Scenarios;
     readonly scope: ResourceScope;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkloadParser<Parameters>;
     readonly serializeHandle?: (
         handle: OwnerHandle,
         context: ResourceProjectionContext<Dependencies>

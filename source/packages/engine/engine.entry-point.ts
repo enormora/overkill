@@ -447,3 +447,15 @@ export type {
     TestPlanCaseBody,
     TestPlanCaseExecution
 } from '../../engine/test-plan.ts';
+
+export type { WorkloadInput, WorkloadParameters } from '../../engine/workload-input.ts';
+export {
+    attachTestBodyWorkloadResolver,
+    forwardTestBodyResources
+} from '../../engine/test-body-workload-resolution.ts';
+
+export { observeResourceOwnerAcquisition, releaseResourceOwner } from '../../engine/resource-owner-observation.ts';
+export type { ResourceOwnerObservation } from '../../engine/resource-owner-observation.ts';
+
+export { snapshotWorkloadInput, workloadParameterIdentity } from '../../engine/workload-input.ts';
+export { snapshotWorkloadParameters } from '../../engine/workload-parameters.ts';

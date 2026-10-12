@@ -7,7 +7,18 @@ import {
     suitePathSchema,
     workIdSchema
 } from '../engine/identity-schema.ts';
-import type { CollectedRunPlan } from './run-types.ts';
+import type { WorkloadParameters } from '../engine/workload-input.ts';
+import { snapshotWorkloadParameters } from '../engine/workload-parameters.ts';
+import type { CollectedRunPlan, FrozenWorkloadInput } from './run-types.ts';
+
+const workloadParametersSchema: z.ZodType<WorkloadParameters | null> = z
+    .unknown()
+    .transform(snapshotWorkloadParameters)
+    .nullable();
+export const workloadInputsSchema: z.ZodType<readonly FrozenWorkloadInput[]> = z.array(z.strictObject({
+    work: workIdSchema,
+    parameters: workloadParametersSchema
+}));
 
 const requirementSchema = z.record(z.string(), z.unknown());
 const directResourceSchema = z.strictObject({ key: z.string(), resourceName: z.string() });
@@ -23,7 +34,8 @@ const resourceSchema = z.strictObject({
     name: z.string(),
     requirements: z.array(requirementSchema),
     scenarios: z.array(scenarioSchema),
-    scope: z.string()
+    scope: z.string(),
+    workload: z.enum([ 'independent', 'required' ]).default('independent')
 });
 const runtimeSchema = z.strictObject({
     dimensions: z.record(z.string(), z.string()),
@@ -60,6 +72,7 @@ const fileSchema = z
             controls: controlsSchema,
             definitionLocations: sourceLocationsSchema,
             params: z.string().nullable(),
+            workloadParameters: workloadParametersSchema.default(null),
             resourceAttachments: attachmentsSchema,
             suitePath: suitePathSchema,
             testFamily: z.enum([ 'benchmark', 'integration', 'microtest', 'property', 'type-test' ]).nullable(),

@@ -1,5 +1,10 @@
+import {
+    workIdentityKey,
+    type AttemptId,
+    observeResourceOwnerAcquisition,
+    releaseResourceOwner
+} from '../packages/engine/engine.entry-point.ts';
 import { runWithResourceFailureContext } from '../attachments/resource-failure-context.ts';
-import { workIdentityKey, type AttemptId } from '../engine/identity.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
@@ -7,9 +12,9 @@ import type {
     RuntimeResourceMap as ResourceMap
 } from '../resources/resources.ts';
 import {
+    sourceResourceDefinition,
     acquisitionResourceScenarioBindings,
-    exposeResourceHandle,
-    sourceResourceDefinition
+    exposeResourceHandle
 } from '../resources/resource-scenario-binding.ts';
 import {
     caseResourceBoundaryKeys,
@@ -38,6 +43,7 @@ type TestPlanCase = Parameters<ManagedLifecycleState['completeCase']>[0];
 export type ManagedResourceLifecycleTiming = ResourceLifecycleTiming | null;
 
 export type ManagedResourceRecord = {
+    readonly releaseOwner: () => void;
     readonly boundary: LifecycleBoundary;
     readonly dependencyContext: ResourceContext<ResourceMap>;
     readonly descriptor: AnyResourceDefinition;
@@ -260,25 +266,32 @@ export function createManagedResourceAcquirer(
                         attachments,
                         dependencies: dependencyContext,
                         scenarios: acquisitionResourceScenarioBindings(resource),
-                        signal
+                        signal,
+                        workload: null
                     });
                 }
             );
         };
-        const ownerHandle = options.timing === null
-            ? await acquireHandle()
-            : await options.timing.measure({
-                phase: 'acquire',
-                resource: { name: resource.name, scope: resource.scope },
-                signal
-            }, acquireHandle);
+        const observeHandle = async function acquireObservedHandle(): Promise<unknown> {
+            return options.timing === null
+                ? await acquireHandle()
+                : await options.timing.measure({
+                    phase: 'acquire',
+                    resource: { name: resource.name, scope: resource.scope },
+                    signal
+                }, acquireHandle);
+        };
+        const acquisition = await observeResourceOwnerAcquisition(observeHandle);
         const record = {
+            releaseOwner() {
+                releaseResourceOwner(acquisition.owner);
+            },
             boundary,
             dependencyContext,
             descriptor: resource,
             external: false,
-            consumerHandle: projectedHandle(resource, ownerHandle, dependencyContext),
-            ownerHandle
+            consumerHandle: projectedHandle(resource, acquisition.value, dependencyContext),
+            ownerHandle: acquisition.value
         };
 
         stores.rememberRecord(boundary.key, record);
@@ -303,6 +316,9 @@ export function createManagedResourceAcquirer(
             boundary,
             dependencyContext,
             descriptor: resource,
+            releaseOwner() {
+                return undefined;
+            },
             external: true,
             consumerHandle: deserializeProjectedHandle(resource, payload, dependencyContext),
             ownerHandle: null

@@ -82,6 +82,7 @@ function graphOnlyResourceAttachments(): TestBodyResourceAttachments {
         directResources: [],
         resourceGraph: [
             {
+                workload: 'independent' as const,
                 dependencies: [],
                 handleTransport: 'local',
                 name: 'database',

@@ -43,13 +43,54 @@ distinct. Names preserve their spelling and reject blank strings and control
 characters. Parameters reject lossy values, classes, accessors, cycles,
 non-JSON properties, and nesting beyond the shared JSON depth limit of 64.
 
-Advanced DSL authors can pass `{ id: small.id, body }` entries to
+Advanced DSL authors can pass `{ id: small.id, parameters: small.parameters, body }` entries to
 `createWorkloadTestCase` from `@overkill-dev/engine`. It requires at least one
 workload and unique workload names. Planning produces one executable `WorkId`
 per workload, sharing the logical `CaseId`. Runtime matrices expand each
 workload independently. Bodies retain ordinary resource/runtime descriptors.
 Use `--filter 'workload=small'` to select a named workload; a case filter
 selects every workload of that case.
+
+Resources declare workload dependence with a pure synchronous parser:
+
+```ts
+import { defineResource, type WorkloadParameters } from '@overkill-dev/test/resources';
+
+const fixture = defineResource({
+    name: 'publish-fixture',
+    scope: 'per-case',
+    requirements: [],
+    dispose: null,
+    workload(parameters: WorkloadParameters) {
+        if (typeof parameters.packages !== 'number') {
+            throw new TypeError('Expected a package count.');
+        }
+        return { packages: parameters.packages };
+    },
+    acquire({ workload }) {
+        return { packages: workload.parameters.packages };
+    }
+});
+```
+
+`withResource` and `withRuntime` inject handles as usual. Collection and list
+validate parsers without acquiring resources. Acquisition and disposal receive
+the same parsed value through `context.workload`; independent resources receive
+`null`. Direct `startResources` and `startRuntime` sessions accept `workload: small`.
+The low-level identity-only `{ id, body }` form remains valid for independent resources.
+
+Workload-dependent resources and their consumers share within their declared
+scope and full workload identity. Independent dependencies retain ordinary
+sharing across workloads and runtime variants. Scenario bindings, projections,
+placement requirements, startup budgets, and attachment attribution use the
+existing lifecycle. Executors verify original parameter snapshots against
+collection. Equal canonical identities with different original parameters
+cannot share a resource boundary.
+
+Advanced DSLs can snapshot inputs with `snapshotWorkloadInput` and
+`snapshotWorkloadParameters` from `@overkill-dev/engine`. Descriptor graph
+binding uses `createWorkloadResourceBinding`, `bindRuntimeWorkload`, and
+`resourceWorkloadIdentity` from `@overkill-dev/resources`.
 
 Public types include `AuthoringAnnotations`, `AuthoringControls`,
 `ParameterizedTestScope`, `TableDefinition`, `TableTestBody`, `Suite`,

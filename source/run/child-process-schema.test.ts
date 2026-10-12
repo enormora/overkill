@@ -46,6 +46,7 @@ export const testNode = createSuite({
                 const file = {
                     file: 'legacy.test.ts',
                     cases: [ {
+                        workloadParameters: null,
                         annotations,
                         controls,
                         definitionLocations: metadata.definitionLocations,
@@ -181,7 +182,7 @@ export const testNode = createSuite({
                 const parsed = workerPoolHostCommandSchema.safeParse({
                     kind: 'run-task',
                     taskId: 'task',
-                    task: { kind: 'run', assignedWork: [ { file: 'case.ts', index: 0 } ] }
+                    task: { workloadInputs: [], kind: 'run', assignedWork: [ { file: 'case.ts', index: 0 } ] }
                 });
                 scope.assert.false(parsed.success);
                 return scope.assert.collect();

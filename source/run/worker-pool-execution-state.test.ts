@@ -86,6 +86,7 @@ export function createCollectedPlan(): CollectedRunPlan {
                 file: integrationPath,
                 cases: [
                     {
+                        workloadParameters: null,
                         annotations,
                         controls,
                         definitionLocations: [ { kind: 'unknown' as const } ],
@@ -126,6 +127,7 @@ export function createCollectedPlanWithMissingResult(): CollectedRunPlan {
                 cases: [
                     ...firstFile.cases,
                     {
+                        workloadParameters: null,
                         annotations,
                         controls,
                         definitionLocations: [ { kind: 'unknown' as const } ],
@@ -157,13 +159,7 @@ function firstWorkUnit(): PlacementPlan['units'][number] {
             workload: null
         },
         ...defaultUnitPolicy,
-        work: [
-            {
-                case: firstCaseId(),
-                runtimes: [],
-                workload: null
-            }
-        ]
+        work: [ { case: firstCaseId(), runtimes: [], workload: null } ]
     };
 }
 

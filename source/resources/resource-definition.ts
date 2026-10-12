@@ -1,4 +1,14 @@
-import type { Except } from 'type-fest';
+import type { Except, Merge } from 'type-fest';
+import type { WorkloadParameters } from '../engine/workload-input.ts';
+
+import {
+    freezeResourceScenarioSlots,
+    type EmptyResourceScenarioSlots,
+    type ResourceScenarioDeclaration,
+    type ResourceScenarioSlotInputs,
+    type ResourceScenarioSlots,
+    type ResourceScenarioSlotsFromInputs
+} from './resource-scenario.ts';
 import type {
     EmptyResourceDependencies,
     ResourceDependencies,
@@ -6,6 +16,8 @@ import type {
     ResourceScope
 } from './resource-definition-shape.ts';
 import type {
+    WorkloadLocalResourceInput,
+    WorkloadProjectedResourceInput,
     LocalOnlyResourceDefinitionInput,
     ProjectedResourceDefinitionInput,
     ResourceDefinition,
@@ -14,12 +26,6 @@ import type {
     WithDependencies
 } from './resource-definition-types.ts';
 import { resourceDefinitionBrand } from './resource-definition-brand.ts';
-import {
-    freezeResourceScenarioSlots,
-    type ResourceScenarioSlotInputs,
-    type ResourceScenarioSlots,
-    type ResourceScenarioSlotsFromInputs
-} from './resource-scenario.ts';
 
 type ProjectedResourceScope = 'per-file' | 'per-run' | 'per-suite';
 
@@ -67,6 +73,129 @@ function resourceHandleExposure(
     return declaredExposeHandle;
 }
 
+function resourceWorkloadParser(definition: Readonly<Record<string, unknown>>): unknown {
+    const parser: unknown = Reflect.get(definition, 'workload');
+    if (parser === undefined || parser === null) {
+        return null;
+    }
+    if (typeof parser !== 'function') {
+        throw new TypeError('Resource workload requires a synchronous parameter parser.');
+    }
+    return parser;
+}
+
+export function normalizeResourceDefinition(definition: Readonly<Record<string, unknown>>): unknown {
+    const scenarios = resourceScenarios(definition);
+
+    return Object.freeze({
+        ...definition,
+        dependencies: resourceDependencies(definition),
+        exposeHandle: resourceHandleExposure(definition, scenarios),
+        scenarios,
+        workload: resourceWorkloadParser(definition),
+        [resourceDefinitionBrand]: true as const
+    });
+}
+
+function isDefinedResource(resource: unknown): resource is ResourceDefinition {
+    return typeof resource === 'object' &&
+        resource !== null &&
+        Reflect.get(resource, resourceDefinitionBrand) === true;
+}
+
+function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    Parameters extends WorkloadParameters,
+    const ScenarioInputs extends ResourceScenarioSlotInputs,
+    const Dependencies extends ResourceDependencies = EmptyResourceDependencies
+>(
+    definition: Merge<
+        Except<
+            WorkloadLocalResourceInput<
+                Name,
+                Handle,
+                Scope,
+                Dependencies,
+                ResourceScenarioSlotsFromInputs<ScenarioInputs>,
+                Parameters
+            >,
+            'scenarios'
+        >,
+        ResourceScenarioDeclaration<ScenarioInputs>
+    >
+): ResourceDefinition<Name, Handle, Dependencies, Handle, ResourceScenarioSlotsFromInputs<ScenarioInputs>, Parameters>;
+function defineResource<
+    const Name extends string,
+    Handle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite',
+    Parameters extends WorkloadParameters,
+    const ScenarioInputs extends ResourceScenarioSlotInputs,
+    const Dependencies extends ResourceDependencies = EmptyResourceDependencies
+>(
+    definition: Merge<
+        Except<
+            WorkloadProjectedResourceInput<
+                Name,
+                Handle,
+                Projection,
+                ConsumerHandle,
+                Scope,
+                Dependencies,
+                ResourceScenarioSlotsFromInputs<ScenarioInputs>,
+                Parameters
+            >,
+            'scenarios'
+        >,
+        ResourceScenarioDeclaration<ScenarioInputs>
+    >
+): ResourceDefinition<
+    Name,
+    Handle,
+    Dependencies,
+    ConsumerHandle,
+    ResourceScenarioSlotsFromInputs<ScenarioInputs>,
+    Parameters
+>;
+
+function defineResource<
+    const Name extends string,
+    Handle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    Parameters extends WorkloadParameters,
+    const Dependencies extends ResourceDependencies = EmptyResourceDependencies
+>(
+    definition: Except<
+        WorkloadLocalResourceInput<Name, Handle, Scope, Dependencies, EmptyResourceScenarioSlots, Parameters>,
+        'scenarios'
+    >
+): ResourceDefinition<Name, Handle, Dependencies, Handle, EmptyResourceScenarioSlots, Parameters>;
+function defineResource<
+    const Name extends string,
+    Handle,
+    Projection extends ResourceProjectionPayload,
+    ConsumerHandle,
+    Scope extends 'per-file' | 'per-run' | 'per-suite',
+    Parameters extends WorkloadParameters,
+    const Dependencies extends ResourceDependencies = EmptyResourceDependencies
+>(
+    definition: Except<
+        WorkloadProjectedResourceInput<
+            Name,
+            Handle,
+            Projection,
+            ConsumerHandle,
+            Scope,
+            Dependencies,
+            EmptyResourceScenarioSlots,
+            Parameters
+        >,
+        'scenarios'
+    >
+): ResourceDefinition<Name, Handle, Dependencies, ConsumerHandle, EmptyResourceScenarioSlots, Parameters>;
 function defineResource<
     const Name extends string,
     Handle,
@@ -193,21 +322,8 @@ function defineResource<
     >
 ): ResourceDefinition<Name, OwnerHandle, Dependencies, ConsumerHandle>;
 function defineResource(definition: Readonly<Record<string, unknown>>): unknown {
-    const scenarios = resourceScenarios(definition);
-
-    return Object.freeze({
-        ...definition,
-        dependencies: resourceDependencies(definition),
-        exposeHandle: resourceHandleExposure(definition, scenarios),
-        scenarios,
-        [resourceDefinitionBrand]: true as const
-    });
-}
-
-function isDefinedResource(resource: unknown): resource is ResourceDefinition {
-    return typeof resource === 'object' &&
-        resource !== null &&
-        Reflect.get(resource, resourceDefinitionBrand) === true;
+    const normalized = normalizeResourceDefinition(definition);
+    return normalized;
 }
 
 export const resourceDefinitionApi = Object.freeze({

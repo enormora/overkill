@@ -179,7 +179,7 @@ The engine exports the shared `canonicalIdentityJson` and
 handling remain shared across installed packages.
 
 The permanent low-level `engine.createWorkloadTestCase(...)` constructor takes
-a non-empty list of `{ id: WorkloadId, body: TestBody }` entries with unique
+a non-empty list of `{ id: WorkloadId, parameters: WorkloadParameters, body: TestBody }` entries with unique
 names, including Unicode normalization equivalents. It creates one logical
 node; planning lowers its bodies into distinct workload `WorkId`s that share
 the same `CaseId`. Each body retains ordinary resource/runtime descriptors.
@@ -194,8 +194,9 @@ workloads of that case. List and human failure output identify workloads with
 
 The later measurement and budget milestones complete `benchmark(...)` using
 this model. The workload milestone adds no public assertion-based wrapper or
-alternate benchmark authoring constructor. Workload-aware fixture acquisition
-remains owned by Benchmark Resource And Runtime Integration.
+alternate benchmark authoring constructor. Workload-aware fixtures use ordinary
+resource descriptors. Identity-only `{ id, body }` variants remain supported
+when their resources are workload-independent.
 
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”
 
@@ -325,6 +326,21 @@ the benchmark body can read the injected handle through `context.resources` or
 `context.runtimes`. Any per-sample reset that must occur between measurements
 belongs to benchmark cleanup, not to a user-authored lifecycle hook hidden
 inside `measure(...)`.
+
+Resources opt in with `defineResource({ workload: parseParameters, ... })`.
+The parser is pure and synchronous. Collection, list, and executor recollection
+validate it before any acquisition. Acquisition and disposal receive the same
+parsed `{ id, parameters }` through `context.workload`; independent resources
+receive `null`. `defineLocalServiceResource` carries this context through startup,
+readiness, and disposal. Direct sessions accept an explicit workload input.
+
+Workload-dependent acquisition identities include the full `WorkloadId`, and
+consumers inherit that distinction through dependency identities. Independent
+resources keep their ordinary scope sharing across workloads and runtime
+variants. Existing scenario timing, projections, placement constraints, startup
+budgets, attachments, and teardown order apply. Original parameter snapshots
+travel separately from canonical identity and are checked on recollection.
+Conflicting original inputs cannot share one canonical workload resource boundary.
 
 Settled decisions:
 

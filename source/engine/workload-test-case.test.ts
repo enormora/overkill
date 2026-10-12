@@ -105,7 +105,7 @@ export const testNode = suite('workload test cases', [
     }),
     test('executes only assigned workload bodies and preserves result identity', async function (scope) {
         const { engine, observed, plan } = createWorkloadFixture();
-        const selected = selectedAssignedWork(plan, [ plan.cases[0].workId ]);
+        const selected = selectedAssignedWork(plan, [ plan.cases[0].workId ], []);
         const result = await engine.execute(selected);
         scope.assert.deepEqual(Array.from(observed), [ 5 ]);
         scope.assert.partialDeepEqual(result, {

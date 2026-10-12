@@ -85,6 +85,7 @@ function collectedCase(
     suitePath: CollectedRunPlan['files'][number]['cases'][number]['suitePath']
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        workloadParameters: null,
         annotations,
         controls,
         definitionLocations: [ { kind: 'unknown' as const } ],

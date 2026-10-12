@@ -55,6 +55,7 @@ const policyControls: PolicyTestCase['controls'] = {
     timeoutMilliseconds: null
 };
 const policyTestCase: PolicyTestCase = {
+    workloadParameters: null,
     annotations: policyAnnotations,
     controls: policyControls,
     execution: {

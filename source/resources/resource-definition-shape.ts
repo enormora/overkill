@@ -1,3 +1,4 @@
+import type { WorkloadParameters } from '../engine/workload-input.ts';
 import type { ResourceScenarioSlots } from './resource-scenario.ts';
 
 export type Awaitable<Value> = Promise<Value> | Value;
@@ -44,6 +45,7 @@ export type AnyResourceDefinition = {
     readonly requirements: readonly ExecutionRequirement[];
     readonly scenarios: ResourceScenarioSlots;
     readonly scope: ResourceScope;
+    readonly workload: ((parameters: WorkloadParameters) => WorkloadParameters) | null;
     readonly serializeHandle?: (handle: never, context: never) => ResourceProjectionPayload;
 };
 

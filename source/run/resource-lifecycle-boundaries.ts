@@ -1,4 +1,4 @@
-import { workIdentityKey, type RuntimeId } from '../engine/identity.ts';
+import { workIdentityKey, type RuntimeId, type WorkloadId } from '../engine/identity.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type {
     TestBodyLeafRuntimeSummary,
@@ -167,12 +167,14 @@ function scenarioBindingsByResource(runtime: TestBodyLeafRuntimeSummary): Scenar
 function resourceSummaryCacheIdentityNode(
     resource: TestBodyResourceSummary,
     resourcesByName: ReadonlyMap<string, TestBodyResourceSummary>,
-    bindingsByResource: ScenarioBindingsByResource
+    bindingsByResource: ScenarioBindingsByResource,
+    workload: WorkloadId | null
 ): ResourceCacheIdentityNode {
     const bindings = bindingsByResource.get(resource.name) ??
         new Map<string, TestBodyRuntimeScenarioBindingSummary>();
 
     return {
+        workload: resource.workload === 'required' ? workload : null,
         dependencies: resource.dependencies.flatMap(function dependencyNode(dependencyName) {
             const dependency = resourcesByName.get(dependencyName);
 
@@ -180,7 +182,12 @@ function resourceSummaryCacheIdentityNode(
                 ? []
                 : [ {
                     key: dependency.name,
-                    resource: resourceSummaryCacheIdentityNode(dependency, resourcesByName, bindingsByResource)
+                    resource: resourceSummaryCacheIdentityNode(
+                        dependency,
+                        resourcesByName,
+                        bindingsByResource,
+                        workload
+                    )
                 } ];
         }),
         scenarios: resource.scenarios.map(function scenarioBinding(scenario) {
@@ -211,7 +218,7 @@ function resourceGraphBoundaries(
         }
 
         const identity = resourceAcquisitionCacheIdentity(
-            resourceSummaryCacheIdentityNode(resource, resourcesByName, bindingsByResource)
+            resourceSummaryCacheIdentityNode(resource, resourcesByName, bindingsByResource, testCase.workId.workload)
         );
 
         boundaries.push({

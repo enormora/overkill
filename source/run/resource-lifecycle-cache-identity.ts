@@ -1,8 +1,10 @@
+import { canonicalIdentityJson } from '../canonical-identity.ts';
+import { resourceWorkloadIdentity } from '../resources/resource-workload-binding.ts';
+import { runtimeIdentityKey, type WorkloadId, type RuntimeId } from '../engine/identity.ts';
 import {
     resolvedResourceScenarioBindings,
     type AnyResourceDefinition
 } from '../resources/resources.ts';
-import { runtimeIdentityKey, type RuntimeId } from '../engine/identity.ts';
 import { sourceResourceDefinition } from '../resources/resource-scenario-binding.ts';
 
 type ResourceCacheScenarioBinding = {
@@ -12,6 +14,7 @@ type ResourceCacheScenarioBinding = {
 };
 
 export type ResourceCacheIdentityNode = {
+    readonly workload: WorkloadId | null;
     readonly dependencies: readonly {
         readonly key: string;
         readonly resource: ResourceCacheIdentityNode;
@@ -21,6 +24,7 @@ export type ResourceCacheIdentityNode = {
 
 type ScenarioIdentity = readonly [name: string, value: string];
 type AcquisitionIdentity = {
+    readonly workload: string | null;
     readonly dependencies: readonly (readonly [key: string, identity: HandleIdentity])[];
     readonly scenarios: readonly ScenarioIdentity[];
 };
@@ -58,6 +62,10 @@ function scenarioIdentity(
         });
 }
 
+function workloadAcquisitionIdentity(node: ResourceCacheIdentityNode): string | null {
+    return node.workload === null ? null : canonicalIdentityJson(node.workload);
+}
+
 function resourceIdentities(node: ResourceCacheIdentityNode): ResourceIdentities {
     const scenarios = scenarioIdentity(node, 'acquire');
     const dependencies = node
@@ -70,9 +78,10 @@ function resourceIdentities(node: ResourceCacheIdentityNode): ResourceIdentities
 
             return identity === null ? [] : [ [ dependency.key, identity ] as const ];
         });
-    const acquisition = scenarios.length === 0 && dependencies.length === 0
+    const workload = workloadAcquisitionIdentity(node);
+    const acquisition = scenarios.length === 0 && dependencies.length === 0 && workload === null
         ? null
-        : { dependencies, scenarios };
+        : { dependencies, scenarios, workload };
     const routedScenarios = scenarioIdentity(node, 'request-routed');
     const handle = acquisition === null && routedScenarios.length === 0
         ? null
@@ -97,6 +106,7 @@ export function resourceDescriptorCacheIdentityNode(resource: AnyResourceDefinit
     const bindings = resolvedResourceScenarioBindings(resource);
 
     return {
+        workload: resourceWorkloadIdentity(resource),
         dependencies: Object.values(resource.dependencies).map(function dependencyNode(dependency) {
             return {
                 key: sourceResourceDefinition(dependency).name,

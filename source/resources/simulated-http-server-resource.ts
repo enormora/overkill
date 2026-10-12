@@ -198,7 +198,8 @@ export function createSimulatedHttpServerResource<
                     attachments: context.attachments,
                     dependencies: context.dependencies,
                     signal: context.signal,
-                    scenarios: {}
+                    scenarios: {},
+                    workload: null
                 });
                 const handle = simulatedHttpServerResourceHandle<SimulatedHttpServerDefinition<Name, Scenarios>>(
                     localService,
@@ -222,7 +223,8 @@ export function createSimulatedHttpServerResource<
                     attachments: context.attachments,
                     dependencies: context.dependencies,
                     signal: context.signal,
-                    scenarios: {}
+                    scenarios: {},
+                    workload: null
                 });
             },
             exposeHandle(handle, context) {

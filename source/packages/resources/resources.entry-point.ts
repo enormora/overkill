@@ -177,3 +177,10 @@ export type {
     SimulationWitnessArtifact,
     SimulationWitnessInput
 } from '../../resources/failure-artifacts.ts';
+
+export type { ResourceWorkload, ResourceWorkloadParser } from '../../resources/resources.ts';
+export type { WorkloadInput, WorkloadParameters } from '../../engine/workload-input.ts';
+
+export { createWorkloadResourceBinding, resourceWorkloadIdentity } from '../../resources/resource-workload-binding.ts';
+export type { WorkloadResourceBinding } from '../../resources/resource-workload-binding.ts';
+export { bindRuntimeWorkload } from '../../resources/runtime-workload-binding.ts';

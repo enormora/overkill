@@ -65,6 +65,7 @@ export const testNode = createSuite({
             ...metadata,
             body(scope) {
                 const assignment = {
+                    workloadInputs: [],
                     kind: 'assign',
                     assignedWork: [],
                     attachmentEndpoint: {

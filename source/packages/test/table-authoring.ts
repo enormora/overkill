@@ -6,9 +6,7 @@ import {
     type TestAnnotationsInput,
     type TestBody,
     type TestControlsInput,
-    attachTestBodyResourceAttachments,
-    hasTestBodyResourceAttachments,
-    readTestBodyResourceAttachments,
+    forwardTestBodyResources,
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import {
@@ -107,15 +105,13 @@ function tableCaseBody<Row>(
         definition.test,
         'table'
     );
-    const body: TestBody = async function runTableCase(scope: TestScope) {
-        return await runWithForwardedSourceLocations(sourceLocations, async function runMacroGeneratedTableCase() {
-            return await caseBody(scope);
-        });
-    };
-
-    return hasTestBodyResourceAttachments(caseBody)
-        ? attachTestBodyResourceAttachments(body, readTestBodyResourceAttachments(caseBody))
-        : body;
+    return forwardTestBodyResources(caseBody, function forwardBody(source) {
+        return async function runTableCase(scope: TestScope) {
+            return await runWithForwardedSourceLocations(sourceLocations, async function runMacroGeneratedTableCase() {
+                return await source(scope);
+            });
+        };
+    });
 }
 
 function ensureTableDefinitionShape(definition: Readonly<Record<string, unknown>>): void {

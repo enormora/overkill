@@ -24,6 +24,7 @@ export type TestBodyResourceSummary = {
     readonly requirements: readonly TestBodyExecutionRequirementSummary[];
     readonly scenarios: readonly TestBodyScenarioSlotSummary[];
     readonly scope: string;
+    readonly workload: 'independent' | 'required';
 };
 
 export type TestBodyLeafRuntimeSummary = {
@@ -174,7 +175,8 @@ function freezeResourceGraph(resources: readonly TestBodyResourceSummary[]): rea
                     values: Object.freeze(Array.from(scenario.values))
                 });
             })),
-            scope: resource.scope
+            scope: resource.scope,
+            workload: resource.workload === 'required' ? 'required' : 'independent'
         });
     }));
 }

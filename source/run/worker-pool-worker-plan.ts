@@ -3,8 +3,8 @@ import {
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { RunnerError } from '../engine/run-result.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
+import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {
@@ -16,6 +16,7 @@ import { createRunTestPlan } from './run-test-plan.ts';
 import { RunCollectionError } from './run-errors.ts';
 import type {
     WorkerPoolCollection,
+    WorkerPoolRunTask,
     WorkerPoolCommand,
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
@@ -100,7 +101,11 @@ export function sendCollectedPlan(collectedPlan: CollectedWorkerPoolTestPlan): W
     };
 }
 
-export function selectedAssignedWork(testPlan: TestPlan, assignedWork: AssignedWork): TestPlan {
+export function selectedAssignedWork(
+    testPlan: TestPlan,
+    assignedWork: AssignedWork,
+    workloadInputs: WorkerPoolRunTask['workloadInputs']
+): TestPlan {
     const casesByIdentity = new Map(testPlan.cases.map(function toCaseEntry(testCase) {
         return [ workIdentityKey(testCase.workId), testCase ];
     }));
@@ -115,14 +120,13 @@ export function selectedAssignedWork(testPlan: TestPlan, assignedWork: AssignedW
         throw new Error('Worker-pool test plan did not match assigned work identities.');
     }
 
-    return {
-        ...testPlan,
-        cases: [ firstCase, ...cases.slice(1) ]
-    };
+    const selected: TestPlan = { ...testPlan, cases: [ firstCase, ...cases.slice(1) ] };
+    assertFrozenWorkloadInputs(selected, workloadInputs);
+    return selected;
 }
 
 export function selectedAssignedCases(testPlan: TestPlan, assignedCases: readonly CaseId[]): TestPlan {
-    return selectedAssignedWork(testPlan, assignedCases.map(createDefaultWorkId));
+    return selectedAssignedWork(testPlan, assignedCases.map(createDefaultWorkId), []);
 }
 
 export function createEmptyAssignmentResult(): WorkerPoolRunOutput {

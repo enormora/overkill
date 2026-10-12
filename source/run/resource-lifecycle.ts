@@ -65,6 +65,7 @@ type AttemptId = Parameters<TestRuntimePolicy['prepareAttempt']>[1];
 export type ManagedResourceLifecycleTiming = SessionResourceLifecycleTiming;
 
 export type ResourceLifecycleSession = {
+    readonly updateProjectedResources: (records: ResourceProjectionRecords) => void;
     readonly prepareAttempt: (work: WorkId, attempt: AttemptId) => Promise<readonly ManagedRunnerError[]>;
     readonly completeBoundaries: (boundaryKeys: readonly string[]) => Promise<readonly ManagedRunnerError[]>;
     readonly disposeAll: (signal: AbortSignal) => Promise<readonly ManagedRunnerError[]>;
@@ -109,6 +110,7 @@ type ManagedResourceScopesRequest = ManagedLifecycleContext & {
 };
 
 type ManagedLifecycleStateCreation = {
+    readonly updateProjectedResources: (records: ResourceProjectionRecords) => void;
     readonly lifecycle: ManagedLifecycleState;
     readonly stores: ManagedLifecycleStores;
 };
@@ -253,9 +255,25 @@ async function disposeCaseResources(
 
 function createManagedLifecycleState(options: ResourceLifecycleOptions): ManagedLifecycleStateCreation {
     const stores = createManagedStores(options);
-    const context = { options, stores };
+    let currentOptions = options;
+    const context = {
+        get options() {
+            return currentOptions;
+        },
+        stores
+    };
 
     return {
+        updateProjectedResources(records) {
+            const byBoundary = new Map(
+                [ ...currentOptions.projectedResources.resources, ...records.resources ].map(
+                    function projection(record) {
+                        return [ record.boundaryKey, record ];
+                    }
+                )
+            );
+            currentOptions = { ...currentOptions, projectedResources: { resources: Array.from(byBoundary.values()) } };
+        },
         stores,
         lifecycle: {
             async prepareAttempt(testCase, attempt) {
@@ -356,9 +374,10 @@ export function createResourceLifecycleRuntimePolicy(
 }
 
 export function createResourceLifecycleSession(options: ResourceLifecycleOptions): ResourceLifecycleSession {
-    const { lifecycle, stores } = createManagedLifecycleState(options);
+    const { lifecycle, stores, updateProjectedResources } = createManagedLifecycleState(options);
 
     return {
+        updateProjectedResources,
         async prepareAttempt(work, attempt) {
             return await prepareOwnedAttempt(lifecycle, options.testCases, work, attempt);
         },
@@ -378,7 +397,7 @@ export function createResourceLifecycleSession(options: ResourceLifecycleOptions
 export async function acquireResourceLifecycleScopes(
     request: ResourceLifecycleScopesRequest
 ): Promise<ResourceLifecycleSession> {
-    const { lifecycle, stores } = createManagedLifecycleState(request.options);
+    const { lifecycle, stores, updateProjectedResources } = createManagedLifecycleState(request.options);
 
     await runWithManagedLifecycle(lifecycle, async function acquireSelectedScopes() {
         for (const testCase of request.testCases) {
@@ -393,6 +412,7 @@ export async function acquireResourceLifecycleScopes(
     });
 
     return {
+        updateProjectedResources,
         async prepareAttempt(work, attempt) {
             return await prepareOwnedAttempt(lifecycle, request.testCases, work, attempt);
         },

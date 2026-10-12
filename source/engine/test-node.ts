@@ -8,7 +8,8 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { WorkloadId } from './identity.ts';
-import { readWorkloadTestCaseVariants } from './workload-test-case.ts';
+import type { WorkloadParameters } from './workload-input.ts';
+import { readWorkloadTestCaseVariants, type WorkloadVariant } from './workload-test-case.ts';
 import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
@@ -77,11 +78,15 @@ export type BodyTestCaseExecution = BuilderTestCaseExecution | ThrowingTestCaseE
 export type WorkloadTestCaseVariant = {
     readonly id: WorkloadId;
     readonly body: TestBody;
+} | {
+    readonly id: WorkloadId;
+    readonly parameters: WorkloadParameters;
+    readonly body: TestBody;
 };
 
 export type WorkloadTestCaseExecution = {
     readonly kind: 'workloads';
-    readonly workloads: NonEmptyReadonlyArray<WorkloadTestCaseVariant>;
+    readonly workloads: NonEmptyReadonlyArray<WorkloadVariant<TestBody>>;
 };
 
 export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution | WorkloadTestCaseExecution;

@@ -26,6 +26,7 @@ function resourceAttachments(
         directResources: [],
         resourceGraph: resources.map(function toResource(resource) {
             return {
+                workload: 'independent' as const,
                 dependencies: [],
                 handleTransport: 'local',
                 name: resource.resourceName,
@@ -117,6 +118,7 @@ export const testNode = createOverkillSuite({
                     directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
                     resourceGraph: [
                         {
+                            workload: 'independent' as const,
                             dependencies: [],
                             handleTransport: 'local',
                             name: 'scratch',
@@ -149,6 +151,7 @@ export const testNode = createOverkillSuite({
                             directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
                             resourceGraph: [
                                 {
+                                    workload: 'independent' as const,
                                     dependencies: [],
                                     handleTransport: 'local',
                                     name: 'scratch',
@@ -186,6 +189,7 @@ export const testNode = createOverkillSuite({
                     directResources: [ { key: 'scratch', resourceName: 'scratch' } ],
                     resourceGraph: [
                         {
+                            workload: 'independent' as const,
                             dependencies: [],
                             handleTransport: 'local',
                             name: 'scratch',
@@ -202,6 +206,7 @@ export const testNode = createOverkillSuite({
                         directResources: [ { key: 'database', resourceName: 'database' } ],
                         resourceGraph: [
                             {
+                                workload: 'independent' as const,
                                 dependencies: [],
                                 handleTransport: 'local',
                                 name: 'database',
@@ -227,6 +232,7 @@ export const testNode = createOverkillSuite({
                         ],
                         resourceGraph: [
                             {
+                                workload: 'independent' as const,
                                 dependencies: [],
                                 handleTransport: 'local',
                                 name: 'scratch',
@@ -235,6 +241,7 @@ export const testNode = createOverkillSuite({
                                 scope: 'per-case'
                             },
                             {
+                                workload: 'independent' as const,
                                 dependencies: [],
                                 handleTransport: 'local',
                                 name: 'workspace',

@@ -121,7 +121,7 @@ async function runAssignment(
     }, []);
     const startedAtMicroseconds = Number(wallClock.currentMonotonicMicroseconds);
     const testPlan = resolvedTestPlanDefinitionLocations(
-        selectedAssignedWork(collectedPlan.testPlan, assignedUnit.work)
+        selectedAssignedWork(collectedPlan.testPlan, assignedUnit.work, task.workloadInputs)
     );
     const resourceSession = laneResourceSession(
         task,

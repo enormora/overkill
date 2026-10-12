@@ -93,10 +93,11 @@ export function laneResourceSession(
     const existingSession = laneResourceSessions.get(key);
 
     if (existingSession !== undefined) {
+        existingSession.updateProjectedResources(task.projectedResources);
         return existingSession;
     }
 
-    const runPlan = selectedAssignedWork(collectedPlan.testPlan, task.runWork);
+    const runPlan = selectedAssignedWork(collectedPlan.testPlan, task.runWork, task.workloadInputs);
     const session = createResourceLifecycleSession({
         testCases: runPlan.cases,
         boundaryUseCounts: resourceLifecycleBoundaryUseCounts(runPlan.cases),
@@ -115,7 +116,7 @@ export async function acquireWorkerRunResources(
     collectedPlan: CollectedWorkerPoolTestPlan,
     timing: ManagedResourceLifecycleTiming
 ): Promise<WorkerPoolRunResourceOutput> {
-    const testPlan = selectedAssignedWork(collectedPlan.testPlan, task.assignedWork);
+    const testPlan = selectedAssignedWork(collectedPlan.testPlan, task.assignedWork, task.workloadInputs);
 
     try {
         const session = await acquireResourceLifecycleScopes({

@@ -25,6 +25,7 @@ type WorkerPoolCollectTaskWithoutPort = {
 type WorkerPoolRunTaskWithoutPort = {
     readonly assignedUnits: WorkerPoolRunTask['assignedUnits'];
     readonly assignedWork: WorkerPoolRunTask['assignedWork'];
+    readonly workloadInputs: WorkerPoolRunTask['workloadInputs'];
     readonly boundaryUseCounts: WorkerPoolRunTask['boundaryUseCounts'];
     readonly command: WorkerPoolRunTask['command'];
     readonly kind: 'run';
@@ -36,6 +37,7 @@ type WorkerPoolRunTaskWithoutPort = {
 };
 type WorkerPoolAcquireRunResourcesTaskWithoutPort = {
     readonly assignedWork: WorkerPoolAcquireRunResourcesTask['assignedWork'];
+    readonly workloadInputs: WorkerPoolAcquireRunResourcesTask['workloadInputs'];
     readonly boundaryKeys: WorkerPoolAcquireRunResourcesTask['boundaryKeys'];
     readonly boundaryUseCounts: WorkerPoolAcquireRunResourcesTask['boundaryUseCounts'];
     readonly command: WorkerPoolAcquireRunResourcesTask['command'];

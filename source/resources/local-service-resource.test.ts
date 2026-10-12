@@ -120,6 +120,7 @@ async function assertOwnerCleanup(scope: TestScope): Promise<void> {
         }
     });
     const handle = await service.acquire({
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
@@ -131,12 +132,14 @@ async function assertOwnerCleanup(scope: TestScope): Promise<void> {
     }
 
     await service.dispose(handle, {
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
         signal: testSignal
     });
     await service.dispose(handle, {
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
@@ -173,6 +176,7 @@ async function assertReadinessFailureCleanup(scope: TestScope): Promise<void> {
     });
     const error = await rejectedValue(
         service.acquire({
+            workload: null,
             attachments: resourceAttachments('test'),
             dependencies: {},
             scenarios: {},
@@ -215,6 +219,7 @@ async function assertProjectedLocalService(scope: TestScope): Promise<void> {
         }
     });
     const ownerHandle = await service.acquire({
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {
             database: {

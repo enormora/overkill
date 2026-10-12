@@ -118,6 +118,24 @@ Dependency context uses the keys from the resource's `dependencies` object.
 Omitting `dependencies` is accepted for compatibility and produces
 `dependencies: {}` on the returned descriptor.
 
+Resources can declare workload dependence with `workload: parseParameters`.
+This pure synchronous parser validates original JSON parameters during collection
+and executor recollection. Acquisition and disposal receive the same parsed
+`{ id, parameters }` through `context.workload`; independent callbacks receive
+`null`. Local service callbacks carry this input through `start`, `ready`, and
+`dispose`. Explicit `startResources` and `startRuntime` sessions accept a
+`workload` input containing its identity and parameters.
+
+Workload-dependent resources and their consumers share by scope and full workload
+identity. Independent dependencies retain their existing sharing across workloads
+and runtime variants. Ordinary scenarios, projections, startup budgets, placement
+requirements, and attachments still apply. Equal canonical workload identities
+with different original inputs cannot share one resource boundary.
+
+Advanced DSLs bind graphs through `createWorkloadResourceBinding` and
+`bindRuntimeWorkload`; `resourceWorkloadIdentity` reads a bound descriptor's
+workload identity. Engine input snapshots preserve original parameter spelling.
+
 `createTemporaryDirectoryResource(name)` returns a per-case resource descriptor
 whose handle exposes `path` and an empty `transcript`. Each acquisition creates
 a unique directory with an Overkill prefix. Disposal removes that directory

@@ -5,7 +5,7 @@ import type {
     RunResult
 } from './run-engine-primitives.ts';
 import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
-import { createRunResultFromCollectedPlan } from './collected-run-plan.ts';
+import { createRunResultFromCollectedPlan, collectedWorkloadInputs } from './collected-run-plan.ts';
 import type { RunRuntimeAttachments, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -225,6 +225,10 @@ export function supervisedCollectedPlan(resolvedRun: ResolvedRun): CollectedRunP
     }
 
     return resolvedRun.plan.collectedPlan;
+}
+
+export function supervisedWorkloadInputs(resolvedRun: ResolvedRun): ReturnType<typeof collectedWorkloadInputs> {
+    return collectedWorkloadInputs(supervisedCollectedPlan(resolvedRun));
 }
 
 export const createHardTimeout: (runtime: SupervisedRunRuntimeSeed) => SupervisedHardTimeout =

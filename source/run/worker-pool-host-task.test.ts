@@ -11,7 +11,7 @@ import type {
 
 type WorkerPoolTaskBase = Pick<
     Extract<WorkerPoolTask, { readonly kind: 'acquire-run-resources'; }>,
-    'assignedWork' | 'boundaryUseCounts' | 'command' | 'lane' | 'lifecycle' | 'port'
+    'assignedWork' | 'boundaryUseCounts' | 'command' | 'lane' | 'lifecycle' | 'port' | 'workloadInputs'
 >;
 type TestWorkId = WorkerPoolTaskBase['assignedWork'][number];
 
@@ -67,6 +67,7 @@ function command(): WorkerPoolCommand {
 
 function taskBase(): WorkerPoolTaskBase {
     return {
+        workloadInputs: [],
         assignedWork: [ workId() ],
         boundaryUseCounts: [ { boundaryKey: 'run:database', count: 1 } ],
         command: command(),
@@ -160,6 +161,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(tasks.map(readWorkerPoolTaskWithoutPort), [
                     { command: command(), kind: 'collect' },
                     {
+                        workloadInputs: [],
                         assignedWork: [ workId() ],
                         boundaryKeys: [ 'run:database' ],
                         boundaryUseCounts: [ { boundaryKey: 'run:database', count: 1 } ],
@@ -185,6 +187,7 @@ export const testNode = createOverkillSuite({
                         lifecycle: { token: 'lifecycle-1' }
                     },
                     {
+                        workloadInputs: [],
                         assignedUnits: [ {
                             attempt: 'attempt-1',
                             traceUnit: {

@@ -229,6 +229,7 @@ export const testNode = createOverkillSuite({
                 await capturedError(async function timeoutAcquisition() {
                     await fixture.timing.measure(operation(controller.signal), async function acquireResource() {
                         return await acquireResourceWithStartupBudget(timeoutResource(), {
+                            workload: null,
                             attachments: resourceAttachments('test'),
                             dependencies: {},
                             scenarios: {},

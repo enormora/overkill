@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
 import { workIdSchema, runtimeIdSchema, workloadIdSchema, attemptIdSchema } from '../engine/identity-schema.ts';
+import { workloadInputsSchema } from './collected-run-plan-schema.ts';
 import type { WorkerPoolTaskWithoutPort } from './worker-pool-host-protocol.ts';
 import { executionCommandFields, hostProcessSchema } from './run-command-schema.ts';
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
@@ -37,6 +38,7 @@ export const workerPoolTaskSchema: z.ZodType<WorkerPoolTaskWithoutPort> = z.disc
         ...lifecycleFields,
         assignedUnits: z.array(assignedUnitSchema),
         assignedWork: z.array(workIdSchema),
+        workloadInputs: workloadInputsSchema.default([]),
         boundaryUseCounts: boundaryUsesSchema,
         command: commandSchema,
         projectedResources: z.strictObject({
@@ -49,6 +51,7 @@ export const workerPoolTaskSchema: z.ZodType<WorkerPoolTaskWithoutPort> = z.disc
         kind: z.literal('acquire-run-resources'),
         ...lifecycleFields,
         assignedWork: z.array(workIdSchema),
+        workloadInputs: workloadInputsSchema.default([]),
         boundaryKeys: z.array(z.string()),
         boundaryUseCounts: boundaryUsesSchema,
         command: commandSchema

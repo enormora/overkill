@@ -1,16 +1,19 @@
+import type { Merge } from 'type-fest';
+import type { WorkloadParameters } from '../engine/workload-input.ts';
 import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
-import {
-    defineResource,
-    type Awaitable,
-    type EmptyResourceDependencies,
-    type ExecutionRequirement,
-    type ResourceContext,
-    type ResourceDefinition,
-    type ResourceDependencies,
-    type ResourceDisposalContext,
-    type ResourceProjectionContext,
-    type ResourceProjectionPayload,
-    type ResourceScope
+import { normalizeResourceDefinition } from './resource-definition.ts';
+import type { ResourceWorkload, ResourceWorkloadDeclaration } from './resource-workload-types.ts';
+import type {
+    Awaitable,
+    EmptyResourceDependencies,
+    ExecutionRequirement,
+    ResourceContext,
+    ResourceDefinition,
+    ResourceDependencies,
+    ResourceDisposalContext,
+    ResourceProjectionContext,
+    ResourceProjectionPayload,
+    ResourceScope
 } from './resources.ts';
 import type { ValueOf } from './resource-definition-shape.ts';
 
@@ -32,18 +35,26 @@ export type LocalServiceAddress = {
     readonly port: number;
 };
 
-export type LocalServiceCreationContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
+export type LocalServiceCreationContext<
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Parameters extends WorkloadParameters = never
+> = {
     readonly attachments: RuntimeAttachments;
     readonly address: LocalServiceAddress;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkload<Parameters>;
 };
 
-export type LocalServiceDisposalContext<Dependencies extends ResourceDependencies = EmptyResourceDependencies> = {
+export type LocalServiceDisposalContext<
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Parameters extends WorkloadParameters = never
+> = {
     readonly attachments: RuntimeAttachments;
     readonly address: LocalServiceAddress;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkload<Parameters>;
 };
 
 export type LocalServiceConsumerHandle = Readonly<Partial<Record<PropertyKey, unknown>>>;
@@ -66,17 +77,25 @@ export type LocalServiceHandleProjection<
     ) => Projection;
 };
 
-type LocalServiceDefinitionDisposal<OwnerHandle, Dependencies extends ResourceDependencies> = {
+type LocalServiceDefinitionDisposal<
+    OwnerHandle,
+    Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
+> = {
     readonly dispose: (
         owner: OwnerHandle,
-        context: LocalServiceDisposalContext<Dependencies>
+        context: LocalServiceDisposalContext<Dependencies, Parameters>
     ) => Awaitable<void>;
 };
 
-type LocalServiceAcquisitionContext<Dependencies extends ResourceDependencies> = {
+type LocalServiceAcquisitionContext<
+    Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
+> = {
     readonly attachments: RuntimeAttachments;
     readonly dependencies: ResourceContext<Dependencies>;
     readonly signal: AbortSignal;
+    readonly workload: readonly [Parameters] extends readonly [never] ? null : ResourceWorkload<Parameters>;
 };
 
 type ResourceAcquireFailure = {
@@ -99,18 +118,19 @@ type LocalServiceResourceDefinitionBaseInput<
     OwnerHandle,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Scope extends ResourceScope,
-    Dependencies extends ResourceDependencies
-> = LocalServiceDefinitionDisposal<OwnerHandle, Dependencies> & {
+    Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
+> = LocalServiceDefinitionDisposal<OwnerHandle, Dependencies, Parameters> & {
     readonly address: LocalServiceAddressRequest;
     readonly dependencies: Dependencies;
     readonly name: Name;
     readonly ready: (
         owner: OwnerHandle,
-        context: LocalServiceCreationContext<Dependencies>
+        context: LocalServiceCreationContext<Dependencies, Parameters>
     ) => Awaitable<ConsumerHandle>;
     readonly requirements: readonly ExecutionRequirement[];
     readonly scope: Scope;
-    readonly start: (context: LocalServiceCreationContext<Dependencies>) => Awaitable<OwnerHandle>;
+    readonly start: (context: LocalServiceCreationContext<Dependencies, Parameters>) => Awaitable<OwnerHandle>;
 };
 
 export type LocalOnlyLocalServiceResourceDefinitionInput<
@@ -118,8 +138,9 @@ export type LocalOnlyLocalServiceResourceDefinitionInput<
     OwnerHandle,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Scope extends Exclude<ResourceScope, 'per-run'>,
-    Dependencies extends ResourceDependencies = EmptyResourceDependencies
-> = LocalServiceResourceDefinitionBaseInput<Name, OwnerHandle, ConsumerHandle, Scope, Dependencies>;
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Parameters extends WorkloadParameters = never
+> = LocalServiceResourceDefinitionBaseInput<Name, OwnerHandle, ConsumerHandle, Scope, Dependencies, Parameters>;
 
 export type ProjectedLocalServiceResourceDefinitionInput<
     Name extends string,
@@ -128,32 +149,12 @@ export type ProjectedLocalServiceResourceDefinitionInput<
     Projection extends ResourceProjectionPayload,
     ProjectedConsumerHandle,
     Scope extends ProjectedLocalServiceScope,
-    Dependencies extends ResourceDependencies = EmptyResourceDependencies
-> = {
-    readonly address: LocalServiceAddressRequest;
-    readonly dependencies: Dependencies;
-    readonly deserializeHandle: LocalServiceHandleProjection<
-        ConsumerHandle,
-        Projection,
-        ProjectedConsumerHandle,
-        Dependencies
-    >['deserializeHandle'];
-    readonly dispose: LocalServiceDefinitionDisposal<OwnerHandle, Dependencies>['dispose'];
-    readonly name: Name;
-    readonly ready: (
-        owner: OwnerHandle,
-        context: LocalServiceCreationContext<Dependencies>
-    ) => Awaitable<ConsumerHandle>;
-    readonly requirements: readonly ExecutionRequirement[];
-    readonly scope: Scope;
-    readonly serializeHandle: LocalServiceHandleProjection<
-        ConsumerHandle,
-        Projection,
-        ProjectedConsumerHandle,
-        Dependencies
-    >['serializeHandle'];
-    readonly start: (context: LocalServiceCreationContext<Dependencies>) => Awaitable<OwnerHandle>;
-};
+    Dependencies extends ResourceDependencies = EmptyResourceDependencies,
+    Parameters extends WorkloadParameters = never
+> = Merge<
+    LocalServiceHandleProjection<ConsumerHandle, Projection, ProjectedConsumerHandle, Dependencies>,
+    LocalServiceResourceDefinitionBaseInput<Name, OwnerHandle, ConsumerHandle, Scope, Dependencies, Parameters>
+>;
 
 export type LocalServiceResourceDefinitionInput<
     Name extends string,
@@ -161,14 +162,16 @@ export type LocalServiceResourceDefinitionInput<
     ConsumerHandle extends LocalServiceConsumerHandle,
     Dependencies extends ResourceDependencies = EmptyResourceDependencies,
     Projection extends ResourceProjectionPayload = ResourceProjectionPayload,
-    ProjectedConsumerHandle = ConsumerHandle
+    ProjectedConsumerHandle = ConsumerHandle,
+    Parameters extends WorkloadParameters = never
 > = ValueOf<{
     readonly local: LocalOnlyLocalServiceResourceDefinitionInput<
         Name,
         OwnerHandle,
         ConsumerHandle,
         Exclude<ResourceScope, 'per-run'>,
-        Dependencies
+        Dependencies,
+        Parameters
     >;
     readonly projected: ProjectedLocalServiceResourceDefinitionInput<
         Name,
@@ -177,7 +180,8 @@ export type LocalServiceResourceDefinitionInput<
         Projection,
         ProjectedConsumerHandle,
         ProjectedLocalServiceScope,
-        Dependencies
+        Dependencies,
+        Parameters
     >;
 }>;
 
@@ -216,17 +220,22 @@ function lifecycleError(failure: ResourceAcquireFailure): unknown {
         );
 }
 
-async function cleanupStartedService<OwnerHandle, Dependencies extends ResourceDependencies>(
+async function cleanupStartedService<
+    OwnerHandle,
+    Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
+>(
     owner: OwnerHandle,
-    definition: LocalServiceDefinitionDisposal<OwnerHandle, Dependencies>,
-    context: LocalServiceCreationContext<Dependencies>
+    definition: LocalServiceDefinitionDisposal<OwnerHandle, Dependencies, Parameters>,
+    context: LocalServiceCreationContext<Dependencies, Parameters>
 ): Promise<unknown> {
     try {
         await definition.dispose(owner, {
             address: context.address,
             attachments: context.attachments,
             dependencies: context.dependencies,
-            signal: internalCleanupSignal()
+            signal: internalCleanupSignal(),
+            workload: context.workload
         });
 
         return null;
@@ -235,10 +244,10 @@ async function cleanupStartedService<OwnerHandle, Dependencies extends ResourceD
     }
 }
 
-function serviceContext<Dependencies extends ResourceDependencies>(
-    context: LocalServiceAcquisitionContext<Dependencies>,
+function serviceContext<Dependencies extends ResourceDependencies, Parameters extends WorkloadParameters = never>(
+    context: LocalServiceAcquisitionContext<Dependencies, Parameters>,
     address: LocalServiceAddress
-): LocalServiceCreationContext<Dependencies> {
+): LocalServiceCreationContext<Dependencies, Parameters> {
     return Object.freeze({
         ...context,
         address
@@ -248,16 +257,18 @@ function serviceContext<Dependencies extends ResourceDependencies>(
 async function acquireReadyHandle<
     OwnerHandle,
     ConsumerHandle extends LocalServiceConsumerHandle,
-    Dependencies extends ResourceDependencies
+    Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
 >(
     definition: LocalServiceResourceDefinitionBaseInput<
         string,
         OwnerHandle,
         ConsumerHandle,
         ResourceScope,
-        Dependencies
+        Dependencies,
+        Parameters
     >,
-    context: LocalServiceCreationContext<Dependencies>
+    context: LocalServiceCreationContext<Dependencies, Parameters>
 ): Promise<readonly [OwnerHandle, ConsumerHandle]> {
     context.signal.throwIfAborted();
     const owner = await definition.start(context);
@@ -279,18 +290,20 @@ async function acquireReadyHandle<
 function localServiceAcquire<
     OwnerHandle,
     ConsumerHandle extends LocalServiceConsumerHandle,
-    Dependencies extends ResourceDependencies
+    Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
 >(
     definition: LocalServiceResourceDefinitionBaseInput<
         string,
         OwnerHandle,
         ConsumerHandle,
         ResourceScope,
-        Dependencies
+        Dependencies,
+        Parameters
     >,
     address: LocalServiceAddress,
     owners: LocalServiceOwnerStore<OwnerHandle, ConsumerHandle>
-): (context: LocalServiceAcquisitionContext<Dependencies>) => Promise<ConsumerHandle> {
+): (context: LocalServiceAcquisitionContext<Dependencies, Parameters>) => Promise<ConsumerHandle> {
     return async function startLocalService(context) {
         try {
             const [ owner, consumer ] = await acquireReadyHandle(
@@ -318,12 +331,16 @@ function localServiceAcquire<
 function localServiceDispose<
     OwnerHandle,
     ConsumerHandle extends LocalServiceConsumerHandle,
-    Dependencies extends ResourceDependencies
+    Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
 >(
-    definition: LocalServiceDefinitionDisposal<OwnerHandle, Dependencies>,
+    definition: LocalServiceDefinitionDisposal<OwnerHandle, Dependencies, Parameters>,
     address: LocalServiceAddress,
     owners: LocalServiceOwnerStore<OwnerHandle, ConsumerHandle>
-): (handle: ConsumerHandle, context: ResourceDisposalContext<Dependencies>) => Awaitable<void> {
+): (
+    handle: ConsumerHandle,
+    context: ResourceDisposalContext<Dependencies, Readonly<Record<PropertyKey, never>>, Parameters>
+) => Awaitable<void> {
     return async function disposeLocalService(handle, context) {
         const owner = owners.get(handle);
 
@@ -336,7 +353,8 @@ function localServiceDispose<
             address,
             attachments: context.attachments,
             dependencies: context.dependencies,
-            signal: context.signal
+            signal: context.signal,
+            workload: context.workload
         });
     };
 }
@@ -346,7 +364,8 @@ function isProjectedLocalService<
     ConsumerHandle extends LocalServiceConsumerHandle,
     Dependencies extends ResourceDependencies,
     Projection extends ResourceProjectionPayload,
-    ProjectedConsumerHandle
+    ProjectedConsumerHandle,
+    Parameters extends WorkloadParameters = never
 >(
     definition: LocalServiceResourceDefinitionInput<
         string,
@@ -354,7 +373,8 @@ function isProjectedLocalService<
         ConsumerHandle,
         Dependencies,
         Projection,
-        ProjectedConsumerHandle
+        ProjectedConsumerHandle,
+        Parameters
     >
 ): definition is ProjectedLocalServiceResourceDefinitionInput<
     string,
@@ -363,7 +383,8 @@ function isProjectedLocalService<
     Projection,
     ProjectedConsumerHandle,
     ProjectedLocalServiceScope,
-    Dependencies
+    Dependencies,
+    Parameters
 > {
     return Object.hasOwn(definition, 'serializeHandle') && Object.hasOwn(definition, 'deserializeHandle');
 }
@@ -373,14 +394,74 @@ export function defineLocalServiceResource<
     OwnerHandle,
     ConsumerHandle extends LocalServiceConsumerHandle,
     Scope extends Exclude<ResourceScope, 'per-run'>,
-    const Dependencies extends ResourceDependencies
+    const Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters
+>(
+    definition: Merge<
+        LocalOnlyLocalServiceResourceDefinitionInput<
+            Name,
+            OwnerHandle,
+            ConsumerHandle,
+            Scope,
+            Dependencies,
+            Parameters
+        >,
+        ResourceWorkloadDeclaration<Parameters>
+    >
+): ResourceDefinition<
+    Name,
+    ConsumerHandle,
+    Dependencies,
+    ConsumerHandle,
+    Readonly<Record<PropertyKey, never>>,
+    Parameters
+>;
+export function defineLocalServiceResource<
+    const Name extends string,
+    OwnerHandle,
+    ConsumerHandle extends LocalServiceConsumerHandle,
+    Projection extends ResourceProjectionPayload,
+    ProjectedConsumerHandle,
+    Scope extends ProjectedLocalServiceScope,
+    const Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters
+>(
+    definition: Merge<
+        ProjectedLocalServiceResourceDefinitionInput<
+            Name,
+            OwnerHandle,
+            ConsumerHandle,
+            Projection,
+            ProjectedConsumerHandle,
+            Scope,
+            Dependencies,
+            Parameters
+        >,
+        ResourceWorkloadDeclaration<Parameters>
+    >
+): ResourceDefinition<
+    Name,
+    ConsumerHandle,
+    Dependencies,
+    ProjectedConsumerHandle,
+    Readonly<Record<PropertyKey, never>>,
+    Parameters
+>;
+export function defineLocalServiceResource<
+    const Name extends string,
+    OwnerHandle,
+    ConsumerHandle extends LocalServiceConsumerHandle,
+    Scope extends Exclude<ResourceScope, 'per-run'>,
+    const Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
 >(
     definition: LocalOnlyLocalServiceResourceDefinitionInput<
         Name,
         OwnerHandle,
         ConsumerHandle,
         Scope,
-        Dependencies
+        Dependencies,
+        Parameters
     >
 ): ResourceDefinition<Name, ConsumerHandle, Dependencies>;
 export function defineLocalServiceResource<
@@ -390,7 +471,8 @@ export function defineLocalServiceResource<
     Projection extends ResourceProjectionPayload,
     ProjectedConsumerHandle,
     Scope extends ProjectedLocalServiceScope,
-    const Dependencies extends ResourceDependencies
+    const Dependencies extends ResourceDependencies,
+    Parameters extends WorkloadParameters = never
 >(
     definition: ProjectedLocalServiceResourceDefinitionInput<
         Name,
@@ -399,7 +481,8 @@ export function defineLocalServiceResource<
         Projection,
         ProjectedConsumerHandle,
         Scope,
-        Dependencies
+        Dependencies,
+        Parameters
     >
 ): ResourceDefinition<Name, ConsumerHandle, Dependencies, ProjectedConsumerHandle>;
 export function defineLocalServiceResource<
@@ -408,7 +491,8 @@ export function defineLocalServiceResource<
     ConsumerHandle extends LocalServiceConsumerHandle,
     const Dependencies extends ResourceDependencies,
     Projection extends ResourceProjectionPayload,
-    ProjectedConsumerHandle
+    ProjectedConsumerHandle,
+    Parameters extends WorkloadParameters = never
 >(
     definition: LocalServiceResourceDefinitionInput<
         Name,
@@ -416,7 +500,8 @@ export function defineLocalServiceResource<
         ConsumerHandle,
         Dependencies,
         Projection,
-        ProjectedConsumerHandle
+        ProjectedConsumerHandle,
+        Parameters
     >
 ): unknown {
     const address = localServiceAddress(definition.address);
@@ -425,7 +510,8 @@ export function defineLocalServiceResource<
     const dispose = localServiceDispose(definition, address, owners);
 
     if (isProjectedLocalService(definition)) {
-        return defineResource({
+        return normalizeResourceDefinition({
+            workload: Reflect.get(definition, 'workload'),
             name: definition.name,
             scope: definition.scope,
             requirements: definition.requirements,
@@ -437,7 +523,8 @@ export function defineLocalServiceResource<
         });
     }
 
-    return defineResource({
+    return normalizeResourceDefinition({
+        workload: Reflect.get(definition, 'workload'),
         name: definition.name,
         scope: definition.scope,
         requirements: definition.requirements,

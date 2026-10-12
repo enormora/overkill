@@ -164,6 +164,7 @@ async function waitForRunTaskCommand(
 
 async function runTask(pool: CreatedWorkerPool): Promise<unknown> {
     return pool.run({
+        workloadInputs: [],
         assignedUnits: [ {
             traceUnit: {
                 key: 'test.ts',

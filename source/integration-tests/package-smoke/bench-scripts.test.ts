@@ -5,6 +5,7 @@ import * as bench from '@overkill-dev/bench';
 import * as ordinary from '@overkill-dev/test';
 import * as standard from '@overkill-dev/test/bench';
 import { createRoot, createTestPlan, createWorkloadTestCase, execute } from '@overkill-dev/engine';
+import { defineResource, withResource } from '@overkill-dev/test/resources';
 
 const benchManifest = new URL('../../package.json', import.meta.resolve('@overkill-dev/bench'));
 const manifest = JSON.parse(readFileSync(benchManifest, 'utf8'));
@@ -62,18 +63,33 @@ assert.equal(result.summary.skipped, 1);
 assert.equal(result.summary.defined, 6);
 assert.deepEqual(result.runnerErrors, []);
 const small = standard.workload('small', { packages: 5 });
+let acquisitions = 0;
+let disposedPackages = null;
+const fixture = defineResource({
+    name: 'fixture', scope: 'per-case', requirements: [],
+    workload(parameters) {
+        assert.equal(typeof parameters.packages, 'number');
+        return { packages: parameters.packages };
+    },
+    acquire({workload}) { acquisitions += 1; return workload.parameters.packages; },
+    dispose(handle, {workload}) { assert.equal(handle, workload.parameters.packages); disposedPackages = handle; }
+});
 const workloadNode = createWorkloadTestCase({
     annotations: {}, controls: {}, definitionLocations: [{kind: 'unknown'}], title: 'workload',
-    workloads: [{id: small.id, body(scope) {
-        scope.assert.equal(small.parameters.packages, 5);
+    workloads: [{id: small.id, parameters: small.parameters, body: withResource(fixture, (scope) => {
+        scope.assert.equal(scope.resources.fixture, 5);
         return scope.assert.collect();
-    }}]
+    })}]
 });
 const workloadPlan = createTestPlan(createRoot({
     annotations: {}, controls: {}, title: 'root', children: [workloadNode]
 }));
 assert.equal(workloadPlan.cases[0].workId.workload.name, 'small');
+assert.equal(acquisitions, 0);
+assert.deepEqual(workloadPlan.cases[0].workloadParameters, {packages: 5});
 assert.equal((await execute(workloadPlan)).summary.passed, 1);
+assert.equal(acquisitions, 1);
+assert.equal(disposedPackages, 5);
 console.log('bench authoring passed');
 `;
 

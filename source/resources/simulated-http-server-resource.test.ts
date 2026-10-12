@@ -184,6 +184,7 @@ async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
         address: { kind: 'loopback', port: 0 }
     });
     const acquired = await resource.acquire({
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: {},
@@ -204,6 +205,7 @@ async function assertScenarioContextFallbacks(scope: TestScope): Promise<void> {
     }
 
     const context = {
+        workload: null,
         attachments: resourceAttachments('test'),
         dependencies: {},
         scenarios: { api: 'default' as const },
