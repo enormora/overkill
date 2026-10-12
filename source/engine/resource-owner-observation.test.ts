@@ -1,3 +1,4 @@
+import { AsyncResource } from 'node:async_hooks';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { testNode as resourceOwnerCompletionTestNode } from './resource-owner-completion.test.ts';
 import {
@@ -6,8 +7,31 @@ import {
     releaseResourceOwner
 } from './resource-owner-observation.ts';
 
+const unownedContext = new AsyncResource('unowned-resource-context');
+
 export const testNode = suite('resource owner observation', [
     resourceOwnerCompletionTestNode,
+    test('acquires and releases resources outside a case observation', async function (scope) {
+        const acquired = await unownedContext.runInAsyncScope(async function () {
+            const result = await observeResourceOwnerAcquisition(async function () {
+                return 'registry';
+            });
+            releaseResourceOwner(result.owner);
+            return result;
+        });
+        scope.assert.equal(acquired.value, 'registry');
+        scope.assert.deepEqual(acquired.owner.resources, []);
+        return scope.assert.collect();
+    }),
+    test('retains unrelated resources when a released owner is absent', async function (scope) {
+        const observed = await observeCaseResourceOwners(function () {
+            return [ 'server' ];
+        }, async function () {
+            releaseResourceOwner({ resources: [ 'socket' ] });
+        });
+        scope.assert.deepEqual(observed.baseline, [ 'server' ]);
+        return scope.assert.collect();
+    }),
     test('allows owned handles while retaining unrelated handles for leak checks', async function (scope) {
         const resources = [ 'infrastructure' ];
         const observed = await observeCaseResourceOwners(function () {

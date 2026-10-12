@@ -7,6 +7,7 @@ import type { TestPlan } from '../engine/test-plan.ts';
 import type { Engine } from '../engine/engine.ts';
 import type { TestBody } from '../engine/test-node.ts';
 import type { WorkloadInput, WorkloadParameters } from '../engine/workload-input.ts';
+import { testNode as workloadResourceValidationTestNode } from './workload-resource-validation.test.ts';
 
 type PackageParameters = { readonly packages: number; };
 
@@ -34,6 +35,7 @@ function workloadPlan(engine: Engine, input: WorkloadInput, body: TestBody): Tes
 }
 
 export const testNode = suite('workload resources', [
+    workloadResourceValidationTestNode,
     test('passes typed workload parameters to acquisition and the same value to disposal', async function (scope) {
         const observed: unknown[] = [];
         const fixture = defineResource({
