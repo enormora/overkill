@@ -45,6 +45,8 @@ function assertBaselineRequest(
     scope.assert.equal(entry.verb, verb);
     scope.assert.deepEqual(entry.request.runRequest.paths, [ 'source/startup.bench.ts' ]);
     scope.assert.equal(entry.request.runRequest.profile, 'startup');
+    scope.assert.equal(entry.request.runRequest.measureResourceUsage, null);
+    scope.assert.equal(entry.request.runRequest.resourceBudgetOverrides, null);
     scope.assert.equal(entry.request.configPath, 'overkill.config.ts');
     scope.assert.equal(result.exitCode, 0);
     scope.assert.deepEqual(result.baselineListRequests, []);
@@ -75,6 +77,38 @@ export const testNode = createSuite({
                     ], passingResult());
                     assertBaselineRequest(scope, result, verb);
                 }
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'benchmark baseline commands reject resource usage flags before loading the runner',
+            ...emptyTestData,
+            async body(scope: TestScope) {
+                for (const verb of [ 'apply', 'bootstrap', 'diff', 'update', 'list' ]) {
+                    for (
+                        const flagArguments of [
+                            [ '--measure-resource-usage' ],
+                            [ '--resource-budget', 'residentSetBytes=1000' ]
+                        ] as const
+                    ) {
+                        const result = await runCommandLine(
+                            [ 'bench', 'baseline', verb, ...flagArguments ],
+                            passingResult()
+                        );
+
+                        scope.assert.deepEqual(result.exitCodes, [ 3 ]);
+                        scope.assert.equal(result.runnerLoadCount, 0);
+                        scope.assert.deepEqual({
+                            run: result.baselineExecutionRequests,
+                            list: result.baselineListRequests
+                        }, { run: [], list: [] });
+                        scope.assert.equal(result.stdout, '');
+                        scope.assert.includes(result.stderr, 'Unknown arguments');
+                        scope.assert.includes(result.stderr, flagArguments[0]);
+                    }
+                }
+
                 return scope.assert.collect();
             }
         }),
@@ -127,9 +161,7 @@ export const testNode = createSuite({
                     '--timings',
                     '--workers',
                     '4',
-                    '--no-capture',
-                    '--resource-budget',
-                    'residentSetBytes=1000'
+                    '--no-capture'
                 ], passingResult());
                 const request = result.benchmarkRunRequests[0]?.runRequest;
                 scope.require.defined(request);
@@ -139,7 +171,7 @@ export const testNode = createSuite({
                     capture: request.capture,
                     workers: request.workers,
                     measureResourceUsage: request.measureResourceUsage,
-                    residentSetBytes: request.resourceBudgetOverrides?.residentSetBytes,
+                    resourceBudgetOverrides: request.resourceBudgetOverrides,
                     timingCollection: request.timingCollection,
                     order: request.order,
                     seed: request.seed,
@@ -149,8 +181,8 @@ export const testNode = createSuite({
                     profile: null,
                     capture: 'live',
                     workers: 4,
-                    measureResourceUsage: true,
-                    residentSetBytes: 1000,
+                    measureResourceUsage: null,
+                    resourceBudgetOverrides: null,
                     timingCollection: 'precise',
                     order: 'lexical',
                     seed: { value: 42n },
@@ -344,12 +376,12 @@ export const testNode = createSuite({
                             [ '--coverage' ],
                             [ '--record' ],
                             [ '--debug' ],
+                            [ '--measure-resource-usage' ],
+                            [ '--resource-budget', 'residentSetBytes=1000' ],
                             ...(verb === 'run' ? [ [ '--with-locations' ], [ '--with-orphans' ] ] : [
                                 [ '--timings' ],
                                 [ '--workers', '2' ],
-                                [ '--no-capture' ],
-                                [ '--measure-resource-usage' ],
-                                [ '--resource-budget', 'residentSetBytes=1000' ]
+                                [ '--no-capture' ]
                             ]) as readonly (readonly [string, ...string[]])[]
                         ];
 

@@ -253,10 +253,10 @@ inside a matrix. Exact `CaseId` selection is programmatic API-only.
 - `--coverage` requests aggregate V8 coverage for this run. It preserves the
   microtest profile's process model and scheduling, and is rejected for every
   other test family before discovery starts.
-- `--measure-resource-usage` collects run-level resource usage diagnostics for
-  this run. See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
-- `--resource-budget <name=value>` overrides one resource budget for this run
-  and enables resource usage measurement.
+
+Resource usage measurement and budgets come from the selected profile's
+`resourceUsage` configuration. Budgets require `measure: true`.
+See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
 
 ## Output And Capture
 
@@ -301,7 +301,7 @@ Current `bench run` and `bench list` share `--file`, `--title`, `--filter`,
 `--runtime`, `--order`, `--seed`, and `--shard` with ordinary commands.
 Use `--filter 'workload=small'` to select a resolved workload name. Workload
 names also support the existing substring and glob filter operators.
-`bench run` also supports `--no-capture`, `--timings`, `--workers`,
-`--measure-resource-usage`, and `--resource-budget`; `bench list` supports
-`--with-locations` and `--with-orphans`. `--coverage` remains microtest-only.
+`bench run` also supports `--no-capture`, `--timings`, and `--workers`;
+`bench list` supports `--with-locations` and `--with-orphans`.
+`--coverage` remains microtest-only.
 Benchmark measurement, debug, record, and baseline surfaces remain later work.

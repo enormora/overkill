@@ -30,29 +30,19 @@ import { parseRunSeed } from './run-seed-parser.ts';
 import { parseRunShard } from './run-shard-parser.ts';
 import { runWorkersType } from './run-workers-parser.ts';
 
-type ResourceBudgetOverrides = NonNullable<CommandLineRunTestsRequest['runRequest']['resourceBudgetOverrides']>;
-
-type ResourceBudgetName = keyof ResourceBudgetOverrides;
 type RunOrder = Extract<CommandLineRunTestsRequest['runRequest']['order'], 'lexical' | 'seeded'>;
 type RunSeed = CommandLineRunTestsRequest['runRequest']['seed'];
 type RunShard = CommandLineRunTestsRequest['runRequest']['shard'];
-
-type ResourceBudgetOverride = {
-    readonly name: ResourceBudgetName;
-    readonly value: number;
-};
 
 type RunCommandArguments<Profile extends string | null> = {
     readonly configPath: string | null;
     readonly coverage: boolean;
     readonly file: string | null;
     readonly filter: RunFilter | null;
-    readonly measureResourceUsage: boolean;
     readonly noCapture: boolean;
     readonly order: RunOrder;
     readonly paths: readonly string[];
     readonly profile: Profile;
-    readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
     readonly runtimeFilters: readonly RunFilter[];
     readonly seed: RunSeed;
     readonly shard: RunShard;
@@ -76,97 +66,7 @@ type ListCommandArguments<Profile extends string | null> = {
     readonly withOrphans: boolean;
 };
 
-const defaultResourceBudgetOverrides: ResourceBudgetOverrides = {
-    activeResourceCount: null,
-    javaScriptEngineHeapBytes: null,
-    residentSetBytes: null,
-    residentSetGrowthBytesPerSecond: null
-};
-
-const resourceBudgetNames: ReadonlySet<string> = new Set([
-    'activeResourceCount',
-    'javaScriptEngineHeapBytes',
-    'residentSetBytes',
-    'residentSetGrowthBytesPerSecond'
-]);
 const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
-
-function createBudgetOverrides(): ResourceBudgetOverrides {
-    return { ...defaultResourceBudgetOverrides };
-}
-
-function isResourceBudgetName(name: string): name is ResourceBudgetName {
-    return resourceBudgetNames.has(name);
-}
-
-function parseResourceBudgetName(name: string): ResourceBudgetName {
-    if (isResourceBudgetName(name)) {
-        return name;
-    }
-
-    throw new TypeError(`Unknown resource budget name: ${name}`);
-}
-
-function parseResourceBudgetValue(value: string): number {
-    if (value === '') {
-        throw new TypeError('Resource budget value must not be empty.');
-    }
-
-    const parsedValue = Number(value);
-
-    if (!Number.isFinite(parsedValue)) {
-        throw new TypeError(`Resource budget value must be numeric: ${value}`);
-    }
-
-    return parsedValue;
-}
-
-function parseResourceBudgetOverride(rawValue: string): ResourceBudgetOverride {
-    const separatorIndex = rawValue.indexOf('=');
-
-    if (separatorIndex <= 0) {
-        throw new TypeError(`Resource budget must use name=value syntax: ${rawValue}`);
-    }
-
-    return {
-        name: parseResourceBudgetName(rawValue.slice(0, separatorIndex)),
-        value: parseResourceBudgetValue(rawValue.slice(separatorIndex + 1))
-    };
-}
-
-function assignResourceBudgetOverride(
-    overrides: ResourceBudgetOverrides,
-    override: ResourceBudgetOverride
-): ResourceBudgetOverrides {
-    return {
-        ...overrides,
-        [override.name]: override.value
-    };
-}
-
-function assertUnusedResourceBudgetName(
-    seenNames: ReadonlySet<ResourceBudgetName>,
-    name: ResourceBudgetName
-): void {
-    if (seenNames.has(name)) {
-        throw new TypeError(`Duplicate resource budget name: ${name}`);
-    }
-}
-
-function parseResourceBudgetOverrides(rawValues: readonly string[]): ResourceBudgetOverrides {
-    let overrides = createBudgetOverrides();
-    const seenNames = new Set<ResourceBudgetName>();
-
-    for (const rawValue of rawValues) {
-        const override = parseResourceBudgetOverride(rawValue);
-
-        assertUnusedResourceBudgetName(seenNames, override.name);
-        seenNames.add(override.name);
-        overrides = assignResourceBudgetOverride(overrides, override);
-    }
-
-    return overrides;
-}
 
 const configPathType: Type<string[], string | null> = {
     displayName: 'path',
@@ -176,13 +76,6 @@ const configPathType: Type<string[], string | null> = {
         }
 
         return configPath ?? null;
-    }
-};
-
-const resourceBudgetOverridesType: Type<string[], ResourceBudgetOverrides | null> = {
-    displayName: 'name=value',
-    async from(rawValues) {
-        return rawValues.length === 0 ? null : parseResourceBudgetOverrides(rawValues);
     }
 };
 
@@ -235,14 +128,6 @@ const titleSelectionType: Type<string, string | null> = {
     }
 };
 
-function readMeasureResourceUsage(args: RunCommandArguments<string | null>): boolean | null {
-    if (args.measureResourceUsage || args.resourceBudgetOverrides !== null) {
-        return true;
-    }
-
-    return null;
-}
-
 function readCapture(args: RunCommandArguments<string | null>): CommandLineRunTestsRequest['runRequest']['capture'] {
     return args.noCapture ? 'live' : 'buffered';
 }
@@ -266,11 +151,11 @@ function createRunTestsRequest<Profile extends string | null>(
                 selectors: []
             },
             execution: { mode: 'profile-default' },
-            measureResourceUsage: readMeasureResourceUsage(args),
+            measureResourceUsage: null,
             order: args.order,
             paths: args.paths,
             profile: args.profile,
-            resourceBudgetOverrides: args.resourceBudgetOverrides,
+            resourceBudgetOverrides: null,
             resourceUsageSamplingIntervalMilliseconds: null,
             seed: args.seed,
             selection: createCommandLineSelection(args),
@@ -387,15 +272,7 @@ const benchmarkCommandArguments = {
 };
 
 const runExecutionArguments = {
-    measureResourceUsage: flag({ long: 'measure-resource-usage' }),
     noCapture: flag({ long: 'no-capture' }),
-    resourceBudgetOverrides: multioption({
-        long: 'resource-budget',
-        type: resourceBudgetOverridesType,
-        defaultValue() {
-            return null;
-        }
-    }),
     timings: flag({ long: 'timings' }),
     workers: option({
         long: 'workers',
