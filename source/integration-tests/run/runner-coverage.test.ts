@@ -44,7 +44,7 @@ function coverageConfig(
                 execution: { maxConcurrency: 5, processModel, scheduling },
                 files: null,
                 reporters: null,
-                resourceUsage: {
+                processUsage: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -76,12 +76,12 @@ function coverageRequest(): RunRequest {
         coverage: true,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
-        measureResourceUsage: null,
+        measureProcessUsage: null,
         order: 'plan',
         paths: [ coverageFixturePath ],
         profile: 'microtest',
-        resourceBudgetOverrides: null,
-        resourceUsageSamplingIntervalMilliseconds: null,
+        processBudgetOverrides: null,
+        processUsageSamplingIntervalMilliseconds: null,
         seed: { value: 42n },
         selection: { kind: 'all' },
         shard: { index: 1, total: 1 },

@@ -95,7 +95,7 @@ function executedCount(result: RunResult): number {
     const { summary } = result;
 
     return summary.passed + summary.failed + summary.skipped + summary.inconclusive +
-        summary.resourceExhausted + summary.crashed;
+        summary.processExhausted + summary.crashed;
 }
 
 function retryCountSummary(result: RunResult): string {
@@ -114,7 +114,7 @@ function finishIntent(result: RunResult): OutputLineIntent {
     const executionCounts = `executed=${executedCount(result)} passed=${summary.passed} failed=${summary.failed}`;
     const totalMicroseconds = result.timings.summary.totalWallTimeMicroseconds;
     const remainingCounts = `skipped=${summary.skipped} inconclusive=${summary.inconclusive} ` +
-        `resourceExhausted=${summary.resourceExhausted} runtimePolicy=${summary.runtimePolicy} ` +
+        `processExhausted=${summary.processExhausted} runtimePolicy=${summary.runtimePolicy} ` +
         `crashed=${summary.crashed} ` +
         `ms=${totalMicroseconds / microsecondsPerMillisecond}`;
 

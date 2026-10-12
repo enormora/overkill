@@ -1,32 +1,32 @@
 import { createDefaultWorkId, type AttemptId, type CaseId, type WorkId } from '../engine/identity.ts';
-import { observedGrowthBytesPerSecond } from '../engine/resource-usage-growth.ts';
+import { observedGrowthBytesPerSecond } from '../engine/process-usage-growth.ts';
 import type { RunnerError } from '../engine/run-result.ts';
-import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
-import type { ResourceBudgets } from '../config/types.ts';
+import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
+import type { ProcessBudgets } from '../config/types.ts';
 import type { SupervisedRunState } from './supervised-run-state.ts';
 
-type ResourceBudgetMetric = keyof ResourceBudgets;
+type ProcessBudgetMetric = keyof ProcessBudgets;
 
-export type ResourceBudgetBreach = {
+export type ProcessBudgetBreach = {
     readonly budget: number;
-    readonly metric: ResourceBudgetMetric;
+    readonly metric: ProcessBudgetMetric;
     readonly observed: number;
-    readonly sample: ResourceUsageSnapshot;
+    readonly sample: ProcessUsageSnapshot;
 };
 
 type BudgetValueReader = (
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
+    sample: ProcessUsageSnapshot,
+    previousSample: ProcessUsageSnapshot | null
 ) => number;
 
-const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
+const processBudgetMetrics: readonly ProcessBudgetMetric[] = [
     'activeResourceCount',
     'javaScriptEngineHeapBytes',
     'residentSetBytes',
     'residentSetGrowthBytesPerSecond'
 ];
 
-const budgetValueReaders: Readonly<Record<ResourceBudgetMetric, BudgetValueReader>> = {
+const budgetValueReaders: Readonly<Record<ProcessBudgetMetric, BudgetValueReader>> = {
     activeResourceCount(sample) {
         return sample.activeResourceCount;
     },
@@ -40,19 +40,19 @@ const budgetValueReaders: Readonly<Record<ResourceBudgetMetric, BudgetValueReade
 };
 
 function observedBudgetValue(
-    metric: ResourceBudgetMetric,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
+    metric: ProcessBudgetMetric,
+    sample: ProcessUsageSnapshot,
+    previousSample: ProcessUsageSnapshot | null
 ): number {
     return budgetValueReaders[metric](sample, previousSample);
 }
 
-export function findResourceBudgetBreach(
-    budgets: ResourceBudgets,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
-): ResourceBudgetBreach | null {
-    for (const metric of resourceBudgetMetrics) {
+export function findProcessBudgetBreach(
+    budgets: ProcessBudgets,
+    sample: ProcessUsageSnapshot,
+    previousSample: ProcessUsageSnapshot | null
+): ProcessBudgetBreach | null {
+    for (const metric of processBudgetMetrics) {
         const budget = budgets[metric];
 
         if (budget !== null) {
@@ -91,7 +91,7 @@ function activeAttemptEvidence(
     });
 }
 
-export function resourceExhaustionError(breach: ResourceBudgetBreach, state: SupervisedRunState): RunnerError {
+export function processExhaustionError(breach: ProcessBudgetBreach, state: SupervisedRunState): RunnerError {
     const activeCases = activeCaseIds(state);
     const activeWork = activeWorkIds(state);
     const [ activeCase = null ] = activeCases;
@@ -113,8 +113,8 @@ export function resourceExhaustionError(breach: ResourceBudgetBreach, state: Sup
             { label: 'observed', value: String(breach.observed) },
             { label: 'budget', value: String(breach.budget) }
         ],
-        message: `Resource budget exceeded: ${breach.metric} observed ${breach.observed}, budget ${breach.budget}.`,
-        subtype: 'resource-exhaustion'
+        message: `Process budget exceeded: ${breach.metric} observed ${breach.observed}, budget ${breach.budget}.`,
+        subtype: 'process-exhaustion'
     };
 }
 

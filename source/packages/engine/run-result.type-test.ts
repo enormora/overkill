@@ -14,9 +14,9 @@ import type {
     PermissionDeniedRunnerErrorCause,
     PerTestResult,
     ReporterEvent,
-    ResourceUsageSnapshot,
-    RunResourceUsage,
-    RunResourceUsageTracker,
+    ProcessUsageSnapshot,
+    RunProcessUsage,
+    RunProcessUsageTracker,
     RunArtifactId,
     RunPreciseTimingReport,
     RunArtifact,
@@ -42,7 +42,7 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly loader: 'loader';
     readonly permission: 'permission';
     readonly reporter: 'reporter';
-    readonly resourceExhaustion: 'resource-exhaustion';
+    readonly processExhaustion: 'process-exhaustion';
     readonly runtimePolicy: 'runtime-policy';
     readonly runtimeState: 'runtime-state';
     readonly uncaughtException: 'uncaught-exception';
@@ -55,7 +55,7 @@ type RunResultKeys = readonly [
     'orphans',
     'perTest',
     'planStatus',
-    'resourceUsage',
+    'processUsage',
     'runnerErrors',
     'status',
     'summary',
@@ -70,7 +70,7 @@ type RunSummaryKeys = readonly [
     'inconclusive',
     'passed',
     'planned',
-    'resourceExhausted',
+    'processExhausted',
     'runtimePolicy',
     'skipped'
 ];
@@ -128,10 +128,10 @@ describe('run result verdicts', function () {
     });
     test('per-test and reporter verdicts accept outcomes and terminal runner verdicts', function () {
         expect<PerTestResult['verdict']>().type.toBe<
-            OutcomeKind | 'crashed' | 'resource-exhausted' | 'runtime-policy'
+            OutcomeKind | 'crashed' | 'process-exhausted' | 'runtime-policy'
         >();
         expect<TestEndReporterEvent['verdict']>().type.toBe<
-            OutcomeKind | 'crashed' | 'resource-exhausted' | 'runtime-policy'
+            OutcomeKind | 'crashed' | 'process-exhausted' | 'runtime-policy'
         >();
     });
 });
@@ -143,16 +143,16 @@ describe('RunSummary', function () {
 });
 
 describe('RunResult', function () {
-    test('includes resource usage as nullable measured data', function () {
+    test('includes process usage as nullable measured data', function () {
         expect<keyof RunResult>().type.toBe<ExpectedRunResultKey>();
         expect<RunResult['status']>().type.toBe<'failed' | 'passed'>();
         expect<RunResult['planStatus']>().type.toBe<RunPlanStatus>();
-        expect<RunResult['resourceUsage']>().type.toBe<RunResourceUsage | null>();
+        expect<RunResult['processUsage']>().type.toBe<RunProcessUsage | null>();
         expect<RunResult['timings']>().type.toBe<RunTimings>();
         expect<RunTimings['precise']>().type.toBe<RunPreciseTimingReport | null>();
         expect<keyof RunPreciseTimingReport>().type.toBe<ExpectedPreciseTimingKey>();
-        expect<RunResourceUsage['start']>().type.toBe<ResourceUsageSnapshot>();
-        expect<RunResourceUsageTracker['finish']>().type.toBe<() => RunResourceUsage>();
+        expect<RunProcessUsage['start']>().type.toBe<ProcessUsageSnapshot>();
+        expect<RunProcessUsageTracker['finish']>().type.toBe<() => RunProcessUsage>();
     });
 
     test('artifacts carry runtime and workload identity', function () {

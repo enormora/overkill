@@ -546,8 +546,8 @@ Benchmarks execute serially in one lane. `--filter 'workload=small'` selects
 resolved workloads. Measurement and budgets remain separate milestones.
 See [`@overkill-dev/bench`](../bench/readme.md).
 
-Configure resource usage measurement and budgets through the selected
-profile's `resourceUsage.measure` and `resourceUsage.budgets` fields.
+Configure process usage measurement and budgets through the selected
+profile's `processUsage.measure` and `processUsage.budgets` fields.
 Budgets require `measure: true`.
 
 `--workers` applies to `run` and `bench run` and accepts a positive safe integer. The

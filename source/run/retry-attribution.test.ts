@@ -4,7 +4,7 @@ import { singleAttemptResult, type TestVerdict } from '../engine/run-result.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
 import { capturedOutputLimitBytes } from './supervised-output-capture.ts';
-import { crashError } from './supervised-run-resource-policy.ts';
+import { crashError } from './supervised-run-process-policy.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const work = createDefaultWorkId({ file: 'retry.test.ts', params: null, suite: [], title: 'retry' });

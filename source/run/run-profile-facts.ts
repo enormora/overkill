@@ -1,7 +1,7 @@
-import { copyResourceBudgets } from '../config/snapshot.ts';
+import { copyProcessBudgets } from '../config/snapshot.ts';
 import type {
-    ResourceBudgets,
-    ResourceUsagePolicy,
+    ProcessBudgets,
+    ProcessUsagePolicy,
     ProfileConfig,
     Scheduling,
     TimingCollectionMode
@@ -13,7 +13,7 @@ export function resolveRunScheduling(request: RunRequest, profile: ProfileConfig
     return request.execution.mode === 'serial' ? 'serial' : profile.execution.scheduling;
 }
 
-function disabledResourceBudgets(): ResourceBudgets {
+function disabledProcessBudgets(): ProcessBudgets {
     return {
         activeResourceCount: null,
         javaScriptEngineHeapBytes: null,
@@ -26,12 +26,12 @@ function readBudgetOverride(configValue: number | null, requestValue: number | n
     return requestValue ?? configValue;
 }
 
-function resolveResourceBudgets(
-    configBudgets: ResourceBudgets,
-    requestOverrides: ResourceBudgets | null
-): ResourceBudgets {
+function resolveProcessBudgets(
+    configBudgets: ProcessBudgets,
+    requestOverrides: ProcessBudgets | null
+): ProcessBudgets {
     if (requestOverrides === null) {
-        return copyResourceBudgets(configBudgets);
+        return copyProcessBudgets(configBudgets);
     }
 
     return {
@@ -51,40 +51,40 @@ function resolveResourceBudgets(
     };
 }
 
-function hasResourceBudgets(resourceBudgets: ResourceBudgets): boolean {
-    return resourceBudgets.activeResourceCount !== null ||
-        resourceBudgets.javaScriptEngineHeapBytes !== null ||
-        resourceBudgets.residentSetBytes !== null ||
-        resourceBudgets.residentSetGrowthBytesPerSecond !== null;
+function hasProcessBudgets(processBudgets: ProcessBudgets): boolean {
+    return processBudgets.activeResourceCount !== null ||
+        processBudgets.javaScriptEngineHeapBytes !== null ||
+        processBudgets.residentSetBytes !== null ||
+        processBudgets.residentSetGrowthBytesPerSecond !== null;
 }
 
-function assertResourceBudgetOverridesAllowed(
-    measureResourceUsage: boolean,
-    requestOverrides: ResourceBudgets | null
+function assertProcessBudgetOverridesAllowed(
+    measureProcessUsage: boolean,
+    requestOverrides: ProcessBudgets | null
 ): void {
-    if (!measureResourceUsage && requestOverrides !== null && hasResourceBudgets(requestOverrides)) {
-        invalidRequest('Resource budget overrides require resource usage measurement.');
+    if (!measureProcessUsage && requestOverrides !== null && hasProcessBudgets(requestOverrides)) {
+        invalidRequest('Process budget overrides require process usage measurement.');
     }
 }
 
-export function resolveResourceUsagePolicy(
+export function resolveProcessUsagePolicy(
     request: RunRequest,
     profile: ProfileConfig
-): ResourceUsagePolicy {
-    const configuredPolicy = profile.resourceUsage;
-    const measureResourceUsage = request.measureResourceUsage ?? configuredPolicy.measure;
-    const resourceUsageSamplingIntervalMilliseconds = request.resourceUsageSamplingIntervalMilliseconds ??
+): ProcessUsagePolicy {
+    const configuredPolicy = profile.processUsage;
+    const measureProcessUsage = request.measureProcessUsage ?? configuredPolicy.measure;
+    const processUsageSamplingIntervalMilliseconds = request.processUsageSamplingIntervalMilliseconds ??
         configuredPolicy.samplingIntervalMilliseconds;
-    const resourceBudgets = measureResourceUsage
-        ? resolveResourceBudgets(configuredPolicy.budgets, request.resourceBudgetOverrides)
-        : disabledResourceBudgets();
+    const processBudgets = measureProcessUsage
+        ? resolveProcessBudgets(configuredPolicy.budgets, request.processBudgetOverrides)
+        : disabledProcessBudgets();
 
-    assertResourceBudgetOverridesAllowed(measureResourceUsage, request.resourceBudgetOverrides);
+    assertProcessBudgetOverridesAllowed(measureProcessUsage, request.processBudgetOverrides);
 
     return {
-        budgets: resourceBudgets,
-        measure: measureResourceUsage,
-        samplingIntervalMilliseconds: resourceUsageSamplingIntervalMilliseconds
+        budgets: processBudgets,
+        measure: measureProcessUsage,
+        samplingIntervalMilliseconds: processUsageSamplingIntervalMilliseconds
     };
 }
 

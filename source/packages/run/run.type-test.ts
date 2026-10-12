@@ -60,8 +60,8 @@ import {
     type ProjectMicrotestExecution,
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
-    type ResourceBudgets,
-    type ResourceUsagePolicy,
+    type ProcessBudgets,
+    type ProcessUsagePolicy,
     type ResourceOwnershipPlan,
     type RunRequest,
     type Scheduling,
@@ -100,12 +100,12 @@ type RunRequestKeys = readonly [
     'coverage',
     'debug',
     'execution',
-    'measureResourceUsage',
+    'measureProcessUsage',
     'order',
     'paths',
     'profile',
-    'resourceBudgetOverrides',
-    'resourceUsageSamplingIntervalMilliseconds',
+    'processBudgetOverrides',
+    'processUsageSamplingIntervalMilliseconds',
     'seed',
     'selection',
     'shard',
@@ -247,9 +247,9 @@ describe('@overkill-dev/run', function () {
         expect<keyof RunRequest>().type.toBe<ExpectedRunRequestKey>();
         expect<RunRequest['capabilityRestrictions']['mode']>().type.toBe<'disabled' | 'enabled'>();
         expect<RunRequest['execution']['mode']>().type.toBe<'profile-default' | 'serial'>();
-        expect<RunRequest['measureResourceUsage']>().type.toBe<boolean | null>();
+        expect<RunRequest['measureProcessUsage']>().type.toBe<boolean | null>();
         expect<RunRequest['profile']>().type.toBe<string>();
-        expect<RunRequest['resourceBudgetOverrides']>().type.toBe<ResourceBudgets | null>();
+        expect<RunRequest['processBudgetOverrides']>().type.toBe<ProcessBudgets | null>();
         expect<RunRequest['timingCollection']>().type.toBe<TimingCollectionOverride>();
         expect<Pick<RunRequest, 'capture' | 'coverage' | 'order'>>().type.toBe<{
             readonly capture: 'buffered' | 'live';
@@ -268,7 +268,7 @@ describe('@overkill-dev/run', function () {
         expect<RunExecutionFacts['processModel']>().type.toBe<ProcessModel>();
         expect<RunExecutionFacts['placementPlan']>().type.toBe<PlacementPlan | null>();
         expect<RunExecutionFacts['profile']>().type.toBe<string>();
-        expect<RunExecutionFacts['resourceUsagePolicy']>().type.toBe<ResourceUsagePolicy>();
+        expect<RunExecutionFacts['processUsagePolicy']>().type.toBe<ProcessUsagePolicy>();
         expect<RunExecutionFacts['timingCollection']>().type.toBe<TimingCollectionMode>();
     });
 
@@ -446,8 +446,8 @@ describe('@overkill-dev/run config', function () {
         expect<ProjectTimingProfilePolicy>().type.toBe<{ readonly collection: TimingCollectionMode; }>();
     });
 
-    test('exposes run resource budget and resolution error types', function () {
-        expect<keyof ResourceBudgets>().type.toBe<
+    test('exposes run process budget and resolution error types', function () {
+        expect<keyof ProcessBudgets>().type.toBe<
             'activeResourceCount' | 'javaScriptEngineHeapBytes' | 'residentSetBytes' | 'residentSetGrowthBytesPerSecond'
         >();
         expect(new RunResolutionError('Unsupported.', undefined, 'unsupported-request')).type.toBe<
@@ -507,7 +507,7 @@ describe('@overkill-dev/run config', function () {
             };
             readonly files: ProfileFiles;
             readonly reporters: null;
-            readonly resourceUsage: ResourceUsagePolicy;
+            readonly processUsage: ProcessUsagePolicy;
             readonly testFamily: 'integration';
             readonly timings: TimingProfilePolicy;
             readonly timeouts: RunExecutionFacts['timeoutPolicy'];

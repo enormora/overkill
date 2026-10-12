@@ -168,16 +168,16 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() maps resource exhaustion to exit code 5',
+            title: 'commandLineRunner.runTests() maps process exhaustion to exit code 5',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(memoryReporter, async function runCommand() {
                     return runResultFactory.build({
                         runnerErrors: [
-                            runnerError('Resource budget exceeded.', 'resource-exhaustion')
+                            runnerError('Process budget exceeded.', 'process-exhaustion')
                         ],
-                        summary: { defined: 1, discovered: 1, planned: 1, resourceExhausted: 1 }
+                        summary: { defined: 1, discovered: 1, planned: 1, processExhausted: 1 }
                     });
                 }, []);
 
@@ -188,7 +188,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'commandLineRunner.runTests() maps resource exhaustion before generic runner errors',
+            title: 'commandLineRunner.runTests() maps process exhaustion before generic runner errors',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
@@ -196,9 +196,9 @@ export const testNode = createOverkillSuite({
                     return runResultFactory.build({
                         runnerErrors: [
                             runnerError('Loader failed.', 'loader'),
-                            runnerError('Resource budget exceeded.', 'resource-exhaustion')
+                            runnerError('Process budget exceeded.', 'process-exhaustion')
                         ],
-                        summary: { defined: 1, discovered: 1, planned: 1, resourceExhausted: 1 }
+                        summary: { defined: 1, discovered: 1, planned: 1, processExhausted: 1 }
                     });
                 }, []);
 

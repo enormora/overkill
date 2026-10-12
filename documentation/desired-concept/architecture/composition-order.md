@@ -85,10 +85,10 @@ the body. Outermost first:
 2. **Retry loop** (integration profiles only). Wraps the entire
    per-attempt sequence below. Decides after each attempt whether
    to run again. See [Failure Artifacts § Retry Interaction](../authoring/failure-artifacts.md#retry-interaction).
-3. **Resource budget supervision.** In supervised process-boundary
+3. **Process budget supervision.** In supervised process-boundary
    profiles, the parent records the active case and enforces Node-first
-   resource budgets. In single-process profiles, this layer is diagnostic
-   only. See [Runtime Behavior § Resource Budgets](./runtime-behavior.md#resource-budgets).
+   process budgets. In single-process profiles, this layer is diagnostic
+   only. See [Runtime Behavior § Process Budgets](./runtime-behavior.md#process-budgets).
 4. **Timeout watchdog.** Per-attempt soft and (where supported)
    hard deadlines. Sets up the `AbortSignal` and the optional
    watchdog timer. See [Runtime Behavior § Timeouts](./runtime-behavior.md#timeouts).
@@ -107,10 +107,10 @@ Unwinding happens in reverse, innermost first:
    resources are disposed. A new attempt starts only after both succeed.
 2. Debug recording ends; `TestDebugArtifact` is written.
 3. Timeout watchdog cancels its timer.
-4. Resource budget supervision records final samples or cancels
+4. Process budget supervision records final samples or cancels
    diagnostic tracking.
 5. Retry loop inspects the result. On retry, jumps back to step 3
-   above (new resource tracking, timeout, debug recording, and attempt).
+   above (new process usage tracking, timeout, debug recording, and attempt).
    On final-result, falls through.
 6. Worker boundary remains; the runner moves to the next test in
    this worker.
@@ -205,8 +205,8 @@ the order isn't explicit:
 - **Timeout fires per attempt, not per test.** A 5 s soft timeout
   with `maxAttempts: 3` grants three 5 s soft-timeout windows. This is
   not a 15 s wall-clock cap: cooperative completion and cleanup can take longer.
-- **Resource budgets are outside timeout.** A resource breach is
-  reported as `resource-exhausted`, not as a timeout, even if the
+- **Process budgets are outside timeout.** A process budget breach is
+  reported as `process-exhausted`, not as a timeout, even if the
   same test would later exceed its time budget.
 - **Capabilities can't be raised by annotations.** A child test
   cannot grant itself `fs-write` if its parent suite excluded it.

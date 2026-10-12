@@ -35,7 +35,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
         availableParallelism: 2,
-        createResourceUsageTracker: testOnlyDependency,
+        createProcessUsageTracker: testOnlyDependency,
         createSeed() {
             return fixtureSeed;
         },

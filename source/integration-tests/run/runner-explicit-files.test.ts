@@ -219,7 +219,7 @@ export const testNode = createSuite({
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });
@@ -244,7 +244,7 @@ export const testNode = createSuite({
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });
@@ -270,7 +270,7 @@ export const testNode = createSuite({
                     inconclusive: 0,
                     passed: 0,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 1
                 });
@@ -315,7 +315,7 @@ export const testNode = createSuite({
                     inconclusive: 0,
                     passed: 2,
                     planned: 2,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });

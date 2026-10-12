@@ -113,7 +113,7 @@ function assertPassingSummary(scope: OverkillScope, summary: unknown): void {
         inconclusive: 0,
         passed: 1,
         planned: 1,
-        resourceExhausted: 0,
+        processExhausted: 0,
         runtimePolicy: 0,
         skipped: 0
     });
@@ -171,7 +171,7 @@ function assertTableSummary(scope: OverkillScope, summary: unknown): void {
         inconclusive: 0,
         passed: 2,
         planned: 2,
-        resourceExhausted: 0,
+        processExhausted: 0,
         runtimePolicy: 0,
         skipped: 0
     });

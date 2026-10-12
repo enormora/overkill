@@ -80,8 +80,8 @@ function assertRuntimePolicyFakes(scope: OverkillScope, dependencies: FixtureDep
 }
 
 async function assertUnsupportedFakes(scope: OverkillScope, dependencies: FixtureDependencies): Promise<void> {
-    scope.assert.throws(function createResourceUsageTracker() {
-        dependencies.createResourceUsageTracker({ samplingIntervalMilliseconds: 1 });
+    scope.assert.throws(function createProcessUsageTracker() {
+        dependencies.createProcessUsageTracker({ samplingIntervalMilliseconds: 1 });
     }, { message: 'Test fixture dependency is not configured.' });
     await scope.assert.rejects(async function startSupervisedChild() {
         await dependencies.startSupervisedChild({

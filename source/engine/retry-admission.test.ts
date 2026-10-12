@@ -4,8 +4,8 @@ import {
     defineReporter,
     type ReporterEvent,
     type DefinedReporter,
-    type ResourceUsageSnapshot,
-    type RunResourceUsageTracker,
+    type ProcessUsageSnapshot,
+    type RunProcessUsageTracker,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
@@ -18,7 +18,7 @@ const schedulingCases = [ { mode: 'serial-in-process' }, {
 
 type ResourceLimitProbe = {
     readonly emit: () => void;
-    readonly tracker: RunResourceUsageTracker;
+    readonly tracker: RunProcessUsageTracker;
 };
 
 function resourceLimitProbe(sampleAtStart: boolean): ResourceLimitProbe {
@@ -29,7 +29,7 @@ function resourceLimitProbe(sampleAtStart: boolean): ResourceLimitProbe {
         javaScriptEngineHeapBytes: 0,
         residentSetBytes: 2
     };
-    let recordSample: (sample: ResourceUsageSnapshot) => void = function () {
+    let recordSample: (sample: ProcessUsageSnapshot) => void = function () {
         return undefined;
     };
     return {
@@ -187,7 +187,7 @@ export const testNode = createSuite({
                 function resourceTrigger(trigger) {
                     return createTestCase({
                         ...metadata,
-                        title: `resource exhaustion at ${trigger} stops retries under ${execution.mode}`,
+                        title: `process exhaustion at ${trigger} stops retries under ${execution.mode}`,
                         async body(scope: TestScope) {
                             const engine = createTestEngine();
                             const probe = resourceLimitProbe(trigger === 'tracking-start');
@@ -212,8 +212,8 @@ export const testNode = createSuite({
                                 retryPolicy: { maxAttempts: 3 },
                                 runFacts: {},
                                 startedAt: '1970-01-01T00:00:00.000Z',
-                                resourceUsageTracker: probe.tracker,
-                                resourceBudgets: {
+                                processUsageTracker: probe.tracker,
+                                processBudgets: {
                                     activeResourceCount: null,
                                     javaScriptEngineHeapBytes: null,
                                     residentSetBytes: 1,
@@ -222,7 +222,7 @@ export const testNode = createSuite({
                             });
                             scope.assert.equal(runs, [ 'initial-start', 'tracking-start' ].includes(trigger) ? 0 : 1);
                             scope.assert.equal(result.status, 'failed');
-                            scope.assert.equal(result.runnerErrors[0]?.subtype, 'resource-exhaustion');
+                            scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
                             scope.assert.equal(
                                 result
                                     .perTest

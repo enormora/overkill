@@ -1,23 +1,23 @@
-import type { ResourceUsageSnapshot } from './resource-usage.ts';
-import { observedGrowthBytesPerSecond } from './resource-usage-growth.ts';
+import type { ProcessUsageSnapshot } from './process-usage.ts';
+import { observedGrowthBytesPerSecond } from './process-usage-growth.ts';
 
-export type ExecuteResourceBudgets = {
+export type ExecuteProcessBudgets = {
     readonly activeResourceCount: number | null;
     readonly javaScriptEngineHeapBytes: number | null;
     readonly residentSetBytes: number | null;
     readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
-type ResourceBudgetMetric = keyof ExecuteResourceBudgets;
+type ProcessBudgetMetric = keyof ExecuteProcessBudgets;
 
-export type ResourceBudgetBreach = {
+export type ProcessBudgetBreach = {
     readonly budget: number;
-    readonly metric: ResourceBudgetMetric;
+    readonly metric: ProcessBudgetMetric;
     readonly observed: number;
-    readonly sample: ResourceUsageSnapshot;
+    readonly sample: ProcessUsageSnapshot;
 };
 
-const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
+const processBudgetMetrics: readonly ProcessBudgetMetric[] = [
     'activeResourceCount',
     'javaScriptEngineHeapBytes',
     'residentSetBytes',
@@ -25,9 +25,9 @@ const resourceBudgetMetrics: readonly ResourceBudgetMetric[] = [
 ];
 
 function observedBudgetValue(
-    metric: ResourceBudgetMetric,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
+    metric: ProcessBudgetMetric,
+    sample: ProcessUsageSnapshot,
+    previousSample: ProcessUsageSnapshot | null
 ): number {
     const observedValues = {
         activeResourceCount: sample.activeResourceCount,
@@ -39,16 +39,16 @@ function observedBudgetValue(
     return observedValues[metric];
 }
 
-export function findResourceBudgetBreach(
-    budgets: ExecuteResourceBudgets | null | undefined,
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
-): ResourceBudgetBreach | null {
+export function findProcessBudgetBreach(
+    budgets: ExecuteProcessBudgets | null | undefined,
+    sample: ProcessUsageSnapshot,
+    previousSample: ProcessUsageSnapshot | null
+): ProcessBudgetBreach | null {
     if (budgets === null || budgets === undefined) {
         return null;
     }
 
-    for (const metric of resourceBudgetMetrics) {
+    for (const metric of processBudgetMetrics) {
         const budget = budgets[metric];
         const observed = observedBudgetValue(metric, sample, previousSample);
 

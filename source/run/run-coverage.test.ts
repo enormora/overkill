@@ -142,7 +142,7 @@ export const testNode = createOverkillSuite({
                     summary: { crashed: 1 }
                 })));
                 scope.assert.false(coverageExecutionCompleted(runResultFactory.build({
-                    summary: { resourceExhausted: 1 }
+                    summary: { processExhausted: 1 }
                 })));
                 scope.assert.false(coverageExecutionCompleted(runResultFactory.build({
                     runnerErrors: [ { subtype: 'crash' } ]

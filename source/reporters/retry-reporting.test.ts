@@ -61,7 +61,7 @@ export const testNode = createSuite({
     ...metadata,
     title: 'source/reporters/retry-reporting.test.ts',
     children: [
-        ...([ 'resource-exhausted', 'crashed', 'runtime-policy' ] as const).map(function terminalRetry(verdict) {
+        ...([ 'process-exhausted', 'crashed', 'runtime-policy' ] as const).map(function terminalRetry(verdict) {
             return createTestCase({
                 ...metadata,
                 title: `dot reporter renders terminal retry ${verdict}`,

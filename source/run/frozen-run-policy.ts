@@ -9,7 +9,7 @@ import type {
 import { frozenMicrotestPolicySchema } from './frozen-run-policy-schema.ts';
 import { freezeValue } from './run-support.ts';
 import { validateRunInput } from './run-validation.ts';
-import { resolveResourceUsagePolicy } from './run-profile-facts.ts';
+import { resolveProcessUsagePolicy } from './run-profile-facts.ts';
 import { validateFrozenPolicyOrigins } from './frozen-policy-origins.ts';
 
 export function intersectSelection(baseline: RunSelection, selected: RunSelection): RunSelection {
@@ -53,7 +53,7 @@ export function parseFrozenMicrotestPolicy(value: unknown): FrozenMicrotestPolic
     validateFrozenPolicyOrigins(policy);
     const command = policyBaselineCommand(policy);
     validateRunInput(command);
-    resolveResourceUsagePolicy(command.request, { ...policy.profile, reporters: null });
+    resolveProcessUsagePolicy(command.request, { ...policy.profile, reporters: null });
     normalizeProfileFiles(policy.profile.files ?? undefined);
     return freezeValue(policy);
 }

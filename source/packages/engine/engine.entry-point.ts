@@ -336,7 +336,7 @@ export type {
     TestFailure,
     TestOutcome
 } from '../../engine/run-result.ts';
-export type { ResourceUsageSnapshot, RunResourceUsage, RunResourceUsageTracker } from '../../engine/resource-usage.ts';
+export type { ProcessUsageSnapshot, RunProcessUsage, RunProcessUsageTracker } from '../../engine/process-usage.ts';
 export type {
     CapturedOutputArtifact,
     CapturedOutputArtifactPayload,

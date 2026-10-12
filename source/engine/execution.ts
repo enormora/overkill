@@ -15,7 +15,7 @@ import {
     type NormalizedExecuteOptions
 } from './execution-options.ts';
 import { appendRunnerErrors, createRunResult, throwWithCleanupErrors } from './execution-result.ts';
-import { executeTestPlanCasesAndMeasureResourceUsage } from './execution-test-plan-resource-usage.ts';
+import { executeTestPlanCasesAndMeasureProcessUsage } from './execution-test-plan-process-usage.ts';
 import {
     createReporterDisposal,
     type ReporterDelivery,
@@ -79,7 +79,7 @@ async function createRunResultBeforeRunEnd(
         reporterDelivery,
         options.runtimePolicy?.takePendingRunErrors() ?? []
     );
-    const { executedTestPlan, resourceUsage } = await executeTestPlanCasesAndMeasureResourceUsage(
+    const { executedTestPlan, processUsage } = await executeTestPlanCasesAndMeasureProcessUsage(
         testPlan,
         options,
         dependencies,
@@ -104,7 +104,7 @@ async function createRunResultBeforeRunEnd(
     return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
         completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
         planStatus: 'planned',
-        resourceUsage,
+        processUsage,
         startedAtMicroseconds,
         testExecutionWallTimeMicroseconds: executedTestPlan.testExecutionWallTimeMicroseconds
     });

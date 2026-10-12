@@ -1,6 +1,6 @@
 import { validateNormalizedConfig } from '../config/validation.ts';
 import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
-import type { ProfileConfig, ResourceBudgets } from '../config/types.ts';
+import type { ProfileConfig, ProcessBudgets } from '../config/types.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
@@ -37,37 +37,37 @@ function validatePositiveSafeInteger(value: number | null, label: string): void 
     }
 }
 
-function validateResourceBudgets(resourceBudgets: ResourceBudgets): void {
-    validatePositiveSafeInteger(resourceBudgets.activeResourceCount, 'Active resource count budget');
-    validatePositiveSafeInteger(resourceBudgets.javaScriptEngineHeapBytes, 'JavaScript engine heap budget');
-    validatePositiveSafeInteger(resourceBudgets.residentSetBytes, 'Resident set budget');
-    validatePositiveSafeInteger(resourceBudgets.residentSetGrowthBytesPerSecond, 'Resident set growth budget');
+function validateProcessBudgets(processBudgets: ProcessBudgets): void {
+    validatePositiveSafeInteger(processBudgets.activeResourceCount, 'Active resource count budget');
+    validatePositiveSafeInteger(processBudgets.javaScriptEngineHeapBytes, 'JavaScript engine heap budget');
+    validatePositiveSafeInteger(processBudgets.residentSetBytes, 'Resident set budget');
+    validatePositiveSafeInteger(processBudgets.residentSetGrowthBytesPerSecond, 'Resident set growth budget');
 }
 
 function validateSamplingInterval(value: number | null): void {
-    validatePositiveSafeInteger(value, 'Resource usage sampling interval');
+    validatePositiveSafeInteger(value, 'Process usage sampling interval');
 }
 
-function hasResourceBudgets(resourceBudgets: ResourceBudgets): boolean {
-    return resourceBudgets.activeResourceCount !== null ||
-        resourceBudgets.javaScriptEngineHeapBytes !== null ||
-        resourceBudgets.residentSetBytes !== null ||
-        resourceBudgets.residentSetGrowthBytesPerSecond !== null;
+function hasProcessBudgets(processBudgets: ProcessBudgets): boolean {
+    return processBudgets.activeResourceCount !== null ||
+        processBudgets.javaScriptEngineHeapBytes !== null ||
+        processBudgets.residentSetBytes !== null ||
+        processBudgets.residentSetGrowthBytesPerSecond !== null;
 }
 
-function validateRunResourceUsageRequest(request: RunRequest): void {
-    if (request.resourceBudgetOverrides !== null) {
-        validateResourceBudgets(request.resourceBudgetOverrides);
+function validateRunProcessUsageRequest(request: RunRequest): void {
+    if (request.processBudgetOverrides !== null) {
+        validateProcessBudgets(request.processBudgetOverrides);
     }
 
-    validateSamplingInterval(request.resourceUsageSamplingIntervalMilliseconds);
+    validateSamplingInterval(request.processUsageSamplingIntervalMilliseconds);
 
     if (
-        request.measureResourceUsage === false &&
-        request.resourceBudgetOverrides !== null &&
-        hasResourceBudgets(request.resourceBudgetOverrides)
+        request.measureProcessUsage === false &&
+        request.processBudgetOverrides !== null &&
+        hasProcessBudgets(request.processBudgetOverrides)
     ) {
-        invalidRequest('Resource budget overrides require resource usage measurement.');
+        invalidRequest('Process budget overrides require process usage measurement.');
     }
 }
 
@@ -114,7 +114,7 @@ function validateRunRequest(request: RunRequest): void {
     validateRunSelection(request);
     validateTimingCollection(request);
     validateExecution(request);
-    validateRunResourceUsageRequest(request);
+    validateRunProcessUsageRequest(request);
 }
 
 function validateRunCommand(command: RunCommand): void {

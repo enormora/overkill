@@ -166,7 +166,7 @@ export const testNode = createOverkillSuite({
                     inconclusive: 0,
                     passed: 0,
                     planned: 0,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });

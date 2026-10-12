@@ -31,7 +31,7 @@ function createAttachmentRecordCheckpoint(
         const partial = createRunResultFromCollectedPlan(plan, [], [], {
             completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
             planStatus: 'planned',
-            resourceUsage: null,
+            processUsage: null,
             startedAtMicroseconds: startedAt,
             testExecutionWallTimeMicroseconds: 0
         });

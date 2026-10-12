@@ -7,13 +7,13 @@ import {
     type RunResult,
     type RunnerError
 } from './run-result.ts';
-import type { RunResourceUsage } from './resource-usage.ts';
+import type { RunProcessUsage } from './process-usage.ts';
 import { summaryRunTimings } from './run-timings.ts';
 import type { TestPlan } from './test-plan.ts';
 
 type RunResultTiming = {
     readonly planStatus: RunPlanStatus;
-    readonly resourceUsage: RunResourceUsage | null;
+    readonly processUsage: RunProcessUsage | null;
     readonly startedAtMicroseconds: number;
     readonly testExecutionWallTimeMicroseconds: number;
     readonly completedAtMicroseconds: number;
@@ -66,8 +66,8 @@ function wasSkipped(testResult: PerTestResult): boolean {
     return testResult.verdict === 'skip';
 }
 
-function resourceExhausted(testResult: PerTestResult): boolean {
-    return testResult.verdict === 'resource-exhausted';
+function processExhausted(testResult: PerTestResult): boolean {
+    return testResult.verdict === 'process-exhausted';
 }
 
 function crashed(testResult: PerTestResult): boolean {
@@ -87,7 +87,7 @@ function countOutcomes(testPlan: TestPlan, perTest: readonly PerTestResult[]): R
         inconclusive: perTest.filter(isInconclusive).length,
         passed: perTest.filter(hasPassed).length,
         planned: testPlan.cases.length,
-        resourceExhausted: perTest.filter(resourceExhausted).length,
+        processExhausted: perTest.filter(processExhausted).length,
         runtimePolicy: perTest.filter(runtimePolicy).length,
         skipped: perTest.filter(wasSkipped).length
     };
@@ -173,7 +173,7 @@ export function createRunResult(
         orphans: testPlan.orphans,
         perTest,
         planStatus: timing.planStatus,
-        resourceUsage: timing.resourceUsage,
+        processUsage: timing.processUsage,
         runnerErrors: reporterErrors,
         status: runStatusFromPlan(summary, reporterErrors, timing.planStatus),
         summary,

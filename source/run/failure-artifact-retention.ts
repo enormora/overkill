@@ -101,7 +101,7 @@ export function createFailureArtifactRetention(): FailureArtifactRetention {
         settleResult(result) {
             state.failedRun.write(result.status === 'failed');
             state.interruptedRun.write(result.runnerErrors.some(function ownerCrash(error) {
-                return error.subtype === 'crash' || error.subtype === 'resource-exhaustion';
+                return error.subtype === 'crash' || error.subtype === 'process-exhaustion';
             }));
             for (const entry of result.perTest) {
                 for (const attempt of entry.attempts) {

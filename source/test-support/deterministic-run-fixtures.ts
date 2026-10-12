@@ -1,5 +1,5 @@
 import type {
-    RunResourceUsage,
+    RunProcessUsage,
     RunResult,
     TestNode,
     TestScope
@@ -270,7 +270,7 @@ export function deterministicCollectedRunPlan(
 export function createDeterministicRunResult(
     collectedPlan: CollectedRunPlan,
     work: readonly WorkId[],
-    resourceUsage: RunResourceUsage
+    processUsage: RunProcessUsage
 ): RunResult {
     return createRunResultFromCollectedPlan(
         collectedPlan,
@@ -295,7 +295,7 @@ export function createDeterministicRunResult(
         {
             completedAtMicroseconds: 0,
             planStatus: 'planned',
-            resourceUsage,
+            processUsage,
             startedAtMicroseconds: 0,
             testExecutionWallTimeMicroseconds: 0
         }

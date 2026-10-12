@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { RunResourceUsage, RunResourceUsageTracker, ResourceUsageSnapshot } from '../engine/resource-usage.ts';
+import type { RunProcessUsage, RunProcessUsageTracker, ProcessUsageSnapshot } from '../engine/process-usage.ts';
 import { observeHostTransport, sendHostCommand } from './worker-pool-host-transport.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import {
@@ -10,7 +10,7 @@ import {
     type WorkerPoolHostOutputSink,
     type WorkerPoolHostProcessStarter
 } from './run-orchestrator-dependencies.ts';
-import { createResourceUsageFromSamples } from './resource-usage.ts';
+import { createProcessUsageFromSamples } from './process-usage.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
 import {
     deserializeError,
@@ -38,7 +38,7 @@ type PendingHostTask = {
     readonly resolve: (value: unknown) => void;
 };
 
-type HostResourceUsageTracker = RunResourceUsageTracker & {
+type HostProcessUsageTracker = RunProcessUsageTracker & {
     readonly waitForStart: () => Promise<void>;
 };
 
@@ -67,17 +67,17 @@ type PendingHostTasks = {
     readonly values: () => IterableIterator<PendingHostTask>;
 };
 
-type ResourceUsageSamples = {
+type ProcessUsageSamples = {
     readonly clear: () => void;
     readonly hasAny: () => boolean;
-    readonly push: (sample: ResourceUsageSnapshot) => void;
-    readonly read: () => readonly ResourceUsageSnapshot[];
+    readonly push: (sample: ProcessUsageSnapshot) => void;
+    readonly read: () => readonly ProcessUsageSnapshot[];
 };
 
-type HostResourceTrackingState = {
-    readonly sampleListener: StoredValue<((sample: ResourceUsageSnapshot) => void) | null>;
+type HostProcessUsageTrackingState = {
+    readonly sampleListener: StoredValue<((sample: ProcessUsageSnapshot) => void) | null>;
     readonly resolveFirstSample: StoredValue<(() => void) | null>;
-    readonly samples: ResourceUsageSamples;
+    readonly samples: ProcessUsageSamples;
     readonly start: StoredValue<Promise<void> | null>;
 };
 
@@ -85,11 +85,11 @@ type HostedWorkerPoolState = {
     readonly hostRunnerErrors: HostRunnerErrors;
     readonly outputSink: StoredValue<WorkerPoolHostOutputSink | null>;
     readonly pendingTasks: PendingHostTasks;
-    readonly resourceUsage: HostResourceTrackingState;
+    readonly processUsage: HostProcessUsageTrackingState;
     readonly runtime: StoredValue<HostRuntime | null>;
 };
 
-type ResourceUsageTrackerCreationOptions = {
+type ProcessUsageTrackerCreationOptions = {
     readonly samplingIntervalMilliseconds: number;
 };
 
@@ -154,8 +154,8 @@ function createPendingHostTasks(): PendingHostTasks {
     };
 }
 
-function createResourceUsageSamples(): ResourceUsageSamples {
-    const samples: ResourceUsageSnapshot[] = [];
+function createProcessUsageSamples(): ProcessUsageSamples {
+    const samples: ProcessUsageSnapshot[] = [];
 
     return {
         clear() {
@@ -178,10 +178,10 @@ function createHostedWorkerPoolState(): HostedWorkerPoolState {
         hostRunnerErrors: createHostRunnerErrors(),
         outputSink: createStoredValue<WorkerPoolHostOutputSink | null>(null),
         pendingTasks: createPendingHostTasks(),
-        resourceUsage: {
-            sampleListener: createStoredValue<((sample: ResourceUsageSnapshot) => void) | null>(null),
+        processUsage: {
+            sampleListener: createStoredValue<((sample: ProcessUsageSnapshot) => void) | null>(null),
             resolveFirstSample: createStoredValue<(() => void) | null>(null),
-            samples: createResourceUsageSamples(),
+            samples: createProcessUsageSamples(),
             start: createStoredValue<Promise<void> | null>(null)
         },
         runtime: createStoredValue<HostRuntime | null>(null)
@@ -194,15 +194,15 @@ function sendCommand(child: SupervisedChildProcess | undefined, command: WorkerP
     }
 }
 
-function createResourceUsage(samples: readonly ResourceUsageSnapshot[]): RunResourceUsage {
+function createProcessUsage(samples: readonly ProcessUsageSnapshot[]): RunProcessUsage {
     const first = samples[0];
     const last = samples.at(-1);
 
     if (first === undefined || last === undefined) {
-        throw new Error('Hosted worker-pool resource tracking did not receive samples.');
+        throw new Error('Hosted worker-pool process usage tracking did not receive samples.');
     }
 
-    return createResourceUsageFromSamples(first, last, samples);
+    return createProcessUsageFromSamples(first, last, samples);
 }
 
 function observeChildOutput(
@@ -256,14 +256,14 @@ function handleTaskMessage(
         .postMessage(deserializeWorkerPoolMessage(message.message), []);
 }
 
-function handleResourceSample(
+function handleProcessUsageSample(
     state: HostedWorkerPoolState,
-    message: Extract<WorkerPoolHostMessage, { readonly kind: 'resource-sample'; }>
+    message: Extract<WorkerPoolHostMessage, { readonly kind: 'process-usage-sample'; }>
 ): void {
-    state.resourceUsage.samples.push(message.sample);
-    state.resourceUsage.sampleListener.read()?.(message.sample);
-    state.resourceUsage.resolveFirstSample.read()?.();
-    state.resourceUsage.resolveFirstSample.write(null);
+    state.processUsage.samples.push(message.sample);
+    state.processUsage.sampleListener.read()?.(message.sample);
+    state.processUsage.resolveFirstSample.read()?.();
+    state.processUsage.resolveFirstSample.write(null);
 }
 
 function handleHostRunnerError(
@@ -274,8 +274,8 @@ function handleHostRunnerError(
 }
 
 function handleHostMessage(state: HostedWorkerPoolState, message: WorkerPoolHostMessage): void {
-    if (message.kind === 'resource-sample') {
-        handleResourceSample(state, message);
+    if (message.kind === 'process-usage-sample') {
+        handleProcessUsageSample(state, message);
     } else if (message.kind === 'runner-error') {
         handleHostRunnerError(state, message);
     } else if (message.kind === 'task-error') {
@@ -301,8 +301,8 @@ function handleRuntimeFailure(
 
     context.configured.reject(error);
     rejectPendingTasks(context.state, error);
-    context.state.resourceUsage.resolveFirstSample.read()?.();
-    context.state.resourceUsage.resolveFirstSample.write(null);
+    context.state.processUsage.resolveFirstSample.read()?.();
+    context.state.processUsage.resolveFirstSample.write(null);
 }
 
 function recordHostStartup(
@@ -404,57 +404,57 @@ async function activeRuntime(input: HostedWorkerPoolInput, state: HostedWorkerPo
     return currentRuntime;
 }
 
-async function requestHostResourceTracking(
+async function requestHostProcessUsageTracking(
     input: HostedWorkerPoolInput,
     state: HostedWorkerPoolState,
-    options: ResourceUsageTrackerCreationOptions
+    options: ProcessUsageTrackerCreationOptions
 ): Promise<void> {
     const hostRuntime = await activeRuntime(input, state);
 
     sendCommand(hostRuntime.child, {
-        kind: 'start-resource-tracking',
+        kind: 'start-process-usage-tracking',
         samplingIntervalMilliseconds: options.samplingIntervalMilliseconds
     });
 }
 
-async function waitForHostResourceTrackingStart(
+async function waitForHostProcessUsageTrackingStart(
     input: HostedWorkerPoolInput,
     state: HostedWorkerPoolState,
-    options: ResourceUsageTrackerCreationOptions,
+    options: ProcessUsageTrackerCreationOptions,
     firstSample: Promise<void>
 ): Promise<void> {
-    await requestHostResourceTracking(input, state, options);
+    await requestHostProcessUsageTracking(input, state, options);
     await firstSample;
 }
 
 function createTracker(
     input: HostedWorkerPoolInput,
     state: HostedWorkerPoolState,
-    options: ResourceUsageTrackerCreationOptions
-): HostResourceUsageTracker {
+    options: ProcessUsageTrackerCreationOptions
+): HostProcessUsageTracker {
     return {
         finish() {
-            state.resourceUsage.sampleListener.write(null);
-            state.resourceUsage.start.write(null);
-            sendCommand(state.runtime.read()?.child, { kind: 'finish-resource-tracking' });
+            state.processUsage.sampleListener.write(null);
+            state.processUsage.start.write(null);
+            sendCommand(state.runtime.read()?.child, { kind: 'finish-process-usage-tracking' });
 
-            return createResourceUsage(state.resourceUsage.samples.read());
+            return createProcessUsage(state.processUsage.samples.read());
         },
         start(onSample) {
-            state.resourceUsage.samples.clear();
-            state.resourceUsage.sampleListener.write(onSample ?? null);
+            state.processUsage.samples.clear();
+            state.processUsage.sampleListener.write(onSample ?? null);
             const firstSample = new Promise<void>(function waitForFirstSample(resolve) {
-                state.resourceUsage.resolveFirstSample.write(resolve);
+                state.processUsage.resolveFirstSample.write(resolve);
             });
 
-            state.resourceUsage.start.write(waitForHostResourceTrackingStart(input, state, options, firstSample));
+            state.processUsage.start.write(waitForHostProcessUsageTrackingStart(input, state, options, firstSample));
         },
         async waitForStart() {
-            if (state.resourceUsage.samples.hasAny()) {
+            if (state.processUsage.samples.hasAny()) {
                 return;
             }
 
-            await state.resourceUsage.start.read();
+            await state.processUsage.start.read();
         }
     };
 }
@@ -513,7 +513,7 @@ export function createHostedWorkerPool(input: HostedWorkerPoolInput): CreatedWor
     const state = createHostedWorkerPoolState();
 
     return {
-        createResourceUsageTracker(options) {
+        createProcessUsageTracker(options) {
             return createTracker(input, state, options);
         },
         async destroy() {

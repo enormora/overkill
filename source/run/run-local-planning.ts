@@ -76,7 +76,7 @@ export function createEmptySelectionResult(
         {
             completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
             planStatus: 'empty-selection',
-            resourceUsage: null,
+            processUsage: null,
             startedAtMicroseconds,
             testExecutionWallTimeMicroseconds: 0
         }

@@ -1,6 +1,6 @@
 import type {
     ReporterEvent,
-    ResourceUsageSnapshot,
+    ProcessUsageSnapshot,
     RunResult,
     RunnerError
 } from './run-engine-primitives.ts';
@@ -25,7 +25,7 @@ import {
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies,
-    WorkerPoolResourceUsageTracker,
+    WorkerPoolProcessUsageTracker,
     WorkerPoolCreationOptions
 } from './run-orchestrator-dependencies.ts';
 import { createReporterDelivery, createReporterEventQueue, type ReporterEventQueue } from './supervised-run-runtime.ts';
@@ -112,10 +112,10 @@ export type WorkerPoolRunRuntime = {
     readonly destroyPool: boolean;
     readonly finalizeResult: (completion: WorkerPoolRunCompletion) => Promise<RunResult>;
     readonly pool: CreatedWorkerPool;
-    readonly poolResourceUsageTracker: WorkerPoolResourceUsageTracker | null;
+    readonly poolProcessUsageTracker: WorkerPoolProcessUsageTracker | null;
     readonly placementTrace: PlacementTraceRecorder;
     readonly placementTraceEntries: readonly PlacementTraceEntry[];
-    readonly previousPoolSample: StoredRunValue<ResourceUsageSnapshot | null>;
+    readonly previousPoolSample: StoredRunValue<ProcessUsageSnapshot | null>;
     readonly reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>;
     readonly reporterEvents: ReporterEventQueue;
     readonly resolvedRun: ResolvedRun;
@@ -442,23 +442,23 @@ function createExecutionPool(input: WorkerPoolRuntimeInput, placementPlan: Place
     return createLaneExecutionPool(input, execution, placementPlan);
 }
 
-function createPoolResourceUsageTracker(
+function createPoolProcessUsageTracker(
     pool: TinypoolInstance,
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies
-): WorkerPoolResourceUsageTracker | null {
-    if (!resolvedRun.facts.execution.resourceUsagePolicy.measure) {
+): WorkerPoolProcessUsageTracker | null {
+    if (!resolvedRun.facts.execution.processUsagePolicy.measure) {
         return null;
     }
 
-    if (pool.createResourceUsageTracker !== undefined) {
-        return pool.createResourceUsageTracker({
-            samplingIntervalMilliseconds: resolvedRun.facts.execution.resourceUsagePolicy.samplingIntervalMilliseconds
+    if (pool.createProcessUsageTracker !== undefined) {
+        return pool.createProcessUsageTracker({
+            samplingIntervalMilliseconds: resolvedRun.facts.execution.processUsagePolicy.samplingIntervalMilliseconds
         });
     }
 
-    return dependencies.createResourceUsageTracker({
-        samplingIntervalMilliseconds: resolvedRun.facts.execution.resourceUsagePolicy.samplingIntervalMilliseconds
+    return dependencies.createProcessUsageTracker({
+        samplingIntervalMilliseconds: resolvedRun.facts.execution.processUsagePolicy.samplingIntervalMilliseconds
     });
 }
 export function workerPoolPlacementPlan(resolvedRun: ResolvedRun): PlacementPlan {
@@ -501,12 +501,12 @@ export async function createWorkerPoolRuntime(
         destroyPool,
         finalizeResult,
         pool,
-        poolResourceUsageTracker: createPoolResourceUsageTracker(pool, resolvedRun, dependencies),
+        poolProcessUsageTracker: createPoolProcessUsageTracker(pool, resolvedRun, dependencies),
         placementTrace,
         get placementTraceEntries() {
             return placementTrace.entries();
         },
-        previousPoolSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
+        previousPoolSample: createStoredRunValue<ProcessUsageSnapshot | null>(null),
         reporterDelivery: await createReporterDelivery(resolvedRun, dependencies),
         reporterEvents: createReporterEventQueue(),
         resolvedRun,

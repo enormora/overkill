@@ -241,7 +241,7 @@ type NonEmptyReadonlyArray<Item> = readonly [Item, ...(readonly Item[])];
 
 type TestOutcome = Pass | Fail | Skip | Inconclusive;
 
-type TestVerdict = TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
+type TestVerdict = TestOutcome['kind'] | 'crashed' | 'process-exhausted' | 'runtime-policy';
 
 type Pass = { kind: 'pass'; };
 
@@ -879,7 +879,7 @@ type MicrotestProfileConfig = {
     readonly files: ProfileFiles | null;
     readonly reporters?: ReadonlyArray<Reporter>;
     readonly execution?: MicrotestExecutionConfig;
-    readonly resourceUsage?: ResourceUsagePolicy;
+    readonly processUsage?: ProcessUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
     readonly timings: TimingProfilePolicy | null;
     readonly runRecords: RunRecordProfilePolicy;
@@ -891,7 +891,7 @@ type IntegrationProfileConfig = {
     readonly files: ProfileFiles;
     readonly reporters?: ReadonlyArray<Reporter>;
     readonly execution?: IntegrationExecutionConfig;
-    readonly resourceUsage?: ResourceUsagePolicy;
+    readonly processUsage?: ProcessUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
     readonly timings: TimingProfilePolicy | null;
     readonly runRecords: RunRecordProfilePolicy;
@@ -902,7 +902,7 @@ type PropertyProfileConfig = {
     readonly files: ProfileFiles;
     readonly reporters?: ReadonlyArray<Reporter>;
     readonly execution?: MicrotestExecutionConfig;
-    readonly resourceUsage?: ResourceUsagePolicy;
+    readonly processUsage?: ProcessUsagePolicy;
     readonly timeouts?: TimeoutPolicy;
     readonly timings: TimingProfilePolicy | null;
     readonly runRecords: RunRecordProfilePolicy;
@@ -932,7 +932,7 @@ type BenchmarkProfileConfig = {
     readonly execution: BenchmarkExecution;
     readonly reporters: ReadonlyArray<Reporter> | null;
     readonly attachments: AttachmentLimits;
-    readonly resourceUsage: ResourceUsagePolicy;
+    readonly processUsage: ProcessUsagePolicy;
     readonly timeouts: TimeoutPolicy;
     readonly timings: TimingProfilePolicy;
 };
@@ -1023,9 +1023,9 @@ type WorkGroup = {
     readonly workerLifecycle: 'profile-default' | 'reuse' | 'fresh-worker-per-unit';
 };
 
-type ResourceUsagePolicy = {
+type ProcessUsagePolicy = {
     readonly measure: boolean;
-    readonly budgets: ResourceBudgets;
+    readonly budgets: ProcessBudgets;
     readonly samplingIntervalMilliseconds: number;
 };
 
@@ -1119,9 +1119,9 @@ type RunRequest = {
     readonly execution: RunExecutionRequest;
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly capture: 'buffered' | 'live';
-    readonly measureResourceUsage: boolean | null;
-    readonly resourceBudgetOverrides: ResourceBudgetOverrides | null;
-    readonly resourceUsageSamplingIntervalMilliseconds: number | null;
+    readonly measureProcessUsage: boolean | null;
+    readonly processBudgetOverrides: ProcessBudgetOverrides | null;
+    readonly processUsageSamplingIntervalMilliseconds: number | null;
     readonly timingCollection: TimingCollectionOverride;
     readonly record: boolean;
     readonly seed: { readonly value: bigint | null; };
@@ -1257,7 +1257,7 @@ type RunExecutionBaseFacts = {
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly placementPlan: PlacementPlan | null;
     readonly profile: ProfileName;
-    readonly resourceUsagePolicy: ResourceUsagePolicy;
+    readonly processUsagePolicy: ProcessUsagePolicy;
     readonly retries: IntegrationRetryPolicy | null;
     readonly runRecords: RunRecordPersistenceFacts;
     readonly scheduling: 'serial' | 'concurrent';
@@ -1695,7 +1695,7 @@ type CompactOutcomeCounters = {
     readonly failed: number;
     readonly skipped: number;
     readonly inconclusive: number;
-    readonly resourceExhausted: number;
+    readonly processExhausted: number;
 };
 
 type RunResult = {
@@ -1708,14 +1708,14 @@ type RunResult = {
         failed: number;
         skipped: number;
         inconclusive: number;
-        resourceExhausted: number;
+        processExhausted: number;
     };
     readonly perTest: ReadonlyArray<PerTestResult>;
     readonly bySuite: Record<string, { discovered: number; planned: number; executed: number; }>;
     readonly orphans: ReadonlyArray<{ file: string | null; name: string; kind: 'test' | 'suite' | 'table'; }>;
     readonly runnerErrors: ReadonlyArray<RunnerError>;
     readonly artifacts: ReadonlyArray<ArtifactId | CapturedOutputArtifact | CoverageArtifact>;
-    readonly resourceUsage: RunResourceUsage | null;
+    readonly processUsage: RunProcessUsage | null;
     readonly timings: RunTimings;
 };
 
@@ -1830,7 +1830,7 @@ type RunnerError = {
         | 'merge'
         | 'reporter'
         | 'attribution-drift'
-        | 'resource-exhaustion';
+        | 'process-exhaustion';
     readonly attributedTo: CaseId | null; // null when run-level
     readonly attributedToWork: WorkId | null;
     readonly attributedToAttempt: AttemptId | null;
@@ -1932,16 +1932,16 @@ type RuntimePolicyViolation = {
 ```
 
 ```ts
-type ResourceBudgets = {
+type ProcessBudgets = {
     readonly javaScriptEngineHeapBytes: number | null;
     readonly residentSetBytes: number | null;
     readonly residentSetGrowthBytesPerSecond: number | null;
     readonly activeResourceCount: number | null;
 };
 
-type ResourceBudgetOverrides = ResourceBudgets;
+type ProcessBudgetOverrides = ProcessBudgets;
 
-type ResourceUsageSnapshot = {
+type ProcessUsageSnapshot = {
     readonly capturedAtMicroseconds: number;
     readonly javaScriptEngineHeapBytes: number;
     readonly residentSetBytes: number;
@@ -1949,9 +1949,9 @@ type ResourceUsageSnapshot = {
     readonly activeResourceTypes: ReadonlyArray<string>;
 };
 
-type RunResourceUsage = {
-    readonly start: ResourceUsageSnapshot;
-    readonly end: ResourceUsageSnapshot;
+type RunProcessUsage = {
+    readonly start: ProcessUsageSnapshot;
+    readonly end: ProcessUsageSnapshot;
     readonly peakJavaScriptEngineHeapBytes: number;
     readonly peakResidentSetBytes: number;
     readonly peakResidentSetGrowthBytesPerSecond: number;
@@ -2046,7 +2046,7 @@ type WorkerCrash = {
     readonly nativeAddons?: ReadonlyArray<string>;
 };
 
-type ResourceExhaustion = {
+type ProcessExhaustion = {
     readonly timestamp: string; // ISO 8601
     readonly metric:
         | 'javaScriptEngineHeapBytes'
@@ -2057,7 +2057,7 @@ type ResourceExhaustion = {
     readonly budget: number;
     readonly observed: number;
     readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly processUsageSamplingIntervalMilliseconds: number;
     readonly workerId: string;
     readonly activeCase: CaseId;
 };
@@ -2733,7 +2733,7 @@ Rejection is based on the collected attachment descriptors, not on which
 authoring wrapper or facade attached them.
 
 Canonical: [Package Architecture](../architecture/package-architecture.md) for package ownership and
-[Higher Test Layers](../authoring/higher-test-layers.md) for intended resource usage.
+[Higher Test Layers](../authoring/higher-test-layers.md) for intended process usage.
 
 ## Illustrative Placeholders Without Domain Definitions
 

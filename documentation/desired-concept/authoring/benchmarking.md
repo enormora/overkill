@@ -22,7 +22,7 @@ That includes:
 - throughput
 - latency percentiles
 - responsiveness / jank
-- memory and resource usage
+- memory and process usage
 - startup and cold-load cost
 - bundle-size and artifact-size budgets
 

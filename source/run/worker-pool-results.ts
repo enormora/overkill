@@ -2,7 +2,7 @@ import { workIdentityKey } from '../engine/identity.ts';
 import type {
     PerTestResult,
     RunArtifact,
-    RunResourceUsage,
+    RunProcessUsage,
     RunResult,
     RunnerError
 } from './run-engine-primitives.ts';
@@ -86,8 +86,8 @@ function resultWithArtifacts(result: RunResult, artifacts: readonly RunArtifact[
     };
 }
 
-function finishPoolResourceUsage(runtime: WorkerPoolRunRuntime): RunResourceUsage | null {
-    return runtime.poolResourceUsageTracker?.finish() ?? null;
+function finishPoolProcessUsage(runtime: WorkerPoolRunRuntime): RunProcessUsage | null {
+    return runtime.poolProcessUsageTracker?.finish() ?? null;
 }
 
 function emptyWorkerPoolPlanStatus(resolvedRun: WorkerPoolRunRuntime['resolvedRun']): RunResult['planStatus'] {
@@ -168,7 +168,7 @@ export async function finishWorkerPoolRun(
             {
                 completedAtMicroseconds: Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds),
                 planStatus: 'planned',
-                resourceUsage: finishPoolResourceUsage(runtime),
+                processUsage: finishPoolProcessUsage(runtime),
                 startedAtMicroseconds,
                 testExecutionWallTimeMicroseconds: Math.max(
                     runtime.runState.testExecutionWallTimeMicroseconds(),
@@ -214,7 +214,7 @@ export async function createEmptyWorkerPoolResult(
             {
                 completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
                 planStatus: emptyWorkerPoolPlanStatus(resolvedRun),
-                resourceUsage: null,
+                processUsage: null,
                 startedAtMicroseconds,
                 testExecutionWallTimeMicroseconds: collectionRunState.testExecutionWallTimeMicroseconds()
             }

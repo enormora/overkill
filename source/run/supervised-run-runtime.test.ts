@@ -5,7 +5,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { CaseId } from '../engine/identity.ts';
 import { resolveRootTestAnnotations } from '../engine/test-data.ts';
-import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
+import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import { kill, type SupervisedChildProcess } from './supervised-child-process.ts';
 import { createStoredRunValue, createSupervisedRunState } from './supervised-run-state.ts';
@@ -50,7 +50,7 @@ const caseId: CaseId = {
     params: null,
     suite: []
 };
-const resourceSample: ResourceUsageSnapshot = {
+const processUsageSample: ProcessUsageSnapshot = {
     activeResourceCount: 0,
     activeResourceTypes: [],
     capturedAtMicroseconds: 1000,
@@ -135,7 +135,7 @@ function timeoutRuntime(child: SupervisedChildProcess): TimeoutRuntimeRecord {
             resolvedRun: {
                 facts: {
                     execution: {
-                        resourceUsagePolicy: {
+                        processUsagePolicy: {
                             budgets: {
                                 activeResourceCount: null,
                                 javaScriptEngineHeapBytes: null,
@@ -176,7 +176,7 @@ function collectionRuntime(
         child,
         collected: createStoredRunValue(null),
         command: {
-            resourceBudgets: {
+            processBudgets: {
                 activeResourceCount,
                 javaScriptEngineHeapBytes: null,
                 residentSetBytes: null,
@@ -312,38 +312,38 @@ export const testNode = createOverkillSuite({
                     null
                 );
 
-                handleCollectionSample(resourceSample, terminal);
-                handleCollectionSample(resourceSample, running);
+                handleCollectionSample(processUsageSample, terminal);
+                handleCollectionSample(processUsageSample, running);
                 const recordedSample = running.previousSample.read();
                 scope.require.notNull(recordedSample);
 
                 scope.assert.equal(terminal.previousSample.read(), null);
-                scope.assert.deepEqual(recordedSample, resourceSample);
+                scope.assert.deepEqual(recordedSample, processUsageSample);
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'handleCollectionSample() reports collection resource budget breaches',
+            title: 'handleCollectionSample() reports collection process budget breaches',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
                 const live = childProcess({ exitCode: null, pid: 1, signalCode: null });
                 const runtime = collectionRuntime(live.child, false, -1);
 
-                handleCollectionSample(resourceSample, runtime);
+                handleCollectionSample(processUsageSample, runtime);
 
                 scope.assert.equal(runtime.terminalFailure.read(), true);
                 scope.assert.deepEqual(live.signals(), [ 'SIGKILL' ]);
-                scope.assert.equal(runtime.state.runnerErrors()[0]?.subtype, 'resource-exhaustion');
+                scope.assert.equal(runtime.state.runnerErrors()[0]?.subtype, 'process-exhaustion');
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'handleChildMessage() records supervised resource samples',
+            title: 'handleChildMessage() records supervised process usage samples',
             annotations: {},
             controls: {},
             body(scope: OverkillScope) {
@@ -351,11 +351,11 @@ export const testNode = createOverkillSuite({
                     timeoutRuntime(childProcess({ exitCode: null, pid: 1, signalCode: null }).child).runtime
                 );
 
-                handleChildMessage({ kind: 'sample', sample: resourceSample }, runtime);
+                handleChildMessage({ kind: 'sample', sample: processUsageSample }, runtime);
                 const recordedSample = runtime.previousSample.read();
                 scope.require.notNull(recordedSample);
 
-                scope.assert.deepEqual(recordedSample, resourceSample);
+                scope.assert.deepEqual(recordedSample, processUsageSample);
 
                 return scope.assert.collect();
             }

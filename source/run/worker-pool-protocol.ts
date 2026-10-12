@@ -7,7 +7,7 @@ import type {
     HostProcess,
     IntegrationProfileConfig,
     MaxConcurrency,
-    ResourceBudgets,
+    ProcessBudgets,
     Scheduling
 } from '../config/types.ts';
 import type { AttemptId, ReporterEvent, WorkId, RunnerError, RunResult } from './run-engine-primitives.ts';
@@ -41,8 +41,8 @@ export type WorkerPoolCommand = {
     readonly hostProcess: HostProcess;
     readonly maxConcurrency: MaxConcurrency;
     readonly paths: readonly string[];
-    readonly resourceBudgets: ResourceBudgets;
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly processBudgets: ProcessBudgets;
+    readonly processUsageSamplingIntervalMilliseconds: number;
     readonly root: RunCollectionRoot;
     readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;

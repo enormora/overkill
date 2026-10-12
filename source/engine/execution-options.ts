@@ -1,12 +1,12 @@
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporter-output.ts';
 import type { DefinedReporter, RunFacts } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
-import type { RunResourceUsageTracker } from './resource-usage.ts';
+import type { RunProcessUsageTracker } from './process-usage.ts';
 import type {
     ExecuteTimeoutPolicy,
     ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
-import type { ExecuteResourceBudgets } from './execution-resource-budget-breach.ts';
+import type { ExecuteProcessBudgets } from './execution-process-budget-breach.ts';
 import { assertRetryPolicy, assertRetryFamily, type TestRetryPolicy } from './retry-policy.ts';
 import type { TestPlan } from './test-plan.ts';
 
@@ -25,8 +25,8 @@ export type ExecuteOptions = {
     readonly finalizeResult?: ExecuteResultFinalizer;
     readonly outputRenderer?: DefinedOutputRenderer;
     readonly reporters: readonly DefinedReporter[];
-    readonly resourceBudgets?: ExecuteResourceBudgets | null;
-    readonly resourceUsageTracker?: RunResourceUsageTracker | null;
+    readonly processBudgets?: ExecuteProcessBudgets | null;
+    readonly processUsageTracker?: RunProcessUsageTracker | null;
     readonly runtimePolicy?: RuntimePolicy | null;
     readonly runFacts: RunFacts;
     readonly startedAt: string;
@@ -53,8 +53,8 @@ function defaultExecuteOptions(): NormalizedExecuteOptions {
         outputRenderer: createPlainOutputRenderer(),
         reporters: [],
         retryPolicy: null,
-        resourceBudgets: null,
-        resourceUsageTracker: null,
+        processBudgets: null,
+        processUsageTracker: null,
         runtimePolicy: null,
         runFacts: {},
         startedAt: epoch.toISOString(),
@@ -68,7 +68,7 @@ function executeOptionsWithProvidedDefaults(options: ExecuteOptions): Normalized
         ...options,
         finalizeResult: options.finalizeResult ?? keepResult,
         outputRenderer: options.outputRenderer ?? createPlainOutputRenderer(),
-        resourceBudgets: options.resourceBudgets ?? null,
+        processBudgets: options.processBudgets ?? null,
         runtimePolicy: options.runtimePolicy ?? null,
         timeoutPolicy: options.timeoutPolicy ?? null
     };

@@ -33,7 +33,7 @@ function assertTerminalOutput(scope: OverkillScope, log: Log): void {
     scope.assert(doubleUsage.callCount, log, 3);
     scope.assert(doubleUsage.nthCallWithExactly, log, 0, [
         errorSymbol,
-        'fails (12 ms): resource exhausted'
+        'fails (12 ms): process exhausted'
     ]);
     scope.assert(doubleUsage.nthCallWithExactly, log, 1, [ errorSymbol, 'fails (13 ms): crashed' ]);
     scope.assert(doubleUsage.nthCallWithExactly, log, 2, [
@@ -67,7 +67,7 @@ export const testNode = createOverkillSuite({
                     kind: 'test-end',
                     outcome: null,
                     suitePath: [],
-                    verdict: 'resource-exhausted',
+                    verdict: 'process-exhausted',
                     durationMicroseconds: 12_000
                 });
                 await reporter.onEvent({

@@ -11,8 +11,8 @@ import {
 } from './worker-pool-execution-state.test.ts';
 import {
     reportRunStart,
-    startPoolResourceTracking
-} from './worker-pool-resource-tracking.ts';
+    startPoolProcessUsageTracking
+} from './worker-pool-process-usage-tracking.ts';
 import type { WorkerPoolRunRuntime } from './worker-pool-runtime.ts';
 
 const testCaseMetadata = {
@@ -35,7 +35,7 @@ function runtimeWithEmptyPlacementPlan(): WorkerPoolRunRuntime {
     const { execution } = runtime.resolvedRun.facts;
 
     if (execution.processModel !== 'worker-pool') {
-        throw new Error('Worker-pool resource-tracking fixture requires worker-pool facts.');
+        throw new Error('Worker-pool process-usage-tracking fixture requires worker-pool facts.');
     }
 
     return {
@@ -60,7 +60,7 @@ function runtimeWithEmptyPlacementPlan(): WorkerPoolRunRuntime {
 
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
-    title: 'source/run/worker-pool-resource-tracking.test.ts',
+    title: 'source/run/worker-pool-process-usage-tracking.test.ts',
     children: [
         createOverkillTestCase({
             ...testCaseMetadata,
@@ -107,7 +107,7 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             ...testCaseMetadata,
-            title: 'worker-pool execution starts pool resource tracking with optional start waiters',
+            title: 'worker-pool execution starts pool process usage tracking with optional start waiters',
             async body(scope: OverkillScope) {
                 let startCount = 0;
                 let waited = false;
@@ -120,13 +120,13 @@ export const testNode = createOverkillSuite({
                     }
                 };
 
-                await startPoolResourceTracking({
+                await startPoolProcessUsageTracking({
                     ...fakeWorkerRuntime(createCollectedPlan()),
-                    poolResourceUsageTracker: tracker
+                    poolProcessUsageTracker: tracker
                 });
-                await startPoolResourceTracking({
+                await startPoolProcessUsageTracking({
                     ...fakeWorkerRuntime(createCollectedPlan()),
-                    poolResourceUsageTracker: {
+                    poolProcessUsageTracker: {
                         ...tracker,
                         async waitForStart() {
                             waited = true;

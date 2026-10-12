@@ -1,7 +1,7 @@
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
 import type {
     ReporterEvent,
-    ResourceUsageSnapshot,
+    ProcessUsageSnapshot,
     RunResult
 } from './run-engine-primitives.ts';
 import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
@@ -16,10 +16,10 @@ import {
 } from './supervised-child-process.ts';
 import {
     crashError,
-    findResourceBudgetBreach,
-    resourceExhaustionError,
-    type ResourceBudgetBreach
-} from './supervised-run-resource-policy.ts';
+    findProcessBudgetBreach,
+    processExhaustionError,
+    type ProcessBudgetBreach
+} from './supervised-run-process-policy.ts';
 import {
     deduplicatedChildRuntimePolicyErrors,
     deduplicatedRuntimePolicyErrors,
@@ -49,7 +49,7 @@ export type SupervisedRunRuntimeSeed = {
     readonly completedResult: StoredRunValue<RunResult | null>;
     readonly dependencies: RunOrchestratorDependencies;
     readonly finalizeResult: (result: RunResult) => Promise<RunResult>;
-    readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
+    readonly previousSample: StoredRunValue<ProcessUsageSnapshot | null>;
     readonly reporterDelivery: Awaited<ReturnType<typeof createReporterDelivery>>;
     readonly reporterEvents: ReporterEventQueue;
     readonly resolvedRun: ResolvedRun;
@@ -74,7 +74,7 @@ export type SupervisedCollectionRuntime<CollectionValue> = {
     readonly command: SupervisedCollectCommand | SupervisedRunCommand;
     readonly collected: StoredRunValue<CollectionValue>;
     readonly dependencies: RunOrchestratorDependencies;
-    readonly previousSample: StoredRunValue<ResourceUsageSnapshot | null>;
+    readonly previousSample: StoredRunValue<ProcessUsageSnapshot | null>;
     readonly state: SupervisedRunState;
     readonly terminalFailure: StoredRunValue<boolean>;
 };
@@ -202,7 +202,7 @@ function createPartialRunResult(input: PartialRunResultInput): RunResult {
             planStatus: input.resolvedRun.facts.cases.length === 0 && input.resolvedRun.request.shard.total > 1
                 ? 'empty-shard'
                 : 'planned',
-            resourceUsage: null,
+            processUsage: null,
             startedAtMicroseconds: input.startedAtMicroseconds,
             testExecutionWallTimeMicroseconds: input.state.testExecutionWallTimeMicroseconds()
         }
@@ -283,12 +283,12 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
     ));
 }
 
-function handleResourceBudgetBreach(
-    breach: ResourceBudgetBreach,
+function handleProcessBudgetBreach(
+    breach: ProcessBudgetBreach,
     runtime: SupervisedRunRuntime
 ): void {
     runtime.terminalFailure.write(true);
-    const error = resourceExhaustionError(breach, runtime.state);
+    const error = processExhaustionError(breach, runtime.state);
     runtime.state.recordRunnerError(error);
     runtime.reporterEvents.add(recordReporterEventErrors(
         { error, kind: 'runner-error' },
@@ -296,27 +296,27 @@ function handleResourceBudgetBreach(
         runtime.reporterDelivery
     ));
     runtime.state.recordTerminalActiveCases(
-        'resource-exhausted',
+        'process-exhausted',
         Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
     runtime.timeout.clear();
     kill(runtime.child);
 }
 
-function handleChildSample(sample: ResourceUsageSnapshot, runtime: SupervisedRunRuntime): void {
+function handleChildSample(sample: ProcessUsageSnapshot, runtime: SupervisedRunRuntime): void {
     if (runtime.terminalFailure.read()) {
         return;
     }
 
-    const breach = findResourceBudgetBreach(
-        runtime.resolvedRun.facts.execution.resourceUsagePolicy.budgets,
+    const breach = findProcessBudgetBreach(
+        runtime.resolvedRun.facts.execution.processUsagePolicy.budgets,
         sample,
         runtime.previousSample.read()
     );
     runtime.previousSample.write(sample);
 
     if (breach !== null) {
-        handleResourceBudgetBreach(breach, runtime);
+        handleProcessBudgetBreach(breach, runtime);
     }
 }
 
@@ -353,15 +353,15 @@ export function handleChildMessage(
 }
 
 export function handleCollectionSample<CollectionValue>(
-    sample: ResourceUsageSnapshot,
+    sample: ProcessUsageSnapshot,
     runtime: SupervisedCollectionRuntime<CollectionValue>
 ): void {
     if (runtime.terminalFailure.read()) {
         return;
     }
 
-    const breach = findResourceBudgetBreach(
-        runtime.command.resourceBudgets,
+    const breach = findProcessBudgetBreach(
+        runtime.command.processBudgets,
         sample,
         runtime.previousSample.read()
     );
@@ -369,7 +369,7 @@ export function handleCollectionSample<CollectionValue>(
 
     if (breach !== null) {
         runtime.terminalFailure.write(true);
-        runtime.state.recordRunnerError(resourceExhaustionError(breach, runtime.state));
+        runtime.state.recordRunnerError(processExhaustionError(breach, runtime.state));
         kill(runtime.child);
     }
 }
@@ -435,7 +435,7 @@ function selectRunResult(runtime: SupervisedRunRuntime, startedAtMicroseconds: n
 
     return {
         ...parentResult,
-        resourceUsage: completedResult.resourceUsage,
+        processUsage: completedResult.processUsage,
         runnerErrors,
         status: runnerErrors.length === 0 ? parentResult.status : 'failed'
     };

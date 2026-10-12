@@ -7,8 +7,8 @@ Top-level API:
 - `RunCommand`
 - `RunRequest`
 - `RunFacts`
-- `ResourceBudgets`
-- `ResourceUsagePolicy`
+- `ProcessBudgets`
+- `ProcessUsagePolicy`
 - `ResolvedRun`
 - `defineConfig(config)`
 - `normalizeConfig(config)`
@@ -137,7 +137,7 @@ Unknown, missing, ambiguous, or ordinary-family selections return argument error
 `3`. Ordinary run/list and direct-file execution reject the benchmark family.
 
 Benchmark profiles use `testFamily: 'benchmark'` in the same registry and support
-`execution`, `reporters`, `attachments`, `resourceUsage`, `timings`,
+`execution`, `reporters`, `attachments`, `processUsage`, `timings`,
 `timeouts`, and `baselines`. `orchestrator.bench.list(command, { timing: null })` returns a
 `ResolvedRun`; `bench.run` and `bench.runWithReporterDelivery` return the regular
 result and reporter-delivery shapes. These methods require an explicit profile
@@ -305,12 +305,12 @@ Resolved runtime identities contain selected scenario bindings. They flow into
 `RunFacts`, duration-history keys, reporter labels, and artifact IDs so replay
 metadata and captured evidence identify the selected scenario.
 
-Resource usage measurement is explicit. Project config can enable it under
-`profiles.<name>.resourceUsage.measure`; `RunRequest.measureResourceUsage`
-can override that policy for one run. `resourceUsage.budgets` are thresholds
-and require measurement, while `RunRequest.resourceBudgetOverrides` changes
+Process usage measurement is explicit. Project config can enable it under
+`profiles.<name>.processUsage.measure`; `RunRequest.measureProcessUsage`
+can override that policy for one run. `processUsage.budgets` are thresholds
+and require measurement, while `RunRequest.processBudgetOverrides` changes
 individual thresholds for one run. CLI commands use the selected profile's
-resource usage policy.
+process usage policy.
 
 Runner timing collection is explicit beyond the always-present summary.
 Project config can set `profiles.<name>.timings.collection` to `summary` or
@@ -490,7 +490,7 @@ to any terminal-capable reporter callback during `orchestrator.runWithReporterDe
 Raw terminal reporters are counted as delivered when their callback succeeds
 because their writes are intentionally opaque to the dispatcher. Resource
 exhaustion maps to exit code 5 before generic runner errors because
-`resource-exhaustion` is also a runner error subtype. Profile reporters replace
+`process-exhaustion` is also a runner error subtype. Profile reporters replace
 top-level project reporters for the selected run; otherwise top-level reporters
 are the fallback.
 Installing a package does not add commands, and there is no installed-package

@@ -1,5 +1,5 @@
 import type { RunnerError } from '../engine/run-result.ts';
-import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource-usage.ts';
+import type { ProcessUsageSnapshot, RunProcessUsage } from '../engine/process-usage.ts';
 import type { WorkerPoolCreationOptions } from './run-orchestrator-dependencies.ts';
 import type {
     WorkerPoolMessage,
@@ -117,13 +117,13 @@ export type WorkerPoolHostCommand = {
 } | {
     readonly kind: 'destroy';
 } | {
-    readonly kind: 'finish-resource-tracking';
+    readonly kind: 'finish-process-usage-tracking';
 } | {
     readonly kind: 'run-task';
     readonly task: WorkerPoolTaskWithoutPort;
     readonly taskId: string;
 } | {
-    readonly kind: 'start-resource-tracking';
+    readonly kind: 'start-process-usage-tracking';
     readonly samplingIntervalMilliseconds: number;
 } | { readonly kind: 'task-reply'; readonly taskId: string; readonly reply: WorkerPoolPreparationReply; };
 
@@ -135,11 +135,11 @@ export type WorkerPoolHostMessage = {
 } | {
     readonly kind: 'destroyed';
 } | {
-    readonly kind: 'resource-sample';
-    readonly sample: ResourceUsageSnapshot;
+    readonly kind: 'process-usage';
+    readonly processUsage: RunProcessUsage;
 } | {
-    readonly kind: 'resource-usage';
-    readonly resourceUsage: RunResourceUsage;
+    readonly kind: 'process-usage-sample';
+    readonly sample: ProcessUsageSnapshot;
 } | {
     readonly kind: 'task-error';
     readonly error: SerializedError;

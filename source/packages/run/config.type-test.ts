@@ -31,7 +31,7 @@ describe('@overkill-dev/run/config', function () {
                 readonly execution: true;
                 readonly files: true;
                 readonly reporters: true;
-                readonly resourceUsage: true;
+                readonly processUsage: true;
                 readonly testFamily: true;
                 readonly timings: true;
                 readonly timeouts: true;

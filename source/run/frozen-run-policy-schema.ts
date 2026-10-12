@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 import { loaderSchema } from '../config/schema.ts';
 import {
     normalizedMicrotestProfileSchema,
-    normalizedResourceBudgetsSchema
+    normalizedProcessBudgetsSchema
 } from '../config/normalized-microtest-schema.ts';
 import type { FrozenMicrotestPolicy } from './run-types.ts';
 import { executionCommandFields } from './run-command-schema.ts';
@@ -41,12 +41,12 @@ export const frozenMicrotestPolicySchema: z.ZodType<FrozenMicrotestPolicy> = z.s
             z.strictObject({ mode: z.literal('profile-default') }),
             z.strictObject({ mode: z.literal('serial') })
         ]),
-        measureResourceUsage: z.boolean().nullable(),
+        measureProcessUsage: z.boolean().nullable(),
         order: z.enum([ 'lexical', 'plan', 'seeded' ]),
         paths: z.array(z.string()),
         profile: z.string().min(1),
-        resourceBudgetOverrides: normalizedResourceBudgetsSchema.nullable(),
-        resourceUsageSamplingIntervalMilliseconds: z.number().int().positive().nullable(),
+        processBudgetOverrides: normalizedProcessBudgetsSchema.nullable(),
+        processUsageSamplingIntervalMilliseconds: z.number().int().positive().nullable(),
         selection: runSelectionSchema,
         shard: z.strictObject({ index: z.number().int().positive(), total: z.number().int().positive() }),
         timingCollection: z.enum([ 'precise', 'profile-default' ]),

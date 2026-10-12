@@ -1,11 +1,11 @@
 import { createClock } from '@enormora/clock';
-import type { RunnerError, RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
+import type { RunnerError, RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import { readHostCommand } from './worker-pool-host-transport.ts';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
 import {
-    createNodeResourceUsageTracker
-} from './resource-usage.ts';
+    createNodeProcessUsageTracker
+} from './process-usage.ts';
 import {
     createTinypoolWorkerPool,
     workerPoolEntryPoint
@@ -46,7 +46,7 @@ type WorkerPoolHostState = {
     readonly activeTasks: ActiveHostTasks;
     readonly commandHandling: StoredValue<Promise<void> | null>;
     readonly pool: StoredValue<TinypoolInstance | null>;
-    readonly resourceUsageTracker: StoredValue<RunResourceUsageTracker | null>;
+    readonly processUsageTracker: StoredValue<RunProcessUsageTracker | null>;
 };
 
 type TaskWithHostPort = {
@@ -97,7 +97,7 @@ const state: WorkerPoolHostState = {
     activeTasks: createActiveHostTasks(),
     commandHandling: createStoredValue<Promise<void> | null>(null),
     pool: createStoredValue<TinypoolInstance | null>(null),
-    resourceUsageTracker: createStoredValue<RunResourceUsageTracker | null>(null)
+    processUsageTracker: createStoredValue<RunProcessUsageTracker | null>(null)
 };
 const fatalShutdownStarted = createStoredValue(false);
 
@@ -191,36 +191,36 @@ function abortTask(command: Extract<WorkerPoolHostCommand, { readonly kind: 'abo
     state.activeTasks.get(command.taskId)?.controller.abort();
 }
 
-function startResourceTracking(
-    command: Extract<WorkerPoolHostCommand, { readonly kind: 'start-resource-tracking'; }>
+function startProcessUsageTracking(
+    command: Extract<WorkerPoolHostCommand, { readonly kind: 'start-process-usage-tracking'; }>
 ): void {
-    state.resourceUsageTracker.write(createNodeResourceUsageTracker(createClock(), {
+    state.processUsageTracker.write(createNodeProcessUsageTracker(createClock(), {
         samplingIntervalMilliseconds: command.samplingIntervalMilliseconds
     }));
-    state.resourceUsageTracker.read()?.start(function sendSample(sample) {
-        send({ kind: 'resource-sample', sample });
+    state.processUsageTracker.read()?.start(function sendSample(sample) {
+        send({ kind: 'process-usage-sample', sample });
     });
 }
 
-function finishResourceTracking(): void {
-    const resourceUsageTracker = state.resourceUsageTracker.read();
+function finishProcessUsageTracking(): void {
+    const processUsageTracker = state.processUsageTracker.read();
 
-    if (resourceUsageTracker === null) {
+    if (processUsageTracker === null) {
         return;
     }
 
     send({
-        kind: 'resource-usage',
-        resourceUsage: resourceUsageTracker.finish()
+        kind: 'process-usage',
+        processUsage: processUsageTracker.finish()
     });
-    state.resourceUsageTracker.write(null);
+    state.processUsageTracker.write(null);
 }
 
 async function destroy(): Promise<void> {
     const poolToDestroy = state.pool.read();
 
     state.pool.write(null);
-    finishResourceTracking();
+    finishProcessUsageTracking();
     await poolToDestroy?.destroy();
     send({ kind: 'destroyed' });
     globalErrorObserver.stop();
@@ -253,10 +253,10 @@ function handleLifecycleCommand(command: Exclude<WorkerPoolHostCommand, { readon
         state.commandHandling.write(runTask(command));
     } else if (command.kind === 'abort-task') {
         abortTask(command);
-    } else if (command.kind === 'start-resource-tracking') {
-        startResourceTracking(command);
-    } else if (command.kind === 'finish-resource-tracking') {
-        finishResourceTracking();
+    } else if (command.kind === 'start-process-usage-tracking') {
+        startProcessUsageTracking(command);
+    } else if (command.kind === 'finish-process-usage-tracking') {
+        finishProcessUsageTracking();
     } else {
         state.commandHandling.write(destroy());
     }

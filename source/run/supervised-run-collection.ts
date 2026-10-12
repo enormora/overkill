@@ -1,6 +1,6 @@
 import { observeSupervisedTransport, sendSupervisedCommand } from './supervised-child-transport.ts';
 import type {
-    ResourceUsageSnapshot,
+    ProcessUsageSnapshot,
     RunnerError
 } from './run-engine-primitives.ts';
 import { RunCollectionError, SupervisedCollectionError } from './run-errors.ts';
@@ -147,7 +147,7 @@ async function createCollectionRuntime(
         command,
         collected: createStoredRunValue<SupervisedCollectionResult | null>(null),
         dependencies,
-        previousSample: createStoredRunValue<ResourceUsageSnapshot | null>(null),
+        previousSample: createStoredRunValue<ProcessUsageSnapshot | null>(null),
         state: createSupervisedRunState('first-failure-and-final'),
         terminalFailure: createStoredRunValue(false)
     };

@@ -9,7 +9,7 @@ import type {
 import type {
     IntegrationRetryPolicy,
     LoaderConfig,
-    ResourceBudgets,
+    ProcessBudgets,
     TimingCollectionMode,
     TimingCollectionOverride,
     CoveragePolicy,
@@ -22,7 +22,7 @@ import type {
     WorkerPoolDispatchPolicy,
     WorkerPoolHedgingPolicy,
     WorkDistribution,
-    ResourceUsagePolicy,
+    ProcessUsagePolicy,
     TimeoutPolicy,
     NormalizedConfig,
     MicrotestProfileConfig,
@@ -182,12 +182,12 @@ export type ProfileRunRequest<Profile extends string | null> = {
     readonly coverage: boolean;
     readonly debug: RunDebugRequest;
     readonly execution: RunExecutionRequest;
-    readonly measureResourceUsage: boolean | null;
+    readonly measureProcessUsage: boolean | null;
     readonly order: RunOrder;
     readonly paths: readonly string[];
     readonly profile: Profile;
-    readonly resourceBudgetOverrides: ResourceBudgets | null;
-    readonly resourceUsageSamplingIntervalMilliseconds: number | null;
+    readonly processBudgetOverrides: ProcessBudgets | null;
+    readonly processUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: RunSeed;
     readonly selection: RunSelection;
     readonly shard: RunShard;
@@ -246,7 +246,7 @@ type RunExecutionBaseFacts = {
     readonly order: RunOrder;
     readonly placementPlan: PlacementPlan | null;
     readonly profile: string;
-    readonly resourceUsagePolicy: ResourceUsagePolicy;
+    readonly processUsagePolicy: ProcessUsagePolicy;
     readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;
     readonly timingCollection: TimingCollectionMode;

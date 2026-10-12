@@ -95,7 +95,7 @@ export const testNode = suite('frozen microtest policy', [
         scope.assert.throws(function rejectWeakenedResources() {
             frozenSupervisedCommandSchema.parse({
                 ...supervised,
-                resourceUsageSamplingIntervalMilliseconds: 999
+                processUsageSamplingIntervalMilliseconds: 999
             });
         }, { message: /conflicts with frozen policy/ });
         return scope.assert.collect();

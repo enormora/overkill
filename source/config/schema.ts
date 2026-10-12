@@ -67,7 +67,7 @@ const profileFileSetsSchema = z
 
 export const profileFilesSchema = z.union([ profileFilePatternsSchema, profileFileSetsSchema ]).readonly();
 
-export const resourceBudgetsSchema = z
+export const processBudgetsSchema = z
     .strictObject({
         activeResourceCount: z.optional(z.nullable(positiveSafeIntegerSchema)),
         javaScriptEngineHeapBytes: z.optional(z.nullable(positiveSafeIntegerSchema)),
@@ -76,21 +76,21 @@ export const resourceBudgetsSchema = z
     })
     .readonly();
 
-const measuredResourceUsageSchema = z
+const measuredProcessUsageSchema = z
     .strictObject({
-        budgets: z.optional(resourceBudgetsSchema),
+        budgets: z.optional(processBudgetsSchema),
         measure: z.literal(true),
         samplingIntervalMilliseconds: z.optional(positiveSafeIntegerSchema)
     })
     .readonly();
 
-const unmeasuredResourceUsageSchema = z
+const unmeasuredProcessUsageSchema = z
     .strictObject({
         measure: z.optional(z.literal(false))
     })
     .readonly();
 
-export const resourceUsageSchema = z.union([ measuredResourceUsageSchema, unmeasuredResourceUsageSchema ]);
+export const processUsageSchema = z.union([ measuredProcessUsageSchema, unmeasuredProcessUsageSchema ]);
 
 export const timeoutSchema = z
     .strictObject({
@@ -260,7 +260,7 @@ export const microtestProfileSchema = z
         execution: z.optional(microtestExecutionSchema),
         files: z.optional(profileFilesSchema),
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
-        resourceUsage: z.optional(resourceUsageSchema),
+        processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('microtest'),
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
@@ -286,7 +286,7 @@ export const integrationProfileSchema = z
         files: profileFilesSchema,
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
         retries: z.optional(integrationRetryPolicySchema),
-        resourceUsage: z.optional(resourceUsageSchema),
+        processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('integration'),
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
@@ -300,7 +300,7 @@ const benchmarkProfileSchema = z
         execution: z.optional(benchmarkExecutionSchema),
         files: profileFilesSchema,
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
-        resourceUsage: z.optional(resourceUsageSchema),
+        processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('benchmark'),
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
@@ -327,15 +327,15 @@ export const projectConfigSchema = z
     })
     .readonly();
 
-export type ProjectResourceBudgets = z.infer<typeof resourceBudgetsSchema>;
+export type ProjectProcessBudgets = z.infer<typeof processBudgetsSchema>;
 export type ProjectCoverageOutput = CoverageOutput;
 export type ProjectCoveragePolicy = CoveragePolicy;
 export type ProjectCoverageSources = CoverageSources;
 export type ProjectCoverageThresholds = CoverageThresholds;
 export type ProjectProfileFiles = z.infer<typeof profileFilesSchema>;
-export type ProjectMeasuredResourceUsage = z.infer<typeof measuredResourceUsageSchema>;
-export type ProjectUnmeasuredResourceUsage = z.infer<typeof unmeasuredResourceUsageSchema>;
-export type ProjectResourceUsageConfig = z.infer<typeof resourceUsageSchema>;
+export type ProjectMeasuredProcessUsage = z.infer<typeof measuredProcessUsageSchema>;
+export type ProjectUnmeasuredProcessUsage = z.infer<typeof unmeasuredProcessUsageSchema>;
+export type ProjectProcessUsageConfig = z.infer<typeof processUsageSchema>;
 export type ProjectTimingProfilePolicy = z.infer<typeof timingProfilePolicySchema>;
 export type ProjectTimeoutConfig = z.infer<typeof timeoutSchema>;
 export type ProjectIntegrationExecution = z.infer<typeof integrationExecutionSchema>;

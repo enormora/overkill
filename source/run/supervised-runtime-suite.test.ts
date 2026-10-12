@@ -1,7 +1,7 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as processPolicyTestNode } from './process-policy-suite.test.ts';
 import { testNode as supervisedChildSuiteTestNode } from './supervised-child-suite.test.ts';
-import { testNode as supervisedRunResourcePolicyTestNode } from './supervised-run-resource-policy.test.ts';
+import { testNode as supervisedRunResourcePolicyTestNode } from './supervised-run-process-policy.test.ts';
 import { testNode as supervisedRunRuntimeTestNode } from './supervised-run-runtime.test.ts';
 import { testNode as supervisedRuntimePolicyErrorsTestNode } from './supervised-runtime-policy-errors.test.ts';
 

@@ -1,6 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as commandLineRunnerTestNode } from './command-line-runner-suite.test.ts';
-import { testNode as resourceUsageTestNode } from './resource-usage-suite.test.ts';
+import { testNode as processUsageTestNode } from './process-usage-suite.test.ts';
 import { testNode as runConfigurationTestNode } from './run-configuration-suite.test.ts';
 import { testNode as runListRendererTestNode } from './run-list-renderer.test.ts';
 import { testNode as runOrchestratorTestNode } from './run-orchestrator-suite.test.ts';
@@ -15,7 +15,7 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         commandLineRunnerTestNode,
-        resourceUsageTestNode,
+        processUsageTestNode,
         runConfigurationTestNode,
         runIfMainTestNode,
         runListRendererTestNode,

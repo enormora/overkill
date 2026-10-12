@@ -32,7 +32,7 @@ const runnerErrorMark = colors.red(figures.warning);
 const microsecondsPerMillisecond = 1000;
 
 function markForVerdict(verdict: TestVerdict): string {
-    if (verdict === 'resource-exhausted' || verdict === 'crashed') {
+    if (verdict === 'process-exhausted' || verdict === 'crashed') {
         return runnerErrorMark;
     }
 

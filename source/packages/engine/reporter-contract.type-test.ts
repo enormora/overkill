@@ -31,8 +31,8 @@ type ExecuteOptionKeyByName = {
     readonly outputRenderer: true;
     readonly reporters: true;
     readonly retryPolicy: true;
-    readonly resourceBudgets: true;
-    readonly resourceUsageTracker: true;
+    readonly processBudgets: true;
+    readonly processUsageTracker: true;
     readonly runtimePolicy: true;
     readonly runFacts: true;
     readonly startedAt: true;

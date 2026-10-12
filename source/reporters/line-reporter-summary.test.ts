@@ -142,7 +142,7 @@ export const testNode = createOverkillSuite({
                         inconclusive: 1,
                         passed: 1,
                         planned: 4,
-                        resourceExhausted: 1,
+                        processExhausted: 1,
                         runtimePolicy: 1,
                         skipped: 1
                     },
@@ -155,7 +155,7 @@ export const testNode = createOverkillSuite({
                     errorSymbol,
                     [
                         '4 discovered, 4 planned, 7 executed',
-                        '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 resource-exhausted, 1 runtime-policy, 1 crash) ' +
+                        '(1 pass, 1 fail, 1 skip, 1 inconclusive, 1 process-exhausted, 1 runtime-policy, 1 crash) ' +
                         'in 15 ms',
                         '(total 15 ms, execution 0 ms, overhead 15 ms)'
                     ]

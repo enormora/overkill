@@ -13,7 +13,7 @@ The timing model answers three different questions:
   worker, or resource lifecycle consumed the overhead?
 
 Timings are diagnostic data. They never affect test verdicts, timeout policy,
-resource budget policy, or benchmark pass/fail decisions.
+process budget policy, or benchmark pass/fail decisions.
 
 ## Summary Timings
 
@@ -140,7 +140,7 @@ facts include:
 The parent can measure parent-observed spans such as spawn call to ready
 message, shutdown request to exit, and worker-pool start to ready. Absolute
 timestamps support external trace export, but process clock skew may affect
-cross-process ordering. They never affect verdicts, timeouts, resource budgets,
+cross-process ordering. They never affect verdicts, timeouts, process budgets,
 or duration calculations.
 
 Parent-observed spans carry a parent-relative `startOffsetMicroseconds`.
@@ -264,7 +264,7 @@ Runner timings explain orchestration overhead for a concrete run.
 
 ## Cross-References
 
-- [Runtime Behavior](./runtime-behavior.md) - process models, resource budgets,
+- [Runtime Behavior](./runtime-behavior.md) - process models, process budgets,
   timeouts, worker pools
 - [Composition Order](./composition-order.md) - where timing wraps resolve-time
   and execution-time phases

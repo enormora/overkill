@@ -1,5 +1,5 @@
 import type { TestPlan } from '../engine/test-plan.ts';
-import type { ResourceUsagePolicy } from '../config/types.ts';
+import type { ProcessUsagePolicy } from '../config/types.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -13,7 +13,7 @@ import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import { createResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
-type RunResourceUsageTracker = ReturnType<RunOrchestratorDependencies['createResourceUsageTracker']>;
+type RunProcessUsageTracker = ReturnType<RunOrchestratorDependencies['createProcessUsageTracker']>;
 type LocalResolvedRun = ResolvedRun & {
     readonly plan: {
         readonly kind: 'local';
@@ -33,15 +33,15 @@ function currentRunStartTime(dependencies: RunOrchestratorDependencies): string 
     return startedAt.toISOString();
 }
 
-function createExecutionResourceUsageTracker(
-    policy: ResourceUsagePolicy,
+function createExecutionProcessUsageTracker(
+    policy: ProcessUsagePolicy,
     dependencies: RunOrchestratorDependencies
-): RunResourceUsageTracker | null {
+): RunProcessUsageTracker | null {
     if (!policy.measure) {
         return null;
     }
 
-    return dependencies.createResourceUsageTracker({
+    return dependencies.createProcessUsageTracker({
         samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
     });
 }
@@ -51,7 +51,7 @@ export async function executeLocalResolvedRun(
     dependencies: RunOrchestratorDependencies,
     options: LocalExecutionOptions
 ): Promise<RunResult> {
-    const { resourceUsagePolicy } = resolvedRun.facts.execution;
+    const { processUsagePolicy } = resolvedRun.facts.execution;
     const resourceTiming = options.timing === null
         ? null
         : createResourceLifecycleTiming({
@@ -72,8 +72,8 @@ export async function executeLocalResolvedRun(
         },
         reporters: resolvedRun.reporters.map(reporterWithAttachments),
         retryPolicy: resolvedRun.facts.execution.retries,
-        resourceBudgets: resourceUsagePolicy.budgets,
-        resourceUsageTracker: createExecutionResourceUsageTracker(resourceUsagePolicy, dependencies),
+        processBudgets: processUsagePolicy.budgets,
+        processUsageTracker: createExecutionProcessUsageTracker(processUsagePolicy, dependencies),
         runtimePolicy: createRunResourceRuntimePolicy(
             resolvedRun.plan.testPlan.cases,
             options.runtimePolicy,

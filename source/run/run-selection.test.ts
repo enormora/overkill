@@ -422,7 +422,7 @@ export const testNode = createOverkillSuite({
                     inconclusive: 0,
                     passed: 0,
                     planned: 0,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });
@@ -464,7 +464,7 @@ export const testNode = createOverkillSuite({
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });
@@ -501,7 +501,7 @@ export const testNode = createOverkillSuite({
                     inconclusive: 0,
                     passed: 0,
                     planned: 0,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });

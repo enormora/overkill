@@ -63,7 +63,7 @@ export const testNode = createOverkillSuite({
                         include: [ 'source/**/*.integration.test.ts' ]
                     },
                     reporters: null,
-                    resourceUsage: defaultMicrotestProfile().resourceUsage,
+                    processUsage: defaultMicrotestProfile().processUsage,
                     testFamily: 'integration',
                     timings: { collection: 'summary' },
                     timeouts: {

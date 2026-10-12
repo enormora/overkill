@@ -45,8 +45,8 @@ function assertBaselineRequest(
     scope.assert.equal(entry.verb, verb);
     scope.assert.deepEqual(entry.request.runRequest.paths, [ 'source/startup.bench.ts' ]);
     scope.assert.equal(entry.request.runRequest.profile, 'startup');
-    scope.assert.equal(entry.request.runRequest.measureResourceUsage, null);
-    scope.assert.equal(entry.request.runRequest.resourceBudgetOverrides, null);
+    scope.assert.equal(entry.request.runRequest.measureProcessUsage, null);
+    scope.assert.equal(entry.request.runRequest.processBudgetOverrides, null);
     scope.assert.equal(entry.request.configPath, 'overkill.config.ts');
     scope.assert.equal(result.exitCode, 0);
     scope.assert.deepEqual(result.baselineListRequests, []);
@@ -82,7 +82,7 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'benchmark baseline commands reject resource usage flags before loading the runner',
+            title: 'benchmark baseline commands reject process usage flags before loading the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
                 for (const verb of [ 'apply', 'bootstrap', 'diff', 'update', 'list' ]) {
@@ -170,8 +170,8 @@ export const testNode = createSuite({
                     profile: request.profile,
                     capture: request.capture,
                     workers: request.workers,
-                    measureResourceUsage: request.measureResourceUsage,
-                    resourceBudgetOverrides: request.resourceBudgetOverrides,
+                    measureProcessUsage: request.measureProcessUsage,
+                    processBudgetOverrides: request.processBudgetOverrides,
                     timingCollection: request.timingCollection,
                     order: request.order,
                     seed: request.seed,
@@ -181,8 +181,8 @@ export const testNode = createSuite({
                     profile: null,
                     capture: 'live',
                     workers: 4,
-                    measureResourceUsage: null,
-                    resourceBudgetOverrides: null,
+                    measureProcessUsage: null,
+                    processBudgetOverrides: null,
                     timingCollection: 'precise',
                     order: 'lexical',
                     seed: { value: 42n },

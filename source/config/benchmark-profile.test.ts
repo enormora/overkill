@@ -23,7 +23,7 @@ const benchmarkPolicy = {
         workerLifecycle: 'reuse'
     },
     reporters: null,
-    resourceUsage: {
+    processUsage: {
         measure: false,
         samplingIntervalMilliseconds: 100,
         budgets: {
@@ -103,6 +103,21 @@ export const testNode = suite('benchmark profile configuration', [
                 } as const
             );
             scope.assert.equal(loaded.profiles.microtest?.testFamily, 'microtest');
+        }
+        return scope.assert.collect();
+    }),
+    test('rejects resourceUsage in every profile family', async function (scope: TestScope) {
+        for (const testFamily of [ 'microtest', 'integration', 'benchmark' ]) {
+            const load = createSingleConfigModuleLoader('overkill.config.ts', {
+                config: {
+                    profiles: {
+                        selected: { testFamily, files: benchmarkFiles, resourceUsage: { measure: true } }
+                    }
+                }
+            });
+            await scope.assert.rejects(async function () {
+                await load({ configPath: null, cwd: configFixtureCwd });
+            }, { type: ConfigError, message: /resourceUsage/ });
         }
         return scope.assert.collect();
     }),

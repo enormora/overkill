@@ -4,7 +4,7 @@ import type { CoveragePolicy, ProfileConfig } from '../config/types.ts';
 import type { CoverageSession, CoverageSessionRequest } from './coverage-session.ts';
 import { RunCollectionError } from './run-errors.ts';
 
-const interruptedCoverageErrorSubtypes = new Set<string>([ 'crash', 'loader', 'resource-exhaustion' ]);
+const interruptedCoverageErrorSubtypes = new Set<string>([ 'crash', 'loader', 'process-exhaustion' ]);
 
 async function loadCoverageSession(request: CoverageSessionRequest): Promise<CoverageSession> {
     const coverage = await import('./coverage-session.ts');
@@ -62,7 +62,7 @@ export function microtestCoveragePolicy(profile: ProfileConfig): CoveragePolicy 
 }
 
 export function coverageExecutionCompleted(result: RunResult): boolean {
-    return result.summary.crashed === 0 && result.summary.resourceExhausted === 0 &&
+    return result.summary.crashed === 0 && result.summary.processExhausted === 0 &&
         result.runnerErrors.every(function coverageWasNotInterrupted(error) {
             return !interruptedCoverageErrorSubtypes.has(error.subtype);
         });

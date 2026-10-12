@@ -5,16 +5,16 @@ import {
     type WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
 import {
-    findResourceBudgetBreach,
-    resourceExhaustionError
-} from './supervised-run-resource-policy.ts';
+    findProcessBudgetBreach,
+    processExhaustionError
+} from './supervised-run-process-policy.ts';
 import {
     createSupervisedRunState,
     type SupervisedRunState
 } from './supervised-run-state.ts';
 
 type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
-type PoolResourceUsageSample = NonNullable<ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>>;
+type PoolProcessUsageSample = NonNullable<ReturnType<WorkerPoolRunRuntime['previousPoolSample']['read']>>;
 
 async function recordReporterEventErrors(
     event: RuntimeReporterEvent,
@@ -36,8 +36,8 @@ function clearTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
     }
 }
 
-function poolResourceBudgets(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['resourceBudgets'] {
-    const { budgets } = runtime.resolvedRun.facts.execution.resourceUsagePolicy;
+function poolProcessBudgets(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['processBudgets'] {
+    const { budgets } = runtime.resolvedRun.facts.execution.processUsagePolicy;
 
     return {
         activeResourceCount: null,
@@ -59,26 +59,26 @@ function createActiveCaseState(runtime: WorkerPoolRunRuntime): SupervisedRunStat
     return activeState;
 }
 
-function stopTaskForResourceExhaustion(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
+function stopTaskForProcessExhaustion(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
     taskRun.endedByParent.write(true);
     taskRun.requeuePendingCases.write(false);
     taskRun.state.recordTerminalActiveCases(
-        'resource-exhausted',
+        'process-exhausted',
         Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
     clearTaskTimeout(taskRun, runtime);
     taskRun.controller.abort();
 }
 
-function stopActiveTasksForResourceExhaustion(runtime: WorkerPoolRunRuntime): void {
+function stopActiveTasksForProcessExhaustion(runtime: WorkerPoolRunRuntime): void {
     for (const taskRun of runtime.activeTasks) {
-        stopTaskForResourceExhaustion(taskRun, runtime);
+        stopTaskForProcessExhaustion(taskRun, runtime);
     }
 }
 
-function recordPoolResourceBreach(runtime: WorkerPoolRunRuntime, sample: PoolResourceUsageSample): void {
-    const breach = findResourceBudgetBreach(
-        poolResourceBudgets(runtime),
+function recordPoolProcessBudgetBreach(runtime: WorkerPoolRunRuntime, sample: PoolProcessUsageSample): void {
+    const breach = findProcessBudgetBreach(
+        poolProcessBudgets(runtime),
         sample,
         runtime.previousPoolSample.read()
     );
@@ -87,20 +87,20 @@ function recordPoolResourceBreach(runtime: WorkerPoolRunRuntime, sample: PoolRes
     if (breach !== null) {
         runtime.terminalFailure.write(true);
         const activeState = createActiveCaseState(runtime);
-        const error = resourceExhaustionError(breach, activeState);
+        const error = processExhaustionError(breach, activeState);
         runtime.runState.recordRunnerError(error);
         runtime.reporterEvents.add(recordReporterEventErrors({ error, kind: 'runner-error' }, runtime));
-        stopActiveTasksForResourceExhaustion(runtime);
+        stopActiveTasksForProcessExhaustion(runtime);
     }
 }
 
-export async function startPoolResourceTracking(runtime: WorkerPoolRunRuntime): Promise<void> {
-    runtime.poolResourceUsageTracker?.start(function recordPoolSample(sample) {
+export async function startPoolProcessUsageTracking(runtime: WorkerPoolRunRuntime): Promise<void> {
+    runtime.poolProcessUsageTracker?.start(function recordPoolSample(sample) {
         if (!runtime.terminalFailure.read()) {
-            recordPoolResourceBreach(runtime, sample);
+            recordPoolProcessBudgetBreach(runtime, sample);
         }
     });
-    await runtime.poolResourceUsageTracker?.waitForStart?.();
+    await runtime.poolProcessUsageTracker?.waitForStart?.();
 }
 
 export async function reportRunStart(

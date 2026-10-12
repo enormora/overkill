@@ -1,6 +1,6 @@
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { RunnerError, RunResourceUsageTracker } from '../packages/engine/engine.entry-point.ts';
+import type { RunnerError, RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
@@ -52,7 +52,7 @@ function importMeta(file: string): Readonly<ImportMeta> {
     };
 }
 
-function createResourceUsageTracker(): RunResourceUsageTracker {
+function createProcessUsageTracker(): RunProcessUsageTracker {
     return {
         finish() {
             return {
@@ -241,8 +241,8 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
             },
             outputRenderer: command.config.outputRenderer,
             reporters: profile.reporters ?? command.config.reporters ?? [],
-            resourceBudgets: facts.execution.resourceUsagePolicy.budgets,
-            resourceUsageTracker: createResourceUsageTracker(),
+            processBudgets: facts.execution.processUsagePolicy.budgets,
+            processUsageTracker: createProcessUsageTracker(),
             runtimePolicy: null,
             runFacts: facts,
             startedAt: startedAt.toISOString(),

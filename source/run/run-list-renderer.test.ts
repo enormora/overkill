@@ -148,7 +148,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                 placementPlan: null,
                 processModel: profile.execution.processModel,
                 profile: request.profile,
-                resourceUsagePolicy: profile.resourceUsage,
+                processUsagePolicy: profile.processUsage,
                 scheduling: profile.execution.scheduling,
                 testFamily: profile.testFamily,
                 timingCollection: 'summary',

@@ -26,13 +26,13 @@ export const executionCommandFields = {
     paths: z.array(z.string()),
     hardTimeoutMilliseconds: z.number(),
     maxConcurrency: z.union([ z.number().int().positive(), z.literal('unlimited') ]),
-    resourceBudgets: z.strictObject({
+    processBudgets: z.strictObject({
         activeResourceCount: z.number().nullable(),
         javaScriptEngineHeapBytes: z.number().nullable(),
         residentSetBytes: z.number().nullable(),
         residentSetGrowthBytesPerSecond: z.number().nullable()
     }),
-    resourceUsageSamplingIntervalMilliseconds: z.number(),
+    processUsageSamplingIntervalMilliseconds: z.number(),
     root: z.strictObject({
         annotations: z
             .strictObject({ ownership: z.array(z.string()).optional(), tags: z.array(z.string()).optional() })

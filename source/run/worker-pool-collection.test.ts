@@ -52,13 +52,13 @@ function workerPoolCommand(): WorkerPoolCommand {
         maxConcurrency: 5,
         hostProcess: { kind: 'direct' },
         paths: [],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 1,
+        processUsageSamplingIntervalMilliseconds: 1,
         root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'microtest',

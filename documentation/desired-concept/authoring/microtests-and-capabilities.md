@@ -247,7 +247,7 @@ Some writes are necessary for the runner itself to function. These are
 narrow, runner-owned, and explicit in configuration and diagnostics:
 
 - coverage output directory (when coverage is enabled)
-- diagnostic report directory (when supervised resource budgets enable
+- diagnostic report directory (when supervised process budgets enable
   Node fatal reports)
 
 The runner enforces that these directories are the only paths writable
@@ -328,8 +328,8 @@ Microtest profile policy may include:
 - `files.include` and `files.exclude` discovery policy
 - `execution.processModel`: `in-process` or `supervised-process`
 - `execution.scheduling`: `concurrent` or `serial`
-- `resourceUsage.measure`, `resourceUsage.budgets`, and
-  `resourceUsage.samplingIntervalMilliseconds`
+- `processUsage.measure`, `processUsage.budgets`, and
+  `processUsage.samplingIntervalMilliseconds`
 - `timeouts.softMilliseconds` and `timeouts.hardMilliseconds`
 - microtest-only `coverage` policy, which customizes collection without
   activating it
@@ -372,11 +372,11 @@ it runs in-process. If Overkill wants force-quit behavior, that is
 attached to execution modes that already use a worker or subprocess
 boundary.
 
-The same boundary rule applies to resource exhaustion. The default
+The same boundary rule applies to process exhaustion. The default
 single-process microtest profile can keep assertion formatting bounded and
-report post-test or between-tick resource diagnostics, but it cannot guarantee
+report post-test or between-tick process usage diagnostics, but it cannot guarantee
 that the runner will survive a synchronous allocation that kills the process.
-Hard resource budget enforcement requires the supervised microtest profile or
+Hard process budget enforcement requires the supervised microtest profile or
 another owned process boundary. In-process microtests only enforce resource
 budgets on a best-effort basis with sampled and final usage diagnostics.
 
@@ -384,10 +384,10 @@ Concept direction:
 
 - in-process microtests: allow soft timeouts and optional resource-leak
   diagnostics, but do not promise hard recovery from CPU-bound hangs or
-  synchronous resource exhaustion
+  synchronous process exhaustion
 - supervised microtests: allow crash-only supervision, where a watchdog
   may kill the disposable test process or worker if it wedges or exceeds
-  a resource budget. _This requires subprocess isolation_, since worker
+  a process budget. _This requires subprocess isolation_, since worker
   threads inherit the parent's permissions and can be CPU-stuck without
   parent recourse.
 - isolated integration, browser, or benchmark modes: allow a supervisor

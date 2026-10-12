@@ -4,7 +4,7 @@ import { startChildShutdown } from './child-process-shutdown.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import type { ResolvedRun, RunRequest, RunTestFamily } from './run-types.ts';
-import { crashError } from './supervised-run-resource-policy.ts';
+import { crashError } from './supervised-run-process-policy.ts';
 import {
     remainingHardTimeoutMilliseconds,
     type StoredRunValue,

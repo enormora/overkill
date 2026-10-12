@@ -49,7 +49,7 @@ function createDefaultMicrotestProfile(): MicrotestProfileConfig {
         },
         files: null,
         reporters: null,
-        resourceUsage: {
+        processUsage: {
             budgets: {
                 activeResourceCount: null,
                 javaScriptEngineHeapBytes: null,
@@ -93,12 +93,12 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
-        measureResourceUsage: null,
+        measureProcessUsage: null,
         order: 'seeded',
         paths,
         profile: 'microtest',
-        resourceBudgetOverrides: null,
-        resourceUsageSamplingIntervalMilliseconds: null,
+        processBudgetOverrides: null,
+        processUsageSamplingIntervalMilliseconds: null,
         seed: { value: 42n },
         selection: { kind: 'all' },
         shard: { index: 1, total: 1 },
@@ -293,7 +293,7 @@ export const testNode = createSuite({
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });

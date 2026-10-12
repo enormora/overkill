@@ -12,8 +12,8 @@ import type {
     MicrotestProfileConfig,
     ProfileFiles,
     TestProfileConfig,
-    ResourceBudgets,
-    ResourceUsagePolicy,
+    ProcessBudgets,
+    ProcessUsagePolicy,
     TimingProfilePolicy,
     TimeoutPolicy,
     WorkDistribution,
@@ -30,8 +30,8 @@ type WorkerPoolExecutionOverrides = Partial<
 >;
 const defaultMaxConcurrency = 5;
 
-type ResourceUsageOverrides = {
-    readonly budgets?: Partial<ResourceBudgets>;
+type ProcessUsageOverrides = {
+    readonly budgets?: Partial<ProcessBudgets>;
     readonly measure?: boolean;
     readonly samplingIntervalMilliseconds?: number;
 };
@@ -41,7 +41,7 @@ type MicrotestProfileOverrides = {
     readonly execution?: Partial<MicrotestExecution>;
     readonly files?: ProfileFiles | null;
     readonly reporters?: readonly DefinedReporter[] | null;
-    readonly resourceUsage?: ResourceUsageOverrides;
+    readonly processUsage?: ProcessUsageOverrides;
     readonly timings?: Partial<TimingProfilePolicy>;
     readonly timeouts?: Partial<TimeoutPolicy>;
 };
@@ -50,12 +50,12 @@ type IntegrationProfileOverrides = {
     readonly execution?: Partial<IntegrationExecution>;
     readonly files?: ProfileFiles;
     readonly reporters?: readonly DefinedReporter[] | null;
-    readonly resourceUsage?: ResourceUsageOverrides;
+    readonly processUsage?: ProcessUsageOverrides;
     readonly timings?: Partial<TimingProfilePolicy>;
     readonly timeouts?: Partial<TimeoutPolicy>;
 };
 
-const defaultResourceUsageSamplingIntervalMilliseconds = 100;
+const defaultProcessUsageSamplingIntervalMilliseconds = 100;
 const defaultCollectionTimeoutMilliseconds = 1000;
 const defaultHardTimeoutMilliseconds = 1000;
 const defaultSoftTimeoutMilliseconds = 500;
@@ -63,28 +63,28 @@ const defaultIntegrationCollectionTimeoutMilliseconds = 5000;
 const defaultIntegrationHardTimeoutMilliseconds = 7000;
 const defaultIntegrationSoftTimeoutMilliseconds = 5000;
 
-const defaultResourceBudgets: ResourceBudgets = {
+const defaultProcessBudgets: ProcessBudgets = {
     activeResourceCount: null,
     javaScriptEngineHeapBytes: null,
     residentSetBytes: null,
     residentSetGrowthBytesPerSecond: null
 };
 
-function defaultRunResourceBudgets(overrides: Partial<ResourceBudgets> = {}): ResourceBudgets {
+function defaultRunProcessBudgets(overrides: Partial<ProcessBudgets> = {}): ProcessBudgets {
     return {
-        ...defaultResourceBudgets,
+        ...defaultProcessBudgets,
         ...overrides
     };
 }
 
-function defaultRunResourceUsagePolicy(
-    overrides: MicrotestProfileOverrides['resourceUsage'] = {}
-): ResourceUsagePolicy {
+function defaultRunProcessUsagePolicy(
+    overrides: MicrotestProfileOverrides['processUsage'] = {}
+): ProcessUsagePolicy {
     return {
-        budgets: defaultRunResourceBudgets(overrides.budgets),
+        budgets: defaultRunProcessBudgets(overrides.budgets),
         measure: overrides.measure ?? false,
         samplingIntervalMilliseconds: overrides.samplingIntervalMilliseconds ??
-            defaultResourceUsageSamplingIntervalMilliseconds
+            defaultProcessUsageSamplingIntervalMilliseconds
     };
 }
 
@@ -136,7 +136,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: TestProfileC
         order: command.request.order,
         placementPlan: null,
         profile: command.request.profile,
-        resourceUsagePolicy: profile.resourceUsage,
+        processUsagePolicy: profile.processUsage,
         scheduling: profile.execution.scheduling,
         testFamily: profile.testFamily,
         timingCollection: resolveTimingCollection(command.request, profile),
@@ -280,7 +280,7 @@ export function defaultMicrotestProfile(
         execution: defaultMicrotestExecution(overrides.execution),
         files: overrides.files ?? null,
         reporters: overrides.reporters ?? null,
-        resourceUsage: defaultRunResourceUsagePolicy(overrides.resourceUsage),
+        processUsage: defaultRunProcessUsagePolicy(overrides.processUsage),
         testFamily: 'microtest',
         timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy(overrides.timeouts)
@@ -299,7 +299,7 @@ export function defaultIntegrationProfile(
             include: [ 'source/**/*.integration.test.ts' ]
         },
         reporters: overrides.reporters ?? null,
-        resourceUsage: defaultRunResourceUsagePolicy(overrides.resourceUsage),
+        processUsage: defaultRunProcessUsagePolicy(overrides.processUsage),
         testFamily: 'integration',
         timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy({
@@ -342,12 +342,12 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
             selectors: []
         },
         execution: { mode: 'profile-default' },
-        measureResourceUsage: null,
+        measureProcessUsage: null,
         order: 'seeded',
         paths: [],
         profile: 'microtest',
-        resourceBudgetOverrides: null,
-        resourceUsageSamplingIntervalMilliseconds: null,
+        processBudgetOverrides: null,
+        processUsageSamplingIntervalMilliseconds: null,
         seed: { value: 42n },
         selection: { kind: 'all' },
         shard: { index: 1, total: 1 },

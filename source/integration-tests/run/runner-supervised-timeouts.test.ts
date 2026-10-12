@@ -112,7 +112,7 @@ export const testNode = createSuite({
                     inconclusive: 0,
                     passed: 0,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });

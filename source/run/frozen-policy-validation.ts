@@ -4,7 +4,7 @@ import { freezeRunPolicy } from './freeze-run-policy.ts';
 import type { FrozenMicrotestPolicy } from './run-types.ts';
 import { policyBaselineCommand } from './frozen-run-policy.ts';
 import type { RunInputResolutionDependencies } from './run-input-resolution.ts';
-import { resolveResourceUsagePolicy, resolveRunScheduling, resolveTimingCollection } from './run-profile-facts.ts';
+import { resolveProcessUsagePolicy, resolveRunScheduling, resolveTimingCollection } from './run-profile-facts.ts';
 import { RunResolutionError } from './run-errors.ts';
 
 function policyFacts(policy: FrozenMicrotestPolicy): Readonly<Record<string, unknown>> {
@@ -41,7 +41,7 @@ function policyFacts(policy: FrozenMicrotestPolicy): Readonly<Record<string, unk
             baselineUpdateMode: policy.request.baselineUpdateMode,
             debug: policy.request.debug
         },
-        resources: resolveResourceUsagePolicy(command.request, profile),
+        processUsage: resolveProcessUsagePolicy(command.request, profile),
         runtimeStateDir: policy.runtimeStateDir
     };
 }

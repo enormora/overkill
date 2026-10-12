@@ -93,7 +93,7 @@ type RunSummary = {
     readonly failed: number;
     readonly skipped: number;
     readonly inconclusive: number;
-    readonly resourceExhausted: number;
+    readonly processExhausted: number;
 };
 
 type RunResult = {
@@ -126,8 +126,8 @@ matches no work reports `planned: 0` with `planStatus: 'empty-selection'`.
 
 `executed` at run scope is intentionally not stored as an explicit
 field. It is derivable as
-`passed + failed + skipped + inconclusive + resourceExhausted + crashed`
-(where `resourceExhausted` is counted from verdict `resource-exhausted`
+`passed + failed + skipped + inconclusive + processExhausted + crashed`
+(where `processExhausted` is counted from verdict `process-exhausted`
 and `crashed` is counted from `runnerErrors` with subtype `crash`). The
 existing summary has no denormalised fields; run counts preserve that
 pattern.
@@ -194,7 +194,7 @@ budget after its body started. Filtered-out and sharded-out cases do not
 count because they never entered the final `TestPlan`.
 
 Skipped tests count as executed: the runner processed them and
-recorded a skip verdict. Crashed and resource-exhausted cases count as
+recorded a skip verdict. Crashed and process-exhausted cases count as
 executed: the runner started a body even if the worker died or was killed
 before completion. The rule is deliberately simple: "the runner got to it,
 in any way." That matches the user question the counts are meant to answer.

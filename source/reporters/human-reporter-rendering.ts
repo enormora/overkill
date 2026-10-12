@@ -40,7 +40,7 @@ function executedCount(result: RunResult): number {
     const { summary } = result;
 
     return summary.passed + summary.failed + summary.skipped + summary.inconclusive +
-        summary.resourceExhausted + summary.crashed + summary.runtimePolicy;
+        summary.processExhausted + summary.crashed + summary.runtimePolicy;
 }
 
 function formatRetrySummary(result: RunResult): string {
@@ -60,7 +60,7 @@ export function formatCountSummary(result: RunResult): string {
         `${summary.failed} fail`,
         `${summary.skipped} skip`,
         ...summary.inconclusive === 0 ? [] : [ `${summary.inconclusive} inconclusive` ],
-        ...summary.resourceExhausted === 0 ? [] : [ `${summary.resourceExhausted} resource-exhausted` ],
+        ...summary.processExhausted === 0 ? [] : [ `${summary.processExhausted} process-exhausted` ],
         ...summary.runtimePolicy === 0 ? [] : [ `${summary.runtimePolicy} runtime-policy` ],
         ...summary.crashed === 0 ? [] : [ `${summary.crashed} crash` ]
     ]

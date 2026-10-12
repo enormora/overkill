@@ -254,9 +254,9 @@ inside a matrix. Exact `CaseId` selection is programmatic API-only.
   microtest profile's process model and scheduling, and is rejected for every
   other test family before discovery starts.
 
-Resource usage measurement and budgets come from the selected profile's
-`resourceUsage` configuration. Budgets require `measure: true`.
-See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets).
+Process usage measurement and budgets come from the selected profile's
+`processUsage` configuration. Budgets require `measure: true`.
+See [Runtime Behavior § Process Budgets](../architecture/runtime-behavior.md#process-budgets).
 
 ## Output And Capture
 
@@ -274,7 +274,7 @@ See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#r
 | `--debug`                  | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
 | `--debug-scope <selector>` | Emit a debug artifact for tests matching a selector.                 | same                                                    |
 | `--timings`                | Collect precise runner timing diagnostics for this run.              | [Run Timings](../architecture/run-timings.md)           |
-| `--verbose`                | Include per-file peak resource usage and other expanded diagnostics. | [Runtime Behavior](../architecture/runtime-behavior.md) |
+| `--verbose`                | Include per-file peak process usage and other expanded diagnostics.  | [Runtime Behavior](../architecture/runtime-behavior.md) |
 
 This list intentionally omits flags that are still under design (e.g.
 `--since <ref>`); when those land, this table is the

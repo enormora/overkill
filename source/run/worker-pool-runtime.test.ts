@@ -150,7 +150,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 }),
                 processModel: 'worker-pool',
                 profile: 'integration',
-                resourceUsagePolicy: {
+                processUsagePolicy: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -201,7 +201,7 @@ function resourceMeasurementResolvedRun(): ResolvedRun {
             ...resolvedRun.facts,
             execution: {
                 ...resolvedRun.facts.execution,
-                resourceUsagePolicy: {
+                processUsagePolicy: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -285,7 +285,7 @@ function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
         placementPlan: null,
         processModel: 'supervised-process',
         profile: 'integration',
-        resourceUsagePolicy: {
+        processUsagePolicy: {
             budgets: {
                 activeResourceCount: null,
                 javaScriptEngineHeapBytes: null,
@@ -351,8 +351,8 @@ async function createRuntime(
     });
 }
 
-function failResourceUsageFinish(): never {
-    throw new Error('Resource usage tracker should not finish in this test.');
+function failProcessUsageFinish(): never {
+    throw new Error('Process usage tracker should not finish in this test.');
 }
 
 function createRecordedPoolDependencies(): RecordedPoolDependencies {
@@ -364,11 +364,11 @@ function createRecordedPoolDependencies(): RecordedPoolDependencies {
         createdWorkerPools,
         dependencies: {
             ...baseDependencies,
-            createResourceUsageTracker(options) {
+            createProcessUsageTracker(options) {
                 measuredSamplingInterval = options.samplingIntervalMilliseconds;
 
                 return {
-                    finish: failResourceUsageFinish,
+                    finish: failProcessUsageFinish,
                     start() {
                         return undefined;
                     }
@@ -390,9 +390,9 @@ async function workerPoolRuntimeCreation(): Promise<{
     readonly createdWorkerPools: readonly WorkerPoolCreationOptions[];
     readonly measuredSamplingInterval: number;
     readonly measuredThreads: number;
-    readonly measuredTracker: WorkerPoolRunRuntime['poolResourceUsageTracker'];
+    readonly measuredTracker: WorkerPoolRunRuntime['poolProcessUsageTracker'];
     readonly unmeasuredThreads: number;
-    readonly unmeasuredTracker: WorkerPoolRunRuntime['poolResourceUsageTracker'];
+    readonly unmeasuredTracker: WorkerPoolRunRuntime['poolProcessUsageTracker'];
 }> {
     const fixture = createRecordedPoolDependencies();
     const unmeasuredRuntime = await createRuntime(
@@ -410,9 +410,9 @@ async function workerPoolRuntimeCreation(): Promise<{
         createdWorkerPools: fixture.createdWorkerPools,
         measuredSamplingInterval: fixture.measuredSamplingInterval(),
         measuredThreads: measuredRuntime.pool.options.maxThreads,
-        measuredTracker: measuredRuntime.poolResourceUsageTracker,
+        measuredTracker: measuredRuntime.poolProcessUsageTracker,
         unmeasuredThreads: unmeasuredRuntime.pool.options.maxThreads,
-        unmeasuredTracker: unmeasuredRuntime.poolResourceUsageTracker
+        unmeasuredTracker: unmeasuredRuntime.poolProcessUsageTracker
     };
 }
 
@@ -426,7 +426,7 @@ export const testNode = createOverkillSuite({
             annotations: {},
             controls: {},
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'worker-pool runtime creation sizes pools and installs resource tracking',
+            title: 'worker-pool runtime creation sizes pools and installs process usage tracking',
             async body(scope: OverkillScope) {
                 const result = await workerPoolRuntimeCreation();
 

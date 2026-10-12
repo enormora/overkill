@@ -129,7 +129,7 @@ export const testNode = createSuite({
         }),
 
         createTestCase({
-            title: 'rejects a malformed nested resource sample before narrowing',
+            title: 'rejects a malformed nested process usage sample before narrowing',
             ...metadata,
             body(scope) {
                 scope.assert.throws(function () {

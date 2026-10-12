@@ -172,7 +172,7 @@ export const testNode = createOverkillSuite({
                             microtest: {
                                 testFamily: 'microtest',
                                 execution: { processModel: 'in-process', scheduling: 'concurrent' },
-                                resourceUsage: { measure: true }
+                                processUsage: { measure: true }
                             }
                         }
                     },

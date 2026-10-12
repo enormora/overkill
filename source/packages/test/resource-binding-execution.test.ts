@@ -85,7 +85,7 @@ async function executeObservedBodyInMode(body: TestBody, execution: ExecuteExecu
             retryPolicy: null,
             execution,
             reporters: [ eventReporter(events) ],
-            resourceUsageTracker: null,
+            processUsageTracker: null,
             runFacts: {},
             startedAt: epoch.toISOString()
         }

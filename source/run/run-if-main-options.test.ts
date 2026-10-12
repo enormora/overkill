@@ -71,7 +71,7 @@ function directProfile(
         },
         files: null,
         reporters,
-        resourceUsage: {
+        processUsage: {
             budgets: {
                 activeResourceCount: null,
                 javaScriptEngineHeapBytes: null,

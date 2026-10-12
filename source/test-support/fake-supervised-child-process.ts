@@ -1,6 +1,6 @@
 import { supervisedParentMessageSchema } from '../run/supervised-protocol-schema.ts';
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
-import type { ResourceUsageSnapshot } from '../engine/resource-usage.ts';
+import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
 import {
     childProcessEnvelope,
     type ChildProcessEnvelope,
@@ -37,7 +37,7 @@ export type FakeSupervisedChildRunContext = {
     readonly command: SupervisedChildCommand;
     readonly emitExit: () => void;
     readonly emitMessage: (message: SupervisedChildMessage) => void;
-    readonly emitSample: (sample: ResourceUsageSnapshot) => void;
+    readonly emitSample: (sample: ProcessUsageSnapshot) => void;
     readonly isKilled: () => boolean;
     readonly stderr: FakeSupervisedChildProcessOutput;
     readonly stdout: FakeSupervisedChildProcessOutput;

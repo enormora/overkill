@@ -4,7 +4,7 @@ import {
 } from '../test-support/worker-message-port-fixture.ts';
 import { createFakeHostChild, type FakeHostChild } from '../test-support/fake-worker-pool-host-process.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
-import type { ResourceUsageSnapshot, RunResourceUsage } from '../engine/resource-usage.ts';
+import type { ProcessUsageSnapshot, RunProcessUsage } from '../engine/process-usage.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -13,7 +13,7 @@ import {
 import type {
     CreatedWorkerPool,
     WorkerPoolCreationOptions,
-    WorkerPoolResourceUsageTracker,
+    WorkerPoolProcessUsageTracker,
     WorkerPoolHostProcessStartOptions
 } from './run-orchestrator-dependencies.ts';
 import type {
@@ -46,9 +46,9 @@ type ForwardingFixture = RunningTaskFixture & {
     readonly port: FakePort;
 };
 
-type ResourceTrackingFixture = HostedPoolFixture & {
+type ProcessUsageTrackingFixture = HostedPoolFixture & {
     readonly observedSamples: readonly number[];
-    readonly tracker: WorkerPoolResourceUsageTracker;
+    readonly tracker: WorkerPoolProcessUsageTracker;
 };
 
 function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): WorkerPoolCreationOptions {
@@ -74,13 +74,13 @@ function workerPoolCommand(): WorkerPoolCommand {
         maxConcurrency: 5,
         hostProcess: { kind: 'child', nodeArguments: [ '--expose-gc' ] },
         paths: [ 'test.ts' ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 10,
+        processUsageSamplingIntervalMilliseconds: 10,
         root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'integration',
@@ -107,10 +107,10 @@ function newRangeError(message: string): RangeError {
     return new RangeError(message);
 }
 
-function resourceUsageSample(
+function processUsageSample(
     capturedAtMicroseconds: number,
     residentSetBytes: number
-): ResourceUsageSnapshot {
+): ProcessUsageSnapshot {
     return {
         activeResourceCount: capturedAtMicroseconds / 10,
         activeResourceTypes: [ 'temporary-directory' ],
@@ -281,12 +281,12 @@ async function assertForwardingResult(scope: OverkillScope, fixture: ForwardingF
     scope.assert.equal(fixture.pool.options.maxThreads, 2);
 }
 
-function createTrackingFixture(): ResourceTrackingFixture {
+function createTrackingFixture(): ProcessUsageTrackingFixture {
     const fixture = createPoolFixture(
         workerPoolOptions({ workerLifecycle: 'fresh-worker-per-unit' }),
         ignoreStartOptions
     );
-    const tracker = fixture.pool.createResourceUsageTracker?.({ samplingIntervalMilliseconds: 25 });
+    const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
     const observedSamples: number[] = [];
 
     if (tracker === undefined) {
@@ -300,13 +300,13 @@ function createTrackingFixture(): ResourceTrackingFixture {
     return { ...fixture, observedSamples, tracker };
 }
 
-async function collectTwoResourceSamples(fixture: ResourceTrackingFixture): Promise<RunResourceUsage> {
+async function collectTwoProcessUsageSamples(fixture: ProcessUsageTrackingFixture): Promise<RunProcessUsage> {
     const start = fixture.tracker.waitForStart?.();
 
     await Promise.resolve();
-    fixture.child.emitMessage({ kind: 'resource-sample', sample: resourceUsageSample(10, 200) });
+    fixture.child.emitMessage({ kind: 'process-usage-sample', sample: processUsageSample(10, 200) });
     await start;
-    fixture.child.emitMessage({ kind: 'resource-sample', sample: resourceUsageSample(20, 260) });
+    fixture.child.emitMessage({ kind: 'process-usage-sample', sample: processUsageSample(20, 260) });
     await fixture.tracker.waitForStart?.();
 
     return fixture.tracker.finish();
@@ -314,13 +314,13 @@ async function collectTwoResourceSamples(fixture: ResourceTrackingFixture): Prom
 
 async function startTrackingWithOneSample(
     child: FakeHostChild,
-    tracker: WorkerPoolResourceUsageTracker
+    tracker: WorkerPoolProcessUsageTracker
 ): Promise<void> {
     tracker.start();
     const start = tracker.waitForStart?.();
 
     await Promise.resolve();
-    child.emitMessage({ kind: 'resource-sample', sample: resourceUsageSample(10, 200) });
+    child.emitMessage({ kind: 'process-usage-sample', sample: processUsageSample(10, 200) });
     await start;
 }
 
@@ -332,16 +332,16 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             ...testMetadata,
 
-            title: 'createHostedWorkerPool() reports a missing host resource sample',
+            title: 'createHostedWorkerPool() reports a missing host process usage sample',
             body(scope: OverkillScope) {
                 const { pool } = createPoolFixture(workerPoolOptions(), ignoreStartOptions);
-                const tracker = pool.createResourceUsageTracker?.({ samplingIntervalMilliseconds: 25 });
+                const tracker = pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
                 scope.require.defined(tracker);
                 scope.assert.throws(function finishWithoutSamples() {
                     tracker.finish();
                 }, {
-                    message: 'Hosted worker-pool resource tracking did not receive samples.'
+                    message: 'Hosted worker-pool process usage tracking did not receive samples.'
                 });
 
                 return scope.assert.collect();
@@ -396,10 +396,10 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             ...testMetadata,
 
-            title: 'createHostedWorkerPool() exposes host resource usage samples',
+            title: 'createHostedWorkerPool() exposes host process usage samples',
             async body(scope: OverkillScope) {
                 const fixture = createTrackingFixture();
-                const usage = await collectTwoResourceSamples(fixture);
+                const usage = await collectTwoProcessUsageSamples(fixture);
 
                 scope.assert.deepEqual(fixture.observedSamples, [ 10, 20 ]);
                 scope.assert.equal(usage.sampleCount, 2);
@@ -407,7 +407,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(fixture.pool.options.isolateWorkers, true);
                 scope.assert.deepEqual(
                     fixture.child.sentCommands().map(commandKind),
-                    [ 'configure', 'start-resource-tracking', 'finish-resource-tracking' ]
+                    [ 'configure', 'start-process-usage-tracking', 'finish-process-usage-tracking' ]
                 );
 
                 return scope.assert.collect();
@@ -435,7 +435,7 @@ export const testNode = createOverkillSuite({
             title: 'createHostedWorkerPool() destroys an active host and ignores idle destroy',
             async body(scope: OverkillScope) {
                 const fixture = createPoolFixture(workerPoolOptions(), ignoreStartOptions);
-                const tracker = fixture.pool.createResourceUsageTracker?.({ samplingIntervalMilliseconds: 25 });
+                const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
                 scope.require.defined(tracker);
                 await startTrackingWithOneSample(fixture.child, tracker);
@@ -444,7 +444,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(
                     fixture.child.sentCommands().map(commandKind),
-                    [ 'configure', 'start-resource-tracking', 'destroy' ]
+                    [ 'configure', 'start-process-usage-tracking', 'destroy' ]
                 );
 
                 return scope.assert.collect();

@@ -119,7 +119,7 @@ function baseResolvedRun(): ResolvedRun {
                 }),
                 processModel: 'worker-pool',
                 profile: 'integration',
-                resourceUsagePolicy: {
+                processUsagePolicy: {
                     budgets: {
                         activeResourceCount: null,
                         javaScriptEngineHeapBytes: null,
@@ -248,7 +248,7 @@ export function fakeDependencies(
 ): WorkerPoolRunRuntime['dependencies'] {
     return {
         availableParallelism: 2,
-        createResourceUsageTracker: testOnlyDependency,
+        createProcessUsageTracker: testOnlyDependency,
         createSeed() {
             return 42n;
         },

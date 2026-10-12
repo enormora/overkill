@@ -32,13 +32,13 @@ function supervisedCollectCommand(): SupervisedCollectCommand {
         maxConcurrency: 5,
         kind: 'collect',
         paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ],
-        resourceBudgets: {
+        processBudgets: {
             activeResourceCount: null,
             javaScriptEngineHeapBytes: null,
             residentSetBytes: null,
             residentSetGrowthBytesPerSecond: null
         },
-        resourceUsageSamplingIntervalMilliseconds: 1,
+        processUsageSamplingIntervalMilliseconds: 1,
         root: { annotations: {}, controls: {}, title: process.cwd() },
         scheduling: 'serial',
         testFamily: 'microtest',

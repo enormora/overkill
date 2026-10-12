@@ -59,7 +59,7 @@ Configuration should mainly cover orchestration and package wiring:
 - baseline policy (paths, write directory, explicit update behavior,
   no environment-based write gate)
 - microtest coverage policy (outputs, source scope, thresholds, output path)
-- resource usage policy and resource-budget thresholds (Node-first JavaScript
+- process usage policy and process-budget thresholds (Node-first JavaScript
   engine heap, resident set, resident-set growth, and active-resource limits by
   profile)
 - timing collection policy (`summary` by default, `precise` for detailed
@@ -174,7 +174,7 @@ const config = defineConfig({
                 },
                 thresholds: { lines: 90 }
             },
-            resourceUsage: {
+            processUsage: {
                 measure: true,
                 budgets: {
                     javaScriptEngineHeapBytes: 128000000,
@@ -220,9 +220,9 @@ await run({
 });
 ```
 
-`resourceUsage.measure: true` enables run-level diagnostic measurement for the
-profile. `resourceUsage.budgets` are thresholds and therefore require measurement.
-Omitting `resourceUsage.budgets` records usage without requesting enforcement.
+`processUsage.measure: true` enables run-level diagnostic measurement for the
+profile. `processUsage.budgets` are thresholds and therefore require measurement.
+Omitting `processUsage.budgets` records usage without requesting enforcement.
 
 Top-level `reporters` are the project fallback for runner profiles. When the
 selected profile defines `reporters`, that list replaces the top-level list for
@@ -270,7 +270,7 @@ So, for example:
   intent through `@overkill-dev/run`
 - an optional global assertion budget policy lives in configuration because
   it is centrally enforced suite policy rather than per-test authoring
-- CLI resource usage measurement and budgets live in profile configuration
+- CLI process usage measurement and budgets live in profile configuration
   because they describe suite policy; programmatic requests can override them
   for one run
 - microtest `coverage` policy lives on the selected profile because source
@@ -378,7 +378,7 @@ Benchmark profiles share the project registry with ordinary profiles.
 `overkill run` and `overkill list` reject selected benchmark profiles and direct
 callers to `overkill bench`. A microtest profile named `benchmark` remains valid.
 Benchmark profiles configure `testFamily`, `files`, `execution`, `reporters`,
-`attachments`, `resourceUsage`, `timings`, and `timeouts`. Current runner
+`attachments`, `processUsage`, `timings`, and `timeouts`. Current runner
 integration supports isolated serial execution with one lane and hedging off.
 Collection, soft, and hard timeouts default to 5000, 40000, and 60000 ms;
 soft must not exceed hard, and hard must not exceed 60000 ms. Concurrent work

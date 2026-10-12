@@ -1,4 +1,4 @@
-export type ResourceUsageSnapshot = {
+export type ProcessUsageSnapshot = {
     readonly activeResourceCount: number;
     readonly activeResourceTypes: readonly string[];
     readonly capturedAtMicroseconds: number;
@@ -6,18 +6,18 @@ export type ResourceUsageSnapshot = {
     readonly residentSetBytes: number;
 };
 
-export type RunResourceUsage = {
+export type RunProcessUsage = {
     readonly activeResourceTypes: readonly string[];
-    readonly end: ResourceUsageSnapshot;
+    readonly end: ProcessUsageSnapshot;
     readonly peakActiveResourceCount: number;
     readonly peakJavaScriptEngineHeapBytes: number;
     readonly peakResidentSetBytes: number;
     readonly peakResidentSetGrowthBytesPerSecond: number;
     readonly sampleCount: number;
-    readonly start: ResourceUsageSnapshot;
+    readonly start: ProcessUsageSnapshot;
 };
 
-export type RunResourceUsageTracker = {
-    readonly finish: () => RunResourceUsage;
-    readonly start: (onSample?: (snapshot: ResourceUsageSnapshot) => void) => void;
+export type RunProcessUsageTracker = {
+    readonly finish: () => RunProcessUsage;
+    readonly start: (onSample?: (snapshot: ProcessUsageSnapshot) => void) => void;
 };

@@ -43,14 +43,14 @@ function createRunCommand(profile: ProfileConfig): RunCommand {
             capture: 'live',
             paths: [ integrationPath ],
             profile: 'integration',
-            resourceBudgetOverrides: {
+            processBudgetOverrides: {
                 activeResourceCount: 7,
                 javaScriptEngineHeapBytes: null,
                 residentSetBytes: null,
                 residentSetGrowthBytesPerSecond: null
             },
-            measureResourceUsage: true,
-            resourceUsageSamplingIntervalMilliseconds: 13
+            measureProcessUsage: true,
+            processUsageSamplingIntervalMilliseconds: 13
         })
     };
 }

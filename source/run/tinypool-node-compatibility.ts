@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import type { RunResourceUsageTracker } from '../engine/resource-usage.ts';
+import type { RunProcessUsageTracker } from '../engine/process-usage.ts';
 import type { WorkerPoolHostOutputSink } from './run-orchestrator-dependencies.ts';
 
 type TinypoolFilledOptions = {
@@ -13,7 +13,7 @@ type TinypoolRunOptions = {
     readonly transferList: readonly unknown[];
 };
 
-type ResourceUsageTrackerOptions = {
+type ProcessUsageTrackerOptions = {
     readonly samplingIntervalMilliseconds: number;
 };
 
@@ -27,7 +27,7 @@ type TinypoolOptions = {
 };
 
 export type TinypoolInstance = {
-    readonly createResourceUsageTracker?: (options: ResourceUsageTrackerOptions) => RunResourceUsageTracker;
+    readonly createProcessUsageTracker?: (options: ProcessUsageTrackerOptions) => RunProcessUsageTracker;
     readonly destroy: () => Promise<void>;
     readonly options: TinypoolFilledOptions;
     run: (task: unknown, options: TinypoolRunOptions) => Promise<unknown>;

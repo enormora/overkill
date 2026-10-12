@@ -7,8 +7,8 @@ import type {
     NormalizedConfig,
     BenchmarkProfileConfig,
     ProfileConfig,
-    ResourceBudgets,
-    ResourceUsagePolicy,
+    ProcessBudgets,
+    ProcessUsagePolicy,
     TimeoutPolicy
 } from './types.ts';
 
@@ -18,15 +18,15 @@ function validatePositiveSafeInteger(value: number | null, label: string): void 
     }
 }
 
-function validateResourceBudgets(resourceBudgets: ResourceBudgets): void {
-    validatePositiveSafeInteger(resourceBudgets.activeResourceCount, 'Active resource count budget');
-    validatePositiveSafeInteger(resourceBudgets.javaScriptEngineHeapBytes, 'JavaScript engine heap budget');
-    validatePositiveSafeInteger(resourceBudgets.residentSetBytes, 'Resident set budget');
-    validatePositiveSafeInteger(resourceBudgets.residentSetGrowthBytesPerSecond, 'Resident set growth budget');
+function validateProcessBudgets(processBudgets: ProcessBudgets): void {
+    validatePositiveSafeInteger(processBudgets.activeResourceCount, 'Active resource count budget');
+    validatePositiveSafeInteger(processBudgets.javaScriptEngineHeapBytes, 'JavaScript engine heap budget');
+    validatePositiveSafeInteger(processBudgets.residentSetBytes, 'Resident set budget');
+    validatePositiveSafeInteger(processBudgets.residentSetGrowthBytesPerSecond, 'Resident set growth budget');
 }
 
 function validateSamplingInterval(value: number | null): void {
-    validatePositiveSafeInteger(value, 'Resource usage sampling interval');
+    validatePositiveSafeInteger(value, 'Process usage sampling interval');
 }
 
 function validateTimeoutPolicy(policy: TimeoutPolicy): void {
@@ -39,24 +39,24 @@ function validateTimeoutPolicy(policy: TimeoutPolicy): void {
     }
 }
 
-function hasResourceBudgets(resourceBudgets: ResourceBudgets): boolean {
-    return resourceBudgets.activeResourceCount !== null ||
-        resourceBudgets.javaScriptEngineHeapBytes !== null ||
-        resourceBudgets.residentSetBytes !== null ||
-        resourceBudgets.residentSetGrowthBytesPerSecond !== null;
+function hasProcessBudgets(processBudgets: ProcessBudgets): boolean {
+    return processBudgets.activeResourceCount !== null ||
+        processBudgets.javaScriptEngineHeapBytes !== null ||
+        processBudgets.residentSetBytes !== null ||
+        processBudgets.residentSetGrowthBytesPerSecond !== null;
 }
 
-export function validateResourceUsagePolicy(policy: ResourceUsagePolicy): void {
-    validateResourceBudgets(policy.budgets);
+export function validateProcessUsagePolicy(policy: ProcessUsagePolicy): void {
+    validateProcessBudgets(policy.budgets);
     validateSamplingInterval(policy.samplingIntervalMilliseconds);
 
-    if (!policy.measure && hasResourceBudgets(policy.budgets)) {
-        throw new ConfigError('Resource budgets require resource usage measurement.');
+    if (!policy.measure && hasProcessBudgets(policy.budgets)) {
+        throw new ConfigError('Process budgets require process usage measurement.');
     }
 }
 
 function validateMicrotestProfile(profile: ProfileConfig): void {
-    validateResourceUsagePolicy(profile.resourceUsage);
+    validateProcessUsagePolicy(profile.processUsage);
     validateTimeoutPolicy(profile.timeouts);
 }
 
@@ -71,7 +71,7 @@ function validateAttachmentLimits(profile: ProfileConfig): void {
 
 function validateIntegrationProfile(profile: ProfileConfig): void {
     validateAttachmentLimits(profile);
-    validateResourceUsagePolicy(profile.resourceUsage);
+    validateProcessUsagePolicy(profile.processUsage);
     validateTimeoutPolicy(profile.timeouts);
 
     if (profile.execution.processModel === 'worker-pool') {

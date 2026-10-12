@@ -84,7 +84,7 @@ export const testNode = createOverkillSuite({
                         mode: 'off',
                         selectors: []
                     },
-                    resourceBudgetOverrides: {
+                    processBudgetOverrides: {
                         activeResourceCount: 1,
                         javaScriptEngineHeapBytes: null,
                         residentSetBytes: null,
@@ -95,7 +95,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(copied, request);
                 scope.assert.notEqual(copied.paths, request.paths);
-                scope.assert.notEqual(copied.resourceBudgetOverrides, request.resourceBudgetOverrides);
+                scope.assert.notEqual(copied.processBudgetOverrides, request.processBudgetOverrides);
 
                 return scope.assert.collect();
             }

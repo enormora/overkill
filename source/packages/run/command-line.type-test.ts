@@ -30,7 +30,7 @@ import {
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
     type ProjectProfilesConfig,
-    type ProjectResourceBudgets
+    type ProjectProcessBudgets
 } from './command-line.entry-point.ts';
 import type { RunRequest } from './run.entry-point.ts';
 
@@ -120,7 +120,7 @@ describe('@overkill-dev/run/command-line', function () {
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
         >();
         expect<LoadedConfig['reporters']>().type.toBe<readonly DefinedReporter[] | null>();
-        expect<ProjectResourceBudgets['residentSetBytes']>().type.toBe<number | null | undefined>();
+        expect<ProjectProcessBudgets['residentSetBytes']>().type.toBe<number | null | undefined>();
         expect(new ConfigError('Invalid config.')).type.toBe<ConfigError>();
     });
 
@@ -140,7 +140,7 @@ describe('@overkill-dev/run/command-line', function () {
         }>();
         expect<ProjectProfilesConfig['backend-http']>().type.toBe<ProjectProfileConfig>();
         expect<ProjectMicrotestProfileConfig['files']>().type.toBe<ProjectProfileFiles | undefined>();
-        expect<TestProfileConfig['resourceUsage']['measure']>().type.toBe<boolean>();
+        expect<TestProfileConfig['processUsage']['measure']>().type.toBe<boolean>();
         expect<LoadedConfig['profiles']['backend-http']['files']>().type.not.toBe<undefined>();
     });
 

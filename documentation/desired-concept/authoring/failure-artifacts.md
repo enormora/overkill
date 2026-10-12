@@ -400,7 +400,7 @@ Integration profiles opt in through `retries: { maxAttempts: 3 }`. The limit
 includes the initial attempt. Omission or a limit of one runs once. Only
 completed assertion failures, ordinary body errors, and cooperative soft
 timeouts retry after cleanup succeeds. Contract, cleanup, fixture, permission,
-runtime-policy, leak, crash, resource-exhaustion, and hedged-conflict failures
+runtime-policy, leak, crash, process-exhaustion, and hedged-conflict failures
 are terminal. Reporter failures independently fail the run.
 
 Failure artifacts preserve:
@@ -448,18 +448,18 @@ When a worker process dies mid-test (segfault, OOM, native-addon crash):
 See [Runtime Behavior § Process Crash Handling](../architecture/runtime-behavior.md#process-crash-handling) for the run-level
 policy (replacement workers, crash-budget abort).
 
-## Resource Exhaustion Artifacts
+## Process Exhaustion Artifacts
 
-When a supervised worker exceeds an enforced resource budget:
+When a supervised worker exceeds an enforced process budget:
 
-- the test is recorded with verdict `resource-exhausted`
-- a runner error with subtype `resource-exhaustion` is attributed to the
+- the test is recorded with verdict `process-exhausted`
+- a runner error with subtype `process-exhaustion` is attributed to the
   active test
-- captured output and the latest resource samples are preserved
-- a `ResourceExhaustion` artifact is attached
+- captured output and the latest process usage samples are preserved
+- a `ProcessExhaustion` artifact is attached
 
 ```ts
-type ResourceExhaustion = {
+type ProcessExhaustion = {
     readonly timestamp: string;
     readonly metric:
         | 'javaScriptEngineHeapBytes'
@@ -470,7 +470,7 @@ type ResourceExhaustion = {
     readonly budget: number;
     readonly observed: number;
     readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
-    readonly resourceUsageSamplingIntervalMilliseconds: number;
+    readonly processUsageSamplingIntervalMilliseconds: number;
     readonly workerId: string;
     readonly activeCase: CaseId;
 };
@@ -480,7 +480,7 @@ The artifact must be legible without reading logs. It records the budget that
 was configured, the observed value that breached it, and whether the value came
 from a V8 heap ceiling, sampled Node telemetry, or completion-time diagnostics.
 
-See [Runtime Behavior § Resource Budgets](../architecture/runtime-behavior.md#resource-budgets) for
+See [Runtime Behavior § Process Budgets](../architecture/runtime-behavior.md#process-budgets) for
 the enforcement model.
 
 ## Sources

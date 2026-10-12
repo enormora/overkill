@@ -1,10 +1,10 @@
-import type { ResourceUsageSnapshot } from './resource-usage.ts';
+import type { ProcessUsageSnapshot } from './process-usage.ts';
 
 const microsecondsPerSecond = 1_000_000;
 
 export function observedGrowthBytesPerSecond(
-    sample: ResourceUsageSnapshot,
-    previousSample: ResourceUsageSnapshot | null
+    sample: ProcessUsageSnapshot,
+    previousSample: ProcessUsageSnapshot | null
 ): number {
     if (previousSample === null) {
         return 0;

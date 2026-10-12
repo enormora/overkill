@@ -213,7 +213,7 @@ export const testNode = createOverkillSuite({
                         placementPlan: null,
                         processModel: 'supervised-process',
                         profile: 'microtest',
-                        resourceUsagePolicy: {
+                        processUsagePolicy: {
                             budgets: {
                                 activeResourceCount: null,
                                 javaScriptEngineHeapBytes: null,
@@ -344,21 +344,21 @@ export const testNode = createOverkillSuite({
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'orchestrator.resolve() rejects resource budget overrides without measurement',
+            title: 'orchestrator.resolve() rejects process budget overrides without measurement',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
-                await scope.assert.rejects(async function resolveInvalidResourceUsage() {
+                await scope.assert.rejects(async function resolveInvalidProcessUsage() {
                     await runOrchestrator.resolve(createRunCommand({
                         config: defaultConfig,
                         cwd: process.cwd(),
                         engine: { kind: 'default' },
                         request: {
                             ...defaultRequest,
-                            measureResourceUsage: false,
-                            resourceBudgetOverrides: {
+                            measureProcessUsage: false,
+                            processBudgetOverrides: {
                                 activeResourceCount: 1,
                                 javaScriptEngineHeapBytes: null,
                                 residentSetBytes: null,
@@ -367,7 +367,7 @@ export const testNode = createOverkillSuite({
                         }
                     }));
                 }, {
-                    message: 'Resource budget overrides require resource usage measurement.'
+                    message: 'Process budget overrides require process usage measurement.'
                 });
 
                 return scope.assert.collect();
@@ -430,7 +430,7 @@ export const testNode = createOverkillSuite({
                         placementPlan: null,
                         processModel: 'in-process',
                         profile: 'microtest',
-                        resourceUsagePolicy: {
+                        processUsagePolicy: {
                             budgets: {
                                 activeResourceCount: null,
                                 javaScriptEngineHeapBytes: null,
@@ -466,7 +466,7 @@ export const testNode = createOverkillSuite({
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });
@@ -503,7 +503,7 @@ export const testNode = createOverkillSuite({
                     inconclusive: 0,
                     passed: 1,
                     planned: 1,
-                    resourceExhausted: 0,
+                    processExhausted: 0,
                     runtimePolicy: 0,
                     skipped: 0
                 });

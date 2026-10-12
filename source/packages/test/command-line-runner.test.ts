@@ -35,12 +35,12 @@ export const testNode = createSuite({
                                 selectors: []
                             },
                             execution: { mode: 'profile-default' },
-                            measureResourceUsage: null,
+                            measureProcessUsage: null,
                             order: 'seeded',
                             paths: [ 'source/a.test.ts', 'source/b.test.ts' ],
                             profile: 'microtest',
-                            resourceBudgetOverrides: null,
-                            resourceUsageSamplingIntervalMilliseconds: null,
+                            processBudgetOverrides: null,
+                            processUsageSamplingIntervalMilliseconds: null,
                             seed: { value: null },
                             selection: { kind: 'all' },
                             shard: { index: 1, total: 1 },
@@ -179,7 +179,7 @@ export const testNode = createSuite({
         }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
-            title: 'overkill wrapper rejects resource usage flags before loading the runner',
+            title: 'overkill wrapper rejects process usage flags before loading the runner',
             ...emptyTestData,
             async body(scope: TestScope) {
                 for (const verb of [ 'run', 'list' ]) {

@@ -30,7 +30,7 @@ type RecordedConflictEvidence = {
     readonly attachments: readonly RuntimeAttachmentArtifact[];
     readonly attempts: readonly [RunRecordTestAttempt, ...readonly RunRecordTestAttempt[]];
     readonly outcome: RunRecordTestOutcome | null;
-    readonly verdict: TestOutcome['kind'] | 'crashed' | 'resource-exhausted' | 'runtime-policy';
+    readonly verdict: TestOutcome['kind'] | 'crashed' | 'process-exhausted' | 'runtime-policy';
 };
 export type RunRecordTestAttempt = Except<TestAttemptResult, 'outcome'> & {
     readonly outcome: RunRecordTestOutcome | null;
