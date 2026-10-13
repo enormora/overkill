@@ -8,6 +8,32 @@ import {
 import { defaultSamplingPolicy } from './sampling-policy.ts';
 
 export const testNode = suite('benchmark confidence intervals', [
+    test('keeps single-observation means bounded by the declared range', function (scope) {
+        scope.assert.deepEqual(boundedMeanInterval([ 1 ], { minimum: 0, maximum: 2 }, 0.05), {
+            estimate: 1,
+            lower: 0,
+            upper: 2
+        });
+        return scope.assert.collect();
+    }),
+    test('evaluates lower bounds, observed minima, and bounded means', function (scope) {
+        const minimum = normalizeMetricBudget('value', { minimum: 2, statistic: { kind: 'observed-minimum' } });
+        scope.assert.equal(evaluateMetricBudget([ 2, 3 ], minimum, defaultSamplingPolicy, 0.01).decision, 'pass');
+        scope.assert.equal(evaluateMetricBudget([ 1, 3 ], minimum, defaultSamplingPolicy, 0.01).decision, 'fail');
+        const mean = normalizeMetricBudget('value', {
+            minimum: 2,
+            maximum: 3,
+            statistic: { kind: 'mean', range: { minimum: 2, maximum: 2 } }
+        });
+        scope.assert.deepEqual(evaluateMetricBudget([ 2, 2 ], mean, defaultSamplingPolicy, 0.01), {
+            ...mean,
+            estimate: 2,
+            interval: { lower: 2, upper: 2 },
+            precise: true,
+            decision: 'pass'
+        });
+        return scope.assert.collect();
+    }),
     test('uses binomial ranks with one-based order statistics', function (scope) {
         scope.assert.deepEqual(quantileInterval([ 1, 2, 3, 4, 5 ], 0.5, 0.2), {
             estimate: 3,

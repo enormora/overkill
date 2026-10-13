@@ -7,6 +7,8 @@ import {
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { observationSummary, type MetricObservations } from './benchmark-observations.ts';
 
+type BudgetAssertionContext = Pick<SamplingSessionInput, 'locations' | 'workload'>;
+
 type SamplingSnapshot = {
     readonly samples: number;
     readonly budgets: readonly BenchmarkBudgetResult[];
@@ -68,7 +70,7 @@ export async function recordRawSamples(
 
 export function generatedBudgetAssertions(
     results: readonly BenchmarkBudgetResult[],
-    input: SamplingSessionInput
+    input: BudgetAssertionContext
 ): AssertionResult {
     const checks = results.map(function budgetAssertion(budget) {
         return {

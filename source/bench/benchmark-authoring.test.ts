@@ -7,6 +7,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import {
     benchmark,
+    asyncMeasurementStrategy,
     defaultSamplingPolicy,
     wallClockMeasurement,
     workload,
@@ -35,6 +36,29 @@ function assertFirstWorkload(scope: TestScope, result: RunResult): void {
 }
 
 export const testNode = suite('benchmark authoring and sampling', [
+    test('samples asynchronous strategies with explicit diagnostic metrics', async function (scope) {
+        const result = await executeBenchmark(benchmark('async', {
+            kind: 'runtime',
+            workloads: [ workload('one', {}) ],
+            measurement: asyncMeasurementStrategy([]),
+            async measure({ sample }) {
+                const measured = await sample.measure(async function () {
+                    return await Promise.resolve(3);
+                });
+                return { value: measured.value, diagnostic: 0 };
+            },
+            diagnosticMetrics: [ 'diagnostic' ],
+            budgets: { one: { value: { maximum: 4, statistic: { kind: 'observed-maximum' } } } }
+        }, {
+            annotations: {},
+            controls: {},
+            sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 }
+        }));
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.equal(result.perTest[0]?.benchmark?.samples, 2);
+        scope.assert.equal(result.perTest[0]?.benchmark?.metrics.diagnostic?.median, 0);
+        return scope.assert.collect();
+    }),
     benchmarkEvidenceTestNode,
     measurementRuntimePolicyTestNode,
     benchmarkTimeoutEvidenceTestNode,
