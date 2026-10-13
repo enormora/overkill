@@ -34,6 +34,7 @@ type SupervisedExecution = SupervisedCoverageExecution & {
     readonly input: ResolvedRunInput;
     readonly source: IsolatedRunCollectionSource;
     readonly timing: RunTimingMeasurement | null;
+    readonly signal: Readonly<AbortSignal> | null;
 };
 type StartedSupervisedExecution = {
     readonly baseline: SupervisedCoverageExecution['baseline'];
@@ -42,6 +43,7 @@ type StartedSupervisedExecution = {
     readonly input: ResolvedRunInput;
     readonly source: IsolatedRunCollectionSource;
     readonly timing: RunTimingMeasurement | null;
+    readonly signal: Readonly<AbortSignal> | null;
 };
 type CollectedExecution = {
     readonly collectedPlan: CollectedRunPlan;
@@ -145,6 +147,7 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
         },
         {
             coverage: coverageSession?.childProcess ?? null,
+            signal: execution.signal,
             async finalizeResult(resolvedRun, result) {
                 return await finalizeSupervisedResult(resolvedRun, result, execution);
             },
@@ -163,6 +166,7 @@ async function runStartedSupervisedExecution(execution: StartedSupervisedExecuti
             dependencies,
             input,
             record: null,
+            signal: execution.signal,
             source,
             timing
         });
@@ -181,6 +185,7 @@ async function runStartedSupervisedExecution(execution: StartedSupervisedExecuti
                 dependencies,
                 input,
                 record,
+                signal: execution.signal,
                 source,
                 timing
             });

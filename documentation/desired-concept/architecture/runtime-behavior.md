@@ -241,6 +241,17 @@ Cancellation propagates via `AbortController` chains, in keeping with
 signal cannot be force-killed in-process; supervised profiles can kill the
 worker (see [Microtests And Capabilities § Hang Detection And Forced Termination](../authoring/microtests-and-capabilities.md#hang-detection-and-forced-termination)).
 
+Programmatic `run` and `runWithReporterDelivery` additionally accept
+`RunInvocationOptions` with an explicit nullable `signal` alongside timing.
+Non-null signals require a supervised test profile and request hard interruption
+of its owned child, rather than the graceful CLI signal sequence above.
+The runner terminates and awaits child shutdown, preserves completed results
+and earlier diagnostics, and records an unattributed `crash` runner error.
+Interrupted active cases are crashed. Pre-aborted invocations start no child
+and import no tests; abort after child shutdown has no effect. Hard interruption
+cannot guarantee child-side scope cleanup. Cancellation signals remain outside
+serialized requests, policy, facts, and IPC data.
+
 ## Process Crash Handling
 
 When a worker process dies mid-test (segfault, OOM, native-addon crash):

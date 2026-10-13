@@ -68,6 +68,7 @@ async function assertSupervisedAttempt(
     };
     const result = await createSupervisedRunResult({
         baseline: null,
+        signal: null,
         command,
         dependencies: {
             ...fixture

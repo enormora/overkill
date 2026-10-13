@@ -94,6 +94,19 @@ are excluded from the snapshot. Ordinary runtime guards and resource policies
 still apply. `parseFrozenMicrotestPolicy` validates transported data, including
 descriptor roots and file-set ownership, and freezes the result.
 
+`run` and `runWithReporterDelivery` accept `{ timing: null, signal }` through
+`RunInvocationOptions`. A non-null signal requires a `supervised-process` test
+profile; other process models reject it before discovery or user imports.
+Existing timing-only calls remain valid, and `signal: null` disables cancellation.
+
+Aborting kills the owned test child and awaits shutdown and output draining.
+The result retains completed cases and earlier diagnostics, records interrupted
+active cases as crashed, and includes an unattributed `crash` runner error.
+A pre-aborted invocation imports no tests and starts no child. Abort after child
+shutdown has no effect. Hard termination cannot guarantee child-side scope
+cleanup. This programmatic interruption is separate from graceful CLI signal
+handling. Signals are not part of frozen policy, run facts, or IPC messages.
+
 `runIfMain(import.meta, testNode, options?)` is the supported companion for
 bare `node path/to/file.test.ts` execution. It returns immediately when the
 module was imported, loads config from `process.cwd()` only for the main

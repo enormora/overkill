@@ -209,6 +209,20 @@ export class SupervisedCollectionError extends RunCollectionError {
     }
 }
 
+export const supervisedCancellationMessage = 'Supervised run was cancelled.';
+
+export function supervisedCancellationError(): SupervisedCollectionError {
+    return new SupervisedCollectionError([ {
+        attributedTo: null,
+        attributedToAttempt: null,
+        attributedToWork: null,
+        cause: { reason: supervisedCancellationMessage },
+        diagnostics: [ { label: 'reason', value: supervisedCancellationMessage } ],
+        message: supervisedCancellationMessage,
+        subtype: 'crash'
+    } ], { cause: null });
+}
+
 export function invalidRequest(message: string): never {
     throw new RunResolutionError(message, undefined, 'invalid-request');
 }

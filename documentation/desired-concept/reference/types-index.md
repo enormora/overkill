@@ -1218,6 +1218,14 @@ type MergeResultsCommand = {
 
 declare function resolveRun(command: FrozenRunCommand | RunCommand): Promise<ResolvedRun>;
 declare function run(command: FrozenRunCommand | RunCommand): Promise<RunResult>;
+type RunInvocationOptions = RunInvocationTimingOptions & {
+    readonly signal: AbortSignal | null;
+};
+
+declare function run(
+    command: FrozenRunCommand | RunCommand,
+    options: RunInvocationOptions
+): Promise<RunResult>;
 declare function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord>;
 
 type TestPlanSuitePathEntry = {
