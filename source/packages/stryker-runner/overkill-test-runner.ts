@@ -7,7 +7,7 @@ import type {
     TestRunnerCapabilities
 } from '@stryker-mutator/api/test-runner';
 import { ConfigError } from '../run/config.entry-point.ts';
-import type { FrozenMicrotestPolicy } from '../run/run.entry-point.ts';
+import { createMutationExecution, type MutationExecution } from './mutation-execution.ts';
 import { initializeMutationPolicy } from './mutation-policy-process.ts';
 import { parseRunnerOptions } from './runner-options.ts';
 import { assertExcludedAdapter, createMutationSandbox } from './mutation-sandbox.ts';
@@ -18,14 +18,20 @@ export function createOverkillTestRunner(
     options: Readonly<Record<string, unknown>>,
     fileDescriptions: FileDescriptions
 ): Required<TestRunner> {
-    let initialization: Promise<FrozenMicrotestPolicy> | null = null;
+    let initialization: Promise<MutationExecution> | null = null;
     const controller = new AbortController();
 
-    async function initializePolicy(): Promise<FrozenMicrotestPolicy> {
+    async function initializeExecution(): Promise<MutationExecution> {
         const settings = parseRunnerOptions(options.overkill);
         const sandbox = await createMutationSandbox({ originalRoot, cwd: process.cwd(), fileDescriptions });
         await assertExcludedAdapter(sandbox);
-        return await initializeMutationPolicy({ cwd: sandbox.root, sandbox, settings, signal: controller.signal });
+        const policy = await initializeMutationPolicy({
+            cwd: sandbox.root,
+            sandbox,
+            settings,
+            signal: controller.signal
+        });
+        return createMutationExecution({ policy, seed: { value: null } });
     }
 
     return {
@@ -36,7 +42,7 @@ export function createOverkillTestRunner(
             if (controller.signal.aborted) {
                 throw new ConfigError('Stryker runner has been disposed.');
             }
-            initialization = initialization ?? initializePolicy();
+            initialization = initialization ?? initializeExecution();
             await initialization;
         },
         async dryRun(): Promise<DryRunResult> {
@@ -47,10 +53,12 @@ export function createOverkillTestRunner(
         },
         async dispose(): Promise<void> {
             controller.abort();
+            let execution: MutationExecution | null = null;
             try {
-                await initialization;
+                execution = await initialization;
             } catch {
             }
+            await execution?.dispose();
         }
     };
 }

@@ -1,8 +1,9 @@
 # `@overkill-dev/stryker-runner`
 
 Optional first-party Stryker `TestRunner` plugin for Node microtest profiles.
-Profile initialization freezes the mutation execution policy. Dry runs, mutant
-execution, and capability reporting are not implemented yet.
+Profile initialization freezes the mutation execution policy and owns a private
+execution session. Stryker dry runs, mutant execution, and capability reporting
+are not implemented yet.
 
 ```js
 export default {
@@ -78,5 +79,16 @@ Execution hosts revalidate file-backed configuration before collecting tests.
 Changes to authoritative discovery, loader declarations, selection, permissions,
 execution, or resources fail even when test identities would remain unchanged.
 Reporters, valid unrelated profiles, disabled coverage settings, and overridden
-scheduling do not affect the comparison. Invocation execution is not implemented
-in this adapter yet.
+scheduling do not affect the comparison.
+
+The private session executes serial cases in the selected profile's process
+model. In-process execution stays inside the reusable plugin worker and retains
+its collected plan and transitive module state. Every invocation gets fresh
+scopes, observers, cleanup, and results. Supervised execution collects and runs
+inside one fresh restricted test child per invocation, using the normal runner's
+permissions, resource budgets, and timeouts.
+
+Disposal closes admission immediately. It cancels and awaits supervised child
+termination, or awaits active in-process work without terminating Stryker's
+worker. Native ESM caches remain shared in reused execution. The session accepts
+a seed; campaign seed coordination and fresh-state configuration remain pending.
