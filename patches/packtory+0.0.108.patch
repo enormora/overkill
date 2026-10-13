@@ -97,3 +97,16 @@ index ca16d4a..091604f 100644
 +}
  //# sourceMappingURL=package-surface-index.js.map
 \ No newline at end of file
+diff --git a/node_modules/packtory/packtory/packtory-pack.js b/node_modules/packtory/packtory/packtory-pack.js
+index 446c514..a59847e 100644
+--- a/node_modules/packtory/packtory/packtory-pack.js
++++ b/node_modules/packtory/packtory/packtory-pack.js
+@@ -148,7 +148,7 @@ function buildVendoredClosureCheck(bundleClosure, built, target, materializedExt
+ function stripVendoredManifestFields(manifest) {
+     const slimManifest = {};
+     for (const [key, value] of Object.entries(manifest)) {
+-        if (key !== 'dependencies' && key !== 'peerDependencies') {
++        if (key !== 'dependencies') {
+             slimManifest[key] = value;
+         }
+     }

@@ -32,3 +32,5 @@ Rules:
 quadratic allocation during dependency reachability analysis.
 It also caches public-module indexes by immutable bundle identity and indexes
 declaration companions once, avoiding repeated scans during package linking.
+Vendored package manifests retain peer metadata so nominal types keep the same
+identity across bundled and separately installed package copies.
