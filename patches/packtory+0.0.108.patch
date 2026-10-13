@@ -1,0 +1,19 @@
+diff --git a/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js b/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js
+index 0410014..e41dea3 100644
+--- a/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js
++++ b/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js
+@@ -23,10 +23,10 @@ function visitCurrent(state, expand, dependencies) {
+     const [current, ...pending] = nextState.pending;
+     return { current, pending, visited: nextState.visited };
+ }
+-function attemptIndexes(maximumAttempts) {
+-    return Array.from({ length: maximumAttempts }, function (_value, index) {
+-        return index;
+-    });
++function* attemptIndexes(maximumAttempts) {
++    for (let index = 0; index < maximumAttempts; index += 1) {
++        yield index;
++    }
+ }
+ function traverseUntilExhausted(state, expand, maximumAttempts, options) {
+     let traversalState = state;
