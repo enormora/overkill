@@ -1,12 +1,15 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
-package-smoke-packages := '@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+package-smoke-packages := '@overkill-dev/reporter-benchmark-html,@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
 
 default:
     @just --list
 
-compile:
+compile: benchmark-html-browser
     tsc --build
     tsc --project source/tsconfig.sources.json --outDir target/package-build --tsBuildInfoFile target/buildcache/package-sources.tsbuildinfo
+
+benchmark-html-browser:
+    node build-benchmark-html.js
 
 eslint *OPTIONS:
     eslint . --cache --cache-location './target/.eslintcache' --cache-strategy content --max-warnings 0 {{OPTIONS}}
@@ -29,10 +32,11 @@ lint: eslint lint-filename lint-unused-code lint-dependencies lint-duplication
 
 lint-fix: eslint-fix
 
-test-unit:
+test-unit: benchmark-html-browser
     node source/overkill.test.ts
 
-test-runner-integration:
+test-runner-integration: benchmark-html-browser
+    node source/integration-tests/run/runner-benchmark-html.test.ts
     node source/integration-tests/run/runner-measurements.test.ts
     node source/integration-tests/run/runner-supervised-cancellation.test.ts
     node source/integration-tests/run/runner-mutation-execution.test.ts
@@ -76,6 +80,7 @@ test-package-smoke: compile
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
     node target/build/source/integration-tests/package-smoke/run-lifecycle.test.js
+    node target/build/source/integration-tests/package-smoke/benchmark-html.test.js
     node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/property.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js

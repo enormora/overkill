@@ -14,3 +14,8 @@ export type {
     LineReporterOptions,
     LineTreeReporterOptions
 } from '../reporter-line/reporter-line.entry-point.ts';
+export { createBenchmarkHtmlReporter } from '../reporter-benchmark-html/reporter-benchmark-html.entry-point.ts';
+export type {
+    BenchmarkHtmlReporterOptions,
+    BenchmarkHtmlReporterSinks
+} from '../reporter-benchmark-html/reporter-benchmark-html.entry-point.ts';

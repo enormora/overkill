@@ -1,13 +1,14 @@
 import { copyConfig } from '../config/snapshot.ts';
 import type { NormalizedConfig, ProfileConfig } from '../config/types.ts';
 import type { BenchmarkCalibrationResult } from '../packages/run/benchmark-calibration.entry-point.ts';
-import { selectBenchmarkProfile, selectTestProfile } from './test-profile.ts';
 import { copyRunEngineSelection, freezeValue } from './run-support.ts';
+import { selectBenchmarkProfile, selectTestProfile } from './test-profile.ts';
 import { copyRunRequest } from './request-snapshot.ts';
 import type { RunCommand, RunRequest, RunCollectionSource } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     assertSupportedProcessEngine,
+    assertProfileReportersSupported,
     validateRunInput
 } from './run-validation.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
@@ -61,7 +62,8 @@ function assertBaselineRequestSupported(namespace: RunInvocation['namespace'], r
 function assertProfileRequestSupported(
     request: RunRequest,
     profile: ProfileConfig,
-    namespace: RunInvocation['namespace']
+    namespace: RunInvocation['namespace'],
+    reporters: NormalizedConfig['reporters']
 ): void {
     assertBaselineRequestSupported(namespace, request);
     if (request.execution.mode === 'serial' && profile.testFamily !== 'microtest') {
@@ -74,6 +76,7 @@ function assertProfileRequestSupported(
     assertCoverageSupported(request, profile);
     assertMicrotestCaptureSupported(request, profile);
     assertWorkerCountSupported(request, profile);
+    assertProfileReportersSupported(profile, reporters);
 }
 
 export async function readResolvedRunInput(
@@ -88,7 +91,7 @@ export async function readResolvedRunInput(
     const profile = namespace === 'bench'
         ? selectBenchmarkProfile(request.profile, config)
         : selectTestProfile(request.profile, config);
-    assertProfileRequestSupported(request, profile, namespace);
+    assertProfileRequestSupported(request, profile, namespace, config.reporters);
     assertSupportedProcessEngine(command, profile);
     const engine = freezeValue(copyRunEngineSelection(command.engine));
     const discovery = freezeValue(

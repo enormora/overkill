@@ -38,12 +38,34 @@ export type PerformanceComparisonInput = {
     readonly actual: PerformanceBaselineValue;
     readonly expected: PerformanceBaselineValue;
 };
-export type PerformanceBaselineAdapter = {
+export type PerformanceBaselineOperations = {
     readonly id: string;
     readonly observe: (input: PerformanceObservationInput) => PerformanceObservation;
     readonly propose: (input: PerformanceProposalInput) => BaselineJson;
     readonly compare: (input: PerformanceComparisonInput) => PerformanceComparison;
 };
+type MissingMetricReference = { readonly kind: 'missing'; };
+type PointMetricReference = { readonly kind: 'value'; readonly value: number; };
+type RangeMetricReference = {
+    readonly kind: 'range';
+    readonly minimum: number | null;
+    readonly maximum: number | null;
+};
+export type PerformanceMetricReference = MissingMetricReference | PointMetricReference | RangeMetricReference;
+type RawMetricScale = { readonly kind: 'raw'; };
+type NormalizedMetricScale = { readonly kind: 'normalized'; readonly description: string; };
+export type PerformanceMetricScale = NormalizedMetricScale | RawMetricScale;
+export type PerformanceMetricComparison = {
+    readonly name: string;
+    readonly unit: string;
+    readonly scale: PerformanceMetricScale;
+    readonly actual: number | null;
+    readonly expected: PerformanceMetricReference;
+};
+export type ChartedPerformanceBaselineAdapter = PerformanceBaselineOperations & {
+    readonly describeMetrics: (input: PerformanceProposalInput) => readonly PerformanceMetricComparison[];
+};
+export type PerformanceBaselineAdapter = ChartedPerformanceBaselineAdapter | PerformanceBaselineOperations;
 export type BenchmarkBaselinePolicy = {
     readonly adapters: readonly PerformanceBaselineAdapter[];
     readonly directory: string;

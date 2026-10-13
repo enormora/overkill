@@ -1,9 +1,11 @@
+import type { Except } from 'type-fest';
 import { appendRunnerErrors } from '../engine/execution-result.ts';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import type { BaselineChange, BaselineUpdateMode, BaselineWriteOutcome } from '../baselines/performance-baseline.ts';
 import { successfulPerformanceRun, type PerformanceWorkflow } from '../baselines/performance-workflow.ts';
 import { performanceBaselineError } from '../baselines/performance-evaluation.ts';
 import { performanceReportArtifact, type PerformanceBaselineReport } from '../baselines/performance-report.ts';
+import type { PerformanceBaselineEvidence } from '../baselines/performance-presentation.ts';
 import type { ComparableCalibration } from '../packages/run/benchmark-calibration.entry-point.ts';
 
 type BaselineFinalizationInput = {
@@ -15,6 +17,7 @@ type BaselineFinalizationInput = {
     readonly notify: (errors: readonly RunnerError[]) => Promise<readonly RunnerError[]>;
     readonly result: RunResult;
     readonly workflow: PerformanceWorkflow;
+    readonly comparisons: readonly PerformanceBaselineEvidence[];
 };
 type BaselineCommit = {
     readonly errors: readonly RunnerError[];
@@ -22,7 +25,13 @@ type BaselineCommit = {
 };
 
 function reportFor(input: BaselineFinalizationInput, writeOutcome: BaselineWriteOutcome): PerformanceBaselineReport {
-    return { calibration: input.calibration, changes: input.workflow.changes, writeOutcome };
+    return {
+        version: 2,
+        comparisons: input.comparisons,
+        calibration: input.calibration,
+        changes: input.workflow.changes,
+        writeOutcome
+    };
 }
 
 async function commitChanges(
@@ -66,6 +75,20 @@ async function commitBaselines(input: BaselineFinalizationInput): Promise<Baseli
     }
 }
 
+function attachCoreReport(input: BaselineFinalizationInput, outcome: BaselineWriteOutcome): RunResult {
+    try {
+        const artifact = performanceReportArtifact({
+            capturedAtMicroseconds: input.capturedAtMicroseconds(),
+            maxBytes: input.maxBytes,
+            report: reportFor(input, outcome),
+            result: input.result
+        });
+        return { ...input.result, artifacts: [ ...input.result.artifacts, artifact ] };
+    } catch {
+        return input.result;
+    }
+}
+
 async function attachReport(input: BaselineFinalizationInput, outcome: BaselineWriteOutcome): Promise<RunResult> {
     try {
         const artifact = performanceReportArtifact({
@@ -77,15 +100,23 @@ async function attachReport(input: BaselineFinalizationInput, outcome: BaselineW
         return { ...input.result, artifacts: [ ...input.result.artifacts, artifact ] };
     } catch (error: unknown) {
         const failure = performanceBaselineError(error, null);
-        return appendRunnerErrors(input.result, [ failure, ...await input.notify([ failure ]) ]);
+        const failed = appendRunnerErrors(input.result, [ failure, ...await input.notify([ failure ]) ]);
+        return attachCoreReport({ ...input, comparisons: [], result: failed }, outcome);
     }
 }
 
-export async function finalizeBenchmarkBaselines(input: BaselineFinalizationInput): Promise<RunResult> {
+export async function finalizeBenchmarkBaselines(
+    input: Except<BaselineFinalizationInput, 'comparisons'>
+): Promise<RunResult> {
     const completion = input.workflow.finish(input.result, input.completeInventory);
     const result = appendRunnerErrors(completion.result, completion.errors);
-    const committed = await commitBaselines({ ...input, result });
-    const finalized = appendRunnerErrors(result, committed.errors);
-    const reportingErrors = await input.notify([ ...completion.errors, ...committed.errors ]);
-    return await attachReport({ ...input, result: appendRunnerErrors(finalized, reportingErrors) }, committed.outcome);
+    const committed = await commitBaselines({ ...input, comparisons: [], result });
+    const presentation = input.workflow.present();
+    const finalized = appendRunnerErrors(result, [ ...committed.errors, ...presentation.errors ]);
+    const reportingErrors = await input.notify([ ...completion.errors, ...committed.errors, ...presentation.errors ]);
+    return await attachReport({
+        ...input,
+        comparisons: presentation.comparisons,
+        result: appendRunnerErrors(finalized, reportingErrors)
+    }, committed.outcome);
 }

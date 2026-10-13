@@ -1,5 +1,5 @@
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporter-output.ts';
-import type { DefinedReporter, RunFacts } from './reporter.ts';
+import { validateReporterRunFacts, type DefinedReporter, type RunFacts } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
 import type { RunProcessUsageTracker } from './process-usage.ts';
 import type {
@@ -80,5 +80,8 @@ export function executeOptionsWithDefaults(
 ): NormalizedExecuteOptions {
     const normalized = options === undefined ? defaultExecuteOptions() : executeOptionsWithProvidedDefaults(options);
     assertRetryFamily(normalized.retryPolicy, testPlan);
+    for (const reporter of normalized.reporters) {
+        validateReporterRunFacts(reporter, normalized.runFacts);
+    }
     return normalized;
 }

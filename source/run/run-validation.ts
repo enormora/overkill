@@ -1,3 +1,4 @@
+import { validateReporterRunFacts, type DefinedReporter } from '../engine/reporter.ts';
 import { validateNormalizedConfig } from '../config/validation.ts';
 import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
 import type { ProfileConfig, ProcessBudgets } from '../config/types.ts';
@@ -129,4 +130,18 @@ export function validateRunInput(command: RunCommand): void {
 
 export function assertSupportedProcessEngine(command: RunCommand, profile: ProfileConfig): void {
     assertSupportedProcessEngineSelection(command, profile);
+}
+
+export function assertProfileReportersSupported(
+    profile: ProfileConfig,
+    fallback: readonly DefinedReporter[] | null
+): void {
+    const reporters = profile.reporters ?? fallback ?? [];
+    for (const reporter of reporters) {
+        try {
+            validateReporterRunFacts(reporter, { execution: { testFamily: profile.testFamily } });
+        } catch (error: unknown) {
+            invalidRequest(error instanceof Error ? error.message : String(error));
+        }
+    }
 }

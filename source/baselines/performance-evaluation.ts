@@ -1,48 +1,24 @@
-import { resolveSourceLocation } from '../assertion-protocol/source-location.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { compareDeepValues } from '../compare/comparison.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
-import type { ReporterEvent } from '../engine/reporter.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
+import { failedPerformanceBaselineCheck, type BenchmarkCaseEnd } from './performance-check.ts';
 import type {
     ComparableCalibration,
     PerformanceBaselineAdapter,
-    PerformanceBaselineValue
+    PerformanceBaselineValue,
+    PerformanceComparison
 } from './performance-adapter.ts';
 import type { BaselineChange, BaselineUpdateMode, StoredPerformanceBaseline } from './performance-baseline.ts';
+import type { PerformanceObservationEvidence } from './performance-presentation.ts';
 import { proposePerformanceBaseline } from './performance-plan.ts';
 
-export type BenchmarkCaseEnd = Extract<ReporterEvent, { readonly kind: 'test-end'; }>;
 export type PerformanceEvaluation = {
     readonly change: BaselineChange | null;
     readonly checks: readonly FailedCheck[];
     readonly participates: boolean;
+    readonly observation: PerformanceObservationEvidence;
 };
-
-type BaselineFailureInput = {
-    readonly actual: unknown;
-    readonly expected: unknown;
-    readonly event: BenchmarkCaseEnd;
-    readonly id: string;
-    readonly summary: string;
-};
-
-function failedBaselineCheck(input: BaselineFailureInput): FailedCheck {
-    const [ first, ...rest ] = input.event.definitionLocations;
-    const comparison = compareDeepValues(input.actual, input.expected);
-    return {
-        actual: comparison.actual,
-        diff: comparison.diff,
-        expected: comparison.expected,
-        id: input.id,
-        kind: 'leaf',
-        path: comparison.path,
-        source: 'assert',
-        sourceLocations: [ resolveSourceLocation(first), ...rest.map(resolveSourceLocation) ],
-        summary: input.summary
-    };
-}
 
 type PerformanceEvaluationInput = {
     readonly adapter: PerformanceBaselineAdapter;
@@ -56,10 +32,8 @@ type PerformanceEvaluationInput = {
 
 function comparisonChecks(
     input: PerformanceEvaluationInput,
-    actual: PerformanceBaselineValue,
-    existing: StoredPerformanceBaseline
+    comparison: PerformanceComparison
 ): readonly FailedCheck[] {
-    const comparison = input.adapter.compare({ actual, expected: existing.expected });
     if (comparison.kind === 'match') {
         return [];
     }
@@ -67,7 +41,7 @@ function comparisonChecks(
         throw new Error('Performance comparison mismatch requires diagnostics.');
     }
     return comparison.diagnostics.map(function diagnosticCheck(diagnostic, index) {
-        return failedBaselineCheck({
+        return failedPerformanceBaselineCheck({
             ...diagnostic,
             event: input.event,
             id: `performance-baseline:${input.adapter.id}:${index.toString()}`
@@ -75,21 +49,26 @@ function comparisonChecks(
     });
 }
 
-function baselineChecks(input: PerformanceEvaluationInput, actual: PerformanceBaselineValue): readonly FailedCheck[] {
+type BaselineChecks = { readonly checks: readonly FailedCheck[]; readonly comparison: PerformanceComparison | null; };
+function baselineChecks(input: PerformanceEvaluationInput, actual: PerformanceBaselineValue): BaselineChecks {
     const compare = input.mode === 'none' || input.mode === 'bootstrap' && input.existing !== null;
     if (!compare) {
-        return [];
+        return { checks: [], comparison: null };
     }
     if (input.existing !== null) {
-        return comparisonChecks(input, actual, input.existing);
+        const comparison = input.adapter.compare({ actual, expected: input.existing.expected });
+        return { checks: comparisonChecks(input, comparison), comparison };
     }
-    return [ failedBaselineCheck({
-        actual: actual.value,
-        event: input.event,
-        expected: null,
-        id: `performance-baseline:${input.adapter.id}:missing`,
-        summary: `Missing performance baseline for adapter "${input.adapter.id}".`
-    }) ];
+    return {
+        comparison: null,
+        checks: [ failedPerformanceBaselineCheck({
+            actual: actual.value,
+            event: input.event,
+            expected: null,
+            id: `performance-baseline:${input.adapter.id}:missing`,
+            summary: `Missing performance baseline for adapter "${input.adapter.id}".`
+        }) ]
+    };
 }
 
 function snapshotObservation(value: unknown, input: PerformanceEvaluationInput): PerformanceBaselineValue {
@@ -108,14 +87,25 @@ export function evaluatePerformanceBaseline(input: PerformanceEvaluationInput): 
         work
     });
     if (observation.kind === 'not-applicable') {
-        return { change: null, checks: [], participates: false };
+        return { change: null, checks: [], participates: false, observation: { kind: 'not-applicable' } };
     }
     if (observation.kind === 'missing') {
         throw new Error(observation.reason);
     }
     const actual = snapshotObservation(observation.value, input);
     const change = proposePerformanceBaseline({ ...input, actual, work });
-    return { change, checks: baselineChecks(input, actual), participates: true };
+    const checked = baselineChecks(input, actual);
+    return {
+        change,
+        checks: checked.checks,
+        participates: true,
+        observation: {
+            kind: 'observed',
+            actual,
+            expected: input.existing?.expected ?? null,
+            comparison: checked.comparison
+        }
+    };
 }
 
 export function performanceBaselineError(error: unknown, event: BenchmarkCaseEnd | null): RunnerError {

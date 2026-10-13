@@ -214,8 +214,9 @@ sample count, metric provenance, budget estimates, intervals, and decisions.
 Reporters receive `benchmark-progress` and the final summary on `test-end`.
 Raw readings use bounded `benchmark-samples` attachments, with explicit omission
 when retention limits or a missing attachment coordinator prevent recording.
-Warmup, per-sample cleanup, external-process measurement, browser collectors,
-and the dedicated HTML reporter remain later milestones.
+Warmup, per-sample cleanup, external-process measurement, and browser collectors
+remain later milestones. Benchmark HTML reports are available through
+`createBenchmarkHtmlReporter` from `@overkill-dev/test/reporters`.
 
 Performance baseline commands use adapters configured in the benchmark profile:
 

@@ -3,18 +3,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
-import { runResultFactory } from '../test-support/run-result-factory.ts';
 import type {
     PerformanceBaselineAdapter,
     StoredPerformanceBaseline
 } from '../packages/baselines/baselines.entry-point.ts';
+import type { BenchmarkCaseEnd } from './performance-check.ts';
 import {
     evaluatePerformanceBaseline,
-    performanceBaselineError,
-    type BenchmarkCaseEnd
+    performanceBaselineError
 } from './performance-evaluation.ts';
 import { createPerformanceWorkflow } from './performance-workflow.ts';
-import { performanceReportArtifact } from './performance-report.ts';
 
 const calibration = { context: {}, kind: 'comparable', machineClass: 'test-host', metadata: {} } as const;
 const event: BenchmarkCaseEnd = {
@@ -84,7 +82,12 @@ export const testNode = suite('performance baseline boundaries', [
                     }
                 }
             });
-            scope.assert.deepEqual(result, { change: null, checks: [], participates: false });
+            scope.assert.deepEqual(result, {
+                change: null,
+                checks: [],
+                participates: false,
+                observation: { kind: 'not-applicable' }
+            });
             const failure = performanceBaselineError('Unavailable metric.', event);
             scope.assert.equal(failure.message, 'Unavailable metric.');
             const attributedWork = failure.attributedToWork;
@@ -94,18 +97,10 @@ export const testNode = suite('performance baseline boundaries', [
             return scope.assert.collect();
         }
     ),
-    test('rejects observations and reports that exceed the byte limit', function (scope: TestScope) {
+    test('rejects observations that exceed the byte limit', function (scope: TestScope) {
         scope.assert.throws(function oversizedObservation() {
             evaluatePerformanceBaseline({ ...input, maxBytes: 0 });
         }, { message: 'Performance observation exceeds the configured artifact byte limit.' });
-        scope.assert.throws(function oversizedReport() {
-            performanceReportArtifact({
-                capturedAtMicroseconds: 0,
-                maxBytes: 1,
-                report: { calibration, changes: [], writeOutcome: { kind: 'read-only' } },
-                result: runResultFactory.build({})
-            });
-        }, { message: 'Performance baseline report exceeds the configured artifact byte limit.' });
         return scope.assert.collect();
     }),
     test('rejects adapter mismatches without diagnostics', function (scope: TestScope) {

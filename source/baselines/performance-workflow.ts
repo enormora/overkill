@@ -1,7 +1,13 @@
-import { caseIdentityKey, createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
+import { caseIdentityKey, createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { runStatusFromPlan, type PerTestResult, type RunResult, type RunnerError } from '../engine/run-result.ts';
 import type { ComparableCalibration } from '../packages/run/benchmark-calibration.entry-point.ts';
+import type { BenchmarkCaseEnd } from './performance-check.ts';
+import {
+    presentPerformanceMetrics,
+    type PerformanceBaselineEvidence,
+    type PerformanceObservationEvidence
+} from './performance-presentation.ts';
 import type { PerformanceBaselineAdapter } from './performance-adapter.ts';
 import {
     performanceBaselineIdentity,
@@ -11,8 +17,7 @@ import {
 } from './performance-baseline.ts';
 import {
     evaluatePerformanceBaseline,
-    performanceBaselineError,
-    type BenchmarkCaseEnd
+    performanceBaselineError
 } from './performance-evaluation.ts';
 import {
     createPerformanceBaselineStore,
@@ -29,8 +34,13 @@ export type PerformanceWorkflowInput = {
     readonly profile: string;
     readonly projectRoot: string;
 };
+type PerformancePresentationResult = {
+    readonly comparisons: readonly PerformanceBaselineEvidence[];
+    readonly errors: readonly RunnerError[];
+};
 export type PerformanceWorkflow = {
     readonly changes: readonly BaselineChange[];
+    readonly present: () => PerformancePresentationResult;
     readonly evaluate: (event: BenchmarkCaseEnd) => PerformanceCaseEvaluation;
     readonly finish: (result: RunResult, completeInventory: boolean) => PerformanceCompletion;
     readonly store: PerformanceBaselineStore;
@@ -48,6 +58,16 @@ type WorkflowState = {
     readonly evaluated: ReadonlyMap<string, BenchmarkCaseEnd>;
     readonly existing: ReadonlyMap<string, StoredPerformanceBaseline>;
     readonly participating: ReadonlySet<string>;
+    readonly observations: readonly {
+        readonly adapter: PerformanceBaselineAdapter;
+        readonly work: WorkId;
+        readonly observation: PerformanceObservationEvidence;
+    }[];
+    readonly record: (
+        adapter: PerformanceBaselineAdapter,
+        event: BenchmarkCaseEnd,
+        observation: PerformanceObservationEvidence
+    ) => void;
     readonly addChange: (change: BaselineChange) => void;
     readonly participate: (key: string) => void;
     readonly remember: (key: string, event: BenchmarkCaseEnd) => void;
@@ -57,11 +77,20 @@ function createWorkflowState(existing: ReadonlyMap<string, StoredPerformanceBase
     const changes: BaselineChange[] = [];
     const evaluated = new Map<string, BenchmarkCaseEnd>();
     const participating = new Set<string>();
+    const observations: {
+        readonly adapter: PerformanceBaselineAdapter;
+        readonly work: WorkId;
+        readonly observation: PerformanceObservationEvidence;
+    }[] = [];
     return {
         changes,
         evaluated,
         existing,
         participating,
+        observations,
+        record(adapter, event, observation) {
+            observations.push({ adapter, work: event.workId ?? createDefaultWorkId(event.case), observation });
+        },
         addChange(change) {
             changes.push(change);
         },
@@ -183,6 +212,7 @@ function evaluateAdapter(
         mode: input.mode,
         profile: input.profile
     });
+    state.record(adapter, event, evaluation.observation);
     if (evaluation.participates) {
         state.participate(key);
     }
@@ -203,6 +233,10 @@ function evaluateAdapters(
         try {
             checks.push(...evaluateAdapter(input, state, event, adapter));
         } catch (error: unknown) {
+            state.record(adapter, event, {
+                kind: 'error',
+                reason: error instanceof Error ? error.message : String(error)
+            });
             errors.push(performanceBaselineError(error, event));
         }
     }
@@ -217,12 +251,26 @@ function evaluateAdapters(
     };
 }
 
+function evaluateCompletedCase(
+    input: PerformanceWorkflowInput,
+    state: WorkflowState,
+    event: BenchmarkCaseEnd
+): PerformanceCaseEvaluation {
+    if (event.verdict === 'pass') {
+        return evaluateAdapters(input, state, event);
+    }
+    for (const adapter of input.adapters) {
+        state.record(adapter, event, { kind: 'not-evaluated', reason: `Case verdict: ${event.verdict}.` });
+    }
+    return { errors: [], event };
+}
+
 function evaluateCase(
     input: PerformanceWorkflowInput,
     state: WorkflowState,
     event: BenchmarkCaseEnd
 ): PerformanceCaseEvaluation {
-    if (event.completion !== 'final' || event.verdict !== 'pass') {
+    if (event.completion !== 'final') {
         return { errors: [], event };
     }
     const key = workIdentityKey(event.workId ?? createDefaultWorkId(event.case));
@@ -230,7 +278,7 @@ function evaluateCase(
     if (cached !== undefined) {
         return { errors: [], event: cached };
     }
-    const evaluation = evaluateAdapters(input, state, event);
+    const evaluation = evaluateCompletedCase(input, state, event);
     state.remember(key, evaluation.event);
     return evaluation;
 }
@@ -254,6 +302,29 @@ export async function createPerformanceWorkflow(input: PerformanceWorkflowInput)
     return {
         changes: state.changes,
         store,
+        present() {
+            const errors: RunnerError[] = [];
+            const comparisons = state.observations.map(
+                function describeObservation(entry): PerformanceBaselineEvidence {
+                    const presentation = presentPerformanceMetrics(entry.adapter, entry.observation);
+                    if (presentation.kind === 'error') {
+                        errors.push(
+                            performanceBaselineError(
+                                new Error(`${entry.adapter.id} chart metadata: ${presentation.reason}`),
+                                null
+                            )
+                        );
+                    }
+                    return {
+                        adapter: entry.adapter.id,
+                        work: entry.work,
+                        observation: entry.observation,
+                        presentation
+                    };
+                }
+            );
+            return { comparisons, errors };
+        },
         evaluate(event) {
             return evaluateCase(input, state, event);
         },
