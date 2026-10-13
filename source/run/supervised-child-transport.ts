@@ -140,7 +140,7 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
         }
     };
 }
-export function observeSupervisedTransport(transport: SupervisedTransport): void {
+export function observeSupervisedTransport(transport: SupervisedTransport): (reason: string) => void {
     const observer = createSupervisedObserver(transport);
     transport.child.on('message', observer.receive);
     transport.child.on('error', function recordChildError(error: Error) {
@@ -151,6 +151,9 @@ export function observeSupervisedTransport(transport: SupervisedTransport): void
         observer.exit();
         transport.finished();
     });
+    return function interruptSupervisedRun(reason) {
+        observer.fail(reason, false);
+    };
 }
 export function sendSupervisedCommand(
     child: SupervisedChildProcess,

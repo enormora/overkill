@@ -131,6 +131,7 @@ export type {
     ResolvedRunPlan,
     RunCaseFacts,
     RunCommand,
+    RunInvocationOptions,
     RunDebugRequest,
     RunEngineFacts,
     RunEnvironmentFacts,

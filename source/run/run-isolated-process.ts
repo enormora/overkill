@@ -267,7 +267,7 @@ async function createWorkerPoolRunResult(
 export function runIsolatedProcessCommand(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
-    options: IsolatedRunOptions,
+    options: IsolatedRunOptions & { readonly signal: Readonly<AbortSignal> | null; },
     input: ResolvedRunInput
 ): Promise<RunResult> | null {
     const { processModel } = input.profile.execution;
@@ -279,7 +279,8 @@ export function runIsolatedProcessCommand(
             dependencies,
             input,
             source: options.source,
-            timing: options.timing
+            timing: options.timing,
+            signal: options.signal
         });
     }
 

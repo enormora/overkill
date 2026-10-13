@@ -5,6 +5,8 @@ import { testNode as supervisedRunStateTestNode } from './supervised-run-state.t
 import { testNode as supervisedRunTestNode } from './supervised-run.test.ts';
 import { testNode as retryAttributionTestNode } from './retry-attribution.test.ts';
 import { testNode as protocolOrderTestNode } from './supervised-run-protocol-order.test.ts';
+import { testNode as cancellationTestNode } from './supervised-cancellation.test.ts';
+import { testNode as cancellationOptionsTestNode } from './run-cancellation.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -12,6 +14,8 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        cancellationTestNode,
+        cancellationOptionsTestNode,
         protocolOrderTestNode,
         retryAttributionTestNode,
         supervisedRunTestNode,

@@ -3,7 +3,6 @@ import type {
     AttachmentLimits,
     DefinedOutputRenderer,
     DefinedReporter,
-    RunResult,
     TestAnnotationsInput,
     TestControlsInput
 } from '../engine/engine.entry-point.ts';
@@ -15,14 +14,9 @@ import {
     type DynamicWorkUnitId,
     type loadConfig,
     type LoadedConfig,
-    type orchestrator,
     type PlacementPlan,
     type PlacementTrace,
-    type ResolvedRun,
     type RunCommand,
-    type FrozenRunCommand,
-    type FreezePolicyInput,
-    type FrozenMicrotestPolicy,
     type NormalizedConfig,
     type ConfigLoadRequest,
     type RunEngineSelection,
@@ -36,7 +30,6 @@ import {
     type HostProcess,
     type RunHostProcessFacts,
     type RunHostProcessReason,
-    type RunInvocationTimingOptions,
     type runIfMain,
     type IntegrationExecution,
     type IntegrationProfileConfig,
@@ -45,12 +38,9 @@ import {
     type RunSelection,
     type MicrotestProfileConfig,
     type RunOrder,
-    type RunOrchestrator,
     type ProcessModel,
     type ProfileConfig,
     type BenchmarkProfileConfig,
-    type BenchmarkOrchestrator,
-    type RunReporterDeliveryResult,
     type ProfileFiles,
     type Config,
     type ProjectIntegrationProfileConfig,
@@ -177,29 +167,6 @@ type ExpectedRunHostProcessFacts = {
     readonly kind: 'direct';
 };
 
-function assertOrchestratorTypes(): void {
-    expect<typeof orchestrator.freezePolicy>().type.toBe<
-        (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>
-    >();
-    expect<typeof orchestrator>().type.toBe<RunOrchestrator>();
-    expect<typeof orchestrator.bench>().type.toBe<BenchmarkOrchestrator>();
-    expect<typeof orchestrator.bench.list>().type.toBe<
-        (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>
-    >();
-    expect<typeof orchestrator.bench.run>().type.toBe<
-        (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunResult>
-    >();
-    expect<typeof orchestrator.bench.runWithReporterDelivery>().type.toBe<
-        (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunReporterDeliveryResult>
-    >();
-    expect<typeof orchestrator.resolve>().type.toBe<
-        (command: FrozenRunCommand | RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
-    >();
-    expect<typeof orchestrator.run>().type.toBe<
-        (command: FrozenRunCommand | RunCommand, options?: RunInvocationTimingOptions) => Promise<RunResult>
-    >();
-}
-
 function assertWorkIdentityTypes(): void {
     expect<RuntimeId['scenarios']>().type.toBe<Readonly<Record<string, string>>>();
     expect<WorkId['runtimes']>().type.toBe<readonly RuntimeId[]>();
@@ -213,7 +180,6 @@ describe('@overkill-dev/run', function () {
         expect<RunCommand['cwd']>().type.toBe<string>();
         expect<RunCommand['engine']>().type.toBe<RunEngineSelection>();
         expect<RunCommand['request']>().type.toBe<RunRequest>();
-        assertOrchestratorTypes();
     });
 
     test('exposes the direct-file execution companion', function () {

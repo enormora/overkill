@@ -5,8 +5,9 @@ import {
 import {
     createIsolatedResolvedRun
 } from './run-isolated-process.ts';
-import { executeRunCommand } from './run-execution.ts';
+import { executeRunCommand, type RunExecutionInvocation } from './run-execution.ts';
 import { prepareRunCommand, withRunCommandModuleBoundary } from './frozen-run-command.ts';
+import { readRunCancellation } from './run-cancellation.ts';
 import { createLocalResolvedRun } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
@@ -91,7 +92,7 @@ function invocationTiming(
 }
 
 async function runCommand(
-    invocation: RunInvocation,
+    invocation: RunExecutionInvocation,
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement,
     source: RunCollectionSource
@@ -127,10 +128,11 @@ export function createRunOperations(
         },
 
         async run(command, options) {
+            const signal = readRunCancellation(command, namespace, options);
             return await withRunCommandModuleBoundary(command, async function executeBoundedRun() {
                 const prepared = await prepareRunCommand(command, namespace, dependencies);
                 return await runCommand(
-                    { command: prepared.command, namespace },
+                    { command: prepared.command, namespace, signal },
                     dependencies,
                     invocationTiming(options, dependencies),
                     prepared.source
@@ -139,13 +141,14 @@ export function createRunOperations(
         },
 
         async runWithReporterDelivery(command, options) {
+            const signal = readRunCancellation(command, namespace, options);
             return await withRunCommandModuleBoundary(command, async function deliverBoundedRun() {
                 const prepared = await prepareRunCommand(command, namespace, dependencies);
                 const timing = invocationTiming(options, dependencies);
                 const delivery = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(
                     async function runAndTrackReporterDelivery() {
                         return await runCommand(
-                            { command: prepared.command, namespace },
+                            { command: prepared.command, namespace, signal },
                             dependencies,
                             timing,
                             prepared.source
@@ -168,7 +171,7 @@ export function createDirectEntrypointRunner(dependencies: RunOrchestratorDepend
         const timing = invocationTiming(options, dependencies);
         const delivery = await dependencies.reporterDispatcher.trackRunnerErrorDelivery(
             async function runAndTrackReporterDelivery() {
-                return await runCommand({ command, namespace: 'test' }, dependencies, timing, source);
+                return await runCommand({ command, namespace: 'test', signal: null }, dependencies, timing, source);
             }
         );
 

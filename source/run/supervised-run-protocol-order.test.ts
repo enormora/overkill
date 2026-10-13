@@ -103,6 +103,7 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
         },
         {
             coverage: null,
+            signal: null,
             timing: null,
             async finalizeResult(_run, completed) {
                 return completed;

@@ -1,6 +1,7 @@
 import { readResolvedRunInput, type RunInvocation, type ResolvedRunInput } from './run-input-resolution.ts';
 import { runIsolatedProcessCommand } from './run-isolated-process.ts';
 import { runLocalCommand } from './run-local-command.ts';
+import { cancelledRunResult } from './run-cancellation.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { PreparedBenchmarkRun } from './benchmark-baseline-run.ts';
 import type { CollectionSource as RunCollectionSource } from './run-collection-source.ts';
@@ -8,6 +9,10 @@ import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing
 import type { RunCommand, RunOrchestrator } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+
+export type RunExecutionInvocation = RunInvocation & {
+    readonly signal: Readonly<AbortSignal> | null;
+};
 
 type RunPreparationInput = {
     readonly command: RunCommand;
@@ -31,6 +36,7 @@ type PreparedExecution = {
     readonly dependencies: RunOrchestratorDependencies;
     readonly source: RunCollectionSource;
     readonly timing: RunTimingMeasurement;
+    readonly signal: Readonly<AbortSignal> | null;
 };
 
 async function executePreparedRun(prepared: PreparedBenchmarkRun, options: PreparedExecution): Promise<RunResult> {
@@ -43,7 +49,8 @@ async function executePreparedRun(prepared: PreparedBenchmarkRun, options: Prepa
     const isolatedResult = runIsolatedProcessCommand(resolvedCommand, executionDependencies, {
         baseline,
         source,
-        timing
+        timing,
+        signal: options.signal
     }, input);
 
     if (isolatedResult !== null) {
@@ -58,12 +65,15 @@ function isRunResult(value: PreparedBenchmarkRun | RunResult): value is RunResul
 }
 
 export async function executeRunCommand(
-    invocation: RunInvocation,
+    invocation: RunExecutionInvocation,
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement,
     source: RunCollectionSource
 ): Promise<RunResult> {
     const seededCommand = invocation.command;
+    if (invocation.signal?.aborted === true) {
+        return await cancelledRunResult(seededCommand, dependencies, timing);
+    }
     const resolvedInput = await timing.measureAsync(
         'profile.resolve',
         emptyTimingSpanMetadata(),
@@ -86,5 +96,11 @@ export async function executeRunCommand(
     if (isRunResult(prepared)) {
         return prepared;
     }
-    return await executePreparedRun(prepared, { command: resolvedCommand, dependencies, source, timing });
+    return await executePreparedRun(prepared, {
+        command: resolvedCommand,
+        dependencies,
+        source,
+        timing,
+        signal: invocation.signal
+    });
 }

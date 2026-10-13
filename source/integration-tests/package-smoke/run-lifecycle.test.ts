@@ -25,7 +25,7 @@ try {
             }
         });
     \`);
-    const initialized = await orchestrator.initialize({
+    const command = {
         cwd, engine: {kind: 'default'},
         config: normalizeConfig({profiles: {microtest: {
             testFamily: 'microtest', files: {include: ['test.mjs']},
@@ -39,7 +39,8 @@ try {
             seed: {value: 42n}, selection: {kind: 'all'}, shard: {index: 1, total: 1},
             timingCollection: 'profile-default', verbose: false, workers: null
         }
-    });
+    };
+    const initialized = await orchestrator.initialize(command);
     assert.equal(globalThis.importCount, undefined);
     globalThis.bootstrapReady = true;
     const collected = await initialized.collect();
@@ -52,6 +53,20 @@ try {
     assert.notEqual(globalThis.scopes[0], globalThis.scopes[1]);
     assert.deepEqual(second.undeliveredRunnerErrors, []);
     assert.equal(typeof RunCollectionError, 'function');
+    const controller = new AbortController();
+    controller.abort();
+    const cancelled = await orchestrator.run({
+        ...command,
+        config: normalizeConfig({profiles: {microtest: {
+            testFamily: 'microtest', files: {include: ['test.mjs']},
+            execution: {processModel: 'supervised-process', scheduling: 'serial'}
+        }}})
+    }, {timing: null, signal: controller.signal});
+    assert.equal(cancelled.status, 'failed');
+    assert.equal(cancelled.runnerErrors[0].subtype, 'crash');
+    assert.equal(cancelled.runnerErrors[0].attributedTo, null);
+    assert.match(cancelled.runnerErrors[0].message, /cancelled/);
+    assert.equal(globalThis.importCount, 1);
     process.stdout.write('packaged collected lifecycle passed\\n');
 } finally {
     await rm(cwd, {recursive: true, force: true});

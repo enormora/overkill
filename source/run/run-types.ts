@@ -410,12 +410,16 @@ export type BenchmarkOrchestrator = {
     ) => Promise<RunReporterDeliveryResult>;
 };
 
+export type RunInvocationOptions = RunInvocationTimingOptions & {
+    readonly signal: AbortSignal | null;
+};
+
 type RunOperations<Command> = {
     readonly resolve: (command: Command, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>;
-    readonly run: (command: Command, options?: RunInvocationTimingOptions) => Promise<RunResult>;
+    readonly run: (command: Command, options?: RunInvocationOptions | RunInvocationTimingOptions) => Promise<RunResult>;
     readonly runWithReporterDelivery: (
         command: Command,
-        options?: RunInvocationTimingOptions
+        options?: RunInvocationOptions | RunInvocationTimingOptions
     ) => Promise<RunReporterDeliveryResult>;
 };
 

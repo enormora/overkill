@@ -15,7 +15,12 @@ import {
     type SupervisedChildCoverage,
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
-import { RunCollectionError, SupervisedCollectionError } from './run-errors.ts';
+import {
+    RunCollectionError,
+    SupervisedCollectionError,
+    supervisedCancellationMessage,
+    supervisedCancellationError
+} from './run-errors.ts';
 import {
     applyEvent,
     createHardTimeout,
@@ -59,6 +64,7 @@ type SupervisedExecutionOptions = {
     readonly coverage: SupervisedChildCoverage | null;
     readonly finalizeResult: RunResultFinalizer;
     readonly timing: RunTimingMeasurement | null;
+    readonly signal: Readonly<AbortSignal> | null;
 };
 
 type SupervisedRunStartTimes = {
@@ -267,7 +273,12 @@ function validLiveMessage(message: SupervisedChildMessage, liveRun: SupervisedLi
     return validChildEvent(message, runtime !== null);
 }
 
-function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRun): void {
+function observeLiveRun(
+    command: SupervisedRunCommand,
+    liveRun: SupervisedLiveRun,
+    signal: Readonly<AbortSignal> | null
+): void {
+    const observation = new AbortController();
     observeSupervisedChildOutput({
         capabilityRestrictions: command.capabilityRestrictions,
         capture: command.capture,
@@ -276,7 +287,7 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
         state: liveRun.state,
         terminalFailure: liveRun.terminalFailure
     });
-    observeSupervisedTransport({
+    const interrupt = observeSupervisedTransport({
         accept(message) {
             return validLiveMessage(message, liveRun);
         },
@@ -286,6 +297,7 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
             return runtime !== null && runtime.completedResult.read() !== null;
         },
         finished() {
+            observation.abort();
             liveRun.dependencies.wallClock.clearTimeout(liveRun.collectionTimeout);
             liveRun.collectedSignal.resolve();
             liveRun.finishedSignal.resolve();
@@ -301,6 +313,15 @@ function observeLiveRun(command: SupervisedRunCommand, liveRun: SupervisedLiveRu
         terminalFailure: liveRun.terminalFailure,
         wallClock: liveRun.dependencies.wallClock
     });
+    function cancelRun(): void {
+        interrupt(supervisedCancellationMessage);
+    }
+    if (signal !== null) {
+        signal.addEventListener('abort', cancelRun, { once: true, signal: observation.signal });
+        if (signal.aborted && !observation.signal.aborted) {
+            cancelRun();
+        }
+    }
     liveRun.child.on('exit', function recordChildExitTiming() {
         liveRun.timing?.record(instantTimingSpanObservation({
             kind: 'supervised-process.exit',
@@ -384,7 +405,9 @@ async function executeCollectedLiveRun(liveRun: SupervisedLiveRun, resolvedRun: 
     liveRun.runtime.write(runtime);
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
     await reportRunStartForPlannedCases(runtime, collectedPlan, startedAt.epochMilliseconds);
-    sendAssignmentForPlan(runtime);
+    if (!liveRun.terminalFailure.read()) {
+        sendAssignmentForPlan(runtime);
+    }
     await liveRun.finishedSignal.promise;
 
     return await finishSupervisedRuntime(runtime, startedAt.monotonicMicroseconds);
@@ -410,7 +433,9 @@ async function executeLiveCommand(
     liveRun: SupervisedLiveRun,
     createResolvedRun: CreateResolvedRunFromCollection
 ): Promise<RunResult> {
-    sendSupervisedCommand(liveRun.child, command);
+    if (!liveRun.terminalFailure.read()) {
+        sendSupervisedCommand(liveRun.child, command);
+    }
     const collection = await readLiveCollection(liveRun);
     return await continueLiveRun(liveRun, collection, createResolvedRun);
 }
@@ -421,8 +446,11 @@ export async function runSupervisedCommand(
     createResolvedRun: CreateResolvedRunFromCollection,
     options: SupervisedExecutionOptions
 ): Promise<RunResult> {
+    if (options.signal?.aborted === true) {
+        throw supervisedCancellationError();
+    }
     const liveRun = await createLiveRun(command, dependencies, options);
-    observeLiveRun(command, liveRun);
+    observeLiveRun(command, liveRun, options.signal);
     try {
         return await executeLiveCommand(command, liveRun, createResolvedRun);
     } catch (error: unknown) {
