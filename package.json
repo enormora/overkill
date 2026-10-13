@@ -37,7 +37,7 @@
         "monocart-coverage-reports": "2.13.1",
         "p-limit": "7.3.3",
         "pure-rand": "8.4.2",
-        "simple-statistics": "7.10.0",
+        "simple-statistics": "7.12.1",
         "string-width": "8.3.0",
         "tinypool": "2.2.0",
         "tslib": "2.8.1",
