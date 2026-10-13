@@ -7,7 +7,7 @@ import type { BenchmarkChartGroup } from './benchmark-html-data.ts';
 import { distributionScale, histogramLabels, sampleBox, sampleHistogram } from './benchmark-html-distribution.ts';
 
 type MetricRow = {
-    readonly test: PerTestResult;
+    readonly test: MeasuredTest;
     readonly name: string;
     readonly summary: BenchmarkMetricSummary;
     readonly values: readonly number[];
@@ -73,9 +73,9 @@ export function benchmarkMetricGroups(result: RunResult): readonly BenchmarkChar
                     key: workIdentityKey(row.test.workId),
                     label: formatBenchmarkWorkload(row.test),
                     summary: row.summary,
-                    budgets: row.test.benchmark?.budgets.filter(function matchingBudget(budget) {
+                    budgets: row.test.benchmark.budgets.filter(function matchingBudget(budget) {
                         return budget.metric === row.name;
-                    }) ?? [],
+                    }),
                     box: sampleBox(row.values),
                     histogram: sampleHistogram(row.values, scale),
                     sampleCount: row.values.length,

@@ -1,5 +1,6 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { testDouble } from '../doubles/test-double.ts';
 import type { ChartedPerformanceBaselineAdapter, PerformanceBaselineAdapter } from './performance-adapter.ts';
 import { presentPerformanceMetrics } from './performance-presentation.ts';
 import { performanceReportArtifact, readPerformanceBaselineReport } from './performance-report.ts';
@@ -24,6 +25,54 @@ const adapter: PerformanceBaselineAdapter = {
     }
 };
 export const testNode = suite('performance chart presentation', [
+    test('validates one-sided ranges and rejects empty or duplicate metric identities', function (scope: TestScope) {
+        const metric = { name: 'median', unit: 'ms', scale: { kind: 'raw' }, actual: 2 } as const;
+        for (
+            const expected of [
+                { kind: 'range', minimum: null, maximum: 3 },
+                { kind: 'range', minimum: 1, maximum: null }
+            ] as const
+        ) {
+            const charted = {
+                ...adapter,
+                describeMetrics() {
+                    return [ { ...metric, expected } ];
+                }
+            };
+            scope.assert.equal(presentPerformanceMetrics(charted, observation).kind, 'available');
+        }
+        const emptyRange = {
+            ...adapter,
+            describeMetrics() {
+                return [ { ...metric, expected: { kind: 'range' as const, minimum: null, maximum: null } } ];
+            }
+        };
+        scope.assert.equal(presentPerformanceMetrics(emptyRange, observation).kind, 'error');
+        const duplicate = { ...metric, expected: { kind: 'missing' as const } };
+        scope.assert.equal(
+            presentPerformanceMetrics({
+                ...adapter,
+                describeMetrics() {
+                    return [ duplicate, duplicate ];
+                }
+            }, observation)
+                .kind,
+            'error'
+        );
+        return scope.assert.collect();
+    }),
+    test('records thrown non-Error diagnostics and skips unavailable observations', function (scope: TestScope) {
+        const charted = {
+            ...adapter,
+            describeMetrics: testDouble.throws('Chart failed.')
+        };
+        scope.assert.deepEqual(presentPerformanceMetrics(charted, observation), {
+            kind: 'error',
+            reason: 'Chart failed.'
+        });
+        scope.assert.equal(presentPerformanceMetrics(charted, { kind: 'not-applicable' }).kind, 'unavailable');
+        return scope.assert.collect();
+    }),
     test('accepts declared normalized values', function (scope: TestScope) {
         const charted: ChartedPerformanceBaselineAdapter = {
             ...adapter,

@@ -15,7 +15,56 @@ async function outputDirectory(scope: TestScope): Promise<string> {
     });
     return directory;
 }
+function unboundedBenchmarkHtml(scope: TestScope): string {
+    const result = benchmarkHtmlFixture('unbounded');
+    const measured = result.perTest[0];
+    scope.require.defined(measured);
+    const { benchmark } = measured;
+    scope.require.defined(benchmark);
+    const budget = benchmark.budgets[0];
+    scope.require.defined(budget);
+    return renderBenchmarkHtml(
+        createBenchmarkHtmlReport({
+            ...result,
+            perTest: [ {
+                ...measured,
+                benchmark: {
+                    ...benchmark,
+                    budgets: [ {
+                        ...budget,
+                        minimum: 1,
+                        maximum: null,
+                        estimate: null,
+                        interval: { lower: null, upper: null },
+                        precise: false,
+                        decision: 'undecided' as const
+                    } ]
+                }
+            } ]
+        }),
+        ''
+    );
+}
 export const testNode = suite('benchmark HTML reporter', [
+    test('rejects blank output paths and missing benchmark evidence', function (scope: TestScope) {
+        scope.assert.throws(function () {
+            createBenchmarkHtmlReporter({ outputFile: ' '.repeat(3) });
+        }, { message: 'Benchmark HTML report outputFile must not be blank.' });
+        const result = benchmarkHtmlFixture('unmeasured');
+        scope.assert.throws(function () {
+            createBenchmarkHtmlReport({ ...result, artifacts: [], perTest: [] });
+        }, { message: 'Benchmark HTML reporter requires benchmark result evidence.' });
+        return scope.assert.collect();
+    }),
+    test('renders open budget intervals without inferred estimates', function (scope: TestScope) {
+        const html = unboundedBenchmarkHtml(scope);
+        scope.assert.includes(
+            html,
+            '<td>unavailable</td><td>-unbounded</td><td>unbounded</td><td>1</td><td>unbounded</td>'
+        );
+        scope.assert.includes(html, '<td>false</td><td>undecided</td>');
+        return scope.assert.collect();
+    }),
     test('retains authoritative intervals without embedding raw observations', function (scope: TestScope) {
         const report = createBenchmarkHtmlReport(benchmarkHtmlFixture('latency'));
         const row = report.charts.groups[0]?.rows[0];
