@@ -11,8 +11,8 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createMutationSandbox } from '../../packages/stryker-runner/mutation-sandbox.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
-import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
+import { createMutationExecution, type MutationExecution } from '../../packages/stryker-runner/mutation-execution.ts';
+import { runIfMain } from '../../test-support/run-if-main.ts';
 
 type ProjectDirectories = { readonly originalRoot: string; readonly cwd: string; };
 type ProcessModel = 'in-process' | 'supervised-process';
@@ -52,7 +52,13 @@ async function policyFor(paths: ProjectDirectories, targets: readonly string[]):
     return await initializeMutationPolicy({
         cwd: paths.cwd,
         sandbox,
-        settings: { configPath: join(paths.originalRoot, 'policy.mjs'), paths: [], profile: 'microtest' },
+        settings: {
+            freshState: false,
+            seed: '42',
+            configPath: join(paths.originalRoot, 'policy.mjs'),
+            paths: [],
+            profile: 'microtest'
+        },
         signal: controller.signal
     });
 }
@@ -110,7 +116,51 @@ async function assertRejectedImport(
     }
 }
 
+async function assertFreshImports(
+    scope: TestScope,
+    paths: ProjectDirectories,
+    execution: MutationExecution
+): Promise<void> {
+    await writeFile(
+        join(paths.cwd, 'case.test.mjs'),
+        `
+import { createTestCase } from ${JSON.stringify(engineUrl)};
+import { value } from './subject.mjs';
+export const testNode = createTestCase({
+    annotations: {}, controls: {}, definitionLocations: [{kind:'unknown'}], title: 'sandboxed',
+    body(scope) { scope.assert.equal(value, 2); return scope.assert.collect(); }
+});
+`
+    );
+    const result = await execution.run({ kind: 'all' });
+    scope.assert.equal(result.status, 'passed');
+    const original = JSON.stringify(join(paths.originalRoot, 'subject.mjs'));
+    await writeFile(join(paths.cwd, 'case.test.mjs'), `import ${original};`);
+    await scope.assert.rejects(async function rejectFreshTestEscape() {
+        await execution.run({ kind: 'all' });
+    }, { cause: { message: /Module import escapes/u } });
+}
+
 export const testNode = suite('mutation boundaries through the public runner', [
+    test('fresh hosts enforce frozen configuration and sandbox import boundaries', async function (scope) {
+        await withProject(async function assertFreshBoundaries(paths) {
+            await writePolicy(paths.cwd, 'in-process');
+            const policy = await policyFor(paths, [ 'subject.mjs' ]);
+            const execution = createMutationExecution({ policy, seed: { value: 42n }, freshState: true });
+            scope.cleanup(async function disposeFreshExecution() {
+                await execution.dispose();
+            });
+            await assertFreshImports(scope, paths, execution);
+            const original = JSON.stringify(join(paths.originalRoot, 'subject.mjs'));
+            await writeFile(join(paths.cwd, 'policy.mjs'), `import ${original}; export const config = {};`);
+            await scope.assert.rejects(async function rejectFreshConfigEscape() {
+                await execution.run({ kind: 'all' });
+            }, { message: /Frozen policy revalidation failed/u });
+            const files = await readdir(paths.originalRoot);
+            scope.assert.false(files.includes('original-evaluated'));
+        });
+        return scope.assert.collect();
+    }),
     test('rejects protected targets before importing tests and accepts production targets', async function (scope) {
         await withProject(async function assertProtectedTargets(paths) {
             await writePolicy(paths.cwd, 'in-process');
@@ -227,4 +277,4 @@ definitionLocations:[{kind:'unknown'}],body(scope){scope.assert.equal(value,2);r
     })
 ]);
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, {});

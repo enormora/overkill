@@ -3,10 +3,12 @@ import { testNode as profileTestNode } from './microtest-profile.test.ts';
 import { testNode as settingsTestNode } from './runner-options.test.ts';
 import { testNode as policyTestNode } from './mutation-execution-policy.test.ts';
 import { testNode as sandboxTestNode } from './mutation-sandbox.test.ts';
+import { testNode as invocationTestNode } from './mutation-invocation-protocol.test.ts';
 
 export const testNode = suite('Stryker profile initialization', [
     profileTestNode,
     settingsTestNode,
     policyTestNode,
-    sandboxTestNode
+    sandboxTestNode,
+    invocationTestNode
 ]);

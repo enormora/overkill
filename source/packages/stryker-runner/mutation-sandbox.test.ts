@@ -54,22 +54,34 @@ export const testNode = suite('mutation sandbox origins', [
             const settings = sandboxRunnerOptions(sandbox, {
                 configPath: pathToFileURL(join(paths.originalRoot, 'policy.mjs')).href,
                 paths: [ file, 'nested', paths.cwd ],
-                profile: 'unit'
+                profile: 'unit',
+                freshState: false,
+                seed: '42'
             });
             scope.assert.deepEqual(settings, {
                 configPath: join(paths.cwd, 'policy.mjs'),
                 paths: [ join(paths.cwd, 'case.test.mjs'), join(paths.cwd, 'nested'), paths.cwd ],
-                profile: 'unit'
+                profile: 'unit',
+                freshState: false,
+                seed: '42'
             });
             scope.assert.throws(function rejectSiblingPrefix() {
                 sandboxRunnerOptions(sandbox, {
                     configPath: null,
                     paths: [ `${paths.originalRoot}-other/case.mjs` ],
-                    profile: null
+                    profile: null,
+                    freshState: false,
+                    seed: '42'
                 });
             }, { type: ConfigError, message: /escapes the Stryker sandbox/ });
             scope.assert.throws(function rejectParentTraversal() {
-                sandboxRunnerOptions(sandbox, { configPath: '../original/policy.mjs', paths: [], profile: null });
+                sandboxRunnerOptions(sandbox, {
+                    configPath: '../original/policy.mjs',
+                    paths: [],
+                    profile: null,
+                    freshState: false,
+                    seed: '42'
+                });
             }, { type: ConfigError, message: /escapes the Stryker sandbox/ });
         });
         return scope.assert.collect();

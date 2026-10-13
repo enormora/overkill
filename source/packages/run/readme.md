@@ -20,6 +20,8 @@ Top-level API:
 - `orchestrator.freezePolicy({ command, source, moduleBoundary })`
 - `orchestrator.initialize(command)`
 - `parseFrozenMicrotestPolicy(value)`
+- `parseRunSelection(value)`, `parseRunResult(value)`, `parseRunnerError(value)`
+- `createRandomRunSeed()`
 - `withFileModuleBoundary(boundary, operation)`
 
 `Config` describes authored policy. `normalizeConfig` produces a
@@ -93,6 +95,11 @@ The invocation selection narrows the frozen baseline selection. Supply
 are excluded from the snapshot. Ordinary runtime guards and process usage policies
 still apply. `parseFrozenMicrotestPolicy` validates transported data, including
 descriptor roots and file-set ownership, and freezes the result.
+
+The selection, result, and runner-error parsers validate transported values
+against the runner's existing schemas. `createRandomRunSeed()` generates a
+nonnegative bigint for integrations that resolve a seed before crossing an
+execution boundary.
 
 `run` and `runWithReporterDelivery` accept `{ timing: null, signal }` through
 `RunInvocationOptions`. A non-null signal requires a `supervised-process` test

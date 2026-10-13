@@ -30,6 +30,9 @@ export const runIfMain = createRunIfMain({
 
 export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 export { parseFrozenMicrotestPolicy } from '../../run/frozen-run-policy.ts';
+export { createRandomRunSeed } from '../../run/run-seed.ts';
+export { parseRunSelection } from '../../run/run-selection-schema.ts';
+export { parseRunResult, parseRunnerError } from '../../run/run-result-schema.ts';
 export { withFileModuleBoundary } from '../../run/file-module-boundary.ts';
 export type { FileModuleBoundary } from '../../run/run-types.ts';
 export type {
