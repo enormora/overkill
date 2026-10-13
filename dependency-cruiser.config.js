@@ -35,8 +35,10 @@ const testRootAuthoringFiles = [
     '^source/packages/test/test\\.entry-point\\.ts$'
 ];
 const testRootLazyModuleBoundaries = [
+    '^source/property/',
+    '^source/packages/property/',
     '^source/config/',
-    '^source/packages/test/(baselines|bench|config|overkill|reporters|resources)\\.entry-point\\.ts$',
+    '^source/packages/test/(baselines|bench|config|overkill|property|reporters|resources)\\.entry-point\\.ts$',
     '^source/packages/test/command-line-runner\\.ts$',
     '^source/packages/reporter-',
     '^source/packages/resources/',

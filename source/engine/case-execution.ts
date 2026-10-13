@@ -1,7 +1,12 @@
 import type { Clock } from '@enormora/clock';
 
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
-import { createBenchmarkAttempt, builderBodyForAttempt, type BenchmarkAttempt } from './benchmark-attempt.ts';
+import {
+    createBenchmarkAttempt,
+    builderBodyForAttempt,
+    testBodyExecutionError,
+    type BenchmarkAttempt
+} from './case-body-execution.ts';
 import { assertionFailure } from './recorded-assertion-failure.ts';
 import {
     assertNonEmptyItems,
@@ -401,6 +406,11 @@ async function runCaseBody(
 ): Promise<ExecutedBody> {
     if (testCase.execution.kind !== 'body') {
         throw new TypeError('Skipped test cases do not have executable bodies.');
+    }
+
+    const executionError = testBodyExecutionError(testCase);
+    if (executionError !== null) {
+        return bodyErrorResult({ cleanupErrors: [], contractFailures: [], recorder, runnerErrors: [] }, executionError);
     }
 
     return testCase.execution.bodyMode === 'throwing'

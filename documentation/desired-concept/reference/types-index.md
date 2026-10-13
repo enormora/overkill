@@ -2188,7 +2188,10 @@ type PropertyInputCodec<Value> = PropertyCodecDecoder<Value> & {
     readonly previousDecoders: ReadonlyArray<PropertyCodecDecoder<Value>>;
 };
 
+declare const generatorBrand: unique symbol;
+
 type Generator<Value> = {
+    readonly [generatorBrand]: true;
     readonly map: <Output>(transform: (value: Value) => Output) => Generator<Output>;
     readonly flatMap: <Output>(transform: (value: Value) => Generator<Output>) => Generator<Output>;
     readonly filter: (predicate: (value: Value) => boolean) => Generator<Value>;

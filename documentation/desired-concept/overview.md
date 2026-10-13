@@ -266,6 +266,7 @@ The standard distribution includes the Node-first stack:
 - `@overkill-dev/resources`
 - `@overkill-dev/baselines`
 - `@overkill-dev/bench`
+- `@overkill-dev/property`
 - standard first-party reporters
 - explicit microtest coverage support
 
@@ -274,12 +275,12 @@ source of truth. The root `@overkill-dev/test` import is reserved for the
 authoring hot path and lightweight doubles. Other standard features are
 available through explicit subpaths such as `@overkill-dev/test/config`,
 `@overkill-dev/test/reporters`, `@overkill-dev/test/assert`,
-`@overkill-dev/test/bench`, `@overkill-dev/test/resources`, and
+`@overkill-dev/test/bench`, `@overkill-dev/test/property`, `@overkill-dev/test/resources`, and
 `@overkill-dev/test/baselines`.
 
 Optional packages stay separate installs when they are domain-specific,
 heavyweight, or aimed at a narrower audience. That includes browser and
-browser-benchmark packages, property/model/differential/linearizability
+browser-benchmark packages, model/differential/linearizability
 packages, type-test adapters, mutation integrations, ESLint and AWS CDK
 adapters, contract adapters, accessibility adapters, and similar focused
 integrations.

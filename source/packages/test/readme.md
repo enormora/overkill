@@ -84,6 +84,11 @@ Current root runtime exports:
 
 Standard subpaths:
 
+- `@overkill-dev/test/property` re-exports `property`, `withProperties`, and
+  property authoring types from [`@overkill-dev/property`](../property/readme.md),
+  included in the standard distribution. Construction and collection are
+  supported; generators, property profiles, and execution are not implemented
+  yet. Property code loads through this subpath, outside ordinary root imports.
 - `@overkill-dev/test/config` exports `defineConfig`, `normalizeConfig`, `loadConfig`, `ConfigError`, and project config
   types.
 - `@overkill-dev/test/reporters` exports `createLineReporter`,

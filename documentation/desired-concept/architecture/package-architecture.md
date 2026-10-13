@@ -926,6 +926,7 @@ standard stack so users do not need to align package versions by hand:
 - `@overkill-dev/resources`
 - `@overkill-dev/baselines`
 - `@overkill-dev/bench`
+- `@overkill-dev/property`
 - standard first-party reporters
 - explicit microtest coverage support
 
@@ -988,7 +989,7 @@ Optional packages stay separate installs when they are domain-specific,
 heavyweight, or aimed at a narrower audience. Examples:
 
 - browser and browser-benchmark packages
-- property, model, differential, and linearizability packages
+- model, differential, and linearizability packages
 - type-test adapters
 - mutation integrations
 - OpenTelemetry timing export

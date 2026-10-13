@@ -225,6 +225,17 @@ export const config = {
             bundlePeerDependencies: [ '@overkill-dev/run' ]
         },
         {
+            name: 'property',
+            description: 'Generator-driven property test authoring for Overkill.',
+            packageInterface: { modules: packageModules({ '.': 'main' }) },
+            bundlePeerDependencies: [
+                '@overkill-dev/engine',
+                '@overkill-dev/simulation',
+                '@overkill-dev/resources',
+                '@overkill-dev/run'
+            ]
+        },
+        {
             name: 'test',
             description: 'Standard Overkill distribution and command-line binary.',
             bundleDependencies: [
@@ -233,6 +244,7 @@ export const config = {
                 '@overkill-dev/baselines',
                 '@overkill-dev/doubles',
                 '@overkill-dev/engine',
+                '@overkill-dev/property',
                 '@overkill-dev/output-renderer-github-actions',
                 '@overkill-dev/reporter-brief',
                 '@overkill-dev/reporter-dot',
@@ -249,6 +261,7 @@ export const config = {
                 config: moduleRoot('packages/test/config.entry-point'),
                 main: moduleRoot('packages/test/test.entry-point'),
                 overkill: { js: 'packages/test/overkill.entry-point.js' },
+                property: moduleRoot('packages/test/property.entry-point'),
                 reporters: moduleRoot('packages/test/reporters.entry-point'),
                 resources: moduleRoot('packages/test/resources.entry-point'),
                 resourceWrapperSession: { js: 'packages/test/resource-wrapper-session.js' },
@@ -262,6 +275,7 @@ export const config = {
                     './bench': 'bench',
                     './compatibility': 'compatibility',
                     './config': 'config',
+                    './property': 'property',
                     './reporters': 'reporters',
                     './resources': 'resources',
                     './simulation': 'simulation'

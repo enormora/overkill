@@ -1060,6 +1060,10 @@ separate shrinker. Opaque sampling-only callbacks are outside the initial API;
 concrete values remain regression examples. A singleton domain may have no
 smaller candidates without violating the contract.
 
+Generator values carry private Overkill identity shared across package copies.
+Fluent constructors and combinators preserve that identity; shape-compatible
+objects and generators from other libraries are not accepted directly.
+
 A property invocation stops generating new inputs at its first failure and
 shrinks that failure into one primary counterexample and witness. It does not
 continue searching for additional failures during that invocation.

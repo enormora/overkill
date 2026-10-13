@@ -1,6 +1,7 @@
 import { attachmentsForProducer } from '../resources/attachment-context.entry-point.ts';
 import {
     type RuntimeAttachments,
+    forwardTestBodyFamily,
     attachTestBodyResourceAttachments,
     attachTestBodyWorkloadResolver,
     hasTestBodyResourceAttachments,
@@ -512,10 +513,13 @@ export function attachComposedResourceActions(
     if (lifecycle.steps.length > 0) {
         attachTestBodyWorkloadResolver(composedBody, function resolveWorkload(workload) {
             const boundActions = bindResourceWrapperActions(composedActions, workload);
-            return attachComposedResourceActions<ResourceLifecycleScope, unknown>(
-                boundActions,
-                composition.body,
-                wrapperName
+            return forwardTestBodyFamily(
+                composedBody,
+                attachComposedResourceActions<ResourceLifecycleScope, unknown>(
+                    boundActions,
+                    composition.body,
+                    wrapperName
+                )
             );
         });
     }
@@ -525,7 +529,7 @@ export function attachComposedResourceActions(
         body: composition.body
     });
 
-    return composedBody;
+    return forwardTestBodyFamily(body, composedBody);
 }
 
 export function attachComposedResourceBody<Scope extends ResourceLifecycleScope, Result = ReturnType<TestBody>>(
@@ -553,14 +557,18 @@ export function attachComposedResourceBody(
 
 export function mapComposedResourceBody(
     body: CallableTestBody,
-    execute: (body: CallableTestBody, scope: ResourceLifecycleScope) => Promise<AssertionResult>
+    execute: (body: CallableTestBody, scope: ResourceLifecycleScope) => Promise<AssertionResult>,
+    wrapperName: string
 ): TestBodyWithScope<ResourceLifecycleScope> {
     const composition = bodyComposition(body);
-    return attachComposedResourceActions(
-        composition.actions,
-        async function runEnvelope(scope: ResourceLifecycleScope) {
-            return execute(composition.body, scope);
-        },
-        'benchmark'
+    return forwardTestBodyFamily(
+        body,
+        attachComposedResourceActions(
+            composition.actions,
+            async function runEnvelope(scope: ResourceLifecycleScope) {
+                return execute(composition.body, scope);
+            },
+            wrapperName
+        )
     );
 }
