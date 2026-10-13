@@ -110,12 +110,14 @@ complete registry, independent of path operands. Zero or multiple benchmark
 profiles require an explicit selection; unknown names and other families are
 argument errors. There is no reserved or default benchmark profile name.
 
-Current runner integration executes the family-neutral facade through the regular
+Current runner integration executes workload benchmarks through the regular
 planning, placement, resource/runtime lifecycle, result, artifact, and reporter
 pipeline. `orchestrator.bench.list` returns the resolved plan without executing
 bodies or acquiring resources. `bench.run` and `bench.runWithReporterDelivery`
-use ordinary assertion outcomes. Measurement APIs and generated budgets remain
-later milestones.
+use structured measurement summaries and generated budget assertions. Explicit
+measurement regions, native collectors, and adaptive metric budgets are
+implemented; warmup, external-process measurement, browser collectors, and the
+dedicated HTML reporter remain later milestones.
 
 Current profiles admit serial execution with one lane, `maxConcurrency: 1`, and
 hedging off. Worker pools and supervised processes are supported; worker caps
@@ -162,8 +164,8 @@ calibration, and performance budgets remain owned by the benchmark family.
 The initial `@overkill-dev/bench` package facade reuses ordinary `test`,
 `skippedTest`, `suite`, `table`, `defineMacro`, and
 `defineParameterizedTestBody` authoring. These constructors remain
-family-neutral and do not measure performance. Benchmark-specific authoring
-arrives with its workload, measurement, and budget contracts. The standard
+family-neutral and do not measure performance. `benchmark(...)` adds workload,
+measurement, and budget contracts. The standard
 distribution includes the leaf package and exposes these constructors and
 their public types through explicit `@overkill-dev/test/bench` re-exports.
 
@@ -216,7 +218,18 @@ A benchmark definition should be able to describe:
 
 This is closer to BenchmarkTools benchmark groups and to real workflow benchmarking than to a simple timing loop.
 
-Example direction:
+The implemented callback surface and sampling contracts are documented in the
+[`@overkill-dev/bench` package guide](../../../source/packages/bench/readme.md).
+Each immutable JSON workload expands with runtime variants before selection.
+Resources wrap one sampling session; workload binding is an explicit resource
+opt-in. Returned metrics require budgets or diagnostic declarations. Quantile
+and bounded-mean intervals control precision and threshold decisions, with
+checkpoint error allocation under independent, stationary observations.
+Unresolved limits are incomplete measurement outcomes, not successful budgets.
+Typed summaries travel through attempts, IPC, reporter events, and run records;
+raw readings use bounded attachments.
+
+Future external-process direction:
 
 ```ts
 import { benchmark, suite, workload } from '@overkill-dev/bench';

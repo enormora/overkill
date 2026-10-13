@@ -1,6 +1,6 @@
 # @overkill-dev/bench
 
-Ordinary test-node authoring for the Overkill benchmark package.
+Workload measurement and performance budgets for Overkill.
 
 Included in the standard `@overkill-dev/test` installation. Standard users
 import the same authoring surface from `@overkill-dev/test/bench`; advanced
@@ -125,11 +125,97 @@ also supported. Hedging and concurrent groups are rejected.
 Default timeouts are 5000 ms for collection, 40000 ms soft, and 60000 ms hard.
 Overrides must keep soft at or below hard and hard at or below 60000 ms.
 
-This facade does not yet measure performance. The workload model supports the
-future `benchmark(title, { workloads, measure, budgets })` API. Measurement
-strategies and budgets complete that authoring surface in later milestones.
-Advanced authoring and runtime binding remain available from
-`@overkill-dev/test` and its resources subpath.
+`benchmark(...)` expands named, immutable JSON workloads before selection and
+sharding. Each workload requires at least one metric budget. Return every
+metric used by a budget; declare other returned metrics in `diagnosticMetrics`.
+
+```ts
+import { benchmark, wallClockMeasurement, workload } from '@overkill-dev/test/bench';
+
+export const testNode = benchmark('serialize', {
+    kind: 'runtime',
+    workloads: [ workload('small', { entries: 10 }) ],
+    measurement: wallClockMeasurement(),
+    measure({ workload, sample }) {
+        const input = Array.from({ length: workload.parameters.entries }, (_, index) => index);
+        const measured = sample.measure(() => JSON.stringify(input));
+        return { durationMicroseconds: measured.metrics.durationMicroseconds };
+    },
+    diagnosticMetrics: [],
+    budgets: { small: { durationMicroseconds: { maximum: 100 } } }
+});
+```
+
+Call `sample.measure(callback)` exactly once per sample, or
+`sample.measure(operationCount, callback)` for a known positive integer count.
+The result contains the callback's `value` and collector `metrics`, including
+`durationMicroseconds` and `operationsPerSecond`. Synchronous callbacks stay
+synchronous with synchronous collectors. Async callbacks and async strategies
+return a promise which must be awaited. Preparation, collector completion,
+resource acquisition, and teardown are outside the measured callback.
+
+`measurementStrategy([...])` accepts synchronous collectors;
+`asyncMeasurementStrategy([...])` also accepts asynchronous collectors.
+Built-in collectors are `threadCpuCollector`, `processCpuCollector`,
+`memoryCollector`, `processResourceCollector`, and `runtimeHealthCollector`.
+Runtime health needs an async strategy to prime and drain its observers.
+Custom collectors declare identity, metric names, units, and scopes, then
+return a session with `start`, `stop`, `complete`, and `dispose`. Start and stop
+are synchronous boundaries. Completed readings use `availableMetric` or
+`unavailableMetric`. Returned plain numbers are custom metrics with unit `number`.
+
+CPU metrics are deltas in microseconds. Memory metrics include end snapshots
+and signed byte deltas; RSS and active resource counts describe the process,
+while heap data describes the current thread. Process maximum RSS is a lifetime
+high-water mark, not a peak confined to the callback. Page faults, filesystem
+operations, and context switches are event counts, not bytes. Unsupported
+counters and empty event-loop histograms carry explicit unavailable reasons.
+GC observations do not force collection or estimate allocations.
+
+A threshold-only budget measures the median. Set `statistic` to
+`{ kind: 'quantile', probability: 0.95 }`,
+`{ kind: 'mean', range: { minimum: 0, maximum: 1000 } }`,
+`{ kind: 'observed-minimum' }`, or `{ kind: 'observed-maximum' }`.
+Supply `minimum`, `maximum`, or both; multiple budgets for one metric use an
+array. Bounds are inclusive. Observed extrema describe only this finite run.
+Means require finite, ordered bounds with a finite span; observations outside
+that declared range invalidate measurement.
+
+Sampling assumes independent, stationary observations. Defaults are 95%
+confidence, 5% relative precision, 128 minimum samples, and 65536 maximum samples.
+Pass a complete third argument with `annotations`, `controls`, and `sampling`
+to override them; `defaultSamplingPolicy` supplies a starting point.
+`absolutePrecision` maps metric names to tolerances near zero. Checkpoints grow
+geometrically and share error probability across all distinct budgeted targets
+and checkpoints within each workload. Quantile estimates use linear interpolation (type 7), with
+binomial order-statistic intervals; means use
+bounded empirical Bernstein intervals. Diagnostic metrics do not delay stopping.
+No samples are discarded and no hidden warmup runs occur.
+
+A budget passes when its interval is wholly inside its bounds, fails when the
+interval establishes a violation, and continues sampling while it overlaps a
+threshold. Every inferential target must also meet precision. Missing or
+unavailable budgeted metrics fail normally. Unresolved intervals or precision
+at the sample limit produce an incomplete result and a measurement error,
+preserving established failures. The existing case timeout also applies.
+
+Resource and runtime wrappers surround the entire sampling session, so fixtures
+are acquired once per attempt. Cleanup callbacks run after the attempt.
+`workload: parseParameters` opts a resource into workload-specific acquisition
+and cache identity. Acquisition and disposal receive parsed parameters and
+identity through `context.workload`; independent resources receive `null` and
+keep their existing sharing rules. Runtime matrices multiply the workload plan.
+For TypeScript resource/runtime wrappers, pass
+`BenchmarkMeasureContext<Parameters>` as `Scope` and `BenchmarkMetrics` (or a
+narrower metric object) as `Result`. Wrapper defaults describe ordinary assertions.
+
+Results and attempts contain nullable `benchmark` summaries with policy,
+sample count, metric provenance, budget estimates, intervals, and decisions.
+Reporters receive `benchmark-progress` and the final summary on `test-end`.
+Raw readings use bounded `benchmark-samples` attachments, with explicit omission
+when retention limits or a missing attachment coordinator prevent recording.
+Warmup, per-sample cleanup, external-process measurement, browser collectors,
+and the dedicated HTML reporter remain later milestones.
 
 Performance baseline commands use adapters configured in the benchmark profile:
 

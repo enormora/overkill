@@ -18,7 +18,13 @@ function decode(message: unknown): SupervisedChildMessage | null {
 function createConflictEvidence(attachment: RuntimeAttachmentArtifact): HedgedConflictArtifact {
     const evidence: HedgedConflictArtifact['payload']['authoritative'] = {
         attachments: [ attachment ],
-        attempts: [ { attempt: { index: 1 }, durationMicroseconds: 0, outcome: null, verdict: 'pass' } ],
+        attempts: [ {
+            benchmark: null,
+            attempt: { index: 1 },
+            durationMicroseconds: 0,
+            outcome: null,
+            verdict: 'pass'
+        } ],
         outcome: null,
         verdict: 'pass'
     };

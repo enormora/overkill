@@ -30,6 +30,7 @@ function completeAssignedRun(context: FakeSupervisedChildRunContext): void {
         context.emitMessage({
             kind: 'event',
             event: {
+                benchmark: null,
                 attempt: 1,
                 artifacts: [],
                 completion: 'final',

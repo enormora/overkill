@@ -20,6 +20,7 @@ export function resultWithAttemptHistory(
 export function caseAttemptHistory(finalResult: PerTestResult, results: readonly PerTestResult[]): PerTestResult {
     const attempts = results.map(function recordAttempt(result) {
         return {
+            benchmark: result.benchmark,
             attempt: result.attempts[0].attempt,
             durationMicroseconds: result.durationMicroseconds,
             outcome: result.outcome ?? result.attempts[0].outcome,

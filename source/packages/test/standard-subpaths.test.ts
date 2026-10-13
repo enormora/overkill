@@ -24,6 +24,8 @@ import {
     type ParameterizedTestScope
 } from './test.entry-point.ts';
 
+const testCaseMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const invokeWithResource = resourcesSubpath.withResource as (...parameters: readonly unknown[]) => unknown;
 const invokeWithResources = resourcesSubpath.withResources as (...parameters: readonly unknown[]) => unknown;
 const invokeWithRuntime = resourcesSubpath.withRuntime as (...parameters: readonly unknown[]) => unknown;
@@ -455,10 +457,8 @@ export const testNode = createSuite({
     controls: {},
     children: [
         createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+            ...testCaseMetadata,
             title: '@overkill-dev/test/config exposes shared project configuration',
-            annotations: {},
-            controls: {},
             body(scope: TestScope) {
                 assertConfigSubpath(scope);
 
@@ -466,10 +466,8 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+            ...testCaseMetadata,
             title: '@overkill-dev/test/reporters exposes current built-in factories',
-            annotations: {},
-            controls: {},
             async body(scope: TestScope) {
                 await assertReporterSubpath(scope);
 
@@ -477,10 +475,8 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+            ...testCaseMetadata,
             title: '@overkill-dev/test/assert re-exports assertion extension ownership',
-            annotations: {},
-            controls: {},
             body(scope: TestScope) {
                 assertAssertSubpath(scope);
 
@@ -488,10 +484,8 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+            ...testCaseMetadata,
             title: '@overkill-dev/test/resources re-exports resource descriptors',
-            annotations: {},
-            controls: {},
             async body(scope: TestScope) {
                 await assertResourcesSubpath(scope);
 
@@ -499,28 +493,36 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+            ...testCaseMetadata,
             title: '@overkill-dev/test/bench exposes the leaf authoring surface',
-            annotations: {},
-            controls: {},
             body(scope: TestScope) {
                 scope.assert.deepEqual(sortedKeys(benchSubpath), [
+                    'asyncMeasurementStrategy',
+                    'availableMetric',
+                    'benchmark',
+                    'defaultSamplingPolicy',
                     'defineMacro',
                     'defineParameterizedTestBody',
+                    'measurementStrategy',
+                    'memoryCollector',
+                    'processCpuCollector',
+                    'processResourceCollector',
+                    'runtimeHealthCollector',
                     'skippedTest',
                     'suite',
                     'table',
                     'test',
+                    'threadCpuCollector',
+                    'unavailableMetric',
+                    'wallClockMeasurement',
                     'workload'
                 ]);
                 return scope.assert.collect();
             }
         }),
         createTestCase({
-            definitionLocations: [ { kind: 'unknown' } ],
+            ...testCaseMetadata,
             title: '@overkill-dev/test/baselines exposes contracts without loading storage',
-            annotations: {},
-            controls: {},
             body(scope: TestScope) {
                 scope.assert.deepEqual(sortedKeys(baselinesSubpath), []);
 

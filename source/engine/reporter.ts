@@ -1,3 +1,4 @@
+import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import type { CaseId, WorkId } from './identity.ts';
 import type { OptionalReporterOutput, OutputIntentRole } from './reporter-output.ts';
 import type { ReportingContext } from './reporting-context.ts';
@@ -150,6 +151,7 @@ type TestProgressReporterEvent = {
 };
 
 type TestEndReporterEvent = {
+    readonly benchmark: BenchmarkExecutionResult | null;
     readonly completion: 'final' | 'retry';
     readonly attempt: number;
     readonly artifacts: readonly RunArtifact[];
@@ -163,9 +165,25 @@ type TestEndReporterEvent = {
     readonly workId?: WorkId;
 };
 
+type BenchmarkProgressReporterEvent = {
+    readonly benchmark: BenchmarkExecutionResult;
+    readonly attempt: number;
+    readonly case: CaseId;
+    readonly definitionLocations: TestPlanCase['definitionLocations'];
+    readonly kind: 'benchmark-progress';
+    readonly suitePath: TestPlanCase['suitePath'];
+    readonly workId: WorkId;
+};
+
 type RunReporterEvent = RunEndReporterEvent | RunnerErrorReporterEvent | RunStartReporterEvent;
 type SuiteReporterEvent = SuiteEndReporterEvent | SuiteStartReporterEvent;
-type TestReporterEvent = TestEndReporterEvent | TestProgressReporterEvent | TestStartReporterEvent;
+type TestReporterEvents = {
+    readonly benchmark: BenchmarkProgressReporterEvent;
+    readonly end: TestEndReporterEvent;
+    readonly progress: TestProgressReporterEvent;
+    readonly start: TestStartReporterEvent;
+};
+type TestReporterEvent = TestReporterEvents[keyof TestReporterEvents];
 
 export type ReporterEvent = RunReporterEvent | SuiteReporterEvent | TestReporterEvent;
 

@@ -87,6 +87,9 @@ async function executeTimedCase(
     supervision = createExecutionSupervision()
 ): ReturnType<typeof executeCaseBody> {
     return executeCaseBody({
+        async onBenchmarkUpdate() {
+            return undefined;
+        },
         testCase,
         timeoutPolicy: softTimeoutPolicy,
         supervision,
@@ -118,6 +121,9 @@ async function executeHardTimedCase(
     });
 
     return executeCaseBody({
+        async onBenchmarkUpdate() {
+            return undefined;
+        },
         testCase,
         timeoutPolicy: {
             hardTimeoutMilliseconds: 10,

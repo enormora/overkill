@@ -8,7 +8,6 @@ import {
     type ResourceAttachedTestBody,
     type TestBody,
     type TestBodyDirectResourceAttachmentSummary,
-    type TestBodyExecutionRequirementSummary,
     type TestBodyLeafRuntimeSummary,
     type TestBodyResourceAttachments,
     type TestBodyResourceSummary,
@@ -18,7 +17,6 @@ import {
 import {
     resolvedRuntimeScenarioOwners,
     type AnyResourceDefinition,
-    type ExecutionRequirement,
     type ResourceContext,
     type ResourceMap,
     type RuntimeGraph,
@@ -40,27 +38,18 @@ import {
     resourceWrapperSteps,
     stepRuntimeGraphs,
     type ResourceEntry,
+    type ResourceLifecycleScope,
+    type TestBodyWithScope,
+    type CallableTestBody,
     type ResourceWrapperAction,
     type ResourceWrapperScopeStep,
     type ResourceWrapperStep
 } from './resource-wrapper-data.ts';
 import { composeRuntimeScope } from './resource-wrapper-runtime-scope.ts';
-import type {
-    acquireComposedResources as acquireComposedResourcesFunction,
-    disposeComposedResources as disposeComposedResourcesFunction
-} from './resource-wrapper-session.ts';
 
-type TestBodyWithScope<Scope extends TestScope> = (scope: Scope) => ReturnType<TestBody>;
-type CallableTestBody = (scope: never) => unknown;
-type TestBodyResult = ReturnType<TestBody>;
-type AsyncTestBodyResult = Promise<Awaited<TestBodyResult>>;
-type ResourceWrapperSessionModule = {
-    readonly acquireComposedResources: typeof acquireComposedResourcesFunction;
-    readonly disposeComposedResources: typeof disposeComposedResourcesFunction;
-};
 type ResourceTestScope<
     Resources extends ResourceMap,
-    Scope extends TestScope = TestScope
+    Scope extends ResourceLifecycleScope = TestScope
 > = Scope & {
     readonly attachments: RuntimeAttachments;
     readonly resources: ResourceContext<Resources>;
@@ -94,18 +83,6 @@ function ensureBody(body: unknown, wrapperName: string): asserts body is Callabl
     }
 }
 
-function ensureResource(resource: unknown, wrapperName: string): AnyResourceDefinition {
-    return ensureResourceDescriptor(resource, `${wrapperName}() requires resource descriptors.`);
-}
-
-function entries(record: Readonly<Record<string, AnyResourceDefinition>>): readonly [string, AnyResourceDefinition][] {
-    return Object.entries(record);
-}
-
-function requirementSummary(requirement: ExecutionRequirement): TestBodyExecutionRequirementSummary {
-    return { ...requirement };
-}
-
 function resourceHandleTransport(resource: AnyResourceDefinition): TestBodyResourceSummary['handleTransport'] {
     if (typeof resource.serializeHandle === 'function' && typeof resource.deserializeHandle === 'function') {
         return 'projected';
@@ -121,7 +98,9 @@ function resourceSummary(resource: AnyResourceDefinition): TestBodyResourceSumma
         }),
         handleTransport: resourceHandleTransport(resource),
         name: resource.name,
-        requirements: resource.requirements.map(requirementSummary),
+        requirements: resource.requirements.map(function (requirement) {
+            return { ...requirement };
+        }),
         scenarios: Object.entries(resource.scenarios).map(function scenarioSummary([ name, scenario ]) {
             return {
                 default: scenario.default,
@@ -171,7 +150,7 @@ function visitDependencies(
     descriptor: AnyResourceDefinition,
     path: readonly string[]
 ): void {
-    for (const [ , dependency ] of entries(descriptor.dependencies)) {
+    for (const dependency of Object.values(descriptor.dependencies)) {
         collector.visit(dependency, [ ...path, dependency.name ]);
     }
 }
@@ -186,7 +165,10 @@ function createResourceGraphCollector(): ResourceGraphCollector {
             return resourceGraph;
         },
         visit(resource, path) {
-            const descriptor = ensureResource(resource, 'resource attachment');
+            const descriptor = ensureResourceDescriptor(
+                resource,
+                'resource attachment() requires resource descriptors.'
+            );
 
             assertResourceCanBeRecorded(descriptorsByName, traversal, descriptor, path);
             descriptorsByName.set(descriptor.name, descriptor);
@@ -228,8 +210,10 @@ function leafRuntimeSummary(
         dimensions: runtimeGraph.dimensions,
         kind: 'runtime',
         name: runtimeGraph.name,
-        requirements: runtimeGraph.requirements.map(requirementSummary),
-        resources: entries(runtimeGraph.resources).map(function runtimeResourceSummary([ key, resource ]) {
+        requirements: runtimeGraph.requirements.map(function (requirement) {
+            return { ...requirement };
+        }),
+        resources: Object.entries(runtimeGraph.resources).map(function runtimeResourceSummary([ key, resource ]) {
             return {
                 key,
                 resourceName: resource.name
@@ -298,7 +282,7 @@ function buildAttachments(
         }
 
         for (const variant of runtimeVariantEntries(runtimeGraph)) {
-            for (const [ , resource ] of entries(variant.runtime.resources)) {
+            for (const resource of Object.values(variant.runtime.resources)) {
                 graphCollector.visit(resource, [ resource.name ]);
             }
         }
@@ -322,33 +306,9 @@ function bodyComposition(body: CallableTestBody): ComposedResourceBody[typeof co
     };
 }
 
-function isPromise(value: unknown): value is Promise<AssertionResult> {
-    return value instanceof Promise;
-}
-
-function isAssertionNode(value: unknown): boolean {
-    return typeof value === 'object' &&
-        value !== null &&
-        typeof Reflect.get(value, 'check') === 'string';
-}
-
-function isAssertionResult(value: unknown): value is AssertionResult {
-    return isAssertionNode(value) ||
-        Array.isArray(value) && value.length > 0 && value.every(isAssertionNode);
-}
-
-function isTestBodyResult(value: unknown): value is ReturnType<TestBody> {
-    return isPromise(value) || isAssertionResult(value);
-}
-
-function invokeTestBody(body: CallableTestBody, scope: TestScope): ReturnType<TestBody> {
+function invokeTestBody(body: CallableTestBody, scope: ResourceLifecycleScope): unknown {
     const result: unknown = Reflect.apply(body, undefined, [ scope ]);
-
-    if (isTestBodyResult(result)) {
-        return result;
-    }
-
-    throw new TypeError('Resource wrapper body returned an invalid assertion result.');
+    return result;
 }
 
 function buildStepAttachments(actions: readonly ResourceWrapperAction[]): TestBodyResourceAttachments {
@@ -365,7 +325,7 @@ function isScopeMapResult(value: unknown): value is Readonly<Record<string, unkn
 
 function isResourceTestScope<
     Resources extends ResourceMap,
-    Scope extends TestScope
+    Scope extends ResourceLifecycleScope
 >(value: unknown, handles: ResourceContext<Resources>): value is ResourceTestScope<Resources, Scope> {
     if (!isResourceScopeInput(value)) {
         return false;
@@ -381,7 +341,7 @@ function isResourceTestScope<
 
 function composeResourceContext<
     Resources extends ResourceMap,
-    Scope extends TestScope
+    Scope extends ResourceLifecycleScope
 >(
     scope: Scope,
     handles: ResourceContext<Resources>
@@ -414,10 +374,10 @@ function composeResourceContext<
 }
 
 function composeMappedScope(
-    scope: TestScope,
+    scope: ResourceLifecycleScope,
     step: ResourceWrapperScopeStep
-): TestScope {
-    const mappedScope = step.mapScope(scope);
+): ResourceLifecycleScope {
+    const mappedScope: unknown = Reflect.apply(step.mapScope, undefined, [ scope ]);
 
     if (!isScopeMapResult(mappedScope)) {
         throw new TypeError(`${step.name} must return an object.`);
@@ -435,10 +395,10 @@ function composeMappedScope(
 }
 
 function composeActionScope(
-    scope: TestScope,
+    scope: ResourceLifecycleScope,
     action: ResourceWrapperAction,
     session: ComposedResourceSession
-): TestScope {
+): ResourceLifecycleScope {
     if (action.kind === 'resources') {
         return composeResourceContext(scope, resourceContextForStep(action.resources, session.directResources));
     }
@@ -451,19 +411,19 @@ function composeActionScope(
 }
 
 function composeActionScopes(
-    scope: TestScope,
+    scope: ResourceLifecycleScope,
     actions: readonly ResourceWrapperAction[],
     session: ComposedResourceSession
-): TestScope {
+): ResourceLifecycleScope {
     return actions.reduce(function composeScope(composedScope, action) {
         return composeActionScope(composedScope, action, session);
     }, scope);
 }
 
 function composeMappedOnlyScopes(
-    scope: TestScope,
+    scope: ResourceLifecycleScope,
     actions: readonly ResourceWrapperAction[]
-): TestScope {
+): ResourceLifecycleScope {
     return actions.reduce(function composeScope(composedScope, action) {
         if (action.kind !== 'scope') {
             throw resourceWrapperLifecycleError('Resource scope composition failed.', action);
@@ -473,16 +433,12 @@ function composeMappedOnlyScopes(
     }, scope);
 }
 
-async function importResourceWrapperSession(): Promise<ResourceWrapperSessionModule> {
-    return await import('./resource-wrapper-session.ts');
-}
-
 async function acquireCompositionSession(
     steps: readonly ResourceWrapperStep[],
     signal: AbortSignal,
     messages: LifecycleMessages
 ): Promise<ComposedResourceSession> {
-    const sessionModule = await importResourceWrapperSession();
+    const sessionModule = await import('./resource-wrapper-session.ts');
 
     return await sessionModule.acquireComposedResources(steps, signal, messages);
 }
@@ -491,7 +447,7 @@ async function disposeCompositionSession(
     session: ComposedResourceSession,
     messages: LifecycleMessages
 ): Promise<void> {
-    const sessionModule = await importResourceWrapperSession();
+    const sessionModule = await import('./resource-wrapper-session.ts');
 
     await sessionModule.disposeComposedResources(session, messages);
 }
@@ -505,29 +461,34 @@ function defineComposedBodyBrand(
     });
 }
 
-function attachResourceMetadata<Scope extends TestScope>(
-    body: TestBodyWithScope<Scope>,
+function attachResourceMetadata<Scope extends ResourceLifecycleScope, Result>(
+    body: TestBodyWithScope<Scope, Result>,
     actions: readonly ResourceWrapperAction[]
-): ResourceAttachedTestBody<TestBodyWithScope<Scope>> {
+): ResourceAttachedTestBody<TestBodyWithScope<Scope, Result>> {
     return attachTestBodyResourceAttachments(body, buildStepAttachments(actions));
 }
 
-function isResourceAttachedBody<Scope extends TestScope>(
-    body: ResourceAttachedTestBody<TestBodyWithScope<Scope>> | TestBodyWithScope<Scope>
-): body is ResourceAttachedTestBody<TestBodyWithScope<Scope>> {
+function isResourceAttachedBody<Scope extends ResourceLifecycleScope, Result>(
+    body: ResourceAttachedTestBody<TestBodyWithScope<Scope, Result>> | TestBodyWithScope<Scope, Result>
+): body is ResourceAttachedTestBody<TestBodyWithScope<Scope, Result>> {
     return typeof body === 'function' && hasTestBodyResourceAttachments(body);
 }
 
-export function attachComposedResourceActions<Scope extends TestScope>(
+export function attachComposedResourceActions<Scope extends ResourceLifecycleScope, Result = ReturnType<TestBody>>(
     actions: readonly ResourceWrapperAction[],
     body: CallableTestBody,
     wrapperName: string
-): ResourceAttachedTestBody<TestBodyWithScope<Scope>> | TestBodyWithScope<Scope> {
+): TestBodyWithScope<Scope, Promise<Awaited<Result>>>;
+export function attachComposedResourceActions(
+    actions: readonly ResourceWrapperAction[],
+    body: CallableTestBody,
+    wrapperName: string
+): TestBodyWithScope<ResourceLifecycleScope, Promise<unknown>> {
     ensureBody(body, wrapperName);
     const composition = bodyComposition(body);
     const composedActions = Object.freeze([ ...actions, ...composition.actions ]);
     const lifecycle = { steps: resourceWrapperSteps(composedActions), messages: lifecycleMessages(composedActions) };
-    const wrappedBody = async function runWithComposedResources(scope: Scope): AsyncTestBodyResult {
+    const wrappedBody = async function runWithComposedResources(scope: ResourceLifecycleScope): Promise<unknown> {
         if (lifecycle.steps.length === 0) {
             return await invokeTestBody(composition.body, composeMappedOnlyScopes(scope, composedActions));
         }
@@ -551,7 +512,11 @@ export function attachComposedResourceActions<Scope extends TestScope>(
     if (lifecycle.steps.length > 0) {
         attachTestBodyWorkloadResolver(composedBody, function resolveWorkload(workload) {
             const boundActions = bindResourceWrapperActions(composedActions, workload);
-            return attachComposedResourceActions<Scope>(boundActions, composition.body, wrapperName);
+            return attachComposedResourceActions<ResourceLifecycleScope, unknown>(
+                boundActions,
+                composition.body,
+                wrapperName
+            );
         });
     }
 
@@ -563,12 +528,17 @@ export function attachComposedResourceActions<Scope extends TestScope>(
     return composedBody;
 }
 
-export function attachComposedResourceBody<Scope extends TestScope>(
+export function attachComposedResourceBody<Scope extends ResourceLifecycleScope, Result = ReturnType<TestBody>>(
     step: ResourceWrapperStep,
     body: CallableTestBody,
     wrapperName: string
-): ResourceAttachedTestBody<TestBodyWithScope<Scope>> {
-    const bodyWithResources = attachComposedResourceActions<Scope>(
+): ResourceAttachedTestBody<TestBodyWithScope<Scope, Promise<Awaited<Result>>>>;
+export function attachComposedResourceBody(
+    step: ResourceWrapperStep,
+    body: CallableTestBody,
+    wrapperName: string
+): ResourceAttachedTestBody<TestBodyWithScope<ResourceLifecycleScope, Promise<unknown>>> {
+    const bodyWithResources = attachComposedResourceActions<ResourceLifecycleScope, unknown>(
         [ step ],
         body,
         wrapperName
@@ -579,4 +549,18 @@ export function attachComposedResourceBody<Scope extends TestScope>(
     }
 
     throw new TypeError(`${wrapperName}() requires resource wrapper metadata.`);
+}
+
+export function mapComposedResourceBody(
+    body: CallableTestBody,
+    execute: (body: CallableTestBody, scope: ResourceLifecycleScope) => Promise<AssertionResult>
+): TestBodyWithScope<ResourceLifecycleScope> {
+    const composition = bodyComposition(body);
+    return attachComposedResourceActions(
+        composition.actions,
+        async function runEnvelope(scope: ResourceLifecycleScope) {
+            return execute(composition.body, scope);
+        },
+        'benchmark'
+    );
 }

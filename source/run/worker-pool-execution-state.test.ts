@@ -4,7 +4,6 @@ import {
     createTestCase as createOverkillTestCase,
     type CaseId,
     type RunResult,
-    type ReporterEvent as BufferedReporterEvent,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -14,7 +13,7 @@ import type {
     RunOrchestratorDependencies
 } from './run-orchestrator-dependencies.ts';
 import { createStoredRunValue, createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
-import { executeWorkerPoolUnits } from './worker-pool-execution.ts';
+import { createReporterEventBuffer, executeWorkerPoolUnits } from './worker-pool-execution.ts';
 import { reportRunStart, startPoolProcessUsageTracking } from './worker-pool-process-usage-tracking.ts';
 import {
     createWorkerPoolPlacementTraceRecorder,
@@ -31,17 +30,6 @@ const integrationPath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const crashLimitMessage = 'Worker-pool stopped after 3 worker crashes.';
 const annotations = { ownership: [], tags: [] };
 
-function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'] {
-    const events: BufferedReporterEvent[] = [];
-
-    return {
-        [Symbol.iterator]: events[Symbol.iterator].bind(events),
-        clear() {
-            events.length = 0;
-        },
-        push: events.push.bind(events)
-    };
-}
 const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const testCaseMetadata = {
     annotations: {},
@@ -86,6 +74,7 @@ export function createCollectedPlan(): CollectedRunPlan {
                 file: integrationPath,
                 cases: [
                     {
+                        benchmark: null,
                         workloadParameters: null,
                         annotations,
                         controls,
@@ -127,6 +116,7 @@ export function createCollectedPlanWithMissingResult(): CollectedRunPlan {
                 cases: [
                     ...firstFile.cases,
                     {
+                        benchmark: null,
                         workloadParameters: null,
                         annotations,
                         controls,

@@ -8,7 +8,13 @@ import {
     type ResourceMap,
     type RuntimeGraph
 } from '../resources/resources.entry-point.ts';
-import type { TestScope } from '../engine/engine.entry-point.ts';
+import type { TestBody, TestScope } from '../engine/engine.entry-point.ts';
+
+export type ResourceLifecycleScope = Pick<TestScope, 'cleanup' | 'signal'>;
+export type TestBodyWithScope<Scope extends ResourceLifecycleScope, Result = ReturnType<TestBody>> = (
+    scope: Scope
+) => Result;
+export type CallableTestBody = (scope: never) => unknown;
 
 type Mutable<Value> = {
     -readonly [Key in keyof Value]: Value[Key];

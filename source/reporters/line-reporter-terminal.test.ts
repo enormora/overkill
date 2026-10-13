@@ -59,6 +59,7 @@ export const testNode = createOverkillSuite({
 
                 await reporter.onEvent({ kind: 'suite-start', suitePath: [] });
                 await reporter.onEvent({
+                    benchmark: null,
                     completion: 'final',
                     attempt: 0,
                     case: failingCaseId,
@@ -71,6 +72,7 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 12_000
                 });
                 await reporter.onEvent({
+                    benchmark: null,
                     completion: 'final',
                     attempt: 0,
                     case: failingCaseId,
@@ -83,6 +85,7 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 13_000
                 });
                 await reporter.onEvent({
+                    benchmark: null,
                     completion: 'final',
                     attempt: 0,
                     case: nestedFailingCaseId,

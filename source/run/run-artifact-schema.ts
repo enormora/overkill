@@ -4,6 +4,7 @@ import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { artifactIdentityFields, runArtifactIdSchema } from './run-artifact-id-schema.ts';
 import { runtimeAttachmentArtifactSchema } from './attachment-wire-schema.ts';
+import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
 export const verdictSchema = z.enum([
     'pass',
@@ -15,6 +16,7 @@ export const verdictSchema = z.enum([
     'runtime-policy'
 ]);
 export const testAttemptSchema = z.strictObject({
+    benchmark: benchmarkResultSchema.nullable().default(null),
     attempt: attemptIdSchema,
     durationMicroseconds: z.number(),
     outcome: testOutcomeSchema.nullable(),

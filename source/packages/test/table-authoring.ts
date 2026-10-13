@@ -95,7 +95,7 @@ function tableCaseBody<Row>(
     sourceLocations: readonly ResolvableSourceLocation[],
     facadeActions: readonly ResourceWrapperAction[]
 ): TestBody {
-    const caseBody = attachComposedResourceActions(
+    const caseBody = attachComposedResourceActions<TestScope>(
         [
             ...facadeActions,
             scopeWrapperStep('table() parameters', function addTableParameters() {

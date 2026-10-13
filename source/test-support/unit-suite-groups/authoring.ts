@@ -1,3 +1,4 @@
+import { testNode as measurementTestNode } from '../../bench/measurement-suite.test.ts';
 import { testNode as workloadTestNode } from '../../bench/workload.test.ts';
 import { testNode as baselinesTestNode } from '../../baselines/baselines-suite.test.ts';
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
@@ -9,6 +10,7 @@ import { testNode as testPackageTestNode } from '../../packages/test/test-suite.
 export const testNode = createSuite({
     annotations: {},
     children: [
+        measurementTestNode,
         workloadTestNode,
         baselinesTestNode,
         testPackageTestNode,

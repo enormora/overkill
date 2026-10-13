@@ -16,6 +16,7 @@ type TrackedPromise = {
 };
 
 export type AsyncLeakMonitor = {
+    readonly runOutsideCase: <Value>(run: () => Promise<Value>) => Promise<Value>;
     readonly casePromiseLeakError: (testCase: TestPlanCase) => RunnerError | null;
     readonly runCase: <Value>(testCase: TestPlanCase, run: () => Promise<Value>) => Promise<Value>;
     readonly stop: () => void;
@@ -23,6 +24,9 @@ export type AsyncLeakMonitor = {
 
 export function createDisabledAsyncLeakMonitor(): AsyncLeakMonitor {
     return {
+        async runOutsideCase(run) {
+            return await run();
+        },
         casePromiseLeakError() {
             return null;
         },
@@ -214,6 +218,9 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
     hook.enable();
 
     return {
+        async runOutsideCase(run) {
+            return await activeCaseStorage.exit(run);
+        },
         casePromiseLeakError(testCase) {
             const activeCase = attempts.get(testCase);
             const pendingPromiseCount = Array

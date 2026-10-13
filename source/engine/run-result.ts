@@ -10,6 +10,7 @@ import type { RunTimings } from './run-timings.ts';
 import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
+import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 
 type RunnerErrorSubtypeByName = {
     readonly artifact: 'artifact';
@@ -18,6 +19,7 @@ type RunnerErrorSubtypeByName = {
     readonly crash: 'crash';
     readonly fixture: 'fixture';
     readonly loader: 'loader';
+    readonly measurement: 'measurement';
     readonly permission: 'permission';
     readonly reporter: 'reporter';
     readonly processExhaustion: 'process-exhaustion';
@@ -471,6 +473,7 @@ export function runStatusFromPlan(
 }
 
 export type TestAttemptResult = {
+    readonly benchmark: BenchmarkExecutionResult | null;
     readonly attempt: AttemptId;
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;
@@ -483,6 +486,7 @@ export type RetrySummary = {
 };
 
 export type PerTestResult = {
+    readonly benchmark: BenchmarkExecutionResult | null;
     readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
     readonly retried: RetrySummary | null;
     readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
@@ -493,16 +497,23 @@ export type PerTestResult = {
     readonly durationMicroseconds: number;
 };
 
+type SingleResultKeys = Exclude<keyof PerTestResult, 'attempts' | 'benchmark' | 'retried'>;
+type SingleTestResult = Pick<PerTestResult, SingleResultKeys>;
+type SingleBenchmarkResult = Pick<PerTestResult, 'benchmark'> & SingleTestResult;
+function hasBenchmarkResult(result: SingleBenchmarkResult | SingleTestResult): result is SingleBenchmarkResult {
+    return Object.hasOwn(result, 'benchmark');
+}
+
 export function singleAttemptResult(
-    result: Pick<
-        PerTestResult,
-        'definitionLocations' | 'durationMicroseconds' | 'id' | 'outcome' | 'verdict' | 'workId'
-    >,
+    result: SingleBenchmarkResult | SingleTestResult,
     attempt: AttemptId
 ): PerTestResult {
+    const benchmark = hasBenchmarkResult(result) ? result.benchmark : null;
     return {
         ...result,
+        benchmark,
         attempts: [ {
+            benchmark,
             attempt,
             durationMicroseconds: result.durationMicroseconds,
             outcome: result.outcome,

@@ -3,6 +3,7 @@ import {
     invalidTimeoutControlFailure,
     runTestCase,
     timeoutFailure,
+    type RunTestCaseOptions,
     type TestRuntimePolicy
 } from './case-execution.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from './identity.ts';
@@ -24,6 +25,9 @@ import {
 import type { ExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 import {
     createExecutionSupervision as createExecutionSupervisionState,
+    createBenchmarkState,
+    createCaseCompletion,
+    type BenchmarkState,
     type ActiveCase as SupervisedActiveCase,
     type CaseCompletion,
     type ExecutionConcurrentCase,
@@ -69,6 +73,8 @@ type SoftTimeoutResolution = {
 };
 
 type ActiveCaseInput = {
+    readonly benchmark: BenchmarkState;
+    readonly onBenchmarkUpdate: RunTestCaseOptions['onBenchmarkUpdate'];
     readonly attempt: AttemptId;
     readonly completion: CaseCompletion;
     readonly controller: AbortController;
@@ -93,22 +99,15 @@ type ProcessUsageSampleInput = {
 
 export const createExecutionSupervision: () => ExecutionSupervision = createExecutionSupervisionState;
 
-function createCaseCompletion(): CaseCompletion {
-    const { promise, resolve } = Promise.withResolvers<ConcurrentCase>();
-
-    return {
-        complete: resolve,
-        promise
-    };
-}
-
 function createTerminalCase(
     testCase: TestPlanCase,
     verdict: PerTestResult['verdict'],
-    durationMicroseconds: number
+    durationMicroseconds: number,
+    benchmark: PerTestResult['benchmark']
 ): ConcurrentCase {
     return {
         result: singleAttemptResult({
+            benchmark: benchmark === null ? null : { ...benchmark, status: 'incomplete' },
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome: null,
@@ -123,7 +122,8 @@ function createTerminalCase(
 function failCase(
     testCase: Pick<TestPlanCase, 'definitionLocations' | 'id' | 'workId'>,
     failures: TestFailures,
-    durationMicroseconds: number
+    durationMicroseconds: number,
+    benchmark: PerTestResult['benchmark']
 ): PerTestResult {
     const outcome = {
         failures,
@@ -131,6 +131,7 @@ function failCase(
     } as const;
 
     return singleAttemptResult({
+        benchmark,
         definitionLocations: testCase.definitionLocations,
         id: testCase.id,
         outcome,
@@ -198,7 +199,12 @@ function resultWithTimeoutFailure(
 
     return {
         ...executedCase,
-        result: failCase(executedCase.result, [ failure ], executedCase.durationMicroseconds)
+        result: failCase(
+            executedCase.result,
+            [ failure ],
+            executedCase.durationMicroseconds,
+            executedCase.result.benchmark
+        )
     };
 }
 
@@ -230,6 +236,10 @@ async function runTestCaseWithPolicy(
     input: ActiveCaseInput
 ): Promise<ConcurrentCase> {
     const executedCase = await runTestCase(input.testCase, input.dependencies.wallClock, {
+        async onBenchmarkUpdate(result) {
+            input.benchmark.write(result);
+            await input.onBenchmarkUpdate(result);
+        },
         attempt: input.attempt,
         controller: input.controller,
         runtimePolicy: input.dependencies.runtimePolicy ?? null
@@ -302,7 +312,8 @@ function completeActiveCasesAs(
         activeCase.completion.complete(createTerminalCase(
             activeCase.testCase,
             verdict,
-            Number(dependencies.wallClock.currentMonotonicMicroseconds) - activeCase.startedAtMicroseconds
+            Number(dependencies.wallClock.currentMonotonicMicroseconds) - activeCase.startedAtMicroseconds,
+            activeCase.benchmark.read()
         ));
     }
 }
@@ -397,7 +408,7 @@ async function runCaseWithSoftTimeout(
 
 function invalidTimeoutCase(testCase: TestPlanCase, failure: TestFailure): ConcurrentCase {
     return {
-        result: failCase(testCase, [ failure ], 0),
+        result: failCase(testCase, [ failure ], 0, null),
         runnerErrors: [],
         durationMicroseconds: 0
     };
@@ -412,6 +423,7 @@ function registerActiveCase(input: ActiveCaseInput): SupervisedActiveCase {
             completeActiveCasesWithCrash(input.supervision, input.dependencies);
         }, input.timeoutPolicy.hardTimeoutMilliseconds);
     const activeCase: SupervisedActiveCase = {
+        benchmark: input.benchmark,
         attempt: input.attempt,
         abort() {
             input.controller.abort();
@@ -508,6 +520,7 @@ function createActiveCaseInput(
 ): ActiveCaseInput {
     return {
         ...input,
+        benchmark: createBenchmarkState(),
         completion: createCaseCompletion(),
         controller: new AbortController()
     };
@@ -527,7 +540,7 @@ export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolea
 
 type CaseExecutionInput = Pick<
     ActiveCaseInput,
-    'attempt' | 'dependencies' | 'supervision' | 'testCase' | 'timeoutPolicy'
+    'attempt' | 'dependencies' | 'onBenchmarkUpdate' | 'supervision' | 'testCase' | 'timeoutPolicy'
 >;
 
 function closedBoundaryVerdict(supervision: ExecutionSupervision): PerTestResult['verdict'] {
@@ -539,7 +552,7 @@ function closedBoundaryVerdict(supervision: ExecutionSupervision): PerTestResult
 
 export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {
     if (input.dependencies.globalErrorObserver.hasFatalError() || !input.supervision.acceptsNewCases()) {
-        return createTerminalCase(input.testCase, closedBoundaryVerdict(input.supervision), 0);
+        return createTerminalCase(input.testCase, closedBoundaryVerdict(input.supervision), 0, null);
     }
     if (input.testCase.execution.kind === 'skip') {
         return await runTestCase(input.testCase, input.dependencies.wallClock);

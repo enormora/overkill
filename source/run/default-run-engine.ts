@@ -38,6 +38,7 @@ function createEngineDependencies(): EngineDependencies {
 const engine = createEngineWithOwner(createEngineDependencies(), defaultTestNodeOwner());
 
 export const defaultRunEngine: Engine = {
+    createBenchmarkTestCase: engine.createBenchmarkTestCase,
     createRoot: engine.createRoot,
     createSuite: engine.createSuite,
     createSkippedTestCase: engine.createSkippedTestCase,

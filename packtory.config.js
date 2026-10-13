@@ -206,7 +206,7 @@ export const config = {
         },
         {
             name: 'bench',
-            description: 'Ordinary test-node authoring for Overkill benchmark suites.',
+            description: 'Workload measurement and performance budgets for Overkill benchmark suites.',
             roots: {
                 main: moduleRoot('packages/bench/bench.entry-point'),
                 calibration: moduleRoot('packages/bench/calibration.entry-point')

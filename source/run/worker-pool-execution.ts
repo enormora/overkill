@@ -1,4 +1,3 @@
-import type { MessagePort as NodeMessagePort } from 'node:worker_threads';
 import {
     createStoredRunValue,
     createSupervisedRunState,
@@ -114,7 +113,7 @@ type BufferedReporterEvent = ReturnType<
     WorkerPoolTaskRun['bufferedReporterEvents'][typeof Symbol.iterator]
 > extends IterableIterator<infer Event> ? Event : never;
 
-function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'] {
+export function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'] {
     const events: BufferedReporterEvent[] = [];
 
     return {
@@ -130,10 +129,6 @@ function createReporterEventBuffer(): WorkerPoolTaskRun['bufferedReporterEvents'
             return events.length;
         }
     };
-}
-
-function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
-    return [ port ];
 }
 
 function observeTaskMessages(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): WorkerPoolMessageChannel {
@@ -170,13 +165,16 @@ async function runWorkerTask(request: WorkerTaskRunRequest): Promise<WorkerPoolR
             .id,
         lifecycle: request.runtime.lifecycle,
         port: request.channel.port,
-        projectedResources: workerPoolProjectedResourcesForWork(request.resourceLifecycle, assignment.assignedWork),
+        projectedResources: workerPoolProjectedResourcesForWork(
+            request.resourceLifecycle,
+            request.resourceLifecycle.runWork
+        ),
         runWork: request.resourceLifecycle.runWork,
         startedAtMilliseconds: request.startedAtMilliseconds
     }, {
         name: 'runTask',
         signal: request.taskRun.controller.signal,
-        transferList: portTransferList(request.channel.port)
+        transferList: [ request.channel.port ]
     });
 
     if (!isWorkerPoolRunOutput(output)) {

@@ -192,6 +192,9 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
     return {
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
+                benchmark: testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'benchmark'
+                    ? testCase.execution.definition
+                    : null,
                 annotations: testCase.annotations,
                 controls: testCase.controls,
                 definitionLocations: resolvedDefinitionLocations(testCase.definitionLocations),

@@ -38,6 +38,7 @@ import type {
     OrphanedNode,
     RunResult,
     TestPlan,
+    TestPlanCase,
     Engine,
     TestPlanRootOptions,
     WorkId as EngineWorkId,
@@ -55,6 +56,7 @@ export type FrozenWorkloadInput = {
     readonly parameters: TestPlan['cases'][number]['workloadParameters'];
 };
 export type RunCollectionRoot = TestPlanRootOptions;
+type BenchmarkDefinitionSummary = Extract<TestPlanCase['execution'], { readonly bodyMode: 'benchmark'; }>['definition'];
 type RunExecuteOptions = NonNullable<Parameters<Execute>[1]>;
 type RunReporters = RunExecuteOptions['reporters'];
 
@@ -310,6 +312,7 @@ type CollectedSuitePathEntry = {
 };
 
 export type CollectedRunCase = {
+    readonly benchmark: BenchmarkDefinitionSummary | null;
     readonly workloadParameters: TestPlan['cases'][number]['workloadParameters'];
     readonly annotations: TestPlan['cases'][number]['annotations'];
     readonly controls: TestPlan['cases'][number]['controls'];

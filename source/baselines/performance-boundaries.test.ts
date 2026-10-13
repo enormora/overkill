@@ -18,6 +18,7 @@ import { performanceReportArtifact } from './performance-report.ts';
 
 const calibration = { context: {}, kind: 'comparable', machineClass: 'test-host', metadata: {} } as const;
 const event: BenchmarkCaseEnd = {
+    benchmark: null,
     artifacts: [],
     attempt: 0,
     case: createCaseId('startup.bench.ts', [], 'starts', null),

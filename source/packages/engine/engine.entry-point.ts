@@ -9,6 +9,7 @@ import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
 import {
     createTestNodeOwner,
     defaultTestNodeOwner,
+    type BenchmarkTestCaseOptions,
     type RootOptions,
     type SkippedTestCaseOptions,
     type SuiteOptions,
@@ -64,6 +65,7 @@ export function createEngine(): Engine {
 
 const defaultEngineKey = Symbol.for('@overkill-dev/engine/defaultEngine');
 const engineMethods: readonly (keyof Engine)[] = [
+    'createBenchmarkTestCase',
     'createRoot',
     'createSuite',
     'createSkippedTestCase',
@@ -98,6 +100,26 @@ function sharedDefaultEngine(): Engine {
 }
 
 const defaultEngine = sharedDefaultEngine();
+
+export function createBenchmarkTestCase(
+    options: BenchmarkTestCaseOptions
+): ReturnType<Engine['createBenchmarkTestCase']> {
+    return defaultEngine.createBenchmarkTestCase(options);
+}
+
+export type { BenchmarkBody, BenchmarkScope, BenchmarkTestCaseOptions } from '../../engine/test-node.ts';
+export { maximumRetainedSamples, minimumInferentialSamples } from '../../engine/benchmark-limits.ts';
+export type {
+    BenchmarkDefinitionSummary,
+    BenchmarkWorkload,
+    BenchmarkBudgetResult,
+    BenchmarkExecutionResult,
+    BenchmarkMetricSummary,
+    BudgetStatistic,
+    MetricProvenance,
+    MetricReading,
+    SamplingPolicy
+} from '../../engine/benchmark-result.ts';
 
 export function createRoot(options: RootOptions): ReturnType<Engine['createRoot']> {
     return defaultEngine.createRoot(options);

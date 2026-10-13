@@ -1,7 +1,14 @@
 import type { Clock } from '@enormora/clock';
+import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import type { PerTestResult, RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import type { AttemptId } from './identity.ts';
+import type { BenchmarkExecutionResult } from './benchmark-result.ts';
+
+export type BenchmarkState = StoredValue<BenchmarkExecutionResult | null>;
+export function createBenchmarkState(): BenchmarkState {
+    return createStoredValue<BenchmarkExecutionResult | null>(null);
+}
 
 export type ExecutionConcurrentCase = {
     readonly result: PerTestResult;
@@ -14,7 +21,13 @@ export type CaseCompletion = {
     readonly promise: Promise<ExecutionConcurrentCase>;
 };
 
+export function createCaseCompletion(): CaseCompletion {
+    const { promise, resolve } = Promise.withResolvers<ExecutionConcurrentCase>();
+    return { complete: resolve, promise };
+}
+
 export type ActiveCase = {
+    readonly benchmark: BenchmarkState;
     readonly attempt: AttemptId;
     readonly abort: () => void;
     readonly completion: CaseCompletion;

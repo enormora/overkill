@@ -46,6 +46,7 @@ export const testNode = createSuite({
                 const file = {
                     file: 'legacy.test.ts',
                     cases: [ {
+                        benchmark: null,
                         workloadParameters: null,
                         annotations,
                         controls,

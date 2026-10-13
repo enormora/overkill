@@ -59,6 +59,7 @@ function runCaseEntry(title: string): CollectedRunCaseEntry {
         file: 'source/example.test.ts',
         id,
         testCase: {
+            benchmark: null,
             workloadParameters: null,
             annotations,
             controls,
