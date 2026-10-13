@@ -1,4 +1,5 @@
 import { baseConfig } from '@enormora/eslint-config-base';
+import { browserConfig } from '@enormora/eslint-config-browser';
 import { nodeConfig, nodeConfigFileConfig, nodeEntryPointFileConfig } from '@enormora/eslint-config-node';
 import { testSupportConfig } from '@enormora/eslint-config-test-base';
 import { typescriptConfig } from '@enormora/eslint-config-typescript';
@@ -10,7 +11,11 @@ export default [
     ...baseConfig,
     {
         ...nodeConfig,
-        files: [ '**/*.{js,cjs,mjs,ts,cts,mts}' ]
+        files: [ [ '**/*.{js,cjs,mjs,ts,cts,mts}', '!source/reporters/benchmark-html-browser.entry-point.ts' ] ]
+    },
+    {
+        ...browserConfig,
+        files: [ 'source/reporters/benchmark-html-browser.entry-point.ts' ]
     },
     {
         ...typescriptConfig,

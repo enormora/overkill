@@ -29,7 +29,7 @@ use([
 ]);
 
 function chartAt(id: string): EChartsType {
-    const element = globalThis.document.querySelector(`#${id}`);
+    const element = document.querySelector(`#${id}`);
     if (element === null) {
         throw new Error(`Missing chart ${id}.`);
     }
@@ -44,7 +44,7 @@ function chartAt(id: string): EChartsType {
     return chart;
 }
 function selectionAt(id: string): HTMLSelectElement {
-    const element = globalThis.document.querySelector(`#${id}`);
+    const element = document.querySelector(`#${id}`);
     if (!(element instanceof HTMLSelectElement)) {
         throw new TypeError(`Missing selection ${id}.`);
     }
@@ -218,7 +218,7 @@ function connectWorkloadSelection(data: BenchmarkHtmlChartData, charts: Workload
     const workloadSelection = selectionAt('workload-selection');
     const entries = data.groups.entries();
     for (const [ index, group ] of entries) {
-        metricSelection.add(new globalThis.Option(group.name, String(index)));
+        metricSelection.add(new Option(group.name, String(index)));
     }
     function refreshCharts(): void {
         const group = data.groups[Number(metricSelection.value)];
@@ -233,7 +233,7 @@ function connectWorkloadSelection(data: BenchmarkHtmlChartData, charts: Workload
         const rows = data.groups[Number(metricSelection.value)]?.rows ?? [];
         workloadSelection.replaceChildren();
         for (const row of rows) {
-            workloadSelection.add(new globalThis.Option(row.label, row.key, true, true));
+            workloadSelection.add(new Option(row.label, row.key, true, true));
         }
         refreshCharts();
     }
@@ -249,7 +249,7 @@ function connectBaselineSelection(data: BenchmarkHtmlChartData): void {
     }));
     for (const [ key, row ] of metrics) {
         selection.add(
-            new globalThis.Option(`${row.label} / ${row.name} (${row.unit}, ${JSON.stringify(row.scale)})`, key)
+            new Option(`${row.label} / ${row.name} (${row.unit}, ${JSON.stringify(row.scale)})`, key)
         );
     }
     function refreshBaselines(): void {
