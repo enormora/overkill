@@ -57,11 +57,18 @@ function isComposedResourceBody(value: unknown): value is {
 }
 
 function resourceWrapperSteps(testCase: TestPlanCase): readonly ResourceWrapperStep[] {
-    if (testCase.execution.kind !== 'body' || !isComposedResourceBody(testCase.execution.body)) {
+    if (testCase.execution.kind !== 'body') {
         return [];
     }
 
-    return testCase.execution.body[composedResourceBodyBrand].actions.flatMap(function toStep(action) {
+    const body = testCase.execution.bodyMode === 'benchmark'
+        ? testCase.execution.resourceBody
+        : testCase.execution.body;
+    if (!isComposedResourceBody(body)) {
+        return [];
+    }
+
+    return body[composedResourceBodyBrand].actions.flatMap(function toStep(action) {
         return action.kind === 'resources' || action.kind === 'runtime' ? [ action ] : [];
     });
 }

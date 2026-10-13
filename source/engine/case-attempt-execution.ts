@@ -80,6 +80,7 @@ async function reportTestEnd(
 ): Promise<readonly RunnerError[]> {
     return await context.reporterDelivery.reportEvent({
         completion: input.completion,
+        benchmark: input.result.benchmark,
         attempt: input.attempt,
         artifacts: [],
         case: input.testCase.id,
@@ -93,6 +94,47 @@ async function reportTestEnd(
     });
 }
 
+async function reportBenchmarkProgress(
+    input: ExecuteCaseInput,
+    benchmark: NonNullable<PerTestResult['benchmark']>
+): Promise<void> {
+    const errors = await input.context.dependencies.asyncLeakMonitor.runOutsideCase(
+        async function deliverCheckpoint() {
+            return input.context.reporterDelivery.reportEvent({
+                kind: 'benchmark-progress',
+                benchmark,
+                attempt: input.attempt,
+                case: input.testCase.id,
+                definitionLocations: input.testCase.definitionLocations,
+                suitePath: input.testCase.suitePath,
+                workId: input.testCase.workId
+            });
+        }
+    );
+    for (const error of errors) {
+        input.supervision.recordRunnerError(error);
+    }
+}
+
+async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnType<typeof executeCaseBody>>> {
+    return await input.context.dependencies.globalErrorObserver.runCase(
+        input.testCase,
+        { index: input.attempt },
+        async function executeObservedBody() {
+            return await executeCaseBody({
+                async onBenchmarkUpdate(benchmark) {
+                    await reportBenchmarkProgress(input, benchmark);
+                },
+                testCase: input.testCase,
+                timeoutPolicy: input.options.timeoutPolicy,
+                supervision: input.supervision,
+                dependencies: input.context.dependencies,
+                attempt: { index: input.attempt }
+            });
+        }
+    );
+}
+
 async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<TimedLeakCheckedCase> {
     const startedAtMicroseconds = Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds);
     const observedCase = await observeCaseResourceOwners(
@@ -101,19 +143,7 @@ async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<Tim
             return await input.context.dependencies.asyncLeakMonitor.runCase(
                 input.testCase,
                 async function runCase() {
-                    return await input.context.dependencies.globalErrorObserver.runCase(
-                        input.testCase,
-                        { index: input.attempt },
-                        async function runObservedCase() {
-                            return await executeCaseBody({
-                                testCase: input.testCase,
-                                timeoutPolicy: input.options.timeoutPolicy,
-                                supervision: input.supervision,
-                                dependencies: input.context.dependencies,
-                                attempt: { index: input.attempt }
-                            });
-                        }
-                    );
+                    return await runObservedCase(input);
                 }
             );
         }
@@ -166,6 +196,7 @@ async function executeAttempt(input: ExecuteCaseInput, started: boolean): Promis
         result: {
             ...leakCheckedCase.executedCase.result,
             attempts: [ {
+                benchmark: leakCheckedCase.executedCase.result.benchmark,
                 attempt: { index: input.attempt },
                 durationMicroseconds: leakCheckedCase.executedCase.durationMicroseconds,
                 outcome: leakCheckedCase.executedCase.result.outcome ??

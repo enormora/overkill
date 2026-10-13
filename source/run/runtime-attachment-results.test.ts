@@ -98,9 +98,27 @@ async function assertConflictRetention(scope: TestScope): Promise<void> {
         outcome: { kind: 'pass' },
         verdict: 'pass',
         attempts: [
-            { attempt: { index: 0 }, durationMicroseconds: 0, outcome: null, verdict: 'fail' },
-            { attempt: { index: 1 }, durationMicroseconds: 0, outcome: null, verdict: 'fail' },
-            { attempt: { index: 2 }, durationMicroseconds: 0, outcome: { kind: 'pass' }, verdict: 'pass' }
+            {
+                benchmark: null,
+                attempt: { index: 0 },
+                durationMicroseconds: 0,
+                outcome: null,
+                verdict: 'fail'
+            },
+            {
+                benchmark: null,
+                attempt: { index: 1 },
+                durationMicroseconds: 0,
+                outcome: null,
+                verdict: 'fail'
+            },
+            {
+                benchmark: null,
+                attempt: { index: 2 },
+                durationMicroseconds: 0,
+                outcome: { kind: 'pass' },
+                verdict: 'pass'
+            }
         ]
     };
     const conflict: HedgedConflictArtifact = {

@@ -474,7 +474,7 @@ export const expectedStandardSubpathImportOutput = [
     'api',
     'true',
     'true',
-    '["defineMacro","defineParameterizedTestBody","skippedTest","suite","table","test","workload"]',
+    '["asyncMeasurementStrategy","availableMetric","benchmark","defaultSamplingPolicy","defineMacro","defineParameterizedTestBody","measurementStrategy","memoryCollector","processCpuCollector","processResourceCollector","runtimeHealthCollector","skippedTest","suite","table","test","threadCpuCollector","unavailableMetric","wallClockMeasurement","workload"]',
     '[]',
     '[]',
     ''

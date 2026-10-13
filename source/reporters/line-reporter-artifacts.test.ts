@@ -176,6 +176,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    benchmark: null,
                     completion: 'final',
                     attempt: 0,
                     artifacts: [ caseOutputArtifact('hidden output\n') ],
@@ -204,6 +205,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithOptions(log, true);
 
                 await reporter.onEvent({
+                    benchmark: null,
                     completion: 'final',
                     attempt: 0,
                     artifacts: [ caseOutputArtifact('visible output\n') ],
@@ -231,6 +233,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithOptions(log, true);
 
                 await reporter.onEvent({
+                    benchmark: null,
                     completion: 'final',
                     attempt: 0,
                     artifacts: [ truncatedEmptyCaseOutputArtifact() ],
@@ -258,6 +261,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    benchmark: null,
                     completion: 'final',
                     attempt: 0,
                     artifacts: [ caseOutputArtifact('skip output\n') ],

@@ -26,3 +26,7 @@ Rules:
 - Register dynamically loaded runner modules as private roots in `packtory.config.js` to preserve their runtime exports.
 - Adding a package should usually mean adding a small facade first, not creating a new isolated source tree.
 - A package facade should mainly re-export or lightly adapt code from shared feature folders.
+
+`npm install` applies the pinned Packtory patch in `patches/` through
+`patch-package`. It yields bounded traversal indexes as needed, preventing
+quadratic allocation during dependency reachability analysis.

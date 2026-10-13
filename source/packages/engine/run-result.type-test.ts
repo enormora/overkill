@@ -40,6 +40,7 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly crash: 'crash';
     readonly fixture: 'fixture';
     readonly loader: 'loader';
+    readonly measurement: 'measurement';
     readonly permission: 'permission';
     readonly reporter: 'reporter';
     readonly processExhaustion: 'process-exhaustion';

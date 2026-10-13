@@ -68,10 +68,10 @@ type CombinedRuntimeScenarios<Runtime extends RuntimeGraph> = UnionToIntersectio
     RuntimeGraphScenarioSlots<Runtime>
 > extends infer Scenarios extends ResourceScenarioSlots ? Scenarios : EmptyResourceScenarioSlots;
 
-type RuntimeLeafScenarioSlots<Graph extends RuntimeGraph> = Graph extends RuntimeMatrixDefinition<
-    string,
-    infer Variants
-> ? RuntimeVariantsScenarios<Variants>
+type RuntimeLeafScenarioSlots<Graph extends RuntimeGraph> = Graph extends {
+    readonly kind: 'runtime-matrix';
+    readonly variants: infer Variants extends RuntimeMatrixVariantMap;
+} ? RuntimeVariantsScenarios<Variants>
     : RuntimeDefinitionScenarios<Graph>;
 
 type RuntimeGraphScenarioSlots<Graph extends RuntimeGraph> = Graph extends ComposedRuntimeGraph<infer Runtimes>
@@ -107,7 +107,16 @@ export type RuntimeMatrixDefinition<
     readonly [runtimeMatrixDefinitionBrand]: true;
 };
 
-export type RuntimeGraphLeaf = RuntimeDefinition | RuntimeMatrixDefinition;
+type AnyRuntimeMatrixDefinition = {
+    readonly kind: 'runtime-matrix';
+    readonly name: string;
+    readonly scenario: (bindings: never) => AnyRuntimeMatrixDefinition;
+    readonly scenarios: ResourceScenarioSlots;
+    readonly variants: RuntimeMatrixVariantMap;
+    readonly [runtimeMatrixDefinitionBrand]: true;
+};
+
+export type RuntimeGraphLeaf = AnyRuntimeMatrixDefinition | RuntimeDefinition;
 
 export type ComposedRuntimeGraph<
     Runtimes extends readonly RuntimeGraphLeaf[] = readonly RuntimeGraphLeaf[]
@@ -478,7 +487,13 @@ function composeRuntimes(
                 })
             );
 
-            return runtime.scenario(childBindings);
+            if (isDefinedRuntimeMatrix(runtime)) {
+                return runtime.scenario(childBindings);
+            }
+            if (isDefinedRuntime(runtime)) {
+                return runtime.scenario(childBindings);
+            }
+            throw new TypeError('Composed runtime contains an invalid leaf.');
         });
 
         const [ firstBoundRuntime, ...remainingBoundRuntimes ] = boundRuntimes;

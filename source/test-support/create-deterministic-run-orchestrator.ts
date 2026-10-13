@@ -120,6 +120,7 @@ function emitTestEnd(
 ): void {
     context.emitMessage({
         event: {
+            benchmark: null,
             completion: 'final',
             attempt: 1,
             artifacts: [],

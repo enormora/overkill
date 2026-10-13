@@ -6,9 +6,11 @@ import type {
 } from '../resources/resources.entry-point.ts';
 import { resourceWrapperLifecycleError } from '../run/resource-lifecycle.entry-point.ts';
 
+type ResourceLifecycleScope = Pick<TestScope, 'cleanup' | 'signal'>;
+
 type RuntimeTestScope<
     Graph extends RuntimeGraph,
-    Scope extends TestScope = TestScope
+    Scope extends ResourceLifecycleScope = TestScope
 > = Scope & {
     readonly attachments: RuntimeAttachments;
     readonly runtimes: RuntimeScopeContext<Graph>;
@@ -20,7 +22,7 @@ function isResourceScopeInput(value: unknown): value is Readonly<Record<string, 
 
 function isRuntimeTestScope<
     Graph extends RuntimeGraph,
-    Scope extends TestScope
+    Scope extends ResourceLifecycleScope
 >(value: unknown, runtimeGraph: Graph): value is RuntimeTestScope<Graph, Scope> {
     if (!isResourceScopeInput(value)) {
         return false;
@@ -43,7 +45,7 @@ function failRuntimeScopeComposition(handles: unknown): never {
 
 export function composeRuntimeScope<
     Graph extends RuntimeGraph,
-    Scope extends TestScope
+    Scope extends ResourceLifecycleScope
 >(
     scope: Scope,
     runtimeGraph: Graph,

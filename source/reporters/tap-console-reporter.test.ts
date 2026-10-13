@@ -62,6 +62,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         startedAt: '2026-07-15T00:00:00.000Z'
     });
     await reporter.onEvent({
+        benchmark: null,
         completion: 'final',
         attempt: 0,
         case: passingCaseId,
@@ -74,6 +75,7 @@ async function reportRealTimeTapRun(reporter: RealTimeReporter): Promise<void> {
         durationMicroseconds: 1
     });
     await reporter.onEvent({
+        benchmark: null,
         completion: 'final',
         attempt: 0,
         case: failingCaseId,

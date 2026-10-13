@@ -22,6 +22,7 @@ function collectedCaseWithControls(
     caseControls: CollectedRunCase['controls']
 ): CollectedRunCase {
     return {
+        benchmark: null,
         workloadParameters: null,
         annotations,
         controls: caseControls,

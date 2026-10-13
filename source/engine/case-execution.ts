@@ -1,7 +1,7 @@
 import type { Clock } from '@enormora/clock';
 
-import type { AssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
+import { createBenchmarkAttempt, builderBodyForAttempt, type BenchmarkAttempt } from './benchmark-attempt.ts';
 import { assertionFailure } from './recorded-assertion-failure.ts';
 import {
     assertNonEmptyItems,
@@ -28,6 +28,8 @@ import { createThrowingTestScope } from './throwing-test-scope.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type AttemptId = PerTestResult['attempts'][number]['attempt'];
+type AssertionResult = Parameters<AssertionRecorder['returnedAssertions']>[0];
+type AssertionNode = ReturnType<AssertionRecorder['activeRecordedAssertions']>[number];
 
 type BodyErrorRecord = ThrownErrorRecord;
 
@@ -74,6 +76,7 @@ type FinishedScope = {
 };
 
 export type RunTestCaseOptions = {
+    readonly onBenchmarkUpdate: BenchmarkAttempt['updateResult'];
     readonly attempt: AttemptId;
     readonly controller: AbortController;
     readonly runtimePolicy: TestRuntimePolicy | null;
@@ -309,15 +312,12 @@ function bodyResultContext(
 async function runBuilderCaseBody(
     testCase: TestPlanCase,
     recorder: AssertionRecorder,
-    options: RunTestCaseOptions
+    options: RunTestCaseOptions,
+    benchmarkAttempt: BenchmarkAttempt
 ): Promise<ExecutedBody> {
     const lifecycle = createTestScopeLifecycle(recorder);
     const runBody = async function runUserBody(): Promise<AssertionResult> {
-        if (testCase.execution.kind !== 'body' || testCase.execution.bodyMode !== 'builder') {
-            throw new TypeError('Non-builder test cases do not have builder bodies.');
-        }
-
-        return await lifecycle.runBody(options.controller.signal, testCase.execution.body);
+        return await lifecycle.runBody(options.controller.signal, builderBodyForAttempt(testCase, benchmarkAttempt));
     };
     let prepared = false;
     const prepare = async function prepareCaseArtifacts(): Promise<void> {
@@ -396,15 +396,16 @@ async function runThrowingCaseBody(
 async function runCaseBody(
     testCase: TestPlanCase,
     recorder: AssertionRecorder,
-    options: RunTestCaseOptions
+    options: RunTestCaseOptions,
+    benchmarkAttempt: BenchmarkAttempt
 ): Promise<ExecutedBody> {
     if (testCase.execution.kind !== 'body') {
         throw new TypeError('Skipped test cases do not have executable bodies.');
     }
 
-    return testCase.execution.bodyMode === 'builder'
-        ? await runBuilderCaseBody(testCase, recorder, options)
-        : await runThrowingCaseBody(testCase, recorder, options);
+    return testCase.execution.bodyMode === 'throwing'
+        ? await runThrowingCaseBody(testCase, recorder, options)
+        : await runBuilderCaseBody(testCase, recorder, options, benchmarkAttempt);
 }
 
 function bodyFailures(executedBody: ExecutedBody): readonly TestFailure[] {
@@ -454,11 +455,11 @@ function createInconclusiveOutcome(executedBody: ExecutedBody): TestOutcome | nu
     };
 }
 
-function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody): TestOutcome {
+function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody, generated: boolean): TestOutcome {
     const failures = [
         assertionFailure(executedBody.returnedAssertions),
         ...bodyFailures(executedBody),
-        planFailure(recorder, executedBody)
+        generated ? null : planFailure(recorder, executedBody)
     ]
         .filter(function isTestFailure(failure): failure is TestFailure {
             return failure !== null;
@@ -480,6 +481,9 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
     const controller = new AbortController();
 
     return {
+        async onBenchmarkUpdate() {
+            return undefined;
+        },
         attempt: { index: 0 },
         controller,
         runtimePolicy: null
@@ -541,18 +545,19 @@ export async function runTestCase(
     }
 
     const recorder = createAssertionRecorder();
-
-    const executedBody = await runCaseBody(testCase, recorder, options);
-    const outcome = createOutcome(recorder, executedBody);
-    const verdict = verdictFromOutcome(outcome);
+    const benchmarkAttempt = createBenchmarkAttempt(testCase, options.onBenchmarkUpdate);
+    const completed = await runCaseBody(testCase, recorder, options, benchmarkAttempt);
+    const executedBody = { ...completed, runnerErrors: [ ...completed.runnerErrors, ...benchmarkAttempt.errors() ] };
+    const outcome = createOutcome(recorder, executedBody, testCase.execution.bodyMode === 'benchmark');
     const durationMicroseconds = Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
 
     return {
         result: singleAttemptResult({
+            benchmark: benchmarkAttempt.result(),
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome,
-            verdict,
+            verdict: verdictFromOutcome(outcome),
             workId: testCase.workId,
             durationMicroseconds
         }, { index: 0 }),

@@ -10,6 +10,7 @@ import type { PerTestResult, RunnerError, RunArtifact } from '../engine/run-resu
 import { caseAttemptHistory } from '../engine/test-attempt-history.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import type { RunRequest } from './run-types.ts';
 import { createSupervisedOutputCapture } from './supervised-output-capture.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
@@ -52,6 +53,7 @@ export type SupervisedCase = {
 };
 
 export type ActiveSupervisedCase = SupervisedCase & {
+    readonly benchmark: BenchmarkExecutionResult | null;
     readonly attempt: AttemptId;
     readonly startedAtMicroseconds: number;
 };
@@ -62,6 +64,7 @@ type TimingWindow = {
 };
 
 export type SupervisedRunState = {
+    readonly recordBenchmarkProgress: (key: string, result: BenchmarkExecutionResult) => void;
     readonly activeCases: ReadonlyMap<string, ActiveSupervisedCase>;
     readonly addActiveCase: (
         key: string,
@@ -105,7 +108,9 @@ function terminalResult(
     completedAtMicroseconds: number
 ): PerTestResult {
     return {
+        benchmark: testCase.benchmark === null ? null : { ...testCase.benchmark, status: 'incomplete' },
         attempts: [ {
+            benchmark: testCase.benchmark === null ? null : { ...testCase.benchmark, status: 'incomplete' },
             attempt: testCase.attempt,
             durationMicroseconds: Math.max(0, completedAtMicroseconds - testCase.startedAtMicroseconds),
             outcome: null,
@@ -301,12 +306,18 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
     }
 
     return {
+        recordBenchmarkProgress(key, result) {
+            const active = cases.active.get(key);
+            if (active !== undefined) {
+                cases.active.set(key, { ...active, benchmark: result });
+            }
+        },
         activeCases: cases.active,
         addActiveCase(key, testCase, startedAtMicroseconds, attempt) {
             if (cases.active.size === 0) {
                 cases.outputDraining.clear();
             }
-            cases.active.set(key, { ...testCase, attempt, startedAtMicroseconds });
+            cases.active.set(key, { ...testCase, benchmark: null, attempt, startedAtMicroseconds });
         },
         artifacts() {
             return artifacts;

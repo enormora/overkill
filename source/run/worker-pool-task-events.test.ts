@@ -49,7 +49,14 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
-        attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: { kind: 'pass' }, verdict: 'pass' } ],
+        benchmark: null,
+        attempts: [ {
+            benchmark: null,
+            attempt: { index: 0 },
+            durationMicroseconds: 0,
+            outcome: { kind: 'pass' },
+            verdict: 'pass'
+        } ],
         retried: null,
         definitionLocations: [ { kind: 'unknown' as const } ],
         id,
@@ -83,6 +90,7 @@ function startEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'tes
 
 function endEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
+        benchmark: null,
         completion: 'final',
         ...startEventWithoutWorkId(),
         artifacts: [],

@@ -7,8 +7,12 @@ import type {
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
-import type { WorkloadId } from './identity.ts';
-import type { WorkloadParameters } from './workload-input.ts';
+import type {
+    BenchmarkScope as MeasurementScope,
+    BenchmarkBody as MeasurementBody,
+    BenchmarkTestCaseExecution as MeasurementExecution,
+    BenchmarkTestCaseOptions as MeasurementOptions
+} from './benchmark-node.ts';
 import { readWorkloadTestCaseVariants, type WorkloadVariant } from './workload-test-case.ts';
 import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
@@ -20,6 +24,11 @@ import {
     type TestControlsInput,
     type TestFamily
 } from './test-data.ts';
+
+export type BenchmarkScope = MeasurementScope;
+export type BenchmarkBody = MeasurementBody;
+type BenchmarkTestCaseExecution = MeasurementExecution;
+export type BenchmarkTestCaseOptions = MeasurementOptions;
 
 const testNodeBrand = Symbol.for('@overkill-dev/engine/TestNode');
 const testNodeFamilyBrand = Symbol.for('@overkill-dev/engine/TestNodeFamily');
@@ -73,7 +82,10 @@ export type SkippedTestCaseExecution = {
     readonly reason: string;
 };
 
-export type BodyTestCaseExecution = BuilderTestCaseExecution | ThrowingTestCaseExecution;
+export type BodyTestCaseExecution = BenchmarkTestCaseExecution | BuilderTestCaseExecution | ThrowingTestCaseExecution;
+
+type WorkloadId = WorkloadVariant<TestBody>['id'];
+type WorkloadParameters = NonNullable<WorkloadVariant<TestBody>['parameters']>;
 
 export type WorkloadTestCaseVariant = {
     readonly id: WorkloadId;
@@ -153,6 +165,7 @@ export type TestNodeOwner = {
 };
 
 export type TestNodeFactory = {
+    readonly createBenchmarkTestCase: (options: BenchmarkTestCaseOptions) => TestCase;
     readonly createRoot: (options: RootOptions) => TestRoot;
     readonly createSuite: (options: SuiteOptions) => Suite;
     readonly createSkippedTestCase: (options: SkippedTestCaseOptions) => TestCase;
@@ -388,22 +401,29 @@ function toTestNode(
     return value;
 }
 
+function validateNodeMetadata(
+    options: Pick<TestCaseOptions, 'annotations' | 'controls' | 'definitionLocations' | 'title'>
+): void {
+    ensureTitleValue(options.title);
+    ensureTitle(options.title);
+    normalizeTestAnnotations(options.annotations);
+    normalizeTestControls(options.controls);
+    ensureDefinitionLocations(options.definitionLocations);
+}
+
 export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): TestNodeFactory {
     const { owner, recordConstructedNode } = factoryOptions;
 
     function createExecutableTestCase(
         options: TestCaseDefinition,
-        execution: TestCaseExecution
+        execution: TestCaseExecution,
+        family: TestFamily | null
     ): TestCase {
-        ensureTitleValue(options.title);
-        ensureTitle(options.title);
-        normalizeTestAnnotations(options.annotations);
-        normalizeTestControls(options.controls);
-        ensureDefinitionLocations(options.definitionLocations);
+        validateNodeMetadata(options);
 
         const testCase: TestCase = {
             [testNodeBrand]: true,
-            [testNodeFamilyBrand]: null,
+            [testNodeFamilyBrand]: family,
             [testNodeOwnerBrand]: owner,
             annotations: options.annotations,
             controls: options.controls,
@@ -418,12 +438,26 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         return testCase;
     }
 
+    function createBenchmarkTestCase(options: BenchmarkTestCaseOptions): TestCase {
+        if (options.workloads.length === 0) {
+            throw new TypeError('Benchmark must declare at least one workload.');
+        }
+        return createExecutableTestCase(
+            options,
+            {
+                resourceBody: options.resourceBody,
+                definition: options.definition,
+                body: options.body,
+                bodyMode: 'benchmark',
+                kind: 'body',
+                workloads: Object.freeze(Array.from(options.workloads))
+            },
+            'benchmark'
+        );
+    }
+
     function createSkippedTestCase(options: SkippedTestCaseOptions): TestCase {
-        ensureTitleValue(options.title);
-        ensureTitle(options.title);
-        normalizeTestAnnotations(options.annotations);
-        normalizeTestControls(options.controls);
-        ensureDefinitionLocations(options.definitionLocations);
+        validateNodeMetadata(options);
         const reason = readSkipReason(options.reason);
 
         const testCase: TestCase = {
@@ -470,11 +504,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createSuite(options: SuiteOptions): Suite {
-        ensureTitleValue(options.title);
-        ensureTitle(options.title);
-        normalizeTestAnnotations(options.annotations);
-        normalizeTestControls(options.controls);
-        ensureDefinitionLocations(options.definitionLocations);
+        validateNodeMetadata(options);
         const children = options.children.map(function validateChild(child) {
             return toTestNode(
                 child,
@@ -512,11 +542,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createTable(options: TableOptions): Table {
-        ensureTitleValue(options.title);
-        ensureTitle(options.title);
-        normalizeTestAnnotations(options.annotations);
-        normalizeTestControls(options.controls);
-        ensureDefinitionLocations(options.definitionLocations);
+        validateNodeMetadata(options);
         ensureTableCases(options.cases);
 
         const table: Table = {
@@ -537,18 +563,19 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     return {
+        createBenchmarkTestCase,
         createRoot,
         createSuite,
         createSkippedTestCase,
         createTable,
         createTestCase(options: TestCaseOptions): TestCase {
             ensureTestBody(options.body);
-            return createExecutableTestCase(options, { body: options.body, bodyMode: 'builder', kind: 'body' });
+            return createExecutableTestCase(options, { body: options.body, bodyMode: 'builder', kind: 'body' }, null);
         },
 
         createThrowingTestCase(options: ThrowingTestCaseOptions): TestCase {
             ensureTestBody(options.body);
-            return createExecutableTestCase(options, { body: options.body, bodyMode: 'throwing', kind: 'body' });
+            return createExecutableTestCase(options, { body: options.body, bodyMode: 'throwing', kind: 'body' }, null);
         },
 
         createWorkloadTestCase(options: WorkloadTestCaseOptions): TestCase {
@@ -557,7 +584,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
                 workloads: readWorkloadTestCaseVariants(options.workloads, function isBody(value): value is TestBody {
                     return typeof value === 'function';
                 })
-            });
+            }, null);
         }
     };
 }

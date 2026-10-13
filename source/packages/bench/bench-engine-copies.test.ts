@@ -8,6 +8,7 @@ import {
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import { suite, test } from '../test/test.entry-point.ts';
+import { benchmark, wallClockMeasurement, workload } from './bench.entry-point.ts';
 
 type NodeAuthoringEngine = Pick<Engine, 'createRoot' | 'createTestCase' | 'createTestPlan'>;
 const nodeAuthoringMethods = [ 'createRoot', 'createTestCase', 'createTestPlan' ];
@@ -37,6 +38,29 @@ function passingBody(scope: TestScope): ReturnType<TestBody> {
 }
 
 export const testNode = suite('source/packages/bench/bench-engine-copies.test.ts', [
+    test('default engine copies share benchmark ownership and workload planning', async function (scope) {
+        const alternate = await anotherDefaultEngineCopy();
+        const node = benchmark('owned benchmark', {
+            kind: 'runtime',
+            workloads: [ workload('one', {}), workload('two', {}) ],
+            measurement: wallClockMeasurement(),
+            measure({ sample }) {
+                sample.measure(function () {
+                    return 1;
+                });
+                return { value: 1 };
+            },
+            diagnosticMetrics: [],
+            budgets: { one: { value: { maximum: 2 } }, two: { value: { maximum: 2 } } }
+        });
+        const plan = alternate.createTestPlan(
+            alternate.createRoot({ title: 'root', children: [ node ], annotations: {}, controls: {} })
+        );
+        scope.assert.equal(plan.cases.length, 2);
+        scope.assert.equal(plan.cases[0].id.title, 'owned benchmark');
+        scope.assert.equal(plan.cases[1]?.workId.workload?.name, 'two');
+        return scope.assert.collect();
+    }),
     test('default engine copies share definition counts and orphan detection', async function (scope) {
         const alternate = await anotherDefaultEngineCopy();
         const baseline = test('baseline', passingBody);

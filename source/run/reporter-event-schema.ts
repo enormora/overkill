@@ -11,6 +11,7 @@ import {
 import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
 import { runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
+import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
 const testFields = {
     attempt: z.number(),
@@ -20,6 +21,7 @@ const testFields = {
     workId: workIdSchema.optional()
 };
 const eventSchema = z.discriminatedUnion('kind', [
+    z.strictObject({ ...testFields, kind: z.literal('benchmark-progress'), benchmark: benchmarkResultSchema }),
     z.strictObject({
         kind: z.literal('run-start'),
         facts: z.record(z.string(), z.unknown()),
@@ -34,6 +36,7 @@ const eventSchema = z.discriminatedUnion('kind', [
     z.strictObject({
         ...testFields,
         kind: z.literal('test-end'),
+        benchmark: benchmarkResultSchema.nullable().default(null),
         completion: z.enum([ 'final', 'retry' ]),
         artifacts: z.array(runArtifactSchema),
         outcome: testOutcomeSchema.nullable(),

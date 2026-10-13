@@ -157,7 +157,9 @@ function applyTestEndEvent(
     state.recordTestAttemptResult(
         key,
         {
+            benchmark: event.benchmark,
             attempts: [ {
+                benchmark: event.benchmark,
                 attempt: { index: event.attempt },
                 durationMicroseconds: event.durationMicroseconds,
                 outcome: event.outcome,
@@ -187,6 +189,8 @@ export function applyEvent(
         applyTestStartEvent(event, state, cases, observedAtMicroseconds);
     } else if (event.kind === 'test-end') {
         applyTestEndEvent(event, state, observedAtMicroseconds);
+    } else if (event.kind === 'benchmark-progress') {
+        state.recordBenchmarkProgress(workIdentityKey(event.workId), event.benchmark);
     } else if (event.kind === 'runner-error') {
         state.recordRunnerError(event.error);
     }

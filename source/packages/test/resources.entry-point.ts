@@ -136,11 +136,13 @@ export type {
     TestBodyRuntimeSummary
 } from '../engine/engine.entry-point.ts';
 
-type TestBodyWithScope<Scope extends TestScope> = (scope: Scope) => ReturnType<TestBody>;
+type ResourceLifecycleScope = Pick<TestScope, 'cleanup' | 'signal'>;
+
+type TestBodyWithScope<Scope extends ResourceLifecycleScope, Result = ReturnType<TestBody>> = (scope: Scope) => Result;
 
 export type RuntimeTestScope<
     Graph extends RuntimeGraph,
-    Scope extends TestScope = TestScope
+    Scope extends ResourceLifecycleScope = TestScope
 > = Scope & {
     readonly attachments: RuntimeAttachments;
     readonly runtimes: RuntimeScopeContext<Graph>;
@@ -148,14 +150,15 @@ export type RuntimeTestScope<
 
 export type RuntimeTestBody<
     Graph extends RuntimeGraph,
-    Scope extends TestScope = TestScope
-> = (scope: RuntimeTestScope<Graph, Scope>) => ReturnType<TestBody>;
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+> = (scope: RuntimeTestScope<Graph, Scope>) => Promise<Result> | Result;
 
 export type ResourceScopeContext<Resources extends ResourceMap> = ResourceContext<Resources>;
 
 export type ResourceTestScope<
     Resources extends ResourceMap,
-    Scope extends TestScope = TestScope
+    Scope extends ResourceLifecycleScope = TestScope
 > = Scope & {
     readonly attachments: RuntimeAttachments;
     readonly resources: ResourceScopeContext<Resources>;
@@ -163,18 +166,28 @@ export type ResourceTestScope<
 
 export type ResourceTestBody<
     Resources extends ResourceMap,
-    Scope extends TestScope = TestScope
-> = (scope: ResourceTestScope<Resources, Scope>) => ReturnType<TestBody>;
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+> = (scope: ResourceTestScope<Resources, Scope>) => Promise<Result> | Result;
+
+type WrappedBodyResult<Result> = Awaited<Result> extends Awaited<ReturnType<TestBody>> ? Awaited<ReturnType<TestBody>>
+    : Awaited<Result>;
+
+type WrappedBody<Scope extends ResourceLifecycleScope, Result> = ResourceAttachedTestBody<
+    TestBodyWithScope<Scope, Promise<WrappedBodyResult<Result>>>
+>;
 
 export type RuntimeWrappedTestBody<
     Graph extends RuntimeGraph = RuntimeGraph,
-    Scope extends TestScope = TestScope
-> = Readonly<Record<never, Graph>> & ResourceAttachedTestBody<TestBodyWithScope<Scope>>;
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+> = Readonly<Record<never, Graph>> & WrappedBody<Scope, Result>;
 
 export type ResourceWrappedTestBody<
     Resources extends ResourceMap = ResourceMap,
-    Scope extends TestScope = TestScope
-> = Readonly<Record<never, Resources>> & ResourceAttachedTestBody<TestBodyWithScope<Scope>>;
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
+> = Readonly<Record<never, Resources>> & WrappedBody<Scope, Result>;
 
 type ResourceEntry = {
     readonly key: string;
@@ -222,38 +235,53 @@ function readResources(resources: unknown): readonly ResourceEntry[] {
 
 export function withRuntime<
     Graph extends RuntimeGraph,
-    Scope extends TestScope = TestScope
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
 >(
     runtimeGraph: Graph,
-    body: RuntimeTestBody<Graph, Scope>
-): RuntimeWrappedTestBody<Graph, Scope> {
+    body: RuntimeTestBody<Graph, Scope, Result>
+): RuntimeWrappedTestBody<Graph, Scope, Result> {
     const runtime = ensureRuntimeGraph(runtimeGraph);
 
-    return attachComposedResourceBody<Scope>(runtimeWrapperStep(runtime), body, 'withRuntime');
+    return attachComposedResourceBody<Scope, WrappedBodyResult<Result>>(
+        runtimeWrapperStep(runtime),
+        body,
+        'withRuntime'
+    );
 }
 
 export function withResource<
     const Resource extends AnyResourceDefinition,
-    Scope extends TestScope = TestScope
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
 >(
     resource: Resource,
-    body: ResourceTestBody<Record<Resource['name'], Resource>, Scope>
-): ResourceWrappedTestBody<Record<Resource['name'], Resource>, Scope> {
+    body: ResourceTestBody<Record<Resource['name'], Resource>, Scope, Result>
+): ResourceWrappedTestBody<Record<Resource['name'], Resource>, Scope, Result> {
     const descriptor = ensureResource(resource, 'withResource');
 
-    return attachComposedResourceBody<Scope>(resourceWrapperStep(descriptor), body, 'withResource');
+    return attachComposedResourceBody<Scope, WrappedBodyResult<Result>>(
+        resourceWrapperStep(descriptor),
+        body,
+        'withResource'
+    );
 }
 
 export function withResources<
     const Resources extends ResourceMap,
-    Scope extends TestScope = TestScope
+    Scope extends ResourceLifecycleScope = TestScope,
+    Result = ReturnType<TestBody>
 >(
     resources: Resources,
-    body: ResourceTestBody<Resources, Scope>
-): ResourceWrappedTestBody<Resources, Scope> {
+    body: ResourceTestBody<Resources, Scope, Result>
+): ResourceWrappedTestBody<Resources, Scope, Result> {
     readResources(resources);
 
-    return attachComposedResourceBody<Scope>(resourcesWrapperStep(resources), body, 'withResources');
+    return attachComposedResourceBody<Scope, WrappedBodyResult<Result>>(
+        resourcesWrapperStep(resources),
+        body,
+        'withResources'
+    );
 }
 
 export { withFailureArtifacts } from '../resources/resources.entry-point.ts';

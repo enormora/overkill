@@ -24,6 +24,7 @@
         "@jridgewell/trace-mapping": "0.3.31",
         "@overkill-dev/reporter-line": "0.0.43",
         "@schema-hub/zod-error-formatter": "0.0.19",
+        "@stdlib/stats-base-dists-binomial-quantile": "0.2.3",
         "@stryker-mutator/api": "10.0.0",
         "ansi-escapes": "7.3.0",
         "cmd-ts": "0.15.0",
@@ -36,6 +37,7 @@
         "monocart-coverage-reports": "2.13.1",
         "p-limit": "7.3.3",
         "pure-rand": "8.4.2",
+        "simple-statistics": "7.10.0",
         "string-width": "8.3.0",
         "tinypool": "2.2.0",
         "tslib": "2.8.1",
@@ -63,11 +65,15 @@
         "eslint": "10.7.0",
         "jscpd": "5.4.1",
         "knip": "6.41.0",
+        "patch-package": "8.0.1",
         "rust-just": "1.57.0",
         "tstyche": "7.2.5",
         "typescript": "6.0.3"
     },
     "engines": {
         "node": "^26.9.0"
+    },
+    "scripts": {
+        "postinstall": "patch-package"
     }
 }

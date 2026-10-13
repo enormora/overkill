@@ -4,6 +4,7 @@ import { attemptIdSchema, caseIdSchema, sourceLocationsSchema, workIdSchema } fr
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { runArtifactSchema, testAttemptSchema, verdictSchema } from './run-artifact-schema.ts';
 import { processUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
+import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
 export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
     attributedToAttempt: attemptIdSchema.nullable(),
@@ -19,6 +20,7 @@ export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
         'crash',
         'fixture',
         'loader',
+        'measurement',
         'permission',
         'reporter',
         'process-exhaustion',
@@ -43,6 +45,7 @@ export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
         })
     ),
     perTest: z.array(z.strictObject({
+        benchmark: benchmarkResultSchema.nullable().default(null),
         attempts: z.tuple([ testAttemptSchema ]).rest(testAttemptSchema),
         retried: z.strictObject({ attempts: z.number(), finalVerdict: verdictSchema }).nullable(),
         definitionLocations: sourceLocationsSchema,

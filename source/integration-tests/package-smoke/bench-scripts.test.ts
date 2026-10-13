@@ -10,7 +10,10 @@ import { defineResource, withResource } from '@overkill-dev/test/resources';
 const benchManifest = new URL('../../package.json', import.meta.resolve('@overkill-dev/bench'));
 const manifest = JSON.parse(readFileSync(benchManifest, 'utf8'));
 assert.deepEqual(Object.keys(bench).sort(), [
-    'defineMacro', 'defineParameterizedTestBody', 'skippedTest', 'suite', 'table', 'test', 'workload'
+    'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'defaultSamplingPolicy',
+    'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
+    'processCpuCollector', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
+    'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 assert.deepEqual(Object.keys(standard).sort(), Object.keys(bench).sort());
 assert.deepEqual(manifest.exports['.'], {
@@ -62,6 +65,25 @@ assert.equal(result.summary.failed, 1);
 assert.equal(result.summary.skipped, 1);
 assert.equal(result.summary.defined, 6);
 assert.deepEqual(result.runnerErrors, []);
+const measurementNode = standard.benchmark('measurement', {
+    kind: 'runtime',
+    workloads: [standard.workload('one', {size: 3})],
+    measurement: standard.measurementStrategy([standard.threadCpuCollector()]),
+    measure({sample, workload}) {
+        const measured = sample.measure(() => workload.parameters.size);
+        return {size: measured.value, cpu: measured.metrics.threadCpuTotalMicroseconds};
+    },
+    diagnosticMetrics: ['cpu'],
+    budgets: {one: {size: {minimum: 3, maximum: 3}}}
+});
+const measurementResult = await execute(createTestPlan(createRoot({
+    annotations: {}, controls: {}, title: 'measurements', children: [measurementNode]
+})));
+assert.equal(measurementResult.summary.passed, 1);
+assert.deepEqual(measurementResult.runnerErrors, []);
+assert.equal(measurementResult.perTest[0].benchmark.samples, 128);
+assert.equal(measurementResult.perTest[0].benchmark.metrics.cpu.provenance.scope, 'thread');
+assert.equal(measurementResult.perTest[0].attempts[0].benchmark.status, 'complete');
 const small = standard.workload('small', { packages: 5 });
 let acquisitions = 0;
 let disposedPackages = null;
@@ -225,7 +247,10 @@ import { suite, test } from '@overkill-dev/test';
 import * as bench from '@overkill-dev/test/bench';
 
 assert.deepEqual(Object.keys(bench).sort(), [
-    'defineMacro', 'defineParameterizedTestBody', 'skippedTest', 'suite', 'table', 'test', 'workload'
+    'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'defaultSamplingPolicy',
+    'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
+    'processCpuCollector', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
+    'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 let calls = 0;
 const body = bench.defineParameterizedTestBody((scope, value) => {

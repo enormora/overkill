@@ -71,27 +71,59 @@ type LogicalTestPlanCase = Merge<
     { readonly execution: TestCaseExecution; }
 >;
 
+function resolveCaseWorkload(
+    execution: TestPlanCaseExecution,
+    workload: WorkloadInput | null
+): TestPlanCaseExecution {
+    if (execution.kind !== 'body') {
+        return execution;
+    }
+    if (execution.bodyMode === 'builder') {
+        return { ...execution, body: resolveTestBodyWorkload(execution.body, workload) };
+    }
+    if (execution.bodyMode === 'benchmark') {
+        return { ...execution, resourceBody: resolveTestBodyWorkload(execution.resourceBody, workload) };
+    }
+    return execution;
+}
+
+function caseResourceBody(execution: TestPlanCaseExecution): unknown {
+    if (execution.kind !== 'body') {
+        return null;
+    }
+    return execution.bodyMode === 'benchmark' ? execution.resourceBody : execution.body;
+}
+
 function plannedCase(
     testCase: LogicalTestPlanCase,
     execution: TestPlanCaseExecution,
     workload: WorkloadInput | null
 ): TestPlanCase {
-    const resolvedExecution: TestPlanCaseExecution = execution.kind === 'body' && execution.bodyMode === 'builder'
-        ? { ...execution, body: resolveTestBodyWorkload(execution.body, workload) }
-        : execution;
+    const resolvedExecution = resolveCaseWorkload(execution, workload);
     return {
         ...testCase,
         execution: resolvedExecution,
         workloadParameters: workload?.parameters ?? null,
-        resourceAttachments: readTestBodyResourceAttachments(
-            resolvedExecution.kind === 'body' ? resolvedExecution.body : null
-        ),
+        resourceAttachments: readTestBodyResourceAttachments(caseResourceBody(resolvedExecution)),
         workId: createDefaultWorkId(testCase.id)
     };
 }
 
 function expandWorkloadCases(cases: readonly LogicalTestPlanCase[]): readonly TestPlanCase[] {
     return cases.flatMap(function expandCase(testCase) {
+        const { execution } = testCase;
+        if (execution.kind === 'body' && execution.bodyMode === 'benchmark') {
+            return execution.workloads.map(function measuredWorkload(id) {
+                const workload = execution.definition.workloads.find(function selected(entry) {
+                    return entry.name === id.name;
+                });
+                if (workload === undefined) {
+                    throw new TypeError('Benchmark workload is absent from its definition.');
+                }
+                const result = plannedCase(testCase, execution, { id, parameters: workload.parameters });
+                return { ...result, workId: { ...result.workId, workload: id } };
+            });
+        }
         if (testCase.execution.kind !== 'workloads') {
             return [ plannedCase(testCase, testCase.execution, null) ];
         }

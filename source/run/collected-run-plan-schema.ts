@@ -9,6 +9,7 @@ import {
 } from '../engine/identity-schema.ts';
 import type { WorkloadParameters } from '../engine/workload-input.ts';
 import { snapshotWorkloadParameters } from '../engine/workload-parameters.ts';
+import { benchmarkDefinitionSchema } from './benchmark-definition-schema.ts';
 import type { CollectedRunPlan, FrozenWorkloadInput } from './run-types.ts';
 
 const workloadParametersSchema: z.ZodType<WorkloadParameters | null> = z
@@ -68,6 +69,7 @@ const attachmentsSchema = z.strictObject({
 const fileSchema = z
     .strictObject({
         cases: z.array(z.strictObject({
+            benchmark: benchmarkDefinitionSchema.nullable().default(null),
             annotations: annotationsSchema,
             controls: controlsSchema,
             definitionLocations: sourceLocationsSchema,

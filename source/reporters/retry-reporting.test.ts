@@ -26,6 +26,7 @@ function recoveredResult(): RunResult {
         ...result,
         perTest: result.perTest.map(function recoveredTest(test) {
             return resultWithAttemptHistory(test, [ {
+                benchmark: null,
                 attempt: { index: 0 },
                 durationMicroseconds: 1,
                 outcome: {
@@ -33,7 +34,13 @@ function recoveredResult(): RunResult {
                     failures: [ { kind: 'timeout', deadlineMilliseconds: 1, elapsedMilliseconds: 2 } ]
                 },
                 verdict: 'fail'
-            }, { attempt: { index: 1 }, durationMicroseconds: 1, outcome: { kind: 'pass' }, verdict: 'pass' } ]);
+            }, {
+                benchmark: null,
+                attempt: { index: 1 },
+                durationMicroseconds: 1,
+                outcome: { kind: 'pass' },
+                verdict: 'pass'
+            } ]);
         })
     };
 }
@@ -44,6 +51,7 @@ function retryEvent(result: RunResult): TestEndEvent {
         throw new Error('Retry reporting requires one logical test.');
     }
     return {
+        benchmark: null,
         completion: 'retry',
         attempt: 0,
         artifacts: [],

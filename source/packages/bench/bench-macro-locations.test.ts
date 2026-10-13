@@ -25,7 +25,19 @@ type LocatedMacroPlan = {
 
 function createNestedMacroPlan(): LocatedMacroPlan {
     const inner = ordinary.defineMacro(function failingBenchCase() {
-        return bench.test('fails', failingBody);
+        return bench.benchmark('fails', {
+            kind: 'runtime',
+            workloads: [ bench.workload('one', {}) ],
+            measurement: bench.wallClockMeasurement(),
+            measure({ sample }) {
+                sample.measure(function () {
+                    return 2;
+                });
+                return { value: 2 };
+            },
+            diagnosticMetrics: [],
+            budgets: { one: { value: { maximum: 1 } } }
+        });
     });
     const outer = bench.defineMacro(function nestedOrdinarySuite() {
         return ordinary.suite('nested', [ inner() ]);

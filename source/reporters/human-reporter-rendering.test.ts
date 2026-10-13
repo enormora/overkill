@@ -86,6 +86,7 @@ function ignoredRunArtifact(): RunArtifact {
             authoritative: {
                 attachments: [],
                 attempts: [ {
+                    benchmark: null,
                     attempt: { index: 0 },
                     durationMicroseconds: 0,
                     outcome: { kind: 'pass' },
@@ -96,7 +97,13 @@ function ignoredRunArtifact(): RunArtifact {
             },
             conflicting: {
                 attachments: [],
-                attempts: [ { attempt: { index: 0 }, durationMicroseconds: 0, outcome: null, verdict: 'crashed' } ],
+                attempts: [ {
+                    benchmark: null,
+                    attempt: { index: 0 },
+                    durationMicroseconds: 0,
+                    outcome: null,
+                    verdict: 'crashed'
+                } ],
                 outcome: null,
                 verdict: 'crashed'
             },

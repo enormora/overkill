@@ -98,12 +98,24 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
                 return left.localeCompare(right);
             }),
             [
+                'asyncMeasurementStrategy',
+                'availableMetric',
+                'benchmark',
+                'defaultSamplingPolicy',
                 'defineMacro',
                 'defineParameterizedTestBody',
+                'measurementStrategy',
+                'memoryCollector',
+                'processCpuCollector',
+                'processResourceCollector',
+                'runtimeHealthCollector',
                 'skippedTest',
                 'suite',
                 'table',
                 'test',
+                'threadCpuCollector',
+                'unavailableMetric',
+                'wallClockMeasurement',
                 'workload'
             ]
         );

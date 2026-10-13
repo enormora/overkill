@@ -40,7 +40,13 @@ function resultWithOpaqueEvidence(): RunResult {
         ...result,
         perTest: [ {
             ...test,
-            attempts: [ { attempt: { index: 0 }, durationMicroseconds: 1, outcome, verdict: 'fail' } ],
+            attempts: [ {
+                benchmark: null,
+                attempt: { index: 0 },
+                durationMicroseconds: 1,
+                outcome,
+                verdict: 'fail'
+            } ],
             outcome
         }, { ...test, outcome: null } ],
         runnerErrors: [ {
@@ -63,13 +69,20 @@ function resultWithOpaqueEvidence(): RunResult {
             payload: {
                 authoritative: {
                     attachments: [],
-                    attempts: [ { attempt: { index: 0 }, durationMicroseconds: 1, outcome, verdict: 'fail' } ],
+                    attempts: [ {
+                        benchmark: null,
+                        attempt: { index: 0 },
+                        durationMicroseconds: 1,
+                        outcome,
+                        verdict: 'fail'
+                    } ],
                     outcome,
                     verdict: 'fail'
                 },
                 conflicting: {
                     attachments: [],
                     attempts: [ {
+                        benchmark: null,
                         attempt: { index: 0 },
                         durationMicroseconds: 1,
                         outcome: null,
