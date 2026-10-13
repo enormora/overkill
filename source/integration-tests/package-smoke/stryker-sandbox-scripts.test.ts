@@ -18,11 +18,11 @@ await writeFile(join(root, 'policy.mjs'), 'export const config = {profiles:{micr
     'testFamily:"microtest", files:{include:["case.test.mjs"]}}}};');
 await writeFile(join(root, 'case.test.mjs'), 'throw new Error("test imported during initialization");');
 process.chdir(root);
-const runner = (targets) => plugin.factory({overkill:{configPath}}, {
+const runner = (targets) => plugin.factory({overkill:{configPath, seed:'42'}}, {
     [configPath]: {mutate:targets.includes('config')},
     [testPath]: {mutate:targets.includes('test')},
     [subjectPath]: {mutate:true}
-});
+}, {info() {}});
 for (const [target, role] of [['config','configuration'], ['test','test definitions']]) {
     const rejected = runner([target]);
     await assert.rejects(rejected.init(), {name:'ConfigError', message:new RegExp('Exclude ' + role)});

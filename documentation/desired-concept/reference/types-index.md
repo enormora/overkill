@@ -1201,6 +1201,10 @@ type FrozenRunCommand = {
 
 declare function freezePolicy(input: FreezePolicyInput): Promise<FrozenMicrotestPolicy>;
 declare function parseFrozenMicrotestPolicy(value: unknown): FrozenMicrotestPolicy;
+declare function parseRunSelection(value: unknown): RunSelection;
+declare function parseRunResult(value: unknown): RunResult;
+declare function parseRunnerError(value: unknown): RunnerError;
+declare function createRandomRunSeed(): bigint;
 declare function withFileModuleBoundary<Result>(
     boundary: FileModuleBoundary | null,
     operation: () => Promise<Result>

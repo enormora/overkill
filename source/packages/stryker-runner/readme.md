@@ -12,7 +12,8 @@ export default {
     overkill: {
         configPath: 'overkill.config.ts',
         profile: 'unit-fast',
-        paths: []
+        paths: [],
+        freshState: false
     }
 };
 ```
@@ -82,13 +83,31 @@ Reporters, valid unrelated profiles, disabled coverage settings, and overridden
 scheduling do not affect the comparison.
 
 The private session executes serial cases in the selected profile's process
-model. In-process execution stays inside the reusable plugin worker and retains
-its collected plan and transitive module state. Every invocation gets fresh
-scopes, observers, cleanup, and results. Supervised execution collects and runs
-inside one fresh restricted test child per invocation, using the normal runner's
-permissions, resource budgets, and timeouts.
+model. `freshState` defaults to `false`: in-process execution retains its collected
+plan and transitive module state inside Stryker's reusable plugin worker. Suites
+must support repeated execution. Persistent memoization, singleton state, and
+caches populated during collection or a dry run can hide runtime mutations.
+
+Set `freshState: true` to start a new invocation process, collect the complete
+eligible plan, and execute the requested selection for every invocation. This
+resets transitive ESM and CommonJS modules, globals, and process-local mutable
+state at the cost of startup and collection. It does not reset files, databases,
+or external services. In-process permission enforcement remains best effort.
+Supervised profiles already use one fresh restricted child per invocation;
+`freshState` adds no extra host or stronger permissions there.
+
+Every invocation gets fresh scopes, observers, cleanup, and results. Failed
+collection remains cached in reused mode; fresh mode can collect again on the
+next invocation. Fresh hosts terminate before their invocation settles.
 
 Disposal closes admission immediately. It cancels and awaits supervised child
-termination, or awaits active in-process work without terminating Stryker's
-worker. Native ESM caches remain shared in reused execution. The session accepts
-a seed; campaign seed coordination and fresh-state configuration remain pending.
+termination, terminates fresh invocation hosts, or awaits active reused
+in-process work without terminating Stryker's worker.
+
+`overkill.seed` accepts a nonnegative decimal string, for example `'42'`.
+Stryker applies a generated schema default before distributing configuration;
+dry runs, mutants, workers, replacements, and fresh hosts use that same seed.
+The adapter logs it through Stryker during initialization. Supply the logged
+value explicitly to reproduce ordering. Multiple programmatic campaigns in one
+Node process may share the generated schema default. Worker settings require the
+coordinator-resolved seed and never substitute another seed when it is missing.

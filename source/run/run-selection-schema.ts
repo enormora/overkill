@@ -1,8 +1,9 @@
 import { z } from 'zod/v4';
 import { caseIdSchema } from '../engine/identity-schema.ts';
 import type { RunFilter, RunSelection } from './run-request-types.ts';
+import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 
-const field = z.enum([ 'file', 'owner', 'params', 'suite', 'tag', 'title' ]);
+const field = z.enum([ 'file', 'owner', 'params', 'suite', 'tag', 'title', 'workload' ]);
 
 const filterSchema: z.ZodType<RunFilter> = z.lazy(function recursiveFilter() {
     const filters = z.tuple([ filterSchema ]).rest(filterSchema);
@@ -35,3 +36,12 @@ export const runSelectionSchema: z.ZodType<RunSelection> = z.discriminatedUnion(
     z.strictObject({ kind: z.literal('all') }),
     z.strictObject({ kind: z.literal('filter'), filter: filterSchema })
 ]);
+
+export function parseRunSelection(value: unknown): RunSelection {
+    const selection = runSelectionSchema.parse(value);
+    const message = invalidRunSelectionMessage(selection);
+    if (message !== null) {
+        throw new TypeError(message);
+    }
+    return selection;
+}

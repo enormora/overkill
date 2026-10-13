@@ -4,62 +4,78 @@ import { ConfigError } from '../run/config.entry-point.ts';
 import { parseRunnerOptions, strykerValidationSchema } from './runner-options.ts';
 
 export const testNode = suite('Stryker adapter settings', [
-    test('publishes a schema accepting Stryker options and rejecting invalid adapter settings', function (scope) {
+    test('publishes defaults that preserve one campaign seed across normalized options', function (scope) {
         const schema = z.fromJSONSchema(strykerValidationSchema);
-
-        scope.assert.equal(schema.safeParse({ testRunner: 'overkill' }).success, true);
-        scope.assert.equal(schema.safeParse({ overkill: { profile: 'unit', configPath: 'policy.ts' } }).success, true);
-        scope.assert.equal(schema.safeParse({ overkill: { profile: [ 'unit', 'browser' ] } }).success, false);
-        scope.assert.equal(schema.safeParse({ overkill: { configPath: '' } }).success, false);
-        scope.assert.equal(schema.safeParse({ overkill: { browser: true } }).success, false);
+        const first = schema.parse({ testRunner: 'overkill' });
+        const second = schema.parse({ overkill: {} });
+        const settings = z.object({ overkill: z.unknown().transform(parseRunnerOptions) });
+        const firstSettings = settings.parse(first).overkill;
+        const secondSettings = settings.parse(second).overkill;
+        scope.assert.deepEqual(firstSettings, secondSettings);
+        scope.assert.equal(firstSettings.freshState, false);
+        scope.assert.match(firstSettings.seed, /^(?:0|[1-9]\d*)$/u);
         return scope.assert.collect();
     }),
-    test('normalizes omitted settings and preserves explicit names and paths', function (scope) {
-        for (const value of [ undefined, {}, { profile: null, configPath: null } ]) {
-            scope.assert.deepEqual(parseRunnerOptions(value), { configPath: null, paths: [], profile: null });
-        }
-
-        scope.assert.deepEqual(parseRunnerOptions({ profile: 'unit-fast' }), {
+    test('preserves explicit bigint precision and enabled freshness', function (scope) {
+        scope.assert.deepEqual(parseRunnerOptions({ seed: '900719925474099312345', freshState: true }), {
             configPath: null,
             paths: [],
-            profile: 'unit-fast'
+            profile: null,
+            seed: '900719925474099312345',
+            freshState: true
         });
-        scope.assert.deepEqual(parseRunnerOptions({ configPath: 'policy.ts' }), {
-            configPath: 'policy.ts',
-            paths: [],
-            profile: null
-        });
-        scope.assert.equal(parseRunnerOptions({ profile: ' unit-fast ' }).profile, ' unit-fast ');
-        scope.assert.deepEqual(parseRunnerOptions({ paths: [ 'unit.test.ts' ] }).paths, [ 'unit.test.ts' ]);
         return scope.assert.collect();
     }),
-    test('rejects malformed settings and multi-profile selections', function (scope) {
+    test('normalizes remaining settings without replacing the coordinator seed', function (scope) {
+        for (const value of [ { seed: '42' }, { seed: '42', profile: null, configPath: null } ]) {
+            scope.assert.deepEqual(parseRunnerOptions(value), {
+                configPath: null,
+                paths: [],
+                profile: null,
+                freshState: false,
+                seed: '42'
+            });
+        }
+        scope.assert.equal(parseRunnerOptions({ seed: '42', profile: ' unit-fast ' }).profile, ' unit-fast ');
+        scope.assert.deepEqual(parseRunnerOptions({ seed: '42', paths: [ 'unit.test.ts' ] }).paths, [ 'unit.test.ts' ]);
+        scope.assert.equal(parseRunnerOptions({ seed: '42', configPath: 'policy.ts' }).configPath, 'policy.ts');
+        return scope.assert.collect();
+    }),
+    test('rejects malformed settings and missing worker seeds', function (scope) {
+        const schema = z.fromJSONSchema(strykerValidationSchema);
         const invalid = [
             null,
             [],
             'unit',
-            { configPath: '' },
-            { configPath: ' ' },
-            { configPath: 1 },
-            { paths: '' },
-            { paths: [ '' ] },
-            { paths: [ ' ' ] },
-            { paths: [ 1 ] },
-            { profile: 1 },
-            { profile: [ 'unit', 'integration' ] },
-            { profiles: [ 'unit' ] },
-            { browser: true }
+            {},
+            undefined,
+            { seed: null },
+            { seed: 42 },
+            { seed: '-1' },
+            { seed: '1.2' },
+            { seed: ' 42' },
+            { seed: '01' },
+            { seed: '42', freshState: null },
+            { seed: '42', freshState: 'true' },
+            { seed: '42', configPath: '' },
+            { seed: '42', configPath: ' ' },
+            { seed: '42', configPath: 1 },
+            { seed: '42', paths: '' },
+            { seed: '42', paths: [ '' ] },
+            { seed: '42', paths: [ 1 ] },
+            { seed: '42', profile: 1 },
+            { seed: '42', profile: [ 'unit', 'integration' ] },
+            { seed: '42', profiles: [ 'unit' ] },
+            { seed: '42', browser: true }
         ];
-
         for (const value of invalid) {
             scope.assert.throws(function parseInvalidSettings() {
                 return parseRunnerOptions(value);
-            }, {
-                type: ConfigError,
-                message: /Invalid overkill Stryker settings/
-            });
+            }, { type: ConfigError, message: /Invalid overkill Stryker settings/u });
+            if (value !== undefined && value !== null && typeof value === 'object' && Object.hasOwn(value, 'seed')) {
+                scope.assert.equal(schema.safeParse({ overkill: value }).success, false);
+            }
         }
-
         return scope.assert.collect();
     })
 ]);

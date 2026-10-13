@@ -7,15 +7,16 @@ import {
     type FrozenMicrotestPolicy,
     type FrozenRunCommand,
     type RunOrchestrator,
-    type RunSeed,
     type RunSelection
 } from '../run/run.entry-point.ts';
+import { runFreshMutationInvocation } from './mutation-invocation-process.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 
 type MutationExecutionInput = {
     readonly policy: FrozenMicrotestPolicy;
-    readonly seed: RunSeed;
+    readonly seed: { readonly value: bigint; };
+    readonly freshState: boolean;
 };
 
 export type MutationExecution = {
@@ -33,12 +34,13 @@ function frozenExecutionCommand(input: MutationExecutionInput): FrozenRunCommand
     };
 }
 
-export function createMutationExecution(input: MutationExecutionInput): MutationExecution {
+export function createMutationExecution(supplied: MutationExecutionInput): MutationExecution {
+    const input = Object.freeze({ ...supplied, seed: Object.freeze({ value: supplied.seed.value }) });
     const baseline = frozenExecutionCommand(input);
     const controller = new AbortController();
     let collection: Promise<CollectedRun> | null = null;
     const active = new Set<Promise<RunResult>>();
-    let disposal: Promise<void> | null = null;
+    let disposal: Promise<readonly PromiseSettledResult<RunResult>[]> | null = null;
 
     function command(selection: RunSelection): FrozenRunCommand {
         return {
@@ -56,13 +58,17 @@ export function createMutationExecution(input: MutationExecutionInput): Mutation
         if (baseline.policy.profile.execution.processModel === 'supervised-process') {
             return await orchestrator.run(command(selection), { signal: controller.signal, timing: null });
         }
+        if (input.freshState) {
+            return await runFreshMutationInvocation({
+                policy: baseline.policy,
+                seed: input.seed,
+                selection,
+                signal: controller.signal
+            });
+        }
         collection = collection ?? collect();
         const collected = await collection;
         return await collected.run({ selection });
-    }
-
-    async function finishDisposal(): Promise<void> {
-        await Promise.allSettled(active);
     }
 
     return {
@@ -87,7 +93,7 @@ export function createMutationExecution(input: MutationExecutionInput): Mutation
         },
         async dispose() {
             controller.abort();
-            disposal = disposal ?? finishDisposal();
+            disposal = disposal ?? Promise.allSettled(active);
             await disposal;
         }
     };

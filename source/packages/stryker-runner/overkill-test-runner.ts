@@ -1,5 +1,6 @@
 import { commonTokens, tokens } from '@stryker-mutator/api/plugin';
 import type { FileDescriptions } from '@stryker-mutator/api/core';
+import type { Logger } from '@stryker-mutator/api/logging';
 import type {
     DryRunResult,
     MutantRunResult,
@@ -16,13 +17,15 @@ const originalRoot = process.cwd();
 
 export function createOverkillTestRunner(
     options: Readonly<Record<string, unknown>>,
-    fileDescriptions: FileDescriptions
+    fileDescriptions: FileDescriptions,
+    logger: Readonly<Pick<Logger, 'info'>>
 ): Required<TestRunner> {
     let initialization: Promise<MutationExecution> | null = null;
     const controller = new AbortController();
 
     async function initializeExecution(): Promise<MutationExecution> {
         const settings = parseRunnerOptions(options.overkill);
+        logger.info('Overkill campaign seed: %s', settings.seed);
         const sandbox = await createMutationSandbox({ originalRoot, cwd: process.cwd(), fileDescriptions });
         await assertExcludedAdapter(sandbox);
         const policy = await initializeMutationPolicy({
@@ -31,7 +34,11 @@ export function createOverkillTestRunner(
             settings,
             signal: controller.signal
         });
-        return createMutationExecution({ policy, seed: { value: null } });
+        return createMutationExecution({
+            policy,
+            seed: { value: BigInt(settings.seed) },
+            freshState: settings.freshState
+        });
     }
 
     return {
@@ -63,4 +70,4 @@ export function createOverkillTestRunner(
     };
 }
 
-createOverkillTestRunner.inject = tokens(commonTokens.options, commonTokens.fileDescriptions);
+createOverkillTestRunner.inject = tokens(commonTokens.options, commonTokens.fileDescriptions, commonTokens.logger);

@@ -13,9 +13,9 @@ const configPath = join(cwd, 'overkill.config.js');
 const sentinel = join(cwd, 'never-imported.test.mjs');
 await writeFile(sentinel, 'throw new Error("test module imported during initialization");');
 const { readdirSync } = await import('node:fs');
-const makeRunner = (overkill) => plugin.factory({ overkill }, Object.fromEntries(
+const makeRunner = (overkill) => plugin.factory({ overkill: {seed: '42', ...overkill} }, Object.fromEntries(
     readdirSync(cwd).map((file) => [join(cwd, file), { mutate: false }])
-));
+), {info() {}});
 const integration = { testFamily: 'integration', files: { include: ['never-imported.test.mjs'] } };
 const microtest = {
     testFamily: 'microtest',

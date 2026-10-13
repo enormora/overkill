@@ -683,6 +683,12 @@ test nodes in selected files remain subject to collection-time validation.
   worker replacements. Accept an explicit seed or generate one once for the
   campaign and expose it for reproduction. Derive case seeds from that seed and
   stable executable identity, independently of scheduling and filtered selection.
+  `overkill.seed` is a nonnegative decimal string. The plugin contributes a
+  generated JSON Schema default; Stryker resolves and distributes it before
+  worker creation. Workers require the resolved seed, including replacements.
+  Initialization logs the seed through Stryker for reproduction. Multiple
+  programmatic campaigns in one Node process may share that schema default;
+  explicit seeds control reproduction independently of module caching.
 - Freeze authoritative discovery, loader declarations, selection, permissions,
   and process usage policy during unmutated initialization. Exclude configuration,
   test definitions, and adapter code from mutation targets. If configuration is
@@ -724,6 +730,9 @@ test nodes in selected files remain subject to collection-time validation.
   Setting `freshState: true` resets the complete transitive module graph and
   mutable state for every invocation, accepting startup and collection cost.
   Do not implement freshness with import URL query parameters.
+  Freshness resets process-local ESM, CommonJS, globals, and mutable state. It
+  does not reset external files, databases, or services. Every fresh invocation
+  collects again, including an invocation following a collection failure.
 - Initialize the Stryker namespace inside the process that executes instrumented
   code. For static activation, activate before importing any user configuration
   or test modules. For runtime activation, collect without an active mutant,

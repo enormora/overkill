@@ -73,3 +73,11 @@ export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
     }),
     timings: runTimingsSchema
 });
+
+export function parseRunResult(value: unknown): RunResult {
+    return runResultSchema.parse(value);
+}
+
+export function parseRunnerError(value: unknown): RunnerError {
+    return runnerErrorSchema.parse(value);
+}
