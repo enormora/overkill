@@ -1,3 +1,4 @@
+import { mock } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { types as runtimeTypes } from 'node:util';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
@@ -52,6 +53,118 @@ function actionError(action: () => unknown): unknown {
 }
 
 export const testNode = suite('measurement regions and collectors', [
+    test('marks throughput unavailable when the wall clock cannot resolve the region', function (scope) {
+        const clock = mock.method(process.hrtime, 'bigint', function () {
+            return 0n;
+        });
+        try {
+            const measured = createMeasurementSample(wallClockMeasurement(), scope.signal).sample.measure(function () {
+                return 3;
+            });
+            scope.assert.equal(measured.metrics.durationMicroseconds.availability, 'available');
+            scope.assert.equal(measured.metrics.operationsPerSecond.availability, 'unavailable');
+            return scope.assert.collect();
+        } finally {
+            clock.mock.restore();
+        }
+    }),
+    test('awaits asynchronous values and preserves asynchronous disposal failures', async function (scope) {
+        const measured = await createAsyncMeasurementSample(asyncMeasurementStrategy([]), scope.signal)
+            .sample
+            .measure(async function () {
+                return await Promise.resolve(7);
+            });
+        scope.assert.equal(measured.value, 7);
+        const failure = new Error('disposal');
+        const strategy = asyncMeasurementStrategy([ trackedCollector('failure', function () {
+            return undefined;
+        }, failure) ]);
+        await scope.assert.rejects(async function () {
+            return createAsyncMeasurementSample(strategy, scope.signal).sample.measure(function () {
+                return 1;
+            });
+        }, { exact: failure });
+        return scope.assert.collect();
+    }),
+    test('requires both process resource snapshots before reporting counters', function (scope) {
+        for (const boundary of [ 'none', 'start', 'stop' ]) {
+            const session = processResourceCollector().prepare(scope.signal);
+            if (boundary === 'start') {
+                session.start();
+            } else if (boundary === 'stop') {
+                session.stop();
+            }
+            scope.assert.throws(function () {
+                return session.complete();
+            }, { message: 'Resource measurement requires start and stop.' });
+            session.dispose();
+        }
+        return scope.assert.collect();
+    }),
+    test('disposes asynchronous collectors after preparation and action failures', async function (scope) {
+        const events: string[] = [];
+        const failure = new Error('async preparation');
+        const collector: AsyncMetricCollector = {
+            name: 'failure',
+            mode: 'async',
+            metrics: [],
+            async prepare() {
+                throw failure;
+            }
+        };
+        const strategy = asyncMeasurementStrategy([
+            trackedCollector('prepared', function (event) {
+                events.push(event);
+            }, null),
+            collector
+        ]);
+        await scope.assert.rejects(async function () {
+            return createAsyncMeasurementSample(strategy, scope.signal).sample.measure(function () {
+                return 1;
+            });
+        }, { exact: failure });
+        scope.assert.deepEqual(events, [ 'prepare:prepared', 'dispose:prepared' ]);
+        await scope.assert.rejects(async function () {
+            return createMeasurementSample(wallClockMeasurement(), scope.signal).sample.measure(async function () {
+                throw failure;
+            });
+        }, { exact: failure });
+        await scope.assert.rejects(async function () {
+            return createAsyncMeasurementSample(asyncMeasurementStrategy([]), scope.signal).sample.measure(
+                async function () {
+                    throw failure;
+                }
+            );
+        }, { exact: failure });
+        return scope.assert.collect();
+    }),
+    test('rejects asynchronous cancellation before preparing runtime observers', async function (scope) {
+        const failure = new Error('cancelled');
+        await scope.assert.rejects(async function () {
+            return runtimeHealthCollector().prepare(AbortSignal.abort(failure));
+        }, { type: Error });
+        scope.assert.equal(runtimeHealthReadings([]).gcObservedCount?.availability, 'unavailable');
+        return scope.assert.collect();
+    }),
+    test('rejects invalid region callbacks and operations before collector acquisition', function (scope) {
+        const events: string[] = [];
+        const strategy = measurementStrategy([ trackedCollector('unused', function (event) {
+            events.push(event);
+        }, null) ]);
+        for (const count of [ -1, 0.5, Number.POSITIVE_INFINITY ]) {
+            scope.assert.throws(function () {
+                return createMeasurementSample(strategy, scope.signal).sample.measure(count, function () {
+                    return 1;
+                });
+            }, { type: TypeError });
+        }
+        scope.assert.throws(function () {
+            const lifecycle = createMeasurementSample(strategy, scope.signal);
+            Reflect.apply(lifecycle.sample.measure, undefined, [ 1, null ]);
+        }, { type: TypeError });
+        scope.assert.deepEqual(events, []);
+        return scope.assert.collect();
+    }),
     test('awaits promises created in another JavaScript context', async function (scope) {
         const foreign: unknown = runInNewContext('Promise.resolve(7)');
         if (!runtimeTypes.isPromise(foreign)) {

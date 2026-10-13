@@ -29,14 +29,15 @@ function isOperationPromise<Value>(value: Promise<Value> | Value): value is Prom
 }
 
 function operationInput<Value>(input: RegionInput<Value>): Operation<Value> {
-    if (input.length === 1) {
-        return { count: 1, run: input[0] };
-    }
-    const count = input[0];
+    const count = input.length === 1 ? 1 : input[0];
+    const run = input.length === 1 ? input[0] : input[1];
     if (!Number.isSafeInteger(count) || count <= 0) {
         throw new MeasurementContractError('Operation count must be a positive safe integer.', {});
     }
-    return { count, run: input[1] };
+    if (typeof run !== 'function') {
+        throw new MeasurementContractError('Measurement region requires an operation function.', {});
+    }
+    return { count, run };
 }
 
 function regionMetrics(
