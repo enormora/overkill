@@ -28,6 +28,8 @@ export type {
     RuntimeAttachments,
     RuntimeAttachmentArtifact
 } from '../../engine/runtime-attachment.ts';
+export { attachTestBodyFamily, forwardTestBodyFamily, readTestBodyFamily } from '../../engine/test-body.ts';
+export type { TestBodyFamilyAttachment } from '../../engine/test-body.ts';
 
 function writeStdoutLine(line: string): void {
     process.stdout.write(`${line}\n`);
@@ -474,7 +476,7 @@ export type { WorkloadInput, WorkloadParameters } from '../../engine/workload-in
 export {
     attachTestBodyWorkloadResolver,
     forwardTestBodyResources
-} from '../../engine/test-body-workload-resolution.ts';
+} from '../../engine/test-body.ts';
 
 export { observeResourceOwnerAcquisition, releaseResourceOwner } from '../../engine/resource-owner-observation.ts';
 export type { ResourceOwnerObservation } from '../../engine/resource-owner-observation.ts';

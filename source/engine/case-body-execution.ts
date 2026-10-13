@@ -1,3 +1,4 @@
+import { readTestBodyFamily } from './test-body.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import type { CaseRunnerError, RunnerError } from './run-result.ts';
 import type { TestBody } from './test-node.ts';
@@ -54,4 +55,13 @@ export function builderBodyForAttempt(testCase: TestPlanCase, attempt: Benchmark
             reportError: attempt.reportError
         });
     };
+}
+
+export function testBodyExecutionError(testCase: TestPlanCase): TypeError | null {
+    if (testCase.execution.kind === 'body' && readTestBodyFamily(testCase.execution.body)?.family === 'property') {
+        return new TypeError(
+            'Property execution is not available. Property policy and generator execution are required.'
+        );
+    }
+    return null;
 }

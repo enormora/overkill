@@ -1,5 +1,5 @@
 diff --git a/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js b/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js
-index 0410014..e41dea3 100644
+index 0410014..c33df50 100644
 --- a/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js
 +++ b/node_modules/packtory/dead-code-eliminator/reachability/bfs-closure.js
 @@ -23,10 +23,10 @@ function visitCurrent(state, expand, dependencies) {
@@ -17,3 +17,96 @@ index 0410014..e41dea3 100644
  }
  function traverseUntilExhausted(state, expand, maximumAttempts, options) {
      let traversalState = state;
+diff --git a/node_modules/packtory/package-surface/package-surface-index.js b/node_modules/packtory/package-surface/package-surface-index.js
+index ca16d4a..091604f 100644
+--- a/node_modules/packtory/package-surface/package-surface-index.js
++++ b/node_modules/packtory/package-surface/package-surface-index.js
+@@ -1,6 +1,7 @@
+ import { declarationCompanionCandidates } from "../common/declaration-companion-paths.js";
+ import { getEntryRootIds, getRoot } from "./root-registry.js";
+ import { toPackageSpecifier } from "./specifier-syntax.js";
++const publicModuleIndexByBundle = new WeakMap();
+ function createPublicModuleIndexBuilder() {
+     const inputFilePathBySpecifier = new Map();
+     const specifierByInputFilePath = new Map();
+@@ -102,15 +103,17 @@ function indexExplicitPublicModules(bundle) {
+     }
+     return publicModuleIndex.build();
+ }
+-function declarationCompanionSpecifier(bundle, targetFilePath) {
+-    const companion = bundle.contents.find(function (entry) {
+-        const candidatePaths = declarationCompanionCandidates(entry.fileDescription.targetFilePath);
+-        return candidatePaths.includes(targetFilePath);
+-    });
+-    if (companion === undefined) {
+-        return undefined;
++function declarationCompanionSpecifiers(bundle) {
++    const specifierByDeclarationPath = new Map();
++    for (const entry of bundle.contents) {
++        const targetFilePath = entry.fileDescription.targetFilePath;
++        for (const candidate of declarationCompanionCandidates(targetFilePath)) {
++            if (!specifierByDeclarationPath.has(candidate)) {
++                specifierByDeclarationPath.set(candidate, toPackageSpecifier(bundle.name, './' + targetFilePath));
++            }
++        }
+     }
+-    return toPackageSpecifier(bundle.name, `./${companion.fileDescription.targetFilePath}`);
++    return specifierByDeclarationPath;
+ }
+ function recordImplicitRootModules(bundle, publicModuleIndex) {
+     const defaultRoot = getRoot(bundle, bundle.surface.defaultModuleRoot);
+@@ -129,8 +132,8 @@ function recordImplicitRootModules(bundle, publicModuleIndex) {
+         }
+     }
+ }
+-function recordImplicitContentModule(bundle, publicModuleIndex, entry) {
+-    const companionSpecifier = declarationCompanionSpecifier(bundle, entry.fileDescription.targetFilePath);
++function recordImplicitContentModule(bundle, publicModuleIndex, entry, companionSpecifiers) {
++    const companionSpecifier = companionSpecifiers.get(entry.fileDescription.targetFilePath);
+     if (companionSpecifier === undefined) {
+         publicModuleIndex.recordFirstIndexedPublicSpecifier({
+             publicInputFilePath: entry.fileDescription.inputFilePath,
+@@ -149,12 +152,13 @@ function recordImplicitContentModule(bundle, publicModuleIndex, entry) {
+ function indexImplicitPublicModules(bundle) {
+     const publicModuleIndex = createPublicModuleIndexBuilder();
+     recordImplicitRootModules(bundle, publicModuleIndex);
++    const companionSpecifiers = declarationCompanionSpecifiers(bundle);
+     for (const entry of bundle.contents) {
+-        recordImplicitContentModule(bundle, publicModuleIndex, entry);
++        recordImplicitContentModule(bundle, publicModuleIndex, entry, companionSpecifiers);
+     }
+     return publicModuleIndex.build();
+ }
+-export function indexPublicModules(bundle) {
++function createPublicModuleIndex(bundle) {
+     if (isExplicitModuleBundle(bundle)) {
+         return indexExplicitPublicModules(bundle);
+     }
+@@ -163,4 +167,13 @@ export function indexPublicModules(bundle) {
+     }
+     throw new Error(`Unsupported package surface mode: ${bundle.surface.mode}`);
+ }
++export function indexPublicModules(bundle) {
++    const existing = publicModuleIndexByBundle.get(bundle);
++    if (existing !== undefined) {
++        return existing;
++    }
++    const index = createPublicModuleIndex(bundle);
++    publicModuleIndexByBundle.set(bundle, index);
++    return index;
++}
+ //# sourceMappingURL=package-surface-index.js.map
+\ No newline at end of file
+diff --git a/node_modules/packtory/packtory/packtory-pack.js b/node_modules/packtory/packtory/packtory-pack.js
+index 446c514..a59847e 100644
+--- a/node_modules/packtory/packtory/packtory-pack.js
++++ b/node_modules/packtory/packtory/packtory-pack.js
+@@ -148,7 +148,7 @@ function buildVendoredClosureCheck(bundleClosure, built, target, materializedExt
+ function stripVendoredManifestFields(manifest) {
+     const slimManifest = {};
+     for (const [key, value] of Object.entries(manifest)) {
+-        if (key !== 'dependencies' && key !== 'peerDependencies') {
++        if (key !== 'dependencies') {
+             slimManifest[key] = value;
+         }
+     }

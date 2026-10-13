@@ -5,7 +5,7 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { WorkloadInput, WorkloadParameters } from './workload-input.ts';
-import { resolveTestBodyWorkload } from './test-body-workload-resolution.ts';
+import { resolveTestBodyWorkload, resolveTestBodyFamily } from './test-body.ts';
 import {
     caseIdentityKey,
     createCaseId,
@@ -105,6 +105,7 @@ function plannedCase(
         execution: resolvedExecution,
         workloadParameters: workload?.parameters ?? null,
         resourceAttachments: readTestBodyResourceAttachments(caseResourceBody(resolvedExecution)),
+        testFamily: resolveTestBodyFamily(caseResourceBody(resolvedExecution), testCase.testFamily),
         workId: createDefaultWorkId(testCase.id)
     };
 }

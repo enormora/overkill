@@ -14,6 +14,7 @@ import type {
     BenchmarkTestCaseOptions as MeasurementOptions
 } from './benchmark-node.ts';
 import { readWorkloadTestCaseVariants, type WorkloadVariant } from './workload-test-case.ts';
+import { resolveTestBodyFamily } from './test-body.ts';
 import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
@@ -457,24 +458,8 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createSkippedTestCase(options: SkippedTestCaseOptions): TestCase {
-        validateNodeMetadata(options);
         const reason = readSkipReason(options.reason);
-
-        const testCase: TestCase = {
-            [testNodeBrand]: true,
-            [testNodeFamilyBrand]: null,
-            [testNodeOwnerBrand]: owner,
-            annotations: options.annotations,
-            controls: options.controls,
-            definitionLocations: options.definitionLocations,
-            execution: { kind: 'skip', reason },
-            kind: 'test',
-            title: options.title
-        };
-
-        recordConstructedNode(testCase);
-
-        return testCase;
+        return createExecutableTestCase(options, { kind: 'skip', reason }, null);
     }
 
     function createRoot(options: RootOptions): TestRoot {
@@ -570,7 +555,11 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         createTable,
         createTestCase(options: TestCaseOptions): TestCase {
             ensureTestBody(options.body);
-            return createExecutableTestCase(options, { body: options.body, bodyMode: 'builder', kind: 'body' }, null);
+            return createExecutableTestCase(
+                options,
+                { body: options.body, bodyMode: 'builder', kind: 'body' },
+                resolveTestBodyFamily(options.body, null)
+            );
         },
 
         createThrowingTestCase(options: ThrowingTestCaseOptions): TestCase {
