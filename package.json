@@ -57,7 +57,7 @@
         "@overkill-dev/assert": "0.0.42",
         "@overkill-dev/doubles": "0.0.40",
         "@overkill-dev/engine": "0.0.50",
-        "@packtory/cli": "0.0.120",
+        "@packtory/cli": "0.0.121",
         "@packtory/github-release-gate": "0.0.81",
         "@types/convert-source-map": "2.0.3",
         "@types/node": "26.6.5",
