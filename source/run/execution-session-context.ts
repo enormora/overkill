@@ -1,9 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { JsonValue } from 'type-fest';
-import type { RunExecutionSessionOptions } from './run-types.ts';
+import type { RunExecutionLifecycleReference } from './run-request-types.ts';
 
 export type RunExecutionTransport = {
-    readonly lifecycle: RunExecutionSessionOptions['lifecycle'];
+    readonly lifecycle: RunExecutionLifecycleReference;
     readonly data: JsonValue;
 };
 

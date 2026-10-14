@@ -94,6 +94,42 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'work identity filters preserve exact runtime and workload bindings',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const filter = { kind: 'work-id', id: candidate.workId } as const;
+                const selection = { kind: 'filter', filter } as const;
+                scope.assert.deepEqual(copyRunSelection(selection), selection);
+                scope.assert.equal(matchesRunFilter(filter, candidate), true);
+                scope.assert.equal(
+                    matchesRunFilter(filter, {
+                        ...candidate,
+                        workId: { ...candidate.workId, runtimes: [] }
+                    }),
+                    false
+                );
+                const workloadCandidate = {
+                    ...candidate,
+                    workId: {
+                        ...candidate.workId,
+                        workload: { name: 'load', params: { clients: '4' } }
+                    }
+                };
+                scope.assert.equal(matchesRunFilter(filter, workloadCandidate), false);
+                scope.assert.equal(matchesRunFilter(equals('workload', 'load'), workloadCandidate), true);
+                scope.assert.equal(
+                    invalidRunSelectionMessage({
+                        kind: 'filter',
+                        filter: { kind: 'work-id', id: null }
+                    }),
+                    'Run filter work id is invalid.'
+                );
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'filter helpers create serializable filter expressions',
             annotations: {},
             controls: {},

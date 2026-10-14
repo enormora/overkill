@@ -9,7 +9,7 @@ import {
 import { runExecutionFailure, restoreRunExecutionFailure } from './execution-failure.ts';
 import { executionHostRequestSchema, executionReplySchema } from './execution-session-schema.ts';
 
-function transportedFailure(error: Error): Error {
+function transportedFailure(error: unknown): Error {
     const response = executionReplySchema.parse(deserialize(serialize({
         kind: 'failure',
         data: null,
@@ -22,6 +22,24 @@ function transportedFailure(error: Error): Error {
 }
 
 export const testNode = suite('mutation invocation transport', [
+    test('retains non-error throws and missing stacks through serialization', function (scope) {
+        for (const original of [ null, undefined, 'sentinel', 42 ]) {
+            const restored = transportedFailure(original);
+            scope.assert.equal(restored.name, 'Error');
+            scope.assert.equal(restored.message, String(original));
+            scope.assert.equal(restored.cause, original);
+        }
+        const original = new Error('stack unavailable');
+        delete original.stack;
+        scope.assert.equal(runExecutionFailure(original).stack, null);
+        scope.assert.equal(transportedFailure(original).message, original.message);
+        return scope.assert.collect();
+    }),
+    test('retains aggregate failures and their shared cause', function (scope) {
+        const restored = transportedFailure(new AggregateError([ 1, 'second' ], 'aggregate', { cause: 'root' }));
+        scope.assert.deepEqual(restored.cause, { cause: 'root', errors: [ 1, 'second' ] });
+        return scope.assert.collect();
+    }),
     test('preserves native error names through serialization', function (scope) {
         for (
             const original of [

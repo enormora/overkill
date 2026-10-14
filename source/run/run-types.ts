@@ -47,7 +47,11 @@ import type {
     RuntimeId,
     WorkloadId
 } from './run-engine-primitives.ts';
-import type { RunEngineSelection, RunSelection as SelectedCases } from './run-request-types.ts';
+import type {
+    RunEngineSelection,
+    RunSelection as SelectedCases,
+    RunExecutionLifecycleReference
+} from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
@@ -533,6 +537,6 @@ export type RunExecutionLifecycle = {
 export type RunExecutionLifecycleFactory = (data: JsonValue) => Promise<RunExecutionLifecycle>;
 export type RunExecutionSessionOptions = {
     readonly command: FrozenRunCommand;
-    readonly lifecycle: { readonly moduleUrl: string; readonly exportName: string; };
+    readonly lifecycle: RunExecutionLifecycleReference;
     readonly environment: 'fresh-invocation' | 'profile-default';
 };

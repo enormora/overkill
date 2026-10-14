@@ -2,6 +2,11 @@ import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node
 import type { Engine } from '../engine/engine.ts';
 import type { CaseId, WorkId } from '../engine/identity.ts';
 
+export type RunExecutionLifecycleReference = {
+    readonly moduleUrl: string;
+    readonly exportName: string;
+};
+
 export type RunEngineSelection = {
     readonly engine: Engine;
     readonly kind: 'instance';
