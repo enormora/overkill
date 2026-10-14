@@ -1,15 +1,16 @@
 import type { TestPlan } from '../engine/test-plan.ts';
-
 import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
+
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { resolveRunEngine } from './run-engine-selection.ts';
 import {
+    resolveTestPlanCollectionPolicy,
     createRunTestPlanFromDirectEntrypoint,
     createRunTestPlanFromFiles,
     type RunTestPlanCollectionSource
@@ -26,7 +27,7 @@ export type LocalTestPlanInput = Pick<ResolvedRunInput, 'files' | 'profile'> & {
 };
 export type LocalTestPlan = TestPlan;
 
-async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
+async function readTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     const engine = await resolveRunEngine(input.command.engine, input.dependencies);
 
     if (input.source.kind === 'direct-entrypoint') {
@@ -43,6 +44,15 @@ async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
         loadRunTestModules: input.dependencies.loadRunTestModules,
         root: { annotations: {}, controls: {}, title: input.command.cwd },
         testFamily: input.profile.testFamily
+    });
+}
+
+async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
+    const testPlan = await readTestPlan(input);
+    return resolveTestPlanCollectionPolicy(testPlan, {
+        testFamily: input.profile.testFamily,
+        propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
+        timeoutMilliseconds: input.profile.timeouts.softMilliseconds
     });
 }
 

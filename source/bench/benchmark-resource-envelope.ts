@@ -2,7 +2,7 @@ import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import type { ResolvableSourceLocations } from '../assertion-protocol/assertion-node-shape.ts';
 import type { BenchmarkBody, BenchmarkScope } from '../engine/test-node.ts';
 import { mapComposedResourceBody } from '../packages/test/resource-wrapper-composition.ts';
-import { resolveTestBodyWorkload } from '../engine/test-body.ts';
+import { readTestBodyFamily, resolveTestBodyWorkload } from '../engine/test-body.ts';
 import { workload } from './workload.ts';
 import { sampleBenchmark } from './benchmark-sampling.ts';
 import type { ResolvedBenchmarkDefinition } from './benchmark-definition-resolution.ts';
@@ -35,8 +35,9 @@ export function benchmarkResourceEnvelope(
         if (selected === undefined || budgets === undefined) {
             throw new TypeError('Selected workload is absent from the benchmark definition.');
         }
+        const selectedBody = resolveTestBodyWorkload(measure, { id: scope.workload, parameters: selected.parameters });
         const envelope = mapComposedResourceBody(
-            resolveTestBodyWorkload(measure, { id: scope.workload, parameters: selected.parameters }),
+            selectedBody,
             async function sampleResourceEnvelope(body, context) {
                 return await sampleBenchmark({
                     body,
@@ -50,7 +51,8 @@ export function benchmarkResourceEnvelope(
                     locations
                 });
             },
-            'benchmark'
+            'benchmark',
+            readTestBodyFamily(selectedBody)
         );
         const resourceScope = { ...scope, workload: workload(selected.name, selected.parameters) };
         return await envelope(resourceScope);

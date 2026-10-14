@@ -35,6 +35,7 @@ function command(kind: 'collect' | 'run', path: string): SupervisedChildCommand 
         retryPolicy: null,
         capabilityRestrictions: { mode: 'disabled' },
         capture: 'buffered',
+        propertyPolicy: null,
         collectionTimeoutMilliseconds: 1000,
         cwd,
         definitionLocationCapture: 'enabled',

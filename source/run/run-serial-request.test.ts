@@ -40,7 +40,10 @@ export const testNode = suite('serial request validation', [
                 return profile === 'benchmark'
                     ? await orchestrator.bench.list(selected, { timing: null })
                     : await orchestrator.resolve(selected);
-            }, { type: RunResolutionError, message: 'Serial execution overrides require a microtest profile.' });
+            }, {
+                type: RunResolutionError,
+                message: 'Serial execution overrides require a microtest or property profile.'
+            });
         }
 
         return scope.assert.collect();

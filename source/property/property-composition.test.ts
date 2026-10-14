@@ -63,8 +63,8 @@ export const testNode = suite('property composition', [
             generator: unexecutedGenerator<number>(),
             test: unexpectedBody
         });
-        if (firstClass.execution.kind !== 'body' || firstClass.execution.bodyMode !== 'builder') {
-            throw new Error('Expected a builder property body.');
+        if (firstClass.execution.kind !== 'body' || firstClass.execution.bodyMode !== 'property') {
+            throw new Error('Expected a property body.');
         }
         const bodies: readonly TestBody[] = [
             withResource(resource, withProperties(unexpectedBody)),

@@ -96,6 +96,7 @@ export const testNode = suite('property authoring', [
         scope.require.defined(attachment);
         scope.assert.deepEqual(attachment.definition, {
             kind: 'property',
+            settingsDeclarations: [ { kind: 'profile-default' } ],
             generator,
             test: unexpectedPropertyBody,
             definitionLocations: node.definitionLocations

@@ -60,6 +60,7 @@ function collectedCase(
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
         skipReason: null,
+        property: null,
         benchmark: null,
         workloadParameters: null,
         annotations,
@@ -183,6 +184,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                propertyPolicy: null,
                 attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',

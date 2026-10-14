@@ -1,9 +1,10 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createCaseId, createDefaultWorkId, type CaseId } from '../engine/identity.ts';
 import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
-import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
 import type { RunOrder, ProfileConfig } from '../config/types.ts';
+import { assertCollectedPropertyPolicies } from './property-collection.ts';
 import type {
+    ResolvedRun,
     RunRequest,
     CollectedRunCase,
     CollectedRunFile,
@@ -15,6 +16,9 @@ import { noTestsCollected, RunCollectionError } from './run-errors.ts';
 import { orderedRunItems } from './run-ordering.ts';
 import { matchesRunFilter } from './run-selection-filters.ts';
 import { createRandomRunSeed } from './run-seed.ts';
+
+type TestPlan = Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>['testPlan'];
+type TestPlanCase = TestPlan['cases'][number];
 
 type SelectedRunCases<Case> = {
     readonly discoveredCases: NonEmptyReadonlyArray<Case>;
@@ -82,9 +86,12 @@ function assertMicrotestCaseHasNoResourceDescriptors(
     testCase: ResourceAttachedRunCase,
     expectedFamily: RunTestFamily
 ): void {
-    if (expectedFamily === 'microtest' && hasAttachedResourceDescriptors(testCase.resourceAttachments)) {
+    if (
+        (expectedFamily === 'microtest' || expectedFamily === 'property') &&
+        hasAttachedResourceDescriptors(testCase.resourceAttachments)
+    ) {
         throw new RunCollectionError(
-            'Run profile "microtest" cannot run test cases with resource descriptors.',
+            `Run profile "${expectedFamily}" cannot run test cases with resource descriptors.`,
             { cause: null },
             'loader'
         );
@@ -159,6 +166,10 @@ export function assertCollectedRunPlanCasesMatchProfilePolicy(
     plan: CollectedRunPlan,
     profile: ProfileConfig
 ): void {
+    if (profile.testFamily === 'property') {
+        assertCollectedPropertyPolicies(plan, profile.property, profile.timeouts.softMilliseconds);
+        return;
+    }
     for (const file of plan.files) {
         for (const testCase of file.cases) {
             assertCaseControlsMatchProfile(testCase, profile);

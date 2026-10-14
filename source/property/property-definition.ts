@@ -1,4 +1,10 @@
-import type { AssertionResult, DefinitionLocations, TestScope } from '../packages/engine/engine.entry-point.ts';
+import type {
+    AssertionResult,
+    DefinitionLocations,
+    TestScope,
+    PropertySettings,
+    PropertyBodyDefinition
+} from '../packages/engine/engine.entry-point.ts';
 import type { Generator as PropertyGenerator } from './generator.ts';
 
 export type PropertySampleScope = TestScope & {
@@ -11,11 +17,14 @@ export type PropertyBody<Value> = (
     sample: PropertySampleScope
 ) => AssertionResult | Promise<AssertionResult>;
 
-export type PropertyDefinition<Value> = {
+type PropertyDefinitionBody<Value> = {
     readonly title: string;
     readonly generator: PropertyGenerator<Value>;
     readonly test: PropertyBody<Value>;
 };
+
+type ConfiguredPropertyDefinition<Value> = PropertyDefinitionBody<Value> & { readonly settings: PropertySettings; };
+export type PropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
 
 export type PropertyCaseScope = TestScope & {
     readonly forall: <Value>(
@@ -26,14 +35,14 @@ export type PropertyCaseScope = TestScope & {
 
 export type PropertyCaseBody = (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>;
 
-export type PropertyDeclaration<Value> = {
+export type PropertyDeclaration<Value> = PropertyBodyDefinition & {
     readonly kind: 'property';
     readonly generator: PropertyGenerator<Value>;
     readonly test: PropertyBody<Value>;
     readonly definitionLocations: DefinitionLocations;
 };
 
-export type NestedPropertyDeclaration = {
+export type NestedPropertyDeclaration = PropertyBodyDefinition & {
     readonly kind: 'nested';
     readonly body: PropertyCaseBody;
     readonly definitionLocations: DefinitionLocations;

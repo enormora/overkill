@@ -52,7 +52,7 @@ export const testNode = createOverkillSuite({
                     ));
                 }, {
                     message:
-                        'Invalid profile "microtest": testFamily must be "benchmark", "integration", or "microtest".'
+                        'Invalid profile "microtest": testFamily must be "benchmark", "integration", "microtest", or "property".'
                 });
 
                 return scope.assert.collect();
@@ -72,14 +72,15 @@ export const testNode = createOverkillSuite({
                             profiles: {
                                 backend: {
                                     ...defaultMicrotestProfile(),
-                                    testFamily: 'property'
+                                    testFamily: 'unknown-family'
                                 } as unknown as NormalizedConfig['profiles'][string]
                             }
                         }),
                         'backend'
                     ));
                 }, {
-                    message: 'Invalid profile "backend": testFamily must be "benchmark", "integration", or "microtest".'
+                    message:
+                        'Invalid profile "backend": testFamily must be "benchmark", "integration", "microtest", or "property".'
                 });
 
                 return scope.assert.collect();

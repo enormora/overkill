@@ -60,6 +60,7 @@ function runCaseEntry(title: string): CollectedRunCaseEntry {
         id,
         testCase: {
             skipReason: null,
+            property: null,
             benchmark: null,
             workloadParameters: null,
             annotations,

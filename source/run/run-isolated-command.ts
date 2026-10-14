@@ -18,6 +18,7 @@ export type IsolatedRunCollectionSource = CollectionSource;
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
 type SupervisedCommandBase = {
+    readonly propertyPolicy: SupervisedRunCommand['propertyPolicy'];
     readonly retryPolicy: SupervisedRunCommand['retryPolicy'];
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
     readonly capture: SupervisedRunCommand['capture'];
@@ -92,7 +93,7 @@ function supervisedCapabilityRestrictions(
     profile: ResolvedRunInput['profile'],
     command: RunCommand
 ): SupervisedCommandBase['capabilityRestrictions'] {
-    if (profile.testFamily !== 'microtest') {
+    if (profile.testFamily !== 'microtest' && profile.testFamily !== 'property') {
         return { mode: 'disabled' };
     }
 
@@ -109,6 +110,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
     const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
+        propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
         capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
         capture: input.capture,
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,

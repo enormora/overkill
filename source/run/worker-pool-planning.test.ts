@@ -86,6 +86,7 @@ function collectedCase(
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
         skipReason: null,
+        property: null,
         benchmark: null,
         workloadParameters: null,
         annotations,

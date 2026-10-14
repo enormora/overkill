@@ -125,6 +125,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                 return {
                     annotations: emptySerializedTestData,
                     controls: emptySerializedTestData,
+                    propertyPolicy: null,
                     fileSet: null,
                     id: testCase.id,
                     workId: testCase.workId
@@ -136,6 +137,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                 runtimeStateDir: config.runtimeStateDir
             },
             execution: {
+                propertyPolicy: null,
                 attachments: null,
                 retries: null,
                 baselineUpdateMode: request.baselineUpdateMode,

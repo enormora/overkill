@@ -3,7 +3,12 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
+import {
+    defaultIntegrationProfile,
+    defaultRunConfig,
+    defaultRunRequest,
+    testRunExecutionFacts
+} from '../test-support/run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies as fakeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
 import { emptyWorkUnitResourceConstraints } from './run-types.ts';
@@ -41,6 +46,7 @@ export function createCollectedPlan(): CollectedRunPlan {
                 cases: [
                     {
                         skipReason: null,
+                        property: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations,
@@ -121,6 +127,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                propertyPolicy: null,
                 attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',
@@ -273,39 +280,21 @@ function childHostResolvedRun(): ResolvedRun {
 }
 
 function supervisedExecutionFacts(): ResolvedRun['facts']['execution'] {
+    const command = {
+        config: defaultRunConfig(),
+        cwd: process.cwd(),
+        engine: { kind: 'default' as const },
+        request: defaultRunRequest({ profile: 'integration' })
+    };
     return {
-        attachments: null,
-
-        retries: null,
-        baselineUpdateMode: 'none',
-        capture: 'buffered',
-        coverage: false,
-        debug: { mode: 'off', selectors: [] },
-        engine: { kind: 'default' },
-        maxConcurrency: 5,
-        order: 'seeded',
-        placementPlan: null,
-        processModel: 'supervised-process',
-        profile: 'integration',
-        processUsagePolicy: {
-            budgets: {
-                activeResourceCount: null,
-                javaScriptEngineHeapBytes: null,
-                residentSetBytes: null,
-                residentSetGrowthBytesPerSecond: null
-            },
-            measure: false,
-            samplingIntervalMilliseconds: 100
-        },
-        scheduling: 'serial',
-        testFamily: 'integration',
-        timingCollection: 'summary',
-        timeoutPolicy: {
-            collectionMilliseconds: 1000,
-            hardMilliseconds: 1000,
-            softMilliseconds: 500
-        },
-        verbose: false
+        ...testRunExecutionFacts(
+            command,
+            defaultIntegrationProfile({
+                execution: { processModel: 'supervised-process', scheduling: 'serial' },
+                timeouts: { collectionMilliseconds: 1000, hardMilliseconds: 1000, softMilliseconds: 500 }
+            })
+        ),
+        attachments: null
     };
 }
 

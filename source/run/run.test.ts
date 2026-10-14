@@ -66,6 +66,7 @@ function expectedPassingFixtureCaseFact(): unknown {
     return {
         annotations: serializeValue(expectedPassingFixtureAnnotations()),
         controls: serializeValue(expectedPassingFixtureControls()),
+        propertyPolicy: null,
         fileSet: null,
         id,
         workId: { case: expectedPassingFixtureCaseId(), runtimes: [], workload: null }
@@ -78,6 +79,7 @@ function expectedPassingFixtureLiveCaseFact(): unknown {
     return {
         annotations: serializeValue(expectedPassingFixtureAnnotations()),
         controls: serializeValue(expectedPassingFixtureControls()),
+        propertyPolicy: null,
         fileSet: null,
         id,
         workId: { case: id, runtimes: [], workload: null }
@@ -201,6 +203,7 @@ export const testNode = createOverkillSuite({
                         runtimeStateDir: '.overkill'
                     },
                     execution: {
+                        propertyPolicy: null,
                         attachments: null,
                         retries: null,
                         baselineUpdateMode: 'none',
@@ -418,6 +421,7 @@ export const testNode = createOverkillSuite({
                         runtimeStateDir: '.overkill'
                     },
                     execution: {
+                        propertyPolicy: null,
                         attachments: null,
                         retries: null,
                         baselineUpdateMode: 'none',

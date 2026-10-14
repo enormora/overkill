@@ -197,6 +197,18 @@ function copyBenchmarkExecution(execution: BenchmarkExecution): BenchmarkExecuti
 }
 
 function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
+    if (profile.testFamily === 'property') {
+        return {
+            execution: copyMicrotestExecution(profile.execution),
+            files: copyProfileFiles(profile.files),
+            reporters: copyReporters(profile.reporters),
+            processUsage: copyProcessUsagePolicy(profile.processUsage),
+            property: { ...profile.property },
+            testFamily: profile.testFamily,
+            timings: copyTimingProfilePolicy(profile.timings),
+            timeouts: copyTimeoutPolicy(profile.timeouts)
+        };
+    }
     if (profile.testFamily === 'benchmark') {
         return {
             attachments: { ...profile.attachments },

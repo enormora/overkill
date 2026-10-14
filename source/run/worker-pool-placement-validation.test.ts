@@ -59,6 +59,7 @@ function createCollectedPlan(): WorkerPoolRunRuntime['collectedPlan'] {
                 cases: [
                     {
                         skipReason: null,
+                        property: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations: { ownership: [], tags: [] },
@@ -220,6 +221,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                propertyPolicy: null,
                 attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',

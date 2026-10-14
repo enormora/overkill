@@ -1,3 +1,4 @@
+import type { PropertyPolicy } from '../engine/property-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { BenchmarkBaselinePolicy } from '../baselines/performance-adapter.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -188,7 +189,18 @@ export type BenchmarkProfileConfig = {
     readonly timeouts: TimeoutPolicy;
 };
 
-export type TestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig;
+export type PropertyProfileConfig = {
+    readonly execution: MicrotestExecution;
+    readonly files: ProfileFiles;
+    readonly reporters: readonly DefinedReporter[] | null;
+    readonly processUsage: ProcessUsagePolicy;
+    readonly property: PropertyPolicy;
+    readonly testFamily: 'property';
+    readonly timings: TimingProfilePolicy;
+    readonly timeouts: TimeoutPolicy;
+};
+
+export type TestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
 export type ProfileConfig = BenchmarkProfileConfig | TestProfileConfig;
 
 export type ProfilesConfig = Readonly<Record<string, ProfileConfig>>;

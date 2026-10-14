@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
+import { defaultPropertyPolicy, resolvePropertySettings, propertySettingsSchema } from './property-policy.ts';
 import { performanceBaselinePolicySchema } from './performance-baselines.ts';
 import {
     coveragePolicySchema,
@@ -309,10 +310,28 @@ const benchmarkProfileSchema = z
 
 export type ProjectBenchmarkProfileConfig = z.input<typeof benchmarkProfileSchema>;
 
+export const propertyProfileSchema = z
+    .strictObject({
+        execution: z.optional(microtestExecutionSchema),
+        files: profileFilesSchema,
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        processUsage: z.optional(processUsageSchema),
+        property: propertySettingsSchema.default({}).transform(function resolveProfilePropertyPolicy(settings) {
+            return resolvePropertySettings(defaultPropertyPolicy, settings);
+        }),
+        testFamily: z.literal('property'),
+        timings: z.optional(timingProfilePolicySchema),
+        timeouts: z.optional(timeoutSchema)
+    })
+    .readonly();
+
+export type ProjectPropertyProfileConfig = z.input<typeof propertyProfileSchema>;
+
 const profileSchema = z.discriminatedUnion('testFamily', [
     benchmarkProfileSchema,
     integrationProfileSchema,
-    microtestProfileSchema
+    microtestProfileSchema,
+    propertyProfileSchema
 ]);
 
 const profilesSchema = z.record(z.string(), profileSchema).readonly();
@@ -353,3 +372,5 @@ export type ProjectIntegrationProfileConfig = z.infer<typeof integrationProfileS
 export type ProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
 export type ProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
 export type Config = z.infer<typeof projectConfigSchema>;
+
+export type ParsedPropertyProfileConfig = z.output<typeof propertyProfileSchema>;

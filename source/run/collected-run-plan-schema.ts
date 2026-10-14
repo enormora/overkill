@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { propertyPolicySchema, propertySettingsDeclarationSchema } from '../config/property-policy.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import {
     annotationsSchema,
@@ -70,6 +71,18 @@ const fileSchema = z
     .strictObject({
         cases: z.array(z.strictObject({
             skipReason: z.string().nullable().default(null),
+            property: z
+                .strictObject({
+                    definition: z.strictObject({
+                        kind: z.enum([ 'property', 'nested' ]),
+                        settingsDeclarations: z.tuple([ propertySettingsDeclarationSchema ]).rest(
+                            propertySettingsDeclarationSchema
+                        )
+                    }),
+                    policy: propertyPolicySchema
+                })
+                .nullable()
+                .default(null),
             benchmark: benchmarkDefinitionSchema.nullable().default(null),
             annotations: annotationsSchema,
             controls: controlsSchema,
@@ -117,3 +130,7 @@ export const collectedRunPlanSchema: z.ZodType<CollectedRunPlan> = z.strictObjec
     ),
     root: z.strictObject({ annotations: annotationsSchema, controls: controlsSchema, title: z.string() })
 });
+
+export const assignedPropertyPoliciesSchema = z.array(
+    z.strictObject({ work: workIdSchema, policy: propertyPolicySchema })
+);

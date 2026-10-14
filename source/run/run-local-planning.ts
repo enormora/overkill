@@ -1,6 +1,6 @@
-import type { TestPlan } from '../engine/test-plan.ts';
 import { resolveRunScheduling } from './run-profile-facts.ts';
-import { createRunFacts, runCaseFactsFromTestPlan } from './run-facts.ts';
+import { createRunFacts } from './run-facts.ts';
+import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
 import { createRunResultFromCollectedPlan, collectedRunPlanFromTestPlanCases } from './collected-run-plan.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { shardedLocalCases } from './run-local-sharding.ts';
@@ -12,6 +12,8 @@ import {
 import { freezeValue, resolveRunReporters } from './run-support.ts';
 import type { ResolvedRun, RunCommand } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+
+type TestPlan = Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>['testPlan'];
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 

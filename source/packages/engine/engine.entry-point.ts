@@ -9,6 +9,7 @@ import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
 import {
     createTestNodeOwner,
     defaultTestNodeOwner,
+    type PropertyTestCaseOptions,
     type BenchmarkTestCaseOptions,
     type RootOptions,
     type SkippedTestCaseOptions,
@@ -67,6 +68,7 @@ export function createEngine(): Engine {
 
 const defaultEngineKey = Symbol.for('@overkill-dev/engine/defaultEngine');
 const engineMethods: readonly (keyof Engine)[] = [
+    'createPropertyTestCase',
     'createBenchmarkTestCase',
     'createRoot',
     'createSuite',
@@ -102,6 +104,20 @@ function sharedDefaultEngine(): Engine {
 }
 
 const defaultEngine = sharedDefaultEngine();
+
+export type {
+    PropertyPolicy,
+    PropertySettings,
+    PropertySettingsDeclaration,
+    PropertyBodyDefinition,
+    PropertyPolicyResolution
+} from '../../engine/property-node.ts';
+export type { PropertyTestCaseExecution } from '../../engine/test-node.ts';
+export type { PropertyTestCaseOptions } from '../../engine/test-node.ts';
+
+export function createPropertyTestCase(options: PropertyTestCaseOptions): ReturnType<Engine['createPropertyTestCase']> {
+    return defaultEngine.createPropertyTestCase(options);
+}
 
 export function createBenchmarkTestCase(
     options: BenchmarkTestCaseOptions

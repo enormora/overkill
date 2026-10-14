@@ -21,6 +21,7 @@
     "include": [
         "./integration-tests/**/*.ts",
         "./test-support/run-command-factory.ts",
+        "./test-support/property-generator.ts",
         "./test-support/collected-run-fixtures.ts",
         "./test-support/run-if-main.ts",
         "./test-support/benchmark-baseline-fixture.ts",
