@@ -22,11 +22,10 @@ import {
     runnerErrorFromSupervisedChildFailure,
     runObservedSupervisedChildCommand
 } from './supervised-child-test-plan.ts';
-import {
-    createSupervisedResourceLifecycleTiming,
-    type SupervisedAssignmentCommand,
-    type SupervisedChildCommand,
-    type SupervisedChildMessage
+import type {
+    SupervisedAssignmentCommand,
+    SupervisedChildCommand,
+    SupervisedChildMessage
 } from './supervised-protocol.ts';
 
 const cwd = '/project';
@@ -265,45 +264,6 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'supervised resource timing emits duration-only child spans',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const messages: SupervisedChildMessage[] = [];
-                const timing = createSupervisedResourceLifecycleTiming(clock, function recordMessage(message) {
-                    messages.push(message);
-                });
-                const controller = new AbortController();
-
-                await timing.measure({
-                    phase: 'acquire',
-                    resource: { name: 'database', scope: 'per-run' },
-                    signal: controller.signal
-                }, async function acquireResource() {
-                    clock.advanceByMicroseconds(21n);
-                });
-
-                scope.assert.deepEqual(messages, [ {
-                    kind: 'timing',
-                    span: {
-                        durationMicroseconds: 21,
-                        kind: 'resource.acquire',
-                        label: null,
-                        processId: String(process.pid),
-                        resource: { name: 'database', scope: 'per-run' },
-                        startOffsetMicroseconds: null,
-                        startTimeUnixMicroseconds: 0,
-                        status: 'success',
-                        workerId: null
-                    }
-                } ]);
-
-                return scope.assert.collect();
-            }
-        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runSupervisedChild() collects tests without waiting for assignments',

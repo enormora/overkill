@@ -1,73 +1,57 @@
 import { commonTokens, tokens } from '@stryker-mutator/api/plugin';
 import type { FileDescriptions } from '@stryker-mutator/api/core';
 import type { Logger } from '@stryker-mutator/api/logging';
-import type {
-    DryRunResult,
-    MutantRunResult,
-    TestRunner,
-    TestRunnerCapabilities
-} from '@stryker-mutator/api/test-runner';
-import { ConfigError } from '../run/config.entry-point.ts';
-import { createMutationExecution, type MutationExecution } from './mutation-execution.ts';
-import { initializeMutationPolicy } from './mutation-policy-process.ts';
-import { parseRunnerOptions } from './runner-options.ts';
-import { assertExcludedAdapter, createMutationSandbox } from './mutation-sandbox.ts';
-
-const originalRoot = process.cwd();
+import { DryRunStatus, MutantRunStatus, type TestRunner } from '@stryker-mutator/api/test-runner';
+import { createMutationRunnerLifecycle } from './mutation-runner-lifecycle.ts';
+import { createMutationBaseline } from './mutation-baseline.ts';
+import { createMutationRunnerInvocations } from './mutation-runner-invocations.ts';
 
 export function createOverkillTestRunner(
     options: Readonly<Record<string, unknown>>,
     fileDescriptions: FileDescriptions,
     logger: Readonly<Pick<Logger, 'info'>>
 ): Required<TestRunner> {
-    let initialization: Promise<MutationExecution> | null = null;
-    const controller = new AbortController();
-
-    async function initializeExecution(): Promise<MutationExecution> {
-        const settings = parseRunnerOptions(options.overkill);
-        logger.info('Overkill campaign seed: %s', settings.seed);
-        const sandbox = await createMutationSandbox({ originalRoot, cwd: process.cwd(), fileDescriptions });
-        await assertExcludedAdapter(sandbox);
-        const policy = await initializeMutationPolicy({
-            cwd: sandbox.root,
-            sandbox,
-            settings,
-            signal: controller.signal
-        });
-        return createMutationExecution({
-            policy,
-            seed: { value: BigInt(settings.seed) },
-            freshState: settings.freshState
-        });
-    }
-
+    const lifecycle = createMutationRunnerLifecycle(options, fileDescriptions, logger);
+    const invocations = createMutationRunnerInvocations(createMutationBaseline(), options.ignoreStatic === true);
     return {
-        capabilities(): TestRunnerCapabilities {
-            throw new Error('@overkill-dev/stryker-runner: capabilities() is not implemented.');
+        async capabilities() {
+            const runner = await lifecycle.ready();
+            return { reloadEnvironment: runner.execution.environmentLifetime === 'fresh' };
         },
-        async init(): Promise<void> {
-            if (controller.signal.aborted) {
-                throw new ConfigError('Stryker runner has been disposed.');
-            }
-            initialization = initialization ?? initializeExecution();
-            await initialization;
+        async init() {
+            await lifecycle.ready();
         },
-        async dryRun(): Promise<DryRunResult> {
-            throw new Error('@overkill-dev/stryker-runner: dryRun() is not implemented.');
-        },
-        async mutantRun(): Promise<MutantRunResult> {
-            throw new Error('@overkill-dev/stryker-runner: mutantRun() is not implemented.');
-        },
-        async dispose(): Promise<void> {
-            controller.abort();
-            let execution: MutationExecution | null = null;
+        async dryRun(input) {
             try {
-                execution = await initialization;
-            } catch {
+                return await lifecycle.invoke(
+                    input.timeout,
+                    async function (runner, remaining) {
+                        return await invocations.dry(runner, input, remaining);
+                    },
+                    function () {
+                        return { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' };
+                    }
+                );
+            } catch (error: unknown) {
+                return { status: DryRunStatus.Error, errorMessage: String(error) };
             }
-            await execution?.dispose();
-        }
+        },
+        async mutantRun(input) {
+            try {
+                return await lifecycle.invoke(
+                    input.timeout,
+                    async function (runner, remaining) {
+                        return await invocations.mutant(runner, input, remaining);
+                    },
+                    function () {
+                        return { status: MutantRunStatus.Timeout, reason: 'Mutant invocation exceeded its deadline.' };
+                    }
+                );
+            } catch (error: unknown) {
+                return { status: MutantRunStatus.Error, errorMessage: String(error) };
+            }
+        },
+        dispose: lifecycle.dispose
     };
 }
-
 createOverkillTestRunner.inject = tokens(commonTokens.options, commonTokens.fileDescriptions, commonTokens.logger);

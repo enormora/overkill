@@ -1,6 +1,7 @@
 import { posix as path } from 'node:path';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import { caseIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import { caseIdentityKey, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import { workIdSchema } from '../engine/identity-schema.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type { RunFilter, RunSelection, RunStringFilterField } from './run-request-types.ts';
 
@@ -265,6 +266,9 @@ function invalidRuntimeFieldsMessage(
 }
 
 const filterNodeValidators: Readonly<Record<string, FilterNodeValidator>> = {
+    'work-id': function invalidWorkIdentity(filter) {
+        return workIdSchema.safeParse(filter.id).success ? null : 'Run filter work id is invalid.';
+    },
     all: invalidCompositeFilterMessage,
     any: invalidCompositeFilterMessage,
     'case-id': function invalidCaseIdFilter(filter) {
@@ -401,6 +405,9 @@ function copyRuntimeRunFilter(filter: RuntimeRunFilter): RunFilter {
 }
 
 function copyLeafRunFilter(filter: LeafRunFilter): RunFilter {
+    if (filter.kind === 'work-id') {
+        return { kind: 'work-id', id: workIdSchema.parse(filter.id) };
+    }
     if (filter.kind === 'case-id') {
         return caseId(filter.id);
     }
@@ -550,6 +557,9 @@ function matchesRuntimeRunFilter(filter: RuntimeRunFilter, candidate: RunFilterC
 }
 
 function matchesLeafRunFilter(filter: LeafRunFilter, candidate: RunFilterCandidate): boolean {
+    if (filter.kind === 'work-id') {
+        return workIdentityKey(filter.id) === workIdentityKey(candidate.workId);
+    }
     if (filter.kind === 'case-id') {
         return caseIdentityKey(filter.id) === caseIdentityKey(candidate.id);
     }

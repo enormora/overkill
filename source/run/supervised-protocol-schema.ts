@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
-import { frozenSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
+import { frozenSupervisedCommandSchema, sessionSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
 import type {
     SupervisedChildCommand,
     SupervisedAssignmentCommand,
@@ -15,7 +15,8 @@ import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
 const commandSchema: z.ZodType<SupervisedChildCommand> = z.union([
     z.strictObject({ ...supervisedCommandFields, kind: z.enum([ 'collect', 'run' ]) }),
-    frozenSupervisedCommandSchema
+    frozenSupervisedCommandSchema,
+    sessionSupervisedCommandSchema
 ]);
 const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
     z.strictObject({
@@ -35,6 +36,7 @@ export const supervisedParentMessageSchema: z.ZodType<SupervisedAssignmentComman
     assignmentSchema
 ]);
 export const supervisedChildMessageSchema: z.ZodType<SupervisedChildMessage> = z.discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('execution-data'), data: z.json() }),
     z.strictObject({
         kind: z.literal('collected'),
         collectedPlan: collectedRunPlanSchema,

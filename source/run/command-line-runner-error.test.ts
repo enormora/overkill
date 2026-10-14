@@ -17,7 +17,7 @@ import {
 import type { LoadedConfig } from '../config/config.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, ConfiguredRunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';
 
 const memoryReporter = defineFixedReporter({
     dispose: null,

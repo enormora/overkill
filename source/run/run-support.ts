@@ -20,6 +20,7 @@ import {
     type DurationHistoryTimingMeasurement,
     type DurationHistoryIndex
 } from './duration-history.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 
 export type RunResultSession = {
     readonly finalize: (result: RunResult) => Promise<RunResult>;
@@ -63,7 +64,9 @@ export async function finalizeResultWithDurationHistory(
     result: RunResult,
     timing: DurationHistoryTimingMeasurement | null = null
 ): Promise<RunResult> {
-    let attachmentResult = await (currentAttachmentCoordinator()?.finalize(result) ?? result);
+    let attachmentResult = currentExecutionSession() === null
+        ? await (currentAttachmentCoordinator()?.finalize(result) ?? result)
+        : result;
     if (resolvedRun.facts.execution.testFamily === 'benchmark') {
         attachmentResult = withBenchmarkRunMetadata(
             attachmentResult,

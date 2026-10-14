@@ -3,7 +3,7 @@ import { orchestrator, RunResolutionError, withFileModuleBoundary } from '../run
 import { selectMicrotestProfile } from './microtest-profile.ts';
 import { createMutationRunCommand } from './mutation-execution-policy.ts';
 import { mutationPolicyRequestSchema, type MutationPolicyResponse } from './mutation-policy-protocol.ts';
-import { parseRunnerOptions } from './runner-options.ts';
+import { parseRunnerOptions } from './runner-settings-schema.ts';
 import { assertExcludedMutationFiles, sandboxModuleBoundary, sandboxRunnerOptions } from './mutation-sandbox.ts';
 
 async function readPolicyRequest(): Promise<ReturnType<typeof mutationPolicyRequestSchema.parse>> {

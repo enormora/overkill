@@ -5,8 +5,8 @@ import { createSuite, createTestCase, type TestScope } from '../../packages/engi
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { normalizeConfig, orchestrator } from '../../packages/run/run.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
-import { createMutationExecution, type MutationExecution } from '../../packages/stryker-runner/mutation-execution.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
+import { createMutationExecution, type MutationExecution } from './mutation-execution.test.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const engineModule = new URL(`../../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
@@ -283,14 +283,11 @@ export const testNode = createTestCase({
                     'await new Promise(() => {});'
                 );
                 const running = execution.run(all);
+                const rejection = scope.assert.rejects(async function interruptCollection() {
+                    return await running;
+                }, { message: /aborted/u });
                 await execution.dispose();
-                const result = await running;
-                scope.assert.equal(result.status, 'failed');
-                scope.assert.equal(result.summary.passed, 0);
-                scope.assert.true(result.runnerErrors.some(function cancelled(error) {
-                    return error.subtype === 'crash' && error.attributedTo === null &&
-                        error.message.includes('cancelled');
-                }));
+                await rejection;
                 return scope.assert.collect();
             }
         })

@@ -1,4 +1,5 @@
 import type { RunResult } from './run-engine-primitives.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
 import { runHasAttachmentScopes } from './attachment-eligibility.ts';
@@ -10,7 +11,7 @@ export async function executeWithRuntimeAttachments(
     dependencies: RunOrchestratorDependencies,
     run: () => Promise<RunResult>
 ): Promise<RunResult> {
-    if (!runHasAttachmentScopes(resolved)) {
+    if (currentExecutionSession() !== null || !runHasAttachmentScopes(resolved)) {
         return await run();
     }
     const { executeWithAttachments } = await import('./attachment-run.ts');

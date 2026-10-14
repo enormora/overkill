@@ -58,6 +58,7 @@ function createCollectedPlan(): WorkerPoolRunRuntime['collectedPlan'] {
                 file: integrationPath,
                 cases: [
                     {
+                        skipReason: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations: { ownership: [], tags: [] },

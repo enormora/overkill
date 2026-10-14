@@ -167,6 +167,7 @@ export const config = {
                 commandLine: moduleRoot('packages/run/command-line.entry-point'),
                 config: moduleRoot('packages/run/config.entry-point'),
                 coverageSession: { js: 'run/coverage-session.js' },
+                executionSessionEnvironment: { js: 'run/execution-session-environment.js' },
                 filters: moduleRoot('packages/run/filters.entry-point'),
                 localCoverage: { js: 'run/run-local-coverage.js' },
                 main: moduleRoot('packages/run/run.entry-point'),
@@ -197,6 +198,7 @@ export const config = {
                     'benchmarkCalibration',
                     'benchmarkCalibrationChild',
                     'coverageSession',
+                    'executionSessionEnvironment',
                     'localCoverage',
                     'nodeCommandLineRunner',
                     'recordedCoverage',
@@ -227,6 +229,14 @@ export const config = {
         {
             name: 'stryker-runner',
             description: 'First-party Stryker TestRunner plugin for Overkill.',
+            roots: {
+                main: moduleRoot('packages/stryker-runner/stryker-runner.entry-point'),
+                mutationLifecycle: { js: 'packages/stryker-runner/mutation-lifecycle.js' }
+            },
+            packageInterface: {
+                modules: packageModules({ '.': 'main' }),
+                privateRoots: [ 'mutationLifecycle' ]
+            },
             bundlePeerDependencies: [ '@overkill-dev/run' ]
         },
         {

@@ -19,15 +19,10 @@ import { collectSupervisedRun } from './supervised-run-collection.ts';
 import {
     runSupervisedCommand
 } from './supervised-run.ts';
-import type {
-    CollectedRunPlan,
-    ResolvedRun,
-    RunCommand,
-    RunOrchestrator
-} from './run-types.ts';
+import type { CollectedRunPlan, ResolvedRun, RunCommand, RunInvocationOptions } from './run-types.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
-type RunTimingMeasurement = NonNullable<NonNullable<Parameters<RunOrchestrator['run']>[1]>['timing']>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
+type RunTimingMeasurement = NonNullable<RunInvocationOptions['timing']>;
 type SupervisedExecution = SupervisedCoverageExecution & {
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;

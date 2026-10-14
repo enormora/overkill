@@ -23,18 +23,20 @@ import {
 import type {
     ResolvedRun,
     RunCommand,
-    RunOrchestrator
+    FrozenRunCommand,
+    RunReporterDeliveryResult,
+    RunOperations as CommandOperations
 } from './run-types.ts';
 
 type RunCollectionSource = CollectionSource;
 type DirectEntrypointRunCollectionSource = DirectEntrypointCollectionSource;
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 export type DirectEntrypointRunner = (
     command: RunCommand,
     source: DirectEntrypointRunCollectionSource,
     options?: RunInvocationTimingOptions
-) => ReturnType<RunOrchestrator['runWithReporterDelivery']>;
+) => Promise<RunReporterDeliveryResult>;
 
 function commandWithResolvedSeed(command: RunCommand, dependencies: RunOrchestratorDependencies): RunCommand {
     if (command.request.seed.value !== null) {
@@ -108,7 +110,7 @@ async function runCommand(
     );
 }
 
-type RunOperations = Pick<RunOrchestrator, 'resolve' | 'run' | 'runWithReporterDelivery'>;
+type RunOperations = CommandOperations<FrozenRunCommand | RunCommand>;
 
 export function createRunOperations(
     dependencies: RunOrchestratorDependencies,

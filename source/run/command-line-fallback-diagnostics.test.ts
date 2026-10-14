@@ -18,7 +18,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { ConfiguredRunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';
 
 const plainOutputRenderer = defineFixedOutputRenderer({
     render(intent): string {

@@ -6,9 +6,9 @@ import { createLocalRunOrEmptySelectionResultFromInput } from './run-local-resol
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { createRunRuntimePolicy, finalizeResultWithDurationHistory, type RunRuntimePolicy } from './run-support.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
-import type { ResolvedRun, RunCommand, RunOrchestrator } from './run-types.ts';
+import type { ResolvedRun, RunCommand } from './run-types.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type ActiveCoverageSession = RecordedCoverageExecution['session'];
 type CoveredResolution = Awaited<ReturnType<typeof createLocalRunOrEmptySelectionResultFromInput>>;
 type CoverageLocalExecution = {

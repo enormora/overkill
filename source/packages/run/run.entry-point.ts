@@ -29,10 +29,25 @@ export const runIfMain = createRunIfMain({
 });
 
 export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+export { parseRunExecutionFailure } from '../../run/execution-failure-schema.ts';
+export { runExecutionFailure, restoreRunExecutionFailure } from '../../run/execution-failure.ts';
+export type { RunExecutionFailure } from '../../run/execution-failure-schema.ts';
+export type {
+    RunExecutionLifecycle,
+    RunExecutionLifecycleFactory,
+    RunExecutionSessionOptions
+} from '../../run/run-types.ts';
+export type {
+    RunExecutionInvocation,
+    RunExecutionReply,
+    RunExecutionSession
+} from '../../run/execution-session-types.ts';
 export { parseFrozenMicrotestPolicy } from '../../run/frozen-run-policy.ts';
 export { createRandomRunSeed } from '../../run/run-seed.ts';
 export { parseRunSelection } from '../../run/run-selection-schema.ts';
 export { parseRunResult, parseRunnerError } from '../../run/run-result-schema.ts';
+export { workIdentityKey } from '../../engine/identity.ts';
+export type { PerTestResult, RunnerError } from '../../run/run-engine-primitives.ts';
 export { withFileModuleBoundary } from '../../run/file-module-boundary.ts';
 export type { FileModuleBoundary } from '../../run/run-types.ts';
 export type {
@@ -149,7 +164,6 @@ export type {
     BenchmarkBaselineOrchestrator,
     BenchmarkBaselineRunResult,
     RunReporterDeliveryResult,
-    RunOrchestrator,
     RunReproducibilityFacts,
     RunRequest,
     RunSeed,
@@ -162,6 +176,7 @@ export type {
     WorkUnit,
     WorkUnitMode
 } from '../../run/run-types.ts';
+export type { RunOrchestrator } from '../../run/run-orchestrator-types.ts';
 export type {
     CoverageOutput,
     NormalizedConfig,

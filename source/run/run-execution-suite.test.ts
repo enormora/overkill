@@ -6,6 +6,7 @@ import { testNode as supervisedRunTestNode } from './supervised-run-suite.test.t
 import { testNode as workerPoolTestNode } from './worker-pool-suite.test.ts';
 import { testNode as collectedLifecycleTestNode } from './collected-run-suite.test.ts';
 import { testNode as benchmarkMetadataTestNode } from './benchmark-report-metadata.test.ts';
+import { testNode as executionFailureTestNode } from './execution-failure.test.ts';
 
 export const testNode = createOverkillSuite({
     annotations: {},
@@ -15,6 +16,7 @@ export const testNode = createOverkillSuite({
     children: [
         benchmarkMetadataTestNode,
         collectedLifecycleTestNode,
+        executionFailureTestNode,
         attachments,
         childProcessOutboxTestNode,
         durationHistoryTestNode,

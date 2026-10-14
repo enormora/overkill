@@ -11,8 +11,8 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createMutationSandbox } from '../../packages/stryker-runner/mutation-sandbox.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
-import { createMutationExecution, type MutationExecution } from '../../packages/stryker-runner/mutation-execution.ts';
 import { runIfMain } from '../../test-support/run-if-main.ts';
+import { createMutationExecution, type MutationExecution } from './mutation-execution.test.ts';
 
 type ProjectDirectories = { readonly originalRoot: string; readonly cwd: string; };
 type ProcessModel = 'in-process' | 'supervised-process';

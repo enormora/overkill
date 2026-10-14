@@ -812,6 +812,31 @@ environment through fresh-state mode or the supervised child's lifecycle.
 Fresh-state mode changes module lifetime, not the configured profile's permission
 guarantees. Its in-process runner still supplies best-effort observations.
 
+Use the public runner's generic `createExecutionSession` lifecycle. Install its
+factory before configuration revalidation and user imports. Validate the complete
+collected plan before exact `WorkId` selection. Await case entry and completion
+around native case execution, including cleanup; completion may stop further
+serial admissions. Deliver native results and validated lifecycle data in memory.
+Ordinary reporter and persistence paths do not run in these sessions. Generic
+session contracts do not expose Stryker instrumentation or result types.
+
+The adapter installs an authenticated, versioned IPC receiver in Stryker's main
+process. Generated schema defaults distribute its endpoint to workers using the
+Stryker `10.0.0` worker marker. Registration must not wait for the dry run. Publish
+the original eligible catalog and coverage once, retain them by canonical sandbox
+root for the process lifetime, and fetch once per worker. Replacement workers
+must not perform another unmutated test collection to reconstruct the baseline.
+Keep transport and catalog failures distinct from absent mutant coverage.
+
+The receiver owns fresh invocation hosts and supervised execution children.
+Plugin-worker disconnect cancels their invocation and awaits child termination,
+including children stuck in synchronous code. Reused in-process code remains
+under Stryker's plugin-worker supervision. Receiver sockets must not keep Node
+alive; no additional broker process, reporter, launcher, or disk manifest is
+required. Reject conflicting publications and incompatible direct reuse of a
+loaded native ESM graph. Account for Stryker's sandbox file filters and static
+planner activation when validating and selecting against the original catalog.
+
 Keep console policy, uncaught-exception and unhandled-rejection observation,
 and async-leak checks around test execution. Stryker logging, transport, and
 adapter bootstrap operations belong outside the test policy boundary. An

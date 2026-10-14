@@ -5,7 +5,7 @@ import type { TestRunner } from '@stryker-mutator/api/test-runner';
 import type { MicrotestProfileConfig } from '../run/run.entry-point.ts';
 import type { createOverkillTestRunner } from './overkill-test-runner.ts';
 import type { SelectedMicrotestProfile } from './microtest-profile.ts';
-import type { OverkillRunnerOptions } from './runner-options.ts';
+import type { OverkillRunnerOptions } from './runner-settings-schema.ts';
 
 describe('Stryker profile initialization', function () {
     test('requires injected options and narrows selected profiles to microtests', function () {

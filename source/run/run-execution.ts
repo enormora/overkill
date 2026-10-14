@@ -6,7 +6,8 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import type { PreparedBenchmarkRun } from './benchmark-baseline-run.ts';
 import type { CollectionSource as RunCollectionSource } from './run-collection-source.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
-import type { RunCommand, RunOrchestrator } from './run-types.ts';
+import type { RunCommand } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 

@@ -1,9 +1,9 @@
 # `@overkill-dev/stryker-runner`
 
 Optional first-party Stryker `TestRunner` plugin for Node microtest profiles.
-Profile initialization freezes the mutation execution policy and owns a private
-execution session. Stryker dry runs, mutant execution, and capability reporting
-are not implemented yet.
+Supports dry runs, instrumented mutant coverage, filtered mutant runs, bail,
+deadlines, and environment reload reporting with Stryker `10.0.0`.
+Initialization freezes the mutation execution policy before importing tests.
 
 ```js
 export default {
@@ -41,13 +41,14 @@ process usage policies, timeouts, and the configured process model are preserved
 The original profile remains unchanged; the command records the override as
 `request.execution: { mode: 'serial' }`.
 
-Each plugin worker resolves policy once in a fresh, unmutated process. That
-process imports user configuration and its dependencies, discovers files, and
-returns immutable policy data. It imports no tests or custom engines and is
-terminated and reaped after success, failure, or disposal. User configuration
-does not enter the plugin worker's execution graph during initialization.
+Each plugin worker requests policy once from a fresh, unmutated process owned
+by Stryker's main process. It imports user configuration and its dependencies,
+discovers files, and returns immutable policy data. It imports no tests or
+custom engines. It is terminated and reaped after success, failure, or disposal.
+User configuration does not enter the plugin worker's execution graph during
+initialization.
 Repeated initialization shares one result, including failures. Replacement
-workers resolve independently; this is not shared campaign coordination.
+workers resolve policy independently.
 
 Stryker owns mutation selection. Exclude configuration, test definitions,
 definition helpers such as macros and suite fragments, and adapter code through
@@ -82,7 +83,7 @@ execution, or resources fail even when test identities would remain unchanged.
 Reporters, valid unrelated profiles, disabled coverage settings, and overridden
 scheduling do not affect the comparison.
 
-The private session executes serial cases in the selected profile's process
+The execution session runs serial cases in the selected profile's process
 model. `freshState` defaults to `false`: in-process execution retains its collected
 plan and transitive module state inside Stryker's reusable plugin worker. Suites
 must support repeated execution. Persistent memoization, singleton state, and
@@ -95,6 +96,37 @@ state at the cost of startup and collection. It does not reset files, databases,
 or external services. In-process permission enforcement remains best effort.
 Supervised profiles already use one fresh restricted child per invocation;
 `freshState` adds no extra host or stronger permissions there.
+
+| Execution              | `reloadEnvironment` |
+| ---------------------- | ------------------- |
+| Reused in-process ESM  | `false`             |
+| Fresh in-process state | `true`              |
+| Supervised process     | `true`              |
+
+Stryker replaces reused workers for requested reloads and static-mutant
+transitions. Direct reload requests against an already loaded native ESM graph
+return `Error`. Static activation precedes configuration revalidation and test
+imports; runtime activation follows unmutated collection.
+
+An automatic IPC receiver in Stryker's main process retains the original dry-run
+catalog and coverage across workers and replacements. No additional dry run,
+reporter, launcher, or disk manifest is required. Fresh invocation hosts and
+supervised children belong to that main process. Worker disconnects cancel
+their execution and reap the children. The receiver uses Stryker `10.0.0`'s
+worker marker and generated schema defaults; its sockets do not keep Node alive.
+
+Test IDs use structural work identities and project-relative paths. Every fresh
+collection validates the complete eligible catalog, selection metadata, and
+intentional skips before narrowing. Unknown IDs, catalog drift, unexpected
+skips, and empty mutant filters return `Error`. The adapter expands Stryker's
+sandbox file filters and preserves static activation for its static-mutant
+planner path unless `ignoreStatic` requests runtime execution.
+
+Counters retain their object identity across reused invocations. Test attribution
+includes awaited cleanup. Infrastructure errors take precedence over timeouts
+and confirmed kills; swallowed hit-limit exceptions still return `Timeout`.
+Ordinary reporters, records, duration history, V8 coverage, and artifact-file
+persistence are disabled for these memory-only execution sessions.
 
 Every invocation gets fresh scopes, observers, cleanup, and results. Failed
 collection remains cached in reused mode; fresh mode can collect again on the

@@ -40,6 +40,7 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-measurements.test.ts
     node source/integration-tests/run/runner-supervised-cancellation.test.ts
     node source/integration-tests/run/runner-mutation-execution.test.ts
+    node source/integration-tests/run/runner-stryker-lifecycle.test.ts
     node source/integration-tests/run/runner-collected-lifecycle.test.ts
     node source/integration-tests/run/runner-workloads.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts

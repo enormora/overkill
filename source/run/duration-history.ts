@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { PerTestResult, RunnerError, RunResult } from '../engine/run-result.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 import { RunCollectionError } from './run-errors.ts';
 import {
     durationHistoryIndexSchema,
@@ -451,6 +452,9 @@ export type TimedDurationHistoryResultInput = {
 export async function resultWithUpdatedDurationHistoryAndTiming(
     input: TimedDurationHistoryResultInput
 ): Promise<RunResult> {
+    if (currentExecutionSession() !== null) {
+        return resultWithResolvedTimingCollection(input.resolvedRun, input.result, input.timing);
+    }
     return resultWithResolvedTimingCollection(
         input.resolvedRun,
         await resultWithUpdatedDurationHistory(

@@ -11,7 +11,7 @@ import type {
     BenchmarkBaselineListCommand,
     BenchmarkBaselineRunResult,
     RunCommand,
-    RunOrchestrator
+    RunOperations
 } from './run-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 
@@ -19,7 +19,7 @@ type ExecutingBaselineVerb = 'apply' | 'bootstrap' | 'diff' | 'update';
 
 type BenchmarkBaselineInvocation = {
     readonly command: BenchmarkBaselineCommand;
-    readonly operations: Pick<RunOrchestrator, 'runWithReporterDelivery'>;
+    readonly operations: Pick<RunOperations<RunCommand>, 'runWithReporterDelivery'>;
     readonly options: RunInvocationTimingOptions;
     readonly verb: ExecutingBaselineVerb;
 };

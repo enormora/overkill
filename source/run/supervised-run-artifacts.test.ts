@@ -16,7 +16,8 @@ import {
 import type { NormalizedConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import { createNodeRunOrchestrator } from './run-orchestrator.ts';
-import type { RunCommand, RunOrchestrator } from './run-types.ts';
+import type { RunCommand } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 const integrationOutputFixturePath = 'source/integration-tests/run/fixtures/integration-output.test.ts';
 const integrationCaptureControlsOutputFixturePath =

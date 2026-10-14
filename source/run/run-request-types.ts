@@ -1,6 +1,6 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from '../engine/engine.ts';
-import type { CaseId } from '../engine/identity.ts';
+import type { CaseId, WorkId } from '../engine/identity.ts';
 
 export type RunEngineSelection = {
     readonly engine: Engine;
@@ -50,6 +50,10 @@ export type RunRuntimeDimensionFilter = {
 };
 
 type RunFilterByKind = {
+    readonly 'work-id': {
+        readonly id: WorkId;
+        readonly kind: 'work-id';
+    };
     readonly all: {
         readonly filters: NonEmptyReadonlyArray<RunFilter>;
         readonly kind: 'all';

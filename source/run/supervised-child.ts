@@ -1,5 +1,6 @@
 import type { Clock } from '@enormora/clock';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import { completeSupervisedExecutionSession, type ExecutionSessionPlanSelection } from './execution-session-child.ts';
 import type {
     RunResult,
     RunnerError,
@@ -31,10 +32,10 @@ import {
 } from './supervised-child-test-plan.ts';
 import {
     createSupervisedChildExecute,
+    createSupervisedResourceLifecycleTiming,
     createSupervisedChildReporter
 } from './supervised-child-execution.ts';
 import {
-    createSupervisedResourceLifecycleTiming,
     supervisedAssignedPlan,
     supervisedAssignedWork,
     type SupervisedAssignmentCommand,
@@ -237,7 +238,9 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     const runtimePolicy = createRuntimePolicy(input.command, input.host);
     const execute = createSupervisedChildExecute(input.wallClock);
     input.host.dropBodyReadPermission(input.command);
-    const testPlan = supervisedAssignedPlan(input.collectedPlan.testPlan, input.assignment);
+    const testPlan = input.command.kind === 'run-session'
+        ? input.collectedPlan.testPlan
+        : supervisedAssignedPlan(input.collectedPlan.testPlan, input.assignment);
     const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
     return await execute(testPlan, {
@@ -265,36 +268,37 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
 async function run(
     command: SupervisedRunCommand,
     host: SupervisedChildHost,
-    dependencies: SupervisedChildDependencies
-): Promise<void> {
+    dependencies: SupervisedChildDependencies,
+    select: ExecutionSessionPlanSelection | null
+): Promise<RunResult> {
     const wallClock = dependencies.createClock();
     const startedAtMs = wallClock.currentUnixEpochMilliseconds;
     const collectedPlan = await collect(command, host);
     const assignment = await host.receiveAssignment();
+    const selected = select === null
+        ? collectedPlan
+        : { ...collectedPlan, testPlan: await select(collectedPlan.testPlan, assignment) };
 
     if (supervisedAssignedWork(assignment).length === 0) {
-        sendRunResult(host, createEmptyAssignmentResult(collectedPlan.testPlan, wallClock));
-        return;
+        return createEmptyAssignmentResult(collectedPlan.testPlan, wallClock);
     }
 
-    sendRunResult(
-        host,
-        await runWithWorkerAttachments(
-            assignment.attachmentEndpoint,
-            null,
-            async function executeAttachmentAssignment() {
-                return await executeAssignment({
-                    assignment,
-                    collectedPlan,
-                    command,
-                    dependencies,
-                    host,
-                    startedAtMs,
-                    wallClock
-                });
-            }
-        )
+    const result = await runWithWorkerAttachments(
+        assignment.attachmentEndpoint,
+        null,
+        async function executeAttachmentAssignment() {
+            return await executeAssignment({
+                assignment,
+                collectedPlan: selected,
+                command,
+                dependencies,
+                host,
+                startedAtMs,
+                wallClock
+            });
+        }
     );
+    return result;
 }
 
 function sendFailure(error: unknown, host: SupervisedChildHost): void {
@@ -314,8 +318,15 @@ async function completeReceivedCommand(
 ): Promise<void> {
     if (command.kind === 'collect' || command.kind === 'collect-frozen') {
         await collect(command, host);
+    } else if (command.kind === 'run-session') {
+        const result = await completeSupervisedExecutionSession(command, function sendSessionData(data) {
+            host.send({ kind: 'execution-data', data });
+        }, async function executeSession(select) {
+            return await run(command, host, dependencies, select);
+        });
+        sendRunResult(host, result);
     } else {
-        await run(command, host, dependencies);
+        sendRunResult(host, await run(command, host, dependencies, null));
     }
 
     host.setExitCode(0);

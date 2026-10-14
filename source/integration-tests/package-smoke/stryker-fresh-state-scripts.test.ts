@@ -1,17 +1,23 @@
 export const strykerFreshStateScript = `
 {
 const { default: assert } = await import('node:assert/strict');
-const { fork } = await import('node:child_process');
 const { mkdir, writeFile } = await import('node:fs/promises');
 const { join } = await import('node:path');
-const { fileURLToPath } = await import('node:url');
-const { orchestrator, normalizeConfig, parseRunResult } = await import(process.argv[1]);
+const { pathToFileURL } = await import('node:url');
+const { orchestrator, normalizeConfig, restoreRunExecutionFailure } = await import(process.argv[1]);
 const { strykerValidationSchema } = await import(process.argv[3]);
-const adapter = process.argv[3];
-const host = new URL('./mutation-invocation-process.entry-point.js', adapter);
 const cwd = join(process.cwd(), 'fresh-host');
 await mkdir(cwd, {recursive:true});
 const engine = process.argv[2];
+const lifecycle = join(cwd, 'lifecycle.mjs');
+await writeFile(lifecycle,
+    'class Lifecycle { #selection; #completed = 0; #entered = 0;' +
+    'constructor(selection) {this.#selection = selection;} async select() {return this.#selection;}' +
+    'async beforeCases() {this.#completed = 0; this.#entered = 0;} async enterCase() {this.#entered++;}' +
+    'async completeCase() {this.#completed++; return "continue";}' +
+    'snapshot() {return {pid:process.pid,completed:this.#completed,entered:this.#entered};}' +
+    'async dispose() {this.#completed = -1;} }' +
+    'export async function createLifecycle(selection) {return new Lifecycle(selection);}');
 const seed = strykerValidationSchema.properties.overkill.default.seed;
 assert.match(seed, /^(?:0|[1-9][0-9]*)$/);
 await writeFile(join(cwd, 'state.cjs'),
@@ -41,24 +47,22 @@ const policy = await orchestrator.freezePolicy({
     moduleBoundary:null,source:{kind:'memory'},command:{config,cwd,request,engine:{kind:'default'}}
 });
 async function invocation(value, selection) {
-    const child = fork(fileURLToPath(host), ['--overkill-mutation-invocation'], {
-        cwd, serialization:'advanced',execArgv:[],stdio:['ignore','ignore','inherit','ipc']
+    const session = orchestrator.createExecutionSession({
+        command: {kind:'frozen-policy',policy,
+            invocation:{seed:{value:BigInt(value)},selection:{kind:'all'}},
+            reporting:{outputRenderer:config.outputRenderer,reporters:[]}},
+        lifecycle:{moduleUrl:pathToFileURL(lifecycle).href,exportName:'createLifecycle'},environment:'fresh-invocation'
     });
-    const closed = new Promise(resolve=>child.once('close',resolve));
     try {
-        return await new Promise((resolve,reject)=>{
-            child.once('error',reject);
-            child.once('exit',()=>reject(new Error('Host exited without result')));
-            child.once('message',message=>{
-                if(message.kind==='failure')reject(new Error(message.failure.message));
-                else {try {resolve(parseRunResult(message.result));}catch(error){reject(error);}}
-            });
-            child.send({kind:'run',policy,seed:{value:BigInt(value)},selection},error=>{if(error)reject(error);});
-        });
+        const reply = await session.run({data:selection,timeoutMilliseconds:30000,signal:null});
+        if(reply.kind==='failure')throw restoreRunExecutionFailure(reply.failure);
+        assert.equal(reply.kind,'result');
+        assert.equal(reply.data.completed,reply.result.perTest.length);
+        assert.equal(reply.data.entered,reply.result.perTest.length);
+        assert.throws(()=>process.kill(reply.data.pid,0));
+        return reply.result;
     } finally {
-        child.kill('SIGKILL');
-        await closed;
-        assert.throws(()=>process.kill(child.pid,0));
+        await session.dispose();
     }
 }
 for (const value of [seed, '900719925474099312345']) {

@@ -34,6 +34,7 @@ function collectedPlan(): CollectedRunPlan {
         files: [ {
             cases: [ 'first', 'second' ].map(function collectedCase(title) {
                 return {
+                    skipReason: null,
                     benchmark: null,
                     workloadParameters: null,
                     annotations,

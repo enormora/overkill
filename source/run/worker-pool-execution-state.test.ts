@@ -74,6 +74,7 @@ export function createCollectedPlan(): CollectedRunPlan {
                 file: integrationPath,
                 cases: [
                     {
+                        skipReason: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations,
@@ -116,6 +117,7 @@ export function createCollectedPlanWithMissingResult(): CollectedRunPlan {
                 cases: [
                     ...firstFile.cases,
                     {
+                        skipReason: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations,

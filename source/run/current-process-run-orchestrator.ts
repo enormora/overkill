@@ -1,99 +1,20 @@
 import type { Engine } from '../engine/engine.ts';
 import {
-    observeProcessIpcListeners,
-    observeProcessExit as observeNodeProcessExit
-} from './node-process-policy-observation.ts';
-import { readProcessEnvironment, readWebStorage } from './node-host-readers.ts';
-import {
-    createNodeRunCoordinator,
-    createNodeRunOrchestrator,
-    type NodeRunCoordinator,
-    type NodeRunOrchestratorInput
-} from './run-orchestrator.ts';
-import type { RunOrchestrator } from './run-types.ts';
-
-export type CurrentProcessRunOrchestratorDependencies = {
-    readonly discoverRunFilesWithProjectRoot: NodeRunOrchestratorInput['discoverRunFilesWithProjectRoot'];
-    readonly loadRunEngineModule: NodeRunOrchestratorInput['loadRunEngineModule'];
-    readonly loadRunTestModules: NodeRunOrchestratorInput['loadRunTestModules'];
-    readonly startSupervisedChild: NodeRunOrchestratorInput['startSupervisedChild'];
-    readonly startWorkerPoolHost: NodeRunOrchestratorInput['startWorkerPoolHost'];
-};
-
-function writeStdoutLine(line: string): void {
-    process.stdout.write(`${line}\n`);
-}
-
-function writeStderrLine(line: string): void {
-    process.stderr.write(`${line}\n`);
-}
-
-function writeStdout(chunk: Uint8Array): void {
-    process.stdout.write(chunk);
-}
-
-function writeStderr(chunk: Uint8Array): void {
-    process.stderr.write(chunk);
-}
+    createCurrentProcessRunInput,
+    type CurrentProcessRunOrchestratorDependencies
+} from './current-process-run-input.ts';
+import { createNodeRunCoordinator, createNodeRunOrchestrator, type NodeRunCoordinator } from './run-orchestrator.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 export function createCurrentProcessRunOrchestrator(
     defaultEngine: Engine,
     dependencies: CurrentProcessRunOrchestratorDependencies
 ): RunOrchestrator {
-    return createNodeRunOrchestrator({
-        defaultEngine,
-        discoverRunFilesWithProjectRoot: dependencies.discoverRunFilesWithProjectRoot,
-        loadRunEngineModule: dependencies.loadRunEngineModule,
-        loadRunTestModules: dependencies.loadRunTestModules,
-        startSupervisedChild: dependencies.startSupervisedChild,
-        startWorkerPoolHost: dependencies.startWorkerPoolHost,
-        observeIpcListeners(record) {
-            return observeProcessIpcListeners(process, record, new WeakSet());
-        },
-        observeProcessExit: observeNodeProcessExit,
-        node: {
-            arch: process.arch,
-            platform: process.platform,
-            version: process.versions.node
-        },
-        readEnvironment() {
-            return readProcessEnvironment(process);
-        },
-        readStorage(name) {
-            return readWebStorage(globalThis, name);
-        },
-        stderr: { write: writeStderr, writeLine: writeStderrLine },
-        stdout: { write: writeStdout, writeLine: writeStdoutLine }
-    });
+    return createNodeRunOrchestrator(createCurrentProcessRunInput(defaultEngine, dependencies));
 }
-
 export function createCurrentProcessRunCoordinator(
     defaultEngine: Engine,
     dependencies: CurrentProcessRunOrchestratorDependencies
 ): NodeRunCoordinator {
-    return createNodeRunCoordinator({
-        defaultEngine,
-        discoverRunFilesWithProjectRoot: dependencies.discoverRunFilesWithProjectRoot,
-        loadRunEngineModule: dependencies.loadRunEngineModule,
-        loadRunTestModules: dependencies.loadRunTestModules,
-        startSupervisedChild: dependencies.startSupervisedChild,
-        startWorkerPoolHost: dependencies.startWorkerPoolHost,
-        observeIpcListeners(record) {
-            return observeProcessIpcListeners(process, record, new WeakSet());
-        },
-        observeProcessExit: observeNodeProcessExit,
-        node: {
-            arch: process.arch,
-            platform: process.platform,
-            version: process.versions.node
-        },
-        readEnvironment() {
-            return readProcessEnvironment(process);
-        },
-        readStorage(name) {
-            return readWebStorage(globalThis, name);
-        },
-        stderr: { write: writeStderr, writeLine: writeStderrLine },
-        stdout: { write: writeStdout, writeLine: writeStdoutLine }
-    });
+    return createNodeRunCoordinator(createCurrentProcessRunInput(defaultEngine, dependencies));
 }

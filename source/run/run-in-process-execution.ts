@@ -8,10 +8,8 @@ import {
     type LocalExecutionOptions
 } from './run-local-execution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type {
-    ResolvedRun,
-    RunOrchestrator
-} from './run-types.ts';
+import type { ResolvedRun } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
 type LocalResolvedRun = ResolvedRun & {
