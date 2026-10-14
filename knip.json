@@ -9,6 +9,8 @@
         "source/run/node-command-line-runner.ts",
         "source/run/worker-pool-worker.ts",
         "source/reporters/null-reporter.ts",
+        "build-benchmark-html.js",
+        "source/reporters/benchmark-html-browser.entry-point.ts",
         "dependency-cruiser.config.js",
         "packtory.config.js",
         "tstyche.json"

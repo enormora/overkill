@@ -277,10 +277,35 @@ export type DefinedReporter<ReporterValue extends Reporter = Reporter> = Reporte
     readonly [reporterBrand]: true;
 };
 
+const reporterRequirementsBrand = Symbol.for('@overkill-dev/engine/reporter-requirements');
+type RequiredReporterDefinition<ReporterValue extends Reporter> = {
+    readonly createReporter: ReporterDefinition<ReporterValue>;
+    readonly validateRunFacts: (facts: RunFacts) => void;
+};
+type RequiredDefinedReporter = DefinedReporter & {
+    readonly [reporterRequirementsBrand]: (facts: RunFacts) => void;
+};
+
 export function defineReporter<ReporterValue extends Reporter>(
-    createReporter: ReporterDefinition<ReporterValue>
+    definition: ReporterDefinition<ReporterValue> | RequiredReporterDefinition<ReporterValue>
 ): DefinedReporter<ReporterValue> {
-    return Object.assign(createReporter, { [reporterBrand]: true as const });
+    if (typeof definition === 'function') {
+        return Object.assign(definition, { [reporterBrand]: true as const });
+    }
+    return Object.assign(definition.createReporter, {
+        [reporterBrand]: true as const,
+        [reporterRequirementsBrand]: definition.validateRunFacts
+    });
+}
+
+function hasReporterRequirements(reporter: DefinedReporter): reporter is RequiredDefinedReporter {
+    return Object.hasOwn(reporter, reporterRequirementsBrand);
+}
+
+export function validateReporterRunFacts(reporter: DefinedReporter, facts: RunFacts): void {
+    if (hasReporterRequirements(reporter)) {
+        reporter[reporterRequirementsBrand](facts);
+    }
 }
 
 export function isReporter(value: unknown): value is DefinedReporter {

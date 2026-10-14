@@ -116,8 +116,8 @@ pipeline. `orchestrator.bench.list` returns the resolved plan without executing
 bodies or acquiring resources. `bench.run` and `bench.runWithReporterDelivery`
 use structured measurement summaries and generated budget assertions. Explicit
 measurement regions, native collectors, and adaptive metric budgets are
-implemented; warmup, external-process measurement, browser collectors, and the
-dedicated HTML reporter remain later milestones.
+implemented; warmup, external-process measurement, browser collectors remain later milestones. The dedicated HTML reporter
+consumes recorded benchmark evidence through the final-result lifecycle.
 
 Current profiles admit serial execution with one lane, `maxConcurrency: 1`, and
 hedging off. Worker pools and supervised processes are supported; worker caps
@@ -735,3 +735,18 @@ JMH provides the strongest reminder that a benchmark harness must actively help 
 ## Sources
 
 - <https://github.com/openjdk/jmh>
+
+## Retained Reporting Evidence
+
+Benchmark runs attach versioned machine/process metadata to the final result.
+Performance baseline reports retain actual and expected observations, the
+existing adapter comparison outcome, proposed changes, completed writes, and
+optional typed chart metrics. The reporter reads this evidence without rerunning
+adapters or introducing comparison policy. Saved legacy reports remain readable.
+
+`ChartedPerformanceBaselineAdapter.describeMetrics` receives the calibrated
+actual observation and nullable existing expectation. Each declared metric has a
+name, unit, raw or explicitly described normalized scale, nullable actual value,
+and missing, point, or bounded-range reference. Values must be finite; ranges
+require at least one ordered bound. Adapters perform their own normalization.
+Presentation errors fail infrastructure reporting after valid baseline writes.

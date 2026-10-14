@@ -4,6 +4,7 @@
         { "path": "tsconfig.sources.json" },
         { "path": "tsconfig.unit-tests.json" },
         { "path": "tsconfig.integration-tests.json" },
-        { "path": "tsconfig.type-tests.json" }
+        { "path": "tsconfig.type-tests.json" },
+        { "path": "tsconfig.benchmark-html-browser.json" }
     ]
 }

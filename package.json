@@ -30,6 +30,7 @@
         "cmd-ts": "0.15.0",
         "convert-source-map": "2.0.0",
         "diff": "9.0.0",
+        "echarts": "6.1.0",
         "figures": "6.1.0",
         "hash-wasm": "4.12.0",
         "is-interactive": "2.0.0",
@@ -48,6 +49,7 @@
     },
     "devDependencies": {
         "@enormora/eslint-config-base": "0.0.51",
+        "@enormora/eslint-config-browser": "0.0.29",
         "@enormora/eslint-config-node": "0.0.37",
         "@enormora/eslint-config-test-base": "0.0.21",
         "@enormora/eslint-config-typescript": "0.0.58",
@@ -56,8 +58,9 @@
         "@overkill-dev/assert": "0.0.42",
         "@overkill-dev/doubles": "0.0.40",
         "@overkill-dev/engine": "0.0.50",
-        "@packtory/cli": "0.0.120",
+        "@packtory/cli": "0.0.122",
         "@packtory/github-release-gate": "0.0.81",
+        "@rspack/core": "2.2.9",
         "@types/convert-source-map": "2.0.3",
         "@types/node": "26.6.5",
         "c8": "12.0.0",
@@ -65,15 +68,11 @@
         "eslint": "10.7.0",
         "jscpd": "5.4.1",
         "knip": "6.41.0",
-        "patch-package": "8.0.1",
         "rust-just": "1.57.0",
         "tstyche": "7.2.5",
         "typescript": "6.0.3"
     },
     "engines": {
         "node": "^26.9.0"
-    },
-    "scripts": {
-        "postinstall": "patch-package"
     }
 }

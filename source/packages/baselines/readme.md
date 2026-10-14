@@ -35,3 +35,18 @@ export const config = defineConfig({
 Performance JSON files live in its `performance` subdirectory. Each identity
 includes profile, adapter, full work identity, and machine class. Other profiles,
 machine classes, and baseline subtypes remain separate.
+
+## Benchmark chart metadata
+
+Implement `describeMetrics({ actual, expected })` on a
+`ChartedPerformanceBaselineAdapter` to declare baseline chart values. Each
+metric supplies `name`, `unit`, `scale`, nullable `actual`, and an `expected`
+reference tagged `missing`, `value`, or `range`. Raw scales use `{ kind: 'raw' }`;
+normalized scales also provide a description. Point references supply `value`;
+ranges supply nullable `minimum` and `maximum` with at least one ordered bound.
+
+The adapter owns extraction and normalization. The reporter uses the recorded
+comparison outcome and never derives pass/fail from chart values. Existing
+adapters need no migration. Invalid chart metadata becomes an infrastructure
+error after otherwise valid baseline operations, preserving completed writes.
+`readPerformanceBaselineReport(result)` reads current and legacy retained reports.

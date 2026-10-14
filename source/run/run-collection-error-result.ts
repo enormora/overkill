@@ -8,7 +8,7 @@ import {
     resultWithTimingCollection,
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
-import { resolveRunReporters, type RunRuntimePolicy } from './run-support.ts';
+import { resolveRunReporters, withRunErrorMetadata, type RunRuntimePolicy } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunCommand } from './run-types.ts';
 
@@ -143,5 +143,5 @@ export async function reportCollectionErrorResult(
         timing
     );
 
-    return await reportCollectionResultWithDelivery(reporterDelivery, timedResult);
+    return await reportCollectionResultWithDelivery(reporterDelivery, await withRunErrorMetadata(timedResult, command));
 }

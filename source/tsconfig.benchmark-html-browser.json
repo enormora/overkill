@@ -1,0 +1,23 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "skipLibCheck": true,
+        "lib": [
+            "ES2025",
+            "DOM"
+        ],
+        "types": [
+            "node"
+        ],
+        "rootDir": "..",
+        "tsBuildInfoFile": "../target/buildcache/benchmark-html-browser.tsbuildinfo"
+    },
+    "references": [
+        {
+            "path": "./tsconfig.sources.json"
+        }
+    ],
+    "files": [
+        "reporters/benchmark-html-browser.entry-point.ts"
+    ]
+}

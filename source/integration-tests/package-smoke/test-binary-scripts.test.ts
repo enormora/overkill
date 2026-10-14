@@ -447,7 +447,7 @@ export const expectedRootImportOutput = [
 
 export const expectedStandardSubpathImportOutput = [
     '["ConfigError","defineConfig","loadConfig","normalizeConfig"]',
-    '["createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineProgressReporter","createLineReporter","createLineTreeReporter"]',
+    '["createBenchmarkHtmlReporter","createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineProgressReporter","createLineReporter","createLineTreeReporter"]',
     '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
     '["throwingTest"]',
     '["ResourceLifecycleError","composeRuntimeContext","composeRuntimes","createLocalHttpServiceResource","createLocalProcessServiceResource","createSimulatedHttpServerResource","createTemporaryDirectoryResource","defineLocalServiceResource","defineResource","defineRuntime","defineRuntimeMatrix","startRuntime","withFailureArtifacts","withResource","withResources","withRuntime"]',
@@ -476,7 +476,7 @@ export const expectedStandardSubpathImportOutput = [
     'true',
     '["asyncMeasurementStrategy","availableMetric","benchmark","defaultSamplingPolicy","defineMacro","defineParameterizedTestBody","measurementStrategy","memoryCollector","processCpuCollector","processResourceCollector","runtimeHealthCollector","skippedTest","suite","table","test","threadCpuCollector","unavailableMetric","wallClockMeasurement","workload"]',
     '[]',
-    '[]',
+    '["readPerformanceBaselineReport"]',
     ''
 ]
     .join('\n');

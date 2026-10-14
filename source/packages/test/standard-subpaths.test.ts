@@ -108,6 +108,7 @@ function reporterSubpathOutputs(): readonly string[] {
 
 async function assertReporterSubpath(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(sortedKeys(reportersSubpath), [
+        'createBenchmarkHtmlReporter',
         'createBriefReporter',
         'createDotReporter',
         'createGithubActionsOutputRenderer',

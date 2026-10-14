@@ -8,11 +8,11 @@ const provenanceSchema = z.strictObject({
     scope: z.enum([ 'region', 'thread', 'process', 'runtime', 'custom' ]),
     unit: z.string().min(1)
 });
-const readingSchema = z.discriminatedUnion('availability', [
+export const metricReadingSchema = z.discriminatedUnion('availability', [
     z.strictObject({ availability: z.literal('available'), value: z.number(), provenance: provenanceSchema }),
     z.strictObject({ availability: z.literal('unavailable'), reason: z.string().min(1), provenance: provenanceSchema })
 ]);
-const returnedMetricsSchema = z.record(z.string().min(1), z.union([ z.number(), readingSchema ]));
+const returnedMetricsSchema = z.record(z.string().min(1), z.union([ z.number(), metricReadingSchema ]));
 
 export type MetricObservations = {
     readonly validate: (reading: MetricReading) => void;

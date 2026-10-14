@@ -12,6 +12,7 @@ import {
 } from './capability-policy.ts';
 import type { RunCommand, RunEngineFacts, RunRequest, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import { withBenchmarkRunMetadata, withBenchmarkErrorMetadata } from './benchmark-report-metadata.ts';
 
 import {
     readDurationHistoryIndex,
@@ -62,7 +63,14 @@ export async function finalizeResultWithDurationHistory(
     result: RunResult,
     timing: DurationHistoryTimingMeasurement | null = null
 ): Promise<RunResult> {
-    const attachmentResult = await (currentAttachmentCoordinator()?.finalize(result) ?? result);
+    let attachmentResult = await (currentAttachmentCoordinator()?.finalize(result) ?? result);
+    if (resolvedRun.facts.execution.testFamily === 'benchmark') {
+        attachmentResult = withBenchmarkRunMetadata(
+            attachmentResult,
+            resolvedRun.facts,
+            Number(dependencies.wallClock.currentMonotonicMicroseconds)
+        );
+    }
     return await resultWithUpdatedDurationHistoryAndTiming({
         completedAtMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
         resolvedRun,
@@ -207,3 +215,11 @@ export function createRunRuntimePolicy(
 }
 
 export const runWithWorkerAttachments: typeof executeWorkerAttachments = executeWorkerAttachments;
+
+export async function withRunErrorMetadata(result: RunResult, command: RunCommand): Promise<RunResult> {
+    const profile = command.config.profiles[command.request.profile];
+    if (profile?.testFamily !== 'benchmark') {
+        return result;
+    }
+    return withBenchmarkErrorMetadata(result, command);
+}

@@ -14,6 +14,11 @@ const packageMetadata = {
     engines: rootPackageJson.engines
 };
 
+const benchmarkHtmlClientAsset = {
+    inputFilePath: path.join(projectFolder, 'target/benchmark-html/client.txt'),
+    targetFilePath: 'reporters/benchmark-html-assets/client.txt'
+};
+
 const packageFilterEnvironmentVariable = 'PACKTORY_INCLUDED_PACKAGES';
 
 function packageFilter() {
@@ -246,6 +251,7 @@ export const config = {
                 '@overkill-dev/engine',
                 '@overkill-dev/property',
                 '@overkill-dev/output-renderer-github-actions',
+                '@overkill-dev/reporter-benchmark-html',
                 '@overkill-dev/reporter-brief',
                 '@overkill-dev/reporter-dot',
                 '@overkill-dev/reporter-line',
@@ -303,6 +309,18 @@ export const config = {
             name: 'reporter-dot',
             description: 'Compact Overkill dot progress reporter.',
             bundlePeerDependencies: [ '@overkill-dev/engine' ]
+        },
+        {
+            name: 'reporter-benchmark-html',
+            description: 'Interactive offline HTML reports for Overkill benchmarks.',
+            bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/baselines' ],
+            additionalFiles: [
+                {
+                    inputFilePath: path.join(projectFolder, 'source/packages/reporter-benchmark-html/readme.md'),
+                    targetFilePath: 'readme.md'
+                },
+                benchmarkHtmlClientAsset
+            ]
         },
         {
             name: 'reporter-opentelemetry',

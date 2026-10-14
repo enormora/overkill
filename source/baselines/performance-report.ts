@@ -1,13 +1,17 @@
 import { z } from 'zod/v4';
-import { snapshotJson } from '../attachments/json-snapshot.ts';
+import { runJsonArtifact } from '../attachments/run-json-artifact.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import type { ComparableCalibration } from '../packages/run/benchmark-calibration.entry-point.ts';
 import { comparableCalibrationSchema } from '../bench/calibration-schema.ts';
+import { performanceEvidenceSchema, type PerformanceBaselineEvidence } from './performance-presentation.ts';
 import { storedPerformanceBaselineSchema } from './performance-schema.ts';
 import type { BaselineChange, BaselineWriteOutcome } from './performance-baseline.ts';
 
+const reportVersion = 2;
 export type PerformanceBaselineReport = {
+    readonly version: typeof reportVersion;
+    readonly comparisons: readonly PerformanceBaselineEvidence[];
     readonly calibration: ComparableCalibration;
     readonly changes: readonly BaselineChange[];
     readonly writeOutcome: BaselineWriteOutcome;
@@ -27,41 +31,33 @@ const writeOutcomeSchema: z.ZodType<BaselineWriteOutcome> = z.discriminatedUnion
     z.strictObject({ changes: z.array(changeSchema), kind: z.literal('written') }),
     z.strictObject({ kind: z.literal('failed'), writtenChanges: z.array(changeSchema) })
 ]);
-const reportSchema: z.ZodType<PerformanceBaselineReport> = z.strictObject({
+const legacyReportSchema = z.strictObject({
     calibration: comparableCalibrationSchema,
     changes: z.array(changeSchema),
     writeOutcome: writeOutcomeSchema
 });
+const reportSchema: z.ZodType<PerformanceBaselineReport> = z.union([
+    legacyReportSchema.transform(function upgradeReport(report): PerformanceBaselineReport {
+        return { ...report, version: reportVersion, comparisons: [] };
+    }),
+    legacyReportSchema.extend({ version: z.literal(reportVersion), comparisons: z.array(performanceEvidenceSchema) })
+]);
 const reportMediaType = 'application/vnd.overkill.performance-baselines+json';
 
 type PerformanceReportArtifactInput = {
     readonly capturedAtMicroseconds: number;
     readonly maxBytes: number;
-    readonly report: PerformanceBaselineReport;
+    readonly report: PerformanceBaselineReport | z.infer<typeof legacyReportSchema>;
     readonly result: RunResult;
 };
 
 export function performanceReportArtifact(input: PerformanceReportArtifactInput): RuntimeAttachmentArtifact {
-    const snapshot = snapshotJson(input.report, input.maxBytes);
-    if (snapshot === null) {
-        throw new Error('Performance baseline report exceeds the configured artifact byte limit.');
-    }
-    const sequence = input.result.artifacts.reduce(function nextSequence(next, artifact) {
-        return Math.max(next, artifact.id.sequence + 1);
-    }, 0);
-    return {
-        id: { attempt: null, runtimes: [], scope: { kind: 'run' }, sequence, subtype: 'attachment', workload: null },
-        payload: {
-            capture: 'opt-in',
-            capturedAtMicroseconds: input.capturedAtMicroseconds,
-            content: { byteLength: Buffer.byteLength(snapshot.encoded), kind: 'json', value: snapshot.value },
-            kind: 'runtime-attachment',
-            mediaType: reportMediaType,
-            name: 'performance-baselines',
-            producer: { kind: 'case' }
-        },
-        source: 'native'
-    };
+    return runJsonArtifact({
+        ...input,
+        name: 'performance-baselines',
+        mediaType: reportMediaType,
+        value: input.report
+    });
 }
 
 export function readPerformanceBaselineReport(result: RunResult): PerformanceBaselineReport | null {

@@ -1,5 +1,10 @@
 export type {
     BaselineDiagnostic,
+    ChartedPerformanceBaselineAdapter,
+    PerformanceMetricComparison,
+    PerformanceMetricReference,
+    PerformanceMetricScale,
+    PerformanceBaselineOperations,
     BaselineJson,
     BenchmarkBaselinePolicy,
     PerformanceBaselineAdapter,
@@ -19,3 +24,5 @@ export type {
     BaselineWriteOutcome,
     StoredPerformanceBaseline
 } from '../../baselines/performance-baseline.ts';
+export { readPerformanceBaselineReport } from '../../baselines/performance-report.ts';
+export type { PerformanceBaselineReport } from '../../baselines/performance-report.ts';

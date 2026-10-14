@@ -2764,3 +2764,14 @@ sample explicitly defines them.
   settled helper names for higher-layer families; owning
   documentation defines the package home and concept-level semantics, but
   this index does not own their full signatures
+
+## Benchmark HTML Reporting
+
+`BenchmarkHtmlReporterOptions`, `BenchmarkHtmlReporterSinks`, and
+`createBenchmarkHtmlReporter` are exported by the benchmark HTML leaf package
+and the standard reporters subpath. `ChartedPerformanceBaselineAdapter`,
+`PerformanceMetricComparison`, `PerformanceMetricReference`, and
+`PerformanceMetricScale` are exported by the baselines package.
+
+Canonical contracts: [Benchmark HTML Rendering](../architecture/reporters.md#benchmark-html-rendering)
+and [Retained Reporting Evidence](../authoring/benchmarking.md#retained-reporting-evidence).

@@ -241,15 +241,13 @@ fallback.
 
 ## Registration
 
-Two attachment surfaces:
-
-- **Programmatic** - `runner.run({ reporters: [reporterA, reporterB] })`
-  accepts already-instantiated reporter objects
-- **Configuration-driven** - `overkill.config.ts` imports reporter factories or
-  reporter values directly and passes instantiated reporters to the runner
-
-Both forms produce the same `Reporter[]` array; the registration
-mechanism is presentation.
+Project configuration and programmatic execution register `DefinedReporter`
+factories. The runner creates a fresh instance for each delivery. Factories may
+opt into synchronous run-fact validation through the object form of
+`defineReporter({ createReporter, validateRunFacts })`; the existing function
+form remains valid. Orchestration validates the selected profile before
+collection or worker startup. Direct engine execution validates supplied run
+facts before execution.
 
 Top-level config reporters are profile fallbacks. Profile-specific reporters
 replace the top-level list for that selected run. They are not merged, and
@@ -277,9 +275,8 @@ convention and no package-name lookup magic in the settled concept.
 standard users do not need to import each built-in reporter from its leaf
 package by default. The current standard distribution exports
 `createLineReporter`, `createLineTreeReporter`, `createLineProgressReporter`,
-`createBriefReporter`, `createDotReporter`, and
-`createGithubActionsOutputRenderer`; benchmark-specific and artifact reporters
-arrive with their leaf packages.
+`createBriefReporter`, `createDotReporter`, `createGithubActionsOutputRenderer`,
+and `createBenchmarkHtmlReporter`. Each factory also ships in its leaf package.
 
 ## Multi-Reporter Composition
 
@@ -529,3 +526,26 @@ to render nonsense.
 - [Failure Artifacts](../authoring/failure-artifacts.md) - the artifacts reporters consume
 - [Types Index](../reference/types-index.md) - `RunFacts`, `RunResult`, `TestOutcome`,
   `RunnerError`, `CaseId`, `TestDebugArtifact`
+
+## Benchmark HTML Rendering
+
+`createBenchmarkHtmlReporter({ outputFile })` from
+`@overkill-dev/reporter-benchmark-html` or `@overkill-dev/test/reporters` requires
+a benchmark profile and writes one offline HTML file atomically. Relative paths
+resolve when the factory is called. Tables remain readable without JavaScript;
+embedded ECharts views provide workload selection, zoom, and tooltips.
+
+The report presents workload/runtime metrics, retained-sample histograms and
+empirical box summaries, workload comparisons, recorded budget intervals and
+thresholds, adapter-declared baseline point/range charts, and recorded
+machine/process metadata. Descriptive sample quantiles are not confidence
+intervals. Missing raw samples disable distribution views with an explicit
+reason. The HTML embeds chart-ready summaries, not individual samples.
+
+Benchmark producers retain versioned run metadata and baseline comparison
+artifacts. Baseline adapters may declare chart values, units, reference ranges,
+and raw/normalized scale labels through `describeMetrics`. Comparison policy and
+normalization remain adapter-owned. Existing adapters and legacy reports retain
+structured diagnostics without invented chart metadata. Chart metadata errors
+are infrastructure errors after valid baseline operations; completed writes
+remain visible. The reporter retains the 100 ms callback timeout.
