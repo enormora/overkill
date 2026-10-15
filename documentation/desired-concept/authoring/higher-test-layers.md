@@ -742,6 +742,10 @@ test nodes in selected files remain subject to collection-time validation.
   identity at their lifecycle boundaries. Preserve namespace and counter-object
   identities retained by instrumented modules in a reused graph. Clear active
   mutation and test identity when an invocation ends, including error paths.
+  Partial setup and reset failures still attempt every independent cleanup
+  operation, including clearing hit-limit state and the activation environment
+  variable. Incomplete reset is an infrastructure error; never replace retained
+  objects to recover. Preserve execution and disposal failures when both occur.
 - During the dry run, set Stryker's `currentTestId` at the local, awaited case
   start boundary and clear it after case completion, including scope cleanup.
   Reads outside a case remain in Stryker's static coverage bucket. Parent-side
