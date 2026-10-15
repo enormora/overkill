@@ -15,6 +15,7 @@ import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
 import { frozenSupervisedPolicy, type SupervisedChildCommand } from './supervised-protocol.ts';
+import { runExecutionFailure } from './execution-failure.ts';
 
 export type SupervisedChildTestPlanDependencies = {
     readonly discoverRunFiles: RunTestPlanInput['discoverRunFiles'];
@@ -64,7 +65,9 @@ export function runnerErrorFromSupervisedChildFailure(error: unknown): RunnerErr
         attributedToAttempt: null,
         attributedTo: null,
         attributedToWork: null,
-        cause: error,
+        cause: error instanceof AggregateError
+            ? { cause: runExecutionFailure(error.cause), errors: error.errors.map(runExecutionFailure) }
+            : error,
         diagnostics: [],
         message: error instanceof Error ? error.message : String(error),
         subtype: 'loader'

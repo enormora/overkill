@@ -13,6 +13,7 @@ const modeSchema = z.enum([
     'complete',
     'snapshot',
     'dispose',
+    'before-and-dispose',
     'late-result',
     'late-failure',
     'duplicate-data',
@@ -69,7 +70,7 @@ export async function createSessionLifecycle(data: JsonValue): Promise<RunExecut
     const events: string[] = [];
     function visit(phase: string): void {
         events.push(phase);
-        if (mode === phase) {
+        if (mode === phase || mode === 'before-and-dispose' && [ 'before', 'dispose' ].includes(phase)) {
             throw new Error(`Lifecycle ${phase} failed.`);
         }
     }
