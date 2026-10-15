@@ -175,6 +175,7 @@ export type {
     ProjectMeasuredProcessUsage,
     ProjectMicrotestExecution,
     ProjectMicrotestProfileConfig,
+    ProjectPropertyProfileConfig,
     ProjectProfileFiles,
     ProjectProfileConfig,
     ProjectProfilesConfig,

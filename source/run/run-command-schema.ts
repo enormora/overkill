@@ -1,10 +1,12 @@
 import { z } from 'zod/v4';
+import { propertyPolicySchema } from '../config/property-policy.ts';
 
 export const hostProcessSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('direct') }),
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
 export const executionCommandFields = {
+    propertyPolicy: propertyPolicySchema.nullable().default(null),
     retryPolicy: z
         .strictObject({
             artifacts: z.enum([ 'first-failure-and-final', 'last-failure-and-final', 'all' ]),
@@ -55,7 +57,7 @@ export const executionCommandFields = {
         title: z.string()
     }),
     scheduling: z.enum([ 'concurrent', 'serial' ]),
-    testFamily: z.enum([ 'benchmark', 'integration', 'microtest' ]),
+    testFamily: z.enum([ 'benchmark', 'integration', 'microtest', 'property' ]),
     timeoutMilliseconds: z.number()
 };
 

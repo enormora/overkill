@@ -19,6 +19,7 @@ type RunEngineResolverDependencies = {
 };
 
 const engineMethodNames = [
+    'createPropertyTestCase',
     'createRoot',
     'createSuite',
     'createTable',

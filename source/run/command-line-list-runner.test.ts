@@ -118,6 +118,7 @@ function caseFactsFromPlan(testPlan: TestPlan): ResolvedRun['facts']['cases'] {
         return {
             annotations: { constructorName: 'Object', entries: [], kind: 'object', truncation: null },
             controls: { constructorName: 'Object', entries: [], kind: 'object', truncation: null },
+            propertyPolicy: null,
             fileSet: null,
             id: testCase.id,
             workId: testCase.workId

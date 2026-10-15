@@ -75,6 +75,7 @@ export function createCollectedPlan(): CollectedRunPlan {
                 cases: [
                     {
                         skipReason: null,
+                        property: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations,
@@ -118,6 +119,7 @@ export function createCollectedPlanWithMissingResult(): CollectedRunPlan {
                     ...firstFile.cases,
                     {
                         skipReason: null,
+                        property: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations,
@@ -196,6 +198,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                propertyPolicy: null,
                 attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',

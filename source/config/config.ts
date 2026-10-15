@@ -10,6 +10,8 @@ import {
     workerPoolProjectExecution,
     type Config as ParsedProjectConfig,
     type ProjectBenchmarkProfileConfig,
+    type ProjectPropertyProfileConfig as PropertyProfileInput,
+    type ParsedPropertyProfileConfig,
     type ProjectCoverageOutput as ParsedProjectCoverageOutput,
     type ProjectCoveragePolicy as ParsedProjectCoveragePolicy,
     type ProjectCoverageSources as ParsedProjectCoverageSources,
@@ -32,6 +34,7 @@ import type {
     IntegrationExecution,
     IntegrationProfileConfig,
     MicrotestProfileConfig,
+    PropertyProfileConfig,
     ProfileConfig,
     ProfilesConfig,
     NormalizedConfig,
@@ -98,7 +101,9 @@ export type ProjectCoveragePolicy = ParsedProjectCoveragePolicy;
 export type ProjectCoverageSources = ParsedProjectCoverageSources;
 export type ProjectCoverageThresholds = ParsedProjectCoverageThresholds;
 export type ProjectProfileFiles = ParsedProjectProfileFiles;
-type ProjectTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
+export type ProjectPropertyProfileConfig = PropertyProfileInput;
+type StandardTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
+type ProjectTestProfileConfig = ProjectPropertyProfileConfig | StandardTestProfileConfig;
 export type ProjectProfileConfig = ProjectBenchmarkProfileConfig | ProjectTestProfileConfig;
 export type ProjectProfilesConfig = Readonly<Record<string, ProjectProfileConfig>>;
 export type ProjectProcessBudgets = ParsedProjectProcessBudgets;
@@ -464,7 +469,32 @@ function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): Benc
     };
 }
 
-function normalizeProfile(profile: ProjectProfileConfig, configPath: string | null): ProfileConfig {
+function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): PropertyProfileConfig {
+    const timeouts = normalizeTimeouts(profile.timeouts, {
+        collectionMilliseconds: 2000,
+        softMilliseconds: 1000,
+        hardMilliseconds: 2000
+    });
+    assertValidTimeouts(timeouts);
+    return {
+        execution: normalizeMicrotestExecution(profile.execution),
+        files: normalizeRequiredProfileFiles(profile.files),
+        reporters: normalizeReporters(profile.reporters),
+        processUsage: normalizeProcessUsage(profile.processUsage),
+        property: profile.property,
+        testFamily: 'property',
+        timings: normalizeTimings(profile.timings),
+        timeouts
+    };
+}
+
+function normalizeProfile(
+    profile: NonNullable<ParsedProjectConfig['profiles']>[string],
+    configPath: string | null
+): ProfileConfig {
+    if (profile.testFamily === 'property') {
+        return normalizePropertyProfile(profile);
+    }
     if (profile.testFamily === 'benchmark') {
         return normalizeBenchmarkProfile(profile);
     }
@@ -481,7 +511,7 @@ function defaultMicrotestProfile(): MicrotestProfileConfig {
 }
 
 function normalizeConfiguredProfiles(
-    profiles: ProjectProfilesConfig | undefined,
+    profiles: ParsedProjectConfig['profiles'],
     configPath: string | null
 ): ProfilesConfig {
     const normalizedProfiles: Record<string, ProfileConfig> = {};
@@ -499,7 +529,7 @@ function normalizeConfiguredProfiles(
     return normalizedProfiles;
 }
 
-function normalizeConfigForOrigin(parsedConfig: Config, configPath: string | null): NormalizedConfig {
+function normalizeConfigForOrigin(parsedConfig: ParsedProjectConfig, configPath: string | null): NormalizedConfig {
     return {
         loader: parsedConfig.loader ?? defaultLoader,
         outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
@@ -509,9 +539,9 @@ function normalizeConfigForOrigin(parsedConfig: Config, configPath: string | nul
     };
 }
 
-function parseConfig(configValue: unknown, configPath: string | null): Config {
+function parseConfig(configValue: unknown, configPath: string | null): ParsedProjectConfig {
     try {
-        const parsedConfig: Config = parse(projectConfigSchema, configValue);
+        const parsedConfig: ParsedProjectConfig = parse(projectConfigSchema, configValue);
 
         return parsedConfig;
     } catch (error: unknown) {

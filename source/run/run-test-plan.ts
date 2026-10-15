@@ -1,6 +1,7 @@
 import type { Engine } from '../engine/engine.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { resolveTestPlanPropertyPolicy } from './property-collection.ts';
+import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import {
     withDefinitionLocationCapture,
     type DefinitionLocationCapture
@@ -11,11 +12,14 @@ import type {
     DirectEntrypointRunCollectionSource,
     RunCollectionSource,
     RunCollectionRoot,
-    RunTestFamily
+    RunTestFamily,
+    PropertyPolicy
 } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
+
+type TestPlan = ReturnType<Engine['createTestPlan']>;
 
 export type RunTestPlanCollectionSource = RunCollectionSource;
 
@@ -89,4 +93,24 @@ export async function createRunTestPlan(input: RunTestPlanInput): Promise<TestPl
 
 export async function createRunTestPlanFromFiles(input: RunTestPlanFromFilesInput): Promise<TestPlan> {
     return await createRunTestPlanFromDiscoveredFiles(input);
+}
+
+type TestPlanCollectionPolicy = {
+    readonly testFamily: RunTestFamily;
+    readonly propertyPolicy: PropertyPolicy | null;
+    readonly timeoutMilliseconds: number;
+};
+
+export function resolveTestPlanCollectionPolicy(
+    testPlan: TestPlan,
+    policy: TestPlanCollectionPolicy
+): TestPlan {
+    assertTestPlanMatchesTestFamily(testPlan, policy.testFamily);
+    if (policy.testFamily !== 'property') {
+        return testPlan;
+    }
+    if (policy.propertyPolicy === null) {
+        throw new RunCollectionError('Property collection requires profile policy.', { cause: null }, 'loader');
+    }
+    return resolveTestPlanPropertyPolicy(testPlan, policy.propertyPolicy, policy.timeoutMilliseconds);
 }

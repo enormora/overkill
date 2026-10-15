@@ -39,7 +39,7 @@ export async function createCommandLineConfig(
 }
 
 function listProfile(profile: ProfileConfig): ProfileConfig {
-    if (profile.testFamily !== 'microtest') {
+    if (profile.testFamily !== 'microtest' && profile.testFamily !== 'property') {
         return profile;
     }
 

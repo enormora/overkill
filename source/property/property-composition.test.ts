@@ -14,6 +14,8 @@ import { defineResource, defineRuntime, withResource, withRuntime } from '../pac
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
 import { stampTestNodeFamily } from '../engine/test-node.ts';
+import { resolveTestPlanCollectionPolicy } from '../run/run-test-plan.ts';
+import { defaultPropertyPolicy } from '../config/property-policy.ts';
 import { property, withProperties } from './property-authoring.ts';
 
 function planFor(node: TestNode): TestPlan {
@@ -46,6 +48,29 @@ function assertNestedPropertyDeclaration(scope: TestScope, planned: TestPlanCase
 }
 
 export const testNode = suite('property composition', [
+    test('property profiles reject resource descriptors before acquisition', function (scope) {
+        let acquisitions = 0;
+        const resource = defineResource({
+            name: 'fixture',
+            scope: 'per-case',
+            requirements: [],
+            acquire() {
+                acquisitions += 1;
+                return { value: 1 };
+            },
+            dispose: null
+        });
+        const plan = planFor(test('resource property', withProperties(withResource(resource, unexpectedBody))));
+        scope.assert.throws(function collectPropertyResource() {
+            resolveTestPlanCollectionPolicy(plan, {
+                testFamily: 'property',
+                propertyPolicy: defaultPropertyPolicy,
+                timeoutMilliseconds: 1000
+            });
+        }, { message: 'Run profile "property" cannot run test cases with resource descriptors.' });
+        scope.assert.equal(acquisitions, 0);
+        return scope.assert.collect();
+    }),
     test('resource wrapper orders preserve declarations and prevent acquisition', async function (scope) {
         let acquisitions = 0;
         const resource = defineResource({
@@ -63,8 +88,8 @@ export const testNode = suite('property composition', [
             generator: unexecutedGenerator<number>(),
             test: unexpectedBody
         });
-        if (firstClass.execution.kind !== 'body' || firstClass.execution.bodyMode !== 'builder') {
-            throw new Error('Expected a builder property body.');
+        if (firstClass.execution.kind !== 'body' || firstClass.execution.bodyMode !== 'property') {
+            throw new Error('Expected a property body.');
         }
         const bodies: readonly TestBody[] = [
             withResource(resource, withProperties(unexpectedBody)),

@@ -54,7 +54,7 @@ export const workerPoolHostCommandSchema: z.ZodType<WorkerPoolHostCommand> = z.d
         options: z.strictObject({
             cwd: z.string(),
             hostProcess: hostProcessSchema,
-            testFamily: z.enum([ 'benchmark', 'microtest', 'integration' ]),
+            testFamily: z.enum([ 'benchmark', 'microtest', 'integration', 'property' ]),
             workerCount: z.number().int().positive(),
             workerLifecycle: z.enum([ 'fresh-worker-per-unit', 'reuse' ])
         })

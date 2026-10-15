@@ -126,6 +126,7 @@ function defaultCoveragePolicy(overrides: Partial<CoveragePolicy> = {}): Coverag
 export function testRunExecutionFacts(command: RunCommand, profile: TestProfileConfig): RunExecutionFacts {
     const facts = {
         attachments: profile.testFamily === 'integration' ? profile.attachments : null,
+        propertyPolicy: profile.testFamily === 'property' ? profile.property : null,
         retries: null,
         baselineUpdateMode: command.request.baselineUpdateMode,
         capture: command.request.capture,

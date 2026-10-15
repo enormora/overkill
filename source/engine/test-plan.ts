@@ -5,7 +5,7 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { WorkloadInput, WorkloadParameters } from './workload-input.ts';
-import { resolveTestBodyWorkload, resolveTestBodyFamily } from './test-body.ts';
+import { resolveFamilyBodyExecution, resolveTestBodyWorkload, resolveTestBodyFamily } from './test-body.ts';
 import {
     caseIdentityKey,
     createCaseId,
@@ -78,8 +78,8 @@ function resolveCaseWorkload(
     if (execution.kind !== 'body') {
         return execution;
     }
-    if (execution.bodyMode === 'builder') {
-        return { ...execution, body: resolveTestBodyWorkload(execution.body, workload) };
+    if (execution.bodyMode === 'builder' || execution.bodyMode === 'property') {
+        return resolveFamilyBodyExecution(execution, workload);
     }
     if (execution.bodyMode === 'benchmark') {
         return { ...execution, resourceBody: resolveTestBodyWorkload(execution.resourceBody, workload) };

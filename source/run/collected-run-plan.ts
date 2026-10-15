@@ -4,7 +4,6 @@ import type {
     SourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveSourceLocation } from '../assertion-protocol/source-location.ts';
-import { serializeValue } from '../compare/serialized-value.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
     runStatusFromPlan,
@@ -16,6 +15,8 @@ import {
 import type { RunProcessUsage } from '../engine/process-usage.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import { testCasePropertySummary } from './property-collection.ts';
+import { caseDataFacts } from './run-case-facts.ts';
 import type {
     FrozenWorkloadInput,
     CollectedRunCase,
@@ -23,10 +24,8 @@ import type {
     CollectedOrphanedNode,
     CollectedRunPlan,
     ResolvedRunPlan,
-    RunCaseFacts,
     RunCollectionRoot
 } from './run-types.ts';
-import type { RunCaseFileSet } from './run-facts.ts';
 
 export function runCollectionRootFromResolvedPlan(plan: ResolvedRunPlan): RunCollectionRoot {
     const { root } = plan.kind === 'local' ? plan.testPlan : plan.collectedPlan;
@@ -193,6 +192,7 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
                 skipReason: testCase.execution.kind === 'skip' ? testCase.execution.reason : null,
+                property: testCasePropertySummary(testCase),
                 benchmark: testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'benchmark'
                     ? testCase.execution.definition
                     : null,
@@ -297,8 +297,7 @@ export function collectedRunCaseEntries(plan: CollectedRunPlan): readonly Collec
 
         return {
             ...collectedCase,
-            annotations: serializeValue(collectedCase.testCase.annotations),
-            controls: serializeValue(collectedCase.testCase.controls),
+            ...caseDataFacts(collectedCase.testCase),
             id,
             workId: collectedCaseWorkId(collectedCase.file, collectedCase.testCase)
         };
@@ -334,21 +333,6 @@ export function collectedRunPlanFromEntries(
             }
         )
     };
-}
-
-export function collectedRunCaseFactsFromEntries(
-    cases: readonly CollectedRunCaseEntry[],
-    fileSetForCase: RunCaseFileSet
-): readonly RunCaseFacts[] {
-    return cases.map(function toRunCaseFacts(collectedCase): RunCaseFacts {
-        return {
-            annotations: serializeValue(collectedCase.testCase.annotations),
-            controls: serializeValue(collectedCase.testCase.controls),
-            fileSet: fileSetForCase(collectedCase.id.file),
-            id: collectedCase.id,
-            workId: collectedCase.workId
-        };
-    });
 }
 
 export function createRunResultFromCollectedPlan(

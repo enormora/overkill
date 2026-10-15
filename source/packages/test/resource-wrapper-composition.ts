@@ -2,6 +2,8 @@ import { attachmentsForProducer } from '../resources/attachment-context.entry-po
 import {
     type RuntimeAttachments,
     forwardTestBodyFamily,
+    attachTestBodyFamily,
+    type TestBodyFamilyAttachment,
     attachTestBodyResourceAttachments,
     attachTestBodyWorkloadResolver,
     hasTestBodyResourceAttachments,
@@ -558,17 +560,16 @@ export function attachComposedResourceBody(
 export function mapComposedResourceBody(
     body: CallableTestBody,
     execute: (body: CallableTestBody, scope: ResourceLifecycleScope) => Promise<AssertionResult>,
-    wrapperName: string
+    wrapperName: string,
+    familyAttachment: TestBodyFamilyAttachment<unknown> | null
 ): TestBodyWithScope<ResourceLifecycleScope> {
     const composition = bodyComposition(body);
-    return forwardTestBodyFamily(
-        body,
-        attachComposedResourceActions(
-            composition.actions,
-            async function runEnvelope(scope: ResourceLifecycleScope) {
-                return execute(composition.body, scope);
-            },
-            wrapperName
-        )
+    const envelope = attachComposedResourceActions(
+        composition.actions,
+        async function runEnvelope(scope: ResourceLifecycleScope) {
+            return execute(composition.body, scope);
+        },
+        wrapperName
     );
+    return familyAttachment === null ? envelope : attachTestBodyFamily(envelope, familyAttachment);
 }

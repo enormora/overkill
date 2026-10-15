@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { workIdentityKey } from '../engine/identity.ts';
 import type { WorkloadParameters } from '../engine/workload-input.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
+import { assertAssignedPropertyPolicies, type AssignedPropertyPolicy } from './property-collection.ts';
 import type { CollectedRunPlan, FrozenWorkloadInput } from './run-types.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
 import { caseResourceOwnershipBoundaries } from './resource-lifecycle-boundaries.ts';
@@ -76,4 +77,13 @@ export function assertSharedWorkloadInputs(plan: CollectedRunPlan): void {
             }
         }, entry);
     }
+}
+
+export function assertFrozenAssignmentInputs(
+    testPlan: TestPlan,
+    workloads: readonly FrozenWorkloadInput[],
+    policies: readonly AssignedPropertyPolicy[]
+): void {
+    assertFrozenWorkloadInputs(testPlan, workloads);
+    assertAssignedPropertyPolicies(testPlan, policies);
 }

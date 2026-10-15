@@ -16,14 +16,26 @@ import {
     type ProjectCoveragePolicy,
     type ProjectIntegrationProfileConfig,
     type ProjectMicrotestProfileConfig,
+    type ProjectPropertyProfileConfig,
     type ProjectTimingProfilePolicy
 } from './config.entry-point.ts';
 
 describe('@overkill-dev/run/config', function () {
+    test('exposes property exploration settings without coverage or worker pools', function () {
+        expect<ProjectPropertyProfileConfig>().type.toBeAssignableFrom<{
+            readonly testFamily: 'property';
+            readonly files: { readonly include: readonly ['test/laws.ts']; };
+            readonly property: { readonly newTrials: number; readonly maxWork: number; };
+            readonly execution: { readonly processModel: 'supervised-process'; readonly scheduling: 'serial'; };
+        }>();
+        expect<ProjectPropertyProfileConfig>().type.not.toHaveProperty('coverage');
+        expect<ProjectPropertyProfileConfig>().type.not.toHaveProperty('retries');
+        expect<ProjectPropertyProfileConfig>().type.not.toHaveProperty('attachments');
+    });
     test('exposes benchmark policy without adding it to ordinary execution profiles', function () {
         expect<typeof normalizeConfig>().type.toBe<(config: Config) => NormalizedConfig>();
-        expect<ProfileConfig['testFamily']>().type.toBe<'benchmark' | 'integration' | 'microtest'>();
-        expect<TestProfileConfig['testFamily']>().type.toBe<'integration' | 'microtest'>();
+        expect<ProfileConfig['testFamily']>().type.toBe<'benchmark' | 'integration' | 'microtest' | 'property'>();
+        expect<TestProfileConfig['testFamily']>().type.toBe<'integration' | 'microtest' | 'property'>();
         expect<keyof ProjectBenchmarkProfileConfig>().type.toBe<
             keyof {
                 readonly attachments: true;

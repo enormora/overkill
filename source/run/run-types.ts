@@ -33,6 +33,8 @@ import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protoco
 import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
+    PropertyPolicy as PropertyPolicyDefinition,
+    PropertyBodyDefinition,
     AttachmentLimits,
     PerTestResult,
     RunnerError,
@@ -84,7 +86,7 @@ export type RunDebugRequest = {
     readonly selectors: readonly [];
 };
 
-export type RunTestFamily = 'benchmark' | 'integration' | 'microtest';
+export type RunTestFamily = 'benchmark' | 'integration' | 'microtest' | 'property';
 type RunHostProcessReasonKey = {
     readonly 'benchmark-isolation': true;
     readonly debugging: true;
@@ -225,6 +227,7 @@ export type RunFacts = {
 };
 
 export type RunCaseFacts = {
+    readonly propertyPolicy: PropertyPolicy | null;
     readonly annotations: SerializedValue;
     readonly controls: SerializedValue;
     readonly fileSet: string | null;
@@ -243,6 +246,7 @@ export type RunEnvironmentFacts = {
 };
 
 type RunExecutionBaseFacts = {
+    readonly propertyPolicy: PropertyPolicy | null;
     readonly attachments: AttachmentLimits | null;
     readonly retries: IntegrationRetryPolicy | null;
     readonly baselineUpdateMode: BaselineUpdateMode;
@@ -319,6 +323,7 @@ type CollectedSuitePathEntry = {
 
 export type CollectedRunCase = {
     readonly skipReason: string | null;
+    readonly property: { readonly definition: PropertyBodyDefinition; readonly policy: PropertyPolicy; } | null;
     readonly benchmark: BenchmarkDefinitionSummary | null;
     readonly workloadParameters: TestPlan['cases'][number]['workloadParameters'];
     readonly annotations: TestPlan['cases'][number]['annotations'];
@@ -540,3 +545,4 @@ export type RunExecutionSessionOptions = {
     readonly lifecycle: RunExecutionLifecycleReference;
     readonly environment: 'fresh-invocation' | 'profile-default';
 };
+export type PropertyPolicy = PropertyPolicyDefinition;

@@ -554,3 +554,13 @@ magical for configuration too.
   owns the top-level loading step
 - the surface should stay small and orchestration-focused
 - custom assertion references are imported values, not root configuration
+
+## Property Profiles
+
+Named profiles with `testFamily: 'property'` require `files` and share the
+microtest execution models. `property` configures finite exploration and shrink
+budgets. Per-declaration settings override those defaults during collection;
+capability restrictions and timeout/process supervision remain profile-owned.
+Code coverage, resource descriptors, retries, and authored capture controls
+are unavailable. See [Collected Property Policy](../authoring/higher-test-layers.md#collected-property-policy)
+for defaults and settings semantics.

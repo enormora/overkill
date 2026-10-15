@@ -1200,6 +1200,58 @@ Reporting distinguishes exhausted search, exhausted budget, and interruption.
 Use “shrunk counterexample”, not an unqualified claim of minimality. Even an
 exhausted candidate search does not prove a global minimum.
 
+### Collected Property Policy
+
+Property profiles require explicit file discovery and expose `property`
+exploration defaults. They use microtest execution models and capability
+restrictions, reject resource descriptors and authored capture controls,
+and do not expose code coverage, retries, or attachment configuration.
+Defaults are supervised concurrent case execution with maximum concurrency 5,
+a 2 s collection deadline, a 1 s soft timeout, and a 2 s hard timeout.
+
+Policy version 1 has these finite safe-integer defaults:
+
+| Setting               | Default |
+| --------------------- | ------: |
+| `newTrials`           |     100 |
+| `maxSize`             |     100 |
+| `maxDepth`            |      10 |
+| `maxAutomaticEdges`   |     100 |
+| `maxExhaustiveValues` |   1,000 |
+| `maxWork`             |  10,000 |
+| `maxShrinkWork`       |   1,000 |
+| `maxLabels`           |     100 |
+| `maxRetainedInputs`   |     100 |
+
+`newTrials`, `maxWork`, `maxLabels`, and `maxRetainedInputs` must be positive;
+other limits may be zero. A zero edge, exhaustive, or shrink limit disables
+that activity. Small work limits remain valid even when they cannot satisfy
+the requested trial count. Total work charges candidate production,
+reconstruction, rejection, duplicate processing, confirmations, and body
+evaluations across all phases. Shrink work additionally charges those
+operations during shrinking and remains subject to total work.
+
+`property({ title, generator, test, settings })` and
+`withProperties(body, settings)` supply sparse exploration overrides.
+Profile values are defaults: declaration settings may raise or lower them,
+without changing capability restrictions or timeout/process supervision.
+Every nested `scope.forall(generator, body)` inherits its wrapper's policy;
+there are no invocation-time policy overrides.
+
+An unconfigured second wrapper preserves the original declaration. A
+configured second wrapper is invalid, including when the first wrapper used
+profile defaults. Preserve that conflict as declaration metadata and report
+it during collection instead of silently merging settings. Validate every
+discovered property before filtering or sharding. Collection must never
+execute generators, property bodies, or codecs to discover settings.
+
+The engine represents executable property declarations with
+`bodyMode: 'property'` and unresolved or resolved policy. Generator semantics
+remain in the property package. Bodyless runner summaries carry only typed
+policy metadata; callbacks and generators remain in executable declarations.
+Frozen facts record the resolved profile and case policy. Supervised
+assignments verify the policy by work identity before execution.
+
 ### Replay Boundary
 
 A witness and its promoted regression use reviewable, versioned JSON rather

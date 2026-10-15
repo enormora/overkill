@@ -4,6 +4,7 @@ import { formatCaseId } from './identity.ts';
 import {
     createTestNodeOwner,
     createTestNodeFactory,
+    type PropertyTestCaseOptions,
     type BenchmarkTestCaseOptions,
     type TestNodeOwner,
     isOwnedTestNode,
@@ -28,6 +29,7 @@ import {
 } from './test-plan.ts';
 
 export type Engine = {
+    readonly createPropertyTestCase: (options: PropertyTestCaseOptions) => TestCase;
     readonly createBenchmarkTestCase: (options: BenchmarkTestCaseOptions) => TestCase;
     readonly createRoot: (options: RootOptions) => TestRoot;
     readonly createSuite: (options: SuiteOptions) => Suite;
@@ -61,6 +63,7 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
     const createTestPlanFromTestFiles = createTestPlanFromTestFilesFactory(owner, nodeFactory.createRoot);
 
     return {
+        createPropertyTestCase: nodeFactory.createPropertyTestCase,
         createBenchmarkTestCase: nodeFactory.createBenchmarkTestCase,
         createRoot: nodeFactory.createRoot,
         createSuite: nodeFactory.createSuite,
