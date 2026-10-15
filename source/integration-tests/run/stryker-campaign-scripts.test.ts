@@ -90,13 +90,36 @@ try {
     const mutant = instrumented.mutants.find(mutant => mutant.mutatorName === 'BooleanLiteral');
     assert.ok(mutant);
     assert.deepEqual(dry.mutantCoverage, { static: { [mutant.id]: 2 }, perTest: {} });
+    const runtime = globalThis.__stryker__;
+    const coverage = runtime.mutantCoverage;
+    const staticCounters = coverage.static;
+    const perTestCounters = coverage.perTest;
+    const drySnapshot = structuredClone(dry.mutantCoverage);
+    function assertInactive() {
+        assert.equal(globalThis.__stryker__, runtime);
+        assert.equal(runtime.mutantCoverage, coverage);
+        assert.equal(coverage.static, staticCounters);
+        assert.equal(coverage.perTest, perTestCounters);
+        for (const key of ['activeMutant', 'currentTestId', 'hitCount', 'hitLimit']) {
+            assert.equal(runtime[key], undefined, key);
+        }
+        assert.equal(process.env.__STRYKER_ACTIVE_MUTANT__, undefined);
+    }
+    assertInactive();
     const options = { activeMutant: mutant, mutantActivation: 'runtime', reloadEnvironment: false,
         sandboxFileName: process.cwd() + '/subject.mjs', timeout: 30000, disableBail: false };
     const swallowed = await runner.mutantRun({ ...options, hitLimit: 0 });
     assert.equal(swallowed.status, 'timeout', JSON.stringify(swallowed));
+    assertInactive();
     const subsequent = await runner.mutantRun(options);
     assert.equal(subsequent.status, 'survived', JSON.stringify(subsequent));
     assert.equal(subsequent.nrOfTests, 1);
+    assertInactive();
+    const repeated = await runner.dryRun({ coverageAnalysis: 'all', timeout: 30000, disableBail: false });
+    assert.equal(repeated.status, 'complete', JSON.stringify(repeated));
+    assert.deepEqual(repeated.mutantCoverage, drySnapshot);
+    assert.deepEqual(dry.mutantCoverage, drySnapshot);
+    assertInactive();
     const empty = await runner.mutantRun({ ...options, testFilter: [] });
     assert.equal(empty.status, 'error', JSON.stringify(empty));
     const fresh = strykerPlugins[0].factory({ overkill: {
