@@ -12,7 +12,8 @@ import {
 import type { NormalizedConfig } from '../config/types.ts';
 import { executeEmptyShardRun } from './run-empty-shard.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;

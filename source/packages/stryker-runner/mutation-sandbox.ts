@@ -6,7 +6,7 @@ import type { FileDescriptions } from '@stryker-mutator/api/core';
 import { z } from 'zod/v4';
 import { ConfigError } from '../run/config.entry-point.ts';
 import type { FileModuleBoundary } from '../run/run.entry-point.ts';
-import type { OverkillRunnerOptions } from './runner-options.ts';
+import type { OverkillRunnerOptions } from './runner-settings-schema.ts';
 
 export const mutationSandboxSchema = z
     .strictObject({

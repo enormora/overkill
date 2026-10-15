@@ -10,10 +10,10 @@ import {
     assertTestPlanCasesMatchProfilePolicy
 } from './run-selection.ts';
 import { freezeValue, resolveRunReporters } from './run-support.ts';
-import type { ResolvedRun, RunCommand, RunOrchestrator } from './run-types.ts';
+import type { ResolvedRun, RunCommand } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: string | null) => string | null {
     const fileSets = new Map(files.map(function toFileSetEntry(file) {

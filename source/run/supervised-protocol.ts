@@ -1,4 +1,4 @@
-import type { Clock } from '@enormora/clock';
+import type { JsonValue } from 'type-fest';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { IntegrationProfileConfig, MaxConcurrency, ProcessBudgets, Scheduling } from '../config/types.ts';
 import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
@@ -11,6 +11,7 @@ import type {
     RunCollectionRoot,
     RunTestFamily
 } from './run-types.ts';
+import type { RunExecutionTransport } from './execution-session-context.ts';
 import type { ReporterEvent, RunResult, ProcessUsageSnapshot, TestPlan } from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
@@ -18,10 +19,6 @@ import {
     childProcessEnvelope,
     type ChildProcessEnvelope
 } from './child-process-protocol.ts';
-import {
-    createResourceLifecycleTiming,
-    type ResourceLifecycleTiming
-} from './resource-lifecycle-timing.ts';
 
 type RunEngineSelection = RunCommand['engine'];
 
@@ -49,9 +46,16 @@ type SupervisedCommandBase = {
 type SupervisedCollectionMode = {
     readonly kind: 'collect';
 } | { readonly kind: 'collect-frozen'; readonly policy: FrozenMicrotestPolicy; };
-type SupervisedExecutionMode = {
+export type SupervisedExecutionMode = {
     readonly kind: 'run';
-} | { readonly kind: 'run-frozen'; readonly policy: FrozenMicrotestPolicy; };
+} | {
+    readonly kind: 'run-frozen';
+    readonly policy: FrozenMicrotestPolicy;
+} | {
+    readonly kind: 'run-session';
+    readonly policy: FrozenMicrotestPolicy;
+    readonly session: RunExecutionTransport;
+};
 
 export type SupervisedCollectCommand = SupervisedCollectionMode & SupervisedCommandBase;
 export type SupervisedRunCommand = SupervisedCommandBase & SupervisedExecutionMode;
@@ -93,6 +97,9 @@ export type SupervisedChildMessage = {
     readonly event: ReporterEvent;
     readonly kind: 'event';
 } | {
+    readonly kind: 'execution-data';
+    readonly data: JsonValue;
+} | {
     readonly kind: 'result';
     readonly result: RunResult;
 } | {
@@ -103,23 +110,6 @@ export type SupervisedChildMessage = {
     readonly span: NonNullable<RunResult['timings']['precise']>['spans'][number];
 };
 
-export function createSupervisedResourceLifecycleTiming(
-    clock: Clock,
-    send: (message: SupervisedChildMessage) => void
-): ResourceLifecycleTiming {
-    return createResourceLifecycleTiming({
-        clock,
-        processId: String(process.pid),
-        target: {
-            emit(span) {
-                send({ kind: 'timing', span });
-            },
-            kind: 'local'
-        },
-        workerId: null
-    });
-}
-
 export function supervisedChildEnvelope(
     message: SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage
 ): ChildProcessEnvelope<SupervisedAssignmentCommand | SupervisedChildCommand | SupervisedChildMessage> {
@@ -127,7 +117,7 @@ export function supervisedChildEnvelope(
 }
 
 export function frozenSupervisedPolicy(command: SupervisedChildCommand): FrozenMicrotestPolicy | null {
-    return command.kind === 'collect-frozen' || command.kind === 'run-frozen' ? command.policy : null;
+    return command.kind === 'collect' || command.kind === 'run' ? null : command.policy;
 }
 
 function casesByIdentity(testPlan: TestPlan): ReadonlyMap<string, TestPlan['cases'][number]> {

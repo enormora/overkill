@@ -1,8 +1,10 @@
 import { createDirectEntrypointRunner, createRunOperations, type DirectEntrypointRunner } from './run-operations.ts';
 import { freezeRunPolicy } from './freeze-run-policy.ts';
 import { initializeRun } from './initialized-run.ts';
+import { createExecutionSession } from './execution-session.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { BenchmarkBaselineCommand, RunOrchestrator } from './run-types.ts';
+import type { BenchmarkBaselineCommand } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 
 function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
@@ -18,6 +20,9 @@ function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOr
     }
 
     return {
+        createExecutionSession(options) {
+            return createExecutionSession(options, dependencies);
+        },
         ...createRunOperations(dependencies, 'test'),
         async freezePolicy(input) {
             return await freezeRunPolicy(input, dependencies);

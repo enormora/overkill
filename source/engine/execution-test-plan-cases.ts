@@ -113,6 +113,10 @@ async function executeSerialTestPlanCase(
         state.currentSuitePath,
         testCase.suitePath
     );
+    const { lifecycle } = input.supervision;
+    if (lifecycle !== null) {
+        await lifecycle.enter(testCase);
+    }
     const testRun = await executeCase({
         attempt: 0,
         context: input.context,
@@ -152,6 +156,17 @@ async function serialTestPlanReporterErrors(
     ];
 }
 
+async function completeSerialCase(input: ExecuteTestPlanCasesInput, state: SerialCaseExecutionState): Promise<void> {
+    const result = state.perTest.at(-1);
+    const { lifecycle } = input.supervision;
+    if (
+        lifecycle !== null && result !== undefined &&
+        await lifecycle.complete(result, state.reportedRunnerErrors) === 'stop'
+    ) {
+        input.supervision.stopAcceptingCases();
+    }
+}
+
 async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<ExecutedTestPlan> {
     let state = initialSerialCaseExecutionState();
 
@@ -164,6 +179,9 @@ async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<E
         }
 
         state = await executeSerialTestPlanCase(input, state, testCase);
+        if (input.supervision.lifecycle !== null) {
+            await completeSerialCase(input, state);
+        }
     }
 
     return {
@@ -231,13 +249,21 @@ async function executeStartedConcurrentCase(
     input: ExecuteConcurrentCasesInput,
     testCase: TestPlanCase
 ): Promise<ReportedCase> {
-    return await executeCase({
+    const { lifecycle } = input.supervision;
+    if (lifecycle !== null) {
+        await lifecycle.enter(testCase);
+    }
+    const executed = await executeCase({
         attempt: 0,
         context: { ...input.context, reporterDelivery: input.reportQueue },
         options: input.options,
         supervision: input.supervision,
         testCase
     }, true);
+    if (lifecycle !== null && await lifecycle.complete(executed.result, executed.runnerErrors) === 'stop') {
+        input.supervision.stopAcceptingCases();
+    }
+    return executed;
 }
 
 function canStartConcurrentCase(input: ExecuteConcurrentCasesInput): boolean {

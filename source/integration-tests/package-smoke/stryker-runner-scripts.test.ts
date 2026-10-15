@@ -1,3 +1,4 @@
+import { strykerCampaignScript } from '../run/stryker-campaign-scripts.test.ts';
 import { strykerProfileScript } from './stryker-profile-scripts.test.ts';
 import { strykerSandboxScript } from './stryker-sandbox-scripts.test.ts';
 import { strykerFreshStateScript } from './stryker-fresh-state-scripts.test.ts';
@@ -18,36 +19,8 @@ const runner = plugin.factory({ overkill: { paths: ['stryker-runner.test.js'], s
 }, {info() {}});
 assert.notEqual(runner, plugin.factory({}, {}, {info() {}}));
 
-assert.throws(() => runner.capabilities(), {
-    name: 'Error',
-    message: '@overkill-dev/stryker-runner: capabilities() is not implemented.'
-});
+assert.deepEqual(await runner.capabilities(), { reloadEnvironment: true });
 await runner.init();
-await assert.rejects(runner.dryRun({
-    coverageAnalysis: 'perTest',
-    disableBail: false,
-    timeout: 1000
-}), {
-    name: 'Error',
-    message: '@overkill-dev/stryker-runner: dryRun() is not implemented.'
-});
-await assert.rejects(runner.mutantRun({
-    activeMutant: {
-        fileName: 'subject.js',
-        id: '0',
-        location: { start: { line: 0, column: 0 }, end: { line: 0, column: 4 } },
-        mutatorName: 'BooleanLiteral',
-        replacement: 'false'
-    },
-    disableBail: false,
-    mutantActivation: 'runtime',
-    reloadEnvironment: false,
-    sandboxFileName: 'subject.js',
-    timeout: 1000
-}), {
-    name: 'Error',
-    message: '@overkill-dev/stryker-runner: mutantRun() is not implemented.'
-});
 await runner.dispose();
 await runner.dispose();
 await plugin.factory({}, {}, {info() {}}).dispose();
@@ -91,6 +64,20 @@ try {
         { cwd: profileCwd, stdio: 'pipe' });
 } finally {
     rmSync(profileCwd, { recursive: true, force: true });
+}
+for (const processModel of ['in-process', 'supervised-process']) {
+    for (const freshState of ['false', 'true']) {
+        const campaignCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-campaign-'));
+        try {
+            execFileSync(process.execPath, ['--input-type=module', '--eval', ${JSON.stringify(strykerCampaignScript)},
+                ${JSON.stringify(import.meta.resolve('@stryker-mutator/core'))},
+                import.meta.resolve('@overkill-dev/stryker-runner'), import.meta.resolve('@overkill-dev/engine'),
+                import.meta.resolve('@overkill-dev/run/config'), processModel, freshState],
+                { cwd: campaignCwd, stdio: 'pipe' });
+        } finally {
+            rmSync(campaignCwd, { recursive: true, force: true });
+        }
+    }
 }
 console.log('stryker profile initialization passed');
 `;

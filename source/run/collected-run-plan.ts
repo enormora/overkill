@@ -192,6 +192,7 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
     return {
         cases: cases.map(function collectCase(testCase): CollectedRunCase {
             return {
+                skipReason: testCase.execution.kind === 'skip' ? testCase.execution.reason : null,
                 benchmark: testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'benchmark'
                     ? testCase.execution.definition
                     : null,

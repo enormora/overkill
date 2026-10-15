@@ -4,7 +4,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { BenchmarkBaselineSession } from './benchmark-baseline-session.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
-import type { RunCommand, RunOrchestrator } from './run-types.ts';
+import type { RunCommand } from './run-types.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import { RunCollectionError } from './run-errors.ts';
 
@@ -68,7 +68,7 @@ type BenchmarkPreparationInput = {
     readonly input: ResolvedRunInput;
     readonly timing: RunTimingMeasurement;
 };
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 function baselineResolutionError(error: unknown): RunCollectionError {
     return error instanceof RunCollectionError ? error : new RunCollectionError(

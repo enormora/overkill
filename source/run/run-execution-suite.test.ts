@@ -1,4 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as mutationExecutionTestNode } from '../integration-tests/run/runner-mutation-execution.test.ts';
 import { testNode as childProcessOutboxTestNode } from './child-process-outbox.test.ts';
 import { testNode as attachments } from './runtime-attachment-suite.test.ts';
 import { testNode as durationHistoryTestNode } from './duration-history.test.ts';
@@ -15,6 +16,7 @@ export const testNode = createOverkillSuite({
     children: [
         benchmarkMetadataTestNode,
         collectedLifecycleTestNode,
+        mutationExecutionTestNode,
         attachments,
         childProcessOutboxTestNode,
         durationHistoryTestNode,

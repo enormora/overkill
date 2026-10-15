@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import {
     childRole,
     benchmarkCalibrationRole,
@@ -23,6 +24,9 @@ async function runChildProcessRole(role: string | null): Promise<void> {
     }
 }
 
-runChildProcessRole(childRole(process.argv)).catch(function throwChildProcessRoleError(error: unknown) {
-    throw error;
-});
+runChildProcessRole(
+    process.argv[1] === fileURLToPath(childProcessEntryPointUrl) ? childRole(process.argv) : null
+)
+    .catch(function throwChildProcessRoleError(error: unknown) {
+        throw error;
+    });

@@ -8,7 +8,7 @@ import {
     readMutationPolicyEnvironment
 } from './mutation-policy-process.entry-point.ts';
 import { mutationPolicyResponseSchema } from './mutation-policy-protocol.ts';
-import type { OverkillRunnerOptions } from './runner-options.ts';
+import type { OverkillRunnerOptions } from './runner-settings-schema.ts';
 import type { MutationSandbox } from './mutation-sandbox.ts';
 
 type MutationPolicyInitialization = {

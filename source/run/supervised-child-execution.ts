@@ -4,6 +4,24 @@ import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter } from '../engine/reporter.ts';
 import type { DefinedReporter, Execute } from './run-engine-primitives.ts';
 import type { SupervisedChildMessage } from './supervised-protocol.ts';
+import { createResourceLifecycleTiming, type ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
+
+export function createSupervisedResourceLifecycleTiming(
+    clock: Clock,
+    send: (message: SupervisedChildMessage) => void
+): ResourceLifecycleTiming {
+    return createResourceLifecycleTiming({
+        clock,
+        processId: String(process.pid),
+        target: {
+            emit(span) {
+                send({ kind: 'timing', span });
+            },
+            kind: 'local'
+        },
+        workerId: null
+    });
+}
 
 type SupervisedChildReporterHost = {
     readonly send: (message: SupervisedChildMessage) => void;

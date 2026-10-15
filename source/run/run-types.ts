@@ -1,4 +1,4 @@
-import type { Except } from 'type-fest';
+import type { Except, JsonValue } from 'type-fest';
 import type {
     BenchmarkCalibrationResult,
     BaselineChange,
@@ -34,6 +34,8 @@ import type { SerializedValue as SerializedValueShape } from '../compare/seriali
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
     AttachmentLimits,
+    PerTestResult,
+    RunnerError,
     Execute,
     OrphanedNode,
     RunResult,
@@ -45,7 +47,11 @@ import type {
     RuntimeId,
     WorkloadId
 } from './run-engine-primitives.ts';
-import type { RunEngineSelection, RunSelection as SelectedCases } from './run-request-types.ts';
+import type {
+    RunEngineSelection,
+    RunSelection as SelectedCases,
+    RunExecutionLifecycleReference
+} from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
@@ -312,6 +318,7 @@ type CollectedSuitePathEntry = {
 };
 
 export type CollectedRunCase = {
+    readonly skipReason: string | null;
     readonly benchmark: BenchmarkDefinitionSummary | null;
     readonly workloadParameters: TestPlan['cases'][number]['workloadParameters'];
     readonly annotations: TestPlan['cases'][number]['annotations'];
@@ -417,7 +424,7 @@ export type RunInvocationOptions = RunInvocationTimingOptions & {
     readonly signal: AbortSignal | null;
 };
 
-type RunOperations<Command> = {
+export type RunOperations<Command> = {
     readonly resolve: (command: Command, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>;
     readonly run: (command: Command, options?: RunInvocationOptions | RunInvocationTimingOptions) => Promise<RunResult>;
     readonly runWithReporterDelivery: (
@@ -428,12 +435,6 @@ type RunOperations<Command> = {
 
 export type ConfiguredRunOrchestrator = RunOperations<RunCommand> & {
     readonly bench: BenchmarkOrchestrator;
-};
-
-export type RunOrchestrator = RunOperations<FrozenRunCommand | RunCommand> & {
-    readonly bench: BenchmarkOrchestrator;
-    readonly freezePolicy: (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>;
-    readonly initialize: (command: FrozenRunCommand | RunCommand) => Promise<InitializedRun>;
 };
 
 export type InitializedRun = {
@@ -523,3 +524,19 @@ export type RunCollectionSource = ConfiguredFilesRunCollectionSource | DirectEnt
 };
 
 export type RunSelection = SelectedCases;
+
+export type RunExecutionLifecycle = {
+    readonly select: (plan: CollectedRunPlan) => Promise<RunSelection>;
+    readonly beforeCases: () => Promise<void>;
+    readonly enterCase: (work: WorkId) => Promise<void>;
+    readonly completeCase: (result: PerTestResult, errors: readonly RunnerError[]) => Promise<'continue' | 'stop'>;
+    readonly snapshot: () => JsonValue;
+    readonly dispose: () => Promise<void>;
+};
+
+export type RunExecutionLifecycleFactory = (data: JsonValue) => Promise<RunExecutionLifecycle>;
+export type RunExecutionSessionOptions = {
+    readonly command: FrozenRunCommand;
+    readonly lifecycle: RunExecutionLifecycleReference;
+    readonly environment: 'fresh-invocation' | 'profile-default';
+};

@@ -1,7 +1,7 @@
 import type { ConfigLoader } from '../config/config.ts';
 import type { NormalizedConfig } from '../config/types.ts';
 import { invalidRequest } from './run-errors.ts';
-import type { RunOrchestrator } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import type { CommandLineConfigDependencies } from './command-line-config.ts';
 
 function inferBenchmarkProfile(config: NormalizedConfig): string {

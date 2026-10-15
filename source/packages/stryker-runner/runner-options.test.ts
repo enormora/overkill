@@ -1,7 +1,8 @@
 import { z } from 'zod/v4';
 import { suite, test } from '../test/test.entry-point.ts';
 import { ConfigError } from '../run/config.entry-point.ts';
-import { parseRunnerOptions, strykerValidationSchema } from './runner-options.ts';
+import { strykerValidationSchema } from './runner-options.ts';
+import { parseRunnerOptions } from './runner-settings-schema.ts';
 
 export const testNode = suite('Stryker adapter settings', [
     test('publishes defaults that preserve one campaign seed across normalized options', function (scope) {

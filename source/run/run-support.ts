@@ -1,7 +1,7 @@
 import type { NormalizedConfig, MaxConcurrency, ProfileConfig, Scheduling } from '../config/types.ts';
 import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
 import type { TestRuntimePolicy, RunResult, TestPlanCase, ReporterDispatcher } from './run-engine-primitives.ts';
-import { currentAttachmentCoordinator } from './attachment-coordinator-context.ts';
+import { finalizeRuntimeAttachments } from './attachment-coordinator-context.ts';
 import {
     createResourceLifecycleRuntimePolicy,
     type ManagedResourceLifecycleTiming
@@ -63,7 +63,7 @@ export async function finalizeResultWithDurationHistory(
     result: RunResult,
     timing: DurationHistoryTimingMeasurement | null = null
 ): Promise<RunResult> {
-    let attachmentResult = await (currentAttachmentCoordinator()?.finalize(result) ?? result);
+    let attachmentResult = await finalizeRuntimeAttachments(result);
     if (resolvedRun.facts.execution.testFamily === 'benchmark') {
         attachmentResult = withBenchmarkRunMetadata(
             attachmentResult,

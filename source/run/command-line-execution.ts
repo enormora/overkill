@@ -5,7 +5,8 @@ import {
     createCommandLineListConfig,
     type CommandLineConfigDependencies
 } from './command-line-config.ts';
-import type { RunCommand, RunOrchestrator } from './run-types.ts';
+import type { RunCommand } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import {
     commandLineExitCodes,
     formatRunnerErrorDiagnostics,

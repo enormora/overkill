@@ -3,6 +3,7 @@ import type { AttemptId, WorkId } from '../engine/identity.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 
 export type AttachmentCoordinator = {
     readonly settleAttempt: (
@@ -26,6 +27,12 @@ const coordinatorContext = new AsyncLocalStorage<AttachmentCoordinator>();
 
 export function currentAttachmentCoordinator(): AttachmentCoordinator | null {
     return coordinatorContext.getStore() ?? null;
+}
+
+export async function finalizeRuntimeAttachments(result: RunResult): Promise<RunResult> {
+    return currentExecutionSession() === null
+        ? await (currentAttachmentCoordinator()?.finalize(result) ?? result)
+        : result;
 }
 
 export async function runWithAttachmentCoordinator<Value>(

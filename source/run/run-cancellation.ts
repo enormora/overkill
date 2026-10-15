@@ -2,7 +2,8 @@ import { invalidRequest, supervisedCancellationError } from './run-errors.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunTimingMeasurement, RunInvocationTimingOptions } from './run-timing-collection.ts';
-import type { RunCommand, RunOrchestrator, RunInvocationOptions } from './run-types.ts';
+import type { RunCommand, RunInvocationOptions } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import { snapshotRunCommand } from './frozen-run-command.ts';
 import { selectProfile } from './test-profile.ts';
 

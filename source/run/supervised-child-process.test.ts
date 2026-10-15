@@ -281,13 +281,13 @@ export const testNode = createOverkillSuite({
                     '--trace-env',
                     '--trace-env-js-stack',
                     '--allow-fs-read=/project/sub',
-                    '--allow-fs-read=/real/project/sub',
                     '--allow-fs-read=/package/root',
+                    '--allow-fs-read=/node_modules',
+                    '--allow-fs-read=/real/project/sub',
                     '--allow-fs-read=/real/package/root',
                     '--allow-fs-read=/project/node_modules',
-                    '--allow-fs-read=/real/project/node_modules',
-                    '--allow-fs-read=/node_modules',
                     '--allow-fs-read=/real/shared/node_modules',
+                    '--allow-fs-read=/real/project/node_modules',
                     '--allow-fs-read=/package/root/node_modules',
                     '--allow-fs-read=/real/package/root/node_modules'
                 ]);

@@ -69,6 +69,7 @@ const attachmentsSchema = z.strictObject({
 const fileSchema = z
     .strictObject({
         cases: z.array(z.strictObject({
+            skipReason: z.string().nullable().default(null),
             benchmark: benchmarkDefinitionSchema.nullable().default(null),
             annotations: annotationsSchema,
             controls: controlsSchema,

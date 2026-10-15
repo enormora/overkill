@@ -1,10 +1,9 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
+import { createChildRun, supervisedChildDependencies } from '../test-support/supervised-child-fixture.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type RunnerError,
-    type RunProcessUsageTracker,
     type TestPlan,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
@@ -14,7 +13,6 @@ import {
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import {
     runSupervisedChild,
-    type SupervisedChildDependencies,
     type SupervisedChildHost
 } from './supervised-child.ts';
 import {
@@ -22,58 +20,15 @@ import {
     runnerErrorFromSupervisedChildFailure,
     runObservedSupervisedChildCommand
 } from './supervised-child-test-plan.ts';
-import {
-    createSupervisedResourceLifecycleTiming,
-    type SupervisedAssignmentCommand,
-    type SupervisedChildCommand,
-    type SupervisedChildMessage
+import type {
+    SupervisedAssignmentCommand,
+    SupervisedChildCommand,
+    SupervisedChildMessage
 } from './supervised-protocol.ts';
 
 const cwd = '/project';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const policyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy.test.ts';
-
-type ChildRunRecord = {
-    readonly disconnected: () => boolean;
-    readonly exitCode: () => number | null;
-    readonly messages: () => readonly SupervisedChildMessage[];
-};
-
-type ChildHostInput = {
-    readonly assignment: SupervisedAssignmentCommand;
-    readonly command: SupervisedChildCommand;
-    readonly discoverRunFiles: SupervisedChildHost['discoverRunFiles'];
-    readonly loadRunTestModules: SupervisedChildHost['loadRunTestModules'];
-    readonly readEnvironment: SupervisedChildHost['readEnvironment'];
-};
-
-function installNoPolicyRestriction(): () => void {
-    return function restoreNoPolicyRestriction(): void {
-        return undefined;
-    };
-}
-
-function createEmptyProcessUsageTracker(): RunProcessUsageTracker {
-    return {
-        finish() {
-            throw new Error('Supervised child test does not finish process usage tracking.');
-        },
-        start() {
-            return undefined;
-        }
-    };
-}
-
-function createTestClock(): DeterministicClock {
-    return createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-}
-
-function supervisedChildDependencies(): SupervisedChildDependencies {
-    return {
-        createProcessUsageTracker: createEmptyProcessUsageTracker,
-        createClock: createTestClock
-    };
-}
 
 function command(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
     return {
@@ -134,62 +89,6 @@ function createDiscovery(files: readonly string[]): SupervisedChildHost['discove
     });
 
     return discovery.discoverRunFiles;
-}
-
-type ChildRunFixture = ChildRunRecord & {
-    readonly host: SupervisedChildHost;
-};
-
-function createChildRun(input: ChildHostInput): ChildRunFixture {
-    const messages: SupervisedChildMessage[] = [];
-    let disconnected = false;
-    let exitCode: number | null = null;
-
-    return {
-        disconnected() {
-            return disconnected;
-        },
-        exitCode() {
-            return exitCode;
-        },
-        host: {
-            disconnect() {
-                disconnected = true;
-            },
-            discoverRunFiles: input.discoverRunFiles,
-            dropBodyReadPermission() {
-                return undefined;
-            },
-            observeIpcListeners: installNoPolicyRestriction,
-            observeProcessExit: installNoPolicyRestriction,
-            async loadRunEngineModule() {
-                throw new Error('Supervised child test does not load engine modules.');
-            },
-            loadRunTestModules: input.loadRunTestModules,
-            readEnvironment: input.readEnvironment,
-            readStorage() {
-                return null;
-            },
-            async receiveAssignment() {
-                return input.assignment;
-            },
-            async receiveCommand() {
-                return input.command;
-            },
-            send(message) {
-                messages.push(message);
-            },
-            setExitCode(code) {
-                exitCode = code;
-            },
-            validatePermissionHost() {
-                return undefined;
-            }
-        },
-        messages() {
-            return messages;
-        }
-    };
 }
 
 function runnerErrorsFromCollectedMessage(messages: readonly SupervisedChildMessage[]): readonly RunnerError[] {
@@ -265,45 +164,6 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'supervised resource timing emits duration-only child spans',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const messages: SupervisedChildMessage[] = [];
-                const timing = createSupervisedResourceLifecycleTiming(clock, function recordMessage(message) {
-                    messages.push(message);
-                });
-                const controller = new AbortController();
-
-                await timing.measure({
-                    phase: 'acquire',
-                    resource: { name: 'database', scope: 'per-run' },
-                    signal: controller.signal
-                }, async function acquireResource() {
-                    clock.advanceByMicroseconds(21n);
-                });
-
-                scope.assert.deepEqual(messages, [ {
-                    kind: 'timing',
-                    span: {
-                        durationMicroseconds: 21,
-                        kind: 'resource.acquire',
-                        label: null,
-                        processId: String(process.pid),
-                        resource: { name: 'database', scope: 'per-run' },
-                        startOffsetMicroseconds: null,
-                        startTimeUnixMicroseconds: 0,
-                        status: 'success',
-                        workerId: null
-                    }
-                } ]);
-
-                return scope.assert.collect();
-            }
-        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runSupervisedChild() collects tests without waiting for assignments',

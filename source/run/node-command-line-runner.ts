@@ -6,9 +6,9 @@ import {
     type CommandLineRunnerDependencies
 } from './command-line-runner.ts';
 import {
-    createCurrentProcessRunOrchestrator,
-    type CurrentProcessRunOrchestratorDependencies
+    createCurrentProcessRunOrchestrator
 } from './current-process-run-orchestrator.ts';
+import type { CurrentProcessRunOrchestratorDependencies } from './current-process-run-input.ts';
 import {
     loadUnimplementedBaselineCommands
 } from './command-line-unimplemented-commands.ts';

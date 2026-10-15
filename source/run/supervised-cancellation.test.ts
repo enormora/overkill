@@ -7,7 +7,7 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createSupervisedRunCommand } from './run-isolated-command.ts';
 import { runSupervisedCommand } from './supervised-run.ts';
 import { SupervisedCollectionError, supervisedCancellationMessage } from './run-errors.ts';
-import type { RunOrchestrator } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const file = 'source/integration-tests/run/fixtures/passing.test.ts';

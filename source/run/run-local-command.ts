@@ -17,9 +17,9 @@ import {
     type RunRuntimePolicy
 } from './run-support.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
-import type { ResolvedRun, RunCommand, RunOrchestrator } from './run-types.ts';
+import type { ResolvedRun, RunCommand } from './run-types.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type LocalRunOptions = {
     readonly baseline: RunResultSession | null;
     readonly input: ResolvedRunInput;

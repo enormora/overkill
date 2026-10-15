@@ -4,11 +4,8 @@ import {
 import {
     createReporterDelivery
 } from './supervised-run-runtime.ts';
-import type {
-    CollectedRunPlan,
-    ResolvedRun,
-    RunOrchestrator
-} from './run-types.ts';
+import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRunResultFinalizer, RunRuntimePolicy } from './run-support.ts';
 

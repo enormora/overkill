@@ -1,14 +1,15 @@
-import { ConfigError, RunCollectionError, RunResolutionError } from '../run/run.entry-point.ts';
-import type { MutationInvocationFailure } from './mutation-invocation-protocol.ts';
+import { ConfigError } from '../config/config-error.ts';
+import { RunCollectionError, RunResolutionError } from './run-errors.ts';
+import type { RunExecutionFailure } from './execution-failure-schema.ts';
 
-type CollectionFailure = Extract<MutationInvocationFailure, { readonly kind: 'collection-error'; }>;
+type CollectionFailure = Extract<RunExecutionFailure, { readonly kind: 'collection-error'; }>;
 
-class MutationInvocationCollectionError extends RunCollectionError {
+class RunExecutionCollectionError extends RunCollectionError {
     private readonly failure: CollectionFailure;
 
     public constructor(failure: CollectionFailure, options: Readonly<ErrorOptions>) {
         super(failure.message, options, failure.errors[0].subtype);
-        this.name = 'MutationInvocationCollectionError';
+        this.name = 'RunExecutionCollectionError';
         this.failure = failure;
     }
 
@@ -21,15 +22,16 @@ class MutationInvocationCollectionError extends RunCollectionError {
     }
 }
 
-function failureDetails(error: unknown): Pick<MutationInvocationFailure, 'cause' | 'message' | 'stack'> {
+function failureDetails(error: unknown): Pick<RunExecutionFailure, 'cause' | 'message' | 'name' | 'stack'> {
     return {
+        name: error instanceof Error ? error.name : 'Error',
         message: error instanceof Error ? error.message : String(error),
         cause: error instanceof Error ? error.cause : error,
         stack: error instanceof Error ? error.stack ?? null : null
     };
 }
 
-export function mutationInvocationFailure(error: unknown): MutationInvocationFailure {
+export function runExecutionFailure(error: unknown): RunExecutionFailure {
     const fields = failureDetails(error);
     if (error instanceof ConfigError) {
         return { ...fields, kind: 'config-error' };
@@ -50,7 +52,7 @@ export function mutationInvocationFailure(error: unknown): MutationInvocationFai
     };
 }
 
-function restoredInvocationError(failure: MutationInvocationFailure): Error {
+function restoredInvocationError(failure: RunExecutionFailure): Error {
     if (failure.kind === 'config-error') {
         return new ConfigError(failure.message, { cause: failure.cause });
     }
@@ -58,14 +60,15 @@ function restoredInvocationError(failure: MutationInvocationFailure): Error {
         return new RunResolutionError(failure.message, { cause: failure.cause }, failure.code);
     }
     if (failure.kind === 'collection-error') {
-        return new MutationInvocationCollectionError(failure, { cause: failure.cause });
+        return new RunExecutionCollectionError(failure, { cause: failure.cause });
     }
-    const unexpected: Extract<MutationInvocationFailure, { readonly kind: 'error'; }> = failure;
+    const unexpected: Extract<RunExecutionFailure, { readonly kind: 'error'; }> = failure;
     return new Error(unexpected.message, { cause: unexpected.cause });
 }
 
-export function restoreMutationInvocationFailure(failure: MutationInvocationFailure): Error {
+export function restoreRunExecutionFailure(failure: RunExecutionFailure): Error {
     const error = restoredInvocationError(failure);
+    error.name = failure.name;
     if (failure.stack !== null) {
         error.stack = failure.stack;
     }

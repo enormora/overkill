@@ -13,7 +13,8 @@ import {
 } from '../test-support/run-command-factory.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { NormalizedConfig, MicrotestProfileConfig } from '../config/types.ts';
-import type { RunCommand, RunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
+import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 const delayedPassFixturePath = 'source/integration-tests/run/fixtures/delayed-pass.test.ts';
 const endlessLoopFixturePath = 'source/integration-tests/run/fixtures/endless-loop.test.ts';

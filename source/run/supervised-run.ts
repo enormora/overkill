@@ -243,13 +243,14 @@ function handleLiveMessage(
 
 function validRunResult(
     message: Extract<SupervisedChildMessage, { readonly kind: 'result'; }>,
-    liveRun: SupervisedLiveRun
+    liveRun: SupervisedLiveRun,
+    command: SupervisedRunCommand
 ): boolean {
     const runtime = liveRun.runtime.read();
     if (runtime === null || liveRun.state.activeCases.size > 0) {
         return false;
     }
-    return message.result.status === 'failed' ||
+    return command.kind === 'run-session' || message.result.status === 'failed' ||
         message.result.perTest.length === runtime.resolvedRun.facts.cases.length;
 }
 function validChildEvent(message: SupervisedChildMessage, running: boolean): boolean {
@@ -259,7 +260,11 @@ function validChildEvent(message: SupervisedChildMessage, running: boolean): boo
     return ![ 'run-start', 'run-end' ].includes(message.event.kind) &&
         (running || message.event.kind === 'runner-error');
 }
-function validLiveMessage(message: SupervisedChildMessage, liveRun: SupervisedLiveRun): boolean {
+function validLiveMessage(
+    message: SupervisedChildMessage,
+    liveRun: SupervisedLiveRun,
+    command: SupervisedRunCommand
+): boolean {
     const runtime = liveRun.runtime.read();
     if (runtime !== null && runtime.completedResult.read() !== null) {
         return false;
@@ -268,7 +273,7 @@ function validLiveMessage(message: SupervisedChildMessage, liveRun: SupervisedLi
         return runtime === null && liveRun.collected.read() === null;
     }
     if (message.kind === 'result') {
-        return validRunResult(message, liveRun);
+        return validRunResult(message, liveRun, command);
     }
     return validChildEvent(message, runtime !== null);
 }
@@ -289,7 +294,7 @@ function observeLiveRun(
     });
     const interrupt = observeSupervisedTransport({
         accept(message) {
-            return validLiveMessage(message, liveRun);
+            return validLiveMessage(message, liveRun, command);
         },
         child: liveRun.child,
         completed() {

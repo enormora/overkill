@@ -1074,6 +1074,7 @@ type RunStringFilterField =
     | 'workload';
 
 type RunFilter =
+    | { readonly id: WorkId; readonly kind: 'work-id'; }
     | { readonly filters: NonEmptyReadonlyArray<RunFilter>; readonly kind: 'all'; }
     | { readonly filters: NonEmptyReadonlyArray<RunFilter>; readonly kind: 'any'; }
     | { readonly filter: RunFilter; readonly kind: 'not'; }
@@ -1542,6 +1543,7 @@ type PlacementTraceEntry =
     };
 
 type CollectedRunCase = {
+    readonly skipReason: string | null;
     readonly annotations: SerializedValue;
     readonly controls: SerializedValue;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
@@ -1585,6 +1587,66 @@ type InitializedRun = {
 
 type CollectedRunInvocation = {
     readonly selection: RunSelection;
+};
+
+type RunExecutionLifecycle = {
+    readonly select: (plan: CollectedRunPlan) => Promise<RunSelection>;
+    readonly beforeCases: () => Promise<void>;
+    readonly enterCase: (work: WorkId) => Promise<void>;
+    readonly completeCase: (result: PerTestResult, errors: ReadonlyArray<RunnerError>) => Promise<'continue' | 'stop'>;
+    readonly snapshot: () => JsonValue;
+    readonly dispose: () => Promise<void>;
+};
+
+type RunExecutionLifecycleFactory = (data: JsonValue) => Promise<RunExecutionLifecycle>;
+
+type RunExecutionSessionOptions = {
+    readonly command: FrozenRunCommand;
+    readonly lifecycle: { readonly moduleUrl: string; readonly exportName: string; };
+    readonly environment: 'profile-default' | 'fresh-invocation';
+};
+
+type RunExecutionInvocation = {
+    readonly data: JsonValue;
+    readonly timeoutMilliseconds: number;
+    readonly signal: AbortSignal | null;
+};
+
+type RunExecutionFailure =
+    & {
+        readonly name: string;
+        readonly message: string;
+        readonly cause: unknown;
+        readonly stack: string | null;
+    }
+    & (
+        | { readonly kind: 'config-error'; }
+        | { readonly kind: 'error'; }
+        | {
+            readonly kind: 'resolution-error';
+            readonly code: 'invalid-request' | 'no-tests-collected' | 'unsupported-request';
+        }
+        | { readonly kind: 'collection-error'; readonly errors: NonEmptyReadonlyArray<RunnerError>; }
+    );
+
+type RunExecutionReply =
+    | {
+        readonly kind: 'result';
+        readonly result: RunResult;
+        readonly data: JsonValue;
+        readonly deadlineExceeded: boolean;
+    }
+    | { readonly kind: 'failure'; readonly failure: RunExecutionFailure; readonly data: JsonValue; }
+    | { readonly kind: 'timeout'; readonly data: JsonValue; };
+
+type RunExecutionSession = {
+    readonly environmentLifetime: 'reused' | 'fresh';
+    readonly run: (invocation: RunExecutionInvocation) => Promise<RunExecutionReply>;
+    readonly dispose: () => Promise<void>;
+};
+
+declare const orchestrator: {
+    readonly createExecutionSession: (options: RunExecutionSessionOptions) => RunExecutionSession;
 };
 
 type CollectedRun = {

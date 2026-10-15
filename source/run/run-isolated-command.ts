@@ -1,4 +1,4 @@
-import type { DefinitionLocationCapture } from './definition-location-capture.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 import { createLocalTestPlan, type LocalTestPlan } from './run-local-test-plan.ts';
 import { resolveProcessUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
@@ -6,6 +6,7 @@ import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunCommand, CollectedRunPlan, RunRequest } from './run-types.ts';
 import type {
     SupervisedCollectCommand,
+    SupervisedExecutionMode,
     SupervisedRunCommand
 } from './supervised-protocol.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
@@ -38,7 +39,7 @@ type SupervisedCommandBase = {
 type SupervisedCommandBaseInput = {
     readonly capture: RunRequest['capture'];
     readonly command: RunCommand;
-    readonly definitionLocationCapture: DefinitionLocationCapture;
+    readonly definitionLocationCapture: SupervisedRunCommand['definitionLocationCapture'];
     readonly files: ResolvedRunInput['files'];
     readonly profile: ResolvedRunInput['profile'];
     readonly source: IsolatedRunCollectionSource;
@@ -46,7 +47,7 @@ type SupervisedCommandBaseInput = {
 
 type WorkerPoolCommandInput = {
     readonly command: RunCommand;
-    readonly definitionLocationCapture: DefinitionLocationCapture;
+    readonly definitionLocationCapture: SupervisedRunCommand['definitionLocationCapture'];
     readonly files: ResolvedRunInput['files'];
     readonly profile: ResolvedRunInput['profile'];
     readonly source: IsolatedRunCollectionSource;
@@ -148,6 +149,16 @@ export function createSupervisedCollectCommand(
     };
 }
 
+function supervisedExecutionMode(source: IsolatedRunCollectionSource): SupervisedExecutionMode {
+    if (source.kind !== 'frozen-policy') {
+        return { kind: 'run' };
+    }
+    const session = currentExecutionSession();
+    return session === null
+        ? { kind: 'run-frozen', policy: source.policy }
+        : { kind: 'run-session', policy: source.policy, session };
+}
+
 export function createSupervisedRunCommand(
     command: RunCommand,
     profile: ResolvedRunInput['profile'],
@@ -163,9 +174,7 @@ export function createSupervisedRunCommand(
             profile,
             source
         }),
-        ...source.kind === 'frozen-policy'
-            ? { kind: 'run-frozen', policy: source.policy }
-            : { kind: 'run' }
+        ...supervisedExecutionMode(source)
     };
 }
 

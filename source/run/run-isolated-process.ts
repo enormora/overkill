@@ -25,20 +25,15 @@ import {
     collectWorkerPoolRun,
     runWorkerPoolCommand
 } from './worker-pool-run.ts';
-import type {
-    CollectedRunPlan,
-    ResolvedRun,
-    RunCommand,
-    RunOrchestrator
-} from './run-types.ts';
+import type { CollectedRunPlan, ResolvedRun, RunCommand, RunInvocationOptions } from './run-types.ts';
 import {
     createSupervisedResolvedRun,
     createSupervisedRunResult
 } from './run-supervised-process.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 export type RunCollectionSource = IsolatedRunCollectionSource;
-type RunTimingMeasurement = NonNullable<NonNullable<Parameters<RunOrchestrator['run']>[1]>['timing']>;
+type RunTimingMeasurement = NonNullable<RunInvocationOptions['timing']>;
 type CollectedExecution = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];

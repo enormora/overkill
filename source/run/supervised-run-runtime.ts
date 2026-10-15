@@ -344,6 +344,9 @@ export function handleChildMessage(
     message: NonTimingSupervisedChildMessage,
     runtime: SupervisedRunRuntime
 ): void {
+    if (message.kind === 'execution-data') {
+        return;
+    }
     if (message.kind === 'collected') {
         runtime.collectedPlan.write(message.collectedPlan);
         runtime.state.recordRunnerErrors(message.runnerErrors);

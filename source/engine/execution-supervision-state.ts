@@ -1,5 +1,6 @@
 import type { Clock } from '@enormora/clock';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import { currentCaseExecutionLifecycle, type CaseExecutionLifecycle } from './case-execution-lifecycle.ts';
 import type { PerTestResult, RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import type { AttemptId } from './identity.ts';
@@ -37,6 +38,7 @@ export type ActiveCase = {
 };
 
 export type ExecutionSupervision = {
+    readonly lifecycle: CaseExecutionLifecycle | null;
     readonly acceptsNewCases: () => boolean;
     readonly activeCases: ReadonlyMap<string, ActiveCase>;
     readonly addActiveCase: (key: string, activeCase: ActiveCase) => void;
@@ -52,6 +54,7 @@ export function createExecutionSupervision(): ExecutionSupervision {
     let acceptsNewCases = true;
 
     return {
+        lifecycle: currentCaseExecutionLifecycle(),
         acceptsNewCases() {
             return acceptsNewCases;
         },

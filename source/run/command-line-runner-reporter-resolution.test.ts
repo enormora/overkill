@@ -20,7 +20,7 @@ import {
 } from './command-line-runner.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, ConfiguredRunOrchestrator, RunRequest } from './run-types.ts';
+import type { RunCommand, RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';
 
 type ReporterLoader = {
     readonly createDefaultReporter: () => Promise<DefinedReporter>;

@@ -40,6 +40,7 @@ export function createCollectedPlan(): CollectedRunPlan {
                 file: integrationPath,
                 cases: [
                     {
+                        skipReason: null,
                         benchmark: null,
                         workloadParameters: null,
                         annotations,

@@ -19,10 +19,26 @@ Top-level API:
 - `orchestrator.runWithReporterDelivery(command)`
 - `orchestrator.freezePolicy({ command, source, moduleBoundary })`
 - `orchestrator.initialize(command)`
+- `orchestrator.createExecutionSession(options)`
 - `parseFrozenMicrotestPolicy(value)`
 - `parseRunSelection(value)`, `parseRunResult(value)`, `parseRunnerError(value)`
 - `createRandomRunSeed()`
 - `withFileModuleBoundary(boundary, operation)`
+- `workIdentityKey(work)`
+
+`createExecutionSession` accepts a frozen microtest command, a lifecycle module
+and factory export, and an environment choice. `profile-default` reuses the
+in-process collected plan or starts a supervised child; `fresh-invocation`
+starts a fresh host for in-process profiles. `environmentLifetime` reports
+`reused` or `fresh` before execution.
+
+The lifecycle runs before configuration revalidation and collection, chooses a
+selection from the complete collected plan, and observes each case through
+awaited cleanup. Invocations accept JSON data, a deadline budget, and an explicit
+abort signal or `null`. Replies preserve native results, lifecycle data, typed
+failures, and deadline status. Sessions omit ordinary reporters and disk
+persistence. `dispose()` closes admission and awaits active work or owned child
+termination.
 
 `Config` describes authored policy. `normalizeConfig` produces a
 command-independent `NormalizedConfig` without reading files; `loadConfig`

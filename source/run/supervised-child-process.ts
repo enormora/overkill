@@ -251,16 +251,20 @@ async function readPermissionRoots(
     options: SupervisedChildStartOptions,
     dependencies: SupervisedChildProcessStarterDependencies
 ): Promise<readonly string[]> {
-    return Array.from(
-        new Set(
-            await existingPermissionRoots([
-                options.cwd,
-                dependencies.childPackageRoot,
-                ...nodeModulesCandidates(options.cwd),
-                ...nodeModulesCandidates(dependencies.childPackageRoot)
-            ], dependencies)
+    return Array
+        .from(
+            new Set(
+                await existingPermissionRoots([
+                    options.cwd,
+                    dependencies.childPackageRoot,
+                    ...nodeModulesCandidates(options.cwd),
+                    ...nodeModulesCandidates(dependencies.childPackageRoot)
+                ], dependencies)
+            )
         )
-    );
+        .toSorted(function parentRootsFirst(left, right) {
+            return left.length - right.length;
+        });
 }
 
 async function supervisedChildExecArgv(

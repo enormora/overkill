@@ -3,7 +3,7 @@ import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { ProcessUsageSnapshot, RunProcessUsage, RunProcessUsageTracker } from '../engine/process-usage.ts';
 import { createRunCoordinator, type RunCoordinator } from '../run/run.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
-import type { CollectedRunPlan, RunOrchestrator, WorkId } from '../run/run-types.ts';
+import type { CollectedRunPlan, WorkId } from '../run/run-types.ts';
 import { supervisedAssignedWork } from '../run/supervised-protocol.ts';
 import {
     createFakeSupervisedChildProcess,
@@ -17,6 +17,8 @@ import {
     deterministicRunCollection,
     deterministicRunEngine
 } from './deterministic-run-fixtures.ts';
+
+type RunOrchestrator = RunCoordinator['orchestrator'];
 
 const deterministicSeed = 99n;
 const sampledActiveResourceCount = 2;

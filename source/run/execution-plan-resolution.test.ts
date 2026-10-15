@@ -31,6 +31,7 @@ function collectedCase(
     suitePath: CollectedRunPlan['files'][number]['cases'][number]['suitePath']
 ): CollectedRunPlan['files'][number]['cases'][number] {
     return {
+        skipReason: null,
         benchmark: null,
         workloadParameters: null,
         annotations,
