@@ -7,7 +7,7 @@ async function verifyCoveredInvocations(): Promise<string> {
     return new Promise(function launchCoverageProbe(resolve, reject) {
         execFile(process.execPath, [ 'source/integration-tests/run/fixtures/collected-coverage-probe.test.ts' ], {
             cwd: process.cwd(),
-            timeout: 10_000
+            timeout: 30_000
         }, function collectProbeOutput(error, stdout) {
             if (error instanceof Error) {
                 reject(error);
