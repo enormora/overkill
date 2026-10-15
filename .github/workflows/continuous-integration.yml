@@ -108,7 +108,7 @@ jobs:
               run: npm ci
             - name: Run package smoke tests
               run: npx just test-package-smoke
-            - name: Dry-run package publish
+            - name: Publish dry run
               run: npx just publish-dry-run
 
     workflow-security:
