@@ -95,6 +95,3 @@ publish-dry-run: compile
     rm -rf target/build/source/node_modules
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     packtory publish
-
-check-packages: compile
-    packtory tree @overkill-dev/test
