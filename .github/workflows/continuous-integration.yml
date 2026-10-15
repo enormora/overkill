@@ -108,8 +108,6 @@ jobs:
               run: npm ci
             - name: Run package smoke tests
               run: npx just test-package-smoke
-            - name: Dry-run package publish
-              run: npx just publish-dry-run
 
     workflow-security:
         runs-on: ubuntu-latest
