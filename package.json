@@ -45,7 +45,7 @@
         "type-fest": "5.10.0",
         "ulid": "3.0.2",
         "yoctocolors": "2.2.0",
-        "zod": "4.6.5"
+        "zod": "4.6.7"
     },
     "devDependencies": {
         "@enormora/eslint-config-base": "0.0.51",
