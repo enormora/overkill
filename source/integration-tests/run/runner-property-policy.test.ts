@@ -57,6 +57,13 @@ export const testNode = suite('property runner policy', [
                 }));
                 return scope.assert.collect();
             }),
+            test(`${processModel} rejects live capture before importing test files`, async function (scope) {
+                const command = propertyCommand('throws-on-import', processModel);
+                await scope.assert.rejects(async function collectLiveCapture() {
+                    await orchestrator.resolve({ ...command, request: { ...command.request, capture: 'live' } });
+                }, { message: 'Property profiles do not support live capture.' });
+                return scope.assert.collect();
+            }),
             test(`${processModel} rejects coverage before importing test files`, async function (scope) {
                 const command = propertyCommand('throws-on-import', processModel);
                 await scope.assert.rejects(async function collectCoverage() {

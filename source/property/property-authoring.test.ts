@@ -28,6 +28,15 @@ function unexpectedPropertyBody(): never {
 }
 
 export const testNode = suite('property authoring', [
+    test('configured wrappers reject family metadata without a declaration', function (scope) {
+        const body = attachTestBodyFamily(function malformedPropertyBody() {
+            throw new Error('Malformed property body must not execute.');
+        }, { family: 'property', definition: null });
+        scope.assert.throws(function configureMalformedProperty() {
+            withProperties(body, { maxWork: 10 });
+        }, { message: 'withProperties() settings require a property declaration.' });
+        return scope.assert.collect();
+    }),
     test('forwarding metadata preserves an existing declaration and rejects replacement', function (scope) {
         const source = attachTestBodyFamily(function sourceBody() {
             throw new Error('Source must not execute.');
