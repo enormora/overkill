@@ -437,7 +437,7 @@ export const testNode = createOverkillSuite({
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({
                         profiles: {
-                            backend: { testFamily: 'property' }
+                            backend: { testFamily: 'unknown-family' }
                         }
                     });
                 }, { message: /testFamily/ });

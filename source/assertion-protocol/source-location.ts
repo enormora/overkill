@@ -139,3 +139,15 @@ export function resolveSourceLocation(location: ResolvableSourceLocation): Sourc
 
     return resolvedLocation;
 }
+
+export function ensureDefinitionLocations(definitionLocations: readonly ResolvableSourceLocation[]): void {
+    if (definitionLocations.length === 0) {
+        throw new TypeError('Test node definition locations must contain at least one location.');
+    }
+
+    for (const location of definitionLocations) {
+        if (typeof location !== 'function') {
+            ensureValidSourceLocation(location);
+        }
+    }
+}

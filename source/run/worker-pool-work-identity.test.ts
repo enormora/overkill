@@ -39,6 +39,7 @@ function secondCaseId(): CaseId {
 function collectedCase(testCase: CaseId): CollectedRunPlan['files'][number]['cases'][number] {
     return {
         skipReason: null,
+        property: null,
         benchmark: null,
         workloadParameters: null,
         annotations,

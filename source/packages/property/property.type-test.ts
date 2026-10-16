@@ -46,6 +46,25 @@ describe('property authoring types', function () {
         expect<TestScope>().type.not.toHaveProperty('cover');
         expect<() => void>().type.not.toBeAssignableTo<leaf.PropertyBody<number>>();
     });
+    test('accepts collected overrides without changing forall or the base scope', function () {
+        expect(leaf.property).type.toBeCallableWith({
+            title: 'configured',
+            generator: numberGenerator,
+            test(value: number, sample: leaf.PropertySampleScope) {
+                sample.assert.equal(value, 1);
+                return sample.assert.collect();
+            },
+            settings: { newTrials: 200, maxShrinkWork: 0 }
+        });
+        expect(leaf.withProperties).type.toBeCallableWith(
+            function (scope: leaf.PropertyCaseScope) {
+                return scope.assert.collect();
+            },
+            { maxWork: 20_000 }
+        );
+        expect<leaf.PropertySettings>().type.not.toHaveProperty('timeouts');
+        expect<leaf.PropertySettings>().type.not.toHaveProperty('coverage');
+    });
     test('fluent generator composition preserves input types and branding', function () {
         const generator = numberGenerator;
         expect(generator.map(String))

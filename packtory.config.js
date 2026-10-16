@@ -52,7 +52,7 @@ function selectPackages(packages) {
 
 function moduleRoot(sourcePath) {
     return {
-        js: `${sourcePath}.js`,
+        javaScript: `${sourcePath}.js`,
         declarationFile: `${sourcePath}.d.ts`
     };
 }
@@ -73,31 +73,35 @@ function packageDefinition(packageSettings) {
             inputFilePath: path.join(projectFolder, `source/packages/${name}/readme.md`),
             targetFilePath: 'readme.md'
         } ],
-        additionalPackageJsonAttributes: { ...packageMetadata, description },
+        additionalPackageManifestAttributes: { ...packageMetadata, description },
         ...settings
     };
 }
 
-export const config = {
+export const configuration = {
     registrySettings: {
-        auth: {
-            publish: { type: 'npm-oidc', provider: 'auto' },
-            metadata: 'auto'
+        authentication: {
+            publish: { type: 'npm-open-identity-connect', provider: 'automatic' },
+            metadata: 'automatic'
         }
     },
     checks: {
-        typeScriptIntegrity: {
-            enabled: true,
-            declarations: 'all'
-        }
+        typeScriptIntegrity: { enabled: true, declarations: 'all' },
+        noDevelopmentDependencyImports: { enabled: true },
+        noUnusedBundleDependencies: { enabled: false },
+        uniqueTargetPaths: { enabled: true },
+        noUnexposedExecutables: { enabled: true },
+        nodeEngineCompatibility: { enabled: true },
+        noDuplicatedFiles: { enabled: false },
+        requiredFiles: { enabled: true, files: [ 'LICENSE', 'readme.md' ] }
     },
     commonPackageSettings: {
         sourcesFolder: path.join(projectFolder, 'target/package-build/source'),
-        mainPackageJson: rootPackageJson,
+        mainPackageManifest: rootPackageJson,
         includeSourceMapFiles: true,
         publishSettings: {
             access: 'public',
-            provenance: { type: 'auto' }
+            provenance: { type: 'automatic' }
         },
         additionalFiles: [ { inputFilePath: path.join(projectFolder, 'LICENSE'), targetFilePath: 'LICENSE' } ]
     },
@@ -154,29 +158,29 @@ export const config = {
             name: 'run',
             description: 'Overkill run resolution and orchestration.',
             roots: {
-                attachmentConnection: { js: 'run/attachment-connection.js' },
-                attachmentRun: { js: 'run/attachment-run.js' },
+                attachmentConnection: { javaScript: 'run/attachment-connection.js' },
+                attachmentRun: { javaScript: 'run/attachment-run.js' },
                 benchmarkCommands: moduleRoot('run/benchmark-commands'),
-                benchmarkBaselineCommands: { js: 'run/benchmark-baseline-commands.js' },
-                benchmarkBaselineOperations: { js: 'run/benchmark-baseline-operations.js' },
-                benchmarkBaselineRun: { js: 'run/benchmark-baseline-run.js' },
-                benchmarkBaselineSession: { js: 'run/benchmark-baseline-session.js' },
-                benchmarkCalibration: { js: 'run/benchmark-calibration.js' },
-                benchmarkCalibrationChild: { js: 'run/benchmark-calibration.entry-point.js' },
-                benchmarkHost: { js: 'run/benchmark-host.js' },
+                benchmarkBaselineCommands: { javaScript: 'run/benchmark-baseline-commands.js' },
+                benchmarkBaselineOperations: { javaScript: 'run/benchmark-baseline-operations.js' },
+                benchmarkBaselineRun: { javaScript: 'run/benchmark-baseline-run.js' },
+                benchmarkBaselineSession: { javaScript: 'run/benchmark-baseline-session.js' },
+                benchmarkCalibration: { javaScript: 'run/benchmark-calibration.js' },
+                benchmarkCalibrationChild: { javaScript: 'run/benchmark-calibration.entry-point.js' },
+                benchmarkHost: { javaScript: 'run/benchmark-host.js' },
                 hostCalibration: moduleRoot('packages/run/benchmark-calibration.entry-point'),
                 commandLine: moduleRoot('packages/run/command-line.entry-point'),
                 config: moduleRoot('packages/run/config.entry-point'),
-                coverageSession: { js: 'run/coverage-session.js' },
-                executionSessionEnvironment: { js: 'run/execution-session-environment.js' },
+                coverageSession: { javaScript: 'run/coverage-session.js' },
+                executionSessionEnvironment: { javaScript: 'run/execution-session-environment.js' },
                 filters: moduleRoot('packages/run/filters.entry-point'),
-                localCoverage: { js: 'run/run-local-coverage.js' },
+                localCoverage: { javaScript: 'run/run-local-coverage.js' },
                 main: moduleRoot('packages/run/run.entry-point'),
                 nodeCommandLineRunner: moduleRoot('run/node-command-line-runner'),
-                recordedCoverage: { js: 'run/recorded-coverage-run.js' },
+                recordedCoverage: { javaScript: 'run/recorded-coverage-run.js' },
                 resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
                 transcriptStore: moduleRoot('packages/run/transcript-store.entry-point'),
-                workerPoolWorker: { js: 'run/worker-pool-worker.js' }
+                workerPoolWorker: { javaScript: 'run/worker-pool-worker.js' }
             },
             packageInterface: {
                 modules: packageModules({
@@ -233,7 +237,7 @@ export const config = {
             description: 'First-party Stryker TestRunner plugin for Overkill.',
             roots: {
                 main: moduleRoot('packages/stryker-runner/stryker-runner.entry-point'),
-                mutationLifecycle: { js: 'packages/stryker-runner/mutation-lifecycle.js' }
+                mutationLifecycle: { javaScript: 'packages/stryker-runner/mutation-lifecycle.js' }
             },
             packageInterface: {
                 modules: packageModules({ '.': 'main' }),
@@ -278,11 +282,11 @@ export const config = {
                 compatibility: moduleRoot('packages/test/compatibility.entry-point'),
                 config: moduleRoot('packages/test/config.entry-point'),
                 main: moduleRoot('packages/test/test.entry-point'),
-                overkill: { js: 'packages/test/overkill.entry-point.js' },
+                overkill: { javaScript: 'packages/test/overkill.entry-point.js' },
                 property: moduleRoot('packages/test/property.entry-point'),
                 reporters: moduleRoot('packages/test/reporters.entry-point'),
                 resources: moduleRoot('packages/test/resources.entry-point'),
-                resourceWrapperSession: { js: 'packages/test/resource-wrapper-session.js' },
+                resourceWrapperSession: { javaScript: 'packages/test/resource-wrapper-session.js' },
                 simulation: moduleRoot('packages/test/simulation.entry-point')
             },
             packageInterface: {
@@ -298,7 +302,7 @@ export const config = {
                     './resources': 'resources',
                     './simulation': 'simulation'
                 }),
-                bins: [
+                executables: [
                     {
                         name: 'overkill',
                         root: 'overkill'

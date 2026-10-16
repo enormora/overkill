@@ -3,6 +3,7 @@ import { defineCompositeAssertion } from '@overkill-dev/assert';
 import * as doublesPackage from '@overkill-dev/doubles';
 import {
     createEngine,
+    createPropertyTestCase,
     createBenchmarkTestCase,
     createRoot,
     createSuite,
@@ -221,6 +222,7 @@ export const testNode = createSuite({
             controls: {},
             async body(scope: TestScope) {
                 const topLevelEngine: Engine = {
+                    createPropertyTestCase,
                     createBenchmarkTestCase,
                     createSuite,
                     createSkippedTestCase,

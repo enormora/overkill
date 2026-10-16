@@ -52,6 +52,35 @@ async function loadExecutionLifecycle(transport: RunExecutionTransport): Promise
     return validatedLifecycle(created);
 }
 
+async function runOwnedLifecycle<Value>(
+    lifecycle: RunExecutionLifecycle,
+    run: (lifecycle: RunExecutionLifecycle) => Promise<Value>
+): Promise<Value> {
+    const [ execution ] = await Promise.allSettled([ withCaseExecutionLifecycle({
+        async enter(testCase) {
+            await lifecycle.enterCase(testCase.workId);
+        },
+        complete: lifecycle.completeCase
+    }, async function () {
+        return await run(lifecycle);
+    }) ]);
+    const [ disposal ] = await Promise.allSettled([ lifecycle.dispose() ]);
+    if (execution.status === 'rejected' && disposal.status === 'rejected') {
+        throw new AggregateError(
+            [ execution.reason, disposal.reason ],
+            'Execution and lifecycle disposal failed.',
+            { cause: execution.reason }
+        );
+    }
+    if (disposal.status === 'rejected') {
+        throw disposal.reason;
+    }
+    if (execution.status === 'rejected') {
+        throw execution.reason;
+    }
+    return execution.value;
+}
+
 export async function withExecutionLifecycle<Value>(
     transport: RunExecutionTransport,
     boundary: FileModuleBoundary | null,
@@ -60,18 +89,7 @@ export async function withExecutionLifecycle<Value>(
     return await withExecutionSession(transport, async function () {
         return await withFileModuleBoundary(boundary, async function () {
             const lifecycle = await loadExecutionLifecycle(transport);
-            try {
-                return await withCaseExecutionLifecycle({
-                    async enter(testCase) {
-                        await lifecycle.enterCase(testCase.workId);
-                    },
-                    complete: lifecycle.completeCase
-                }, async function () {
-                    return await run(lifecycle);
-                });
-            } finally {
-                await lifecycle.dispose();
-            }
+            return await runOwnedLifecycle(lifecycle, run);
         });
     });
 }

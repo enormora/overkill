@@ -900,6 +900,7 @@ type IntegrationProfileConfig = {
 type PropertyProfileConfig = {
     readonly testFamily: 'property';
     readonly files: ProfileFiles;
+    readonly property: PropertyPolicy;
     readonly reporters?: ReadonlyArray<Reporter>;
     readonly execution?: MicrotestExecutionConfig;
     readonly processUsage?: ProcessUsagePolicy;
@@ -2234,6 +2235,21 @@ Canonical: [Failure Artifacts](../authoring/failure-artifacts.md).
 ## Property Testing
 
 ```ts
+type PropertyPolicy = {
+    readonly version: 1;
+    readonly newTrials: number;
+    readonly maxSize: number;
+    readonly maxDepth: number;
+    readonly maxAutomaticEdges: number;
+    readonly maxExhaustiveValues: number;
+    readonly maxWork: number;
+    readonly maxShrinkWork: number;
+    readonly maxLabels: number;
+    readonly maxRetainedInputs: number;
+};
+
+type PropertySettings = Readonly<Partial<Omit<PropertyPolicy, 'version'>>>;
+
 type PropertyCodecPayload =
     | null
     | undefined
@@ -2281,7 +2297,7 @@ type PropertyBody<Value> = (
     sample: PropertySampleScope
 ) => AssertionResult | Promise<AssertionResult>;
 
-type PropertyDefinition<Value> = {
+type PropertyDefinitionBody<Value> = {
     readonly title: string;
     readonly generator: Generator<Value>;
     readonly test: PropertyBody<Value>;
@@ -2306,6 +2322,10 @@ declare function defineCodec<Value>(definition: PropertyInputCodec<Value>): Prop
 declare function withProperties(
     body: (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>
 ): TestBody;
+declare function withProperties(
+    body: (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>,
+    settings: PropertySettings
+): TestBody;
 declare function sampleGenerator<Value>(
     generator: Generator<Value>,
     request: GeneratorSampleRequest
@@ -2314,7 +2334,7 @@ declare function sampleGenerator<Value>(
 
 These are the primitive authoring forms. Collected property settings supply
 explicit examples, input-coverage requirements, failure-key overrides, and
-profile-bounded exploration policy. Codec versions and standard payload shapes
+collected exploration defaults and overrides; timeout and process supervision remain profile-owned. Codec versions and standard payload shapes
 are validated at runtime; custom decoders validate external payloads before
 returning a reconstructed value.
 

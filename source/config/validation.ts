@@ -1,3 +1,5 @@
+import { microtestExecutionSchema, propertyProfileSchema } from './schema.ts';
+import { propertyPolicySchema } from './property-policy.ts';
 import { ConfigError } from './config-error.ts';
 import { validateNormalizedBenchmarkHostPolicy } from './benchmark-host.ts';
 import { performanceBaselinePolicySchema } from './performance-baselines.ts';
@@ -8,6 +10,7 @@ import type {
     NormalizedConfig,
     BenchmarkProfileConfig,
     ProfileConfig,
+    PropertyProfileConfig,
     ProcessBudgets,
     ProcessUsagePolicy,
     TimeoutPolicy
@@ -62,7 +65,7 @@ function validateMicrotestProfile(profile: ProfileConfig): void {
 }
 
 function validateAttachmentLimits(profile: ProfileConfig): void {
-    if (profile.testFamily === 'microtest') {
+    if (profile.testFamily === 'microtest' || profile.testFamily === 'property') {
         return;
     }
     for (const [ name, value ] of Object.entries(profile.attachments)) {
@@ -93,10 +96,32 @@ function validateBenchmarkProfile(profileName: string, profile: BenchmarkProfile
     }
 }
 
+function validatePropertyProfile(profile: PropertyProfileConfig): void {
+    validateMicrotestProfile(profile);
+    normalizeRequiredProfileFiles(profile.files);
+    microtestExecutionSchema.parse(profile.execution);
+    propertyPolicySchema.parse(profile.property);
+    const permittedFields = propertyProfileSchema.unwrap().shape;
+    if (
+        Object.keys(profile).some(function unsupportedPropertyField(name) {
+            return !Object.hasOwn(permittedFields, name);
+        })
+    ) {
+        throw new ConfigError('Property profiles cannot configure additional fields.');
+    }
+}
+
 function validateProfileFamily(profileName: string, testFamily: unknown): void {
-    if (testFamily !== 'benchmark' && testFamily !== 'integration' && testFamily !== 'microtest') {
+    if (
+        testFamily !== 'benchmark' && testFamily !== 'integration' && testFamily !== 'microtest' &&
+        testFamily !== 'property'
+    ) {
         throw new ConfigError(
-            `Invalid profile "${profileName}": testFamily must be "benchmark", "integration", or "microtest".`
+            [
+                `Invalid profile "${profileName}":`,
+                'testFamily must be "benchmark", "integration", "microtest", or "property".'
+            ]
+                .join(' ')
         );
     }
 }
@@ -108,6 +133,8 @@ export function validateNormalizedConfig(config: NormalizedConfig): void {
 
         if (profile.testFamily === 'benchmark') {
             validateBenchmarkProfile(profileName, profile);
+        } else if (profile.testFamily === 'property') {
+            validatePropertyProfile(profile);
         } else if (profile.testFamily === 'microtest') {
             validateMicrotestProfile(profile);
         } else {

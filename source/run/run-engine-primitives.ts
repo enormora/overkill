@@ -58,3 +58,7 @@ export type RuntimeId = RuntimeIdDefinition;
 export type WorkloadId = WorkloadIdDefinition;
 export type OrphanedNode = OrphanedNodeDefinition;
 export type TestPlanRootOptions = TestPlanRootOptionsDefinition;
+
+type PropertyExecution = Extract<TestPlanCaseDefinition['execution'], { readonly bodyMode: 'property'; }>;
+export type PropertyBodyDefinition = PropertyExecution['definition'];
+export type PropertyPolicy = Extract<PropertyExecution['policy'], { readonly kind: 'resolved'; }>['policy'];

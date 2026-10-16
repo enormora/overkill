@@ -5,6 +5,7 @@ import { testNode as settingsTestNode } from './runner-options.test.ts';
 import { testNode as policyTestNode } from './mutation-execution-policy.test.ts';
 import { testNode as sandboxTestNode } from './mutation-sandbox.test.ts';
 import { testNode as resultsTestNode } from './mutation-results.test.ts';
+import { testNode as instrumentationTestNode } from './instrumentation-context.test.ts';
 
 export const testNode = suite('Stryker runner', [
     profileTestNode,
@@ -12,5 +13,6 @@ export const testNode = suite('Stryker runner', [
     policyTestNode,
     sandboxTestNode,
     resultsTestNode,
+    instrumentationTestNode,
     lifecycleTestNode
 ]);

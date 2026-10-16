@@ -385,6 +385,11 @@ function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
         assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
             return testCase.workId;
         }),
+        propertyPolicies: runtime.resolvedRun.facts.cases.flatMap(function propertyAssignment(testCase) {
+            return testCase.propertyPolicy === null
+                ? []
+                : [ { work: testCase.workId, policy: testCase.propertyPolicy } ];
+        }),
         workloadInputs: supervisedWorkloadInputs(runtime.resolvedRun),
         kind: 'assign',
         attachmentEndpoint: runtime.attachments?.endpoint ?? null

@@ -26,6 +26,7 @@ import {
     type Config,
     type ProjectIntegrationProfileConfig,
     type ProjectMicrotestProfileConfig,
+    type ProjectPropertyProfileConfig,
     type ProjectProfileFiles,
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
@@ -127,8 +128,11 @@ describe('@overkill-dev/run/command-line', function () {
     test('exposes typed runner profiles', function () {
         expect<Config['profiles']>().type.toBe<ProjectProfilesConfig | undefined>();
         expect<ProjectProfilesConfig[string]>().type.toBe<ProjectProfileConfig>();
-        expect<ProjectProfileConfig>().type.toBe<
+        expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
             ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
+        >();
+        expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
+            ProjectPropertyProfileConfig
         >();
         expect<ProjectProfileConfig>().type.toBeAssignableFrom<{
             readonly execution: ProjectMicrotestProfileConfig['execution'];

@@ -30,6 +30,7 @@ import type {
     Config,
     ProjectIntegrationProfileConfig,
     ProjectMicrotestProfileConfig,
+    ProjectPropertyProfileConfig,
     ProjectProfileConfig,
     ProjectBenchmarkProfileConfig,
     ProjectProfileFiles,
@@ -167,8 +168,11 @@ declare const testScope: TestScope;
 describe('@overkill-dev/test standard subpaths', function () {
     test('exposes config authoring types', function () {
         expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
-        expect<ProjectProfileConfig>().type.toBe<
+        expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
             ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
+        >();
+        expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
+            ProjectPropertyProfileConfig
         >();
         expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFilePatterns>();
         expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();

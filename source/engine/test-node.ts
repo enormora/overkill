@@ -6,7 +6,7 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import { ensureValidSourceLocation } from '../assertion-protocol/source-location.ts';
+import { ensureDefinitionLocations } from '../assertion-protocol/source-location.ts';
 import type {
     BenchmarkScope as MeasurementScope,
     BenchmarkBody as MeasurementBody,
@@ -14,7 +14,11 @@ import type {
     BenchmarkTestCaseOptions as MeasurementOptions
 } from './benchmark-node.ts';
 import { readWorkloadTestCaseVariants, type WorkloadVariant } from './workload-test-case.ts';
-import { resolveTestBodyFamily } from './test-body.ts';
+import {
+    propertyExecutionForDefinition,
+    type FamilyBodyExecution,
+    resolveTestBodyFamily
+} from './test-body.ts';
 import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
@@ -66,11 +70,8 @@ export type ThrowingTestBody = (scope: ThrowingTestScope) => Promise<void> | voi
 
 export type DefinitionLocations = NonEmptyReadonlyArray<ResolvableSourceLocation>;
 
-export type BuilderTestCaseExecution = {
-    readonly body: TestBody;
-    readonly bodyMode: 'builder';
-    readonly kind: 'body';
-};
+export type BuilderTestCaseExecution = Extract<FamilyBodyExecution<TestBody>, { readonly bodyMode: 'builder'; }>;
+export type PropertyTestCaseExecution = Extract<FamilyBodyExecution<TestBody>, { readonly bodyMode: 'property'; }>;
 
 export type ThrowingTestCaseExecution = {
     readonly body: ThrowingTestBody;
@@ -83,7 +84,8 @@ export type SkippedTestCaseExecution = {
     readonly reason: string;
 };
 
-export type BodyTestCaseExecution = BenchmarkTestCaseExecution | BuilderTestCaseExecution | ThrowingTestCaseExecution;
+type AssertionBodyExecution = BuilderTestCaseExecution | PropertyTestCaseExecution | ThrowingTestCaseExecution;
+export type BodyTestCaseExecution = AssertionBodyExecution | BenchmarkTestCaseExecution;
 
 type WorkloadId = WorkloadVariant<TestBody>['id'];
 type WorkloadParameters = NonNullable<WorkloadVariant<TestBody>['parameters']>;
@@ -166,6 +168,7 @@ export type TestNodeOwner = {
 };
 
 export type TestNodeFactory = {
+    readonly createPropertyTestCase: (options: PropertyTestCaseOptions) => TestCase;
     readonly createBenchmarkTestCase: (options: BenchmarkTestCaseOptions) => TestCase;
     readonly createRoot: (options: RootOptions) => TestRoot;
     readonly createSuite: (options: SuiteOptions) => Suite;
@@ -190,6 +193,10 @@ export type TestCaseDefinition = {
 
 export type TestCaseOptions = TestCaseDefinition & {
     readonly body: TestBody;
+};
+
+export type PropertyTestCaseOptions = TestCaseOptions & {
+    readonly definition: PropertyTestCaseExecution['definition'];
 };
 
 export type ThrowingTestCaseOptions = TestCaseDefinition & {
@@ -295,18 +302,6 @@ function readSkipReason(reason: unknown): string {
     }
 
     return trimmedReason;
-}
-
-function ensureDefinitionLocations(definitionLocations: readonly ResolvableSourceLocation[]): void {
-    if (definitionLocations.length === 0) {
-        throw new TypeError('Test node definition locations must contain at least one location.');
-    }
-
-    for (const location of definitionLocations) {
-        if (typeof location !== 'function') {
-            ensureValidSourceLocation(location);
-        }
-    }
 }
 
 export function isTestNode(value: unknown): value is TestNode {
@@ -439,29 +434,6 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         return testCase;
     }
 
-    function createBenchmarkTestCase(options: BenchmarkTestCaseOptions): TestCase {
-        if (options.workloads.length === 0) {
-            throw new TypeError('Benchmark must declare at least one workload.');
-        }
-        return createExecutableTestCase(
-            options,
-            {
-                resourceBody: options.resourceBody,
-                definition: options.definition,
-                body: options.body,
-                bodyMode: 'benchmark',
-                kind: 'body',
-                workloads: Object.freeze(Array.from(options.workloads))
-            },
-            'benchmark'
-        );
-    }
-
-    function createSkippedTestCase(options: SkippedTestCaseOptions): TestCase {
-        const reason = readSkipReason(options.reason);
-        return createExecutableTestCase(options, { kind: 'skip', reason }, null);
-    }
-
     function createRoot(options: RootOptions): TestRoot {
         ensureTitleValue(options.title);
         ensureTitle(options.title);
@@ -548,10 +520,37 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     return {
-        createBenchmarkTestCase,
+        createPropertyTestCase(options: PropertyTestCaseOptions): TestCase {
+            ensureTestBody(options.body);
+            return createExecutableTestCase(
+                options,
+                propertyExecutionForDefinition(options.body, options.definition),
+                'property'
+            );
+        },
+        createBenchmarkTestCase(options: BenchmarkTestCaseOptions): TestCase {
+            if (options.workloads.length === 0) {
+                throw new TypeError('Benchmark must declare at least one workload.');
+            }
+            return createExecutableTestCase(
+                options,
+                {
+                    resourceBody: options.resourceBody,
+                    definition: options.definition,
+                    body: options.body,
+                    bodyMode: 'benchmark',
+                    kind: 'body',
+                    workloads: Object.freeze(Array.from(options.workloads))
+                },
+                'benchmark'
+            );
+        },
         createRoot,
         createSuite,
-        createSkippedTestCase,
+        createSkippedTestCase(options: SkippedTestCaseOptions): TestCase {
+            const reason = readSkipReason(options.reason);
+            return createExecutableTestCase(options, { kind: 'skip', reason }, null);
+        },
         createTable,
         createTestCase(options: TestCaseOptions): TestCase {
             ensureTestBody(options.body);

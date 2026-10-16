@@ -1,8 +1,9 @@
 import type { JsonValue } from 'type-fest';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type { IntegrationProfileConfig, MaxConcurrency, ProcessBudgets, Scheduling } from '../config/types.ts';
-import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
+import { assertFrozenAssignmentInputs } from './workload-input-validation.ts';
 import type {
+    PropertyPolicy,
     FrozenWorkloadInput,
     FrozenMicrotestPolicy,
     CollectedRunPlan,
@@ -23,6 +24,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly propertyPolicy: PropertyPolicy | null;
     readonly retryPolicy: IntegrationProfileConfig['retries'];
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';
@@ -65,6 +67,7 @@ export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCom
 export const supervisedChildCorrelationId = 'supervised-run';
 
 type WorkAssignmentCommand = {
+    readonly propertyPolicies: readonly { readonly work: WorkId; readonly policy: PropertyPolicy; }[];
     readonly workloadInputs: readonly FrozenWorkloadInput[];
     readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly assignedWork: readonly WorkId[];
@@ -166,9 +169,10 @@ function isWorkAssignment(assignment: SupervisedAssignmentCommand): assignment i
 
 export function supervisedAssignedPlan(testPlan: TestPlan, assignment: SupervisedAssignmentCommand): TestPlan {
     const selected = selectAssignedCases(testPlan, supervisedAssignedWork(assignment));
-    assertFrozenWorkloadInputs(
+    assertFrozenAssignmentInputs(
         selected,
-        isWorkAssignment(assignment) ? assignment.workloadInputs : []
+        isWorkAssignment(assignment) ? assignment.workloadInputs : [],
+        isWorkAssignment(assignment) ? assignment.propertyPolicies : []
     );
     return selected;
 }

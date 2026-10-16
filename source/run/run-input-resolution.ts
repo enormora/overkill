@@ -34,8 +34,10 @@ function assertMicrotestCaptureSupported(
     request: RunRequest,
     profile: ProfileConfig
 ): void {
-    if (profile.testFamily === 'microtest' && request.capture === 'live') {
-        invalidRequest('Microtest profiles do not support live capture.');
+    if ((profile.testFamily === 'microtest' || profile.testFamily === 'property') && request.capture === 'live') {
+        invalidRequest(
+            `${profile.testFamily === 'microtest' ? 'Microtest' : 'Property'} profiles do not support live capture.`
+        );
     }
 }
 
@@ -66,9 +68,11 @@ function assertProfileRequestSupported(
     reporters: NormalizedConfig['reporters']
 ): void {
     assertBaselineRequestSupported(namespace, request);
-    if (request.execution.mode === 'serial' && profile.testFamily !== 'microtest') {
+    if (
+        request.execution.mode === 'serial' && profile.testFamily !== 'microtest' && profile.testFamily !== 'property'
+    ) {
         throw new RunResolutionError(
-            'Serial execution overrides require a microtest profile.',
+            'Serial execution overrides require a microtest or property profile.',
             undefined,
             'unsupported-request'
         );

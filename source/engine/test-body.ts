@@ -1,3 +1,8 @@
+import {
+    isPropertyBodyDefinition,
+    type PropertyBodyDefinition,
+    type PropertyPolicyResolution
+} from './property-node.ts';
 import type { TestFamily } from './test-data.ts';
 import type { WorkloadInput } from './workload-input.ts';
 
@@ -100,4 +105,46 @@ export function forwardTestBodyResources<Scope, Result>(
         });
     }
     return body;
+}
+
+export type PropertyBodyExecution<Body> = {
+    readonly kind: 'body';
+    readonly bodyMode: 'property';
+    readonly body: Body;
+    readonly definition: PropertyBodyDefinition;
+    readonly policy: PropertyPolicyResolution;
+};
+
+type BuilderBodyExecution<Body> = { readonly kind: 'body'; readonly bodyMode: 'builder'; readonly body: Body; };
+export type FamilyBodyExecution<Body> = BuilderBodyExecution<Body> | PropertyBodyExecution<Body>;
+
+export function propertyExecutionForDefinition<Body>(
+    body: Body,
+    definition: PropertyBodyDefinition
+): PropertyBodyExecution<Body> {
+    return {
+        kind: 'body',
+        bodyMode: 'property',
+        body,
+        definition: { kind: definition.kind, settingsDeclarations: definition.settingsDeclarations },
+        policy: { kind: 'unresolved' }
+    };
+}
+
+function propertyExecutionForBody<Body>(body: Body): PropertyBodyExecution<Body> | null {
+    const attachment = readTestBodyFamily(body);
+    if (attachment?.family !== 'property' || !isPropertyBodyDefinition(attachment.definition)) {
+        return null;
+    }
+    return propertyExecutionForDefinition(body, attachment.definition);
+}
+
+export function resolveFamilyBodyExecution<Body>(
+    execution: FamilyBodyExecution<Body>,
+    workload: WorkloadInput | null
+): FamilyBodyExecution<Body> {
+    const body = resolveTestBodyWorkload(execution.body, workload);
+    return execution.bodyMode === 'property'
+        ? { ...execution, body }
+        : propertyExecutionForBody(body) ?? { ...execution, body };
 }

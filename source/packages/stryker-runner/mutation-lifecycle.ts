@@ -11,7 +11,7 @@ import {
     type MutationCatalog
 } from './mutation-catalog.ts';
 import { safeMutationFailure } from './mutation-results.ts';
-import { initializeInstrumentation, clearMutantActivation } from './instrumentation-context.entry-point.ts';
+import { createInvocationInstrumentation } from './instrumentation-context.entry-point.ts';
 
 export const mutationLifecycleUrl = import.meta.url;
 
@@ -29,7 +29,7 @@ export const mutationLifecycleInputSchema = z.strictObject({
 
 export async function createMutationLifecycle(data: JsonValue): Promise<RunExecutionLifecycle> {
     const input = mutationLifecycleInputSchema.parse(data);
-    const context = initializeInstrumentation();
+    const instrumentation = createInvocationInstrumentation();
     let catalog: MutationCatalog = [];
     let selected: readonly string[] = [];
     const completed = new Set<string>();
@@ -37,11 +37,7 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
 
     function activate(): void {
         if (input.activeMutant !== null) {
-            context.activeMutant = input.activeMutant;
-        }
-        if (input.hitLimit !== null) {
-            context.hitCount = 0;
-            context.hitLimit = input.hitLimit;
+            instrumentation.activate(input.activeMutant, input.hitLimit);
         }
     }
     if (input.mode === 'static') {
@@ -64,13 +60,13 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
             }
         },
         async enterCase(work) {
-            if (context.currentTestId !== undefined) {
+            if (instrumentation.context.currentTestId !== undefined) {
                 throw new Error('Mutation execution requires exclusive serial case admission.');
             }
-            context.currentTestId = workIdentityKey(canonicalWork(input.root, work));
+            instrumentation.context.currentTestId = workIdentityKey(canonicalWork(input.root, work));
         },
         async completeCase(result, errors) {
-            delete context.currentTestId;
+            delete instrumentation.context.currentTestId;
             const id = workIdentityKey(canonicalWork(input.root, result.workId));
             if (completed.has(id)) {
                 throw new Error('Duplicate mutation case completion.');
@@ -85,15 +81,15 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
         snapshot() {
             return mutationLifecycleDataSchema.parse({
                 catalog,
-                coverage: structuredClone(context.mutantCoverage),
-                hitLimitExceeded: input.hitLimit !== null && (context.hitCount ?? 0) > input.hitLimit,
+                coverage: structuredClone(instrumentation.context.mutantCoverage),
+                hitLimitExceeded: input.hitLimit !== null && (instrumentation.context.hitCount ?? 0) > input.hitLimit,
                 selected,
                 completed: Array.from(completed),
                 bailed
             });
         },
         async dispose() {
-            clearMutantActivation(context);
+            instrumentation.dispose();
         }
     };
 }

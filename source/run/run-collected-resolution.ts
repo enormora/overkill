@@ -1,9 +1,5 @@
-import type { RunnerError } from '../engine/run-result.ts';
-
-import {
-    collectedRunCaseFactsFromEntries,
-    collectedRunPlanFromEntries
-} from './collected-run-plan.ts';
+import { collectedRunPlanFromEntries } from './collected-run-plan.ts';
+import { collectedRunCaseFactsFromEntries } from './run-case-facts.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
 import {
     createRunFacts
@@ -22,6 +18,8 @@ import {
 } from './run-support.ts';
 import type { CollectedRunPlan, ResolvedRun, RunCommand } from './run-types.ts';
 import type { WorkerPoolPlacementResolutionInput } from './worker-pool-placement-planning.ts';
+
+type RunnerError = ResolvedRun['collectionRunnerErrors'][number];
 
 type CollectedPlanKind = 'supervised' | 'worker-pool';
 export type CollectionDurationHistoryIndex = WorkerPoolPlacementResolutionInput['durationHistoryIndex'];
@@ -102,6 +100,9 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
 }
 
 export async function createResolvedRunFromCollection(input: CollectionResolvedRunInput): Promise<ResolvedRun> {
+    if (input.profile.testFamily === 'property') {
+        assertCollectedRunPlanCasesMatchProfilePolicy(input.collection.collectedPlan, input.profile);
+    }
     const collectedPlan = selectedCollectedRunPlan(input.collection.collectedPlan, input.request.selection);
 
     return await createResolvedRunFromCollectedPlan({

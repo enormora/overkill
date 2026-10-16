@@ -26,6 +26,7 @@ import type { DirectEntrypointCollectionSource } from './run-collection-source.t
 import type { RunCommand } from './run-types.ts';
 import {
     createRunTestPlan,
+    resolveTestPlanCollectionPolicy,
     createRunTestPlanFromDirectEntrypoint
 } from './run-test-plan.ts';
 
@@ -109,6 +110,23 @@ function directCommand(profile: RunCommand['config']['profiles'][string], profil
 export const testNode = createSuite({
     annotations: {},
     children: [
+        createTestCase({
+            annotations: {},
+            body(scope: TestScope) {
+                const plan = testPlan('ordinary');
+                scope.assert.throws(function collectMissingProfilePolicy() {
+                    resolveTestPlanCollectionPolicy(plan, {
+                        testFamily: 'property',
+                        propertyPolicy: null,
+                        timeoutMilliseconds: 1000
+                    });
+                }, { message: 'Property collection requires profile policy.' });
+                return scope.assert.collect();
+            },
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'property collection rejects commands without profile policy'
+        }),
         createTestCase({
             annotations: {},
             body(scope: TestScope) {

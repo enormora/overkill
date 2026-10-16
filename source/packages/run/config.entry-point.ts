@@ -44,6 +44,7 @@ export type {
     ProjectMeasuredProcessUsage,
     ProjectMicrotestExecution,
     ProjectMicrotestProfileConfig,
+    ProjectPropertyProfileConfig,
     ProjectProfileConfig,
     ProjectProfileFiles,
     ProjectProfilesConfig,
@@ -54,7 +55,13 @@ export type {
     ProjectUnmeasuredProcessUsage
 } from '../../config/config.ts';
 
-export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';
+export type {
+    NormalizedConfig,
+    ProfileConfig,
+    BenchmarkProfileConfig,
+    PropertyProfileConfig,
+    TestProfileConfig
+} from '../../config/types.ts';
 
 export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
 export type { BenchmarkHostLimits, BenchmarkHostPolicy } from '../../config/benchmark-host.ts';

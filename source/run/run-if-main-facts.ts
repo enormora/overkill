@@ -3,7 +3,7 @@ import type { RunResult } from '../engine/run-result.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { LoadedConfig } from '../config/config.ts';
 import type { NormalizedConfig } from '../config/types.ts';
-import { runCaseFactsFromTestPlan } from './run-facts.ts';
+import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
 import { resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
 import { resultWithTimingCollection } from './run-timing-collection.ts';
 import type { RunFacts, RunRequest } from './run-types.ts';
@@ -90,6 +90,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             runtimeStateDir: input.config.runtimeStateDir
         },
         execution: {
+            propertyPolicy: profile.testFamily === 'property' ? profile.property : null,
             attachments: profile.testFamily === 'integration' ? profile.attachments : null,
             baselineUpdateMode: request.baselineUpdateMode,
             capture: request.capture,

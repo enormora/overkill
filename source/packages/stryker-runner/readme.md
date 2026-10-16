@@ -125,6 +125,11 @@ planner path unless `ignoreStatic` requests runtime execution.
 Counters retain their object identity across reused invocations. Test attribution
 includes awaited cleanup. Infrastructure errors take precedence over timeouts
 and confirmed kills; swallowed hit-limit exceptions still return `Timeout`.
+Each invocation clears prior counters before collection. Activation, test identity,
+hit-limit state, and the activation environment variable are cleared on exit,
+including partial setup failures. Reset failures still attempt independent cleanup
+and return `Error` if state cannot be cleared; retained runtime objects are never
+replaced to recover. Detached result counters remain available after cleanup.
 Ordinary reporters, records, duration history, V8 coverage, and artifact-file
 persistence are disabled for these memory-only execution sessions.
 

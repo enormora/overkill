@@ -37,6 +37,7 @@ test-unit: benchmark-html-browser
 
 test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-benchmark-host.test.ts
+    node source/integration-tests/run/runner-property-policy.test.ts
     node source/integration-tests/run/runner-benchmark-html.test.ts
     node source/integration-tests/run/runner-measurements.test.ts
     node source/integration-tests/run/runner-supervised-cancellation.test.ts

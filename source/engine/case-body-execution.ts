@@ -39,7 +39,7 @@ export function builderBodyForAttempt(testCase: TestPlanCase, attempt: Benchmark
     if (execution.kind !== 'body' || execution.bodyMode === 'throwing') {
         throw new TypeError('Test case does not have a builder body.');
     }
-    if (execution.bodyMode === 'builder') {
+    if (execution.bodyMode === 'builder' || execution.bodyMode === 'property') {
         return execution.body;
     }
     const { workload } = testCase.workId;
@@ -58,7 +58,11 @@ export function builderBodyForAttempt(testCase: TestPlanCase, attempt: Benchmark
 }
 
 export function testBodyExecutionError(testCase: TestPlanCase): TypeError | null {
-    if (testCase.execution.kind === 'body' && readTestBodyFamily(testCase.execution.body)?.family === 'property') {
+    const { execution } = testCase;
+    if (execution.kind !== 'body') {
+        return null;
+    }
+    if (execution.bodyMode === 'property' || readTestBodyFamily(execution.body)?.family === 'property') {
         return new TypeError(
             'Property execution is not available. Property policy and generator execution are required.'
         );

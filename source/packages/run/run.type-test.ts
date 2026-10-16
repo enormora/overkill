@@ -37,6 +37,7 @@ import {
     type MicrotestExecution,
     type RunSelection,
     type MicrotestProfileConfig,
+    type PropertyProfileConfig,
     type RunOrder,
     type ProcessModel,
     type ProfileConfig,
@@ -47,6 +48,7 @@ import {
     type ProjectIntegrationExecution,
     type ProjectProfileFiles,
     type ProjectMicrotestProfileConfig,
+    type ProjectPropertyProfileConfig,
     type ProjectMicrotestExecution,
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
@@ -404,7 +406,9 @@ describe('@overkill-dev/run config', function () {
         >();
         expect<NormalizedConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<NormalizedConfig['profiles'][string]>().type.toBe<ProfileConfig>();
-        expect<ProfileConfig>().type.toBe<BenchmarkProfileConfig | IntegrationProfileConfig | MicrotestProfileConfig>();
+        expect<ProfileConfig>().type.toBe<
+            BenchmarkProfileConfig | IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig
+        >();
         expect<NormalizedConfig['profiles']['backend-http']>().type.toBe<ProfileConfig>();
         expect<NormalizedConfig['reporters']>().type.toBe<readonly DefinedReporter[] | null>();
         expect<TestProfileConfig['timings']>().type.toBe<TimingProfilePolicy>();
@@ -436,6 +440,15 @@ describe('@overkill-dev/run config', function () {
         expect<ProjectProfileFiles>().type.toBeAssignableFrom<ProjectProfileFileSets>();
     });
 
+    test('exposes property profile config types', function () {
+        expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
+            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
+        >();
+        expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
+            ProjectPropertyProfileConfig
+        >();
+    });
+
     test('exposes config loading helpers from the main package surface', function () {
         expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
         expect<typeof loadConfig>().type.toBe<
@@ -444,9 +457,6 @@ describe('@overkill-dev/run config', function () {
         expect<Config['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
         expect<Config['reporters']>().type.toBe<
             readonly [DefinedReporter, ...DefinedReporter[]] | undefined
-        >();
-        expect<ProjectProfileConfig>().type.toBe<
-            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
         >();
         expect<ProjectProfileConfig>().type.toBeAssignableFrom<{
             readonly execution: ProjectMicrotestProfileConfig['execution'];

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
     orchestrator,
     type RunExecutionSessionOptions,
@@ -119,6 +119,52 @@ function createScheduledSession(
 function requirePassedExecution(reply: RunExecutionReply): void {
     assert.ok(reply.kind === 'result', JSON.stringify(reply));
     assert.equal(reply.result.status, 'passed', JSON.stringify(reply));
+}
+
+async function sessionAtBoundary(
+    mode: 'fresh-invocation' | 'profile-default' | 'supervised-process'
+): Promise<RunExecutionSession> {
+    const options = await sessionOptions(
+        mode === 'supervised-process' ? 'supervised-process' : 'in-process',
+        passingFiles
+    );
+    return orchestrator.createExecutionSession({
+        ...options,
+        environment: mode === 'fresh-invocation' ? mode : 'profile-default'
+    });
+}
+
+function combinedFailureDetails(reply: RunExecutionReply): unknown {
+    if (reply.kind === 'failure') {
+        assert.deepEqual({ name: reply.failure.name, message: reply.failure.message }, {
+            name: 'AggregateError',
+            message: 'Execution and lifecycle disposal failed.'
+        });
+        return reply.failure.cause;
+    }
+    assert.ok(reply.kind === 'result', JSON.stringify(reply));
+    assert.equal(reply.result.status, 'failed');
+    assert.equal(reply.result.runnerErrors.length, 1);
+    const error = reply.result.runnerErrors[0];
+    assert.ok(error !== undefined);
+    assert.equal(error.message, 'Execution and lifecycle disposal failed.');
+    return error.cause;
+}
+
+function diagnosticMessage(error: unknown): string {
+    assert.ok(typeof error === 'object' && error !== null);
+    const message: unknown = Reflect.get(error, 'message');
+    assert.ok(typeof message === 'string');
+    return message;
+}
+
+function assertCombinedLifecycleFailure(scope: TestScope, reply: RunExecutionReply): void {
+    const details = combinedFailureDetails(reply);
+    assert.ok(typeof details === 'object' && details !== null);
+    const errors: unknown = Reflect.get(details, 'errors');
+    assert.ok(Array.isArray(errors));
+    scope.assert.deepEqual(errors.map(diagnosticMessage), [ 'Lifecycle before failed.', 'Lifecycle dispose failed.' ]);
+    scope.assert.equal(diagnosticMessage(Reflect.get(details, 'cause')), 'Lifecycle before failed.');
 }
 
 export const testNode = suite('public execution session boundaries', [
@@ -346,6 +392,17 @@ export const testNode = suite('public execution session boundaries', [
             scope.assert.equal(failed.failure.message, `Lifecycle ${data} failed.`);
             const completed = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
             scope.assert.equal(completed.kind, 'result');
+            return scope.assert.collect();
+        });
+    }),
+    ...([ 'profile-default', 'fresh-invocation', 'supervised-process' ] as const).map(function executionBoundary(mode) {
+        return test(`retains execution and disposal errors through ${mode}`, async function (scope) {
+            const session = await sessionAtBoundary(mode);
+            scope.cleanup(session.dispose);
+            const failed = await session.run({ data: 'before-and-dispose', timeoutMilliseconds: 30_000, signal: null });
+            assertCombinedLifecycleFailure(scope, failed);
+            const completed = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
+            requirePassedExecution(completed);
             return scope.assert.collect();
         });
     }),

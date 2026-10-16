@@ -1,6 +1,3 @@
-import { serializeValue } from '../compare/serialized-value.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
-
 import type { NormalizedConfig, ProfileConfig, Scheduling } from '../config/types.ts';
 import { resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
 import { selectProfile } from './test-profile.ts';
@@ -37,10 +34,15 @@ export type RunFactsInput = {
     readonly workerCount: RunWorkerCountFacts | null;
 };
 
-export type RunCaseFileSet = (file: RunCaseFacts['id']['file']) => string | null;
-
 function resolvedSeed(request: RunRequest, dependencies: RunFactsDependencies): bigint {
     return request.seed.value ?? dependencies.createSeed();
+}
+
+function executionAttachmentLimits(profile: ProfileConfig): RunExecutionFacts['attachments'] {
+    if (profile.testFamily === 'microtest' || profile.testFamily === 'property') {
+        return null;
+    }
+    return profile.attachments;
 }
 
 function createRunExecutionFacts(
@@ -48,7 +50,8 @@ function createRunExecutionFacts(
     profile: ProfileConfig
 ): RunExecutionFacts {
     const facts = {
-        attachments: profile.testFamily === 'microtest' ? null : profile.attachments,
+        attachments: executionAttachmentLimits(profile),
+        propertyPolicy: profile.testFamily === 'property' ? profile.property : null,
         baselineUpdateMode: input.request.baselineUpdateMode,
         capture: input.request.capture,
         coverage: input.request.coverage,
@@ -89,21 +92,6 @@ function createRunExecutionFacts(
         ...facts,
         processModel: profile.execution.processModel
     };
-}
-
-export function runCaseFactsFromTestPlan(
-    testPlan: TestPlan,
-    fileSetForCase: RunCaseFileSet
-): readonly RunCaseFacts[] {
-    return testPlan.cases.map(function toRunCaseFacts(testCase) {
-        return {
-            annotations: serializeValue(testCase.annotations),
-            controls: serializeValue(testCase.controls),
-            fileSet: fileSetForCase(testCase.id.file),
-            id: testCase.id,
-            workId: testCase.workId
-        };
-    });
 }
 
 export function createRunFacts(input: RunFactsInput): RunFacts {

@@ -10,6 +10,8 @@ import {
     workerPoolProjectExecution,
     type Config as ParsedProjectConfig,
     type ProjectBenchmarkProfileConfig,
+    type ProjectPropertyProfileConfig as PropertyProfileInput,
+    type ParsedPropertyProfileConfig,
     type ProjectCoverageOutput as ParsedProjectCoverageOutput,
     type ProjectCoveragePolicy as ParsedProjectCoveragePolicy,
     type ProjectCoverageSources as ParsedProjectCoverageSources,
@@ -32,6 +34,7 @@ import type {
     IntegrationExecution,
     IntegrationProfileConfig,
     MicrotestProfileConfig,
+    PropertyProfileConfig,
     ProfileConfig,
     ProfilesConfig,
     NormalizedConfig,
@@ -102,7 +105,9 @@ export type ProjectCoveragePolicy = ParsedProjectCoveragePolicy;
 export type ProjectCoverageSources = ParsedProjectCoverageSources;
 export type ProjectCoverageThresholds = ParsedProjectCoverageThresholds;
 export type ProjectProfileFiles = ParsedProjectProfileFiles;
-type ProjectTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
+export type ProjectPropertyProfileConfig = PropertyProfileInput;
+type StandardTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
+type ProjectTestProfileConfig = ProjectPropertyProfileConfig | StandardTestProfileConfig;
 export type ProjectProfileConfig = ProjectBenchmarkProfileConfig | ProjectTestProfileConfig;
 export type ProjectProfilesConfig = Readonly<Record<string, ProjectProfileConfig>>;
 export type ProjectProcessBudgets = ParsedProjectProcessBudgets;
@@ -469,7 +474,32 @@ function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkPr
     };
 }
 
-function normalizeProfile(profile: ParsedProfile, configPath: string | null): ProfileConfig {
+function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): PropertyProfileConfig {
+    const timeouts = normalizeTimeouts(profile.timeouts, {
+        collectionMilliseconds: 2000,
+        softMilliseconds: 1000,
+        hardMilliseconds: 2000
+    });
+    assertValidTimeouts(timeouts);
+    return {
+        execution: normalizeMicrotestExecution(profile.execution),
+        files: normalizeRequiredProfileFiles(profile.files),
+        reporters: normalizeReporters(profile.reporters),
+        processUsage: normalizeProcessUsage(profile.processUsage),
+        property: profile.property,
+        testFamily: 'property',
+        timings: normalizeTimings(profile.timings),
+        timeouts
+    };
+}
+
+function normalizeProfile(
+    profile: ParsedProfile,
+    configPath: string | null
+): ProfileConfig {
+    if (profile.testFamily === 'property') {
+        return normalizePropertyProfile(profile);
+    }
     if (profile.testFamily === 'benchmark') {
         return normalizeBenchmarkProfile(profile);
     }

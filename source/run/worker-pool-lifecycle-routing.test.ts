@@ -38,6 +38,7 @@ const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds:
 function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'][number] {
     return {
         skipReason: null,
+        property: null,
         benchmark: null,
         workloadParameters: null,
         annotations,
@@ -90,6 +91,7 @@ function baseResolvedRun(): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                propertyPolicy: null,
                 attachments: null,
                 retries: null,
                 assignmentPolicy: 'case-count-balanced',
