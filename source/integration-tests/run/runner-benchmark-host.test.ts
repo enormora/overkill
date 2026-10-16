@@ -7,6 +7,10 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { runIfMain } from '../direct-launcher.test.ts';
 
 export const testNode = suite('benchmark host observer integration', [
+    test('records no platform-specific pressure on unsupported platforms', async function (scope: TestScope) {
+        scope.assert.deepEqual(await collectPlatformPressure('unsupported', AbortSignal.abort()), {});
+        return scope.assert.collect();
+    }),
     test('records cancelled platform probes as unavailable', async function (scope: TestScope) {
         const linux = await collectPlatformPressure('linux', AbortSignal.abort());
         const darwin = await collectPlatformPressure('darwin', AbortSignal.abort());

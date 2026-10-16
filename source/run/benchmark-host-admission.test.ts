@@ -152,6 +152,36 @@ function acceptedCommand(): RunCommand {
 }
 
 export const testNode = suite('benchmark host admission', [
+    test(
+        'reports host observation failure before collection without inventing evidence',
+        async function (scope: TestScope) {
+            const dependencies = fakeWorkerPoolRuntimeDependencies();
+            const runner = createRunCoordinator({
+                ...dependencies,
+                async discoverRunFilesWithProjectRoot() {
+                    return {
+                        projectRoot: '/virtual/project',
+                        files: [ {
+                            file: 'sample.bench.ts',
+                            fileSet: null,
+                            href: 'file:///virtual/project/sample.bench.ts',
+                            path: '/virtual/project/sample.bench.ts'
+                        } ]
+                    };
+                },
+                async collectBenchmarkHost() {
+                    throw new Error('Native observer unavailable.');
+                }
+            });
+            const result = await runner.orchestrator.bench.run(command(), { timing: null });
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.equal(result.summary.planned, 0);
+            scope.assert.equal(result.runnerErrors[0]?.subtype, 'measurement');
+            scope.assert.equal(result.runnerErrors[0]?.message, 'Native observer unavailable.');
+            scope.assert.equal(readBenchmarkRunMetadata(result)?.host, null);
+            return scope.assert.collect();
+        }
+    ),
     test('retains accepted host evidence when worker collection fails', async function (scope: TestScope) {
         const delivered: string[] = [];
         const snapshot = benchmarkHostSnapshot();
