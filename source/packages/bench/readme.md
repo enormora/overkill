@@ -273,16 +273,16 @@ limit or an unavailable configured signal stops the run before collection,
 resources, samples, or baseline writes, with a `measurement` runner error.
 Unconfigured unavailable signals remain diagnostic. There is no automatic retry.
 
-| Limit | Percentage meaning |
-| --- | --- |
-| `maximumCpuBusyPercent` | Busy CPU-time delta divided by total CPU-time delta across visible logical CPUs |
-| `maximumHostLoadPerCpuPercent` | One-minute host load divided by visible logical CPU count, multiplied by 100; may exceed 100 |
-| `minimumAvailableMemoryPercent` | Process-available bytes divided by the smaller known physical/process memory capacity, multiplied by 100 |
-| `maximumLinuxCpuStallPercent` | Linux CPU PSI `some.avg10` |
-| `maximumLinuxMemoryStallPercent` | Linux memory PSI `some.avg10` |
-| `maximumLinuxIoStallPercent` | Linux I/O PSI `some.avg10` |
-| `minimumDarwinCpuSpeedPercent` | Darwin CPU speed limit |
-| `minimumDarwinCpuSchedulerPercent` | Darwin CPU scheduler limit |
+| Limit                              | Percentage meaning                                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `maximumCpuBusyPercent`            | Busy CPU-time delta divided by total CPU-time delta across visible logical CPUs                          |
+| `maximumHostLoadPerCpuPercent`     | One-minute host load divided by visible logical CPU count, multiplied by 100; may exceed 100             |
+| `minimumAvailableMemoryPercent`    | Process-available bytes divided by the smaller known physical/process memory capacity, multiplied by 100 |
+| `maximumLinuxCpuStallPercent`      | Linux CPU PSI `some.avg10`                                                                               |
+| `maximumLinuxMemoryStallPercent`   | Linux memory PSI `some.avg10`                                                                            |
+| `maximumLinuxIoStallPercent`       | Linux I/O PSI `some.avg10`                                                                               |
+| `minimumDarwinCpuSpeedPercent`     | Darwin CPU speed limit                                                                                   |
+| `minimumDarwinCpuSchedulerPercent` | Darwin CPU scheduler limit                                                                               |
 
 Percentages must be finite and between 0 and 100, except host load, which has
 no upper bound. Unknown process memory constraints use physical capacity as
