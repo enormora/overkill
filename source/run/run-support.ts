@@ -216,10 +216,14 @@ export function createRunRuntimePolicy(
 
 export const runWithWorkerAttachments: typeof executeWorkerAttachments = executeWorkerAttachments;
 
-export async function withRunErrorMetadata(result: RunResult, command: RunCommand): Promise<RunResult> {
+export async function withRunErrorMetadata(
+    result: RunResult,
+    command: RunCommand,
+    host: ResolvedRun['facts']['benchmarkHost']
+): Promise<RunResult> {
     const profile = command.config.profiles[command.request.profile];
     if (profile?.testFamily !== 'benchmark') {
         return result;
     }
-    return withBenchmarkErrorMetadata(result, command);
+    return withBenchmarkErrorMetadata(result, command, host);
 }

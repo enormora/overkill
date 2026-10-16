@@ -76,6 +76,10 @@ import {
     defaultWorkerPoolHedgingPolicy
 } from './defaults.ts';
 
+type ParsedProfiles = NonNullable<ParsedProjectConfig['profiles']>;
+type ParsedProfile = ParsedProfiles[string];
+type ParsedBenchmarkProfile = Extract<ParsedProfile, { readonly testFamily: 'benchmark'; }>;
+
 type ConfiguredReporters = NonNullable<ParsedProjectConfig['reporters']>;
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
@@ -447,7 +451,7 @@ function normalizeBenchmarkExecution(
         : serialExecution;
 }
 
-function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): BenchmarkProfileConfig {
+function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkProfileConfig {
     const timeouts = normalizeTimeouts(profile.timeouts, defaultBenchmarkTimeoutPolicy);
     const execution = normalizeBenchmarkExecution(profile.execution);
     const files = normalizeRequiredProfileFiles(profile.files);
@@ -458,7 +462,8 @@ function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): Benc
 
     return {
         attachments: attachmentLimitsSchema.parse(profile.attachments),
-        baselines: profile.baselines ?? { adapters: [], directory: 'test-baselines' },
+        baselines: profile.baselines,
+        host: profile.host,
         execution,
         files,
         reporters: normalizeReporters(profile.reporters),
@@ -489,7 +494,7 @@ function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): Propert
 }
 
 function normalizeProfile(
-    profile: NonNullable<ParsedProjectConfig['profiles']>[string],
+    profile: ParsedProfile,
     configPath: string | null
 ): ProfileConfig {
     if (profile.testFamily === 'property') {

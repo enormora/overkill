@@ -1,6 +1,8 @@
-import type { SerializedValue } from '../compare/serialized-value.ts';
+import type { SerializedValue as SerializedValueDefinition } from '../compare/serialized-value.ts';
 import type { Diff, DiffPathSegment } from '../diff/diff-shape.ts';
 import type { ThrownErrorRecord } from './thrown-error-record.ts';
+
+export type SerializedValue = SerializedValueDefinition;
 
 export const assertionSources = [ 'assert', 'require' ] as const;
 

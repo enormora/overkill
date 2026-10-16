@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+    canonicalIdentityJson,
     createSuite,
     createTestCase,
     defineReporter,
@@ -21,6 +22,7 @@ import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { createBenchmarkCommands } from '../../run/benchmark-commands.ts';
+import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
 
 const lifecycleFile = 'target/benchmark-lifecycle.txt';
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -121,11 +123,14 @@ function createBenchmarkCommand(
     };
 }
 
-async function assertBenchmarkList(scope: TestScope, command: RunCommand, observer: BenchmarkObserver): Promise<void> {
-    const listed = await orchestrator.bench.list(command, { timing: null });
-    scope.assert.equal(listed.facts.execution.testFamily, 'benchmark');
-    scope.assert.equal(listed.facts.cases.length, 3);
-    const runtimeCase = listed.facts.cases.find(function passingCase(entry) {
+function assertListedBenchmarkFacts(
+    scope: TestScope,
+    facts: Awaited<ReturnType<typeof orchestrator.bench.list>>['facts']
+): void {
+    scope.assert.equal(facts.execution.testFamily, 'benchmark');
+    scope.assert.equal(facts.benchmarkHost, null);
+    scope.assert.equal(facts.cases.length, 3);
+    const runtimeCase = facts.cases.find(function passingCase(entry) {
         return entry.id.title === 'passes';
     });
     scope.require.defined(runtimeCase);
@@ -133,6 +138,11 @@ async function assertBenchmarkList(scope: TestScope, command: RunCommand, observ
         runtimeCase.workId.runtimes,
         [ { dimensions: { kind: 'fixture' }, name: 'benchmark-runtime', scenarios: {}, variantId: null } ] as const
     );
+}
+
+async function assertBenchmarkList(scope: TestScope, command: RunCommand, observer: BenchmarkObserver): Promise<void> {
+    const listed = await orchestrator.bench.list(command, { timing: null });
+    assertListedBenchmarkFacts(scope, listed.facts);
     scope.assert.deepEqual(await readdir(command.config.runtimeStateDir), []);
     scope.assert.deepEqual(observer.events.slice(), []);
     scope.assert.equal(observer.creations(), 0);
@@ -170,6 +180,21 @@ function assertBenchmarkArtifacts(scope: TestScope, result: RunResult): void {
     }));
 }
 
+function assertBenchmarkHostMetadata(scope: TestScope, result: RunResult, observer: BenchmarkObserver): void {
+    const runMetadata = readBenchmarkRunMetadata(result);
+    scope.require.defined(runMetadata?.host);
+    scope.assert.equal(runMetadata.version, 2);
+    scope.assert.equal(runMetadata.calibration, null);
+    scope.assert.equal(runMetadata.host.snapshot.version, 1);
+    const start = observer.events.find(function runStart(event) {
+        return event.kind === 'run-start';
+    });
+    if (start?.kind !== 'run-start') {
+        throw new Error('Missing benchmark start facts.');
+    }
+    scope.assert.equal(canonicalIdentityJson(start.facts.benchmarkHost), canonicalIdentityJson(runMetadata.host));
+}
+
 async function assertBenchmarkResults(
     scope: TestScope,
     command: RunCommand,
@@ -181,6 +206,7 @@ async function assertBenchmarkResults(
     scope.assert.equal(delivery.result.summary.skipped, 1);
     scope.assert.equal(observer.creations(), 1);
     scope.assert.deepEqual(delivery.result.runnerErrors, []);
+    assertBenchmarkHostMetadata(scope, delivery.result, observer);
     scope.assert.equal(await readFile(lifecycleFile, 'utf8'), 'acquire\nbody\ndispose\n');
     scope.assert.deepEqual(observer.events.flatMap(caseLifecycle), [
         'start:passes',

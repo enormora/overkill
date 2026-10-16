@@ -927,7 +927,13 @@ type BenchmarkExecution =
     )
     & { readonly scheduling: 'serial'; readonly maxConcurrency: 1; };
 
+type BenchmarkHostPolicy = import('@overkill-dev/run').BenchmarkHostPolicy;
+type BenchmarkHostLimits = import('@overkill-dev/run').BenchmarkHostLimits;
+type BenchmarkHostAssessment = import('@overkill-dev/run').BenchmarkHostAssessment;
+type BenchmarkHostSnapshot = import('@overkill-dev/run').BenchmarkHostSnapshot;
+
 type BenchmarkProfileConfig = {
+    readonly host: BenchmarkHostPolicy;
     readonly testFamily: 'benchmark';
     readonly files: ProfileFiles;
     readonly execution: BenchmarkExecution;
@@ -1331,6 +1337,7 @@ type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
 type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
 
 type RunFacts = {
+    readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly cases: ReadonlyArray<RunCaseFacts>;
     readonly coveragePolicy: MicrotestCoveragePolicy | null;
     readonly durationHistory: DurationHistoryInput | null;

@@ -1,6 +1,7 @@
 import { microtestExecutionSchema, propertyProfileSchema } from './schema.ts';
 import { propertyPolicySchema } from './property-policy.ts';
 import { ConfigError } from './config-error.ts';
+import { validateNormalizedBenchmarkHostPolicy } from './benchmark-host.ts';
 import { performanceBaselinePolicySchema } from './performance-baselines.ts';
 import { validateHostProcess } from './host-process.ts';
 import { assertValidProfileName, normalizeRequiredProfileFiles } from './profile-normalization.ts';
@@ -87,6 +88,7 @@ function validateBenchmarkProfile(profileName: string, profile: BenchmarkProfile
     try {
         normalizeRequiredProfileFiles(profile.files);
         performanceBaselinePolicySchema.parse(profile.baselines);
+        validateNormalizedBenchmarkHostPolicy(profile.host);
         validateIntegrationProfile(profile);
         validateBenchmarkExecution(profile.execution, profile.timeouts);
     } catch (error: unknown) {

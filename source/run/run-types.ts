@@ -1,4 +1,5 @@
 import type { Except, JsonValue } from 'type-fest';
+import type { BenchmarkHostAssessment } from '../bench/benchmark-host-snapshot.ts';
 import type {
     BenchmarkCalibrationResult,
     BaselineChange,
@@ -29,8 +30,11 @@ import type {
     ConfigLoadRequest,
     RunOrder
 } from '../config/types.ts';
-import type { NonEmptyReadonlyArray, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
-import type { SerializedValue as SerializedValueShape } from '../compare/serialized-value.ts';
+import type {
+    NonEmptyReadonlyArray,
+    SourceLocation,
+    SerializedValue as SerializedValueShape
+} from '../assertion-protocol/assertion-node-shape.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
     PropertyPolicy as PropertyPolicyDefinition,
@@ -216,6 +220,7 @@ export type RunCommand = {
 };
 
 export type RunFacts = {
+    readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
     readonly coveragePolicy: CoveragePolicy | null;
     readonly cases: readonly RunCaseFacts[];

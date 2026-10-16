@@ -213,6 +213,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
         return {
             attachments: { ...profile.attachments },
             baselines: { adapters: Array.from(profile.baselines.adapters), directory: profile.baselines.directory },
+            host: { limits: { ...profile.host.limits } },
             execution: copyBenchmarkExecution(profile.execution),
             files: copyProfileFiles(profile.files),
             reporters: copyReporters(profile.reporters),

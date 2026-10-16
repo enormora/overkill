@@ -59,6 +59,7 @@ async function createCoverageRecordFixture(
     const records: RecordSnapshot[] = [];
     let writes = 0;
     const input = {
+        benchmarkHost: null,
         benchmarkCalibration: null,
         config: { ...config, runtimeStateDir: directory },
         engine: { kind: 'default' as const },
@@ -100,6 +101,7 @@ async function createCoverageRecordFixture(
             await rm(path.resolve(directory), { force: true, recursive: true });
         },
         facts: createRunFacts({
+            benchmarkHost: null,
             benchmarkCalibration: null,
             cases: [],
             config: input.config,

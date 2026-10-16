@@ -70,6 +70,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         await createCollectedExecutionPlan(input);
     const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
     const facts = freezeValue(createRunFacts({
+        benchmarkHost: input.benchmarkHost,
         benchmarkCalibration: input.benchmarkCalibration,
         cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
         config: input.config,

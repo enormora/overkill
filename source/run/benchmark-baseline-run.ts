@@ -1,12 +1,15 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { evaluateBenchmarkHost } from '../bench/benchmark-host-assessment.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { BenchmarkBaselineSession } from './benchmark-baseline-session.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
-import type { RunCommand } from './run-types.ts';
-import type { RunTimingMeasurement } from './run-timing-collection.ts';
+import type { RunCommand, RunInvocationOptions } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
+
+type RunTimingMeasurement = NonNullable<RunInvocationOptions['timing']>;
+type BenchmarkHostAssessment = NonNullable<ResolvedRunInput['benchmarkHost']>;
 
 type BenchmarkInput = ResolvedRunInput & {
     readonly profile: Extract<ResolvedRunInput['profile'], { readonly testFamily: 'benchmark'; }>;
@@ -70,25 +73,58 @@ type BenchmarkPreparationInput = {
 };
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
-function baselineResolutionError(error: unknown): RunCollectionError {
+function benchmarkPreparationError(error: unknown, host: BenchmarkHostAssessment | null): RunCollectionError {
     return error instanceof RunCollectionError ? error : new RunCollectionError(
         error instanceof Error ? error.message : String(error),
         { cause: error },
-        'artifact'
+        host === null ? 'measurement' : 'artifact'
     );
+}
+
+async function assessBenchmarkExecutionHost(
+    input: ResolvedRunInput,
+    dependencies: RunOrchestratorDependencies
+): Promise<BenchmarkHostAssessment> {
+    const { profile } = input;
+    if (profile.testFamily !== 'benchmark') {
+        throw new Error('Host calibration requires a benchmark profile.');
+    }
+    const snapshot = await dependencies.collectBenchmarkHost({
+        timeoutMilliseconds: profile.timeouts.collectionMilliseconds
+    });
+    return evaluateBenchmarkHost(snapshot, profile.host.limits);
+}
+
+function assertBenchmarkHostAccepted(assessment: BenchmarkHostAssessment): void {
+    const rejected = assessment.checks.filter(function rejectedCheck(check) {
+        return check.status !== 'passed';
+    });
+    if (rejected.length > 0) {
+        const messages = rejected.map(function rejection(check) {
+            return check.status === 'unavailable'
+                ? `${check.limit}: unavailable (${check.reason})`
+                : `${check.limit}: observed ${check.observedPercent}%, configured ${check.configuredPercent}%`;
+        });
+        throw new RunCollectionError(`Benchmark host rejected: ${messages.join('; ')}.`, {
+            cause: { kind: 'benchmark-host-rejected', assessment }
+        }, 'measurement');
+    }
 }
 
 export async function prepareBenchmarkExecution(
     options: BenchmarkPreparationInput
 ): Promise<PreparedBenchmarkRun | RunResult> {
+    let assessment: BenchmarkHostAssessment | null = null;
     try {
-        return await prepareBenchmarkBaselineRun(options.input, options.dependencies);
+        assessment = await assessBenchmarkExecutionHost(options.input, options.dependencies);
+        assertBenchmarkHostAccepted(assessment);
+        return await prepareBenchmarkBaselineRun({ ...options.input, benchmarkHost: assessment }, options.dependencies);
     } catch (error: unknown) {
         return await reportCollectionErrorResult(
             options.command,
             options.dependencies,
-            createResultFromResolutionError(baselineResolutionError(error), null),
-            options.timing
+            createResultFromResolutionError(benchmarkPreparationError(error, assessment), null),
+            { timing: options.timing, benchmarkHost: assessment }
         );
     }
 }

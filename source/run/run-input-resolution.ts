@@ -1,10 +1,9 @@
 import { copyConfig } from '../config/snapshot.ts';
 import type { NormalizedConfig, ProfileConfig } from '../config/types.ts';
-import type { BenchmarkCalibrationResult } from '../packages/run/benchmark-calibration.entry-point.ts';
 import { copyRunEngineSelection, freezeValue } from './run-support.ts';
 import { selectBenchmarkProfile, selectTestProfile } from './test-profile.ts';
 import { copyRunRequest } from './request-snapshot.ts';
-import type { RunCommand, RunRequest, RunCollectionSource } from './run-types.ts';
+import type { RunCommand, RunRequest, RunCollectionSource, RunFacts } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     assertSupportedProcessEngine,
@@ -21,7 +20,8 @@ export type RunInvocation = {
 };
 
 export type ResolvedRunInput = {
-    readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
+    readonly benchmarkHost: RunFacts['benchmarkHost'];
+    readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
     readonly config: NormalizedConfig;
     readonly engine: RunCommand['engine'];
     readonly files: Awaited<ReturnType<RunOrchestratorDependencies['discoverRunFilesWithProjectRoot']>>['files'];
@@ -111,6 +111,7 @@ export async function readResolvedRunInput(
             })
     );
     return {
+        benchmarkHost: null,
         benchmarkCalibration: null,
         config,
         engine,

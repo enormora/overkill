@@ -70,6 +70,7 @@ async function createResolvedExecutionRun(resolution: ExecutionResolutionInput):
     }
 
     return await createResolvedRunFromCollection({
+        benchmarkHost: resolution.input.benchmarkHost,
         benchmarkCalibration: resolution.input.benchmarkCalibration,
         allowEmptySelection: resolution.allowEmptySelection,
         collection: resolution.collection,
@@ -250,12 +251,10 @@ async function createWorkerPoolRunResult(
             timing
         });
     } catch (error: unknown) {
-        return await reportCollectionErrorResult(
-            command,
-            dependencies,
-            createResultFromResolutionError(error, null),
-            timing
-        );
+        return await reportCollectionErrorResult(command, dependencies, createResultFromResolutionError(error, null), {
+            timing,
+            benchmarkHost: input.benchmarkHost
+        });
     }
 }
 

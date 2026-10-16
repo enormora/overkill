@@ -1,4 +1,5 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as hostTestNode } from './benchmark-host.test.ts';
 import { testNode as benchmarkProfileTestNode } from './benchmark-profile.test.ts';
 import { testNode as runConfigIntegrationProfileTestNode } from './config-integration-profile.test.ts';
 import { testNode as runConfigTestNode } from './config.test.ts';
@@ -12,6 +13,7 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         benchmarkProfileTestNode,
+        hostTestNode,
         runConfigRetriesTestNode,
         runConfigTestNode,
         runConfigIntegrationProfileTestNode,

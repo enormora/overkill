@@ -1,5 +1,7 @@
 import type {
     RunProcessUsage,
+    ProcessUsageSnapshot,
+    RunProcessUsageTracker,
     RunResult,
     TestNode,
     TestScope
@@ -324,5 +326,67 @@ export function deterministicRunCollection(input: DeterministicRunCollectionInpu
     return {
         collectedPlan: deterministicCollectedRunPlan(file, input.command.root),
         runnerErrors: []
+    };
+}
+
+export const sampledActiveResourceCount = 2;
+export const sampledResidentSetBytes = 10;
+
+export function processUsageSample(
+    activeResourceCount: number,
+    capturedAtMicroseconds: number,
+    residentSetBytes: number
+): ProcessUsageSnapshot {
+    return {
+        activeResourceCount,
+        activeResourceTypes: [],
+        capturedAtMicroseconds,
+        javaScriptEngineHeapBytes: 1,
+        residentSetBytes
+    };
+}
+
+export function deterministicProcessUsage(): RunProcessUsage {
+    return {
+        activeResourceTypes: [],
+        end: processUsageSample(1, 1, sampledResidentSetBytes),
+        peakActiveResourceCount: sampledActiveResourceCount,
+        peakJavaScriptEngineHeapBytes: 1,
+        peakResidentSetBytes: sampledResidentSetBytes,
+        peakResidentSetGrowthBytesPerSecond: 9,
+        sampleCount: sampledActiveResourceCount,
+        start: processUsageSample(1, 0, 1)
+    };
+}
+
+export function createDeterministicProcessUsageTracker(): RunProcessUsageTracker {
+    return {
+        finish() {
+            return {
+                activeResourceTypes: [],
+                end: {
+                    activeResourceCount: 0,
+                    activeResourceTypes: [],
+                    capturedAtMicroseconds: 1,
+                    javaScriptEngineHeapBytes: 2,
+                    residentSetBytes: 3
+                },
+                peakActiveResourceCount: 0,
+                peakJavaScriptEngineHeapBytes: 2,
+                peakResidentSetBytes: 3,
+                peakResidentSetGrowthBytesPerSecond: 0,
+                sampleCount: 2,
+                start: {
+                    activeResourceCount: 0,
+                    activeResourceTypes: [],
+                    capturedAtMicroseconds: 0,
+                    javaScriptEngineHeapBytes: 1,
+                    residentSetBytes: 2
+                }
+            };
+        },
+        start() {
+            return undefined;
+        }
     };
 }

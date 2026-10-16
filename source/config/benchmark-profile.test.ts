@@ -1,8 +1,10 @@
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { ConfigError, defineConfig, normalizeConfig } from '../packages/run/config.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
+import { benchmarkHostPolicySchema } from './benchmark-host.ts';
 
 const benchmarkPolicy = {
+    host: benchmarkHostPolicySchema.parse({}),
     baselines: { adapters: [], directory: 'test-baselines' },
     attachments: {
         maxInlineBytes: 1_048_576,

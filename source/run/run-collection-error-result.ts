@@ -10,7 +10,7 @@ import {
 } from './run-timing-collection.ts';
 import { resolveRunReporters, withRunErrorMetadata, type RunRuntimePolicy } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunCommand } from './run-types.ts';
+import type { RunCommand, RunFacts } from './run-types.ts';
 
 function createCollectionErrorRunResult(
     error: RunCollectionError,
@@ -125,11 +125,16 @@ async function reportCollectionResultWithDelivery(
     }
 }
 
+type RunCollectionErrorContext = {
+    readonly timing: RunTimingMeasurement | null;
+    readonly benchmarkHost: RunFacts['benchmarkHost'];
+};
+
 export async function reportCollectionErrorResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     result: RunResult,
-    timing: RunTimingMeasurement | null = null
+    context: RunCollectionErrorContext
 ): Promise<RunResult> {
     const profile = selectProfile(command.request.profile, command.config);
     const reporters = resolveRunReporters(profile, command.config.reporters);
@@ -140,8 +145,11 @@ export async function reportCollectionErrorResult(
     const timedResult = resultWithTimingCollection(
         resolveTimingCollection(command.request, profile),
         result,
-        timing
+        context.timing
     );
 
-    return await reportCollectionResultWithDelivery(reporterDelivery, await withRunErrorMetadata(timedResult, command));
+    return await reportCollectionResultWithDelivery(
+        reporterDelivery,
+        await withRunErrorMetadata(timedResult, command, context.benchmarkHost)
+    );
 }

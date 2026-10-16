@@ -1,4 +1,4 @@
-import { createDeterministicClock } from '@enormora/clock';
+import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -7,7 +7,6 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies
@@ -188,6 +187,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            benchmarkHost: null,
             benchmarkCalibration: null,
             coveragePolicy: null,
             durationHistory: null,
@@ -286,38 +286,8 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 
 export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
-        availableParallelism: 2,
-        createProcessUsageTracker: testOnlyDependency,
-        createSeed() {
-            return 42n;
-        },
+        ...fakeWorkerPoolRuntimeDependencies(),
         createWorkerPool: createFakeWorkerPool,
-        defaultEngine: defaultRunEngine,
-        runtimeStateStore: {
-            async read() {
-                return null;
-            },
-            async write() {
-                return undefined;
-            }
-        },
-        discoverRunFilesWithProjectRoot: testOnlyDependency,
-        execute: defaultRunEngine.execute,
-        liveOutput: {
-            stderr: {
-                write() {
-                    return undefined;
-                }
-            },
-            stdout: {
-                write() {
-                    return undefined;
-                }
-            }
-        },
-        loadRunEngineModule: testOnlyDependency,
-        loadRunTestModules: testOnlyDependency,
-        node: { arch: 'x64', platform: 'linux', version: '26.1.1' },
         reporterDispatcher: {
             createDelivery: createFakeReporterDelivery,
             async trackRunnerErrorDelivery(work) {
@@ -327,28 +297,7 @@ export function fakeDependencies(): WorkerPoolRunRuntime['dependencies'] {
                     undeliveredRunnerErrors: []
                 };
             }
-        },
-        runtimeCapabilityPolicy: {
-            observeIpcListeners() {
-                return function restoreIpcRestriction() {
-                    return undefined;
-                };
-            },
-            observeProcessExit() {
-                return function restoreProcessExecutionRestriction() {
-                    return undefined;
-                };
-            },
-            readEnvironment() {
-                return {};
-            },
-            readStorage() {
-                return null;
-            }
-        },
-        startSupervisedChild: testOnlyDependency,
-        startWorkerPoolHost: testOnlyDependency,
-        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
+        }
     };
 }
 

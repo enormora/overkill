@@ -11,6 +11,7 @@ import type {
 } from './run.entry-point.ts';
 
 type RunFactsKeys = readonly [
+    'benchmarkHost',
     'benchmarkCalibration',
     'cases',
     'coveragePolicy',

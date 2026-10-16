@@ -73,6 +73,7 @@ async function resolvedSupervisedExecution(resolution: SupervisedResolution): Pr
     assertExpectedDirectEntrypointCollection(expectedDirectPlan, collection.collectedPlan);
 
     return await createResolvedRunFromCollection({
+        benchmarkHost: input.benchmarkHost,
         benchmarkCalibration: input.benchmarkCalibration,
         allowEmptySelection,
         collection,
@@ -195,11 +196,9 @@ export async function createSupervisedRunResult(execution: StartedSupervisedExec
     try {
         return await runStartedSupervisedExecution(execution);
     } catch (error: unknown) {
-        return await reportCollectionErrorResult(
-            command,
-            dependencies,
-            createResultFromResolutionError(error, null),
-            timing
-        );
+        return await reportCollectionErrorResult(command, dependencies, createResultFromResolutionError(error, null), {
+            timing,
+            benchmarkHost: execution.input.benchmarkHost
+        });
     }
 }

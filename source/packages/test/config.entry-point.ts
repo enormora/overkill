@@ -33,5 +33,7 @@ export type {
     ConfigLoadRequest,
     ProfileConfig,
     BenchmarkProfileConfig,
+    BenchmarkHostLimits,
+    BenchmarkHostPolicy,
     TestProfileConfig
 } from '../run/config.entry-point.ts';

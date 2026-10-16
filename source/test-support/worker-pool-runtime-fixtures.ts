@@ -5,6 +5,7 @@ import type {
     RunOrchestratorDependencies
 } from '../run/run-orchestrator-dependencies.ts';
 import type { WorkerPoolRunRuntime } from '../run/worker-pool-runtime.ts';
+import { benchmarkHostSnapshot } from './benchmark-host-snapshot.ts';
 
 const fixtureSeed = 42n;
 
@@ -34,6 +35,7 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 
 export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
+        collectBenchmarkHost: benchmarkHostSnapshot,
         availableParallelism: 2,
         createProcessUsageTracker: testOnlyDependency,
         createSeed() {

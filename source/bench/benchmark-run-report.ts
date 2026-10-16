@@ -2,8 +2,11 @@ import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
 import type { RunResult } from '../engine/run-result.ts';
 import { benchmarkCalibrationSchema } from './calibration-schema.ts';
+import { benchmarkHostAssessmentSchema } from './benchmark-host-snapshot.ts';
 
-const metadataSchema = z.strictObject({
+const benchmarkRunMetadataVersion = 2;
+
+const legacyMetadataSchema = z.strictObject({
     version: z.literal(1),
     node: z.strictObject({ arch: z.string(), platform: z.string(), version: z.string() }),
     execution: z.strictObject({
@@ -16,7 +19,17 @@ const metadataSchema = z.strictObject({
     }),
     calibration: benchmarkCalibrationSchema.nullable()
 });
+const metadataSchema = legacyMetadataSchema.extend({
+    version: z.literal(benchmarkRunMetadataVersion),
+    host: benchmarkHostAssessmentSchema.nullable()
+});
 export type BenchmarkRunMetadata = ReadonlyDeep<z.infer<typeof metadataSchema>>;
+const recordedMetadataSchema = z.union([
+    metadataSchema,
+    legacyMetadataSchema.transform(function legacyHostMetadata(value): BenchmarkRunMetadata {
+        return { ...value, version: benchmarkRunMetadataVersion, host: null };
+    })
+]);
 export const benchmarkRunMediaType = 'application/vnd.overkill.benchmark-run+json';
 export function readBenchmarkRunMetadata(result: RunResult): BenchmarkRunMetadata | null {
     for (const artifact of result.artifacts) {
@@ -24,7 +37,7 @@ export function readBenchmarkRunMetadata(result: RunResult): BenchmarkRunMetadat
             artifact.id.scope.kind === 'run' && artifact.payload.kind === 'runtime-attachment' &&
             artifact.payload.mediaType === benchmarkRunMediaType && artifact.payload.content.kind === 'json'
         ) {
-            return metadataSchema.parse(artifact.payload.content.value);
+            return recordedMetadataSchema.parse(artifact.payload.content.value);
         }
     }
     return null;
