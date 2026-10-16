@@ -248,3 +248,65 @@ Cross-class comparison has no fallback. Calibration does not itself normalize
 observations. An adapter can explicitly use `normalizeBenchmarkDuration` from
 `@overkill-dev/bench/calibration` for CPU duration metrics; unsuitable metrics
 should retain their own comparison policy.
+
+## Host conditions
+
+Every executing benchmark run records a host snapshot before collection and
+placement. `bench list` and baseline `list` do not collect host observations.
+The snapshot records capacity, load, memory availability, Node/V8 versions,
+OS details, and available platform pressure signals. Every reading identifies
+its source, scope, unit, and availability. Free memory is not memory pressure.
+
+Benchmark profiles may reject known-bad conditions with relative limits:
+
+```ts
+host: {
+    limits: {
+        maximumCpuBusyPercent: 80,
+        minimumAvailableMemoryPercent: 10
+    }
+}
+```
+
+Limits default to `null`, disabling each check. Equality passes. A violated
+limit or an unavailable configured signal stops the run before collection,
+resources, samples, or baseline writes, with a `measurement` runner error.
+Unconfigured unavailable signals remain diagnostic. There is no automatic retry.
+
+| Limit | Percentage meaning |
+| --- | --- |
+| `maximumCpuBusyPercent` | Busy CPU-time delta divided by total CPU-time delta across visible logical CPUs |
+| `maximumHostLoadPerCpuPercent` | One-minute host load divided by visible logical CPU count, multiplied by 100; may exceed 100 |
+| `minimumAvailableMemoryPercent` | Process-available bytes divided by the smaller known physical/process memory capacity, multiplied by 100 |
+| `maximumLinuxCpuStallPercent` | Linux CPU PSI `some.avg10` |
+| `maximumLinuxMemoryStallPercent` | Linux memory PSI `some.avg10` |
+| `maximumLinuxIoStallPercent` | Linux I/O PSI `some.avg10` |
+| `minimumDarwinCpuSpeedPercent` | Darwin CPU speed limit |
+| `minimumDarwinCpuSchedulerPercent` | Darwin CPU scheduler limit |
+
+Percentages must be finite and between 0 and 100, except host load, which has
+no upper bound. Unknown process memory constraints use physical capacity as
+the denominator and retain the unknown constraint reading. Available parallelism
+is recorded separately from logical CPU count; host load does not claim to
+measure container CPU utilization. Windows load average is unavailable.
+
+Linux reads `/proc/pressure/{cpu,memory,io}`. Darwin uses read-only
+`sysctl -n kern.memorystatus_vm_pressure_level` and `pmset -g therm` probes.
+Missing tools, denied access, malformed data, and timeouts are explicit.
+Other platforms retain portable observations and unsupported signal states.
+
+The observer uses a 250 ms window. The complete pass has a 1000 ms deadline,
+reduced by a shorter collection timeout; platform probes have a 250 ms deadline
+within that cap. Incomplete windows have unavailable CPU-busy readings.
+Observers and probes stop before execution. Runtime-health and process metrics
+describe the runner process, not a workload's executing runtime. Node arguments
+in the snapshot belong to that observer; execution host arguments retain their
+ordinary execution facts.
+
+`RunFacts.benchmarkHost` contains the snapshot, configured limits, and check
+results. Version 2 `benchmark-run` artifacts retain the same evidence for JSON
+and HTML reporting, including rejected runs. Version 1 reports remain readable
+with `host: null`. Host observations are separate from
+`RunFacts.benchmarkCalibration`, which retains CPU normalization references.
+The snapshot describes its recorded moment; collection and fixture startup may
+change conditions afterward. Sampling does not recheck host conditions.

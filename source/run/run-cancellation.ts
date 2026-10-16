@@ -40,6 +40,6 @@ export async function cancelledRunResult(
         command,
         dependencies,
         createResultFromResolutionError(supervisedCancellationError(), null),
-        timing
+        { timing, benchmarkHost: null }
     );
 }

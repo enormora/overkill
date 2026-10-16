@@ -536,3 +536,9 @@ Project config may set `outputRenderer` to adapt managed line intents, for
 example to render GitHub Actions annotations from a brief stdout reporter.
 Config files must export `config` as a named export. Default exports are
 configuration errors.
+
+Executing benchmark commands collect one host snapshot before collection and
+placement. `RunFacts.benchmarkHost` records observations, relative admission
+limits, and their results; other families and listing operations use `null`.
+Configured unavailable signals block execution. See [Host conditions](../bench/readme.md#host-conditions) for limits, formulas, probe availability, and
+snapshot timing. Baseline normalization remains in `benchmarkCalibration`.

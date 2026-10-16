@@ -57,3 +57,4 @@ export type {
 export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';
 
 export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
+export type { BenchmarkHostLimits, BenchmarkHostPolicy } from '../../config/benchmark-host.ts';

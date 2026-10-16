@@ -38,6 +38,10 @@ export function createNodeRunOrchestratorDependencies(input: NodeRunOrchestrator
     });
 
     return {
+        async collectBenchmarkHost(request) {
+            const { collectBenchmarkHost } = await import('./benchmark-host.ts');
+            return await collectBenchmarkHost(request, wallClock);
+        },
         availableParallelism: os.availableParallelism(),
         createSeed: createRandomRunSeed,
         ...createNodeExecutionDependencies({

@@ -236,3 +236,10 @@ export type {
 } from '../../run/run-record-types.ts';
 
 export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
+export type { BenchmarkHostLimits, BenchmarkHostPolicy } from '../../config/benchmark-host.ts';
+export type {
+    BenchmarkHostAssessment,
+    BenchmarkHostCheck,
+    BenchmarkHostSnapshot,
+    HostReading
+} from '../../bench/benchmark-host-snapshot.ts';

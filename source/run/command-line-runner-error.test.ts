@@ -99,6 +99,7 @@ async function resolvePassingRun(
         config: command.config,
         cwd: command.cwd,
         facts: {
+            benchmarkHost: null,
             benchmarkCalibration: null,
             coveragePolicy: null,
             durationHistory: null,

@@ -19,6 +19,16 @@ import {
 } from '../../test-support/benchmark-baseline-fixture.ts';
 import { readPerformanceBaselineReport } from '../../baselines/performance-report.ts';
 
+function withoutBenchmarkMetadata(result: BenchmarkBaselineRunResult['result']): BenchmarkBaselineRunResult['result'] {
+    return {
+        ...result,
+        artifacts: result.artifacts.filter(function retainOtherArtifacts(artifact) {
+            return artifact.payload.kind !== 'runtime-attachment' ||
+                artifact.payload.name !== 'benchmark-run';
+        })
+    };
+}
+
 function benchmarkProfile(scope: TestScope, fixture: BaselineFixture): BenchmarkProfileConfig {
     const profile = fixture.command.config.profiles.startup;
     scope.require.defined(profile);
@@ -27,6 +37,22 @@ function benchmarkProfile(scope: TestScope, fixture: BaselineFixture): Benchmark
     }
     return profile;
 }
+function metadataLimitedCommand(scope: TestScope, fixture: BaselineFixture): RunCommand {
+    const profile = benchmarkProfile(scope, fixture);
+    return {
+        ...fixture.command,
+        config: {
+            ...fixture.command.config,
+            profiles: {
+                startup: {
+                    ...profile,
+                    attachments: { ...profile.attachments, maxArtifactBytes: 1 }
+                }
+            }
+        }
+    };
+}
+
 function chartFailureCommand(scope: TestScope, fixture: BaselineFixture): RunCommand {
     const profile = benchmarkProfile(scope, fixture);
     const adapter = {
@@ -124,24 +150,13 @@ export const testNode = suite('benchmark HTML runner integration', [
             scheduling: 'serial',
             maxConcurrency: 1
         });
-        const profile = benchmarkProfile(scope, fixture);
-        const command = {
-            ...fixture.command,
-            config: {
-                ...fixture.command.config,
-                profiles: {
-                    startup: {
-                        ...profile,
-                        attachments: { ...profile.attachments, maxArtifactBytes: 1 }
-                    }
-                }
-            }
-        };
+        const command = metadataLimitedCommand(scope, fixture);
         const delivery = await orchestrator.bench.baseline.bootstrap(fixture.command, { timing: null });
-        const result = withBenchmarkErrorMetadata(delivery.result, command);
+        const originalResult = withoutBenchmarkMetadata(delivery.result);
+        const result = withBenchmarkErrorMetadata(originalResult, command, null);
         scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(result.perTest.length, delivery.result.perTest.length);
-        scope.assert.equal(result.artifacts.length, delivery.result.artifacts.length);
+        scope.assert.equal(result.perTest.length, originalResult.perTest.length);
+        scope.assert.equal(result.artifacts.length, originalResult.artifacts.length);
         scope.assert.equal(
             result.runnerErrors.at(-1)?.message,
             'benchmark-run report exceeds the configured artifact byte limit.'

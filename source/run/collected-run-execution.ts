@@ -35,7 +35,7 @@ async function executeObservedCollectedPlan(execution: CollectedPlanExecution): 
             { ...context.command, request: plan.resolved.request },
             dependencies,
             result,
-            timing
+            { timing, benchmarkHost: null }
         );
     }
     return await executeWithRuntimeAttachments(plan.resolved, dependencies, async function executeObservedPlan() {

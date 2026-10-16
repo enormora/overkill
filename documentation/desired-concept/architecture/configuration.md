@@ -378,7 +378,11 @@ Benchmark profiles share the project registry with ordinary profiles.
 `overkill run` and `overkill list` reject selected benchmark profiles and direct
 callers to `overkill bench`. A microtest profile named `benchmark` remains valid.
 Benchmark profiles configure `testFamily`, `files`, `execution`, `reporters`,
-`attachments`, `processUsage`, `timings`, and `timeouts`. Current runner
+`attachments`, `processUsage`, `timings`, `timeouts`, and `host.limits`. Host
+limits are opt-in hardware-relative percentages. Unavailable configured signals
+block execution; omitted limits remain disabled. See
+[Benchmarking § Execution Strategy](../authoring/benchmarking.md#execution-strategy).
+Current runner
 integration supports isolated serial execution with one lane and hedging off.
 Collection, soft, and hard timeouts default to 5000, 40000, and 60000 ms;
 soft must not exceed hard, and hard must not exceed 60000 ms. Concurrent work

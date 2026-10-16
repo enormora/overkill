@@ -73,6 +73,10 @@ import {
     defaultWorkerPoolHedgingPolicy
 } from './defaults.ts';
 
+type ParsedProfiles = NonNullable<ParsedProjectConfig['profiles']>;
+type ParsedProfile = ParsedProfiles[string];
+type ParsedBenchmarkProfile = Extract<ParsedProfile, { readonly testFamily: 'benchmark'; }>;
+
 type ConfiguredReporters = NonNullable<ParsedProjectConfig['reporters']>;
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
@@ -442,7 +446,7 @@ function normalizeBenchmarkExecution(
         : serialExecution;
 }
 
-function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): BenchmarkProfileConfig {
+function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkProfileConfig {
     const timeouts = normalizeTimeouts(profile.timeouts, defaultBenchmarkTimeoutPolicy);
     const execution = normalizeBenchmarkExecution(profile.execution);
     const files = normalizeRequiredProfileFiles(profile.files);
@@ -453,7 +457,8 @@ function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): Benc
 
     return {
         attachments: attachmentLimitsSchema.parse(profile.attachments),
-        baselines: profile.baselines ?? { adapters: [], directory: 'test-baselines' },
+        baselines: profile.baselines,
+        host: profile.host,
         execution,
         files,
         reporters: normalizeReporters(profile.reporters),
@@ -464,7 +469,7 @@ function normalizeBenchmarkProfile(profile: ProjectBenchmarkProfileConfig): Benc
     };
 }
 
-function normalizeProfile(profile: ProjectProfileConfig, configPath: string | null): ProfileConfig {
+function normalizeProfile(profile: ParsedProfile, configPath: string | null): ProfileConfig {
     if (profile.testFamily === 'benchmark') {
         return normalizeBenchmarkProfile(profile);
     }
@@ -481,7 +486,7 @@ function defaultMicrotestProfile(): MicrotestProfileConfig {
 }
 
 function normalizeConfiguredProfiles(
-    profiles: ProjectProfilesConfig | undefined,
+    profiles: ParsedProjectConfig['profiles'],
     configPath: string | null
 ): ProfilesConfig {
     const normalizedProfiles: Record<string, ProfileConfig> = {};
@@ -499,7 +504,7 @@ function normalizeConfiguredProfiles(
     return normalizedProfiles;
 }
 
-function normalizeConfigForOrigin(parsedConfig: Config, configPath: string | null): NormalizedConfig {
+function normalizeConfigForOrigin(parsedConfig: ParsedProjectConfig, configPath: string | null): NormalizedConfig {
     return {
         loader: parsedConfig.loader ?? defaultLoader,
         outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
@@ -509,9 +514,9 @@ function normalizeConfigForOrigin(parsedConfig: Config, configPath: string | nul
     };
 }
 
-function parseConfig(configValue: unknown, configPath: string | null): Config {
+function parseConfig(configValue: unknown, configPath: string | null): ParsedProjectConfig {
     try {
-        const parsedConfig: Config = parse(projectConfigSchema, configValue);
+        const parsedConfig: ParsedProjectConfig = parse(projectConfigSchema, configValue);
 
         return parsedConfig;
     } catch (error: unknown) {

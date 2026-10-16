@@ -23,6 +23,7 @@ import type {
 type RunFactsDependencies = Pick<RunOrchestratorDependencies, 'createSeed' | 'node'>;
 
 export type RunFactsInput = {
+    readonly benchmarkHost: RunFacts['benchmarkHost'];
     readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
     readonly cases: readonly RunCaseFacts[];
     readonly config: NormalizedConfig;
@@ -109,6 +110,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
     const profile = selectProfile(input.request.profile, input.config);
 
     return {
+        benchmarkHost: input.benchmarkHost,
         benchmarkCalibration: input.benchmarkCalibration,
         cases: input.cases,
         coveragePolicy: input.request.coverage && profile.testFamily === 'microtest' ? profile.coverage : null,

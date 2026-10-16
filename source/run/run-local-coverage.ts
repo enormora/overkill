@@ -86,12 +86,10 @@ async function executeCoveredWithPolicy(
             status: errors.length > 0 ? 'failed' : resolvedRun.status
         });
 
-        return await reportCollectionErrorResult(
-            command,
-            dependencies,
-            await record.checkpointResult(finalResult),
-            timing
-        );
+        return await reportCollectionErrorResult(command, dependencies, await record.checkpointResult(finalResult), {
+            timing,
+            benchmarkHost: null
+        });
     }
 
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {

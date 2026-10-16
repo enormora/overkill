@@ -1,10 +1,10 @@
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import type { ProcessUsageSnapshot, RunProcessUsage, RunProcessUsageTracker } from '../engine/process-usage.ts';
 import { createRunCoordinator, type RunCoordinator } from '../run/run.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import type { CollectedRunPlan, WorkId } from '../run/run-types.ts';
 import { supervisedAssignedWork } from '../run/supervised-protocol.ts';
+import { benchmarkHostSnapshot } from './benchmark-host-snapshot.ts';
 import {
     createFakeSupervisedChildProcess,
     type FakeSupervisedChildRunContext
@@ -12,6 +12,11 @@ import {
 import { createTestEngine } from './create-test-engine.ts';
 import {
     createDeterministicRunResult,
+    createDeterministicProcessUsageTracker,
+    processUsageSample,
+    deterministicProcessUsage,
+    sampledActiveResourceCount,
+    sampledResidentSetBytes,
     createDeterministicRunTestModuleLoader,
     deterministicCollectedRunPlan,
     deterministicRunCollection,
@@ -21,8 +26,6 @@ import {
 type RunOrchestrator = RunCoordinator['orchestrator'];
 
 const deterministicSeed = 99n;
-const sampledActiveResourceCount = 2;
-const sampledResidentSetBytes = 10;
 
 type DeterministicDiscoveredFile = {
     readonly file: string;
@@ -71,33 +74,6 @@ function createCollectionOnlyWorkerPool(
                 runnerErrors: []
             };
         }
-    };
-}
-
-function processUsageSample(
-    activeResourceCount: number,
-    capturedAtMicroseconds: number,
-    residentSetBytes: number
-): ProcessUsageSnapshot {
-    return {
-        activeResourceCount,
-        activeResourceTypes: [],
-        capturedAtMicroseconds,
-        javaScriptEngineHeapBytes: 1,
-        residentSetBytes
-    };
-}
-
-function deterministicProcessUsage(): RunProcessUsage {
-    return {
-        activeResourceTypes: [],
-        end: processUsageSample(1, 1, sampledResidentSetBytes),
-        peakActiveResourceCount: sampledActiveResourceCount,
-        peakJavaScriptEngineHeapBytes: 1,
-        peakResidentSetBytes: sampledResidentSetBytes,
-        peakResidentSetGrowthBytesPerSecond: 9,
-        sampleCount: sampledActiveResourceCount,
-        start: processUsageSample(1, 0, 1)
     };
 }
 
@@ -300,38 +276,9 @@ function createDeterministicRunCoordinatorWithDependencies(
     });
 
     const dependencies: RunOrchestratorDependencies = {
+        collectBenchmarkHost: benchmarkHostSnapshot,
         availableParallelism: 4,
-        createProcessUsageTracker(): RunProcessUsageTracker {
-            return {
-                finish() {
-                    return {
-                        activeResourceTypes: [],
-                        end: {
-                            activeResourceCount: 0,
-                            activeResourceTypes: [],
-                            capturedAtMicroseconds: 1,
-                            javaScriptEngineHeapBytes: 2,
-                            residentSetBytes: 3
-                        },
-                        peakActiveResourceCount: 0,
-                        peakJavaScriptEngineHeapBytes: 2,
-                        peakResidentSetBytes: 3,
-                        peakResidentSetGrowthBytesPerSecond: 0,
-                        sampleCount: 2,
-                        start: {
-                            activeResourceCount: 0,
-                            activeResourceTypes: [],
-                            capturedAtMicroseconds: 0,
-                            javaScriptEngineHeapBytes: 1,
-                            residentSetBytes: 2
-                        }
-                    };
-                },
-                start() {
-                    return undefined;
-                }
-            };
-        },
+        createProcessUsageTracker: createDeterministicProcessUsageTracker,
         createSeed,
         createWorkerPool,
         defaultEngine: deterministicRunEngine(),

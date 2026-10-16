@@ -546,6 +546,30 @@ Platform probes such as POSIX or Darwin tools may add detail when they are
 available, but their source and unavailable state must be recorded explicitly
 so reports do not pretend every host supplied the same data.
 
+The implemented host pass runs once before collection and placement. It records
+its timestamp and duration in `RunFacts.benchmarkHost`, alongside configured
+limits and check results. It describes that observation window; collection and
+fixture startup may change host conditions afterward. There are no per-sample
+rechecks or settling retries.
+
+Profiles configure `host.limits` using hardware-relative percentages for CPU
+busy time, load per logical CPU, available memory, Linux PSI stall time, and
+Darwin CPU speed/scheduler limits. Limits are disabled by default. Equality
+passes; violations and unavailable configured signals stop execution with a
+measurement runner error before resources, samples, or baseline writes.
+Unconfigured unavailable readings remain diagnostic. Absolute delay thresholds
+and an aggregate low/medium/high noise heuristic are not part of this policy.
+
+Node APIs supply portable evidence. Linux PSI and read-only Darwin pressure
+probes add native detail without equating their meanings. Runtime-health and
+process collectors describe the runner observer, not workload measurements.
+The observer uses a 250 ms window; the complete pass is bounded by 1000 ms or
+the shorter profile collection timeout, with platform probes capped at 250 ms.
+All observations stop before execution. `bench list` and baseline `list` omit
+the pass. Version 2 benchmark-run artifacts retain evidence on successful and
+rejected runs; historical version 1 artifacts retain an explicit absent host.
+CPU-reference calibration and machine-class stratification remain separate.
+
 Warmup, calibration, cleanup, and cooldown are distinct phases:
 
 - warmup prepares the measured code path and records warmup observations

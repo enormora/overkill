@@ -210,6 +210,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            benchmarkHost: null,
             benchmarkCalibration: null,
             coveragePolicy: null,
             durationHistory: null,

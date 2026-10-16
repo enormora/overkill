@@ -27,6 +27,7 @@ function metadataCommand(processModel: 'supervised-process' | 'worker-pool'): Ru
 }
 function metadataFacts(command: RunCommand): RunFacts {
     return createRunFacts({
+        benchmarkHost: null,
         benchmarkCalibration: null,
         cases: [],
         config: command.config,
@@ -73,19 +74,19 @@ export const testNode = suite('benchmark run metadata', [
             config: normalizeConfig({ profiles: { startup: { testFamily: 'microtest' } } })
         };
         scope.assert.equal(withBenchmarkRunMetadata(result, metadataFacts(microtest), 0), result);
-        scope.assert.equal(withBenchmarkErrorMetadata(result, microtest), result);
+        scope.assert.equal(withBenchmarkErrorMetadata(result, microtest, null), result);
         scope.assert.equal(
             withBenchmarkErrorMetadata(result, {
                 ...command,
                 request: { ...command.request, profile: 'unknown' }
-            }),
+            }, null),
             result
         );
         return scope.assert.collect();
     }),
     test('records benchmark metadata for failures before fact resolution', function (scope: TestScope) {
         const result = runResultFactory.build({});
-        const recorded = withBenchmarkErrorMetadata(result, metadataCommand('supervised-process'));
+        const recorded = withBenchmarkErrorMetadata(result, metadataCommand('supervised-process'), null);
         const metadata = readBenchmarkRunMetadata(recorded);
         scope.require.defined(metadata);
         scope.assert.equal(metadata.node.version, process.version);

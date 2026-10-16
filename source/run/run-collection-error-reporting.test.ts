@@ -324,7 +324,8 @@ export const testNode = createOverkillSuite({
                             ];
                         }
                     }),
-                    result
+                    result,
+                    { timing: null, benchmarkHost: null }
                 );
 
                 scope.assert.deepEqual(
@@ -373,7 +374,8 @@ export const testNode = createOverkillSuite({
                                 return [];
                             }
                         }),
-                        result
+                        result,
+                        { timing: null, benchmarkHost: null }
                     );
                 }, { message: 'Execution failed and reporter cleanup failed.' });
 

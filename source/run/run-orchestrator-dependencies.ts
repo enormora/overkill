@@ -1,5 +1,5 @@
-import type { Clock } from '@enormora/clock';
 import type { HostProcess, ProfileConfig } from '../config/types.ts';
+import type { RunHostObservations, ProcessUsageTrackerOptions } from './run-host-observations.ts';
 import type {
     Engine,
     Execute,
@@ -20,10 +20,6 @@ import type {
     SupervisedChildProcess,
     SupervisedChildProcessStarter
 } from './supervised-child-process.ts';
-
-type ProcessUsageTrackerOptions = {
-    readonly samplingIntervalMilliseconds: number;
-};
 
 export type WorkerPoolProcessUsageTracker = RunProcessUsageTracker & {
     readonly waitForStart?: () => Promise<void>;
@@ -94,10 +90,8 @@ export function createHostRunnerErrors(): HostRunnerErrors {
     };
 }
 
-export type RunOrchestratorDependencies = {
-    readonly availableParallelism: number;
+export type RunOrchestratorDependencies = RunHostObservations & {
     readonly createSeed: () => bigint;
-    readonly createProcessUsageTracker: (options: ProcessUsageTrackerOptions) => RunProcessUsageTracker;
     readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;
     readonly defaultEngine: Engine;
     readonly discoverRunFilesWithProjectRoot: RunDiscovery['discoverRunFilesWithProjectRoot'];
@@ -114,13 +108,7 @@ export type RunOrchestratorDependencies = {
         };
     };
     readonly runtimeCapabilityPolicy: RuntimeCapabilityPolicyDependencies;
-    readonly node: {
-        readonly arch: string;
-        readonly platform: string;
-        readonly version: string;
-    };
     readonly reporterDispatcher: ReporterDispatcher;
     readonly startSupervisedChild: SupervisedChildProcessStarter;
     readonly startWorkerPoolHost: WorkerPoolHostProcessStarter;
-    readonly wallClock: Clock;
 };

@@ -3,6 +3,7 @@ import type { BenchmarkBaselinePolicy } from '../baselines/performance-adapter.t
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
+import type { BenchmarkHostPolicy } from './benchmark-host.ts';
 import type {
     IntegrationRetryPolicy as IntegrationRetryPolicyDefinition,
     IntegrationExecutionShape,
@@ -177,6 +178,7 @@ export type BenchmarkExecution = IntegrationExecutionShape<
 >;
 
 export type BenchmarkProfileConfig = {
+    readonly host: BenchmarkHostPolicy;
     readonly baselines: BenchmarkBaselinePolicy;
     readonly attachments: AttachmentLimits;
     readonly execution: BenchmarkExecution;

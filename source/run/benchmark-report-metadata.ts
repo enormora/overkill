@@ -1,7 +1,12 @@
 import { appendRunnerErrors } from '../engine/execution-result.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runJsonArtifact } from '../attachments/run-json-artifact.ts';
-import { benchmarkRunMediaType, type BenchmarkRunMetadata } from '../bench/benchmark-run-report.ts';
+import {
+    benchmarkRunMediaType,
+    readBenchmarkRunMetadata,
+    type BenchmarkRunMetadata
+} from '../bench/benchmark-run-report.ts';
+import type { BenchmarkHostAssessment } from '../bench/benchmark-host-snapshot.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RunFacts, RunCommand } from './run-types.ts';
 
@@ -43,7 +48,8 @@ export function withBenchmarkRunMetadata(
         return result;
     }
     const metadata: BenchmarkRunMetadata = {
-        version: 1,
+        version: 2,
+        host: facts.benchmarkHost,
         node: facts.environment.node,
         calibration: facts.benchmarkCalibration,
         execution: {
@@ -63,13 +69,18 @@ export function withBenchmarkRunMetadata(
     );
 }
 
-export function withBenchmarkErrorMetadata(result: RunResult, command: RunCommand): RunResult {
+export function withBenchmarkErrorMetadata(
+    result: RunResult,
+    command: RunCommand,
+    host: BenchmarkHostAssessment | null
+): RunResult {
     const profile = command.config.profiles[command.request.profile];
-    if (profile?.testFamily !== 'benchmark') {
+    if (profile?.testFamily !== 'benchmark' || readBenchmarkRunMetadata(result) !== null) {
         return result;
     }
     const metadata: BenchmarkRunMetadata = {
-        version: 1,
+        version: 2,
+        host,
         node: { arch: process.arch, platform: process.platform, version: process.version },
         calibration: null,
         execution: {

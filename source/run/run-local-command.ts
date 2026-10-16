@@ -94,7 +94,7 @@ async function runLocalWithPolicy(
             ...resolvedRun,
             runnerErrors: [ ...resolvedRun.runnerErrors, ...errors ],
             status: errors.length > 0 ? 'failed' : resolvedRun.status
-        }, options.timing);
+        }, { timing: options.timing, benchmarkHost: null });
     }
     return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentRun() {
         return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, options);

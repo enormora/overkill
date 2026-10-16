@@ -41,7 +41,10 @@ export async function reportCoverageError(
     error: unknown
 ): Promise<RunResult> {
     const result = await record.checkpointResult(createResultFromResolutionError(error, null));
-    return await reportCollectionErrorResult(request.command, request.dependencies, result, request.timing);
+    return await reportCollectionErrorResult(request.command, request.dependencies, result, {
+        timing: request.timing,
+        benchmarkHost: null
+    });
 }
 
 async function executeOrReport(
