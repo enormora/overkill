@@ -119,8 +119,28 @@ Test IDs use structural work identities and project-relative paths. Every fresh
 collection validates the complete eligible catalog, selection metadata, and
 intentional skips before narrowing. Unknown IDs, catalog drift, unexpected
 skips, and empty mutant filters return `Error`. The adapter expands Stryker's
-sandbox file filters and preserves static activation for its static-mutant
-planner path unless `ignoreStatic` requests runtime execution.
+sandbox file filters.
+
+Set Stryker's `coverageAnalysis` to `perTest` (the normal optimized mode), `all`,
+or `off`. `perTest` returns Stryker's case counters and narrows execution only
+when the requested cases include every recorded covering case. `all` returns
+aggregate mutant counts and selects the full eligible suite. `off` omits mutant
+coverage and also selects the full eligible suite. Ordinary V8 coverage remains
+disabled in every mode.
+
+Static coverage or uncertain attribution widens valid filters to the complete
+dry-run catalog, preserving its original file restrictions. The adapter never
+infers `NoCoverage`. Missing or malformed counter transport, incomplete
+test results, unknown IDs, duplicate IDs, and explicit-empty filters return
+`Error`. A test that touches no instrumented code needs no counter bucket.
+Stryker can still classify genuinely uncovered mutants from complete coverage.
+
+Stryker's explicit `ignoreStatic` setting retains its runtime-only behavior for
+hybrid mutants and its own handling of static mutants. Otherwise recorded
+import-time hits require static activation before user imports. Existing reload
+checks reject a loaded graph that cannot perform that activation safely.
+Fallback keeps Stryker's deadline and bail policy. The dry-run coverage mode is
+fixed with the campaign baseline and retained across worker replacements.
 
 Counters retain their object identity across reused invocations. Test attribution
 includes awaited cleanup. Infrastructure errors take precedence over timeouts

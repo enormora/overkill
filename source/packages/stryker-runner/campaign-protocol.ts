@@ -4,6 +4,8 @@ import { parseFrozenMicrotestPolicy, parseRunResult, parseRunExecutionFailure } 
 import { campaignBaselineSchema } from './mutation-catalog.ts';
 import { mutationSandboxSchema } from './mutation-sandbox.ts';
 
+export const campaignProtocolVersion = 2;
+
 const jsonSchema: z.ZodType<JsonValue> = z.json();
 
 export const campaignEndpointSchema = z.strictObject({ port: z.number().int().positive(), token: z.uuid() }).readonly();
@@ -14,7 +16,7 @@ export const campaignSessionSchema = z.strictObject({
     lifecycle: z.strictObject({ moduleUrl: z.url(), exportName: z.string().min(1) })
 });
 export const campaignRequestSchema = z.strictObject({
-    version: z.literal(1),
+    version: z.literal(campaignProtocolVersion),
     token: z.uuid(),
     id: z.number().int().nonnegative(),
     request: z.discriminatedUnion('kind', [
@@ -33,7 +35,7 @@ export const campaignRequestSchema = z.strictObject({
 });
 export type CampaignRequest = Readonly<z.input<typeof campaignRequestSchema>['request']>;
 export const campaignResponseSchema = z.strictObject({
-    version: z.literal(1),
+    version: z.literal(campaignProtocolVersion),
     id: z.number().int().nonnegative(),
     response: z.discriminatedUnion('kind', [
         z.strictObject({ kind: z.literal('accepted') }),

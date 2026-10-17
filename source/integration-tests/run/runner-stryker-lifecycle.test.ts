@@ -5,6 +5,7 @@ import { createSuite, createTestCase, type TestScope } from '../../packages/engi
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
 import { strykerCampaignScript, strykerHitLimitScript } from './stryker-campaign-scripts.test.ts';
+import { strykerCoverageScript } from './stryker-coverage-scripts.test.ts';
 import {
     originalRoot,
     engineUrl,
@@ -20,6 +21,7 @@ type CampaignMode = {
     readonly processModel: typeof processModels[number];
     readonly freshState: boolean;
     readonly looping: boolean;
+    readonly coverageAnalysis: 'all' | 'off' | 'perTest';
 };
 
 async function campaignProject(scope: TestScope, prefix: string): Promise<string> {
@@ -41,7 +43,7 @@ async function verifyCampaign(scope: TestScope, mode: CampaignMode): Promise<voi
         mode.processModel,
         String(mode.freshState),
         mode.looping ? '100' : '1',
-        mode.looping ? 'off' : 'perTest',
+        mode.coverageAnalysis,
         String(mode.looping)
     ], cwd);
     scope.assert.equal(output, 'campaign passed\n');
@@ -79,17 +81,44 @@ export const testNode = createSuite({
                             return scope.assert.collect();
                         }
                     }),
-                    ...[ false, true ].map(function campaignModes(looping) {
+                    ...([ 'perTest', 'all', 'off' ] as const).map(function coverageModes(coverageAnalysis) {
                         return createTestCase({
                             ...metadata,
-                            title: `${processModel} freshState ${String(freshState)} ${
-                                looping ? 'reaps synchronous loops' : 'replaces workers'
-                            }`,
+                            title: `${processModel} freshState ${String(freshState)} ${coverageAnalysis} coverage`,
                             async body(scope) {
-                                await verifyCampaign(scope, { processModel, freshState, looping });
+                                const cwd = await campaignProject(scope, 'overkill-stryker-coverage-');
+                                const output = await executeMutationScript(strykerCoverageScript, [
+                                    import.meta.resolve('@stryker-mutator/instrumenter'),
+                                    adapterUrl,
+                                    engineUrl,
+                                    configUrl,
+                                    processModel,
+                                    String(freshState),
+                                    coverageAnalysis
+                                ], cwd);
+                                scope.assert.equal(output, 'coverage passed\n');
+                                await verifyCampaign(scope, {
+                                    processModel,
+                                    freshState,
+                                    looping: false,
+                                    coverageAnalysis
+                                });
                                 return scope.assert.collect();
                             }
                         });
+                    }),
+                    createTestCase({
+                        ...metadata,
+                        title: `${processModel} freshState ${String(freshState)} reaps synchronous loops`,
+                        async body(scope) {
+                            await verifyCampaign(scope, {
+                                processModel,
+                                freshState,
+                                looping: true,
+                                coverageAnalysis: 'off'
+                            });
+                            return scope.assert.collect();
+                        }
                     })
                 ];
             });

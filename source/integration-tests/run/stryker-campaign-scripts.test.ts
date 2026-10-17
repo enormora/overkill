@@ -7,7 +7,8 @@ await writeFile('package.json', '{"type":"module"}');
 const looping = process.argv[9] === 'true';
 await writeFile('subject.mjs', looping
     ? 'export const initial = true; export function value() { const done = true; while (!done) {} return true; }'
-    : 'export const initial = true; export function value() { return true; }');
+    : 'export const initial = true; export function value() { return true; }' +
+      ' export function untouched() { return true; }');
 await writeFile('case.test.mjs',
     'import { createTestCase } from ' + JSON.stringify(engine) + ';' +
     "import { initial, value } from './subject.mjs';" +
@@ -32,12 +33,14 @@ const results = await new Stryker({
     cleanTempDir: true, tempDirName: '.stryker-tmp'
 }).runMutationTest();
 const booleans = results.filter(result => result.mutatorName === 'BooleanLiteral');
-assert.equal(booleans.length, looping ? 4 : 2, JSON.stringify(results));
+assert.equal(booleans.length, looping ? 4 : 3, JSON.stringify(results));
 if (looping) {
     assert.equal(booleans.filter(result => result.status === 'Killed').length, 2, JSON.stringify(results));
     assert.equal(booleans.filter(result => result.status === 'Timeout').length, 2, JSON.stringify(results));
 } else {
-    assert.deepEqual(booleans.map(result => result.status), ['Killed', 'Killed'], JSON.stringify(results));
+    assert.deepEqual(booleans.map(result => result.status).sort(),
+        ['Killed', 'Killed', (process.argv[8] ?? 'perTest') === 'off' ? 'Survived' : 'NoCoverage'],
+        JSON.stringify(results));
 }
 if ((process.argv[8] ?? 'perTest') === 'perTest') {
     assert.equal(booleans.filter(result => result.static === true).length, 1);
@@ -127,10 +130,10 @@ try {
     } }, {[process.cwd() + '/case.test.mjs']: {mutate: false}}, logger);
     try {
         await fresh.init();
-        const baseline = await fresh.dryRun({coverageAnalysis: 'off', timeout: 30000, disableBail: false});
+        const baseline = await fresh.dryRun({coverageAnalysis: 'all', timeout: 30000, disableBail: false});
         assert.equal(baseline.status, 'complete', JSON.stringify(baseline));
         await writeFile('case.test.mjs', 'while (true) {}');
-        const interrupted = fresh.dryRun({coverageAnalysis: 'off', timeout: 30000, disableBail: false});
+        const interrupted = fresh.dryRun({coverageAnalysis: 'all', timeout: 30000, disableBail: false});
         const {setTimeout} = await import('node:timers/promises');
         await setTimeout(200);
         process.report.excludeEnv = true;

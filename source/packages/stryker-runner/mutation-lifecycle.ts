@@ -20,7 +20,6 @@ export const mutationLifecycleInputSchema = z.strictObject({
     mode: z.enum([ 'dry', 'runtime', 'static' ]),
     activeMutant: z.string().nullable(),
     hitLimit: z.number().nonnegative().nullable(),
-    coverage: z.enum([ 'off', 'all', 'perTest' ]),
     baseline: mutationCatalogSchema.nullable(),
     selected: z.array(z.string()).nullable(),
     disableBail: z.boolean(),

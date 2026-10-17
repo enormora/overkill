@@ -2,6 +2,7 @@ import { connect, type Socket } from 'node:net';
 import {
     campaignEndpointSchema,
     campaignResponseSchema,
+    campaignProtocolVersion,
     type CampaignEndpoint,
     type CampaignRequest,
     type CampaignResponse
@@ -74,7 +75,7 @@ async function deliverRequest(
     });
     try {
         const replies = await Promise.all([
-            sendCampaignFrame(socket, { version: 1, token: endpoint.token, id, request }),
+            sendCampaignFrame(socket, { version: campaignProtocolVersion, token: endpoint.token, id, request }),
             response
         ]);
         return replies[1];

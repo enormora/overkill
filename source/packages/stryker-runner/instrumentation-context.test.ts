@@ -100,7 +100,6 @@ async function activateLifecycle(mode: 'runtime' | 'static'): Promise<void> {
         mode,
         activeMutant: 'mutant',
         hitLimit: 3,
-        coverage: 'off',
         baseline: null,
         selected: null,
         disableBail: false,

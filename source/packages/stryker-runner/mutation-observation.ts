@@ -24,29 +24,37 @@ function observedIdentities(root: string, reply: ResultReply, data: LifecycleDat
         });
 }
 function validCoverageOwners(data: LifecycleData): boolean {
-    const eligible = new Set(data.catalog.map(function (entry) {
+    const completed = new Set(data.completed);
+    return Object.keys(data.coverage.perTest).every(function (id) {
+        return completed.has(id);
+    });
+}
+function completeDryCatalog(data: LifecycleData): boolean {
+    const identities = new Set(data.catalog.map(function testIdentity(entry) {
         return entry.id;
     }));
-    return Object.keys(data.coverage.perTest).every(function (id) {
-        return eligible.has(id);
-    });
+    const selected = new Set(data.selected);
+    return identities.size > 0 && identities.size === data.catalog.length &&
+        selected.size === data.selected.length && selected.size === identities.size && !data.bailed &&
+        data.selected.every(function eligibleTest(id) {
+            return identities.has(id);
+        });
 }
 function completedSelection(reply: ResultReply, data: LifecycleData, allowBail: boolean): boolean {
     return reply.result.perTest.length === data.selected.length || allowBail && data.bailed;
 }
 export function mutationObservationError(root: string, reply: ResultReply, allowBail: boolean): string | null {
     const data = mutationLifecycleDataSchema.parse(reply.data);
-    if (!validTestOutcome(root, reply, data)) {
-        return 'Mutant execution changed intentional skip state or test identity.';
-    }
-    if (!observedIdentities(root, reply, data)) {
-        return 'Execution did not deliver complete case lifecycle observations.';
-    }
-    if (!validCoverageOwners(data)) {
-        return 'Instrumentation coverage contains an unknown test identity.';
-    }
-    if (!completedSelection(reply, data, allowBail)) {
-        return 'Execution did not complete the selected test catalog.';
-    }
-    return null;
+    const checks: readonly (readonly [boolean, string])[] = [
+        [ allowBail || completeDryCatalog(data), 'Dry run did not select the complete eligible test catalog.' ],
+        [ validTestOutcome(root, reply, data), 'Mutant execution changed intentional skip state or test identity.' ],
+        [ observedIdentities(root, reply, data), 'Execution did not deliver complete case lifecycle observations.' ],
+        [ validCoverageOwners(data), 'Instrumentation coverage contains an unknown or incomplete test identity.' ],
+        [ completedSelection(reply, data, allowBail), 'Execution did not complete the selected test catalog.' ]
+    ];
+    return checks
+        .find(function failedObservation([ valid ]) {
+            return !valid;
+        })
+        ?.[1] ?? null;
 }
