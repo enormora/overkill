@@ -3,6 +3,7 @@ import { createServer, type Socket } from 'node:net';
 import {
     campaignRequestSchema,
     campaignResponseSchema,
+    campaignProtocolVersion,
     type CampaignEndpoint,
     type CampaignResponse
 } from './campaign-protocol.ts';
@@ -35,7 +36,7 @@ async function workerResponse(
     frame: Readonly<ReturnType<typeof campaignRequestSchema.parse>>
 ): Promise<ReturnType<typeof campaignResponseSchema.parse>> {
     const response = await admittedResponse(worker, frame.request);
-    return campaignResponseSchema.parse({ version: 1, id: frame.id, response });
+    return campaignResponseSchema.parse({ version: campaignProtocolVersion, id: frame.id, response });
 }
 
 async function deliverFrame(delivery: CampaignDelivery): Promise<void> {

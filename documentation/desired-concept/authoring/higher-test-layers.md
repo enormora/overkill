@@ -755,6 +755,17 @@ test nodes in selected files remain subject to collection-time validation.
   `perTest`, `all`, and `off` modes; the normal optimized path is `perTest`.
   Static or uncertain attribution requires the full eligible suite. Never infer
   `NoCoverage` from missing transport data, missing tests, or ordinary coverage.
+  Retain the dry-run mode and unaggregated counters with the original eligible
+  catalog across workers. `all` aggregates counters for Stryker without using
+  per-case selection; `off` omits returned coverage and also selects the full
+  eligible suite. In `perTest`, narrow only when a valid filter includes every
+  recorded covering case. A valid filter that omits a covering case or lacks
+  positive attribution widens to the full frozen catalog. Complete empty
+  counters are valid; a case touching no instrumented code needs no bucket.
+  Missing or malformed transport and incomplete test delivery remain errors.
+  Preserve Stryker's explicit `ignoreStatic` opt-out: it may select runtime-only
+  execution for hybrid mutants. Otherwise recorded import-time hits require
+  static activation. Widening preserves the invocation deadline and bail policy.
 - Honor both the profile's per-case timeouts and Stryker's invocation deadline;
   the earlier applicable limit wins. The invocation deadline covers startup,
   collection, execution, and cleanup. Stryker owns enforcement against its
@@ -883,8 +894,11 @@ collapse distinct `WorkId` values into one Stryker ID. Other test families and
 their runtime or workload features remain outside this integration's scope.
 
 Each invocation validates its executable catalog against that catalog and runs
-Stryker's requested IDs exactly. An absent filter means the complete eligible
-suite; an explicit empty filter means no tests. Unknown IDs, duplicate IDs,
+Stryker's requested IDs exactly when attribution supports narrowing. Static or
+uncertain attribution widens valid filters as specified under
+[Execution And Coverage](#execution-and-coverage); it never widens beyond the
+frozen eligible catalog. An absent filter means the complete eligible suite;
+an explicit empty filter means no tests. Unknown IDs, duplicate IDs,
 changed case identities or selection metadata, or a requested test becoming
 skipped are adapter errors, never successful survival. Empty mutant selections
 execute nothing and return an error rather than claiming survival or coverage.

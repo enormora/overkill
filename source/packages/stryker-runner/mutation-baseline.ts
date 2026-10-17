@@ -4,7 +4,11 @@ import type { CampaignClient } from './campaign-client.ts';
 
 export type MutationBaseline = {
     readonly fetch: (client: CampaignClient) => Promise<CampaignBaseline>;
-    readonly publish: (client: CampaignClient, reply: RunExecutionReply) => Promise<void>;
+    readonly publish: (
+        client: CampaignClient,
+        reply: RunExecutionReply,
+        coverageAnalysis: CampaignBaseline['coverageAnalysis']
+    ) => Promise<void>;
 };
 export function createMutationBaseline(): MutationBaseline {
     const baselines = new Map<'original', CampaignBaseline>();
@@ -22,10 +26,17 @@ export function createMutationBaseline(): MutationBaseline {
             baselines.set('original', baseline);
             return baseline;
         },
-        async publish(client, reply) {
+        async publish(client, reply, coverageAnalysis) {
             const data = mutationLifecycleDataSchema.parse(reply.data);
-            const baseline = { catalog: data.catalog, coverage: data.coverage };
-            await client.request({ kind: 'publish', baseline });
+            const baseline = campaignBaselineSchema.parse({
+                catalog: data.catalog,
+                coverage: data.coverage,
+                coverageAnalysis
+            });
+            const response = await client.request({ kind: 'publish', baseline });
+            if (response.kind !== 'accepted') {
+                throw new Error('Campaign IPC did not acknowledge the dry-run baseline.');
+            }
             baselines.set('original', baseline);
         }
     };

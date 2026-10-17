@@ -8,7 +8,7 @@ import {
 } from '@stryker-mutator/api/test-runner';
 import { mutationLifecycleInputSchema } from './mutation-lifecycle.ts';
 import { dryMutationResult, mutantExecutionResult } from './mutation-results.ts';
-import { mutantActivation, mutantSelection } from './mutation-selection.ts';
+import { planMutantInvocation } from './mutation-selection.ts';
 import type { ReadyMutationRunner } from './mutation-runner-lifecycle.ts';
 import type { MutationBaseline } from './mutation-baseline.ts';
 
@@ -37,7 +37,6 @@ export function createMutationRunnerInvocations(
                     mode: 'dry',
                     activeMutant: null,
                     hitLimit: null,
-                    coverage: input.coverageAnalysis,
                     baseline: null,
                     selected: null,
                     disableBail: input.disableBail,
@@ -47,15 +46,14 @@ export function createMutationRunnerInvocations(
             );
             const result = dryMutationResult(runner.root, reply, input.coverageAnalysis);
             if (result.status === DryRunStatus.Complete) {
-                await baseline.publish(runner.client, reply);
+                await baseline.publish(runner.client, reply, input.coverageAnalysis);
             }
             return result;
         },
         async mutant(runner, input, remaining) {
             const started = performance.now();
             const campaign = await baseline.fetch(runner.client);
-            const mode = mutantActivation(input, runner.root, campaign, ignoreStatic);
-            const selected = mutantSelection(runner.root, campaign, input.testFilter ?? null);
+            const { mode, selected } = planMutantInvocation({ root: runner.root, campaign, input, ignoreStatic });
             const budget = remaining - (performance.now() - started);
             if (budget <= 0) {
                 return {
@@ -70,13 +68,8 @@ export function createMutationRunnerInvocations(
                     mode,
                     activeMutant: input.activeMutant.id,
                     hitLimit: input.hitLimit ?? null,
-                    coverage: 'off',
                     baseline: campaign.catalog,
-                    selected: mode === 'static'
-                        ? campaign.catalog.map(function (entry) {
-                            return entry.id;
-                        })
-                        : selected,
+                    selected,
                     disableBail: input.disableBail,
                     files: Array.from(
                         new Set(campaign

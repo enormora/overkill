@@ -19,7 +19,7 @@ function matchingTestIdentities(root: string, campaign: CampaignBaseline, value:
         return entry.id;
     });
 }
-export function mutantSelection(
+function mutantSelection(
     root: string,
     campaign: CampaignBaseline,
     filter: readonly string[] | null
@@ -41,39 +41,51 @@ export function mutantSelection(
     }
     return ids;
 }
-function identifiesSandboxFile(root: string, campaign: CampaignBaseline, value: string): boolean {
-    if (
-        campaign.catalog.some(function matchesIdentity(entry) {
-            return entry.id === value;
-        })
-    ) {
-        return false;
-    }
-    const file = projectFile(root, value);
-    return campaign.catalog.some(function matchesCatalogFile(entry) {
-        return entry.work.case.file === file;
-    });
-}
-function includesSandboxFile(root: string, campaign: CampaignBaseline, filter: readonly string[] | null): boolean {
-    return filter?.some(function isSandboxFile(value) {
-        return identifiesSandboxFile(root, campaign, value);
-    }) === true;
-}
 function coveredAtLoad(campaign: CampaignBaseline, id: string): boolean {
     return (campaign.coverage.static[id] ?? 0) > 0;
 }
 
-export function mutantActivation(
-    input: Readonly<MutantRunOptions>,
-    root: string,
+type MutantInvocationPlan = {
+    readonly mode: MutantRunOptions['mutantActivation'];
+    readonly selected: readonly string[];
+};
+type MutantInvocationInput = {
+    readonly root: string;
+    readonly campaign: CampaignBaseline;
+    readonly input: Readonly<MutantRunOptions>;
+    readonly ignoreStatic: boolean;
+};
+
+function mutantActivation(options: MutantInvocationInput): MutantInvocationPlan['mode'] {
+    const { campaign, input, ignoreStatic } = options;
+    return input.mutantActivation === 'static' || !ignoreStatic && coveredAtLoad(campaign, input.activeMutant.id)
+        ? 'static'
+        : 'runtime';
+}
+
+function supportsNarrowing(
     campaign: CampaignBaseline,
-    ignoreStatic: boolean
-): 'runtime' | 'static' {
-    if (input.mutantActivation === 'static') {
-        return 'static';
-    }
-    if (ignoreStatic || !coveredAtLoad(campaign, input.activeMutant.id)) {
-        return 'runtime';
-    }
-    return includesSandboxFile(root, campaign, input.testFilter ?? null) ? 'static' : 'runtime';
+    mutantId: string,
+    requested: readonly string[]
+): boolean {
+    const owners = Object.entries(campaign.coverage.perTest).filter(function coversMutant([ , counters ]) {
+        return (counters[mutantId] ?? 0) > 0;
+    });
+    return owners.length > 0 && owners.every(function includesCoveringCase([ id ]) {
+        return requested.includes(id);
+    });
+}
+
+export function planMutantInvocation(options: MutantInvocationInput): MutantInvocationPlan {
+    const { root, campaign, input } = options;
+    const requested = mutantSelection(root, campaign, input.testFilter ?? null);
+    const mode = mutantActivation(options);
+    const canNarrow = mode === 'runtime' && campaign.coverageAnalysis === 'perTest' &&
+        supportsNarrowing(campaign, input.activeMutant.id, requested);
+    return {
+        mode,
+        selected: canNarrow ? requested : campaign.catalog.map(function testIdentity(entry) {
+            return entry.id;
+        })
+    };
 }

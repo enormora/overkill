@@ -1,4 +1,5 @@
 import { strykerCampaignScript } from '../run/stryker-campaign-scripts.test.ts';
+import { strykerCoverageScript } from '../run/stryker-coverage-scripts.test.ts';
 import { strykerProfileScript } from './stryker-profile-scripts.test.ts';
 import { strykerSandboxScript } from './stryker-sandbox-scripts.test.ts';
 import { strykerFreshStateScript } from './stryker-fresh-state-scripts.test.ts';
@@ -67,15 +68,29 @@ try {
 }
 for (const processModel of ['in-process', 'supervised-process']) {
     for (const freshState of ['false', 'true']) {
-        const campaignCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-campaign-'));
-        try {
-            execFileSync(process.execPath, ['--input-type=module', '--eval', ${JSON.stringify(strykerCampaignScript)},
-                ${JSON.stringify(import.meta.resolve('@stryker-mutator/core'))},
-                import.meta.resolve('@overkill-dev/stryker-runner'), import.meta.resolve('@overkill-dev/engine'),
-                import.meta.resolve('@overkill-dev/run/config'), processModel, freshState],
-                { cwd: campaignCwd, stdio: 'pipe' });
-        } finally {
-            rmSync(campaignCwd, { recursive: true, force: true });
+        for (const coverageAnalysis of ['perTest', 'all', 'off']) {
+            const campaignCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-campaign-'));
+            try {
+                execFileSync(process.execPath, [
+                    '--input-type=module', '--eval', ${JSON.stringify(strykerCampaignScript)},
+                    ${JSON.stringify(import.meta.resolve('@stryker-mutator/core'))},
+                    import.meta.resolve('@overkill-dev/stryker-runner'), import.meta.resolve('@overkill-dev/engine'),
+                    import.meta.resolve('@overkill-dev/run/config'), processModel, freshState, '1', coverageAnalysis],
+                    { cwd: campaignCwd, stdio: 'pipe' });
+            } finally {
+                rmSync(campaignCwd, { recursive: true, force: true });
+            }
+            const coverageCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-coverage-'));
+            try {
+                execFileSync(process.execPath, [
+                    '--input-type=module', '--eval', ${JSON.stringify(strykerCoverageScript)},
+                    ${JSON.stringify(import.meta.resolve('@stryker-mutator/instrumenter'))},
+                    import.meta.resolve('@overkill-dev/stryker-runner'), import.meta.resolve('@overkill-dev/engine'),
+                    import.meta.resolve('@overkill-dev/run/config'), processModel, freshState, coverageAnalysis],
+                    { cwd: coverageCwd, stdio: 'pipe' });
+            } finally {
+                rmSync(coverageCwd, { recursive: true, force: true });
+            }
         }
     }
 }

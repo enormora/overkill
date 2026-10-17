@@ -38,10 +38,21 @@ export const mutantCoverageSchema = z.strictObject({
     static: z.record(z.string(), z.number().nonnegative()),
     perTest: z.record(z.string(), z.record(z.string(), z.number().nonnegative()))
 });
-export const campaignBaselineSchema = z.strictObject({
-    catalog: mutationCatalogSchema,
-    coverage: mutantCoverageSchema
-});
+export const campaignBaselineSchema = z
+    .strictObject({
+        catalog: mutationCatalogSchema.min(1),
+        coverageAnalysis: z.enum([ 'off', 'all', 'perTest' ]),
+        coverage: mutantCoverageSchema
+    })
+    .refine(function validBaseline(baseline) {
+        const identities = new Set(baseline.catalog.map(function testIdentity(entry) {
+            return entry.id;
+        }));
+        return identities.size === baseline.catalog.length &&
+            Object.keys(baseline.coverage.perTest).every(function knownCoverageOwner(id) {
+                return identities.has(id);
+            });
+    }, 'Campaign baseline must contain unique tests and known coverage owners.');
 export type CampaignBaseline = Readonly<z.output<typeof campaignBaselineSchema>>;
 export const mutationLifecycleDataSchema = z.strictObject({
     catalog: mutationCatalogSchema,
