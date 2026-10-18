@@ -18,9 +18,13 @@ type ExecutionDataObservation = {
     readonly delivered: StoredValue<boolean>;
     readonly failure: StoredValue<Error | null>;
     readonly invalid: AbortController;
+    readonly result: StoredValue<RunResult | null>;
 };
 function readExecutionData(observation: ExecutionDataObservation, message: unknown): void {
     const decoded = envelopeMessage(message, supervisedChildCorrelationId, supervisedChildMessageSchema);
+    if (decoded?.kind === 'result') {
+        observation.result.write(decoded.result);
+    }
     if (decoded?.kind !== 'execution-data') {
         return;
     }
@@ -87,7 +91,14 @@ function observedReply(
     if (!observation.delivered.read()) {
         return missingDataReply(result, call);
     }
-    return { kind: 'result', result, data: observation.data.read(), deadlineExceeded: false };
+    const completed = observation.result.read();
+    const selected = completed === null ? result : {
+        ...result,
+        bySuite: completed.bySuite,
+        planStatus: completed.planStatus,
+        summary: { ...result.summary, planned: completed.summary.planned }
+    };
+    return { kind: 'result', result: selected, data: observation.data.read(), deadlineExceeded: false };
 }
 export async function runSupervisedExecutionSession(
     options: RunExecutionSessionOptions,
@@ -98,7 +109,8 @@ export async function runSupervisedExecutionSession(
         data: createStoredValue<RunExecutionReply['data']>(null),
         delivered: createStoredValue(false),
         failure: createStoredValue<Error | null>(null),
-        invalid: new AbortController()
+        invalid: new AbortController(),
+        result: createStoredValue<RunResult | null>(null)
     };
     const operations = createRunOperations(observedDependencies(dependencies, observation), 'test');
     const signal = AbortSignal.any([ call.signal, observation.invalid.signal ]);

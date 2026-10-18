@@ -168,6 +168,24 @@ function assertCombinedLifecycleFailure(scope: TestScope, reply: RunExecutionRep
 }
 
 export const testNode = suite('public execution session boundaries', [
+    ...([ 'in-process', 'supervised-process' ] as const).map(function selectedCounts(processModel) {
+        return test(`${processModel} reports the plan selected by its lifecycle`, async function (scope) {
+            const session = orchestrator.createExecutionSession(
+                await sessionOptions(processModel, [
+                    ...passingFiles,
+                    ...lifecycleCases
+                ])
+            );
+            scope.cleanup(session.dispose);
+            const reply = await session.run({ data: 'narrow', timeoutMilliseconds: 30_000, signal: null });
+            assert.ok(reply.kind === 'result', JSON.stringify(reply));
+            scope.assert.equal(reply.result.summary.discovered, 3);
+            scope.assert.equal(reply.result.summary.planned, 1);
+            scope.assert.equal(reply.result.perTest.length, 1);
+            scope.assert.equal(reply.result.bySuite.fixture?.planned, 1);
+            return scope.assert.collect();
+        });
+    }),
     ...[ 'pass', 'before' ].map(function childLifecycle(data) {
         return test(`child sessions finalize ${data} execution before reporting`, async function (scope) {
             const child = await createNativeSessionChild(data);
