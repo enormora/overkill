@@ -9,12 +9,12 @@ import {
 } from '@stryker-mutator/api/test-runner';
 import type { RunExecutionReply } from '../run/run.entry-point.ts';
 import { mutationLifecycleInputSchema } from './mutation-lifecycle.ts';
-import { dryMutationResult, mutantExecutionResult } from './mutation-results.ts';
+import { mutantExecutionResult } from './mutation-results.ts';
+import { dryMutationResult, type DryRunExpectation } from './dry-run-results.ts';
 import { planMutantInvocation, type MutantInvocationPlan } from './mutation-selection.ts';
 import type { ReadyMutationRunner } from './mutation-runner-lifecycle.ts';
 import type { MutationBaseline } from './mutation-baseline.ts';
 import { mutationTestFiles, type CampaignBaseline } from './mutation-catalog.ts';
-import type { MutationInvocationExpectation } from './mutation-observation.ts';
 
 export type MutationRunnerInvocations = {
     readonly dry: (
@@ -32,7 +32,7 @@ async function dryRunExpectation(
     runner: ReadyMutationRunner,
     baseline: MutationBaseline,
     input: Readonly<DryRunOptions>
-): Promise<Extract<MutationInvocationExpectation, { readonly kind: 'dry'; }>> {
+): Promise<DryRunExpectation> {
     const campaign = await baseline.read(runner.client);
     const testFiles = mutationTestFiles(runner.root, input.testFiles ?? null);
     if (
@@ -65,7 +65,7 @@ export function createMutationRunnerInvocations(
         runner: ReadyMutationRunner,
         reply: RunExecutionReply,
         coverage: DryRunOptions['coverageAnalysis'],
-        expectation: Extract<MutationInvocationExpectation, { readonly kind: 'dry'; }>
+        expectation: DryRunExpectation
     ): Promise<DryRunResult> {
         const result = dryMutationResult(runner.root, reply, coverage, expectation);
         if (result.status === DryRunStatus.Complete) {

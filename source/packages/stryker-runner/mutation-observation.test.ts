@@ -2,7 +2,8 @@ import { suite, test } from '../test/test.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
-import { dryMutationResult, mutantExecutionResult } from './mutation-results.ts';
+import { mutantExecutionResult } from './mutation-results.ts';
+import { dryMutationResult } from './dry-run-results.ts';
 import type { MutationInvocationExpectation } from './mutation-observation.ts';
 
 export const testNode = suite('mutation invocation observations', [

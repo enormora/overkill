@@ -4,7 +4,8 @@ import { suite, test } from '../test/test.entry-point.ts';
 import { workIdentityKey, type PerTestResult, type RunnerError } from '../engine/engine.entry-point.ts';
 import type { RunExecutionReply } from '../run/run.entry-point.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
-import { dryMutationResult, mutantExecutionResult } from './mutation-results.ts';
+import { mutantExecutionResult } from './mutation-results.ts';
+import { dryMutationResult } from './dry-run-results.ts';
 import type { MutationInvocationExpectation } from './mutation-observation.ts';
 import { campaignBaselineSchema, mutationLifecycleDataSchema } from './mutation-catalog.ts';
 
