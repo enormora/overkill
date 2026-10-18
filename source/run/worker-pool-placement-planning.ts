@@ -15,7 +15,8 @@ import type {
     RunSeed,
     RunShard,
     RunWorkerCountFacts,
-    WorkUnitResourceConstraints
+    WorkUnitResourceConstraints,
+    WorkUnit
 } from './run-types.ts';
 import {
     selectDurationHistoryPlacement,
@@ -62,7 +63,14 @@ type WorkerPoolPlacementBaseInput = {
 
 export type WorkerPoolPlacementPlanInput = WorkerPoolPlacementBaseInput & WorkerPoolPlacementShardInput;
 
-export type WorkerPoolPlacementResolutionInput = WorkerPoolPlacementPlanInput & {
+type WorkerPoolPlacementCapacityInput = Pick<
+    WorkerPoolPlacementPlanInput,
+    'assignmentPolicy' | 'availableParallelism' | 'profileMaximumWorkers' | 'requestedWorkers' | 'selectedPlan'
+>;
+
+export type WorkerPoolPlacementResolutionInput = WorkerPoolPlacementCapacityInput & {
+    readonly units: readonly WorkUnit[];
+    readonly maximumWorkers: number | null;
     readonly durationHistoryIndex: DurationHistoryIndex | null;
     readonly nowMilliseconds: number;
 };
@@ -111,13 +119,14 @@ export function collectedRunCaseEntriesFromWorkUnits(
 export function createWorkerPoolPlacementResolution(
     input: WorkerPoolPlacementResolutionInput
 ): WorkerPoolPlacementResolution {
-    const units = workUnitsFromCollectedPlan(input);
+    const { units } = input;
     const durationHistory = input.assignmentPolicy === 'duration-history-balanced'
         ? selectDurationHistoryPlacement(units, input.durationHistoryIndex, input.nowMilliseconds)
         : { facts: null, unitDuration: null };
     const laneInput: WorkerPoolLaneInput = {
         assignmentPolicy: input.assignmentPolicy,
         availableParallelism: input.availableParallelism,
+        maximumWorkers: input.maximumWorkers,
         profileMaximum: input.profileMaximumWorkers,
         requestedWorkers: input.requestedWorkers,
         units
@@ -160,6 +169,8 @@ export function createWorkerPoolPlacementResolution(
 export function createWorkerPoolPlacementPlan(input: WorkerPoolPlacementPlanInput): PlacementPlan {
     return createWorkerPoolPlacementResolution({
         ...input,
+        units: workUnitsFromCollectedPlan(input),
+        maximumWorkers: null,
         durationHistoryIndex: null,
         nowMilliseconds: coldStartMilliseconds
     })

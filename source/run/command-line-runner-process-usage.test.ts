@@ -105,6 +105,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 facts: {
                     benchmarkHost: null,
                     benchmarkCalibration: null,
+                    benchmarkPlacement: null,
                     coveragePolicy: null,
                     durationHistory: null,
                     cases: [],

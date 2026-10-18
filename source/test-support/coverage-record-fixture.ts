@@ -103,6 +103,7 @@ async function createCoverageRecordFixture(
         facts: createRunFacts({
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkPlacement: null,
             cases: [],
             config: input.config,
             dependencies,

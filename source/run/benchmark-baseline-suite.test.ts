@@ -3,11 +3,9 @@ import { testNode as commands } from '../integration-tests/run/runner-benchmark-
 import { testNode as failures } from '../integration-tests/run/runner-benchmark-baseline-failures.test.ts';
 import { testNode as commandLine } from '../integration-tests/run/runner-benchmark-baseline-cli.test.ts';
 import { testNode as html } from '../integration-tests/run/runner-benchmark-html.test.ts';
-import { testNode as hostObserverTestNode } from '../integration-tests/run/runner-benchmark-host.test.ts';
-import { testNode as hostReportTestNode } from './benchmark-host-report.test.ts';
-import { testNode as hostAdmissionTestNode } from './benchmark-host-admission.test.ts';
-import { testNode as hostTestNode } from './benchmark-host.test.ts';
-import { testNode as hostUnavailableTestNode } from './benchmark-host-unavailable.test.ts';
+
+import { testNode as hostTestNode } from './benchmark-host-suite.test.ts';
+import { testNode as placementTestNode } from './benchmark-placement-suite.test.ts';
 
 export const testNode = createSuite({
     annotations: {},
@@ -17,10 +15,7 @@ export const testNode = createSuite({
         commandLine,
         html,
         hostTestNode,
-        hostAdmissionTestNode,
-        hostReportTestNode,
-        hostUnavailableTestNode,
-        hostObserverTestNode
+        placementTestNode
     ],
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],

@@ -7,7 +7,7 @@ import { runJsonArtifact } from '../attachments/run-json-artifact.ts';
 import { createBenchmarkHtmlReport } from '../reporters/benchmark-html-model.ts';
 import { createRunFacts } from './run-facts.ts';
 import { withBenchmarkRunMetadata, withBenchmarkErrorMetadata } from './benchmark-report-metadata.ts';
-import type { RunCommand, RunFacts } from './run-types.ts';
+import type { RunCommand, ResolvedRun } from './run-types.ts';
 
 function metadataCommand(processModel: 'supervised-process' | 'worker-pool'): RunCommand {
     return {
@@ -25,10 +25,15 @@ function metadataCommand(processModel: 'supervised-process' | 'worker-pool'): Ru
         request: defaultRunRequest({ profile: 'startup' })
     };
 }
-function metadataFacts(command: RunCommand): RunFacts {
+function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
     return createRunFacts({
         benchmarkHost: null,
         benchmarkCalibration: null,
+        benchmarkPlacement: {
+            policy: 'conservative-size-only-v1',
+            maximumWorkers: 1,
+            limits: [ { reason: 'measurement', maximumWorkers: 1 } ]
+        },
         cases: [],
         config: command.config,
         dependencies: {
@@ -62,8 +67,15 @@ export const testNode = suite('benchmark run metadata', [
                     workerLifecycle: processModel === 'worker-pool' ? 'reuse' : null
                 }
             });
+            scope.assert.deepEqual<unknown, unknown>(metadata.placement, facts.benchmarkPlacement);
             scope.assert.deepEqual(recorded.perTest, result.perTest);
         }
+        return scope.assert.collect();
+    }),
+    test('renders the recorded placement decision in HTML metadata', function (scope: TestScope) {
+        const facts = metadataFacts(metadataCommand('worker-pool'));
+        const recorded = withBenchmarkRunMetadata(runResultFactory.build({}), facts, 0);
+        scope.assert.includes(createBenchmarkHtmlReport(recorded).metadata, 'conservative-size-only-v1');
         return scope.assert.collect();
     }),
     test('does not attach benchmark metadata to other test families or unknown profiles', function (scope: TestScope) {

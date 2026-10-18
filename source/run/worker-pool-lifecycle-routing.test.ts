@@ -82,6 +82,7 @@ function baseResolvedRun(): ResolvedRun {
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: [],

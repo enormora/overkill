@@ -66,6 +66,7 @@ function workerCount(
     return resolveWorkerCount({
         assignmentPolicy: 'stable',
         availableParallelism: host,
+        maximumWorkers: null,
         profileMaximum: profile,
         requestedWorkers: requested,
         units
@@ -94,6 +95,29 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(workerCount(units, 16, 3, 6), 3);
                 scope.assert.equal(workerCount(units.slice(0, 2), 16, null, 6), 2);
 
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'placement ceilings cap requests without replacing configured worker facts',
+            body(scope: OverkillScope) {
+                const units = Array.from({ length: 6 }, function reusableUnit(_value, index) {
+                    return workUnit(`reuse-${index}`, 'reuse');
+                });
+                scope.assert.deepEqual(
+                    resolveWorkerCount({
+                        assignmentPolicy: 'stable',
+                        availableParallelism: 8,
+                        maximumWorkers: 2,
+                        profileMaximum: 4,
+                        requestedWorkers: 6,
+                        units
+                    }),
+                    { hostMaximum: 8, profileMaximum: 4, requested: 6, resolved: 2 }
+                );
                 return scope.assert.collect();
             }
         }),
@@ -161,6 +185,7 @@ export const testNode = createOverkillSuite({
                     resolveWorkerCount({
                         assignmentPolicy: 'stable',
                         availableParallelism: 6,
+                        maximumWorkers: null,
                         profileMaximum: 4,
                         requestedWorkers: 3,
                         units
@@ -188,6 +213,7 @@ export const testNode = createOverkillSuite({
                     createRunFacts({
                         benchmarkHost: null,
                         benchmarkCalibration: null,
+                        benchmarkPlacement: null,
                         cases: [],
                         config: defaultRunConfig({ profiles: { integration: profile } }),
                         dependencies: {
@@ -251,6 +277,7 @@ export const testNode = createOverkillSuite({
                 const lanes = workerPoolLanes({
                     assignmentPolicy: 'stable',
                     availableParallelism: 5,
+                    maximumWorkers: null,
                     profileMaximum: null,
                     requestedWorkers: null,
                     units

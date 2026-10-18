@@ -75,6 +75,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     return {
         benchmarkHost: null,
         benchmarkCalibration: null,
+        benchmarkPlacement: null,
         cases: runCaseFactsFromTestPlan(input.testPlan, function directRunFileSet() {
             return input.fileSet;
         }),

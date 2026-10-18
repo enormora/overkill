@@ -183,7 +183,7 @@ function assertBenchmarkArtifacts(scope: TestScope, result: RunResult): void {
 function assertBenchmarkHostMetadata(scope: TestScope, result: RunResult, observer: BenchmarkObserver): void {
     const runMetadata = readBenchmarkRunMetadata(result);
     scope.require.defined(runMetadata?.host);
-    scope.assert.equal(runMetadata.version, 2);
+    scope.assert.equal(runMetadata.version, 3);
     scope.assert.equal(runMetadata.calibration, null);
     scope.assert.equal(runMetadata.host.snapshot.version, 1);
     const start = observer.events.find(function runStart(event) {
@@ -193,6 +193,10 @@ function assertBenchmarkHostMetadata(scope: TestScope, result: RunResult, observ
         throw new Error('Missing benchmark start facts.');
     }
     scope.assert.equal(canonicalIdentityJson(start.facts.benchmarkHost), canonicalIdentityJson(runMetadata.host));
+    scope.assert.equal(
+        canonicalIdentityJson(start.facts.benchmarkPlacement),
+        canonicalIdentityJson(runMetadata.placement)
+    );
 }
 
 async function assertBenchmarkResults(

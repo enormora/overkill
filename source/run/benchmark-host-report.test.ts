@@ -45,8 +45,33 @@ export const testNode = suite('benchmark host reporting', [
         });
         const decoded = readBenchmarkRunMetadata({ ...result, artifacts: [ artifact ] });
         scope.assert.equal(decoded?.host, null);
-        scope.assert.equal(decoded?.version, 2);
+        scope.assert.equal(decoded?.version, 3);
         scope.assert.equal(decoded?.execution.profile, 'legacy');
+        return scope.assert.collect();
+    }),
+    test('reads version 2 host evidence with an explicitly absent placement', function (scope: TestScope) {
+        const result = runResultFactory.build({});
+        const metadata = readBenchmarkRunMetadata(withBenchmarkErrorMetadata(result, benchmarkCommand(), null));
+        scope.require.defined(metadata);
+        const artifact = runJsonArtifact({
+            result,
+            name: 'benchmark-run',
+            mediaType: benchmarkRunMediaType,
+            maxBytes: 4096,
+            capturedAtMicroseconds: 0,
+            value: {
+                version: 2,
+                node: metadata.node,
+                execution: metadata.execution,
+                calibration: metadata.calibration,
+                host: metadata.host
+            }
+        });
+        const decoded = readBenchmarkRunMetadata({ ...result, artifacts: [ artifact ] });
+        scope.assert.equal(decoded?.version, 3);
+        scope.assert.equal(decoded?.placement, null);
+        scope.require.defined(decoded);
+        scope.assert.deepEqual(decoded.node, metadata.node);
         return scope.assert.collect();
     }),
     test(

@@ -1,121 +1,29 @@
-import type { ProfileConfig, Scheduling, WorkerPoolAssignmentPolicy } from '../config/types.ts';
-import type { ResolvedRunInput } from './run-input-resolution.ts';
-import {
-    createRunShardHasher,
-    shardCollectedRunPlanCases
-} from './run-sharding.ts';
-import {
-    orderedRunItems
-} from './run-ordering.ts';
-import {
-    emptyWorkUnitResourceConstraints,
-    type CollectedRunPlan,
-    type RunRequest,
-    type RunWorkerCountFacts
-} from './run-types.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+import type { RunFacts, RunWorkerCountFacts } from './run-types.ts';
+import { createRunShardHasher, shardCollectedRunPlanCases } from './run-sharding.ts';
+import { orderedRunItems } from './run-ordering.ts';
 import {
     collectedRunCaseEntriesFromWorkUnits,
-    createWorkerPoolPlacementResolution,
-    type WorkerPoolPlacementResolution,
-    type WorkerPoolPlacementResolutionInput
+    type WorkerPoolPlacementResolution
 } from './worker-pool-placement-planning.ts';
-import {
-    constrainedScheduling,
-    workResourceConstraints
-} from './work-unit-resource-constraints.ts';
+import { constrainedScheduling, workResourceConstraints } from './work-unit-resource-constraints.ts';
 import { assertCollectedPlanCompatible } from './execution-plan-resolution.ts';
 import { resolveRunScheduling } from './run-profile-facts.ts';
+import {
+    benchmarkPlacementForCases,
+    createPlacementResolution,
+    type CollectedExecutionPlanInput
+} from './collected-placement.ts';
 
-type CollectedPlanKind = 'supervised' | 'worker-pool';
+type Scheduling = RunFacts['execution']['scheduling'];
 
-type CollectedExecutionPlanInput = {
-    readonly collectedPlan: CollectedRunPlan;
-    readonly dependencies: RunOrchestratorDependencies;
-    readonly durationHistoryIndex: WorkerPoolPlacementResolutionInput['durationHistoryIndex'];
-    readonly files: ResolvedRunInput['files'];
-    readonly planKind: CollectedPlanKind;
-    readonly profile: ProfileConfig;
-    readonly request: RunRequest;
-};
-
-type CollectedExecutionPlan = {
+export type CollectedExecutionPlan = {
+    readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
     readonly durationHistory: WorkerPoolPlacementResolution['durationHistory'] | null;
     readonly orderedCases: ReturnType<typeof shardCollectedRunPlanCases>;
     readonly placementPlan: WorkerPoolPlacementResolution['placementPlan'] | null;
     readonly scheduling: Scheduling;
     readonly workerCount: RunWorkerCountFacts | null;
 };
-
-function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: string | null) => string | null {
-    const fileSets = new Map(files.map(function toFileSetEntry(file) {
-        return [ file.file, file.fileSet ];
-    }));
-
-    return function fileSetForFile(file) {
-        return file === null ? null : fileSets.get(file) ?? null;
-    };
-}
-
-function workerPoolAssignmentPolicy(profile: ProfileConfig): WorkerPoolAssignmentPolicy {
-    return profile.execution.processModel === 'worker-pool'
-        ? profile.execution.assignmentPolicy
-        : 'case-count-balanced';
-}
-
-function workDistribution(profile: ProfileConfig): WorkerPoolPlacementResolutionInput['workDistribution'] {
-    return profile.execution.processModel === 'worker-pool'
-        ? profile.execution.workDistribution
-        : { mode: 'file' };
-}
-
-function workerLifecycle(profile: ProfileConfig): WorkerPoolPlacementResolutionInput['workerLifecycle'] {
-    return profile.execution.processModel === 'worker-pool'
-        ? profile.execution.workerLifecycle
-        : 'reuse';
-}
-
-function profileMaximumWorkers(profile: ProfileConfig): number | null {
-    return profile.execution.processModel === 'worker-pool'
-        ? profile.execution.maxWorkers
-        : null;
-}
-
-function createPlacementResolution(
-    input: CollectedExecutionPlanInput,
-    shardHasher: Awaited<ReturnType<typeof createRunShardHasher>>
-): WorkerPoolPlacementResolution | null {
-    if (input.planKind !== 'worker-pool') {
-        return null;
-    }
-
-    const runConstraints = input.profile.testFamily === 'benchmark'
-        ? {
-            ...emptyWorkUnitResourceConstraints,
-            serialKeys: [ 'run:benchmark-serialization' ],
-            singleWorkerKeys: [ 'run:benchmark-serialization' ]
-        }
-        : emptyWorkUnitResourceConstraints;
-
-    return createWorkerPoolPlacementResolution({
-        runConstraints,
-        assignmentPolicy: workerPoolAssignmentPolicy(input.profile),
-        availableParallelism: input.dependencies.availableParallelism,
-        durationHistoryIndex: input.durationHistoryIndex,
-        fileSetForFile: fileSetForDiscoveredFiles(input.files),
-        nowMilliseconds: input.dependencies.wallClock.currentUnixEpochMilliseconds,
-        order: input.request.order,
-        profileMaximumWorkers: profileMaximumWorkers(input.profile),
-        requestedWorkers: input.request.workers,
-        seed: input.request.seed,
-        selectedPlan: input.collectedPlan,
-        shard: input.request.shard,
-        shardHasher,
-        scheduling: input.profile.execution.scheduling,
-        workDistribution: workDistribution(input.profile),
-        workerLifecycle: workerLifecycle(input.profile)
-    });
-}
 
 function orderedCollectedCases(
     input: CollectedExecutionPlanInput,
@@ -159,7 +67,7 @@ export async function createCollectedExecutionPlan(
     }
 
     const shardHasher = await createRunShardHasher(input.request.shard);
-    const placementResolution = createPlacementResolution(input, shardHasher);
+    const placementResolution = await createPlacementResolution(input, shardHasher);
     const planningFacts = placementResolution ?? {
         durationHistory: null,
         placementPlan: null,
@@ -169,6 +77,9 @@ export async function createCollectedExecutionPlan(
     const orderedCases = orderedCollectedCases(input, placementPlan, shardHasher);
 
     return {
+        benchmarkPlacement: placementResolution === null
+            ? await benchmarkPlacementForCases(input, orderedCases)
+            : placementResolution.benchmarkPlacement,
         durationHistory: planningFacts.durationHistory,
         orderedCases,
         placementPlan,

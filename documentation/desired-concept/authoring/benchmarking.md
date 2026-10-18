@@ -119,10 +119,9 @@ measurement regions, native collectors, and adaptive metric budgets are
 implemented; warmup, external-process measurement, browser collectors remain later milestones. The dedicated HTML reporter
 consumes recorded benchmark evidence through the final-result lifecycle.
 
-Current profiles admit serial execution with one lane, `maxConcurrency: 1`, and
-hedging off. Worker pools and supervised processes are supported; worker caps
-and requests remain recorded even when placement resolves one lane. Parallel
-placement remains gated on measurement strategy and calibration. Timeout
+Current profiles keep serial execution within each worker, `maxConcurrency: 1`,
+and hedging off. Adaptive placement may use parallel worker lanes for eligible
+artifact-size measurements; all other measurements remain serial. Timeout
 defaults are collection 5000 ms, soft 40000 ms, and hard 60000 ms. Explicit
 policies may lower these limits; hard cannot exceed 60000 ms.
 
@@ -532,6 +531,35 @@ calibration agree that independent benchmark cases can run without material
 contamination, the runner may use multiple lanes. Otherwise it runs serially or
 with reduced lanes and records that placement decision in benchmark metadata.
 
+The conservative placement policy trusts `kind: 'bundle-size'` as the meaning
+of custom returned metrics. It permits parallel lanes only with no collectors
+and no `durationMicroseconds` or `operationsPerSecond` budget or diagnostic.
+Metric units and names do not establish workload independence. Other kinds,
+collectors, and missing benchmark summaries impose a run-wide one-worker cap.
+The decision uses only filtered, sharded work; per-worker scheduling stays serial.
+
+For eligible work, let `P` be observed available parallelism, `C` the logical
+CPU count, and `D` the larger of `C * cpuBusyPercent / 100` and available
+one-minute load. The CPU ceiling is `max(1, floor(P - D - 1))`, reserving one
+CPU for coordination. Required counts, CPU-busy percentage, and available-memory
+percentage must be valid and available; otherwise placement resolves one worker.
+Zero available memory, observed Linux CPU/memory/I/O stalls, or Darwin speed or
+scheduler limits below 100 percent also resolve one worker. Unsupported native
+signals and unavailable load remain diagnostic. This policy estimates neither
+per-case memory demand nor arbitrary workload cost.
+
+The ceiling further restricts ordinary worker sizing, requests, profile caps,
+resource constraints, and work-unit count. Original worker-count inputs remain
+recorded. Mixed worker lifecycles that cannot fit still fail plan compatibility
+before resources or measurements. Supervised execution remains serial. Listing
+omits host observation and records an uncalibrated one-worker ceiling.
+
+`RunFacts.benchmarkPlacement` records policy `conservative-size-only-v1`, its
+maximum worker count, and bounded reason/ceiling pairs. It is null for other
+families. Version 3 benchmark-run metadata retains this decision as `placement`;
+older reports and failures before completed placement use null. Placement is
+frozen before execution and observations are not repeated between samples.
+
 Noise handling has three levels:
 
 - every benchmark run records noise metadata when available
@@ -566,8 +594,9 @@ process collectors describe the runner observer, not workload measurements.
 The observer uses a 250 ms window; the complete pass is bounded by 1000 ms or
 the shorter profile collection timeout, with platform probes capped at 250 ms.
 All observations stop before execution. `bench list` and baseline `list` omit
-the pass. Version 2 benchmark-run artifacts retain evidence on successful and
-rejected runs; historical version 1 artifacts retain an explicit absent host.
+the pass. Version 3 benchmark-run artifacts retain host and placement evidence on successful and
+rejected runs; historical version 1 artifacts retain an explicit absent host. Versions 1 and 2
+retain an explicit absent placement decision.
 CPU-reference calibration and machine-class stratification remain separate.
 
 Warmup, calibration, cleanup, and cooldown are distinct phases:

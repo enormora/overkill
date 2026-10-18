@@ -37,6 +37,18 @@ const supervisedCollectionConfig: NormalizedConfig = defaultConfig;
 
 const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
+function expectedRunEnvironment(): unknown {
+    return {
+        node: {
+            arch: 'x64',
+            platform: 'linux',
+            version: '26.1.1'
+        },
+        projectRoot: process.cwd(),
+        runtimeStateDir: '.overkill'
+    };
+}
+
 function plainData(value: unknown): unknown {
     return structuredClone(value);
 }
@@ -192,17 +204,10 @@ export const testNode = createOverkillSuite({
                     ],
                     benchmarkHost: null,
                     benchmarkCalibration: null,
+                    benchmarkPlacement: null,
                     coveragePolicy: null,
                     durationHistory: null,
-                    environment: {
-                        node: {
-                            arch: 'x64',
-                            platform: 'linux',
-                            version: '26.1.1'
-                        },
-                        projectRoot: process.cwd(),
-                        runtimeStateDir: '.overkill'
-                    },
+                    environment: expectedRunEnvironment(),
                     execution: {
                         propertyPolicy: null,
                         attachments: null,
@@ -411,17 +416,10 @@ export const testNode = createOverkillSuite({
                     ],
                     benchmarkHost: null,
                     benchmarkCalibration: null,
+                    benchmarkPlacement: null,
                     coveragePolicy: null,
                     durationHistory: null,
-                    environment: {
-                        node: {
-                            arch: 'x64',
-                            platform: 'linux',
-                            version: '26.1.1'
-                        },
-                        projectRoot: process.cwd(),
-                        runtimeStateDir: '.overkill'
-                    },
+                    environment: expectedRunEnvironment(),
                     execution: {
                         propertyPolicy: null,
                         attachments: null,

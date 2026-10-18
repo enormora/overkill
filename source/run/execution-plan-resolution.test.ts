@@ -239,6 +239,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const error = await captureAsyncPlanError(async function resolveIncompatiblePlan() {
                     await createCollectedExecutionPlan({
+                        benchmarkHost: null,
                         collectedPlan: createResourcePlan('projected', true, 'per-run'),
                         dependencies: fakeWorkerPoolRuntimeDependencies(),
                         durationHistoryIndex: null,
