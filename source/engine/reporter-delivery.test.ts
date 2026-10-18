@@ -195,6 +195,7 @@ function readNoActiveResourceTypes(): readonly string[] {
 function createReporterDeliveryEngine(wallClock: DeterministicClock): Engine {
     return createEngine({
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',
             readActiveResourceTypes: readNoActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({

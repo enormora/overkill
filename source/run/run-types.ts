@@ -8,6 +8,7 @@ import type {
     BaselineWriteOutcome
 } from '../baselines/performance-baseline.ts';
 import type {
+    BenchmarkProfileConfig,
     IntegrationRetryPolicy,
     LoaderConfig,
     ProcessBudgets,
@@ -252,6 +253,7 @@ export type RunEnvironmentFacts = {
 };
 
 type RunExecutionBaseFacts = {
+    readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly propertyPolicy: PropertyPolicy | null;
     readonly attachments: AttachmentLimits | null;
     readonly retries: IntegrationRetryPolicy | null;

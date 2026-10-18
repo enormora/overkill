@@ -1,11 +1,17 @@
 import { createStoredValue } from '../stored-value.ts';
-import type { BenchmarkCooldownResult, BenchmarkLifecycleResult } from '../engine/benchmark-result.ts';
+import {
+    benchmarkLifecycleVersion,
+    type BenchmarkCooldownResult,
+    type BenchmarkLifecycleResult
+} from '../engine/benchmark-result.ts';
+import { createBenchmarkGarbageCollection, type BenchmarkGarbageCollection } from './benchmark-garbage-collection.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { commitObservation, createObservationSet, summarizeObservations } from './benchmark-observation-set.ts';
 import { recordObservationSamples } from './benchmark-sampling-evidence.ts';
 import { createRuntimeCooldownDependencies, settleBenchmarkRuntime } from './benchmark-runtime-cooldown.ts';
 
 export type BenchmarkLifecycle = {
+    readonly garbageCollection: BenchmarkGarbageCollection;
     readonly warmupSamples: () => number;
     readonly observeWarmup: (returned: unknown) => void;
     readonly recordCleanup: (result: BenchmarkLifecycleResult['cleanup']) => void;
@@ -21,6 +27,7 @@ export function createBenchmarkLifecycle(input: SamplingSessionInput): Benchmark
         }),
         ...input.diagnostics
     ]);
+    const garbageCollection = createBenchmarkGarbageCollection(input);
     let samples = 0;
     let retained = false;
     let rawSamples: BenchmarkLifecycleResult['warmup']['rawSamples'] = {
@@ -43,6 +50,7 @@ export function createBenchmarkLifecycle(input: SamplingSessionInput): Benchmark
             }
     );
     return {
+        garbageCollection,
         warmupSamples() {
             return samples;
         },
@@ -81,7 +89,8 @@ export function createBenchmarkLifecycle(input: SamplingSessionInput): Benchmark
         },
         snapshot() {
             return {
-                version: 1,
+                version: benchmarkLifecycleVersion,
+                garbageCollection: garbageCollection.snapshot(),
                 policy: input.lifecycle,
                 warmup: { samples, metrics: summarizeObservations(observations), rawSamples: { ...rawSamples } },
                 cleanup: { ...cleanup },

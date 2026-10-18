@@ -65,6 +65,10 @@ export type {
     MetricReadings
 } from '../../bench/measurement-types.ts';
 export type {
+    BenchmarkGarbageCollectionPolicy,
+    BenchmarkGarbageCollectionRequest,
+    BenchmarkGarbageCollectionResult,
+    ResolvedBenchmarkLifecyclePolicy,
     BenchmarkCooldownPolicy,
     BenchmarkCooldownResult,
     BenchmarkLifecyclePolicy,

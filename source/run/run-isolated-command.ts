@@ -18,6 +18,7 @@ export type IsolatedRunCollectionSource = CollectionSource;
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
 type SupervisedCommandBase = {
+    readonly benchmarkGarbageCollection: SupervisedRunCommand['benchmarkGarbageCollection'];
     readonly propertyPolicy: SupervisedRunCommand['propertyPolicy'];
     readonly retryPolicy: SupervisedRunCommand['retryPolicy'];
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
@@ -110,6 +111,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
     const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
+        benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,
         propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
         capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
         capture: input.capture,
@@ -186,6 +188,7 @@ export function createWorkerPoolCommand(
     const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
+        benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,
         attachmentEndpoint: null,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,

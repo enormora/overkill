@@ -20,6 +20,7 @@ const input = {
 };
 const node = { arch: 'x64', platform: 'linux', version: '26.10.0' };
 const facts = createRunFacts({
+    hostProcess: null,
     benchmarkHost: null,
     benchmarkCalibration: null,
     benchmarkPlacement: null,

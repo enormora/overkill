@@ -272,7 +272,7 @@ async function supervisedChildExecArgv(
     dependencies: SupervisedChildProcessStarterDependencies
 ): Promise<string[]> {
     if (options.capabilityRestrictions.mode === 'disabled') {
-        return [];
+        return options.testFamily === 'benchmark' ? [ '--expose-gc' ] : [];
     }
 
     const permissionRoots = await readPermissionRoots(options, dependencies);

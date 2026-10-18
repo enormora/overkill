@@ -1,3 +1,4 @@
+import type { BenchmarkExecutionEnvironment } from './benchmark-garbage-collection.ts';
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporter-output.ts';
 import { validateReporterRunFacts, type DefinedReporter, type RunFacts } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
@@ -33,10 +34,14 @@ export type ExecuteOptions = {
     readonly timeoutPolicy?: ExecuteTimeoutPolicy | null;
 };
 
-export type NormalizedExecuteOptions = ExecuteOptions & {
+type DefaultedExecuteOptions = ExecuteOptions & {
     readonly finalizeResult: ExecuteResultFinalizer;
     readonly outputRenderer: DefinedOutputRenderer;
     readonly runtimePolicy: RuntimePolicy | null;
+};
+
+export type NormalizedExecuteOptions = DefaultedExecuteOptions & {
+    readonly benchmarkEnvironment: BenchmarkExecutionEnvironment | null;
 };
 
 type RuntimePolicy = NonNullable<ExecutionSupervisionDependencies['runtimePolicy']>;
@@ -46,7 +51,7 @@ const keepResult: ExecuteResultFinalizer = async function keepResult(result) {
     return result;
 };
 
-function defaultExecuteOptions(): NormalizedExecuteOptions {
+function defaultExecuteOptions(): DefaultedExecuteOptions {
     return {
         execution: { mode: 'serial-in-process' },
         finalizeResult: keepResult,
@@ -62,7 +67,7 @@ function defaultExecuteOptions(): NormalizedExecuteOptions {
     };
 }
 
-function executeOptionsWithProvidedDefaults(options: ExecuteOptions): NormalizedExecuteOptions {
+function executeOptionsWithProvidedDefaults(options: ExecuteOptions): DefaultedExecuteOptions {
     assertRetryPolicy(options.retryPolicy);
     return {
         ...options,
@@ -76,12 +81,13 @@ function executeOptionsWithProvidedDefaults(options: ExecuteOptions): Normalized
 
 export function executeOptionsWithDefaults(
     options: ExecuteOptions | undefined,
-    testPlan: TestPlan
+    testPlan: TestPlan,
+    benchmarkEnvironment: BenchmarkExecutionEnvironment | null
 ): NormalizedExecuteOptions {
     const normalized = options === undefined ? defaultExecuteOptions() : executeOptionsWithProvidedDefaults(options);
     assertRetryFamily(normalized.retryPolicy, testPlan);
     for (const reporter of normalized.reporters) {
         validateReporterRunFacts(reporter, normalized.runFacts);
     }
-    return normalized;
+    return { ...normalized, benchmarkEnvironment };
 }

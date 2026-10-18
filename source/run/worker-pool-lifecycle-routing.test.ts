@@ -92,6 +92,7 @@ function baseResolvedRun(): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                benchmarkGarbageCollection: null,
                 propertyPolicy: null,
                 attachments: null,
                 retries: null,

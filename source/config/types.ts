@@ -1,3 +1,4 @@
+import type { BenchmarkGarbageCollectionPolicy } from '../engine/benchmark-result.ts';
 import type { PropertyPolicy } from '../engine/property-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { BenchmarkBaselinePolicy } from '../baselines/performance-adapter.ts';
@@ -179,6 +180,7 @@ export type BenchmarkExecution = IntegrationExecutionShape<
 >;
 
 export type BenchmarkProfileConfig = {
+    readonly garbageCollection: BenchmarkGarbageCollectionPolicy;
     readonly host: BenchmarkHostPolicy;
     readonly baselines: BenchmarkBaselinePolicy;
     readonly attachments: AttachmentLimits;

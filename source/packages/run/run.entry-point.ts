@@ -247,3 +247,5 @@ export type {
     BenchmarkHostSnapshot,
     HostReading
 } from '../../bench/benchmark-host-snapshot.ts';
+
+export type { BenchmarkGarbageCollectionPolicy } from '../../engine/benchmark-result.ts';

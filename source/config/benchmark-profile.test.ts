@@ -4,6 +4,7 @@ import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-suppor
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
 
 const benchmarkPolicy = {
+    garbageCollection: 'off',
     host: benchmarkHostPolicySchema.parse({}),
     baselines: { adapters: [], directory: 'test-baselines' },
     attachments: {
@@ -42,6 +43,21 @@ const benchmarkPolicy = {
 const benchmarkFiles = { include: [ 'source/startup.bench.ts' ] } as const;
 
 export const testNode = suite('benchmark profile configuration', [
+    test('validates GC policy only on benchmark profiles', function (scope: TestScope) {
+        const profile = normalizeConfig({
+            profiles: {
+                bench: { testFamily: 'benchmark', files: benchmarkFiles, garbageCollection: 'after-sample' }
+            }
+        })
+            .profiles
+            .bench;
+        scope.require.defined(profile);
+        if (profile.testFamily !== 'benchmark') {
+            throw new Error('Expected benchmark profile.');
+        }
+        scope.assert.equal(profile.garbageCollection, 'after-sample');
+        return scope.assert.collect();
+    }),
     test(
         'normalizes mixed families and multiple benchmark profiles without changing authored policy',
         function (scope: TestScope) {
@@ -125,6 +141,9 @@ export const testNode = suite('benchmark profile configuration', [
     }),
     test('rejects malformed benchmark profiles and unsupported policy fields', async function (scope: TestScope) {
         const invalidProfiles: readonly unknown[] = [
+            { testFamily: 'benchmark', files: benchmarkFiles, garbageCollection: 'profile-default' },
+            { testFamily: 'benchmark', files: benchmarkFiles, garbageCollection: true },
+            { testFamily: 'microtest', garbageCollection: 'after-sample' },
             { testFamily: 'benchmark' },
             { testFamily: 'benchmark', files: { include: [] } },
             { testFamily: 'benchmark', files: { include: [ '!source/*.ts' ] } },

@@ -45,6 +45,7 @@ async function executeOwnedFixture(cleanup: boolean): Promise<RunResult> {
     const plan = createTestPlan(createRoot({ title: 'root', annotations: {}, controls: {}, children: [ child ] }));
     const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const execute = createExecute({
+        benchmarkEnvironment: null,
         wallClock,
         asyncLeakDiagnostics: 'disabled',
         readActiveResourceTypes() {

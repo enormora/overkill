@@ -14,12 +14,14 @@ import type {
     RunExecutionFacts,
     PlacementPlan,
     RunRequest,
-    RunWorkerCountFacts
+    RunWorkerCountFacts,
+    RunHostProcessFacts
 } from './run-types.ts';
 
 type RunFactsDependencies = Pick<RunOrchestratorDependencies, 'createSeed' | 'node'>;
 
 export type RunFactsInput = {
+    readonly hostProcess: RunHostProcessFacts | null;
     readonly benchmarkHost: RunFacts['benchmarkHost'];
     readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
     readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
@@ -39,11 +41,29 @@ function resolvedSeed(request: RunRequest, dependencies: RunFactsDependencies): 
     return request.seed.value ?? dependencies.createSeed();
 }
 
-function executionAttachmentLimits(profile: ProfileConfig): RunExecutionFacts['attachments'] {
-    if (profile.testFamily === 'microtest' || profile.testFamily === 'property') {
-        return null;
+function executionFamilyFacts(
+    profile: ProfileConfig
+): Pick<RunExecutionFacts, 'attachments' | 'benchmarkGarbageCollection' | 'propertyPolicy' | 'retries'> {
+    if (profile.testFamily === 'benchmark') {
+        return {
+            attachments: profile.attachments,
+            benchmarkGarbageCollection: profile.garbageCollection,
+            propertyPolicy: null,
+            retries: null
+        };
     }
-    return profile.attachments;
+    if (profile.testFamily === 'integration') {
+        return {
+            attachments: profile.attachments,
+            benchmarkGarbageCollection: null,
+            propertyPolicy: null,
+            retries: profile.retries
+        };
+    }
+    if (profile.testFamily === 'property') {
+        return { attachments: null, benchmarkGarbageCollection: null, propertyPolicy: profile.property, retries: null };
+    }
+    return { attachments: null, benchmarkGarbageCollection: null, propertyPolicy: null, retries: null };
 }
 
 function createRunExecutionFacts(
@@ -51,8 +71,7 @@ function createRunExecutionFacts(
     profile: ProfileConfig
 ): RunExecutionFacts {
     const facts = {
-        attachments: executionAttachmentLimits(profile),
-        propertyPolicy: profile.testFamily === 'property' ? profile.property : null,
+        ...executionFamilyFacts(profile),
         baselineUpdateMode: input.request.baselineUpdateMode,
         capture: input.request.capture,
         coverage: input.request.coverage,
@@ -62,7 +81,6 @@ function createRunExecutionFacts(
         order: input.request.order,
         placementPlan: input.placementPlan,
         profile: input.request.profile,
-        retries: profile.testFamily === 'integration' ? profile.retries : null,
         processUsagePolicy: resolveProcessUsagePolicy(input.request, profile),
         scheduling: input.scheduling,
         testFamily: profile.testFamily,
@@ -81,7 +99,7 @@ function createRunExecutionFacts(
             assignmentPolicy: profile.execution.assignmentPolicy,
             dispatchPolicy: profile.execution.dispatchPolicy,
             hedging: profile.execution.hedging,
-            hostProcess: hostProcessFacts(profile.execution.hostProcess),
+            hostProcess: input.hostProcess ?? hostProcessFacts(profile.execution.hostProcess),
             processModel: profile.execution.processModel,
             workerCount: input.workerCount,
             workDistribution: profile.execution.workDistribution,

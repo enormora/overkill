@@ -1,9 +1,10 @@
 import type { Clock } from '@enormora/clock';
+import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-garbage-collection.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter } from '../engine/reporter.ts';
 import type { DefinedReporter, Execute } from './run-engine-primitives.ts';
-import type { SupervisedChildMessage } from './supervised-protocol.ts';
+import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 import { createResourceLifecycleTiming, type ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
 export function createSupervisedResourceLifecycleTiming(
@@ -35,8 +36,20 @@ function readActiveResourceTypes(): readonly string[] {
     return process.getActiveResourcesInfo();
 }
 
-export function createSupervisedChildExecute(wallClock: Clock): Execute {
+export async function createSupervisedChildExecute(
+    wallClock: Clock,
+    command: Pick<SupervisedRunCommand, 'benchmarkGarbageCollection' | 'testFamily'>
+): Promise<Execute> {
+    let benchmarkEnvironment: BenchmarkExecutionEnvironment | null = null;
+    if (command.testFamily === 'benchmark') {
+        const { createBenchmarkExecutionEnvironment } = await import('./benchmark-execution-environment.ts');
+        benchmarkEnvironment = createBenchmarkExecutionEnvironment(
+            command.benchmarkGarbageCollection,
+            'supervised-process'
+        );
+    }
     return createExecute({
+        benchmarkEnvironment,
         asyncLeakDiagnostics: 'enabled',
         readActiveResourceTypes,
         reporterDispatcher: createReporterDispatcher({

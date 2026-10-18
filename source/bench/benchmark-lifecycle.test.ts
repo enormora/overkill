@@ -19,7 +19,7 @@ const measuredOnly: BenchmarkOptions = {
     annotations: {},
     controls: {},
     sampling: shortSampling,
-    lifecycle: { warmupSamples: 0, cooldown: { mode: 'off' } }
+    lifecycle: { garbageCollection: 'profile-default', warmupSamples: 0, cooldown: { mode: 'off' } }
 };
 
 async function runBenchmark(node: TestCase): Promise<Awaited<ReturnType<typeof execute>>> {
@@ -69,7 +69,7 @@ function assertAutomaticWarmup(scope: TestScope, result: RunResult): void {
         metrics: { value: { maximum: 1 } },
         lifecycle: { warmup: { samples: 32, metrics: { value: { maximum: 1000 } } } }
     });
-    scope.assert.deepEqual(measured.lifecycle.policy, defaultBenchmarkLifecyclePolicy);
+    scope.assert.deepEqual(measured.lifecycle.policy, { ...defaultBenchmarkLifecyclePolicy, garbageCollection: 'off' });
     const attempt = result.perTest[0]?.attempts[0].benchmark;
     scope.require.defined(attempt);
     scope.assert.deepEqual(attempt, measured);
@@ -132,7 +132,10 @@ export const testNode = suite('benchmark invocation lifetimes', [
                 benchmark(
                     'invalid lifecycle',
                     definition,
-                    { ...measuredOnly, lifecycle: { warmupSamples, cooldown: { mode: 'off' } } }
+                    {
+                        ...measuredOnly,
+                        lifecycle: { garbageCollection: 'profile-default', warmupSamples, cooldown: { mode: 'off' } }
+                    }
                 );
             }, { name: 'ZodError' });
             scope.assert.false(
@@ -160,6 +163,7 @@ export const testNode = suite('benchmark invocation lifetimes', [
             {
                 ...measuredOnly,
                 lifecycle: {
+                    garbageCollection: 'profile-default',
                     warmupSamples: 0,
                     cooldown: { ...defaultRuntimeCooldownPolicy, maximumEventLoopUtilization: 1 }
                 }
@@ -242,7 +246,10 @@ export const testNode = suite('benchmark invocation lifetimes', [
                             .value
                     };
                 }),
-                { ...measuredOnly, lifecycle: { warmupSamples: 1, cooldown: { mode: 'off' } } }
+                {
+                    ...measuredOnly,
+                    lifecycle: { garbageCollection: 'profile-default', warmupSamples: 1, cooldown: { mode: 'off' } }
+                }
             ));
             scope.assert.equal(result.summary.passed, 1);
             scope.assert.deepEqual(events, [

@@ -378,7 +378,9 @@ Benchmark profiles share the project registry with ordinary profiles.
 `overkill run` and `overkill list` reject selected benchmark profiles and direct
 callers to `overkill bench`. A microtest profile named `benchmark` remains valid.
 Benchmark profiles configure `testFamily`, `files`, `execution`, `reporters`,
-`attachments`, `processUsage`, `timings`, `timeouts`, and `host.limits`. Host
+`attachments`, `processUsage`, `timings`, `timeouts`, `garbageCollection`, and `host.limits`.
+GC defaults to `off`; `after-sample` supplies a default which benchmark lifecycle
+policy can override. Host
 limits are opt-in hardware-relative percentages. Unavailable configured signals
 block execution; omitted limits remain disabled. See
 [Benchmarking § Execution Strategy](../authoring/benchmarking.md#execution-strategy).

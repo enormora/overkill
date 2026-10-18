@@ -297,6 +297,7 @@ export const integrationProfileSchema = z
 
 const benchmarkProfileSchema = z
     .strictObject({
+        garbageCollection: z.enum([ 'off', 'after-sample' ]).default('off'),
         host: benchmarkHostPolicySchema.prefault({}),
         baselines: performanceBaselinePolicySchema.default({ adapters: [], directory: 'test-baselines' }),
         attachments: attachmentLimitsSchema,

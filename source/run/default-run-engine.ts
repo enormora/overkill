@@ -22,6 +22,7 @@ function createEngineDependencies(): EngineDependencies {
 
     return {
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',
             readActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({

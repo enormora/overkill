@@ -1,6 +1,12 @@
 import type { JsonValue } from 'type-fest';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
-import type { IntegrationProfileConfig, MaxConcurrency, ProcessBudgets, Scheduling } from '../config/types.ts';
+import type {
+    BenchmarkProfileConfig,
+    IntegrationProfileConfig,
+    MaxConcurrency,
+    ProcessBudgets,
+    Scheduling
+} from '../config/types.ts';
 import { assertFrozenAssignmentInputs } from './workload-input-validation.ts';
 import type {
     PropertyPolicy,
@@ -24,6 +30,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly propertyPolicy: PropertyPolicy | null;
     readonly retryPolicy: IntegrationProfileConfig['retries'];
     readonly capabilityRestrictions: {

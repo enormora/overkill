@@ -1,4 +1,5 @@
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
+import type { BenchmarkExecutionEnvironment } from './benchmark-garbage-collection.ts';
 import { readTestBodyFamily } from './test-body.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import {
@@ -11,6 +12,7 @@ import type { TestBody } from './test-node.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type BenchmarkAttempt = {
+    readonly benchmarkEnvironment: BenchmarkExecutionEnvironment | null;
     readonly cleanupErrors: () => readonly unknown[];
     readonly reportCleanupError: (error: unknown) => void;
     readonly result: () => BenchmarkExecutionResult | null;
@@ -21,12 +23,14 @@ export type BenchmarkAttempt = {
 
 export function createBenchmarkAttempt(
     testCase: TestPlanCase,
-    onUpdate: BenchmarkAttempt['updateResult']
+    onUpdate: BenchmarkAttempt['updateResult'],
+    benchmarkEnvironment: BenchmarkExecutionEnvironment | null
 ): BenchmarkAttempt {
     let result: BenchmarkExecutionResult | null = null;
     const errors: RunnerError[] = [];
     const cleanupErrors: unknown[] = [];
     return {
+        benchmarkEnvironment,
         cleanupErrors() {
             return cleanupErrors;
         },
@@ -49,7 +53,10 @@ export function createBenchmarkAttempt(
     };
 }
 
-export function builderBodyForAttempt(testCase: TestPlanCase, attempt: BenchmarkAttempt): TestBody {
+export function builderBodyForAttempt(
+    testCase: TestPlanCase,
+    attempt: BenchmarkAttempt
+): TestBody {
     const { execution } = testCase;
     if (execution.kind !== 'body' || execution.bodyMode === 'throwing') {
         throw new TypeError('Test case does not have a builder body.');
@@ -63,6 +70,7 @@ export function builderBodyForAttempt(testCase: TestPlanCase, attempt: Benchmark
     }
     return async function runBenchmark(scope) {
         return execution.body({
+            benchmarkEnvironment: attempt.benchmarkEnvironment,
             reportCleanupError: attempt.reportCleanupError,
             cleanup: scope.cleanup,
             signal: scope.signal,

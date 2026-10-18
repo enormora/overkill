@@ -1,3 +1,4 @@
+import type { BenchmarkGarbageCollectionResult } from '../engine/benchmark-result.ts';
 import type { BaselineChartRow, BenchmarkHtmlReport } from './benchmark-html-data.ts';
 
 function htmlText(value: unknown): string {
@@ -90,6 +91,15 @@ function metricTables(report: BenchmarkHtmlReport): string {
         })
         .join('');
 }
+function garbageCollectionCells(evidence: BenchmarkGarbageCollectionResult | null): readonly unknown[] {
+    if (evidence === null) {
+        return [ 'unavailable', null, null ];
+    }
+    return evidence.mode === 'off'
+        ? [ 'off', null, null ]
+        : [ evidence.mode, evidence.completed, evidence.failures ];
+}
+
 function lifecycleTables(report: BenchmarkHtmlReport): string {
     return report
         .cases
@@ -98,13 +108,16 @@ function lifecycleTables(report: BenchmarkHtmlReport): string {
             if (lifecycle === null) {
                 return `<p>${htmlText(test.label)}: Lifecycle evidence unavailable.</p>`;
             }
-            const { warmup, cleanup, cooldown } = lifecycle;
+            const { warmup, cleanup, cooldown, garbageCollection } = lifecycle;
             const summary = table(
                 [
                     'Workload',
                     'Warmup samples',
                     'Cleanup callbacks',
                     'Cleanup failures',
+                    'Garbage collection',
+                    'GC completed',
+                    'GC failures',
                     'Cooldown',
                     'Cooldown microseconds'
                 ],
@@ -113,6 +126,7 @@ function lifecycleTables(report: BenchmarkHtmlReport): string {
                     warmup.samples,
                     cleanup.callbacks,
                     cleanup.failures,
+                    ...garbageCollectionCells(garbageCollection),
                     cooldown.mode === 'off' ? 'off' : cooldown.outcome,
                     cooldown.mode === 'off' ? null : cooldown.durationMicroseconds
                 ] ]

@@ -101,6 +101,7 @@ async function createCoverageRecordFixture(
             await rm(path.resolve(directory), { force: true, recursive: true });
         },
         facts: createRunFacts({
+            hostProcess: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
             benchmarkPlacement: null,

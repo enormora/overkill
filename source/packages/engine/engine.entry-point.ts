@@ -49,6 +49,7 @@ function createEngineDependencies(): EngineDependencies {
 
     return {
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',
             readActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({
@@ -127,8 +128,14 @@ export function createBenchmarkTestCase(
 
 export type { BenchmarkBody, BenchmarkScope, BenchmarkTestCaseOptions } from '../../engine/test-node.ts';
 export { maximumRetainedSamples, minimumInferentialSamples } from '../../engine/benchmark-limits.ts';
+export { benchmarkLifecycleVersion } from '../../engine/benchmark-result.ts';
+export { resolveBenchmarkGarbageCollection } from '../../engine/benchmark-garbage-collection.ts';
 export type {
     BenchmarkDefinitionSummary,
+    BenchmarkGarbageCollectionPolicy,
+    BenchmarkGarbageCollectionRequest,
+    BenchmarkGarbageCollectionResult,
+    ResolvedBenchmarkLifecyclePolicy,
     BenchmarkCooldownPolicy,
     BenchmarkCooldownResult,
     BenchmarkLifecyclePolicy,
@@ -193,6 +200,10 @@ export function ownsTestNode(value: unknown): value is TestNode {
 }
 
 export type { Engine } from '../../engine/engine.ts';
+export type {
+    BenchmarkExecutionEnvironment,
+    BenchmarkGarbageCollectionCapability
+} from '../../engine/benchmark-garbage-collection.ts';
 export type { Execute, ExecuteExecution, ExecuteOptions } from '../../engine/execution.ts';
 export type { ExecuteResultFinalizer } from '../../engine/execution-options.ts';
 export type {

@@ -3,12 +3,14 @@ import type { ResolvableSourceLocations } from '../assertion-protocol/assertion-
 import type { BenchmarkBody, BenchmarkScope } from '../engine/test-node.ts';
 import { mapComposedResourceBody } from '../packages/test/resource-wrapper-composition.ts';
 import { readTestBodyFamily, resolveTestBodyWorkload } from '../engine/test-body.ts';
+import { resolveBenchmarkGarbageCollection } from '../engine/benchmark-garbage-collection.ts';
 import { workload } from './workload.ts';
 import { sampleBenchmark } from './benchmark-sampling.ts';
 import type { ResolvedBenchmarkDefinition } from './benchmark-definition-resolution.ts';
 
 function allowedMeasurementField([ name ]: readonly [string, unknown]): boolean {
     return ![
+        'benchmarkEnvironment',
         'assert',
         'require',
         'plan',
@@ -41,7 +43,13 @@ export function benchmarkResourceEnvelope(
             selectedBody,
             async function sampleResourceEnvelope(body, context) {
                 return await sampleBenchmark({
-                    lifecycle: definition.lifecycle,
+                    lifecycle: {
+                        ...definition.lifecycle,
+                        garbageCollection: resolveBenchmarkGarbageCollection(
+                            definition.lifecycle.garbageCollection,
+                            scope.benchmarkEnvironment?.profileGarbageCollection ?? 'off'
+                        )
+                    },
                     body,
                     context: Object.fromEntries(Object.entries(context).filter(allowedMeasurementField)),
                     scope,

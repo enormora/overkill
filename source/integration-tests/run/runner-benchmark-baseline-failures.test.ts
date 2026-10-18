@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename } from 'node:fs/promises';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
-import { defineReporter, type DefinedReporter } from '../../packages/engine/engine.entry-point.ts';
+import { defineReporter, type DefinedReporter, type PerTestResult } from '../../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import type { PerformanceBaselineAdapter } from '../../baselines/performance-adapter.ts';
 import {
@@ -244,6 +244,18 @@ async function assertFailedCaseBlocksWrites(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(await readBaselineContents(fixture), []);
 }
 
+function assertCleanupGcEvidence(scope: TestScope, failed: PerTestResult): void {
+    const measured = failed.benchmark;
+    scope.require.defined(measured);
+    scope.assert.equal(measured.samples, 1);
+    scope.assert.equal(measured.status, 'incomplete');
+    const { lifecycle } = measured;
+    scope.require.defined(lifecycle);
+    scope.assert.partialDeepEqual(lifecycle, {
+        garbageCollection: { mode: 'after-sample', completed: 1, failures: 0 }
+    });
+}
+
 async function assertSampleCleanupBlocksWrites(scope: TestScope): Promise<void> {
     const fixture = await createBenchmarkBaselineFixture(scope, execution);
     const result = await orchestrator.bench.baseline.update(
@@ -259,8 +271,8 @@ async function assertSampleCleanupBlocksWrites(scope: TestScope): Promise<void> 
     scope.assert.equal(result.writeOutcome.kind, 'blocked');
     scope.assert.equal(result.changes.length, 1);
     scope.assert.equal(failed?.verdict, 'fail');
-    scope.assert.equal(failed?.benchmark?.samples, 1);
-    scope.assert.equal(failed?.benchmark?.status, 'incomplete');
+    scope.require.defined(failed);
+    assertCleanupGcEvidence(scope, failed);
     scope.assert.deepEqual(await readBaselineContents(fixture), []);
 }
 

@@ -53,6 +53,7 @@ export async function runIfMain(
     const startedAt = new Date(0);
     const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const execute = createExecute({
+        benchmarkEnvironment: null,
         asyncLeakDiagnostics: 'disabled',
         readActiveResourceTypes: readNoActiveResourceTypes,
         reporterDispatcher: createReporterDispatcher({

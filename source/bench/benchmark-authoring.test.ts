@@ -18,6 +18,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { testNode as benchmarkEvidenceTestNode } from './benchmark-evidence.test.ts';
 import { testNode as measurementRuntimePolicyTestNode } from './measurement-runtime-policy.test.ts';
 import { testNode as benchmarkTimeoutEvidenceTestNode } from './benchmark-timeout-evidence.test.ts';
+import { testNode as garbageCollectionTestNode } from './benchmark-garbage-collection.test.ts';
 import { testNode as benchmarkLifecycleTestNode } from './benchmark-lifecycle.test.ts';
 import { testNode as benchmarkCooldownTestNode } from './benchmark-runtime-cooldown.test.ts';
 
@@ -65,6 +66,7 @@ export const testNode = suite('benchmark authoring and sampling', [
     measurementRuntimePolicyTestNode,
     benchmarkTimeoutEvidenceTestNode,
     benchmarkLifecycleTestNode,
+    garbageCollectionTestNode,
     benchmarkCooldownTestNode,
     test('expands workloads and stops at the first precise checkpoint', async function (scope) {
         let calls = 0;

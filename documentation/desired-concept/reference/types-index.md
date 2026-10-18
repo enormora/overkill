@@ -934,7 +934,21 @@ type BenchmarkHostLimits = import('@overkill-dev/run').BenchmarkHostLimits;
 type BenchmarkHostAssessment = import('@overkill-dev/run').BenchmarkHostAssessment;
 type BenchmarkHostSnapshot = import('@overkill-dev/run').BenchmarkHostSnapshot;
 
+type BenchmarkGarbageCollectionPolicy = import('@overkill-dev/bench').BenchmarkGarbageCollectionPolicy;
+type BenchmarkGarbageCollectionRequest = import('@overkill-dev/bench').BenchmarkGarbageCollectionRequest;
+type BenchmarkGarbageCollectionResult = import('@overkill-dev/bench').BenchmarkGarbageCollectionResult;
+type BenchmarkLifecyclePolicy = import('@overkill-dev/bench').BenchmarkLifecyclePolicy;
+type ResolvedBenchmarkLifecyclePolicy = import('@overkill-dev/bench').ResolvedBenchmarkLifecyclePolicy;
+type BenchmarkExecutionEnvironment = import('@overkill-dev/engine').BenchmarkExecutionEnvironment;
+type BenchmarkGarbageCollectionCapability = import('@overkill-dev/engine').BenchmarkGarbageCollectionCapability;
+
+declare function resolveBenchmarkGarbageCollection(
+    request: BenchmarkGarbageCollectionRequest,
+    profile: BenchmarkGarbageCollectionPolicy
+): BenchmarkGarbageCollectionPolicy;
+
 type BenchmarkProfileConfig = {
+    readonly garbageCollection: BenchmarkGarbageCollectionPolicy;
     readonly host: BenchmarkHostPolicy;
     readonly testFamily: 'benchmark';
     readonly files: ProfileFiles;
@@ -1272,6 +1286,7 @@ type TestPlan = {
 };
 
 type RunExecutionBaseFacts = {
+    readonly benchmarkGarbageCollection: BenchmarkGarbageCollectionPolicy | null;
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly capture: 'buffered' | 'live';
     readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };

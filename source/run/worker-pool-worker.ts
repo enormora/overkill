@@ -1,6 +1,5 @@
-import { createExecute } from '../engine/execution.ts';
-import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import { createWorkerExecute } from './worker-execution-engine.ts';
 import {
     prepareLocalOwnerResources,
     withProjectedFailurePreparation,
@@ -21,7 +20,6 @@ import { resolvedTestPlanDefinitionLocations } from './collected-run-plan.ts';
 import {
     captureOutput,
     createWorkerPoolReporter,
-    silentOutputSinks,
     suppressOutput
 } from './worker-pool-output.ts';
 import type {
@@ -72,10 +70,6 @@ function startedAtIso(startedAtMilliseconds: number): string {
     return startedAt.toISOString();
 }
 
-function readActiveResourceTypes(): readonly string[] {
-    return process.getActiveResourcesInfo();
-}
-
 async function collectAssignmentTestPlan(
     task: TimedAssignmentPlanTask,
     wallClock: WorkerTimingClock
@@ -104,15 +98,7 @@ async function runAssignment(
     collectedPlan: CollectedWorkerPoolTestPlan,
     assignedUnit: WorkerPoolAssignedUnit
 ): Promise<WorkerPoolRunOutput['results'][number]> {
-    const execute = createExecute({
-        asyncLeakDiagnostics: 'enabled',
-        readActiveResourceTypes,
-        reporterDispatcher: createReporterDispatcher({
-            ...silentOutputSinks,
-            wallClock
-        }),
-        wallClock
-    });
+    const execute = await createWorkerExecute(task.command, wallClock);
 
     task.port.postMessage({
         attempt: assignedUnit.attempt,

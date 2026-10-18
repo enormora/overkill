@@ -211,6 +211,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.throws(function createFactsWithoutWorkerCount() {
                     createRunFacts({
+                        hostProcess: null,
                         benchmarkHost: null,
                         benchmarkCalibration: null,
                         benchmarkPlacement: null,

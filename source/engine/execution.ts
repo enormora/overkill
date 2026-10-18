@@ -30,6 +30,7 @@ export type ExecuteExecution = ExecuteExecutionDefinition;
 export type ExecuteOptions = ExecuteOptionsDefinition;
 
 export type ExecuteDependencies = {
+    readonly benchmarkEnvironment: NormalizedExecuteOptions['benchmarkEnvironment'];
     readonly asyncLeakDiagnostics: AsyncLeakDiagnostics;
     readonly readActiveResourceTypes: () => readonly string[];
     readonly reporterDispatcher: ReporterDispatcher;
@@ -44,6 +45,7 @@ type ExecuteRunInput = {
 };
 
 type ExecutionDependencies = AsyncLeakDependencies & {
+    readonly benchmarkEnvironment: NormalizedExecuteOptions['benchmarkEnvironment'];
     readonly globalErrorObserver: ExecutionGlobalErrorObserver;
     readonly runtimePolicy: NormalizedExecuteOptions['runtimePolicy'];
     readonly reporterDispatcher: ReporterDispatcher;
@@ -140,7 +142,7 @@ function prepareExecution(
     options: ExecuteOptions | undefined,
     testPlan: TestPlan
 ): PreparedExecution {
-    const executeOptions = executeOptionsWithDefaults(options, testPlan);
+    const executeOptions = executeOptionsWithDefaults(options, testPlan, dependencies.benchmarkEnvironment);
     const asyncLeakMonitor = createExecutionAsyncLeakMonitor(dependencies.asyncLeakDiagnostics);
     const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
 
@@ -150,6 +152,7 @@ function prepareExecution(
             asyncLeakMonitor,
             globalErrorObserver,
             ...dependencies,
+            benchmarkEnvironment: executeOptions.benchmarkEnvironment,
             runtimePolicy: executeOptions.runtimePolicy
         },
         globalErrorObserver,

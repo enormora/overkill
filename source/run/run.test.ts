@@ -209,6 +209,7 @@ export const testNode = createOverkillSuite({
                     durationHistory: null,
                     environment: expectedRunEnvironment(),
                     execution: {
+                        benchmarkGarbageCollection: null,
                         propertyPolicy: null,
                         attachments: null,
                         retries: null,
@@ -421,6 +422,7 @@ export const testNode = createOverkillSuite({
                     durationHistory: null,
                     environment: expectedRunEnvironment(),
                     execution: {
+                        benchmarkGarbageCollection: null,
                         propertyPolicy: null,
                         attachments: null,
                         retries: null,

@@ -31,7 +31,7 @@ function uniqueReasons(
 
 function nodeArgumentReasons(argument: string): readonly RunHostProcessReason[] {
     return [
-        ...argument === '--expose-gc' ? [ 'forced-garbage-collection' as const ] : [],
+        ...argument.replaceAll('_', '-') === '--expose-gc' ? [ 'forced-garbage-collection' as const ] : [],
         ...isInspectArgument(argument) ? [ 'debugging' as const ] : [],
         ...isProfilingArgument(argument) ? [ 'profiling' as const ] : []
     ];
