@@ -10,6 +10,7 @@ import { availableMetric, unavailableMetric } from './metric-reading.ts';
 import { defaultSamplingPolicy } from './sampling-policy.ts';
 
 const result: BenchmarkExecutionResult = {
+    lifecycle: null,
     samples: 2,
     budgets: [],
     status: 'complete',

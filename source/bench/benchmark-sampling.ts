@@ -1,30 +1,38 @@
 import { setImmediate as yieldToNextTurn } from 'node:timers/promises';
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
-import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 import { createSamplingState, type SamplingState } from './benchmark-sampling-state.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
+import { createBenchmarkLifecycle, type BenchmarkLifecycle } from './benchmark-lifecycle.ts';
+import { measureBenchmarkInvocation } from './benchmark-sample-lifetime.ts';
 
 const maximumSamplesPerTurn = 32;
 
-async function measureNextSample(input: SamplingSessionInput): Promise<unknown> {
-    input.scope.signal.throwIfAborted();
-    const lifecycle = input.measurement.mode === 'sync'
-        ? createMeasurementSample(input.measurement, input.scope.signal)
-        : createAsyncMeasurementSample(input.measurement, input.scope.signal);
-    const returned: unknown = await Reflect.apply(input.body, undefined, [ {
-        ...input.context,
-        workload: input.workload,
-        sample: lifecycle.sample,
-        signal: input.scope.signal,
-        cleanup: input.scope.cleanup
-    } ]);
-    lifecycle.ensureMeasured();
-    return returned;
+async function warmBenchmark(
+    input: SamplingSessionInput,
+    state: SamplingState,
+    lifecycle: BenchmarkLifecycle
+): Promise<void> {
+    while (lifecycle.warmupSamples() < input.lifecycle.warmupSamples) {
+        await measureBenchmarkInvocation(input, lifecycle.observeWarmup, lifecycle.recordCleanup);
+        await lifecycle.settle();
+        if (lifecycle.warmupSamples() % maximumSamplesPerTurn === 0) {
+            if (lifecycle.warmupSamples() < input.lifecycle.warmupSamples) {
+                await state.progress();
+            }
+            await yieldToNextTurn(undefined, { signal: input.scope.signal });
+        }
+    }
+    await state.progress();
 }
 
-async function collectSamples(input: SamplingSessionInput, state: SamplingState): Promise<void> {
+async function collectSamples(
+    input: SamplingSessionInput,
+    state: SamplingState,
+    lifecycle: BenchmarkLifecycle
+): Promise<void> {
     while (state.samples() < input.policy.maximumSamples) {
-        state.observe(await measureNextSample(input));
+        await measureBenchmarkInvocation(input, state.observe, lifecycle.recordCleanup);
+        await lifecycle.settle();
         if (await state.checkpoint()) {
             return;
         }
@@ -34,15 +42,14 @@ async function collectSamples(input: SamplingSessionInput, state: SamplingState)
     }
 }
 
-async function collectAndFinish(input: SamplingSessionInput, state: SamplingState): Promise<AssertionResult> {
-    await collectSamples(input, state);
-    return await state.finish();
-}
-
 export async function sampleBenchmark(input: SamplingSessionInput): Promise<AssertionResult> {
-    const state = createSamplingState(input);
+    const lifecycle = createBenchmarkLifecycle(input);
+    const state = createSamplingState(input, lifecycle);
     try {
-        return await collectAndFinish(input, state);
+        await state.progress();
+        await warmBenchmark(input, state, lifecycle);
+        await collectSamples(input, state, lifecycle);
+        return await state.finish();
     } catch (error: unknown) {
         return await state.interrupt(error);
     }

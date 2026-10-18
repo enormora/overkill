@@ -90,6 +90,53 @@ function metricTables(report: BenchmarkHtmlReport): string {
         })
         .join('');
 }
+function lifecycleTables(report: BenchmarkHtmlReport): string {
+    return report
+        .cases
+        .map(function lifecycleDetails(test) {
+            const { lifecycle } = test;
+            if (lifecycle === null) {
+                return `<p>${htmlText(test.label)}: Lifecycle evidence unavailable.</p>`;
+            }
+            const { warmup, cleanup, cooldown } = lifecycle;
+            const summary = table(
+                [
+                    'Workload',
+                    'Warmup samples',
+                    'Cleanup callbacks',
+                    'Cleanup failures',
+                    'Cooldown',
+                    'Cooldown microseconds'
+                ],
+                [ [
+                    test.label,
+                    warmup.samples,
+                    cleanup.callbacks,
+                    cleanup.failures,
+                    cooldown.mode === 'off' ? 'off' : cooldown.outcome,
+                    cooldown.mode === 'off' ? null : cooldown.durationMicroseconds
+                ] ]
+            );
+            const metrics = table(
+                [ 'Warmup metric', 'Unit', 'Available count', 'Mean', 'Median', 'Min', 'Max' ],
+                Object.entries(warmup.metrics).map(function warmupMetric([ name, metric ]) {
+                    return [
+                        name,
+                        metric.provenance.unit,
+                        metric.count,
+                        metric.mean,
+                        metric.median,
+                        metric.minimum,
+                        metric.maximum
+                    ];
+                })
+            );
+            return `<section>${summary}${metrics}<p>Warmup raw evidence: ${
+                htmlText(warmup.rawSamples.status)
+            }</p></section>`;
+        })
+        .join('');
+}
 const percentMultiplier = 100;
 function difference(actual: number | null, expected: number | null): number | null {
     if (actual === null || expected === null) {
@@ -179,6 +226,9 @@ not confidence intervals. Unbounded interval endpoints remain explicit in the bu
 <h2>Workload metrics and budgets</h2>
 <p>Budget estimates and recorded intervals retain the configured confidence and precision policy.</p>
 ${metricTables(report)}
+<h2>Warmup, sample cleanup, and cooldown</h2>
+<p>Warmup observations are separate from measured distributions and budget decisions.</p>
+${lifecycleTables(report)}
 <h2>Baseline comparisons</h2><label>Baseline metric <select id="baseline-selection"></select></label>
 <div class="chart" id="baseline-chart"></div>${baselineTable(report)}
 <p>Deltas are arithmetic differences, not improvement classifications. Percentage deltas use the absolute

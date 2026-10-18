@@ -43,6 +43,7 @@ export type {
     BenchmarkMeasureContext,
     BenchmarkMetrics,
     BenchmarkOptions,
+    BenchmarkSample,
     MetricBudget,
     BudgetThreshold,
     AsyncCollectorSession,
@@ -56,9 +57,15 @@ export type {
     MetricCollector,
     MetricDeclaration,
     MetricReadings,
+    BenchmarkCooldownPolicy,
+    BenchmarkCooldownResult,
+    BenchmarkLifecyclePolicy,
+    BenchmarkLifecycleResult,
     BenchmarkExecutionResult,
     BudgetStatistic,
     MetricProvenance,
     MetricReading,
     SamplingPolicy
 } from '../bench/bench.entry-point.ts';
+
+export { defaultBenchmarkLifecyclePolicy, defaultRuntimeCooldownPolicy } from '../bench/bench.entry-point.ts';

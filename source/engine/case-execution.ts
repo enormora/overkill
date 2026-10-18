@@ -3,6 +3,8 @@ import type { Clock } from '@enormora/clock';
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
 import {
     createBenchmarkAttempt,
+    caseRunnerError,
+    finishedCaseCleanup,
     builderBodyForAttempt,
     testBodyExecutionError,
     type BenchmarkAttempt
@@ -19,8 +21,6 @@ import {
 import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
     singleAttemptResult,
-    isCaseRunnerError,
-    permissionDeniedRunnerErrorFromThrown,
     type PerTestResult,
     type RunnerError,
     type TestContractFailure,
@@ -71,10 +71,6 @@ type BodyResultContext = {
     readonly runnerErrors: readonly RunnerError[];
 };
 
-type FinishedCaseCleanup = {
-    readonly cleanupErrors: readonly BodyErrorRecord[];
-    readonly runnerErrors: readonly RunnerError[];
-};
 type FinishedScope = {
     readonly cleanupErrors: readonly unknown[];
     readonly lifecycleFailures: readonly TestContractFailure[];
@@ -100,21 +96,6 @@ export type TestRuntimePolicy = {
     readonly takePendingRunErrors: () => readonly RunnerError[];
     readonly takeRunErrors: () => readonly RunnerError[];
 };
-
-function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
-    if (isCaseRunnerError(error)) {
-        return error.runnerError(testCase.id, testCase.workId);
-    }
-
-    return permissionDeniedRunnerErrorFromThrown(error, {
-        attributedTo: testCase.id,
-        attributedToWork: testCase.workId,
-        boundary: null,
-        diagnosticChannel: null,
-        hook: null,
-        phase: 'body'
-    });
-}
 
 function requireFailedBody(context: BodyResultContext): ExecutedBody {
     const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
@@ -279,32 +260,13 @@ function failedBody(input: FailedBodyInput): ExecutedBody {
     return nonRunnerFailedBody(input);
 }
 
-function finishedCaseCleanup(testCase: TestPlanCase, cleanupErrors: readonly unknown[]): FinishedCaseCleanup {
-    const bodyErrors: BodyErrorRecord[] = [];
-    const runnerErrors: RunnerError[] = [];
-
-    for (const error of cleanupErrors) {
-        const runnerError = caseRunnerError(testCase, error);
-
-        if (runnerError === null) {
-            bodyErrors.push(createThrownErrorRecord(error));
-        } else {
-            runnerErrors.push(runnerError);
-        }
-    }
-
-    return {
-        cleanupErrors: bodyErrors,
-        runnerErrors
-    };
-}
-
 function bodyResultContext(
     recorder: AssertionRecorder,
     testCase: TestPlanCase,
-    finishedScope: FinishedScope
+    finishedScope: FinishedScope,
+    sampleCleanupErrors: readonly unknown[]
 ): BodyResultContext {
-    const cleanup = finishedCaseCleanup(testCase, finishedScope.cleanupErrors);
+    const cleanup = finishedCaseCleanup(testCase, [ ...sampleCleanupErrors, ...finishedScope.cleanupErrors ]);
 
     return {
         cleanupErrors: cleanup.cleanupErrors,
@@ -337,12 +299,22 @@ async function runBuilderCaseBody(
             await prepare();
             return completedBody({
                 assertionResult,
-                context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller))
+                context: bodyResultContext(
+                    recorder,
+                    testCase,
+                    await lifecycle.finish(options.controller),
+                    benchmarkAttempt.cleanupErrors()
+                )
             });
         } catch (error: unknown) {
             await prepare();
             return failedBody({
-                context: bodyResultContext(recorder, testCase, await lifecycle.finish(options.controller)),
+                context: bodyResultContext(
+                    recorder,
+                    testCase,
+                    await lifecycle.finish(options.controller),
+                    benchmarkAttempt.cleanupErrors()
+                ),
                 error,
                 testCase
             });

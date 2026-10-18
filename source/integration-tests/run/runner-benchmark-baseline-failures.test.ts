@@ -188,7 +188,9 @@ async function assertListIsolation(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(unselected, []);
 }
 
-function commandWithFailingCase(command: RunCommand): RunCommand {
+type FailingBenchmarkCase = { readonly file: string; readonly title: string; };
+
+function commandWithFailingCase(command: RunCommand, failedCase: FailingBenchmarkCase): RunCommand {
     const profile = command.config.profiles.startup;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Missing benchmark profile.');
@@ -203,7 +205,7 @@ function commandWithFailingCase(command: RunCommand): RunCommand {
                     files: {
                         include: [
                             performanceBaselineFixtureFile,
-                            'source/integration-tests/run/fixtures/benchmark.bench.test.ts'
+                            failedCase.file
                         ],
                         exclude: []
                     }
@@ -218,7 +220,7 @@ function commandWithFailingCase(command: RunCommand): RunCommand {
                     kind: 'any',
                     filters: [
                         { kind: 'equals', field: 'title', value: 'first' },
-                        { kind: 'equals', field: 'title', value: 'fails' }
+                        { kind: 'equals', field: 'title', value: failedCase.title }
                     ]
                 }
             }
@@ -228,11 +230,37 @@ function commandWithFailingCase(command: RunCommand): RunCommand {
 
 async function assertFailedCaseBlocksWrites(scope: TestScope): Promise<void> {
     const fixture = await createBenchmarkBaselineFixture(scope, execution);
-    const result = await orchestrator.bench.baseline.update(commandWithFailingCase(fixture.command), { timing: null });
+    const result = await orchestrator.bench.baseline.update(
+        commandWithFailingCase(fixture.command, {
+            file: 'source/integration-tests/run/fixtures/benchmark.bench.test.ts',
+            title: 'fails'
+        }),
+        { timing: null }
+    );
     scope.assert.equal(result.changes.length, 1);
     scope.assert.equal(result.result.summary.failed, 1);
     scope.assert.deepEqual(result.result.runnerErrors, []);
     scope.assert.equal(result.writeOutcome.kind, 'blocked');
+    scope.assert.deepEqual(await readBaselineContents(fixture), []);
+}
+
+async function assertSampleCleanupBlocksWrites(scope: TestScope): Promise<void> {
+    const fixture = await createBenchmarkBaselineFixture(scope, execution);
+    const result = await orchestrator.bench.baseline.update(
+        commandWithFailingCase(fixture.command, {
+            file: 'source/integration-tests/run/fixtures/benchmark-cleanup-failure.bench.test.ts',
+            title: 'sample cleanup fails'
+        }),
+        { timing: null }
+    );
+    const failed = result.result.perTest.find(function isCleanupFailure(entry) {
+        return entry.id.title === 'sample cleanup fails';
+    });
+    scope.assert.equal(result.writeOutcome.kind, 'blocked');
+    scope.assert.equal(result.changes.length, 1);
+    scope.assert.equal(failed?.verdict, 'fail');
+    scope.assert.equal(failed?.benchmark?.samples, 1);
+    scope.assert.equal(failed?.benchmark?.status, 'incomplete');
     scope.assert.deepEqual(await readBaselineContents(fixture), []);
 }
 
@@ -274,6 +302,10 @@ async function assertLateReporterFailure(scope: TestScope): Promise<void> {
 }
 
 export const testNode = suite('benchmark baseline failure boundaries', [
+    test('sample cleanup failures retain readings and block pending creates', async function (scope: TestScope) {
+        await assertSampleCleanupBlocksWrites(scope);
+        return scope.assert.collect();
+    }),
     test('case assertion failures block pending creates', async function (scope: TestScope) {
         await assertFailedCaseBlocksWrites(scope);
         return scope.assert.collect();

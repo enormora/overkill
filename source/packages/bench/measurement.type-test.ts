@@ -15,6 +15,8 @@ describe('benchmark measurement authoring', function () {
             measurement: bench.wallClockMeasurement(),
             measure(context) {
                 expect(context.workload.parameters.entries).type.toBe<typeof entries>();
+                expect(context.sample.cleanup).type.toBe<(callback: () => Promise<void> | void) => void>();
+                expect(standard.defaultBenchmarkLifecyclePolicy).type.toBe<bench.BenchmarkLifecyclePolicy>();
                 const measured = context.sample.measure(function () {
                     return 'result';
                 });

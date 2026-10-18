@@ -1,8 +1,13 @@
 import { z } from 'zod/v4';
 import type { BenchmarkDefinitionSummary } from '../engine/benchmark-result.ts';
-import { budgetStatisticSchema, samplingPolicySchema } from './benchmark-result-schema.ts';
+import {
+    benchmarkLifecyclePolicySchema,
+    budgetStatisticSchema,
+    samplingPolicySchema
+} from './benchmark-result-schema.ts';
 
 export const benchmarkDefinitionSchema: z.ZodType<BenchmarkDefinitionSummary> = z.strictObject({
+    lifecycle: benchmarkLifecyclePolicySchema.nullable().default(null),
     kind: z.string(),
     workloads: z.array(z.strictObject({ name: z.string(), parameters: z.record(z.string(), z.json()) })),
     measurement: z.strictObject({

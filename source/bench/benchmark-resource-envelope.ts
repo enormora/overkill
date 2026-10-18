@@ -17,7 +17,8 @@ function allowedMeasurementField([ name ]: readonly [string, unknown]): boolean 
         'startInFlight',
         'yieldToNextTurn',
         'updateResult',
-        'reportError'
+        'reportError',
+        'reportCleanupError'
     ]
         .includes(name);
 }
@@ -40,6 +41,7 @@ export function benchmarkResourceEnvelope(
             selectedBody,
             async function sampleResourceEnvelope(body, context) {
                 return await sampleBenchmark({
+                    lifecycle: definition.lifecycle,
                     body,
                     context: Object.fromEntries(Object.entries(context).filter(allowedMeasurementField)),
                     scope,

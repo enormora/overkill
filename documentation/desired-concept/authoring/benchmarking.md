@@ -116,7 +116,8 @@ pipeline. `orchestrator.bench.list` returns the resolved plan without executing
 bodies or acquiring resources. `bench.run` and `bench.runWithReporterDelivery`
 use structured measurement summaries and generated budget assertions. Explicit
 measurement regions, native collectors, and adaptive metric budgets are
-implemented; warmup, external-process measurement, browser collectors remain later milestones. The dedicated HTML reporter
+implemented alongside automatic warmup, per-sample cleanup, and bounded runtime
+cooldown; external-process measurement and browser collectors remain later milestones. The dedicated HTML reporter
 consumes recorded benchmark evidence through the final-result lifecycle.
 
 Current profiles keep serial execution within each worker, `maxConcurrency: 1`,
@@ -607,6 +608,36 @@ Warmup, calibration, cleanup, and cooldown are distinct phases:
 - cleanup resets benchmark-owned state between samples where needed
 - cooldown waits for configured runtime or platform signals to settle, with
   hard caps to avoid hiding hangs
+
+Warmup defaults to 32 invocations of the existing `measure(...)` callback for
+each workload attempt. It needs no additional authoring. Lifecycle options may
+change that count, including zero for cold-start workloads. Warmup observations
+are retained separately and do not enter measured counts, confidence intervals,
+or budget evaluation. Fixed-count warmup does not prove optimization has settled
+or establish the independent, stationary observation assumption.
+
+`sample.cleanup(callback)` registers benchmark-owned resets for the current
+invocation. Callbacks run in reverse order after both warmup and measured
+invocations, including failures, before any next invocation. Ordinary
+`context.cleanup(callback)` remains attempt-scoped. Resource/runtime descriptors
+surround the entire attempt; registration introduces no separate lifecycle hook
+model. Preparation, sample cleanup, and cooldown stay outside measured regions.
+
+Cooldown is opt-in through lifecycle policy. The built-in runtime policy waits
+for two consecutive 50 ms event-loop utilization windows at or below its limit.
+Its supplied default allows 10% utilization and caps each wait at 1000 ms;
+explicit policies may change the utilization limit and deadline. The deadline
+must exceed 100 ms and cannot exceed 60000 ms. Busy windows reset the consecutive
+count. Case cancellation and ordinary attempt deadlines still apply. This signal
+describes the executing runtime, without repeating host calibration or changing
+frozen placement. It does not prove global quiescence or thermal recovery.
+
+Validated readings survive sample cleanup or cooldown failure. Such failures
+stop further sampling, retain incomplete evidence, and block baseline writes.
+Warmup summaries and raw attachments remain separate from measured evidence.
+Progress, attempts, IPC, saved results, and HTML reports carry versioned lifecycle
+evidence; older results retain an explicit absent lifecycle. These defaults and
+public APIs refine the phase model above.
 
 Forced V8 garbage collection is opt-in. Benchmark profiles that run under a
 supervised or hosted process may start Node with `--expose-gc`, but the harness

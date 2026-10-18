@@ -6,6 +6,7 @@ import type { CaseRunnerError } from './run-result.ts';
 import type { TestAnnotationsInput, TestControlsInput } from './test-data.ts';
 
 export type BenchmarkScope = {
+    readonly reportCleanupError: (error: unknown) => void;
     readonly cleanup: (callback: () => Promise<void> | void) => void;
     readonly signal: AbortSignal;
     readonly workload: WorkloadId;

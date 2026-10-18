@@ -5,11 +5,13 @@ import {
     currentAttachmentLimits
 } from '../packages/resources/attachment-context.entry-point.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
-import { observationSummary, type MetricObservations } from './benchmark-observations.ts';
+import type { MetricObservations } from './benchmark-observations.ts';
+import { summarizeObservations } from './benchmark-observation-set.ts';
 
 type BudgetAssertionContext = Pick<SamplingSessionInput, 'locations' | 'workload'>;
 
 type SamplingSnapshot = {
+    readonly lifecycle: BenchmarkExecutionResult['lifecycle'];
     readonly samples: number;
     readonly budgets: readonly BenchmarkBudgetResult[];
     readonly status: BenchmarkExecutionResult['status'];
@@ -25,12 +27,29 @@ export function summarizedSamplingResult(
         workload: input.scope.workload,
         policy: input.policy,
         assumption: 'independent-stationary-observations',
-        metrics: Object.fromEntries(
-            Array.from(observations).flatMap(function metricSummary([ name, metric ]) {
-                return metric.readings().length === 0 ? [] : [ [ name, observationSummary(metric) ] ];
-            })
-        ),
+        metrics: summarizeObservations(observations),
         rawSamples: { status: 'omitted', reference: null, reason: 'Raw observations have not been persisted.' }
+    };
+}
+
+export async function recordObservationSamples(
+    name: 'benchmark-samples' | 'benchmark-warmup-samples',
+    observations: ReadonlyMap<string, MetricObservations>
+): Promise<BenchmarkExecutionResult['rawSamples']> {
+    if (currentAttachmentLimits() === null) {
+        return { status: 'omitted', reference: null, reason: 'No runner attachment coordinator is active.' };
+    }
+    const artifact = await attachmentsForProducer({ kind: 'case' }).json(
+        { name, mediaType: 'application/json' },
+        Object.fromEntries(Array.from(observations, function rawMetric([ metric, readings ]) {
+            return [ metric, readings.readings() ];
+        }))
+    );
+    const omitted = artifact.payload.content.kind === 'omitted';
+    return {
+        status: omitted ? 'omitted' : 'recorded',
+        reference: JSON.stringify(artifact.id),
+        reason: omitted ? artifact.payload.content.reason : null
     };
 }
 
@@ -38,34 +57,7 @@ export async function recordRawSamples(
     result: BenchmarkExecutionResult,
     observations: ReadonlyMap<string, MetricObservations>
 ): Promise<BenchmarkExecutionResult> {
-    if (currentAttachmentLimits() === null) {
-        return {
-            ...result,
-            rawSamples: { status: 'omitted', reference: null, reason: 'No runner attachment coordinator is active.' }
-        };
-    }
-
-    const artifact = await attachmentsForProducer({ kind: 'case' }).json(
-        { name: 'benchmark-samples', mediaType: 'application/json' },
-        Object
-            .fromEntries(Array.from(observations, function rawMetric([ name, metric ]) {
-                return [ name, metric.readings() ];
-            }))
-    );
-    const omitted = artifact.payload.content.kind === 'omitted';
-    return {
-        ...result,
-        rawSamples: {
-            status: omitted ? 'omitted' : 'recorded',
-            reference: JSON.stringify(artifact.id),
-            reason: omitted
-                ? artifact
-                    .payload
-                    .content
-                    .reason
-                : null
-        }
-    };
+    return { ...result, rawSamples: await recordObservationSamples('benchmark-samples', observations) };
 }
 
 export function generatedBudgetAssertions(
