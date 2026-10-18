@@ -125,10 +125,18 @@ origins outside the sandbox or naming its root fail. Existing canonical IDs
 retain their encoding. Regenerate cached Stryker reports if they contain IDs
 derived from noncanonical path spellings.
 
-Every fresh collection validates the complete eligible catalog, selection
-metadata, and intentional skips before narrowing. Unknown IDs, catalog drift,
+Every invocation validates the complete eligible catalog, selection metadata,
+and intentional skips before narrowing. Reused execution validates its retained
+plan without reimporting modules. Unknown or duplicate IDs, catalog drift,
 unexpected skips, and empty mutant filters return `Error`. The adapter expands
-Stryker's sandbox file filters.
+Stryker's sandbox file filters. The baseline retains the original file restriction,
+including eligible files that initially contain no cases. Later cases in those
+files are catalog drift when execution collects again.
+
+Repeated dry runs validate the original file restriction, coverage mode, and
+catalog before case execution. They cannot replace the original campaign
+baseline. Intentional skips remain in dry-run results; a mutant selection with
+no runnable cases after coverage fallback executes nothing and returns `Error`.
 
 Set Stryker's `coverageAnalysis` to `perTest` (the normal optimized mode), `all`,
 or `off`. `perTest` returns Stryker's case counters and narrows execution only

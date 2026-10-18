@@ -5,10 +5,28 @@ import { workIdentityKey, type PerTestResult, type RunnerError } from '../engine
 import type { RunExecutionReply } from '../run/run.entry-point.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
 import { dryMutationResult, mutantExecutionResult } from './mutation-results.ts';
-import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
+import type { MutationInvocationExpectation } from './mutation-observation.ts';
+import { campaignBaselineSchema, mutationLifecycleDataSchema } from './mutation-catalog.ts';
 
 type ResultReply = Extract<RunExecutionReply, { readonly kind: 'result'; }>;
 const root = '/project';
+
+function mutantExpectation(
+    reply: ResultReply
+): Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }> {
+    const data = mutationLifecycleDataSchema.parse(reply.data);
+    return {
+        kind: 'mutant' as const,
+        baseline: campaignBaselineSchema.parse({
+            catalog: data.catalog,
+            coverage: data.coverage,
+            coverageAnalysis: 'perTest',
+            testFiles: null
+        }),
+        selected: data.selected,
+        disableBail: true
+    };
+}
 
 function firstTestResult(result: ResultReply['result']): PerTestResult {
     const first = result.perTest[0];
@@ -31,7 +49,7 @@ function failedReply(
     const id = workIdentityKey(first.workId);
     return {
         kind: 'result',
-        result,
+        result: { ...result, summary: { ...result.summary, planned: 1 } },
         deadlineExceeded,
         data: z.json().parse({
             catalog: [ {
@@ -67,7 +85,11 @@ function includeIntentionalSkip(reply: ResultReply): ResultReply {
     const id = workIdentityKey(skipped.workId);
     return {
         ...reply,
-        result: { ...reply.result, perTest: [ ...reply.result.perTest, skipped ] },
+        result: {
+            ...reply.result,
+            summary: { ...reply.result.summary, planned: 2 },
+            perTest: [ ...reply.result.perTest, skipped ]
+        },
         data: {
             ...data,
             catalog: [ ...data.catalog, { ...entry, id, work: skipped.workId, skipReason: 'intentional' } ],
@@ -101,8 +123,8 @@ function originAliasReply(): ResultReply {
 export const testNode = suite('Stryker result ownership', [
     test('matches result aliases to canonical coverage owners and killing IDs', function (scope) {
         const reply = originAliasReply();
-        const dry = dryMutationResult(root, reply, 'perTest');
-        const mutant = mutantExecutionResult(root, reply);
+        const dry = dryMutationResult(root, reply, 'perTest', { kind: 'dry', baseline: null, testFiles: null });
+        const mutant = mutantExecutionResult(root, reply, mutantExpectation(reply));
         if (
             dry.status !== DryRunStatus.Complete || mutant.status !== MutantRunStatus.Killed ||
             dry.mutantCoverage === undefined
@@ -126,8 +148,8 @@ export const testNode = suite('Stryker result ownership', [
     }),
     test('excludes intentional skips from the number of executed mutant tests', function (scope) {
         const reply = includeIntentionalSkip(failedReply([], false, false));
-        const mutant = mutantExecutionResult(root, reply);
-        const dry = dryMutationResult(root, reply, 'off');
+        const mutant = mutantExecutionResult(root, reply, mutantExpectation(reply));
+        const dry = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null });
         if (mutant.status !== MutantRunStatus.Killed || dry.status !== DryRunStatus.Complete) {
             throw new Error('Expected a confirmed kill and complete dry run.');
         }
@@ -148,7 +170,7 @@ export const testNode = suite('Stryker result ownership', [
                 cause: null,
                 stack: null
             }
-        });
+        }, mutantExpectation(reply));
         scope.assert.deepEqual(result, {
             status: MutantRunStatus.Error,
             errorMessage: 'Eligible test catalog changed under mutation.'
@@ -157,7 +179,7 @@ export const testNode = suite('Stryker result ownership', [
     }),
     test('reports a confirmed assertion kill with its structural identity and actual count', function (scope) {
         const reply = failedReply([], false, false);
-        const result = mutantExecutionResult(root, reply);
+        const result = mutantExecutionResult(root, reply, mutantExpectation(reply));
         if (result.status !== MutantRunStatus.Killed) {
             throw new Error('Expected a confirmed kill.');
         }
@@ -174,13 +196,25 @@ export const testNode = suite('Stryker result ownership', [
         const errors = runResultFactory
             .build({ runnerErrors: [ { subtype: 'reporter', message: 'delivery failed' } ] })
             .runnerErrors;
-        const result = mutantExecutionResult(root, failedReply(errors, true, true));
+        const result = mutantExecutionResult(
+            root,
+            failedReply(errors, true, true),
+            mutantExpectation(failedReply(errors, true, true))
+        );
         scope.assert.deepEqual(result, { status: 'error', errorMessage: 'delivery failed' });
         return scope.assert.collect();
     }),
     test('keeps tracked hit limits and deadlines ahead of kills', function (scope) {
-        scope.assert.equal(mutantExecutionResult(root, failedReply([], true, false)).status, 'timeout');
-        scope.assert.equal(mutantExecutionResult(root, failedReply([], false, true)).status, 'timeout');
+        scope.assert.equal(
+            mutantExecutionResult(root, failedReply([], true, false), mutantExpectation(failedReply([], true, false)))
+                .status,
+            'timeout'
+        );
+        scope.assert.equal(
+            mutantExecutionResult(root, failedReply([], false, true), mutantExpectation(failedReply([], false, true)))
+                .status,
+            'timeout'
+        );
         return scope.assert.collect();
     }),
     test('rejects cleanup failures even when the case also timed out', function (scope) {
@@ -209,20 +243,24 @@ export const testNode = suite('Stryker result ownership', [
                     attempts: [ { ...first.attempts[0], outcome } ]
                 } ]
             }
-        });
+        }, mutantExpectation(reply));
         scope.assert.equal(result.status, 'error');
         return scope.assert.collect();
     }),
     test('requires child-local lifecycle observations before reporting a kill', function (scope) {
         const reply = failedReply([], false, false);
         const data = z.looseObject({ completed: z.array(z.string()) }).parse(reply.data);
-        const result = mutantExecutionResult(root, { ...reply, data: z.json().parse({ ...data, completed: [] }) });
+        const result = mutantExecutionResult(
+            root,
+            { ...reply, data: z.json().parse({ ...data, completed: [] }) },
+            mutantExpectation(reply)
+        );
         scope.assert.equal(result.status, 'error');
         return scope.assert.collect();
     }),
     test('reports failed baseline tests without discarding their stable dry-run identity', function (scope) {
         const reply = failedReply([], false, false);
-        const result = dryMutationResult(root, reply, 'off');
+        const result = dryMutationResult(root, reply, 'off', { kind: 'dry', baseline: null, testFiles: null });
         if (result.status !== DryRunStatus.Complete) {
             throw new Error('Expected a complete dry run.');
         }

@@ -46,10 +46,7 @@ function publishBaseline(
 }
 function fetchBaseline(baselines: ReadonlyMap<string, CampaignBaseline>, root: string): CampaignResponse {
     const baseline = baselines.get(root);
-    if (baseline === undefined) {
-        throw new Error('Campaign dry-run baseline is unavailable.');
-    }
-    return { kind: 'baseline', baseline };
+    return { kind: 'baseline', baseline: baseline ?? null };
 }
 export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBaseline>>): CampaignWorker {
     const cancellation = new AbortController();

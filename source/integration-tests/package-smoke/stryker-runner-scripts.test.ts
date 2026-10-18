@@ -1,4 +1,5 @@
 import { strykerCampaignScript } from '../run/stryker-campaign-scripts.test.ts';
+import { strykerCatalogScript } from '../run/stryker-catalog-scripts.test.ts';
 import { strykerCoverageScript } from '../run/stryker-coverage-scripts.test.ts';
 import { strykerProfileScript } from './stryker-profile-scripts.test.ts';
 import { strykerSandboxScript } from './stryker-sandbox-scripts.test.ts';
@@ -68,6 +69,17 @@ try {
 }
 for (const processModel of ['in-process', 'supervised-process']) {
     for (const freshState of ['false', 'true']) {
+        const catalogCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-catalog-'));
+        try {
+            execFileSync(process.execPath, [
+                '--input-type=module', '--eval', ${JSON.stringify(strykerCatalogScript)},
+                import.meta.resolve('@overkill-dev/stryker-runner'), import.meta.resolve('@overkill-dev/engine'),
+                import.meta.resolve('@overkill-dev/run/config'), processModel, freshState, 'listed-files',
+                ${JSON.stringify(import.meta.resolve('@stryker-mutator/api/test-runner'))}],
+                { cwd: catalogCwd, stdio: 'pipe' });
+        } finally {
+            rmSync(catalogCwd, { recursive: true, force: true });
+        }
         for (const coverageAnalysis of ['perTest', 'all', 'off']) {
             const campaignCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-campaign-'));
             try {

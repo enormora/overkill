@@ -1,69 +1,67 @@
 import { resolve } from 'node:path';
+import { testNode as catalogExecutionTestNode } from '../../integration-tests/run/runner-stryker-catalog.test.ts';
 import { suite, test } from '../test/test.entry-point.ts';
 import { workIdentityKey, type CollectedRunPlan, type WorkId } from '../run/run.entry-point.ts';
+import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
 import { runIfMain } from '../../test-support/run-if-main.ts';
+import { testNode as admissionTestNode } from './mutation-lifecycle.test.ts';
+import { testNode as observationTestNode } from './mutation-observation.test.ts';
 import {
     canonicalWork,
     eligibleMutationCatalog,
     exactMutationSelection,
     mutationCatalog,
+    mutationCatalogSchema,
+    mutationTestFiles,
     projectFile
 } from './mutation-catalog.ts';
 
 const root = resolve('/sandbox');
-const definitionLocations = [ { kind: 'unknown' } ] as const;
-const annotations = { ownership: [], tags: [] };
-const controls = { capture: null, duplicateExecution: null, timeoutMilliseconds: null };
 const work: WorkId = {
     case: { file: 'tests/a.ts', suite: [ 'suite' ], title: 'case', params: null },
     runtimes: [],
     workload: null
 };
 
-function collectedWorkPlan(works: readonly WorkId[]): CollectedRunPlan {
-    const files = Array.from(
-        Map.groupBy(works, function caseFile(entry) {
-            return entry.case.file ?? '';
-        }),
-        function collectedFile([ file, entries ]) {
-            return {
-                file,
-                cases: entries.map(function collectedCase(entry) {
-                    return {
-                        annotations,
-                        controls,
-                        definitionLocations,
-                        params: entry.case.params,
-                        property: null,
-                        benchmark: null,
-                        workloadParameters: null,
-                        resourceAttachments: { directResources: [], resourceGraph: [], runtimeGraphs: [] },
-                        skipReason: null,
-                        suitePath: entry.case.suite.map(function suiteEntry(title) {
-                            return { title, definitionLocations };
-                        }),
-                        testFamily: 'microtest' as const,
-                        title: entry.case.title,
-                        workId: entry
-                    };
-                })
-            };
+export const testNode = suite('mutation catalog contract', [
+    observationTestNode,
+    admissionTestNode,
+    catalogExecutionTestNode,
+    test('rejects duplicate, missing, and empty exact selections', function (scope) {
+        const plan = collectedMutationPlan([ work ]);
+        const id = workIdentityKey(work);
+        for (const ids of [ [], [ 'unknown' ], [ id, 'unknown' ], [ id, id ] ]) {
+            scope.assert.throws(function invalidSelection() {
+                exactMutationSelection(root, plan, ids);
+            }, { name: 'Error' });
         }
-    );
-    return {
-        defined: works.length,
-        discoveredFiles: files,
-        files,
-        orphans: [],
-        root: {
-            annotations,
-            controls,
-            title: 'catalog'
+        return scope.assert.collect();
+    }),
+    test('rejects catalog identities that disagree with their structural work', function (scope) {
+        const catalog = mutationCatalog(root, collectedMutationPlan([ work ]));
+        scope.assert.equal(
+            mutationCatalogSchema
+                .safeParse(catalog.map(function mismatchedIdentity(entry) {
+                    return { ...entry, id: 'other' };
+                }))
+                .success,
+            false
+        );
+        scope.assert.equal(mutationCatalogSchema.safeParse([ ...catalog, ...catalog ]).success, false);
+        return scope.assert.collect();
+    }),
+    test('retains canonical file eligibility independently of catalog contents', function (scope) {
+        scope.assert.equal(mutationTestFiles(root, null), null);
+        const files = mutationTestFiles(root, [ './empty.ts', 'tests/../empty.ts', 'case.ts' ]);
+        if (files === null) {
+            throw new Error('Missing explicit file restriction.');
         }
-    };
-}
-
-export const testNode = suite('mutation test identities', [
+        scope.assert.deepEqual(files, [
+            'case.ts',
+            'empty.ts'
+        ]);
+        return scope.assert.collect();
+    }),
     test('canonicalizes origin aliases independently of the sandbox location', function (scope) {
         for (const sandbox of [ root, resolve('/replacement') ]) {
             for (
@@ -76,7 +74,7 @@ export const testNode = suite('mutation test identities', [
                     resolve(sandbox, 'tests/a.ts')
                 ]
             ) {
-                const plan = collectedWorkPlan([ { ...work, case: { ...work.case, file } } ]);
+                const plan = collectedMutationPlan([ { ...work, case: { ...work.case, file } } ]);
                 const catalog = eligibleMutationCatalog(sandbox, plan, [ './tests/nested/../a.ts' ]);
                 scope.assert.equal(projectFile(sandbox, file), 'tests/a.ts');
                 scope.assert.deepEqual(
@@ -113,13 +111,13 @@ export const testNode = suite('mutation test identities', [
             { ...work, case: { ...work.case, suite: [ 'outer > inner' ] } },
             { ...work, case: { ...work.case, suite: [ 'outer', 'inner' ] } }
         ];
-        const catalog = mutationCatalog(root, collectedWorkPlan(cases));
+        const catalog = mutationCatalog(root, collectedMutationPlan(cases));
         const identities = new Set(catalog.map(function identity(entry) {
             return entry.id;
         }));
         scope.assert.equal(identities.size, 2);
         const parameterized = [ null, '', '"one"', '"two"' ].map(function parameterKey(params) {
-            return mutationCatalog(root, collectedWorkPlan([ { ...work, case: { ...work.case, params } } ]))[0]?.id;
+            return mutationCatalog(root, collectedMutationPlan([ { ...work, case: { ...work.case, params } } ]))[0]?.id;
         });
         const parameterIdentities = new Set(parameterized);
         scope.assert.equal(parameterIdentities.size, 4);
@@ -142,7 +140,7 @@ export const testNode = suite('mutation test identities', [
                 } ]
             };
         });
-        const plan = collectedWorkPlan(variants);
+        const plan = collectedMutationPlan(variants);
         const catalog = mutationCatalog(root, plan);
         scope.assert.equal(catalog.length, 2);
         scope.assert.notEqual(catalog[0]?.id, catalog[1]?.id);
@@ -176,13 +174,13 @@ export const testNode = suite('mutation test identities', [
             })
         };
         scope.assert.deepEqual(
-            mutationCatalog(root, collectedWorkPlan([ reordered ])),
-            mutationCatalog(root, collectedWorkPlan([ first ]))
+            mutationCatalog(root, collectedMutationPlan([ reordered ])),
+            mutationCatalog(root, collectedMutationPlan([ first ]))
         );
         return scope.assert.collect();
     }),
     test('ignores source positions while rejecting duplicate canonical work', function (scope) {
-        const plan = collectedWorkPlan([ work ]);
+        const plan = collectedMutationPlan([ work ]);
         const moved: CollectedRunPlan = {
             ...plan,
             files: plan.files.map(function movedFile(file) {
@@ -217,7 +215,7 @@ export const testNode = suite('mutation test identities', [
         scope.assert.throws(function rejectCanonicalDuplicate() {
             mutationCatalog(
                 root,
-                collectedWorkPlan([ work, { ...work, case: { ...work.case, file: './tests/a.ts' } } ])
+                collectedMutationPlan([ work, { ...work, case: { ...work.case, file: './tests/a.ts' } } ])
             );
         }, { message: 'Mutation catalog must contain unique eligible tests.' });
         return scope.assert.collect();

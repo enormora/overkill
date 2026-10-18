@@ -6,6 +6,7 @@ import type { RunExecutionLifecycle, RunSelection } from '../../../packages/run/
 
 const modeSchema = z.enum([
     'pass',
+    'narrow',
     'stop',
     'select',
     'before',
@@ -77,6 +78,9 @@ export async function createSessionLifecycle(data: JsonValue): Promise<RunExecut
     return {
         async select(): Promise<RunSelection> {
             visit('select');
+            if (mode === 'narrow') {
+                return { kind: 'filter', filter: { kind: 'equals', field: 'title', value: 'passes' } };
+            }
             return { kind: 'all' };
         },
         async beforeCases(): Promise<void> {

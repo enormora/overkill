@@ -1,5 +1,5 @@
 import type { MutantRunOptions } from '@stryker-mutator/api/test-runner';
-import { projectFile, type CampaignBaseline } from './mutation-catalog.ts';
+import { hasRunnableMutationSelection, projectFile, type CampaignBaseline } from './mutation-catalog.ts';
 
 function matchingTestIdentities(root: string, campaign: CampaignBaseline, value: string): readonly string[] {
     const exact = campaign.catalog.find(function matchesIdentity(entry) {
@@ -45,7 +45,7 @@ function coveredAtLoad(campaign: CampaignBaseline, id: string): boolean {
     return (campaign.coverage.static[id] ?? 0) > 0;
 }
 
-type MutantInvocationPlan = {
+export type MutantInvocationPlan = {
     readonly mode: MutantRunOptions['mutantActivation'];
     readonly selected: readonly string[];
 };
@@ -82,10 +82,11 @@ export function planMutantInvocation(options: MutantInvocationInput): MutantInvo
     const mode = mutantActivation(options);
     const canNarrow = mode === 'runtime' && campaign.coverageAnalysis === 'perTest' &&
         supportsNarrowing(campaign, input.activeMutant.id, requested);
-    return {
-        mode,
-        selected: canNarrow ? requested : campaign.catalog.map(function testIdentity(entry) {
-            return entry.id;
-        })
-    };
+    const selected = canNarrow ? requested : campaign.catalog.map(function testIdentity(entry) {
+        return entry.id;
+    });
+    if (!hasRunnableMutationSelection(campaign.catalog, selected)) {
+        throw new Error('Stryker requested a mutant selection with no runnable tests.');
+    }
+    return { mode, selected };
 }
