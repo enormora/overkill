@@ -1,3 +1,4 @@
+import { z } from 'zod/v4';
 import { microtestExecutionSchema, propertyProfileSchema } from './schema.ts';
 import { propertyPolicySchema } from './property-policy.ts';
 import { ConfigError } from './config-error.ts';
@@ -84,10 +85,15 @@ function validateIntegrationProfile(profile: ProfileConfig): void {
     }
 }
 
+function validateBenchmarkGarbageCollection(policy: unknown): void {
+    z.enum([ 'after-sample', 'off' ]).parse(policy);
+}
+
 function validateBenchmarkProfile(profileName: string, profile: BenchmarkProfileConfig): void {
     try {
         normalizeRequiredProfileFiles(profile.files);
         performanceBaselinePolicySchema.parse(profile.baselines);
+        validateBenchmarkGarbageCollection(profile.garbageCollection);
         validateNormalizedBenchmarkHostPolicy(profile.host);
         validateIntegrationProfile(profile);
         validateBenchmarkExecution(profile.execution, profile.timeouts);

@@ -6,6 +6,7 @@ export const hostProcessSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
 export const executionCommandFields = {
+    benchmarkGarbageCollection: z.enum([ 'off', 'after-sample' ]).nullable().default(null),
     propertyPolicy: propertyPolicySchema.nullable().default(null),
     retryPolicy: z
         .strictObject({

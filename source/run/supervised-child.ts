@@ -236,7 +236,7 @@ function startedAtIso(startedAtMs: number): string {
 
 async function executeAssignment(input: SupervisedAssignmentExecution): Promise<RunResult> {
     const runtimePolicy = createRuntimePolicy(input.command, input.host);
-    const execute = createSupervisedChildExecute(input.wallClock);
+    const execute = await createSupervisedChildExecute(input.wallClock, input.command);
     input.host.dropBodyReadPermission(input.command);
     const testPlan = input.command.kind === 'run-session'
         ? input.collectedPlan.testPlan

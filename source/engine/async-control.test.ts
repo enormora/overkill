@@ -24,6 +24,7 @@ function createEngineWithActiveResources(readActiveResourceTypes: () => readonly
 
     return createEngine({
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',
             readActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({

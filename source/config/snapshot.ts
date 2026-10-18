@@ -212,6 +212,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
     if (profile.testFamily === 'benchmark') {
         return {
             attachments: { ...profile.attachments },
+            garbageCollection: profile.garbageCollection,
             baselines: { adapters: Array.from(profile.baselines.adapters), directory: profile.baselines.directory },
             host: { limits: { ...profile.host.limits } },
             execution: copyBenchmarkExecution(profile.execution),

@@ -4,6 +4,7 @@ import {
 } from 'node:worker_threads';
 import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type {
+    BenchmarkProfileConfig,
     HostProcess,
     IntegrationProfileConfig,
     MaxConcurrency,
@@ -31,6 +32,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly retryPolicy: IntegrationProfileConfig['retries'];
     readonly collectionTimeoutMilliseconds: number;

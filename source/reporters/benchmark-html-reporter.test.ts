@@ -54,8 +54,13 @@ function lifecycleReport(): string {
     const benchmark = {
         ...measuredTest.benchmark,
         lifecycle: {
-            version: 1 as const,
-            policy: { warmupSamples: 32, cooldown: { mode: 'off' as const } },
+            version: 2 as const,
+            garbageCollection: { mode: 'after-sample' as const, completed: 36, failures: 0 },
+            policy: {
+                garbageCollection: 'after-sample' as const,
+                warmupSamples: 32,
+                cooldown: { mode: 'off' as const }
+            },
             warmup: {
                 samples: 32,
                 metrics: measuredTest.benchmark.metrics,
@@ -75,7 +80,10 @@ export const testNode = suite('benchmark HTML reporter', [
     test('renders warmup and cleanup separately from measured distributions', function (scope: TestScope) {
         const html = lifecycleReport();
         scope.assert.includes(html, 'Warmup samples');
-        scope.assert.includes(html, '<td>32</td><td>36</td><td>0</td><td>off</td>');
+        scope.assert.includes(
+            html,
+            '<td>32</td><td>36</td><td>0</td><td>after-sample</td><td>36</td><td>0</td><td>off</td>'
+        );
         scope.assert.includes(html, 'Warmup metric');
         scope.assert.includes(html, 'Warmup raw evidence: recorded');
         return scope.assert.collect();

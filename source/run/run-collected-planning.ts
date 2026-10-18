@@ -1,4 +1,5 @@
-import type { RunFacts, RunWorkerCountFacts } from './run-types.ts';
+import { hostProcessFacts } from './run-host-process.ts';
+import type { RunFacts, RunWorkerCountFacts, RunHostProcessFacts } from './run-types.ts';
 import { createRunShardHasher, shardCollectedRunPlanCases } from './run-sharding.ts';
 import { orderedRunItems } from './run-ordering.ts';
 import {
@@ -17,6 +18,7 @@ import {
 type Scheduling = RunFacts['execution']['scheduling'];
 
 export type CollectedExecutionPlan = {
+    readonly hostProcess: RunHostProcessFacts | null;
     readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
     readonly durationHistory: WorkerPoolPlacementResolution['durationHistory'] | null;
     readonly orderedCases: ReturnType<typeof shardCollectedRunPlanCases>;
@@ -59,6 +61,21 @@ function resolvedScheduling(
     return constrainedScheduling(resolveRunScheduling(input.request, input.profile), constraints);
 }
 
+async function resolveCollectedHost(
+    input: CollectedExecutionPlanInput,
+    cases: CollectedExecutionPlan['orderedCases']
+): Promise<RunHostProcessFacts | null> {
+    if (input.profile.execution.processModel !== 'worker-pool') {
+        return null;
+    }
+    let { hostProcess } = input.profile.execution;
+    if (input.profile.testFamily === 'benchmark') {
+        const { resolveBenchmarkGarbageCollectionHost } = await import('./benchmark-garbage-collection.ts');
+        hostProcess = resolveBenchmarkGarbageCollectionHost(hostProcess, input.profile.garbageCollection, cases);
+    }
+    return hostProcessFacts(hostProcess);
+}
+
 export async function createCollectedExecutionPlan(
     input: CollectedExecutionPlanInput
 ): Promise<CollectedExecutionPlan> {
@@ -77,6 +94,7 @@ export async function createCollectedExecutionPlan(
     const orderedCases = orderedCollectedCases(input, placementPlan, shardHasher);
 
     return {
+        hostProcess: await resolveCollectedHost(input, orderedCases),
         benchmarkPlacement: placementResolution === null
             ? await benchmarkPlacementForCases(input, orderedCases)
             : placementResolution.benchmarkPlacement,

@@ -14,5 +14,5 @@ export const testNode = benchmark('sample cleanup fails', {
     annotations: {},
     controls: {},
     sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 },
-    lifecycle: { warmupSamples: 0, cooldown: { mode: 'off' } }
+    lifecycle: { garbageCollection: 'after-sample', warmupSamples: 0, cooldown: { mode: 'off' } }
 });

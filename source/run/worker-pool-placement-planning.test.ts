@@ -187,6 +187,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                benchmarkGarbageCollection: null,
                 propertyPolicy: null,
                 attachments: null,
                 retries: null,

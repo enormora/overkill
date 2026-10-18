@@ -40,6 +40,7 @@ export type ActiveCase = {
 export type ExecutionSupervision = {
     readonly lifecycle: CaseExecutionLifecycle | null;
     readonly acceptsNewCases: () => boolean;
+    readonly closedBoundaryVerdict: () => PerTestResult['verdict'];
     readonly activeCases: ReadonlyMap<string, ActiveCase>;
     readonly addActiveCase: (key: string, activeCase: ActiveCase) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
@@ -57,6 +58,12 @@ export function createExecutionSupervision(): ExecutionSupervision {
         lifecycle: currentCaseExecutionLifecycle(),
         acceptsNewCases() {
             return acceptsNewCases;
+        },
+        closedBoundaryVerdict() {
+            const exhausted = runnerErrors.some(function processExhausted(error) {
+                return error.subtype === 'process-exhaustion';
+            });
+            return exhausted ? 'process-exhausted' : 'crashed';
         },
         activeCases,
         addActiveCase(key, activeCase) {

@@ -81,7 +81,7 @@ export const testNode = suite('benchmark execution contracts', [
         for (const testCase of plan.cases) {
             const attempt = createBenchmarkAttempt(testCase, async function () {
                 return undefined;
-            });
+            }, null);
             scope.assert.throws(function () {
                 return builderBodyForAttempt(testCase, attempt);
             }, { message: 'Test case does not have a builder body.' });
@@ -93,7 +93,7 @@ export const testNode = suite('benchmark execution contracts', [
         const unselected = { ...selected, workId: { ...selected.workId, workload: null } };
         const attempt = createBenchmarkAttempt(unselected, async function () {
             return undefined;
-        });
+        }, null);
         scope.assert.throws(function () {
             return builderBodyForAttempt(unselected, attempt);
         }, { message: 'Benchmark execution requires a selected workload.' });
@@ -103,11 +103,14 @@ export const testNode = suite('benchmark execution contracts', [
         const selected = benchmarkCase();
         const attempt = createBenchmarkAttempt(selected, async function () {
             return undefined;
-        });
-        const body = builderBodyForAttempt({
-            ...selected,
-            workId: { ...selected.workId, workload: { name: 'missing', params: {} } }
-        }, attempt);
+        }, null);
+        const body = builderBodyForAttempt(
+            {
+                ...selected,
+                workId: { ...selected.workId, workload: { name: 'missing', params: {} } }
+            },
+            attempt
+        );
         await scope.assert.rejects(async function () {
             return body(scope);
         }, { message: 'Selected workload is absent from the benchmark definition.' });

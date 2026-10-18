@@ -639,10 +639,30 @@ Progress, attempts, IPC, saved results, and HTML reports carry versioned lifecyc
 evidence; older results retain an explicit absent lifecycle. These defaults and
 public APIs refine the phase model above.
 
-Forced V8 garbage collection is opt-in. Benchmark profiles that run under a
-supervised or hosted process may start Node with `--expose-gc`, but the harness
-only calls `globalThis.gc()` when the benchmark or profile explicitly requests
-forced garbage collection as part of sample cleanup or cooldown.
+Forced V8 garbage collection is opt-in. Benchmark profiles configure
+`garbageCollection: 'off' | 'after-sample'`, defaulting to `off`. Authored
+lifecycle policy adds `garbageCollection: 'off' | 'after-sample' | 'profile-default'`.
+Omitted lifecycle policy inherits the profile default. Explicit benchmark policy
+overrides the profile, including disabling collection for cold-start workloads.
+
+Requested collection runs once after all sample cleanup callbacks and before
+cooldown, after both warmup and measured invocations. It stays outside measured
+regions. Failed invocations still attempt collection after cleanup unless
+cancelled; original failures and any collection failure remain visible.
+Unavailable or failed requested collection is a measurement error, stops further
+sampling, retains incomplete evidence, and blocks baseline writes.
+
+Supervised benchmark children expose GC at startup because collection precedes
+selection. Worker-pool execution resolves a child host with `--expose-gc` only
+when selected, sharded, non-skipped work requests collection. Existing host
+arguments survive; conflicting GC-disable arguments reject resolution. The
+coordinator never enables or invokes GC automatically. Direct engine execution
+cannot request harness GC through ambient exposure alone. Explicit generic
+host arguments remain supported independently of automatic benchmark policy.
+
+Lifecycle evidence version 2 retains resolved policy and completed/failed GC
+counts through progress, attempts, saved results, and HTML. Historical lifecycle
+evidence retains absent GC observations rather than invented counts.
 
 ## Calibration And Normalization
 

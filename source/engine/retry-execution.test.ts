@@ -164,6 +164,7 @@ function deterministicEngine(clock: ReturnType<typeof createDeterministicClock>)
     return createEngine({
         wallClock: clock,
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'disabled',
             readActiveResourceTypes() {
                 return [];

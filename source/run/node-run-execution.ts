@@ -29,6 +29,7 @@ export function createNodeExecutionDependencies(input: NodeExecutionInput): Node
             return createWorkerPoolWithHostProcess(options, input.readEnvironment(), input.startWorkerPoolHost);
         },
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',
             readActiveResourceTypes,
             reporterDispatcher: input.reporterDispatcher,

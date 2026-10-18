@@ -1,4 +1,5 @@
-import { CaseRunnerError } from '../engine/run-result.ts';
+import { CaseRunnerError, isCaseRunnerError } from '../engine/run-result.ts';
+import type { BenchmarkLifecycle } from './benchmark-lifecycle.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 
@@ -56,20 +57,50 @@ async function observeInvocation(
     observe(returned);
 }
 
+type InvocationOutcome = { readonly kind: 'complete'; } | { readonly kind: 'failed'; readonly error: unknown; };
+
+async function attemptInvocation(
+    input: SamplingSessionInput,
+    cleanup: SampleCleanup,
+    observe: (returned: unknown) => void
+): Promise<InvocationOutcome> {
+    try {
+        await observeInvocation(input, cleanup, observe);
+        return { kind: 'complete' };
+    } catch (error: unknown) {
+        return { kind: 'failed', error };
+    }
+}
+
+function collectAfterCleanup(input: SamplingSessionInput, failed: boolean, collectGarbage: () => void): void {
+    try {
+        collectGarbage();
+    } catch (error: unknown) {
+        if (failed && isCaseRunnerError(error)) {
+            input.scope.reportError(error);
+        } else {
+            throw error;
+        }
+    }
+}
+
 export async function measureBenchmarkInvocation(
     input: SamplingSessionInput,
     observe: (returned: unknown) => void,
-    recordCleanup: (result: SampleCleanupResult) => void
+    lifecycle: Pick<BenchmarkLifecycle, 'garbageCollection' | 'recordCleanup'>
 ): Promise<void> {
     const cleanup = createSampleCleanup(input.scope.reportCleanupError);
-    try {
-        await observeInvocation(input, cleanup, observe);
-    } catch (error: unknown) {
-        recordCleanup(await cleanup.finish());
-        throw error;
-    }
+    const invocation = await attemptInvocation(input, cleanup, observe);
     const result = await cleanup.finish();
-    recordCleanup(result);
+    lifecycle.recordCleanup(result);
+    collectAfterCleanup(
+        input,
+        invocation.kind === 'failed' || result.failures > 0,
+        lifecycle.garbageCollection.collect
+    );
+    if (invocation.kind === 'failed') {
+        throw invocation.error;
+    }
     if (result.failures > 0) {
         throw new CaseRunnerError('Benchmark sample cleanup failed.', { subtype: 'measurement', cause: result });
     }

@@ -1,6 +1,8 @@
 import type { WorkloadParameters } from './workload-parameters.ts';
 import type { WorkloadId } from './identity.ts';
 
+export const benchmarkLifecycleVersion = 2;
+
 export type BenchmarkWorkload<Parameters extends WorkloadParameters = WorkloadParameters> = {
     readonly name: string;
     readonly parameters: Parameters;
@@ -107,9 +109,26 @@ type BenchmarkCooldownPolicies = {
 };
 export type BenchmarkCooldownPolicy = BenchmarkCooldownPolicies[keyof BenchmarkCooldownPolicies];
 
-export type BenchmarkLifecyclePolicy = {
+export type BenchmarkGarbageCollectionPolicy = 'after-sample' | 'off';
+export type BenchmarkGarbageCollectionRequest = BenchmarkGarbageCollectionPolicy | 'profile-default';
+export type BenchmarkGarbageCollectionResult = {
+    readonly mode: 'after-sample';
+    readonly completed: number;
+    readonly failures: number;
+} | {
+    readonly mode: 'off';
+};
+
+type BenchmarkLifecycleTiming = {
     readonly warmupSamples: number;
     readonly cooldown: BenchmarkCooldownPolicy;
+};
+
+export type BenchmarkLifecyclePolicy = BenchmarkLifecycleTiming & {
+    readonly garbageCollection: BenchmarkGarbageCollectionRequest;
+};
+export type ResolvedBenchmarkLifecyclePolicy = BenchmarkLifecycleTiming & {
+    readonly garbageCollection: BenchmarkGarbageCollectionPolicy;
 };
 
 type BenchmarkCooldownResults = {
@@ -127,8 +146,9 @@ type BenchmarkCooldownResults = {
 export type BenchmarkCooldownResult = BenchmarkCooldownResults[keyof BenchmarkCooldownResults];
 
 export type BenchmarkLifecycleResult = {
-    readonly version: 1;
-    readonly policy: BenchmarkLifecyclePolicy;
+    readonly version: typeof benchmarkLifecycleVersion;
+    readonly policy: ResolvedBenchmarkLifecyclePolicy;
+    readonly garbageCollection: BenchmarkGarbageCollectionResult | null;
     readonly warmup: {
         readonly samples: number;
         readonly metrics: Readonly<Record<string, BenchmarkMetricSummary>>;

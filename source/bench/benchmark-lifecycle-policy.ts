@@ -15,11 +15,13 @@ export const defaultRuntimeCooldownPolicy: Extract<BenchmarkCooldownPolicy, { re
     });
 
 export const defaultBenchmarkLifecyclePolicy: BenchmarkLifecyclePolicy = Object.freeze({
+    garbageCollection: 'profile-default',
     warmupSamples: 32,
     cooldown: Object.freeze({ mode: 'off' })
 });
 
 const benchmarkLifecyclePolicySchema = z.strictObject({
+    garbageCollection: z.enum([ 'off', 'after-sample', 'profile-default' ]),
     warmupSamples: z.number().int().min(0).max(maximumRetainedSamples),
     cooldown: z.discriminatedUnion('mode', [
         z.strictObject({ mode: z.literal('off') }),

@@ -27,6 +27,7 @@ function metadataCommand(processModel: 'supervised-process' | 'worker-pool'): Ru
 }
 function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
     return createRunFacts({
+        hostProcess: null,
         benchmarkHost: null,
         benchmarkCalibration: null,
         benchmarkPlacement: {

@@ -40,6 +40,14 @@ type SuiteCallSignatures = {
 };
 
 describe('@overkill-dev/bench', function () {
+    test('exports explicit GC request and resolved policy types through both bench surfaces', function () {
+        expect<bench.BenchmarkLifecyclePolicy['garbageCollection']>().type.toBe<
+            'after-sample' | 'off' | 'profile-default'
+        >();
+        expect<bench.ResolvedBenchmarkLifecyclePolicy['garbageCollection']>().type.toBe<'after-sample' | 'off'>();
+        expect<standard.BenchmarkGarbageCollectionRequest>().type.toBe<bench.BenchmarkGarbageCollectionRequest>();
+        expect<standard.BenchmarkGarbageCollectionResult>().type.toBe<bench.BenchmarkGarbageCollectionResult>();
+    });
     test('preserves object and positional overloads', function () {
         expect<typeof bench.test>().type.toBe<TestCallSignatures>();
         expect<typeof bench.skippedTest>().type.toBe<SkippedTestCallSignatures>();

@@ -1,11 +1,16 @@
 import { z } from 'zod/v4';
-import type { BenchmarkExecutionResult, BudgetStatistic } from '../engine/benchmark-result.ts';
+import {
+    benchmarkLifecycleVersion,
+    type BenchmarkExecutionResult,
+    type BenchmarkLifecycleResult,
+    type BudgetStatistic
+} from '../engine/benchmark-result.ts';
 import { workloadIdSchema } from '../engine/identity-schema.ts';
 import { minimumInferentialSamples, maximumRetainedSamples } from '../engine/benchmark-limits.ts';
 
 const minimumCooldownMilliseconds = 100;
 const maximumCooldownMilliseconds = 60_000;
-export const benchmarkLifecyclePolicySchema = z.strictObject({
+const legacyLifecyclePolicySchema = z.strictObject({
     warmupSamples: z.number().int().min(0).max(maximumRetainedSamples),
     cooldown: z.discriminatedUnion('mode', [
         z.strictObject({ mode: z.literal('off') }),
@@ -15,6 +20,13 @@ export const benchmarkLifecyclePolicySchema = z.strictObject({
             timeoutMilliseconds: z.number().int().gt(minimumCooldownMilliseconds).max(maximumCooldownMilliseconds)
         })
     ])
+});
+
+export const benchmarkLifecyclePolicySchema = legacyLifecyclePolicySchema.extend({
+    garbageCollection: z.enum([ 'off', 'after-sample', 'profile-default' ]).default('off')
+});
+const resolvedLifecyclePolicySchema = legacyLifecyclePolicySchema.extend({
+    garbageCollection: z.enum([ 'off', 'after-sample' ])
 });
 
 export const budgetStatisticSchema: z.ZodType<BudgetStatistic> = z.discriminatedUnion('kind', [
@@ -48,9 +60,9 @@ const rawSamplesSchema = z.strictObject({
     reference: z.string().nullable(),
     reason: z.string().nullable()
 });
-const lifecycleResultSchema = z.strictObject({
+const legacyLifecycleResultSchema = z.strictObject({
     version: z.literal(1),
-    policy: benchmarkLifecyclePolicySchema,
+    policy: legacyLifecyclePolicySchema,
     warmup: z.strictObject({
         samples: z.number().int().nonnegative(),
         metrics: z.record(z.string(), metricSummarySchema),
@@ -70,6 +82,31 @@ const lifecycleResultSchema = z.strictObject({
         })
     ])
 });
+const lifecycleResultSchema = z.union([
+    legacyLifecycleResultSchema.extend({
+        version: z.literal(benchmarkLifecycleVersion),
+        policy: resolvedLifecyclePolicySchema,
+        garbageCollection: z
+            .discriminatedUnion('mode', [
+                z.strictObject({ mode: z.literal('off') }),
+                z.strictObject({
+                    mode: z.literal('after-sample'),
+                    completed: z.number().int().nonnegative(),
+                    failures: z.number().int().nonnegative()
+                })
+            ])
+            .nullable()
+    }),
+    legacyLifecycleResultSchema.transform(function historicalGarbageCollection(value): BenchmarkLifecycleResult {
+        return {
+            ...value,
+            version: benchmarkLifecycleVersion,
+            policy: { ...value.policy, garbageCollection: 'off' as const },
+            garbageCollection: null
+        };
+    })
+]);
+
 export const benchmarkResultSchema: z.ZodType<BenchmarkExecutionResult> = z.strictObject({
     lifecycle: lifecycleResultSchema.nullable().default(null),
     workload: workloadIdSchema,

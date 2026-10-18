@@ -374,3 +374,16 @@ for the exact formula and signal policy.
 Listing does not observe the host and records an uncalibrated one-worker cap.
 Supervised runs stay serial. Incompatible mixed worker lifecycles remain plan
 errors. Placement is frozen before samples; host conditions are not rechecked.
+
+Forced GC defaults to off. Set profile `garbageCollection: 'after-sample'` or
+benchmark lifecycle `garbageCollection: 'after-sample'` to request one synchronous
+collection after every warmup and measured invocation, after sample cleanup and
+before cooldown. Lifecycle `off` overrides an enabled profile; `profile-default`
+inherits it. Supplied lifecycle objects must include this field.
+
+GC runs outside measurement and requires supervised or hosted benchmark execution.
+The runner supplies child flags and resolves a host when selected worker work needs
+GC. Direct engine execution with requested GC fails even if the caller exposes GC.
+Failed invocations still collect after cleanup unless cancelled. Collection failure
+retains incomplete readings and blocks baseline writes. Lifecycle evidence records
+resolved policy and collection counts; historical results retain absent GC evidence.

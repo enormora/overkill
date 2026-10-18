@@ -31,6 +31,7 @@ function executionDependencies(
     wallClock: DeterministicClock
 ): ExecutionSupervisionDependencies {
     return {
+        benchmarkEnvironment: null,
         globalErrorObserver: createDisabledExecutionGlobalErrorObserver(),
         wallClock
     };

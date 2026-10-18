@@ -72,6 +72,7 @@ function createEventLog(): EventLog {
 
 function command(): WorkerPoolCommand {
     return {
+        benchmarkGarbageCollection: null,
         attachmentEndpoint: null,
         retryPolicy: null,
         collectionTimeoutMilliseconds: 100,

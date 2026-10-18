@@ -1,4 +1,5 @@
 import type { Clock } from '@enormora/clock';
+import type { BenchmarkExecutionEnvironment } from './benchmark-garbage-collection.ts';
 import {
     invalidTimeoutControlFailure,
     runTestCase,
@@ -42,6 +43,7 @@ export type ExecuteTimeoutPolicy = {
 };
 export type ConcurrentCase = ExecutionConcurrentCase;
 export type ExecutionSupervisionDependencies = {
+    readonly benchmarkEnvironment: BenchmarkExecutionEnvironment | null;
     readonly globalErrorObserver: ExecutionGlobalErrorObserver;
     readonly runtimePolicy?: TestRuntimePolicy | null;
     readonly wallClock: Clock;
@@ -240,6 +242,7 @@ async function runTestCaseWithPolicy(
             input.benchmark.write(result);
             await input.onBenchmarkUpdate(result);
         },
+        benchmarkEnvironment: input.dependencies.benchmarkEnvironment,
         attempt: input.attempt,
         controller: input.controller,
         runtimePolicy: input.dependencies.runtimePolicy ?? null
@@ -543,16 +546,9 @@ type CaseExecutionInput = Pick<
     'attempt' | 'dependencies' | 'onBenchmarkUpdate' | 'supervision' | 'testCase' | 'timeoutPolicy'
 >;
 
-function closedBoundaryVerdict(supervision: ExecutionSupervision): PerTestResult['verdict'] {
-    const exhausted = supervision.runnerErrors.some(function processExhausted(error) {
-        return error.subtype === 'process-exhaustion';
-    });
-    return exhausted ? 'process-exhausted' : 'crashed';
-}
-
 export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {
     if (input.dependencies.globalErrorObserver.hasFatalError() || !input.supervision.acceptsNewCases()) {
-        return createTerminalCase(input.testCase, closedBoundaryVerdict(input.supervision), 0, null);
+        return createTerminalCase(input.testCase, input.supervision.closedBoundaryVerdict(), 0, null);
     }
     if (input.testCase.execution.kind === 'skip') {
         return await runTestCase(input.testCase, input.dependencies.wallClock);

@@ -24,6 +24,7 @@ function createTimingDeliveryEngine(): Engine {
 
     return createEngine({
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',
             readActiveResourceTypes() {
                 return [];

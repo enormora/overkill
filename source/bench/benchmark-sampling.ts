@@ -13,7 +13,11 @@ async function warmBenchmark(
     lifecycle: BenchmarkLifecycle
 ): Promise<void> {
     while (lifecycle.warmupSamples() < input.lifecycle.warmupSamples) {
-        await measureBenchmarkInvocation(input, lifecycle.observeWarmup, lifecycle.recordCleanup);
+        await measureBenchmarkInvocation(
+            input,
+            lifecycle.observeWarmup,
+            lifecycle
+        );
         await lifecycle.settle();
         if (lifecycle.warmupSamples() % maximumSamplesPerTurn === 0) {
             if (lifecycle.warmupSamples() < input.lifecycle.warmupSamples) {
@@ -31,7 +35,11 @@ async function collectSamples(
     lifecycle: BenchmarkLifecycle
 ): Promise<void> {
     while (state.samples() < input.policy.maximumSamples) {
-        await measureBenchmarkInvocation(input, state.observe, lifecycle.recordCleanup);
+        await measureBenchmarkInvocation(
+            input,
+            state.observe,
+            lifecycle
+        );
         await lifecycle.settle();
         if (await state.checkpoint()) {
             return;
@@ -47,6 +55,7 @@ export async function sampleBenchmark(input: SamplingSessionInput): Promise<Asse
     const state = createSamplingState(input, lifecycle);
     try {
         await state.progress();
+        lifecycle.garbageCollection.validate();
         await warmBenchmark(input, state, lifecycle);
         await collectSamples(input, state, lifecycle);
         return await state.finish();

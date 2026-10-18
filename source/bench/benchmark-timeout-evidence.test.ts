@@ -48,7 +48,7 @@ function createTimedBenchmark(): TimedBenchmark {
         testCase: plan.cases[0],
         attempt: { index: 0 },
         supervision: createExecutionSupervision(),
-        dependencies: { wallClock, globalErrorObserver },
+        dependencies: { benchmarkEnvironment: null, wallClock, globalErrorObserver },
         timeoutPolicy: { hardTimeoutMilliseconds: 100, timeoutMilliseconds: 10 }
     });
     return {

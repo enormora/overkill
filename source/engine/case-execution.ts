@@ -77,6 +77,7 @@ type FinishedScope = {
 };
 
 export type RunTestCaseOptions = {
+    readonly benchmarkEnvironment: BenchmarkAttempt['benchmarkEnvironment'];
     readonly onBenchmarkUpdate: BenchmarkAttempt['updateResult'];
     readonly attempt: AttemptId;
     readonly controller: AbortController;
@@ -284,7 +285,10 @@ async function runBuilderCaseBody(
 ): Promise<ExecutedBody> {
     const lifecycle = createTestScopeLifecycle(recorder);
     const runBody = async function runUserBody(): Promise<AssertionResult> {
-        return await lifecycle.runBody(options.controller.signal, builderBodyForAttempt(testCase, benchmarkAttempt));
+        return await lifecycle.runBody(
+            options.controller.signal,
+            builderBodyForAttempt(testCase, benchmarkAttempt)
+        );
     };
     let prepared = false;
     const prepare = async function prepareCaseArtifacts(): Promise<void> {
@@ -466,6 +470,7 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
         async onBenchmarkUpdate() {
             return undefined;
         },
+        benchmarkEnvironment: null,
         attempt: { index: 0 },
         controller,
         runtimePolicy: null
@@ -527,7 +532,7 @@ export async function runTestCase(
     }
 
     const recorder = createAssertionRecorder();
-    const benchmarkAttempt = createBenchmarkAttempt(testCase, options.onBenchmarkUpdate);
+    const benchmarkAttempt = createBenchmarkAttempt(testCase, options.onBenchmarkUpdate, options.benchmarkEnvironment);
     const completed = await runCaseBody(testCase, recorder, options, benchmarkAttempt);
     const executedBody = { ...completed, runnerErrors: [ ...completed.runnerErrors, ...benchmarkAttempt.errors() ] };
     const outcome = createOutcome(recorder, executedBody, testCase.execution.bodyMode === 'benchmark');

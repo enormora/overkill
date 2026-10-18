@@ -16,6 +16,7 @@ export function createTestEngine(): Engine {
 
     return createEngine({
         execute: createExecute({
+            benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'enabled',
             readActiveResourceTypes: readNoActiveResourceTypes,
             reporterDispatcher: createReporterDispatcher({

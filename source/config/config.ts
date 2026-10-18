@@ -462,6 +462,7 @@ function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkPr
 
     return {
         attachments: attachmentLimitsSchema.parse(profile.attachments),
+        garbageCollection: profile.garbageCollection,
         baselines: profile.baselines,
         host: profile.host,
         execution,

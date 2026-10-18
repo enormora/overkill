@@ -40,6 +40,7 @@ function workId(): TestWorkId {
 
 function command(): WorkerPoolCommand {
     return {
+        benchmarkGarbageCollection: null,
         attachmentEndpoint: null,
         retryPolicy: null,
         collectionTimeoutMilliseconds: 100,
