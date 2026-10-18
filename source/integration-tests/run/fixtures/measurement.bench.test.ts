@@ -2,6 +2,9 @@ import { appendFile } from 'node:fs/promises';
 import { benchmark, wallClockMeasurement, workload, type BenchmarkMeasureContext, type BenchmarkMetrics, type WorkloadParameters } from '../../../packages/bench/bench.entry-point.ts';
 import { defineResource, defineRuntime, defineRuntimeMatrix, withResource, withRuntime } from '../../../packages/test/resources.entry-point.ts';
 
+type FixtureHandle = { readonly size: number; active: boolean; };
+function fixtureHandle(size: number): FixtureHandle { return { size, active: false }; }
+
 const fixture = defineResource({
     name: 'workload-fixture', scope: 'per-run', requirements: [],
     workload(parameters) {
@@ -13,11 +16,11 @@ const fixture = defineResource({
         const size = context.workload?.parameters.size;
         if (typeof size !== 'number') { throw new TypeError('Fixture requires workload size.'); }
         await appendFile('target/measurement-lifecycle.txt', `acquire:${size}\n`);
-        return { size };
+        return fixtureHandle(size);
     },
     async dispose(handle) { await appendFile('target/measurement-lifecycle.txt', `dispose:${handle.size}\n`); },
     serializeHandle(handle) { return { size: handle.size }; },
-    deserializeHandle(payload) { return payload; }
+    deserializeHandle(payload) { return fixtureHandle(payload.size); }
 });
 
 const matrix = defineRuntimeMatrix({
@@ -29,7 +32,11 @@ const matrix = defineRuntimeMatrix({
 });
 type Context = BenchmarkMeasureContext<WorkloadParameters>;
 const measure = withResource<typeof fixture, Context, BenchmarkMetrics>(fixture, (context) => {
-    const measured = context.sample.measure(() => context.resources['workload-fixture'].size);
+    const fixture = context.resources['workload-fixture'];
+    if (fixture.active) { throw new Error('Previous sample was not cleaned up.'); }
+    fixture.active = true;
+    context.sample.cleanup(() => { fixture.active = false; });
+    const measured = context.sample.measure(() => fixture.size);
     return { size: measured.value, durationMicroseconds: measured.metrics.durationMicroseconds ?? 0 };
 });
 

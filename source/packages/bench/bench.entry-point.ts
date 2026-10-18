@@ -47,7 +47,8 @@ export type {
     BenchmarkKind,
     BenchmarkMeasureContext,
     BenchmarkMetrics,
-    BenchmarkOptions
+    BenchmarkOptions,
+    BenchmarkSample
 } from '../../bench/benchmark-definition.ts';
 export type { MetricBudget, BudgetThreshold } from '../../bench/benchmark-budget-definition.ts';
 export type {
@@ -64,9 +65,18 @@ export type {
     MetricReadings
 } from '../../bench/measurement-types.ts';
 export type {
+    BenchmarkCooldownPolicy,
+    BenchmarkCooldownResult,
+    BenchmarkLifecyclePolicy,
+    BenchmarkLifecycleResult,
     BenchmarkExecutionResult,
     BudgetStatistic,
     MetricProvenance,
     MetricReading,
     SamplingPolicy
 } from '../../engine/benchmark-result.ts';
+
+export {
+    defaultBenchmarkLifecyclePolicy,
+    defaultRuntimeCooldownPolicy
+} from '../../bench/benchmark-lifecycle-policy.ts';

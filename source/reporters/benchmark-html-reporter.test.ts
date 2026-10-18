@@ -45,7 +45,46 @@ function unboundedBenchmarkHtml(scope: TestScope): string {
         ''
     );
 }
+function lifecycleReport(): string {
+    const result = benchmarkHtmlFixture('lifecycle');
+    const measuredTest = result.perTest[0];
+    if (measuredTest?.benchmark === null || measuredTest === undefined) {
+        throw new Error('Missing benchmark fixture.');
+    }
+    const benchmark = {
+        ...measuredTest.benchmark,
+        lifecycle: {
+            version: 1 as const,
+            policy: { warmupSamples: 32, cooldown: { mode: 'off' as const } },
+            warmup: {
+                samples: 32,
+                metrics: measuredTest.benchmark.metrics,
+                rawSamples: measuredTest.benchmark.rawSamples
+            },
+            cleanup: { callbacks: 36, failures: 0 },
+            cooldown: { mode: 'off' as const }
+        }
+    };
+    return renderBenchmarkHtml(
+        createBenchmarkHtmlReport({ ...result, perTest: [ { ...measuredTest, benchmark } ] }),
+        ''
+    );
+}
+
 export const testNode = suite('benchmark HTML reporter', [
+    test('renders warmup and cleanup separately from measured distributions', function (scope: TestScope) {
+        const html = lifecycleReport();
+        scope.assert.includes(html, 'Warmup samples');
+        scope.assert.includes(html, '<td>32</td><td>36</td><td>0</td><td>off</td>');
+        scope.assert.includes(html, 'Warmup metric');
+        scope.assert.includes(html, 'Warmup raw evidence: recorded');
+        return scope.assert.collect();
+    }),
+    test('identifies historical lifecycle evidence as unavailable', function (scope: TestScope) {
+        const html = renderBenchmarkHtml(createBenchmarkHtmlReport(benchmarkHtmlFixture('historical')), '');
+        scope.assert.includes(html, 'Lifecycle evidence unavailable.');
+        return scope.assert.collect();
+    }),
     test('rejects blank output paths and missing benchmark evidence', function (scope: TestScope) {
         scope.assert.throws(function () {
             createBenchmarkHtmlReporter({ outputFile: ' '.repeat(3) });

@@ -192,7 +192,36 @@ geometrically and share error probability across all distinct budgeted targets
 and checkpoints within each workload. Quantile estimates use linear interpolation (type 7), with
 binomial order-statistic intervals; means use
 bounded empirical Bernstein intervals. Diagnostic metrics do not delay stopping.
-No samples are discarded and no hidden warmup runs occur.
+Measured samples are retained separately from warmup observations.
+
+Warmup runs automatically: 32 invocations of the same `measure(...)` callback
+precede measured sampling for each workload and runtime variant. No additional
+authoring is required. Warmup uses the same resources, collectors, and sample
+cleanup, but its readings never contribute to measured counts, intervals, or
+budgets. A fixed count does not establish optimization or statistical stationarity.
+
+The third argument accepts `lifecycle` alongside `annotations`, `controls`,
+and `sampling`. Existing options without `lifecycle` use
+`defaultBenchmarkLifecyclePolicy`. Set `lifecycle.warmupSamples` to zero for
+cold-start measurements; counts from zero through 65536 are supported.
+
+Register invocation-owned resets with `sample.cleanup(callback)`. Callbacks
+may be synchronous or asynchronous, run in reverse order after every warmup
+or measured invocation, and finish before the next invocation. They also run
+when preparation, measurement, or metric validation fails. Registration after
+cleanup starts is rejected. Preparation, cleanup, and cooldown remain outside
+`sample.measure(...)`. `context.cleanup(...)` keeps its attempt lifetime and
+runs after the attempt signal is aborted. Sample cleanup runs while that
+signal remains live unless the attempt has already been cancelled.
+
+Cooldown is off by default. Set `lifecycle.cooldown` to
+`defaultRuntimeCooldownPolicy` to wait for two consecutive 50 ms windows with
+event-loop utilization at most 10%, bounded by 1000 ms. Explicit runtime
+policies configure `maximumEventLoopUtilization` in `[0, 1]` and
+`timeoutMilliseconds` above 100 ms and at most 60000 ms. Busy windows reset the
+consecutive count. Cooldown runs after each successful invocation's cleanup,
+including the final invocation, and stops on case cancellation. It observes
+the executing event loop rather than host-wide CPU, memory, or thermal state.
 
 A budget passes when its interval is wholly inside its bounds, fails when the
 interval establishes a violation, and continues sampling while it overlaps a
@@ -202,7 +231,8 @@ at the sample limit produce an incomplete result and a measurement error,
 preserving established failures. The existing case timeout also applies.
 
 Resource and runtime wrappers surround the entire sampling session, so fixtures
-are acquired once per attempt. Cleanup callbacks run after the attempt.
+are acquired once per attempt, surrounding warmup and measured sampling.
+Attempt cleanup callbacks run after the attempt.
 `workload: parseParameters` opts a resource into workload-specific acquisition
 and cache identity. Acquisition and disposal receive parsed parameters and
 identity through `context.workload`; independent resources receive `null` and
@@ -216,8 +246,18 @@ sample count, metric provenance, budget estimates, intervals, and decisions.
 Reporters receive `benchmark-progress` and the final summary on `test-end`.
 Raw readings use bounded `benchmark-samples` attachments, with explicit omission
 when retention limits or a missing attachment coordinator prevent recording.
-Warmup, per-sample cleanup, external-process measurement, and browser collectors
-remain later milestones. Benchmark HTML reports are available through
+Versioned `lifecycle` evidence records warmup counts and summaries, sample
+cleanup counts and failures, and runtime cooldown observations. Warmup readings
+use separate `benchmark-warmup-samples` attachments under the same retention
+limits. Completed readings survive cleanup or cooldown failure; sampling stops
+with incomplete evidence and failures block baseline writes. Cooperative
+interruptions retain confirmed prefixes; hard termination retains the last
+delivered progress snapshot. Historical results without lifecycle evidence
+decode it as `null`.
+
+External-process measurement and browser collectors remain later milestones.
+Benchmark HTML reports show warmup and lifecycle evidence separately from
+measured distributions and budgets, and are available through
 `createBenchmarkHtmlReporter` from `@overkill-dev/test/reporters`.
 
 Performance baseline commands use adapters configured in the benchmark profile:

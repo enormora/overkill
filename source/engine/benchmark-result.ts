@@ -7,6 +7,7 @@ export type BenchmarkWorkload<Parameters extends WorkloadParameters = WorkloadPa
 };
 
 export type BenchmarkDefinitionSummary = {
+    readonly lifecycle: BenchmarkLifecyclePolicy | null;
     readonly kind: string;
     readonly workloads: readonly BenchmarkWorkload[];
     readonly measurement: {
@@ -81,6 +82,7 @@ export type BenchmarkMetricSummary = {
 };
 
 export type BenchmarkExecutionResult = {
+    readonly lifecycle: BenchmarkLifecycleResult | null;
     readonly workload: WorkloadId;
     readonly policy: SamplingPolicy;
     readonly samples: number;
@@ -93,4 +95,45 @@ export type BenchmarkExecutionResult = {
         readonly reference: string | null;
         readonly reason: string | null;
     };
+};
+
+type BenchmarkCooldownPolicies = {
+    readonly off: { readonly mode: 'off'; };
+    readonly runtime: {
+        readonly mode: 'runtime';
+        readonly maximumEventLoopUtilization: number;
+        readonly timeoutMilliseconds: number;
+    };
+};
+export type BenchmarkCooldownPolicy = BenchmarkCooldownPolicies[keyof BenchmarkCooldownPolicies];
+
+export type BenchmarkLifecyclePolicy = {
+    readonly warmupSamples: number;
+    readonly cooldown: BenchmarkCooldownPolicy;
+};
+
+type BenchmarkCooldownResults = {
+    readonly off: { readonly mode: 'off'; };
+    readonly runtime: {
+        readonly mode: 'runtime';
+        readonly strategy: 'event-loop-utilization-v1';
+        readonly completed: number;
+        readonly windows: number;
+        readonly durationMicroseconds: number;
+        readonly lastUtilization: number | null;
+        readonly outcome: 'cancelled' | 'pending' | 'settled' | 'timed-out' | 'unavailable';
+    };
+};
+export type BenchmarkCooldownResult = BenchmarkCooldownResults[keyof BenchmarkCooldownResults];
+
+export type BenchmarkLifecycleResult = {
+    readonly version: 1;
+    readonly policy: BenchmarkLifecyclePolicy;
+    readonly warmup: {
+        readonly samples: number;
+        readonly metrics: Readonly<Record<string, BenchmarkMetricSummary>>;
+        readonly rawSamples: BenchmarkExecutionResult['rawSamples'];
+    };
+    readonly cleanup: { readonly callbacks: number; readonly failures: number; };
+    readonly cooldown: BenchmarkCooldownResult;
 };

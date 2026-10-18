@@ -1,6 +1,6 @@
 import { createDeterministicClock } from '@enormora/clock';
 import { createRoot, createTestPlan } from '../packages/engine/engine.entry-point.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createExecutionSupervision, executeCaseBody } from '../engine/execution-supervision.ts';
 import { createDisabledExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
 import { benchmark } from './benchmark-authoring.ts';
@@ -8,6 +8,8 @@ import { wallClockMeasurement } from './measurement-strategy.ts';
 import { workload } from './workload.ts';
 
 const globalErrorObserver = createDisabledExecutionGlobalErrorObserver();
+
+type PerTestResult = Awaited<ReturnType<typeof executeCaseBody>>['result'];
 
 type TimedBenchmark = {
     readonly suspended: Promise<undefined>;
@@ -28,7 +30,7 @@ function createTimedBenchmark(): TimedBenchmark {
                 index += 1;
                 return index;
             });
-            if (index === 129) {
+            if (index === 161) {
                 gates.suspended.resolve(undefined);
                 await gates.resumed.promise;
             }
@@ -59,7 +61,28 @@ function createTimedBenchmark(): TimedBenchmark {
     };
 }
 
+function assertSoftCancellation(scope: TestScope, result: PerTestResult): void {
+    const measured = result.benchmark;
+    scope.require.defined(measured);
+    scope.assert.partialDeepEqual(measured, {
+        samples: 129,
+        status: 'incomplete',
+        lifecycle: { warmup: { samples: 32 } }
+    });
+    scope.assert.equal(result.verdict, 'fail');
+}
+
 export const testNode = suite('benchmark timeout evidence', [
+    test('soft cancellation retains a completed reading before stopping admission', async function (scope: TestScope) {
+        const timed = createTimedBenchmark();
+        scope.cleanup(timed.resume);
+        await timed.suspended;
+        timed.wallClock.advanceByMilliseconds(10);
+        timed.resume();
+        const completed = await timed.execution;
+        assertSoftCancellation(scope, completed.result);
+        return scope.assert.collect();
+    }),
     test('hard timeout preserves the last confirmed checkpoint in results and attempts', async function (scope) {
         const timed = createTimedBenchmark();
         scope.cleanup(timed.resume);

@@ -1,10 +1,18 @@
+import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
 import { readTestBodyFamily } from './test-body.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
-import type { CaseRunnerError, RunnerError } from './run-result.ts';
+import {
+    isCaseRunnerError,
+    permissionDeniedRunnerErrorFromThrown,
+    type CaseRunnerError,
+    type RunnerError
+} from './run-result.ts';
 import type { TestBody } from './test-node.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type BenchmarkAttempt = {
+    readonly cleanupErrors: () => readonly unknown[];
+    readonly reportCleanupError: (error: unknown) => void;
     readonly result: () => BenchmarkExecutionResult | null;
     readonly errors: () => readonly RunnerError[];
     readonly updateResult: (result: BenchmarkExecutionResult) => Promise<void>;
@@ -17,7 +25,14 @@ export function createBenchmarkAttempt(
 ): BenchmarkAttempt {
     let result: BenchmarkExecutionResult | null = null;
     const errors: RunnerError[] = [];
+    const cleanupErrors: unknown[] = [];
     return {
+        cleanupErrors() {
+            return cleanupErrors;
+        },
+        reportCleanupError(error) {
+            cleanupErrors.push(error);
+        },
         result() {
             return result;
         },
@@ -48,6 +63,7 @@ export function builderBodyForAttempt(testCase: TestPlanCase, attempt: Benchmark
     }
     return async function runBenchmark(scope) {
         return execution.body({
+            reportCleanupError: attempt.reportCleanupError,
             cleanup: scope.cleanup,
             signal: scope.signal,
             workload,
@@ -68,4 +84,43 @@ export function testBodyExecutionError(testCase: TestPlanCase): TypeError | null
         );
     }
     return null;
+}
+
+type FinishedCaseCleanup = {
+    readonly cleanupErrors: readonly ThrownErrorRecord[];
+    readonly runnerErrors: readonly RunnerError[];
+};
+export function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
+    if (isCaseRunnerError(error)) {
+        return error.runnerError(testCase.id, testCase.workId);
+    }
+
+    return permissionDeniedRunnerErrorFromThrown(error, {
+        attributedTo: testCase.id,
+        attributedToWork: testCase.workId,
+        boundary: null,
+        diagnosticChannel: null,
+        hook: null,
+        phase: 'body'
+    });
+}
+
+export function finishedCaseCleanup(testCase: TestPlanCase, cleanupErrors: readonly unknown[]): FinishedCaseCleanup {
+    const bodyErrors: ThrownErrorRecord[] = [];
+    const runnerErrors: RunnerError[] = [];
+
+    for (const error of cleanupErrors) {
+        const runnerError = caseRunnerError(testCase, error);
+
+        if (runnerError === null) {
+            bodyErrors.push(createThrownErrorRecord(error));
+        } else {
+            runnerErrors.push(runnerError);
+        }
+    }
+
+    return {
+        cleanupErrors: bodyErrors,
+        runnerErrors
+    };
 }

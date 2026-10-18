@@ -82,7 +82,7 @@ export const testNode = suite('benchmark evidence contracts', [
             diagnosticMetrics: [ 'noise' ],
             budgets: { one: { size: { maximum: 4, statistic: { kind: 'observed-maximum' } } } }
         }, { annotations: {}, controls: {}, sampling: { ...defaultSamplingPolicy, minimumSamples: 2 } }));
-        scope.assert.equal(index, 2);
+        scope.assert.equal(index, 34);
         scope.assert.equal(result.summary.passed, 1);
         scope.assert.equal(result.perTest[0]?.benchmark?.rawSamples.status, 'omitted');
         return scope.assert.collect();
@@ -98,7 +98,7 @@ export const testNode = suite('benchmark evidence contracts', [
                     index += 1;
                     return index;
                 });
-                return { value: index === 129 ? Number.NaN : index % 2 };
+                return { value: index === 161 ? Number.NaN : index % 2 };
             },
             diagnosticMetrics: [],
             budgets: { one: { value: { maximum: 0.5 } } }

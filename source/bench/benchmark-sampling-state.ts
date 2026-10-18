@@ -1,28 +1,26 @@
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
-import type { BenchmarkBudgetResult, MetricReading } from '../engine/benchmark-result.ts';
-import { CaseRunnerError } from '../engine/run-result.ts';
+import type { BenchmarkBudgetResult, BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
+import { CaseRunnerError, isCaseRunnerError } from '../engine/run-result.ts';
 import { evaluateMetricBudget, inferentialTargetKey } from './benchmark-budget.ts';
-import {
-    createMetricObservations,
-    normalizeBenchmarkMetrics,
-    type MetricObservations
-} from './benchmark-observations.ts';
+import type { MetricObservations } from './benchmark-observations.ts';
+import { commitObservation, createObservationSet } from './benchmark-observation-set.ts';
 import {
     generatedBudgetAssertions,
     recordRawSamples,
     summarizedSamplingResult
 } from './benchmark-sampling-evidence.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
-import { unavailableMetric } from './metric-reading.ts';
 import { MeasurementContractError } from './measurement-contract-error.ts';
+import type { BenchmarkLifecycle } from './benchmark-lifecycle.ts';
 
 const checkpointGrowth = 2;
 export type SamplingState = {
+    readonly progress: () => Promise<void>;
     readonly samples: () => number;
     readonly observe: (returned: unknown) => void;
     readonly checkpoint: () => Promise<boolean>;
     readonly finish: () => Promise<AssertionResult>;
-    readonly interrupt: (error: unknown) => Promise<never>;
+    readonly interrupt: (error: unknown) => Promise<AssertionResult>;
 };
 
 function inferentialTargetCount(input: SamplingSessionInput): number {
@@ -53,58 +51,30 @@ function settledBudgets(results: readonly BenchmarkBudgetResult[]): boolean {
     });
 }
 
-function observationReadings(
-    returned: unknown,
-    observations: ReadonlyMap<string, MetricObservations>
-): readonly (readonly [MetricObservations, MetricReading])[] {
-    const normalized = normalizeBenchmarkMetrics(returned);
-    for (const name of Object.keys(normalized)) {
-        if (!observations.has(name)) {
-            throw new TypeError(`Returned metric ${name} requires a budget or diagnostic declaration.`);
-        }
-    }
-
-    return Array.from(observations, function reading([ name, metric ]) {
-        const value = normalized[name] ??
-            unavailableMetric('Metric was not returned by measure().', {
-                collector: 'measure-return',
-                scope: 'custom',
-                unit: 'number'
-            });
-        metric.validate(value);
-        return [ metric, value ];
-    });
-}
-
-function commitObservation(returned: unknown, observations: ReadonlyMap<string, MetricObservations>): void {
-    try {
-        const readings = observationReadings(returned, observations);
-        readings.forEach(function append([ metric, reading ]) {
-            metric.append(reading);
-        });
-    } catch (error: unknown) {
-        throw new CaseRunnerError('Benchmark returned invalid measurement data.', {
-            subtype: 'measurement',
-            cause: error
-        });
-    }
-}
-
-export function createSamplingState(input: SamplingSessionInput): SamplingState {
+export function createSamplingState(input: SamplingSessionInput, lifecycle: BenchmarkLifecycle): SamplingState {
     const names = new Set([
         ...input.budgets.map(function metricName(budget) {
             return budget.metric;
         }),
         ...input.diagnostics
     ]);
-    const observations = new Map(Array.from(names, function metric(name) {
-        return [ name, createMetricObservations() ];
-    }));
+    const observations = createObservationSet(names);
     let samples = 0;
     let checkpoint = 0;
     let nextCheckpoint = input.policy.minimumSamples;
     let budgets: readonly BenchmarkBudgetResult[] = [];
+    const summarize = function summarize(status: BenchmarkExecutionResult['status']): BenchmarkExecutionResult {
+        return summarizedSamplingResult(input, observations, {
+            samples,
+            budgets,
+            status,
+            lifecycle: lifecycle.snapshot()
+        });
+    };
     return {
+        async progress() {
+            await input.scope.updateResult(summarize('sampling'));
+        },
         samples() {
             return samples;
         },
@@ -118,20 +88,15 @@ export function createSamplingState(input: SamplingSessionInput): SamplingState 
             }
             checkpoint += 1;
             budgets = evaluateBudgets(input, observations, checkpoint, samples);
-            await input.scope.updateResult(
-                summarizedSamplingResult(input, observations, { samples, budgets, status: 'sampling' })
-            );
+            await input.scope.updateResult(summarize('sampling'));
             nextCheckpoint = Math.min(nextCheckpoint * checkpointGrowth, input.policy.maximumSamples);
             return settledBudgets(budgets);
         },
         async finish() {
+            await lifecycle.retainWarmup();
             const complete = settledBudgets(budgets);
             const result = await recordRawSamples(
-                summarizedSamplingResult(input, observations, {
-                    samples,
-                    budgets,
-                    status: complete ? 'complete' : 'incomplete'
-                }),
+                summarize(complete ? 'complete' : 'incomplete'),
                 observations
             );
             await input.scope.updateResult(result);
@@ -146,13 +111,28 @@ export function createSamplingState(input: SamplingSessionInput): SamplingState 
             return generatedBudgetAssertions(budgets, input);
         },
         async interrupt(error) {
-            await input.scope.updateResult(
-                summarizedSamplingResult(input, observations, { samples, budgets, status: 'incomplete' })
-            );
-            if (error instanceof MeasurementContractError) {
-                throw new CaseRunnerError(error.message, { subtype: 'measurement', cause: error });
+            try {
+                await lifecycle.retainWarmup();
+                await input.scope.updateResult(await recordRawSamples(summarize('incomplete'), observations));
+            } catch (evidenceError: unknown) {
+                throw new AggregateError(
+                    [ error, evidenceError ],
+                    'Benchmark execution and evidence delivery failed.',
+                    { cause: evidenceError }
+                );
             }
-            throw error;
+            const interruption = error instanceof MeasurementContractError
+                ? new CaseRunnerError(error.message, { subtype: 'measurement', cause: error })
+                : error;
+            if (
+                isCaseRunnerError(interruption) && budgets.some(function failed(budget) {
+                    return budget.decision === 'fail';
+                })
+            ) {
+                input.scope.reportError(interruption);
+                return generatedBudgetAssertions(budgets, input);
+            }
+            throw interruption;
         }
     };
 }

@@ -1,5 +1,5 @@
 import type { WorkloadParameters } from '../engine/workload-parameters.ts';
-import type { BenchmarkDefinitionSummary } from '../engine/benchmark-result.ts';
+import type { BenchmarkDefinitionSummary, BenchmarkLifecyclePolicy } from '../engine/benchmark-result.ts';
 import type { BenchmarkDefinition, BenchmarkOptions } from './benchmark-definition.ts';
 import {
     normalizeMetricBudget,
@@ -10,6 +10,7 @@ import { workload } from './workload.ts';
 import { validateSamplingPolicy } from './sampling-policy.ts';
 import { asyncMeasurementStrategy, measurementStrategy } from './measurement-strategy.ts';
 import type { AsyncMeasurementStrategy, MeasurementStrategy } from './measurement-types.ts';
+import { resolveBenchmarkLifecyclePolicy } from './benchmark-lifecycle-policy.ts';
 
 type BenchmarkCore = Pick<
     BenchmarkDefinition<WorkloadParameters>,
@@ -18,6 +19,7 @@ type BenchmarkCore = Pick<
 type MeasurementDefinition = { readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy; };
 type BenchmarkDefinitionData = BenchmarkCore & MeasurementDefinition;
 export type ResolvedBenchmarkDefinition = {
+    readonly lifecycle: BenchmarkLifecyclePolicy;
     readonly summary: BenchmarkDefinitionSummary;
     readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy;
     readonly budgets: ReadonlyMap<string, readonly NormalizedMetricBudget[]>;
@@ -103,7 +105,9 @@ export function resolveBenchmarkDefinition(
         ? measurementStrategy(definition.measurement.collectors)
         : asyncMeasurementStrategy(definition.measurement.collectors);
     const budgets = resolveBudgets(definition, names);
+    const lifecycle = resolveBenchmarkLifecyclePolicy(options.lifecycle);
     const summary = Object.freeze({
+        lifecycle,
         kind: definition.kind,
         workloads: Object.freeze(workloads.map(function workloadSummary(work) {
             return Object.freeze({ name: work.name, parameters: work.parameters });
@@ -113,5 +117,5 @@ export function resolveBenchmarkDefinition(
         budgets: Object.freeze(Object.fromEntries(budgets)),
         policy: validateSamplingPolicy(options.sampling)
     });
-    return { summary, measurement, budgets };
+    return { summary, measurement, budgets, lifecycle };
 }

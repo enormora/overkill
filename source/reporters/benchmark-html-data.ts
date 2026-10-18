@@ -1,4 +1,8 @@
-import type { BenchmarkBudgetResult, BenchmarkMetricSummary } from '../engine/benchmark-result.ts';
+import type {
+    BenchmarkBudgetResult,
+    BenchmarkLifecycleResult,
+    BenchmarkMetricSummary
+} from '../engine/benchmark-result.ts';
 import type { PerformanceMetricComparison } from '../baselines/performance-adapter.ts';
 import type { RunSummary } from '../engine/run-result.ts';
 
@@ -32,7 +36,12 @@ export type BenchmarkHtmlReport = {
     readonly status: string;
     readonly summary: RunSummary;
     readonly metadata: string;
-    readonly cases: readonly { readonly label: string; readonly verdict: string; readonly details: string; }[];
+    readonly cases: readonly {
+        readonly label: string;
+        readonly verdict: string;
+        readonly details: string;
+        readonly lifecycle: BenchmarkLifecycleResult | null;
+    }[];
     readonly baselineDetails: string;
     readonly diagnostics: readonly string[];
 };

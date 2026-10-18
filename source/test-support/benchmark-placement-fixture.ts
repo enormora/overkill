@@ -56,6 +56,7 @@ export function quietHost(): BenchmarkHostAssessment {
 
 export function definition(): BenchmarkDefinitionSummary {
     return {
+        lifecycle: null,
         kind: 'bundle-size',
         workloads: [ { name: 'small', parameters: {} } ],
         measurement: { mode: 'sync', collectors: [] },

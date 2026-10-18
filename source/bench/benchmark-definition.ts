@@ -1,6 +1,6 @@
 import type { WorkloadParameters } from '../engine/workload-parameters.ts';
 import type { BenchmarkScope } from '../engine/test-node.ts';
-import type { MetricReading, SamplingPolicy } from '../engine/benchmark-result.ts';
+import type { BenchmarkLifecyclePolicy, MetricReading, SamplingPolicy } from '../engine/benchmark-result.ts';
 import type { AuthoringAnnotations, AuthoringControls } from '../packages/test/authoring-test-data.ts';
 import type { MeasurementSample, MeasurementStrategy } from './measurement-types.ts';
 import type { MetricBudget } from './benchmark-budget-definition.ts';
@@ -17,9 +17,12 @@ type BenchmarkKinds = {
 };
 export type BenchmarkKind = BenchmarkKinds[keyof BenchmarkKinds];
 export type BenchmarkMetrics = Readonly<Record<string, MetricReading | number>>;
+export type BenchmarkSample<Sample> = Sample & {
+    readonly cleanup: (callback: () => Promise<void> | void) => void;
+};
 export type BenchmarkMeasureContext<Parameters extends WorkloadParameters, Sample = MeasurementSample> = {
     readonly workload: Workload<string, Parameters>;
-    readonly sample: Sample;
+    readonly sample: BenchmarkSample<Sample>;
     readonly signal: AbortSignal;
     readonly cleanup: BenchmarkScope['cleanup'];
 };
@@ -38,6 +41,7 @@ export type BenchmarkDefinition<
     readonly budgets: Readonly<Record<string, Readonly<Record<string, MetricBudget | readonly MetricBudget[]>>>>;
 };
 export type BenchmarkOptions = {
+    readonly lifecycle?: BenchmarkLifecyclePolicy;
     readonly annotations: AuthoringAnnotations;
     readonly controls: AuthoringControls;
     readonly sampling: SamplingPolicy;

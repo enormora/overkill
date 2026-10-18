@@ -70,6 +70,7 @@ export function createBenchmarkHtmlReport(result: RunResult): BenchmarkHtmlRepor
             : JSON.stringify(metadata, null, jsonIndentation),
         cases: result.perTest.map(function caseDetails(test) {
             return {
+                lifecycle: test.benchmark?.lifecycle ?? null,
                 label: `${formatCaseId(test.id)} / ${formatBenchmarkWorkload(test)}`,
                 verdict: test.verdict,
                 details: JSON.stringify(

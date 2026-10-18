@@ -18,6 +18,8 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { testNode as benchmarkEvidenceTestNode } from './benchmark-evidence.test.ts';
 import { testNode as measurementRuntimePolicyTestNode } from './measurement-runtime-policy.test.ts';
 import { testNode as benchmarkTimeoutEvidenceTestNode } from './benchmark-timeout-evidence.test.ts';
+import { testNode as benchmarkLifecycleTestNode } from './benchmark-lifecycle.test.ts';
+import { testNode as benchmarkCooldownTestNode } from './benchmark-runtime-cooldown.test.ts';
 
 async function executeBenchmark(node: TestCase): Promise<RunResult> {
     return await execute(
@@ -62,6 +64,8 @@ export const testNode = suite('benchmark authoring and sampling', [
     benchmarkEvidenceTestNode,
     measurementRuntimePolicyTestNode,
     benchmarkTimeoutEvidenceTestNode,
+    benchmarkLifecycleTestNode,
+    benchmarkCooldownTestNode,
     test('expands workloads and stops at the first precise checkpoint', async function (scope) {
         let calls = 0;
         const result = await executeBenchmark(benchmark('workloads', {
@@ -78,7 +82,7 @@ export const testNode = suite('benchmark authoring and sampling', [
             diagnosticMetrics: [],
             budgets: { small: { size: { maximum: 2 } }, large: { size: { maximum: 3 } } }
         }));
-        scope.assert.equal(calls, 256);
+        scope.assert.equal(calls, 320);
         scope.assert.equal(result.summary.passed, 2);
         scope.assert.deepEqual(
             result.perTest.map(function (entry) {

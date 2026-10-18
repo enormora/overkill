@@ -129,6 +129,10 @@ export type { BenchmarkBody, BenchmarkScope, BenchmarkTestCaseOptions } from '..
 export { maximumRetainedSamples, minimumInferentialSamples } from '../../engine/benchmark-limits.ts';
 export type {
     BenchmarkDefinitionSummary,
+    BenchmarkCooldownPolicy,
+    BenchmarkCooldownResult,
+    BenchmarkLifecyclePolicy,
+    BenchmarkLifecycleResult,
     BenchmarkWorkload,
     BenchmarkBudgetResult,
     BenchmarkExecutionResult,

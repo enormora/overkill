@@ -501,6 +501,8 @@ export const testNode = createSuite({
                     'asyncMeasurementStrategy',
                     'availableMetric',
                     'benchmark',
+                    'defaultBenchmarkLifecyclePolicy',
+                    'defaultRuntimeCooldownPolicy',
                     'defaultSamplingPolicy',
                     'defineMacro',
                     'defineParameterizedTestBody',

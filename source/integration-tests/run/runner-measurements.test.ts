@@ -17,6 +17,7 @@ import {
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { runIfMain } from '../direct-launcher.test.ts';
+import { canonicalIdentityJson } from '../../canonical-identity.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/measurement.bench.test.ts';
 const lifecycleFile = 'target/measurement-lifecycle.txt';
@@ -93,6 +94,44 @@ async function assertMeasurementLifecycle(scope: TestScope): Promise<void> {
     scope.assert.deepEqual(lifecycle, [ 'acquire:1', 'acquire:2', 'dispose:1', 'dispose:2' ]);
 }
 
+function assertWarmupEvidence(scope: TestScope, result: Awaited<ReturnType<typeof orchestrator.bench.run>>): void {
+    for (const test of result.perTest) {
+        const lifecycle = test.benchmark?.lifecycle;
+        scope.require.defined(lifecycle);
+        scope.assert.equal(lifecycle.warmup.samples, 32);
+        scope.assert.equal(lifecycle.warmup.rawSamples.status, 'recorded');
+        scope.assert.deepEqual(lifecycle.cleanup, { callbacks: 160, failures: 0 });
+        const artifact = result.artifacts.find(function warmupArtifact(candidate) {
+            return canonicalIdentityJson(candidate.id) ===
+                canonicalIdentityJson(JSON.parse(lifecycle.warmup.rawSamples.reference ?? 'null'));
+        });
+        scope.require.defined(artifact);
+        scope.assert.partialDeepEqual(artifact.payload, {
+            kind: 'runtime-attachment',
+            name: 'benchmark-warmup-samples'
+        });
+    }
+}
+
+function assertMeasurementProgress(scope: TestScope, events: readonly ReporterEvent[]): void {
+    scope.assert.equal(
+        events
+            .filter(function (event) {
+                return event.kind === 'benchmark-progress';
+            })
+            .length,
+        16
+    );
+    scope.assert.equal(
+        events
+            .filter(function (event) {
+                return event.kind === 'test-end' && event.benchmark?.status === 'complete';
+            })
+            .length,
+        4
+    );
+}
+
 async function assertMeasurements(
     scope: TestScope,
     command: RunCommand,
@@ -119,22 +158,8 @@ async function assertMeasurements(
             .length,
         4
     );
-    scope.assert.equal(
-        events
-            .filter(function (event) {
-                return event.kind === 'benchmark-progress';
-            })
-            .length,
-        8
-    );
-    scope.assert.equal(
-        events
-            .filter(function (event) {
-                return event.kind === 'test-end' && event.benchmark?.status === 'complete';
-            })
-            .length,
-        4
-    );
+    assertMeasurementProgress(scope, events);
+    assertWarmupEvidence(scope, result);
     await assertMeasurementLifecycle(scope);
 }
 
