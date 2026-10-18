@@ -3,6 +3,19 @@ import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fi
 import { planMutantInvocation } from './mutation-selection.ts';
 
 export const testNode = suite('mutation coverage selection', [
+    test('rejects a fallback catalog with no runnable cases', function (scope) {
+        const { baseline, options } = mutationCoverageFixture('perTest');
+        const campaign = {
+            ...baseline,
+            catalog: baseline.catalog.map(function intentionalSkip(entry) {
+                return { ...entry, skipReason: 'intentional' };
+            })
+        };
+        scope.assert.throws(function skippedSelection() {
+            planMutantInvocation({ root: '/project', campaign, input: options, ignoreStatic: false });
+        }, { message: 'Stryker requested a mutant selection with no runnable tests.' });
+        return scope.assert.collect();
+    }),
     test('narrows only when the requested cases contain every positive coverage owner', function (scope) {
         const { baseline, options } = mutationCoverageFixture('perTest');
         const covering = Object.keys(baseline.coverage.perTest);

@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import {
     DryRunStatus,
     MutantRunStatus,
@@ -6,11 +7,14 @@ import {
     type MutantRunOptions,
     type MutantRunResult
 } from '@stryker-mutator/api/test-runner';
+import type { RunExecutionReply } from '../run/run.entry-point.ts';
 import { mutationLifecycleInputSchema } from './mutation-lifecycle.ts';
 import { dryMutationResult, mutantExecutionResult } from './mutation-results.ts';
-import { planMutantInvocation } from './mutation-selection.ts';
+import { planMutantInvocation, type MutantInvocationPlan } from './mutation-selection.ts';
 import type { ReadyMutationRunner } from './mutation-runner-lifecycle.ts';
 import type { MutationBaseline } from './mutation-baseline.ts';
+import { mutationTestFiles, type CampaignBaseline } from './mutation-catalog.ts';
+import type { MutationInvocationExpectation } from './mutation-observation.ts';
 
 export type MutationRunnerInvocations = {
     readonly dry: (
@@ -24,12 +28,60 @@ export type MutationRunnerInvocations = {
         remaining: number
     ) => Promise<MutantRunResult>;
 };
+async function dryRunExpectation(
+    runner: ReadyMutationRunner,
+    baseline: MutationBaseline,
+    input: Readonly<DryRunOptions>
+): Promise<Extract<MutationInvocationExpectation, { readonly kind: 'dry'; }>> {
+    const campaign = await baseline.read(runner.client);
+    const testFiles = mutationTestFiles(runner.root, input.testFiles ?? null);
+    if (
+        campaign !== null && (!isDeepStrictEqual(testFiles, campaign.testFiles) ||
+            input.coverageAnalysis !== campaign.coverageAnalysis)
+    ) {
+        throw new Error('Dry run conflicts with the original campaign selection or coverage mode.');
+    }
+    return { kind: 'dry', baseline: campaign, testFiles };
+}
+
+async function resolveMutantInvocation(
+    runner: ReadyMutationRunner,
+    baseline: MutationBaseline,
+    input: Readonly<MutantRunOptions>,
+    ignoreStatic: boolean
+): Promise<MutantInvocationPlan & { readonly campaign: CampaignBaseline; }> {
+    const campaign = await baseline.read(runner.client);
+    if (campaign === null) {
+        throw new Error('Campaign dry-run baseline is unavailable.');
+    }
+    return { campaign, ...planMutantInvocation({ root: runner.root, campaign, input, ignoreStatic }) };
+}
+
 export function createMutationRunnerInvocations(
     baseline: MutationBaseline,
     ignoreStatic: boolean
 ): MutationRunnerInvocations {
+    async function completeDryInvocation(
+        runner: ReadyMutationRunner,
+        reply: RunExecutionReply,
+        coverage: DryRunOptions['coverageAnalysis'],
+        expectation: Extract<MutationInvocationExpectation, { readonly kind: 'dry'; }>
+    ): Promise<DryRunResult> {
+        const result = dryMutationResult(runner.root, reply, coverage, expectation);
+        if (result.status === DryRunStatus.Complete) {
+            await baseline.publish(runner.client, reply, coverage, expectation.testFiles);
+        }
+        return result;
+    }
+
     return {
         async dry(runner, input, remaining) {
+            const started = performance.now();
+            const expectation = await dryRunExpectation(runner, baseline, input);
+            const budget = remaining - (performance.now() - started);
+            if (budget <= 0) {
+                return { status: DryRunStatus.Timeout, reason: 'Campaign baseline delivery exceeded the deadline.' };
+            }
             runner.execution.admitEnvironment('dry', false);
             const reply = await runner.execution.run(
                 mutationLifecycleInputSchema.parse({
@@ -37,23 +89,18 @@ export function createMutationRunnerInvocations(
                     mode: 'dry',
                     activeMutant: null,
                     hitLimit: null,
-                    baseline: null,
+                    baseline: expectation.baseline?.catalog ?? null,
                     selected: null,
                     disableBail: input.disableBail,
-                    files: input.testFiles ?? null
+                    files: expectation.testFiles
                 }),
-                remaining
+                budget
             );
-            const result = dryMutationResult(runner.root, reply, input.coverageAnalysis);
-            if (result.status === DryRunStatus.Complete) {
-                await baseline.publish(runner.client, reply, input.coverageAnalysis);
-            }
-            return result;
+            return await completeDryInvocation(runner, reply, input.coverageAnalysis, expectation);
         },
         async mutant(runner, input, remaining) {
             const started = performance.now();
-            const campaign = await baseline.fetch(runner.client);
-            const { mode, selected } = planMutantInvocation({ root: runner.root, campaign, input, ignoreStatic });
+            const { campaign, mode, selected } = await resolveMutantInvocation(runner, baseline, input, ignoreStatic);
             const budget = remaining - (performance.now() - started);
             if (budget <= 0) {
                 return {
@@ -71,17 +118,16 @@ export function createMutationRunnerInvocations(
                     baseline: campaign.catalog,
                     selected,
                     disableBail: input.disableBail,
-                    files: Array.from(
-                        new Set(campaign
-                            .catalog
-                            .flatMap(function (entry) {
-                                return entry.work.case.file === null ? [] : [ entry.work.case.file ];
-                            }))
-                    )
+                    files: campaign.testFiles
                 }),
                 budget
             );
-            return mutantExecutionResult(runner.root, reply);
+            return mutantExecutionResult(runner.root, reply, {
+                kind: 'mutant',
+                baseline: campaign,
+                selected,
+                disableBail: input.disableBail
+            });
         }
     };
 }

@@ -28,6 +28,7 @@ export function mutationCoverageFixture(
     });
     const baseline = campaignBaselineSchema.parse({
         catalog,
+        testFiles: null,
         coverageAnalysis,
         coverage: {
             static: {},
@@ -49,7 +50,7 @@ export function mutationCoverageFixture(
         baseline,
         reply: {
             kind: 'result',
-            result,
+            result: { ...result, summary: { ...result.summary, planned: catalog.length } },
             deadlineExceeded: false,
             data: {
                 catalog,

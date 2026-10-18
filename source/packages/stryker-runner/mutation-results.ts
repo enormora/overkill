@@ -14,7 +14,7 @@ import {
     type RunExecutionReply
 } from '../run/run.entry-point.ts';
 import { canonicalWork, mutationLifecycleDataSchema, type MutationCatalog } from './mutation-catalog.ts';
-import { mutationObservationError } from './mutation-observation.ts';
+import { mutationObservationError, type MutationInvocationExpectation } from './mutation-observation.ts';
 
 type ResultReply = Extract<RunExecutionReply, { readonly kind: 'result'; }>;
 type LifecycleData = Readonly<ReturnType<typeof mutationLifecycleDataSchema.parse>>;
@@ -100,8 +100,12 @@ function diagnosticMessage(errors: readonly RunnerError[], fallback: string): st
     return message.length === 0 ? fallback : message;
 }
 
-function dryRunDiagnostic(root: string, reply: ResultReply): string | null {
-    const observation = mutationObservationError(root, reply, false);
+function dryRunDiagnostic(
+    root: string,
+    reply: ResultReply,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'dry'; }>
+): string | null {
+    const observation = mutationObservationError(root, reply, expectation);
     if (observation !== null) {
         return observation;
     }
@@ -124,8 +128,13 @@ function fullSuiteCoverage(data: LifecycleData): LifecycleData['coverage'] {
     return { static: counts, perTest: {} };
 }
 
-function completeDryRun(root: string, reply: ResultReply, coverage: 'all' | 'off' | 'perTest'): DryRunResult {
-    const diagnostic = dryRunDiagnostic(root, reply);
+function completeDryRun(
+    root: string,
+    reply: ResultReply,
+    coverage: 'all' | 'off' | 'perTest',
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'dry'; }>
+): DryRunResult {
+    const diagnostic = dryRunDiagnostic(root, reply, expectation);
     if (diagnostic !== null) {
         return { status: DryRunStatus.Error, errorMessage: diagnostic };
     }
@@ -146,7 +155,8 @@ function completeDryRun(root: string, reply: ResultReply, coverage: 'all' | 'off
 export function dryMutationResult(
     root: string,
     reply: RunExecutionReply,
-    coverage: 'all' | 'off' | 'perTest'
+    coverage: 'all' | 'off' | 'perTest',
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'dry'; }>
 ): DryRunResult {
     if (reply.kind === 'failure') {
         return { status: DryRunStatus.Error, errorMessage: reply.failure.message };
@@ -154,7 +164,7 @@ export function dryMutationResult(
     if (reply.kind === 'timeout') {
         return { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' };
     }
-    return completeDryRun(root, reply, coverage);
+    return completeDryRun(root, reply, coverage, expectation);
 }
 
 function supportedCaseOutcome(root: string, result: PerTestResult, errors: readonly RunnerError[]): boolean {
@@ -170,14 +180,26 @@ function supportedCaseOutcome(root: string, result: PerTestResult, errors: reado
         });
 }
 
-function mutantDiagnostic(root: string, reply: ResultReply, data: LifecycleData): string | null {
-    const observation = mutationObservationError(root, reply, true);
+function mutantDiagnostic(
+    root: string,
+    reply: ResultReply,
+    data: LifecycleData,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+): string | null {
+    const observation = mutationObservationError(root, reply, expectation);
     if (observation !== null) {
         return observation;
     }
     const infrastructure = infrastructureErrors(root, data.catalog, reply.result.runnerErrors);
     if (infrastructure.length > 0) {
         return diagnosticMessage(infrastructure, 'Mutant execution failed.');
+    }
+    if (
+        data.bailed && reply.result.perTest.every(function confirmedKill(result) {
+            return !safeMutationFailure(root, result, reply.result.runnerErrors);
+        })
+    ) {
+        return 'Execution stopped without a confirmed eligible failure.';
     }
     const supported = reply.result.perTest.every(function (result) {
         return supportedCaseOutcome(root, result, reply.result.runnerErrors);
@@ -200,9 +222,13 @@ function killedResult(root: string, killed: readonly PerTestResult[], nrOfTests:
     };
 }
 
-function completedMutantResult(root: string, reply: ResultReply): MutantRunResult {
+function completedMutantResult(
+    root: string,
+    reply: ResultReply,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+): MutantRunResult {
     const data = mutationLifecycleDataSchema.parse(reply.data);
-    const diagnostic = mutantDiagnostic(root, reply, data);
+    const diagnostic = mutantDiagnostic(root, reply, data, expectation);
     if (diagnostic !== null) {
         return { status: MutantRunStatus.Error, errorMessage: diagnostic };
     }
@@ -238,7 +264,11 @@ function trackedHitLimitFailure(reply: Extract<RunExecutionReply, { readonly kin
     return hitLimitGuard(reply.failure.message) || guardCause(reply.failure.cause);
 }
 
-export function mutantExecutionResult(root: string, reply: RunExecutionReply): MutantRunResult {
+export function mutantExecutionResult(
+    root: string,
+    reply: RunExecutionReply,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+): MutantRunResult {
     if (reply.kind === 'failure') {
         return trackedHitLimitFailure(reply)
             ? { status: MutantRunStatus.Timeout, reason: 'Mutant exceeded its hit limit.' }
@@ -247,5 +277,5 @@ export function mutantExecutionResult(root: string, reply: RunExecutionReply): M
     if (reply.kind === 'timeout') {
         return { status: MutantRunStatus.Timeout, reason: 'Mutant invocation exceeded its deadline.' };
     }
-    return completedMutantResult(root, reply);
+    return completedMutantResult(root, reply, expectation);
 }

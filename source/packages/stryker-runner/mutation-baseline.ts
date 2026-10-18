@@ -3,17 +3,18 @@ import { campaignBaselineSchema, mutationLifecycleDataSchema, type CampaignBasel
 import type { CampaignClient } from './campaign-client.ts';
 
 export type MutationBaseline = {
-    readonly fetch: (client: CampaignClient) => Promise<CampaignBaseline>;
+    readonly read: (client: CampaignClient) => Promise<CampaignBaseline | null>;
     readonly publish: (
         client: CampaignClient,
         reply: RunExecutionReply,
-        coverageAnalysis: CampaignBaseline['coverageAnalysis']
+        coverageAnalysis: CampaignBaseline['coverageAnalysis'],
+        testFiles: readonly string[] | null
     ) => Promise<void>;
 };
 export function createMutationBaseline(): MutationBaseline {
     const baselines = new Map<'original', CampaignBaseline>();
     return {
-        async fetch(client) {
+        async read(client) {
             const cached = baselines.get('original');
             if (cached !== undefined) {
                 return cached;
@@ -22,16 +23,19 @@ export function createMutationBaseline(): MutationBaseline {
             if (reply.kind !== 'baseline') {
                 throw new Error('Campaign IPC did not return a dry-run baseline.');
             }
-            const baseline = campaignBaselineSchema.parse(reply.baseline);
-            baselines.set('original', baseline);
+            const baseline = campaignBaselineSchema.nullable().parse(reply.baseline);
+            if (baseline !== null) {
+                baselines.set('original', baseline);
+            }
             return baseline;
         },
-        async publish(client, reply, coverageAnalysis) {
+        async publish(client, reply, coverageAnalysis, testFiles) {
             const data = mutationLifecycleDataSchema.parse(reply.data);
             const baseline = campaignBaselineSchema.parse({
                 catalog: data.catalog,
                 coverage: data.coverage,
-                coverageAnalysis
+                coverageAnalysis,
+                testFiles
             });
             const response = await client.request({ kind: 'publish', baseline });
             if (response.kind !== 'accepted') {

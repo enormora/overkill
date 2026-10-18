@@ -4,7 +4,7 @@ import { parseFrozenMicrotestPolicy, parseRunResult, parseRunExecutionFailure } 
 import { campaignBaselineSchema } from './mutation-catalog.ts';
 import { mutationSandboxSchema } from './mutation-sandbox.ts';
 
-export const campaignProtocolVersion = 2;
+export const campaignProtocolVersion = 3;
 
 const jsonSchema: z.ZodType<JsonValue> = z.json();
 
@@ -40,7 +40,7 @@ export const campaignResponseSchema = z.strictObject({
     response: z.discriminatedUnion('kind', [
         z.strictObject({ kind: z.literal('accepted') }),
         z.strictObject({ kind: z.literal('policy'), policy: z.unknown().transform(parseFrozenMicrotestPolicy) }),
-        z.strictObject({ kind: z.literal('baseline'), baseline: campaignBaselineSchema }),
+        z.strictObject({ kind: z.literal('baseline'), baseline: campaignBaselineSchema.nullable() }),
         z.strictObject({ kind: z.literal('error'), message: z.string() }),
         z.strictObject({
             kind: z.literal('result'),

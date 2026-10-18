@@ -886,6 +886,10 @@ Normal in-process execution must preserve their ownership within a shared worker
 ### Identity And Result Contract
 
 Dry-run collection establishes the eligible test catalog and fixed selection.
+Retain the original nullable file restriction, including eligible files with no
+cases. Do not reconstruct that restriction from files represented in the catalog.
+Repeated dry runs validate the original file restriction, coverage mode, and
+catalog before case execution; they cannot replace the original baseline.
 Normalize sandbox file origins to canonical project-relative paths. Encode
 `CaseId` structurally, including parameter identity; display names and source
 positions are presentation data. Use the complete executable identity when a
@@ -902,6 +906,8 @@ an explicit empty filter means no tests. Unknown IDs, duplicate IDs,
 changed case identities or selection metadata, or a requested test becoming
 skipped are adapter errors, never successful survival. Empty mutant selections
 execute nothing and return an error rather than claiming survival or coverage.
+A selection with no runnable cases after valid coverage fallback is also empty;
+intentional skips remain visible in the dry-run catalog.
 Mutated collection failures are reported as
 errors rather than silently changing the catalog or widening an invalid filter.
 

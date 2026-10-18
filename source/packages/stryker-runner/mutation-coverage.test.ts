@@ -16,7 +16,11 @@ export const testNode = suite('mutation coverage delivery', [
             const { reply, baseline } = mutationCoverageFixture(mode);
             const data = mutationLifecycleDataSchema.parse(reply.data);
             const coverage = { ...baseline.coverage, static: { mutant: 4, unloaded: 0 } };
-            const result = dryMutationResult('/project', { ...reply, data: { ...data, coverage } }, mode);
+            const result = dryMutationResult('/project', { ...reply, data: { ...data, coverage } }, mode, {
+                kind: 'dry',
+                baseline: null,
+                testFiles: null
+            });
             if (result.status !== DryRunStatus.Complete || result.mutantCoverage === undefined) {
                 throw new Error('Expected complete coverage results.');
             }
@@ -37,10 +41,15 @@ export const testNode = suite('mutation coverage delivery', [
             function (scope) {
                 const { reply } = mutationCoverageFixture(mode);
                 const data = mutationLifecycleDataSchema.parse(reply.data);
-                const result = dryMutationResult('/project', {
-                    ...reply,
-                    data: { ...data, coverage: { static: {}, perTest: {} } }
-                }, mode);
+                const result = dryMutationResult(
+                    '/project',
+                    {
+                        ...reply,
+                        data: { ...data, coverage: { static: {}, perTest: {} } }
+                    },
+                    mode,
+                    { kind: 'dry', baseline: null, testFiles: null }
+                );
                 if (result.status !== DryRunStatus.Complete) {
                     throw new Error('Expected a complete dry run with empty counters.');
                 }
@@ -58,12 +67,20 @@ export const testNode = suite('mutation coverage delivery', [
             result: { ...reply.result, perTest: reply.result.perTest.slice(0, 1) },
             data: { ...data, selected: data.selected.slice(0, 1), completed: data.completed.slice(0, 1) }
         };
-        scope.assert.equal(dryMutationResult('/project', partial, 'perTest').status, 'error');
         scope.assert.equal(
-            dryMutationResult('/project', {
-                ...reply,
-                result: { ...reply.result, perTest: [] }
-            }, 'perTest')
+            dryMutationResult('/project', partial, 'perTest', { kind: 'dry', baseline: null, testFiles: null }).status,
+            'error'
+        );
+        scope.assert.equal(
+            dryMutationResult(
+                '/project',
+                {
+                    ...reply,
+                    result: { ...reply.result, perTest: [] }
+                },
+                'perTest',
+                { kind: 'dry', baseline: null, testFiles: null }
+            )
                 .status,
             'error'
         );
@@ -72,10 +89,15 @@ export const testNode = suite('mutation coverage delivery', [
     test('rejects unknown owners rather than allowing Stryker to discard their coverage', function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const data = mutationLifecycleDataSchema.parse(reply.data);
-        const result = dryMutationResult('/project', {
-            ...reply,
-            data: { ...data, coverage: { static: {}, perTest: { unknown: { mutant: 1 } } } }
-        }, 'perTest');
+        const result = dryMutationResult(
+            '/project',
+            {
+                ...reply,
+                data: { ...data, coverage: { static: {}, perTest: { unknown: { mutant: 1 } } } }
+            },
+            'perTest',
+            { kind: 'dry', baseline: null, testFiles: null }
+        );
         scope.assert.equal(result.status, 'error');
         return scope.assert.collect();
     }),
@@ -107,11 +129,16 @@ export const testNode = suite('mutation coverage delivery', [
         };
         Reflect.deleteProperty(data, 'coverage');
         scope.assert.throws(function missingMutantCounters() {
-            dryMutationResult('/project', {
-                ...reply,
-                result: { ...reply.result, artifacts: [ artifact ] },
-                data
-            }, 'perTest');
+            dryMutationResult(
+                '/project',
+                {
+                    ...reply,
+                    result: { ...reply.result, artifacts: [ artifact ] },
+                    data
+                },
+                'perTest',
+                { kind: 'dry', baseline: null, testFiles: null }
+            );
         }, { name: 'ZodError' });
         return scope.assert.collect();
     }),
@@ -132,7 +159,11 @@ export const testNode = suite('mutation coverage delivery', [
             const transported = z.json().parse(payload);
             for (const mode of [ 'all', 'off', 'perTest' ] as const) {
                 scope.assert.throws(function readMissingCounters() {
-                    dryMutationResult('/project', { ...reply, data: transported }, mode);
+                    dryMutationResult('/project', { ...reply, data: transported }, mode, {
+                        kind: 'dry',
+                        baseline: null,
+                        testFiles: null
+                    });
                 }, { name: 'ZodError' });
             }
         }
