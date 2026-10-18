@@ -1,4 +1,4 @@
-import { isAbsolute, relative } from 'node:path';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { z } from 'zod/v4';
 import { workIdentityKey, type WorkId, type CollectedRunPlan, type RunSelection } from '../run/run.entry-point.ts';
 
@@ -64,7 +64,10 @@ export const mutationLifecycleDataSchema = z.strictObject({
 });
 
 export function projectFile(root: string, file: string): string {
-    const normalized = (isAbsolute(file) ? relative(root, file) : file).replaceAll('\\', '/');
+    const normalized = relative(root, resolve(root, file.replaceAll('\\', '/'))).replaceAll('\\', '/');
+    if (normalized === '') {
+        throw new Error('Test identity must name a file inside the mutation sandbox.');
+    }
     if (normalized === '..' || normalized.startsWith('../') || isAbsolute(normalized)) {
         throw new Error('Test identity escapes the mutation sandbox.');
     }

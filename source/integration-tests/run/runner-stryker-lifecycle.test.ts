@@ -6,6 +6,7 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { runIfMain } from '../direct-launcher.test.ts';
 import { strykerCampaignScript, strykerHitLimitScript } from './stryker-campaign-scripts.test.ts';
 import { strykerCoverageScript } from './stryker-coverage-scripts.test.ts';
+import { strykerIdentityScript } from './stryker-identity-scripts.test.ts';
 import {
     originalRoot,
     engineUrl,
@@ -71,6 +72,30 @@ export const testNode = createSuite({
         ...processModels.flatMap(function executionModes(processModel) {
             return [ false, true ].flatMap(function stateModes(freshState) {
                 return [
+                    createTestCase({
+                        ...metadata,
+                        title: `${processModel} freshState ${
+                            String(freshState)
+                        } preserves mutation identities across sandboxes`,
+                        async body(scope) {
+                            const outputs: string[] = [];
+                            for (const prefix of [ 'overkill-stryker-identity-', 'overkill-stryker-replacement-' ]) {
+                                const cwd = await campaignProject(scope, prefix);
+                                outputs.push(
+                                    await executeMutationScript(strykerIdentityScript, [
+                                        import.meta.resolve('@stryker-mutator/instrumenter'),
+                                        adapterUrl,
+                                        engineUrl,
+                                        configUrl,
+                                        processModel,
+                                        String(freshState)
+                                    ], cwd)
+                                );
+                            }
+                            scope.assert.equal(outputs[0], outputs[1]);
+                            return scope.assert.collect();
+                        }
+                    }),
                     createTestCase({
                         ...metadata,
                         title: `${processModel} freshState ${

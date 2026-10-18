@@ -77,7 +77,53 @@ function includeIntentionalSkip(reply: ResultReply): ResultReply {
     };
 }
 
+function originAliasReply(): ResultReply {
+    const reply = failedReply([], false, false);
+    const first = firstTestResult(reply.result);
+    const work = { ...first.workId, case: { ...first.id, file: 'nested/../case.test.ts' } };
+    const data = mutationLifecycleDataSchema.parse(reply.data);
+    const id = '["case.test.ts",["root"],"passes",null]';
+    return {
+        ...reply,
+        result: { ...reply.result, perTest: [ { ...first, id: work.case, workId: work } ] },
+        data: {
+            ...data,
+            catalog: data.catalog.map(function canonicalEntry(entry) {
+                return { ...entry, id, work: { ...work, case: { ...work.case, file: 'case.test.ts' } } };
+            }),
+            selected: [ id ],
+            completed: [ id ],
+            coverage: { static: {}, perTest: { [id]: { mutant: 1 } } }
+        }
+    };
+}
+
 export const testNode = suite('Stryker result ownership', [
+    test('matches result aliases to canonical coverage owners and killing IDs', function (scope) {
+        const reply = originAliasReply();
+        const dry = dryMutationResult(root, reply, 'perTest');
+        const mutant = mutantExecutionResult(root, reply);
+        if (
+            dry.status !== DryRunStatus.Complete || mutant.status !== MutantRunStatus.Killed ||
+            dry.mutantCoverage === undefined
+        ) {
+            throw new Error('Expected canonical identity agreement across coverage and native results.');
+        }
+        scope.assert.deepEqual(
+            dry.tests.map(function canonicalTest(testResult) {
+                return { id: testResult.id, file: testResult.fileName };
+            }),
+            [ { id: '["case.test.ts",["root"],"passes",null]', file: 'case.test.ts' } ]
+        );
+        scope.assert.deepEqual(mutant.killedBy, [ '["case.test.ts",["root"],"passes",null]' ]);
+        scope.assert.deepEqual(dry.mutantCoverage, {
+            static: {},
+            perTest: {
+                '["case.test.ts",["root"],"passes",null]': { mutant: 1 }
+            }
+        });
+        return scope.assert.collect();
+    }),
     test('excludes intentional skips from the number of executed mutant tests', function (scope) {
         const reply = includeIntentionalSkip(failedReply([], false, false));
         const mutant = mutantExecutionResult(root, reply);

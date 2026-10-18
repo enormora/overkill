@@ -115,11 +115,20 @@ supervised children belong to that main process. Worker disconnects cancel
 their execution and reap the children. The receiver uses Stryker `10.0.0`'s
 worker marker and generated schema defaults; its sockets do not keep Node alive.
 
-Test IDs use structural work identities and project-relative paths. Every fresh
-collection validates the complete eligible catalog, selection metadata, and
-intentional skips before narrowing. Unknown IDs, catalog drift, unexpected
-skips, and empty mutant filters return `Error`. The adapter expands Stryker's
-sandbox file filters.
+Test IDs encode the complete structured work identity, including parameter keys
+and distinct resource-free runtime variants. Authored suite and case titles
+remain identity components, with suite segments kept separate. Rendered names
+and source line or column positions do not determine IDs.
+File origins use project-relative paths with forward slashes. Absolute sandbox
+paths, dot segments, and separator aliases normalize to the same origin;
+origins outside the sandbox or naming its root fail. Existing canonical IDs
+retain their encoding. Regenerate cached Stryker reports if they contain IDs
+derived from noncanonical path spellings.
+
+Every fresh collection validates the complete eligible catalog, selection
+metadata, and intentional skips before narrowing. Unknown IDs, catalog drift,
+unexpected skips, and empty mutant filters return `Error`. The adapter expands
+Stryker's sandbox file filters.
 
 Set Stryker's `coverageAnalysis` to `perTest` (the normal optimized mode), `all`,
 or `off`. `perTest` returns Stryker's case counters and narrows execution only
