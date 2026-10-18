@@ -4,19 +4,19 @@ import { testNode as profileTestNode } from './microtest-profile.test.ts';
 import { testNode as settingsTestNode } from './runner-options.test.ts';
 import { testNode as policyTestNode } from './mutation-execution-policy.test.ts';
 import { testNode as sandboxTestNode } from './mutation-sandbox.test.ts';
-import { testNode as resultsTestNode } from './mutation-results.test.ts';
 import { testNode as instrumentationTestNode } from './instrumentation-context.test.ts';
 import { testNode as coverageTestNode } from './mutation-coverage.test.ts';
 import { testNode as catalogTestNode } from './mutation-catalog.test.ts';
+import { testNode as dryRunTestNode } from './dry-run-results.test.ts';
 
 export const testNode = suite('Stryker runner', [
     profileTestNode,
     settingsTestNode,
     policyTestNode,
     sandboxTestNode,
-    resultsTestNode,
     instrumentationTestNode,
     coverageTestNode,
     catalogTestNode,
+    dryRunTestNode,
     lifecycleTestNode
 ]);

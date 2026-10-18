@@ -3,7 +3,7 @@ import { z } from 'zod/v4';
 import { suite, test } from '../test/test.entry-point.ts';
 import type { CoverageArtifact } from '../engine/engine.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
-import { dryMutationResult } from './mutation-results.ts';
+import { dryMutationResult } from './dry-run-results.ts';
 import { testNode as selectionTestNode } from './mutation-selection.test.ts';
 import { testNode as baselineTestNode } from './mutation-baseline.test.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';

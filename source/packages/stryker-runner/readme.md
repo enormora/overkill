@@ -138,6 +138,13 @@ catalog before case execution. They cannot replace the original campaign
 baseline. Intentional skips remain in dry-run results; a mutant selection with
 no runnable cases after coverage fallback executes nothing and returns `Error`.
 
+Dry-run results report stable IDs, durations in milliseconds, successes,
+failures, and intentional skips. Assertion, body, and test-contract failures
+remain individual failed tests. Cleanup failures return `Error`, preserving
+affected IDs and complete case failure lists alongside runner diagnostics,
+and do not publish a baseline. Timeouts return `Timeout`. Stryker aborts these
+invocations before mutation execution and produces no mutation score.
+
 Set Stryker's `coverageAnalysis` to `perTest` (the normal optimized mode), `all`,
 or `off`. `perTest` returns Stryker's case counters and narrows execution only
 when the requested cases include every recorded covering case. `all` returns

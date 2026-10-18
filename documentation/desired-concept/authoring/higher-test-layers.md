@@ -943,6 +943,13 @@ errors. Report the actual executed count and confirmed killing IDs.
 The dry run must establish the complete eligible catalog. An intentionally
 skipped case is reported as skipped during the dry run and never demonstrates
 a kill.
+
+Dry-run assertion, body, and test-contract failures remain individual failed
+test results. Case cleanup failures invalidate the dry run as infrastructure
+errors, including when the same case also failed an assertion or timed out.
+Error diagnostics retain the affected stable test IDs and complete failure
+lists alongside runner errors. Such invocations do not publish a campaign
+baseline. Stryker aborts on dry-run errors or timeouts without a mutation score.
 Stryker owns score policy, including its treatment of timeouts and errors.
 
 ### Alternatives And Evidence
