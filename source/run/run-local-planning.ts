@@ -39,6 +39,7 @@ export function createLocalResolvedRunFromTestPlan(
     const facts = freezeValue(createRunFacts({
         benchmarkHost: input.benchmarkHost,
         benchmarkCalibration: input.benchmarkCalibration,
+        benchmarkPlacement: null,
         cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies,
@@ -96,6 +97,7 @@ export function createEmptyShardResolvedRunFromTestPlan(
     const facts = freezeValue(createRunFacts({
         benchmarkHost: input.benchmarkHost,
         benchmarkCalibration: input.benchmarkCalibration,
+        benchmarkPlacement: null,
         cases: [],
         config: input.config,
         dependencies,

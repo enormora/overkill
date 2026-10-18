@@ -155,8 +155,8 @@ export type {
     RunEngineFacts,
     RunEnvironmentFacts,
     RunExecutionRequest,
-    RunFacts,
     RunExecutionFacts,
+    RunFacts,
     RunHostProcessFacts,
     RunHostProcessReason,
     BenchmarkOrchestrator,
@@ -241,6 +241,8 @@ export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
 export type { BenchmarkHostLimits, BenchmarkHostPolicy } from '../../config/benchmark-host.ts';
 export type {
     BenchmarkHostAssessment,
+    BenchmarkPlacementFacts,
+    BenchmarkPlacementLimit,
     BenchmarkHostCheck,
     BenchmarkHostSnapshot,
     HostReading

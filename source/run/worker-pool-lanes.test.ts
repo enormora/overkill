@@ -70,6 +70,7 @@ function assignedLanes(
     const lanes = workerPoolLanes({
         assignmentPolicy,
         availableParallelism,
+        maximumWorkers: null,
         profileMaximum: null,
         requestedWorkers: null,
         units
@@ -102,6 +103,7 @@ export const testNode = createOverkillSuite({
                 const lanes = workerPoolLanes({
                     assignmentPolicy: 'stable',
                     availableParallelism: 5,
+                    maximumWorkers: null,
                     profileMaximum: null,
                     requestedWorkers: null,
                     units
@@ -200,6 +202,7 @@ export const testNode = createOverkillSuite({
                 const lanes = workerPoolLanes({
                     assignmentPolicy: 'stable',
                     availableParallelism: 2,
+                    maximumWorkers: null,
                     profileMaximum: null,
                     requestedWorkers: null,
                     units: [ unit ]
@@ -492,6 +495,7 @@ export const testNode = createOverkillSuite({
                     workerPoolLanes({
                         assignmentPolicy: 'stable',
                         availableParallelism: 1,
+                        maximumWorkers: null,
                         profileMaximum: null,
                         requestedWorkers: null,
                         units: []
@@ -502,6 +506,7 @@ export const testNode = createOverkillSuite({
                     workerPoolLanes({
                         assignmentPolicy: 'stable',
                         availableParallelism: 0,
+                        maximumWorkers: null,
                         profileMaximum: null,
                         requestedWorkers: null,
                         units: [ workUnit('reuse-1', 'reuse') ]

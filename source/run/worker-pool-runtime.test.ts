@@ -119,6 +119,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: [],

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'tstyche';
 import type {
     CoveragePolicy,
+    BenchmarkPlacementFacts,
     RunFacts,
     RunSelection,
     SerializedValue,
@@ -12,6 +13,7 @@ import type {
 
 type RunFactsKeys = readonly [
     'benchmarkHost',
+    'benchmarkPlacement',
     'benchmarkCalibration',
     'cases',
     'coveragePolicy',
@@ -34,6 +36,7 @@ describe('@overkill-dev/run recording', function () {
     });
 
     test('exposes JSON-safe coverage run records with explicit absent facts and metadata', function () {
+        expect<RunFacts['benchmarkPlacement']>().type.toBe<BenchmarkPlacementFacts | null>();
         expect<RunFacts['coveragePolicy']>().type.toBe<CoveragePolicy | null>();
         expect<RunRecordRequest['seed']>().type.toBe<{ readonly value: string; }>();
         expect<RunRecord['facts']>().type.toBe<RunFacts | null>();

@@ -382,12 +382,13 @@ Benchmark profiles configure `testFamily`, `files`, `execution`, `reporters`,
 limits are opt-in hardware-relative percentages. Unavailable configured signals
 block execution; omitted limits remain disabled. See
 [Benchmarking § Execution Strategy](../authoring/benchmarking.md#execution-strategy).
-Current runner
-integration supports isolated serial execution with one lane and hedging off.
+Benchmark execution keeps per-worker scheduling serial, `maxConcurrency: 1`,
+and hedging off. Placement may use multiple lanes only when measurement metadata
+and host observations permit it.
 Collection, soft, and hard timeouts default to 5000, 40000, and 60000 ms;
-soft must not exceed hard, and hard must not exceed 60000 ms. Concurrent work
-groups are rejected until measurement strategy and calibration establish safe
-parallel placement.
+soft must not exceed hard, and hard must not exceed 60000 ms. Concurrent work groups remain rejected; parallelism comes from worker lanes.
+See [Benchmarking § Execution Strategy](../authoring/benchmarking.md#execution-strategy)
+for eligibility, capacity reductions, and recorded decisions.
 Benchmark commands accept explicit `--profile <name>` selection or infer the
 sole benchmark profile in the complete registry when omitted. Zero or multiple
 benchmark profiles require explicit selection. Path operands do not influence

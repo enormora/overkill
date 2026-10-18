@@ -16,6 +16,7 @@ const maximumWorkerCount = 8;
 export type WorkerPoolLaneInput = {
     readonly assignmentPolicy: WorkerPoolAssignmentPolicy;
     readonly availableParallelism: number;
+    readonly maximumWorkers: number | null;
     readonly profileMaximum: number | null;
     readonly requestedWorkers: number | null;
     readonly units: readonly WorkUnit[];
@@ -100,6 +101,7 @@ export function resolveWorkerCountCapacity(input: WorkerPoolLaneInput): WorkerCo
             requestedWorkerCount(input),
             input.availableParallelism,
             configuredWorkerMaximum(input.profileMaximum),
+            configuredWorkerMaximum(input.maximumWorkers),
             hardConstraintWorkerMaximum(input.units),
             input.units.length
         )

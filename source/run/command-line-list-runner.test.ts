@@ -141,6 +141,7 @@ export function createResolvedRun(
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: caseFactsFromPlan(testPlan),

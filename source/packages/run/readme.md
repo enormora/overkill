@@ -183,13 +183,14 @@ benchmark profile when `--profile` is omitted.
 
 Benchmark execution supports worker pools and supervised processes. It defaults
 to reused workers, file work units, serial scheduling, `maxConcurrency: 1`, and
-hedging off. Placement resolves one lane across all work units even when more
-workers are requested. Concurrent groups and hedging are rejected. Timeout
+hedging off. Placement permits parallel lanes for eligible artifact-size
+measurements when host calibration allows it; sensitive or unknown work stays
+serial. Worker requests remain upper bounds. Concurrent groups and hedging are rejected. Timeout
 defaults are collection 5000 ms, soft 40000 ms, and hard 60000 ms; hard overrides
 cannot exceed 60000 ms. Resources, runtime descriptors, artifacts, assertion
 outcomes, and reporter selection follow the regular runner flow. Listing imports
-definitions without executing bodies or acquiring resources. Measurement and
-benchmark budget authoring remain separate milestones.
+definitions without executing bodies or acquiring resources. See the
+[benchmark guide](../bench/readme.md) for measurement and budget authoring.
 
 `orchestrator.bench.baseline` provides `update`, `apply`, `bootstrap`, `diff`,
 and `list`. Execution methods accept a `RunCommand` and explicit timing options;
@@ -540,5 +541,10 @@ configuration errors.
 Executing benchmark commands collect one host snapshot before collection and
 placement. `RunFacts.benchmarkHost` records observations, relative admission
 limits, and their results; other families and listing operations use `null`.
-Configured unavailable signals block execution. See [Host conditions](../bench/readme.md#host-conditions) for limits, formulas, probe availability, and
+`RunFacts.benchmarkPlacement` records the adaptive worker ceiling and its reasons;
+it is null for other families. Listing records an uncalibrated one-worker ceiling.
+Collector-free artifact-size measurements can use parallel lanes; sensitive or
+unknown measurements remain serial. Requested worker and profile caps remain
+visible and may be restricted further by calibration. Configured unavailable
+signals block execution. See [Host conditions](../bench/readme.md#host-conditions) for limits, formulas, probe availability, and
 snapshot timing. Baseline normalization remains in `benchmarkCalibration`.

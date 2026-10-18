@@ -79,3 +79,27 @@ export const benchmarkHostAssessmentSchema = z.strictObject({
 export type BenchmarkHostSnapshot = ReadonlyDeep<z.infer<typeof benchmarkHostSnapshotSchema>>;
 export type BenchmarkHostAssessment = ReadonlyDeep<z.infer<typeof benchmarkHostAssessmentSchema>>;
 export type BenchmarkHostCheck = BenchmarkHostAssessment['checks'][number];
+
+const maximumPlacementLimits = 7;
+const workerMaximumSchema = z.number().int().positive();
+export const benchmarkPlacementFactsSchema = z.strictObject({
+    policy: z.literal('conservative-size-only-v1'),
+    maximumWorkers: workerMaximumSchema,
+    limits: z
+        .array(z.strictObject({
+            reason: z.enum([
+                'measurement',
+                'uncalibrated',
+                'host-evidence',
+                'cpu-headroom',
+                'memory-pressure',
+                'platform-pressure',
+                'process-model'
+            ]),
+            maximumWorkers: workerMaximumSchema
+        }))
+        .max(maximumPlacementLimits)
+});
+
+export type BenchmarkPlacementFacts = ReadonlyDeep<z.infer<typeof benchmarkPlacementFactsSchema>>;
+export type BenchmarkPlacementLimit = BenchmarkPlacementFacts['limits'][number];

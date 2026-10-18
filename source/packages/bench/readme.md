@@ -118,9 +118,11 @@ and diagnostic process usage. List supports locations and orphans.
 Benchmarks use the regular resource lifecycle, assertion results, attachments,
 and configured reporters. Listing imports definitions but does not run bodies,
 acquire resources, instantiate reporters, or write run history.
-Execution defaults to a reused worker pool with serial scheduling, one case at
-a time, and one executor lane across the run. Worker requests and profile caps
-remain visible in execution facts. Supervised execution and fresh workers are
+Execution defaults to a reused worker pool with serial scheduling within each
+worker. Adaptive placement may use multiple lanes for collector-free
+`bundle-size` measurements without timing budgets or diagnostics. Other work
+resolves one lane. Worker requests and profile caps remain visible in execution
+facts. Supervised execution and fresh workers are
 also supported. Hedging and concurrent groups are rejected.
 Default timeouts are 5000 ms for collection, 40000 ms soft, and 60000 ms hard.
 Overrides must keep soft at or below hard and hard at or below 60000 ms.
@@ -304,9 +306,31 @@ in the snapshot belong to that observer; execution host arguments retain their
 ordinary execution facts.
 
 `RunFacts.benchmarkHost` contains the snapshot, configured limits, and check
-results. Version 2 `benchmark-run` artifacts retain the same evidence for JSON
-and HTML reporting, including rejected runs. Version 1 reports remain readable
-with `host: null`. Host observations are separate from
+results. Version 3 `benchmark-run` artifacts retain host evidence and the nullable
+`placement` decision for JSON and HTML reporting, including rejected runs.
+Versions 1 and 2 remain readable with `placement: null`; version 1 also uses
+`host: null`. Host observations are separate from
 `RunFacts.benchmarkCalibration`, which retains CPU normalization references.
 The snapshot describes its recorded moment; collection and fixture startup may
 change conditions afterward. Sampling does not recheck host conditions.
+
+### Adaptive placement
+
+`RunFacts.benchmarkPlacement` records policy `conservative-size-only-v1`,
+`maximumWorkers`, and bounded `limits` with reason and ceiling pairs. Custom
+returned metrics in `bundle-size` benchmarks are trusted to describe artifact
+sizes; no unit declaration or new authoring option is needed. Any collector,
+timing metric budget/diagnostic, other kind, or missing metadata makes the
+selected run serial. Filtering and sharding happen before this decision.
+
+Host capacity can reduce the ceiling further. The runner reserves one CPU and
+subtracts the larger of observed busy CPU equivalents and available one-minute
+load. Missing required evidence, zero available memory, native Linux stalls,
+or Darwin CPU throttling resolve one worker. Existing opt-in host limits still
+block rejected hosts. Ordinary worker and resource caps remain authoritative.
+See [Execution Strategy](../../../documentation/desired-concept/authoring/benchmarking.md#execution-strategy)
+for the exact formula and signal policy.
+
+Listing does not observe the host and records an uncalibrated one-worker cap.
+Supervised runs stay serial. Incompatible mixed worker lifecycles remain plan
+errors. Placement is frozen before samples; host conditions are not rechecked.

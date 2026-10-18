@@ -1,5 +1,5 @@
 import type { Except, JsonValue } from 'type-fest';
-import type { BenchmarkHostAssessment } from '../bench/benchmark-host-snapshot.ts';
+import type { BenchmarkHostAssessment, BenchmarkPlacementFacts } from '../bench/benchmark-host-snapshot.ts';
 import type {
     BenchmarkCalibrationResult,
     BaselineChange,
@@ -221,6 +221,7 @@ export type RunCommand = {
 
 export type RunFacts = {
     readonly benchmarkHost: BenchmarkHostAssessment | null;
+    readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
     readonly coveragePolicy: CoveragePolicy | null;
     readonly cases: readonly RunCaseFacts[];

@@ -17,7 +17,8 @@ import { createCollectedExecutionPlan } from './run-collected-planning.ts';
 import { emptyWorkUnitResourceConstraints } from './run-types.ts';
 import {
     createWorkerPoolPlacementPlan,
-    createWorkerPoolPlacementResolution
+    createWorkerPoolPlacementResolution,
+    type WorkerPoolPlacementPlanInput
 } from './worker-pool-placement-planning.ts';
 import {
     runStartTimeFromMilliseconds,
@@ -176,6 +177,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: [],
@@ -373,39 +375,32 @@ function assertWorkUnitPlanning(scope: OverkillScope, collectedPlan: CollectedRu
 }
 
 function assertPlacementPlanning(scope: OverkillScope, collectedPlan: CollectedRunPlan): void {
+    const input: WorkerPoolPlacementPlanInput = {
+        runConstraints: emptyWorkUnitResourceConstraints,
+        assignmentPolicy: 'case-count-balanced',
+        availableParallelism: 3,
+        profileMaximumWorkers: null,
+        requestedWorkers: null,
+        fileSetForFile,
+        order: 'plan',
+        seed: { value: 1n },
+        selectedPlan: collectedPlan,
+        scheduling: 'concurrent',
+        workDistribution: { mode: 'file' },
+        workerLifecycle: 'reuse'
+    };
     scope.assert.deepEqual(
-        createWorkerPoolPlacementPlan({
-            runConstraints: emptyWorkUnitResourceConstraints,
-            assignmentPolicy: 'case-count-balanced',
-            availableParallelism: 3,
-            profileMaximumWorkers: null,
-            requestedWorkers: null,
-            fileSetForFile,
-            order: 'plan',
-            seed: { value: 1n },
-            selectedPlan: collectedPlan,
-            scheduling: 'concurrent',
-            workDistribution: { mode: 'file' },
-            workerLifecycle: 'reuse'
-        }),
+        createWorkerPoolPlacementPlan(input),
         expectedPlacementPlan()
     );
     scope.assert.deepEqual(
         createWorkerPoolPlacementResolution({
-            runConstraints: emptyWorkUnitResourceConstraints,
+            ...input,
+            maximumWorkers: null,
+            units: workUnitsFromCollectedPlan(input),
             assignmentPolicy: 'duration-history-balanced',
-            availableParallelism: 3,
-            profileMaximumWorkers: null,
-            requestedWorkers: null,
             durationHistoryIndex: null,
-            fileSetForFile,
-            nowMilliseconds: 0,
-            order: 'plan',
-            seed: { value: 1n },
-            selectedPlan: collectedPlan,
-            scheduling: 'concurrent',
-            workDistribution: { mode: 'file' },
-            workerLifecycle: 'reuse'
+            nowMilliseconds: 0
         }),
         {
             durationHistory: null,
@@ -452,6 +447,7 @@ export const testNode = createOverkillSuite({
                     execution: { processModel: 'supervised-process', scheduling: 'concurrent' }
                 });
                 const executionPlan = await createCollectedExecutionPlan({
+                    benchmarkHost: null,
                     collectedPlan: createConstrainedPlan([ { kind: 'serial' } ]),
                     dependencies,
                     durationHistoryIndex: null,

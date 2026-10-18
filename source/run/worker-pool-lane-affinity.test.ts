@@ -36,6 +36,7 @@ function assignedLanes(units: readonly WorkUnit[], availableParallelism: number)
     const lanes = workerPoolLanes({
         assignmentPolicy: 'stable',
         availableParallelism,
+        maximumWorkers: null,
         profileMaximum: null,
         requestedWorkers: null,
         units

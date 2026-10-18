@@ -48,8 +48,9 @@ export function withBenchmarkRunMetadata(
         return result;
     }
     const metadata: BenchmarkRunMetadata = {
-        version: 2,
+        version: 3,
         host: facts.benchmarkHost,
+        placement: facts.benchmarkPlacement,
         node: facts.environment.node,
         calibration: facts.benchmarkCalibration,
         execution: {
@@ -79,8 +80,9 @@ export function withBenchmarkErrorMetadata(
         return result;
     }
     const metadata: BenchmarkRunMetadata = {
-        version: 2,
+        version: 3,
         host,
+        placement: null,
         node: { arch: process.arch, platform: process.platform, version: process.version },
         calibration: null,
         execution: {

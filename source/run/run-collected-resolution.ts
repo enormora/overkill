@@ -66,11 +66,12 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
 
-    const { durationHistory, orderedCases, placementPlan, scheduling, workerCount } =
+    const { benchmarkPlacement, durationHistory, orderedCases, placementPlan, scheduling, workerCount } =
         await createCollectedExecutionPlan(input);
     const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
     const facts = freezeValue(createRunFacts({
         benchmarkHost: input.benchmarkHost,
+        benchmarkPlacement,
         benchmarkCalibration: input.benchmarkCalibration,
         cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
         config: input.config,

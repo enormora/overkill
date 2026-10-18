@@ -25,6 +25,8 @@
         "./test-support/collected-run-fixtures.ts",
         "./test-support/run-if-main.ts",
         "./test-support/benchmark-baseline-fixture.ts",
+        "./test-support/benchmark-host-snapshot.ts",
+        "./test-support/benchmark-placement-fixture.ts",
         "./test-support/coverage-transpilation.ts",
         "./test-support/benchmark-html-fixture.ts",
         "./test-support/run-result-factory.ts"

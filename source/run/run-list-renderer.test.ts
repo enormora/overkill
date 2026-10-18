@@ -120,6 +120,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,
             cases: testPlan.cases.map(function toCaseFacts(testCase) {

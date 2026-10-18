@@ -2,9 +2,10 @@ import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
 import type { RunResult } from '../engine/run-result.ts';
 import { benchmarkCalibrationSchema } from './calibration-schema.ts';
-import { benchmarkHostAssessmentSchema } from './benchmark-host-snapshot.ts';
+import { benchmarkPlacementFactsSchema, benchmarkHostAssessmentSchema } from './benchmark-host-snapshot.ts';
 
-const benchmarkRunMetadataVersion = 2;
+const benchmarkRunMetadataVersion = 3;
+const hostMetadataVersion = 2;
 
 const legacyMetadataSchema = z.strictObject({
     version: z.literal(1),
@@ -19,15 +20,22 @@ const legacyMetadataSchema = z.strictObject({
     }),
     calibration: benchmarkCalibrationSchema.nullable()
 });
-const metadataSchema = legacyMetadataSchema.extend({
-    version: z.literal(benchmarkRunMetadataVersion),
+const hostMetadataSchema = legacyMetadataSchema.extend({
+    version: z.literal(hostMetadataVersion),
     host: benchmarkHostAssessmentSchema.nullable()
+});
+const metadataSchema = hostMetadataSchema.extend({
+    version: z.literal(benchmarkRunMetadataVersion),
+    placement: benchmarkPlacementFactsSchema.nullable()
 });
 export type BenchmarkRunMetadata = ReadonlyDeep<z.infer<typeof metadataSchema>>;
 const recordedMetadataSchema = z.union([
     metadataSchema,
+    hostMetadataSchema.transform(function historicalPlacement(value): BenchmarkRunMetadata {
+        return { ...value, version: benchmarkRunMetadataVersion, placement: null };
+    }),
     legacyMetadataSchema.transform(function legacyHostMetadata(value): BenchmarkRunMetadata {
-        return { ...value, version: benchmarkRunMetadataVersion, host: null };
+        return { ...value, version: benchmarkRunMetadataVersion, host: null, placement: null };
     })
 ]);
 export const benchmarkRunMediaType = 'application/vnd.overkill.benchmark-run+json';

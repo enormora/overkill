@@ -1238,10 +1238,13 @@ This document is the runtime counterpart to several others. Cross-links:
 
 Benchmark profiles enter the same collection, placement, resource/runtime,
 execution, result, attachment, and reporter flow through `orchestrator.bench`.
-Worker-pool placement contributes a run-wide serial and single-worker
-constraint, so all units use one lane. Supervised execution also admits one
-case at a time. Fresh workers and hosted pools retain their ordinary lifecycle
+Worker-pool placement applies a run-wide benchmark safety ceiling after
+filtering and work-unit sharding. Collector-free bundle-size measurements may
+use parallel lanes when host evidence permits it; other measurements resolve
+one lane. Scheduling within each worker remains serial. Supervised execution
+also admits one case at a time. Fresh workers and hosted pools retain their ordinary lifecycle
 semantics. Microtest permission restrictions do not apply to benchmark bodies.
 Listing imports definitions without bodies, resource acquisition, reporter
-creation, or persisted run history. Measurement strategies and calibration
-will determine whether future benchmark workloads can use parallel placement.
+creation, or persisted run history. `RunFacts.benchmarkPlacement` retains the policy ceiling and reduction reasons.
+The ceiling never overrides resource or worker-lifecycle constraints; incompatible
+plans fail before execution. See [Benchmarking § Execution Strategy](../authoring/benchmarking.md#execution-strategy).
