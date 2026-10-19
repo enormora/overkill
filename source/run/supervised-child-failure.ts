@@ -2,11 +2,16 @@ import type { SupervisedChildProcess } from './supervised-child-process.ts';
 import { crashError } from './supervised-run-process-policy.ts';
 import type { SupervisedRunState } from './supervised-run-state.ts';
 
+type ProtocolInterruption = {
+    readonly restricted: boolean;
+    readonly termination: 'cancelled' | 'transport';
+};
+
 export function recordChildProtocolFailure(
     state: SupervisedRunState,
     reason: string,
     observedAtMicroseconds: number,
-    restricted: boolean
+    interruption: ProtocolInterruption
 ): void {
     const activeAttempts = Array.from(state.activeCases.values(), function affectedAttempt(active) {
         return { attempt: active.attempt, case: active.id, work: active.workId };
@@ -16,10 +21,16 @@ export function recordChildProtocolFailure(
         attributedTo: null,
         attributedToAttempt: null,
         attributedToWork: null,
-        cause: { activeAttempts, capability: 'child-process', reason, strictness: 'observed' },
+        cause: {
+            activeAttempts,
+            capability: 'child-process',
+            reason,
+            strictness: 'observed',
+            ...interruption.termination === 'cancelled' ? { termination: 'cancelled' } : {}
+        },
         diagnostics: [ { label: 'strictness', value: 'observed' } ],
         message: reason,
-        subtype: restricted ? 'runtime-policy' : 'crash'
+        subtype: interruption.restricted ? 'runtime-policy' : 'crash'
     });
     state.recordTerminalActiveCases('crashed', observedAtMicroseconds);
 }

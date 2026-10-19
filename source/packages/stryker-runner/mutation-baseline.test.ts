@@ -11,7 +11,11 @@ import type { CampaignClient } from './campaign-client.ts';
 type RegisteredCampaign = {
     readonly client: CampaignClient;
     readonly replacement: CampaignWorker;
+    readonly signal: AbortSignal;
 };
+async function expireNoRequests(): Promise<void> {
+    await Promise.resolve();
+}
 
 async function registeredCampaign(scope: TestScope): Promise<RegisteredCampaign> {
     const baselines = new Map<string, CampaignBaseline>();
@@ -21,12 +25,18 @@ async function registeredCampaign(scope: TestScope): Promise<RegisteredCampaign>
     scope.cleanup(async function disposeCampaignWorkers() {
         await Promise.all([ worker.dispose(), replacement.dispose() ]);
     });
-    await Promise.all([ worker.respond({ kind: 'register', root }), replacement.respond({ kind: 'register', root }) ]);
+    const { signal } = new AbortController();
+    await Promise.all([
+        worker.respond({ kind: 'register', root }, signal, null),
+        replacement.respond({ kind: 'register', root }, signal, null)
+    ]);
     return {
         replacement,
+        signal,
         client: {
+            expireRequests: expireNoRequests,
             async request(request) {
-                return await worker.respond(campaignRequestSchema.shape.request.parse(request));
+                return await worker.respond(campaignRequestSchema.shape.request.parse(request), signal, null);
             },
             dispose() {
                 return undefined;
@@ -38,12 +48,12 @@ async function registeredCampaign(scope: TestScope): Promise<RegisteredCampaign>
 export const testNode = suite('mutation baseline evidence', [
     test('retains initially empty eligible files across worker replacement', async function (scope) {
         const { reply, baseline } = mutationCoverageFixture('perTest');
-        const { client, replacement } = await registeredCampaign(scope);
+        const { client, replacement, signal } = await registeredCampaign(scope);
         const original = createMutationBaseline();
-        scope.assert.equal(await original.read(client), null);
+        scope.assert.equal(await original.read(client, null), null);
         const files = [ 'empty.test.ts', 'first.test.ts', 'second.test.ts', 'unrelated.test.ts' ];
-        await original.publish(client, reply, 'perTest', files);
-        scope.assert.deepEqual(await replacement.respond({ kind: 'fetch' }), {
+        await original.publish(client, reply, { coverageAnalysis: 'perTest', testFiles: files, budget: null });
+        scope.assert.deepEqual(await replacement.respond({ kind: 'fetch' }, signal, null), {
             kind: 'baseline',
             baseline: { ...baseline, testFiles: files }
         });
@@ -52,27 +62,39 @@ export const testNode = suite('mutation baseline evidence', [
     ...([ 'all', 'off', 'perTest' ] as const).map(function coverageMode(mode) {
         return test(`${mode} retains raw counters and mode across replacement workers`, async function (scope) {
             const { baseline, reply } = mutationCoverageFixture(mode);
-            const { client, replacement } = await registeredCampaign(scope);
-            await createMutationBaseline().publish(client, reply, mode, null);
-            scope.assert.deepEqual(await replacement.respond({ kind: 'fetch' }), { kind: 'baseline', baseline });
-            const fetched = await createMutationBaseline().read(client);
+            const { client, replacement, signal } = await registeredCampaign(scope);
+            await createMutationBaseline().publish(client, reply, {
+                coverageAnalysis: mode,
+                testFiles: null,
+                budget: null
+            });
+            scope.assert.deepEqual(await replacement.respond({ kind: 'fetch' }, signal, null), {
+                kind: 'baseline',
+                baseline
+            });
+            const fetched = await createMutationBaseline().read(client, null);
             if (fetched === null) {
                 throw new Error('Missing published campaign baseline.');
             }
             scope.assert.deepEqual(fetched, baseline);
             await scope.assert.rejects(async function conflictingMode() {
-                await createMutationBaseline().publish(client, reply, mode === 'off' ? 'perTest' : 'off', null);
+                await createMutationBaseline().publish(client, reply, {
+                    coverageAnalysis: mode === 'off' ? 'perTest' : 'off',
+                    testFiles: null,
+                    budget: null
+                });
             }, { message: 'Conflicting campaign baseline publication.' });
             return scope.assert.collect();
         });
     }),
     test('does not recover missing baselines from an empty counter object', async function (scope) {
         const { client } = await registeredCampaign(scope);
-        scope.assert.equal(await createMutationBaseline().read(client), null);
+        scope.assert.equal(await createMutationBaseline().read(client, null), null);
         return scope.assert.collect();
     }),
     test('propagates disconnected transport without inventing a baseline', async function (scope) {
         const client: CampaignClient = {
+            expireRequests: expireNoRequests,
             async request() {
                 throw new Error('Campaign IPC disconnected.');
             },
@@ -81,13 +103,14 @@ export const testNode = suite('mutation baseline evidence', [
             }
         };
         await scope.assert.rejects(async function fetchDisconnectedBaseline() {
-            await createMutationBaseline().read(client);
+            await createMutationBaseline().read(client, null);
         }, { message: 'Campaign IPC disconnected.' });
         return scope.assert.collect();
     }),
     test('requires publication acknowledgement before retaining the dry-run baseline', async function (scope) {
         const { reply } = mutationCoverageFixture('perTest');
         const client: CampaignClient = {
+            expireRequests: expireNoRequests,
             async request() {
                 return { kind: 'timeout', data: null };
             },
@@ -96,8 +119,12 @@ export const testNode = suite('mutation baseline evidence', [
             }
         };
         await scope.assert.rejects(async function publishWithoutAcknowledgement() {
-            await createMutationBaseline().publish(client, reply, 'perTest', null);
-        }, { message: 'Campaign IPC did not acknowledge the dry-run baseline.' });
+            await createMutationBaseline().publish(client, reply, {
+                coverageAnalysis: 'perTest',
+                testFiles: null,
+                budget: null
+            });
+        }, { message: 'Invocation deadline exceeded.' });
         return scope.assert.collect();
     }),
     test('rejects incompatible campaign frames and baselines missing their evidence', function (scope) {

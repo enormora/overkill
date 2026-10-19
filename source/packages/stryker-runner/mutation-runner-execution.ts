@@ -1,5 +1,6 @@
 import type { JsonValue } from 'type-fest';
 import {
+    type InvocationBudget,
     normalizeConfig,
     orchestrator,
     type FrozenMicrotestPolicy,
@@ -11,7 +12,7 @@ import { mutationLifecycleUrl } from './mutation-lifecycle.ts';
 export type MutationRunnerExecution = {
     readonly admitEnvironment: (mode: 'dry' | 'runtime' | 'static', reload: boolean) => void;
     readonly environmentLifetime: 'fresh' | 'reused';
-    readonly run: (data: JsonValue, timeoutMilliseconds: number) => Promise<RunExecutionReply>;
+    readonly run: (data: JsonValue, budget: InvocationBudget) => Promise<RunExecutionReply>;
     readonly dispose: () => Promise<void>;
 };
 
@@ -49,17 +50,20 @@ export function createMutationRunnerExecution(input: MutationRunnerExecutionInpu
             loaded = mode === 'dry' ? 'runtime' : mode;
         },
         environmentLifetime: fresh ? 'fresh' : 'reused',
-        async run(data, timeoutMilliseconds) {
+        async run(data, budget) {
             signal.throwIfAborted();
             if (local !== null) {
-                return await local.run({ data, timeoutMilliseconds, signal });
+                return await local.run({
+                    data,
+                    timeoutMilliseconds: budget.remainingMilliseconds(),
+                    signal: AbortSignal.any([ signal, budget.signal ])
+                });
             }
             const reply = await client.request({
                 kind: 'invoke',
                 session: { policy, seed, lifecycle },
-                data,
-                deadlineUnixMilliseconds: Date.now() + timeoutMilliseconds
-            });
+                data
+            }, budget);
             if (reply.kind !== 'result' && reply.kind !== 'failure' && reply.kind !== 'timeout') {
                 throw new Error('Campaign IPC returned an invalid execution reply.');
             }
@@ -68,7 +72,7 @@ export function createMutationRunnerExecution(input: MutationRunnerExecutionInpu
         async dispose() {
             if (local === null) {
                 if (!signal.aborted) {
-                    await client.request({ kind: 'release' });
+                    await client.request({ kind: 'release' }, null);
                 }
             } else {
                 await local.dispose();

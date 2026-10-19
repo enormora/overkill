@@ -17,12 +17,18 @@ export type ExecutionSessionPlanSelection = (
 
 export async function completeSupervisedExecutionSession(
     command: Extract<SupervisedRunCommand, { readonly kind: 'run-session'; }>,
-    sendData: (data: JsonValue) => void,
+    sendData: (data: JsonValue, kind: 'execution-checkpoint' | 'execution-data') => Promise<void>,
     execute: (select: ExecutionSessionPlanSelection) => Promise<RunResult>
 ): Promise<RunResult> {
     const data = createStoredValue<JsonValue>(null);
+    const cancellation = new AbortController();
     try {
-        return await withExecutionLifecycle(command.session, command.policy.moduleBoundary, async function (lifecycle) {
+        return await withExecutionLifecycle(command.session, command.policy.moduleBoundary, {
+            signal: cancellation.signal,
+            async checkpoint(snapshot) {
+                await sendData(snapshot, 'execution-checkpoint');
+            }
+        }, async function (lifecycle) {
             try {
                 return await execute(async function selectEligiblePlan(plan, assignment) {
                     const eligible = supervisedAssignedPlan(plan, assignment);
@@ -33,9 +39,10 @@ export async function completeSupervisedExecutionSession(
                 });
             } finally {
                 data.write(lifecycle.snapshot());
+                await sendData(data.read(), 'execution-checkpoint');
             }
         });
     } finally {
-        sendData(data.read());
+        await sendData(data.read(), 'execution-data');
     }
 }

@@ -774,6 +774,13 @@ test nodes in selected files remain subject to collection-time validation.
   remain outside that ownership boundary. Disable Overkill retries; Stryker
   retains ownership of its infrastructure recovery.
 
+  Use one monotonic budget from invocation entry, including initialization when
+  performed lazily within that invocation. Keep the sender's budget active across
+  IPC and transport remaining durations rather than Unix deadlines. Cancellation
+  must bypass queued work and target the current operation; it must not dispose a
+  surviving initialized session. Explicit initialization outside an invocation
+  does not acquire an invented invocation deadline.
+
 ### Reporting And Persistence
 
 Stryker owns campaign output and reports. Mutation invocations suppress ordinary
@@ -934,6 +941,18 @@ An infrastructure failure invalidates the invocation even after a confirmed
 kill. A timeout during cleanup or continued execution also overrides an earlier
 kill, including when `disableBail` is enabled. Preserve earlier confirmed case
 failures in diagnostics when returning an error or timeout.
+
+Internal lifecycle checkpoints may preserve confirmed failures before another
+case is admitted and before lifecycle disposal. Snapshots can be sampled more
+than once; checkpoints do not establish successful completion or complete
+coverage. A native supervised watchdog timeout remains a timeout when forced
+termination prevents final lifecycle delivery. Unexpected missing delivery
+without timeout evidence remains an error.
+
+A verified Stryker hit-limit guard is timeout evidence even when it is thrown
+during cleanup or wrapped by loading and policy revalidation. Independent
+cleanup, reset, and infrastructure failures retain error precedence.
+
 Stop scheduling further cases after a confirmed kill unless Stryker's
 `disableBail` requests complete execution. Finish admitted work, case cleanup,
 observer shutdown, and final result delivery before returning the kill. Cases

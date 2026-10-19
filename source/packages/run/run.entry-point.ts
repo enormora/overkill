@@ -29,6 +29,13 @@ export const runIfMain = createRunIfMain({
 });
 
 export { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
+export {
+    createInvocationBudget,
+    InvocationDeadlineExceededError,
+    isInvocationCancellation,
+    type InvocationBudget
+} from '../../invocation-budget.ts';
+export { executionTermination } from '../../execution-termination.ts';
 export { parseRunExecutionFailure } from '../../run/execution-failure-schema.ts';
 export { runExecutionFailure, restoreRunExecutionFailure } from '../../run/execution-failure.ts';
 export type { RunExecutionFailure } from '../../run/execution-failure-schema.ts';

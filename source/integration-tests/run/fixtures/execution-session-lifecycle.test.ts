@@ -17,6 +17,7 @@ const modeSchema = z.enum([
     'before-and-dispose',
     'late-result',
     'late-failure',
+    'late-select-and-dispose',
     'duplicate-data',
     'malformed-data',
     'invalid-host-reply',
@@ -71,13 +72,17 @@ export async function createSessionLifecycle(data: JsonValue): Promise<RunExecut
     const events: string[] = [];
     function visit(phase: string): void {
         events.push(phase);
-        if (mode === phase || mode === 'before-and-dispose' && [ 'before', 'dispose' ].includes(phase)) {
+        if (mode === phase || mode === 'before-and-dispose' && [ 'before', 'dispose' ].includes(phase) ||
+            mode === 'late-select-and-dispose' && phase === 'dispose') {
             throw new Error(`Lifecycle ${phase} failed.`);
         }
     }
     return {
         async select(): Promise<RunSelection> {
             visit('select');
+            if (mode === 'late-select-and-dispose') {
+                await waitForPhase(20);
+            }
             if (mode === 'narrow') {
                 return { kind: 'filter', filter: { kind: 'equals', field: 'title', value: 'passes' } };
             }

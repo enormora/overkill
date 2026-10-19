@@ -163,7 +163,7 @@ export const testNode = createSuite({
         }),
         createTestCase({
             ...metadata,
-            title: 'invocation admission closes synchronously on disposal',
+            title: 'disposal closes invocation admission and cancels active execution',
             async body(scope) {
                 const { execution } = await createExecutionProject(
                     scope,
@@ -179,8 +179,9 @@ export const testNode = createSuite({
                 await scope.assert.rejects(async function rejectDisposedInvocation() {
                     return await execution.run(all);
                 }, { message: /disposed/u });
-                const result = await running;
-                scope.assert.equal(result.status, 'passed');
+                await scope.assert.rejects(async function cancelledInvocation() {
+                    await running;
+                }, { message: /aborted/u });
                 await disposal;
                 await execution.dispose();
                 return scope.assert.collect();

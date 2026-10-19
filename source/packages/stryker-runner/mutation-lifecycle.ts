@@ -156,7 +156,11 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
         async completeCase(result, errors) {
             delete instrumentation.context.currentTestId;
             recordMutationCompletion(input.root, selection, admission, result);
-            const classification = diagnostics.record(result, errors);
+            const classification = diagnostics.record(
+                result,
+                errors,
+                input.hitLimit !== null && (instrumentation.context.hitCount ?? 0) > input.hitLimit
+            );
             const stop = input.mode !== 'dry' && !input.disableBail && classification.kind === 'killed';
             bailed = stop;
             return stop ? 'stop' : 'continue';

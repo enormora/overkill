@@ -3,6 +3,7 @@ import { childProcessEnvelope, type ChildProcessEnvelope } from './child-process
 export type ChildProcessOutbox = {
     readonly send: (message: unknown) => void;
     readonly disconnect: () => Promise<void>;
+    readonly flush: () => Promise<void>;
 };
 
 export type SendChildProcessMessage = (
@@ -17,6 +18,14 @@ type ChildProcessIpc = {
 export function createChildProcessOutbox(correlationId: string, ipc: ChildProcessIpc): ChildProcessOutbox {
     const pending = new Set<Promise<null>>();
     let failure: Error | null = null;
+    async function flush(): Promise<void> {
+        while (pending.size > 0) {
+            await Promise.all(pending);
+        }
+        if (failure !== null) {
+            throw failure;
+        }
+    }
 
     return {
         send(message) {
@@ -37,13 +46,12 @@ export function createChildProcessOutbox(correlationId: string, ipc: ChildProces
                 complete(error instanceof Error ? error : new Error('Child IPC send failed.', { cause: error }));
             }
         },
+        flush,
         async disconnect() {
-            while (pending.size > 0) {
-                await Promise.all(pending);
-            }
-            ipc.disconnect?.();
-            if (failure !== null) {
-                throw failure;
+            try {
+                await flush();
+            } finally {
+                ipc.disconnect?.();
             }
         }
     };

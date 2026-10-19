@@ -98,6 +98,9 @@ export function createChildRun(input: ChildHostInput): ChildRunFixture {
             send(message) {
                 messages.push(message);
             },
+            async flush() {
+                await Promise.resolve();
+            },
             setExitCode(code) {
                 exitCode = code;
             },

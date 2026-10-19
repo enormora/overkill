@@ -1,34 +1,45 @@
 import { inspect } from 'node:util';
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
-import type { RunExecutionReply } from '../run/run.entry-point.ts';
-import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
+import { workIdentityKey, type RunExecutionReply } from '../run/run.entry-point.ts';
+import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { mutationDiagnostics, hasMutationExecutionError } from './mutation-diagnostics.ts';
 import { mutationSnapshotError, type MutationInvocationExpectation } from './mutation-observation.ts';
+import { hitLimitGuardMessage, isHitLimitGuard, isWrappedHitLimitGuard } from './mutation-hit-limit.ts';
+
+import { classifyMutationCase } from './mutation-case-classification.ts';
+import { isTimeoutInterruption } from './mutation-timeout.ts';
 
 type InterruptedReply = Exclude<RunExecutionReply, { readonly kind: 'result'; }>;
 type LifecycleData = Readonly<ReturnType<typeof mutationLifecycleDataSchema.parse>>;
 
-function hitLimitGuard(message: string): boolean {
-    return /^Stryker: Hit count limit reached \(\d+\)$/u.test(message);
-}
-
-function guardCause(cause: unknown): boolean {
-    return cause instanceof Error && cause.name === 'Error' && hitLimitGuard(cause.message) &&
-        cause.cause === undefined;
+export function hitLimitCollectionReply(
+    reply: Extract<RunExecutionReply, { readonly kind: 'result'; }>
+): Extract<RunExecutionReply, { readonly kind: 'timeout'; }> | null {
+    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
+    const errors = reply.result.runnerErrors;
+    const guardOnly = errors.length > 0 && errors.every(function collectionGuard(error) {
+        return error.subtype === 'loader' && isWrappedHitLimitGuard(error.cause);
+    });
+    return parsed.data?.hitLimitExceeded === true && reply.result.perTest.length === 0 && guardOnly
+        ? { kind: 'timeout', data: reply.data }
+        : null;
 }
 
 function guardOnlyCause(cause: unknown): boolean {
-    return cause === null || cause === undefined || guardCause(cause);
+    return cause === null || cause === undefined || isHitLimitGuard(cause);
 }
 
 function trackedHitLimitFailure(reply: Extract<InterruptedReply, { readonly kind: 'failure'; }>): boolean {
     if (reply.failure.kind === 'collection-error') {
         return reply.failure.errors.every(function isLoaderGuard(error) {
-            return error.subtype === 'loader' && guardCause(error.cause);
+            return error.subtype === 'loader' && isHitLimitGuard(error.cause);
         });
     }
+    if ([ 'config-error', 'resolution-error' ].includes(reply.failure.kind)) {
+        return isWrappedHitLimitGuard(reply.failure.cause);
+    }
     return reply.failure.kind === 'error' && reply.failure.name === 'Error' &&
-        hitLimitGuard(reply.failure.message) && guardOnlyCause(reply.failure.cause);
+        hitLimitGuardMessage(reply.failure.message) && guardOnlyCause(reply.failure.cause);
 }
 
 function interruptedBailError(
@@ -122,4 +133,42 @@ export function interruptedMutantResult(
         };
     }
     return interruptedSnapshotResult(root, reply, parsed.data, expectation);
+}
+
+export function interruptedCompletedMutant(
+    root: string,
+    reply: Extract<RunExecutionReply, { readonly kind: 'result'; }>,
+    expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
+): MutantRunResult {
+    const errors = reply.result.runnerErrors.filter(function independentFailure(error) {
+        return !isTimeoutInterruption(error);
+    });
+    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
+    const completed = new Set(parsed.data?.completed);
+    const cases = reply.result.perTest.filter(function completedCase(result) {
+        return completed.has(workIdentityKey(canonicalWork(root, result.workId)));
+    });
+    const diagnostics = mutationDiagnostics(
+        cases.map(function observedCase(result) {
+            return {
+                id: workIdentityKey(canonicalWork(root, result.workId)),
+                classification: classifyMutationCase(root, result, errors, parsed.data?.hitLimitExceeded === true)
+            };
+        }),
+        errors
+    );
+    if (hasMutationExecutionError(diagnostics)) {
+        return interruptedMutantResult(root, {
+            kind: 'failure',
+            data: reply.data,
+            failure: {
+                kind: 'error',
+                name: 'Error',
+                stack: null,
+                cause: null,
+                message: diagnostics.infrastructureErrors.join('\n')
+            }
+        }, expectation);
+    }
+    return interruptedMutantResult(root, { kind: 'timeout', data: reply.data }, expectation);
 }

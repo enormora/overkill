@@ -118,7 +118,14 @@ export function processExhaustionError(breach: ProcessBudgetBreach, state: Super
     };
 }
 
-export function crashError(state: SupervisedRunState, reason: string): RunnerError {
+type CrashCause = {
+    readonly activeCases: ReturnType<typeof activeCaseIds>;
+    readonly activeWork: ReturnType<typeof activeWorkIds>;
+    readonly activeAttempts: ReturnType<typeof activeAttemptEvidence>;
+    readonly reason: string;
+};
+
+export function crashError(state: SupervisedRunState, reason: string): RunnerError & { readonly cause: CrashCause; } {
     const activeCases = activeCaseIds(state);
     const activeWork = activeWorkIds(state);
     const [ activeCase = null ] = activeCases;
@@ -132,5 +139,17 @@ export function crashError(state: SupervisedRunState, reason: string): RunnerErr
         diagnostics: [ { label: 'reason', value: reason } ],
         message: reason,
         subtype: 'crash'
+    };
+}
+
+export function hardTimeoutError(state: SupervisedRunState, timeoutMilliseconds: number): RunnerError {
+    const error = crashError(state, 'Supervised child exceeded hard timeout.');
+    return {
+        ...error,
+        cause: {
+            ...error.cause,
+            termination: 'hard-timeout',
+            timeoutMilliseconds
+        }
     };
 }

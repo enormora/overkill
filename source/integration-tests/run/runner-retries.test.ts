@@ -23,7 +23,7 @@ type RetryFixture = { readonly path: string; readonly timeouts: TimeoutPolicy | 
 const fixture: RetryFixture = { path: 'source/integration-tests/run/fixtures/retry-policy.test.ts', timeouts: null };
 const hardTimeoutFixture: RetryFixture = {
     path: 'source/integration-tests/run/fixtures/retry-hard-timeout.test.ts',
-    timeouts: { collectionMilliseconds: 5000, softMilliseconds: 500, hardMilliseconds: 1000 }
+    timeouts: { collectionMilliseconds: 5000, softMilliseconds: 2000, hardMilliseconds: 3000 }
 };
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const workerExecution: IntegrationExecution = {

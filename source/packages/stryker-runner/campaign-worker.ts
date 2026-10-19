@@ -1,6 +1,8 @@
 import { realpath } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 import {
+    InvocationDeadlineExceededError,
+    isInvocationCancellation,
     normalizeConfig,
     orchestrator,
     runExecutionFailure,
@@ -14,8 +16,18 @@ import type { CampaignBaseline } from './mutation-catalog.ts';
 
 type WorkerRequest = Readonly<ReturnType<typeof campaignRequestSchema.parse>['request']>;
 type SessionRequest = Extract<WorkerRequest, { readonly kind: 'invoke'; }>;
+function invocationTimeout(timeoutMilliseconds: number | null): number {
+    if (timeoutMilliseconds === null) {
+        throw new Error('Campaign execution requires an invocation budget.');
+    }
+    return timeoutMilliseconds;
+}
 export type CampaignWorker = {
-    readonly respond: (request: WorkerRequest) => Promise<CampaignResponse>;
+    readonly respond: (
+        request: WorkerRequest,
+        signal: AbortSignal,
+        timeoutMilliseconds: number | null
+    ) => Promise<CampaignResponse>;
     readonly cancel: () => void;
     readonly dispose: () => Promise<void>;
 };
@@ -48,6 +60,14 @@ function fetchBaseline(baselines: ReadonlyMap<string, CampaignBaseline>, root: s
     const baseline = baselines.get(root);
     return { kind: 'baseline', baseline: baseline ?? null };
 }
+function registeredRoot(roots: ReadonlyMap<'sandbox', string>): string {
+    const sandbox = roots.get('sandbox');
+    if (sandbox === undefined) {
+        throw new Error('Campaign worker must register first.');
+    }
+    return sandbox;
+}
+
 export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBaseline>>): CampaignWorker {
     const cancellation = new AbortController();
     const ownership = {
@@ -57,13 +77,6 @@ export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBas
         sessionInput: new Map<'active', SessionRequest['session']>(),
         authority: new Map<'frozen', FrozenMicrotestPolicy>()
     };
-    function registeredRoot(): string {
-        const sandbox = ownership.root.get('sandbox');
-        if (sandbox === undefined) {
-            throw new Error('Campaign worker must register first.');
-        }
-        return sandbox;
-    }
     async function register(sandbox: string): Promise<CampaignResponse> {
         if (ownership.registering.has('started')) {
             throw new Error('Campaign worker is already registered.');
@@ -77,8 +90,8 @@ export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBas
         ownership.session.clear();
         return { kind: 'accepted' };
     }
-    async function invoke(request: SessionRequest): Promise<CampaignResponse> {
-        if (request.session.policy.cwd !== registeredRoot()) {
+    function validateSession(request: SessionRequest): void {
+        if (request.session.policy.cwd !== registeredRoot(ownership.root)) {
             throw new Error('Isolated execution does not belong to the registered sandbox.');
         }
         if (
@@ -89,19 +102,27 @@ export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBas
         if (!isDeepStrictEqual(ownership.authority.get('frozen'), request.session.policy)) {
             throw new Error('Campaign execution conflicts with its frozen policy authority.');
         }
+    }
+    async function invoke(
+        request: SessionRequest,
+        signal: AbortSignal,
+        timeoutMilliseconds: number
+    ): Promise<CampaignResponse> {
+        validateSession(request);
         const execution = ownership.session.get('active') ?? createOwnedExecution(request.session);
         ownership.session.set('active', execution);
         ownership.sessionInput.set('active', request.session);
         return await execution.run({
             data: request.data,
-            timeoutMilliseconds: request.deadlineUnixMilliseconds - Date.now(),
-            signal: cancellation.signal
+            timeoutMilliseconds,
+            signal
         });
     }
     async function freezeRegisteredPolicy(
-        request: Extract<WorkerRequest, { readonly kind: 'resolve-policy'; }>
+        request: Extract<WorkerRequest, { readonly kind: 'resolve-policy'; }>,
+        signal: AbortSignal
     ): Promise<CampaignResponse> {
-        const cwd = registeredRoot();
+        const cwd = registeredRoot(ownership.root);
         if (request.sandbox.root !== cwd || ownership.authority.has('frozen')) {
             throw new Error('Campaign policy registration is invalid.');
         }
@@ -109,26 +130,32 @@ export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBas
             cwd,
             sandbox: request.sandbox,
             settings: parseRunnerOptions(request.settings),
-            signal: cancellation.signal
+            signal
         });
         ownership.authority.set('frozen', policy);
         return { kind: 'policy', policy };
     }
     async function resolvePolicy(
-        request: Extract<WorkerRequest, { readonly kind: 'resolve-policy'; }>
+        request: Extract<WorkerRequest, { readonly kind: 'resolve-policy'; }>,
+        signal: AbortSignal
     ): Promise<CampaignResponse> {
         try {
-            return await freezeRegisteredPolicy(request);
+            return await freezeRegisteredPolicy(request, signal);
         } catch (error: unknown) {
+            if (signal.reason instanceof InvocationDeadlineExceededError && isInvocationCancellation(error, signal)) {
+                return { kind: 'timeout', data: null };
+            }
             return { kind: 'failure', failure: runExecutionFailure(error), data: null };
         }
     }
     async function respondRegistered(
-        request: Exclude<WorkerRequest, { readonly kind: 'register' | 'release'; }>
+        request: Exclude<WorkerRequest, { readonly kind: 'register' | 'release'; }>,
+        signal: AbortSignal,
+        timeoutMilliseconds: number | null
     ): Promise<CampaignResponse> {
-        const sandbox = registeredRoot();
+        const sandbox = registeredRoot(ownership.root);
         if (request.kind === 'resolve-policy') {
-            return await resolvePolicy(request);
+            return await resolvePolicy(request, signal);
         }
         if (request.kind === 'publish') {
             return publishBaseline(baselines, sandbox, request.baseline);
@@ -136,15 +163,18 @@ export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBas
         if (request.kind === 'fetch') {
             return fetchBaseline(baselines, sandbox);
         }
-        return await invoke(request);
+        return await invoke(request, signal, invocationTimeout(timeoutMilliseconds));
     }
     return {
-        async respond(request) {
+        async respond(request, signal, timeoutMilliseconds) {
             if (request.kind === 'release') {
                 return await release();
             }
-            cancellation.signal.throwIfAborted();
-            return request.kind === 'register' ? await register(request.root) : await respondRegistered(request);
+            const ownedSignal = AbortSignal.any([ cancellation.signal, signal ]);
+            ownedSignal.throwIfAborted();
+            return request.kind === 'register'
+                ? await register(request.root)
+                : await respondRegistered(request, ownedSignal, timeoutMilliseconds);
         },
         cancel() {
             cancellation.abort();

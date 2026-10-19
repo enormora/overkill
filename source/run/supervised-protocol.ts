@@ -107,6 +107,9 @@ export type SupervisedChildMessage = {
     readonly event: ReporterEvent;
     readonly kind: 'event';
 } | {
+    readonly kind: 'execution-checkpoint';
+    readonly data: JsonValue;
+} | {
     readonly kind: 'execution-data';
     readonly data: JsonValue;
 } | {

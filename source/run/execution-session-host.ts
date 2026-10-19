@@ -1,3 +1,4 @@
+import type { JsonValue } from 'type-fest';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import { createNodeRunOrchestratorDependencies } from './node-run-orchestrator-dependencies.ts';
 import { createCurrentProcessRunInput } from './current-process-run-input.ts';
@@ -6,6 +7,22 @@ import { loadRunEngineModule, loadRunTestModules, runDiscovery } from './node-ru
 import { createCollectedExecutionSession } from './execution-session-collected.ts';
 import { executionHostRequestSchema, executionReplySchema } from './execution-session-schema.ts';
 import { parseFrozenMicrotestPolicy } from './frozen-run-policy.ts';
+
+async function checkpoint(data: JsonValue): Promise<void> {
+    await new Promise<void>(function (resolve, reject) {
+        if (process.send === undefined) {
+            reject(new Error('Execution host requires IPC.'));
+            return;
+        }
+        process.send({ kind: 'execution-checkpoint', data }, function (error) {
+            if (error === null) {
+                resolve();
+            } else {
+                reject(error);
+            }
+        });
+    });
+}
 
 function unsupportedIsolatedDispatch(): never {
     throw new Error('Fresh invocation hosts require an in-process profile.');
@@ -41,6 +58,7 @@ const reply = executionReplySchema.parse(
     await environment.execute({
         transport: input.transport,
         timeoutMilliseconds: input.timeoutMilliseconds,
+        checkpoint,
         signal: cancellation.signal
     })
 );

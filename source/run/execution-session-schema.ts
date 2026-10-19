@@ -48,6 +48,8 @@ export const executionReplySchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('failure'), failure: runExecutionFailureSchema, data: z.json() }),
     z.strictObject({ kind: z.literal('timeout'), data: z.json() })
 ]);
+const executionCheckpointSchema = z.strictObject({ kind: z.literal('execution-checkpoint'), data: z.json() });
+export const executionHostMessageSchema = z.union([ executionReplySchema, executionCheckpointSchema ]);
 export const executionHostRequestSchema = z.strictObject({
     policy: frozenMicrotestPolicySchema,
     seed: z.strictObject({ value: z.bigint().nonnegative() }),

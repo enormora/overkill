@@ -1,89 +1,27 @@
-import type { FileDescriptions } from '@stryker-mutator/api/core';
-import type { Logger } from '@stryker-mutator/api/logging';
-import { ConfigError, restoreRunExecutionFailure } from '../run/run.entry-point.ts';
-import { defaultCampaignEndpoint } from './runner-options.ts';
-import { parseRunnerOptions, type OverkillRunnerOptions } from './runner-settings-schema.ts';
-import { assertExcludedAdapter, createMutationSandbox, type MutationSandbox } from './mutation-sandbox.ts';
-import { connectCampaign, type CampaignClient } from './campaign-client.ts';
-import { campaignEndpointSchema } from './campaign-protocol.ts';
-import { createMutationRunnerExecution, type MutationRunnerExecution } from './mutation-runner-execution.ts';
+import { createClock } from '@enormora/clock';
+import {
+    ConfigError,
+    createInvocationBudget,
+    InvocationDeadlineExceededError,
+    isInvocationCancellation,
+    type InvocationBudget
+} from '../run/run.entry-point.ts';
+import {
+    initializeMutationRunner,
+    type ReadyMutationRunner,
+    type RunnerInitialization
+} from './mutation-runner-initialization.ts';
+import type { CampaignClient } from './campaign-client.ts';
 
-const originalRoot = process.cwd();
-export type ReadyMutationRunner = {
-    readonly execution: MutationRunnerExecution;
-    readonly client: CampaignClient;
-    readonly root: string;
-};
-type RunnerInitialization = {
-    readonly options: Readonly<Record<string, unknown>>;
-    readonly files: FileDescriptions;
-    readonly logger: Readonly<Pick<Logger, 'info'>>;
-    readonly signal: AbortSignal;
-    readonly connected: (client: CampaignClient) => void;
-};
 export type MutationRunnerLifecycle = {
-    readonly ready: () => Promise<ReadyMutationRunner>;
+    readonly ready: (budget: InvocationBudget | null) => Promise<ReadyMutationRunner>;
     readonly invoke: <Value extends { readonly status: string; }>(
         timeout: number,
-        run: (runner: ReadyMutationRunner, remaining: number) => Promise<Value>,
+        run: (runner: ReadyMutationRunner, budget: InvocationBudget) => Promise<Value>,
         expired: (completed: Value | null) => Value
     ) => Promise<Value>;
     readonly dispose: () => Promise<void>;
 };
-
-type MutationInvocation<Value> = {
-    readonly timeout: number;
-    readonly started: number;
-    readonly run: (runner: ReadyMutationRunner, remaining: number) => Promise<Value>;
-    readonly expired: (completed: Value | null) => Value;
-};
-
-type RegisteredRunnerInitialization = {
-    readonly sandbox: MutationSandbox;
-    readonly settings: OverkillRunnerOptions;
-    readonly client: CampaignClient;
-    readonly signal: AbortSignal;
-};
-async function initializeRegisteredRunner(input: RegisteredRunnerInitialization): Promise<ReadyMutationRunner> {
-    const { sandbox, settings, client, signal } = input;
-    await client.request({ kind: 'register', root: sandbox.root });
-    const response = await client.request({ kind: 'resolve-policy', sandbox, settings });
-    if (response.kind === 'failure') {
-        throw restoreRunExecutionFailure(response.failure);
-    }
-    if (response.kind !== 'policy') {
-        throw new Error('Campaign IPC did not return a frozen execution policy.');
-    }
-    const execution = createMutationRunnerExecution({
-        policy: response.policy,
-        seed: settings.seed,
-        freshState: settings.freshState,
-        client,
-        signal
-    });
-    return { execution, client, root: sandbox.root };
-}
-
-async function connectRegisteredCampaign(input: RunnerInitialization): Promise<CampaignClient> {
-    const endpoint = campaignEndpointSchema.parse(input.options.overkillCampaign ?? defaultCampaignEndpoint);
-    const client = await connectCampaign(endpoint, input.signal);
-    input.connected(client);
-    return client;
-}
-
-async function initializeRunner(input: RunnerInitialization): Promise<ReadyMutationRunner> {
-    const settings = parseRunnerOptions(input.options.overkill);
-    input.logger.info('Overkill campaign seed: %s', settings.seed);
-    const sandbox = await createMutationSandbox({ originalRoot, cwd: process.cwd(), fileDescriptions: input.files });
-    await assertExcludedAdapter(sandbox);
-    const client = await connectRegisteredCampaign(input);
-    try {
-        return await initializeRegisteredRunner({ sandbox, settings, client, signal: input.signal });
-    } catch (error: unknown) {
-        client.dispose();
-        throw error;
-    }
-}
 
 async function disposeRunner(initialization: Promise<ReadyMutationRunner> | null): Promise<void> {
     const settled = await Promise.allSettled(initialization === null ? [] : [ initialization ]);
@@ -97,50 +35,102 @@ async function disposeRunner(initialization: Promise<ReadyMutationRunner> | null
     }
 }
 
-async function runBeforeDeadline<Value extends { readonly status: string; }>(
-    runner: ReadyMutationRunner,
-    invocation: MutationInvocation<Value>
-): Promise<Value> {
-    const { timeout, started, run, expired } = invocation;
-    const remaining = timeout - (performance.now() - started);
-    if (remaining <= 0) {
-        return expired(null);
+type BudgetInvocation<Value> = {
+    readonly ready: MutationRunnerLifecycle['ready'];
+    readonly run: (runner: ReadyMutationRunner, budget: InvocationBudget) => Promise<Value>;
+    readonly expired: (completed: Value | null) => Value;
+    readonly budget: InvocationBudget;
+};
+function observeInitializationDeadline(
+    budget: InvocationBudget | null,
+    clients: ReadonlyMap<'connected', CampaignClient>
+): () => Promise<void> {
+    const observation = new AbortController();
+    const deliveries = new Set<Promise<void>>();
+    function cancelInitialization(): void {
+        if (budget?.expired() !== true) {
+            return;
+        }
+        const client = clients.get('connected');
+        if (client !== undefined) {
+            deliveries.add(client.expireRequests());
+        }
     }
-    const result = await run(runner, remaining);
-    return result.status !== 'error' && result.status !== 'timeout' && performance.now() - started >= timeout
-        ? expired(result)
-        : result;
+    budget?.signal.addEventListener('abort', cancelInitialization, { once: true, signal: observation.signal });
+    if (budget?.signal.aborted === true) {
+        cancelInitialization();
+    }
+    return async function stopInitializationDeadline() {
+        observation.abort();
+        await Promise.all(deliveries);
+    };
+}
+async function completeInvocation<Value extends { readonly status: string; }>(
+    input: BudgetInvocation<Value>
+): Promise<Value> {
+    const runner = await input.ready(input.budget);
+    if (input.budget.expired()) {
+        return input.expired(null);
+    }
+    const result = await input.run(runner, input.budget);
+    return result.status !== 'error' && input.budget.expired() ? input.expired(result) : result;
+}
+async function runBudgetInvocation<Value extends { readonly status: string; }>(
+    input: BudgetInvocation<Value>
+): Promise<Value> {
+    try {
+        return await completeInvocation(input);
+    } catch (error: unknown) {
+        if (
+            input.budget.expired() &&
+            (error instanceof InvocationDeadlineExceededError || isInvocationCancellation(error, input.budget.signal))
+        ) {
+            return input.expired(null);
+        }
+        throw error;
+    }
 }
 
 export function createMutationRunnerLifecycle(
     options: RunnerInitialization['options'],
-    files: FileDescriptions,
+    files: Readonly<RunnerInitialization['files']>,
     logger: RunnerInitialization['logger']
 ): MutationRunnerLifecycle {
     const controller = new AbortController();
+    const clock = createClock();
     let initialization: Promise<ReadyMutationRunner> | null = null;
+    let initializationBudget: InvocationBudget | null = null;
     const ownership = {
-        active: new Set<symbol>(),
+        active: new Set<InvocationBudget>(),
         disposed: new Set<'runner'>(),
         clients: new Map<'connected', CampaignClient>(),
         closing: new Map<'shutdown', Promise<void>>()
     };
-    async function ready(): Promise<ReadyMutationRunner> {
+    async function ready(budget: InvocationBudget | null): Promise<ReadyMutationRunner> {
         if (ownership.disposed.has('runner')) {
             throw new ConfigError('Stryker runner has been disposed.');
         }
+        initializationBudget = budget;
         const initializing = initialization ??
-            initializeRunner({
+            initializeMutationRunner({
                 options,
                 files,
                 logger,
                 signal: controller.signal,
+                budget() {
+                    return initializationBudget;
+                },
                 connected(client) {
                     ownership.clients.set('connected', client);
                 }
             });
         initialization = initializing;
-        return await initializing;
+        const stop = observeInitializationDeadline(budget, ownership.clients);
+        try {
+            return await initializing;
+        } finally {
+            await stop();
+        }
     }
     async function closeRunner(): Promise<void> {
         ownership.disposed.add('runner');
@@ -149,7 +139,7 @@ export function createMutationRunnerLifecycle(
             controller.abort();
         }
         if (client !== undefined) {
-            await Promise.allSettled([ client.request({ kind: 'release' }) ]);
+            await Promise.allSettled([ client.request({ kind: 'release' }, null) ]);
         }
         controller.abort();
         await disposeRunner(initialization);
@@ -160,13 +150,16 @@ export function createMutationRunnerLifecycle(
             if (ownership.active.size > 0) {
                 throw new Error('A Stryker invocation is already running.');
             }
-            const started = performance.now();
-            const invocation = Symbol('mutation-invocation');
-            ownership.active.add(invocation);
+            if (!Number.isFinite(timeout) || timeout <= 0) {
+                return expired(null);
+            }
+            const budget = createInvocationBudget(timeout, controller.signal, clock);
+            ownership.active.add(budget);
             try {
-                return await runBeforeDeadline(await ready(), { timeout, started, run, expired });
+                return await runBudgetInvocation({ ready, run, expired, budget });
             } finally {
-                ownership.active.delete(invocation);
+                budget.dispose();
+                ownership.active.delete(budget);
             }
         },
         async dispose() {

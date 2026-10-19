@@ -192,6 +192,23 @@ Every invocation gets fresh scopes, observers, cleanup, and results. Failed
 collection remains cached in reused mode; fresh mode can collect again on the
 next invocation. Fresh hosts terminate before their invocation settles.
 
+The earlier applicable profile case timeout or Stryker invocation deadline wins.
+One monotonic invocation budget covers lazy initialization, policy resolution,
+collection, execution, cleanup, and campaign result delivery. IPC carries remaining
+durations; Unix clock changes do not alter enforcement. Explicit `init()` has no
+invented invocation timeout.
+
+Invocation deadlines and supervised case watchdogs return `Timeout`. Internal
+checkpoints retain confirmed case failures when forced termination prevents final
+result delivery. Independent cleanup, instrumentation reset, or transport failures
+still return `Error`. A verified Stryker hit-limit guard thrown during cleanup is
+a timeout rather than an independent cleanup failure.
+
+Timeout cancellation targets the current operation. Adapter-owned resolvers,
+fresh hosts, and supervised children are terminated and reaped before settlement.
+Stryker supervises reused plugin workers, including synchronous infinite loops;
+the adapter does not add a process boundary to reused in-process execution.
+
 Disposal closes admission immediately. It cancels and awaits supervised child
 termination, terminates fresh invocation hosts, or awaits active reused
 in-process work without terminating Stryker's worker.

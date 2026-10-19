@@ -2,6 +2,7 @@ import { strykerCampaignScript } from '../run/stryker-campaign-scripts.test.ts';
 import { strykerCatalogScript } from '../run/stryker-catalog-scripts.test.ts';
 import { strykerCoverageScript } from '../run/stryker-coverage-scripts.test.ts';
 import { strykerDryRunScript } from '../run/stryker-dry-run-scripts.test.ts';
+import { strykerTimeoutScript } from '../run/stryker-timeout-scripts.test.ts';
 import { strykerProfileScript } from './stryker-profile-scripts.test.ts';
 import { strykerSandboxScript } from './stryker-sandbox-scripts.test.ts';
 import { strykerFreshStateScript } from './stryker-fresh-state-scripts.test.ts';
@@ -118,6 +119,19 @@ for (const processModel of ['in-process', 'supervised-process']) {
                 rmSync(coverageCwd, { recursive: true, force: true });
             }
         }
+    }
+}
+for (const [processModel, scenario] of [['in-process', 'body'], ['supervised-process', 'hard']]) {
+    const timeoutCwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-timeout-'));
+    try {
+        execFileSync(process.execPath, [
+            '--input-type=module', '--eval', ${JSON.stringify(strykerTimeoutScript)},
+            import.meta.resolve('@overkill-dev/stryker-runner'), import.meta.resolve('@overkill-dev/engine'),
+            import.meta.resolve('@overkill-dev/run/config'),
+            ${JSON.stringify(import.meta.resolve('@stryker-mutator/instrumenter'))}, processModel, scenario
+        ], {cwd: timeoutCwd, stdio: 'pipe'});
+    } finally {
+        rmSync(timeoutCwd, {recursive: true, force: true});
     }
 }
 console.log('stryker profile initialization passed');

@@ -26,6 +26,7 @@ type SupervisedTransport = {
 };
 
 type SupervisedObserver = {
+    readonly cancel: (reason: string) => void;
     readonly fail: (reason: string, restricted: boolean) => void;
     readonly receive: (message: unknown) => void;
     readonly exit: () => void;
@@ -37,7 +38,7 @@ function successfulChildExit(child: SupervisedChildProcess): boolean {
 }
 function createSupervisedObserver(transport: SupervisedTransport): SupervisedObserver {
     const observations = { reportedFailure: false, boundaryFailure: false };
-    function recordFailure(reason: string, restricted: boolean): void {
+    function recordFailure(reason: string, restricted: boolean, termination: 'cancelled' | 'transport'): void {
         if (!observations.boundaryFailure) {
             transport.terminalFailure.write(true);
             observations.boundaryFailure = true;
@@ -45,7 +46,7 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
                 transport.state,
                 reason,
                 Number(transport.wallClock.currentMonotonicMicroseconds),
-                restricted
+                { restricted, termination }
             );
         }
     }
@@ -53,7 +54,7 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
         if (observations.boundaryFailure) {
             return;
         }
-        recordFailure(reason, restricted);
+        recordFailure(reason, restricted, 'transport');
         kill(transport.child);
         transport.interrupted();
     }
@@ -110,8 +111,13 @@ function createSupervisedObserver(transport: SupervisedTransport): SupervisedObs
     }
     return {
         fail,
+        cancel(reason) {
+            recordFailure(reason, false, 'cancelled');
+            kill(transport.child);
+            transport.interrupted();
+        },
         timeout(): void {
-            recordFailure('Supervised child shutdown exceeded one second.', false);
+            recordFailure('Supervised child shutdown exceeded one second.', false, 'transport');
             transport.interrupted();
         },
         receive(message): void {
@@ -152,7 +158,7 @@ export function observeSupervisedTransport(transport: SupervisedTransport): (rea
         transport.finished();
     });
     return function interruptSupervisedRun(reason) {
-        observer.fail(reason, false);
+        observer.cancel(reason);
     };
 }
 export function sendSupervisedCommand(

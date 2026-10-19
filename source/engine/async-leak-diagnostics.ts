@@ -1,4 +1,5 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
+import { recordResourceOwnerAllocation } from './resource-owner-observation.ts';
 import type { CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -190,6 +191,7 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
             promises.delete(asyncId);
         },
         init(asyncId, type, triggerAsyncId) {
+            recordResourceOwnerAllocation(type);
             if (type !== 'PROMISE') {
                 return;
             }

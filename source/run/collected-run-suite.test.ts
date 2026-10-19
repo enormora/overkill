@@ -1,4 +1,5 @@
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as budgets } from '../invocation-budget.test.ts';
 import { testNode as collection } from './initialized-run.test.ts';
 import { testNode as execution } from './collected-run.test.ts';
 import { testNode as policy } from './collected-run-policy.test.ts';
@@ -12,7 +13,7 @@ export const testNode = createSuite({
     title: 'public collected runner lifecycle',
     annotations: {},
     controls: {},
-    children: [ collection, execution, policy, coverage, boundaries, executionSession, executionFailure ]
+    children: [ collection, execution, policy, coverage, boundaries, executionSession, executionFailure, budgets ]
 });
 
 const { runIfMain } = await import('../test-support/run-if-main.ts');
