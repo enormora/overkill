@@ -126,7 +126,10 @@ for (const api of [bench, standard]) {
             measurement: api.processMeasurement({instrumentation: 'node'}),
             async measure({sample}) {
                 const child = await sample.process({
-                    command: [process.execPath, '-e', 'process.stdout.write("Ready "+Boolean(process.stdout.isTTY));process.exit(0)'],
+                    command: [
+                        process.execPath, '-e',
+                        'process.stdout.write("Ready "+Boolean(process.stdout.isTTY));process.exit(0)'
+                    ],
                     cwd: process.cwd(), env: null,
                     io: kind === 'pipes' ? {kind} : {kind, name: 'xterm', columns: 80, rows: 24},
                     completion: {kind: 'exit', readiness: null, steps: [], expectedExitCodes: [0]}
@@ -136,7 +139,10 @@ for (const api of [bench, standard]) {
                 assert.equal(child.value.metadata.backend, kind);
                 const output = child.value.output;
                 assert.equal(output.kind, kind === 'pipes' ? 'pipes' : 'terminal');
-                assert.equal(output.kind === 'pipes' ? output.stdout.text : output.terminal.text, 'Ready ' + (kind === 'pty'));
+                assert.equal(
+                    output.kind === 'pipes' ? output.stdout.text : output.terminal.text,
+                    'Ready ' + (kind === 'pty')
+                );
                 return {durationMicroseconds: child.metrics.durationMicroseconds};
             }, diagnosticMetrics: [],
             budgets: {one: {durationMicroseconds: {maximum: 60000000, statistic: {kind: 'observed-maximum'}}}}
