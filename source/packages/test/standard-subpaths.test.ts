@@ -509,6 +509,7 @@ export const testNode = createSuite({
                     'measurementStrategy',
                     'memoryCollector',
                     'processCpuCollector',
+                    'processMeasurement',
                     'processResourceCollector',
                     'runtimeHealthCollector',
                     'skippedTest',

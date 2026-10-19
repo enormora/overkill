@@ -1,4 +1,13 @@
 export { workload } from '../../bench/workload.ts';
+export { processMeasurement } from '../../bench/process-measurement.ts';
+export type {
+    ProcessInstrumentation,
+    ProcessMeasurementStrategy,
+    ProcessSample
+} from '../../bench/process-measurement.ts';
+export type { ProcessRequest } from '../../bench/process-command.ts';
+export type { ProcessCompletion, ProcessMarker, ProcessStep } from '../../bench/process-script.ts';
+export type { MeasuredProcess, ProcessObservation } from '../../bench/process-observation.ts';
 export type { Workload } from '../../bench/workload.ts';
 export type { WorkloadParameters } from '../../engine/workload-parameters.ts';
 export {

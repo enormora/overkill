@@ -117,8 +117,9 @@ bodies or acquiring resources. `bench.run` and `bench.runWithReporterDelivery`
 use structured measurement summaries and generated budget assertions. Explicit
 measurement regions, native collectors, and adaptive metric budgets are
 implemented alongside automatic warmup, per-sample cleanup, and bounded runtime
-cooldown; external-process measurement and browser collectors remain later milestones. The dedicated HTML reporter
-consumes recorded benchmark evidence through the final-result lifecycle.
+cooldown and external-process measurement. Browser collectors remain a later
+milestone. The dedicated HTML reporter consumes recorded benchmark evidence
+through the final-result lifecycle.
 
 Current profiles keep serial execution within each worker, `maxConcurrency: 1`,
 and hedging off. Adaptive placement may use parallel worker lanes for eligible
@@ -229,10 +230,10 @@ Unresolved limits are incomplete measurement outcomes, not successful budgets.
 Typed summaries travel through attempts, IPC, reporter events, and run records;
 raw readings use bounded attachments.
 
-Future external-process direction:
+External-process authoring:
 
 ```ts
-import { benchmark, suite, workload } from '@overkill-dev/bench';
+import { benchmark, processMeasurement, suite, workload } from '@overkill-dev/bench';
 import { withResource } from '@overkill-dev/test/resources';
 import { publishFixtureResource } from '#tests/resources/publish-fixture';
 
@@ -244,20 +245,28 @@ export const testNode = suite('cli benchmarks', [
             workload('medium', { packages: 50 }),
             workload('large', { packages: 200 })
         ],
+        measurement: processMeasurement({ instrumentation: 'node' }),
         measure: withResource(publishFixtureResource, async (context) => {
             const { resources, sample } = context;
             const run = await sample.process({
                 command: [ 'node', 'dist/cli.js', 'publish', '--dry-run' ],
                 cwd: resources.publishFixture.cwd,
-                pty: true
+                env: null,
+                io: { kind: 'pty', name: 'xterm-256color', columns: 80, rows: 24 },
+                completion: {
+                    kind: 'exit',
+                    readiness: { stream: 'terminal', text: 'Ready' },
+                    steps: [],
+                    expectedExitCodes: [ 0 ]
+                }
             });
 
             return {
-                durationMicroseconds: run.durationMicroseconds,
-                startupMilliseconds: run.startupMilliseconds,
-                percentile95EventLoopBlockMilliseconds: run.eventLoop.percentile95Milliseconds,
-                maximumEventLoopBlockMilliseconds: run.eventLoop.maximumMilliseconds,
-                outputBytes: run.stdoutBytes + run.stderrBytes
+                durationMicroseconds: run.metrics.durationMicroseconds,
+                startupMilliseconds: run.metrics.startupMilliseconds,
+                eventLoopDelayPercentile95Microseconds: run.metrics.eventLoopDelayPercentile95Microseconds,
+                eventLoopDelayMaximumMicroseconds: run.metrics.eventLoopDelayMaximumMicroseconds,
+                outputBytes: run.metrics.outputBytes
             };
         }),
         diagnosticMetrics: [ 'outputBytes' ],
@@ -265,20 +274,20 @@ export const testNode = suite('cli benchmarks', [
             small: {
                 durationMicroseconds: { maximum: 500 },
                 startupMilliseconds: { maximum: 120 },
-                percentile95EventLoopBlockMilliseconds: { maximum: 8 },
-                maximumEventLoopBlockMilliseconds: { maximum: 20 }
+                eventLoopDelayPercentile95Microseconds: { maximum: 8 },
+                eventLoopDelayMaximumMicroseconds: { maximum: 20 }
             },
             medium: {
                 durationMicroseconds: { maximum: 900 },
                 startupMilliseconds: { maximum: 150 },
-                percentile95EventLoopBlockMilliseconds: { maximum: 16 },
-                maximumEventLoopBlockMilliseconds: { maximum: 30 }
+                eventLoopDelayPercentile95Microseconds: { maximum: 16 },
+                eventLoopDelayMaximumMicroseconds: { maximum: 30 }
             },
             large: {
                 durationMicroseconds: { maximum: 3200 },
                 startupMilliseconds: { maximum: 220 },
-                percentile95EventLoopBlockMilliseconds: { maximum: 24 },
-                maximumEventLoopBlockMilliseconds: { maximum: 40 }
+                eventLoopDelayPercentile95Microseconds: { maximum: 24 },
+                eventLoopDelayMaximumMicroseconds: { maximum: 40 }
             }
         }
     })
@@ -681,7 +690,14 @@ first-class benchmark-harness concept.
 
 ## External Process Benchmarking
 
-Benchmarking external processes should be first-class:
+Process strategies support Linux and macOS with a fresh owned process group per
+warmup or measured invocation. Explicit exit, readiness, and interaction
+checkpoints define the wall interval; teardown follows outside it. Pipe and PTY
+output is bounded, with literal marker matching independent of retention.
+Optional Node instrumentation reports child readings and its observation window.
+Runner artifacts retain process observations for HTML case details.
+
+External-process benchmarking includes:
 
 - process spawning
 - cwd isolation

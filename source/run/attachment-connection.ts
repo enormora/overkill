@@ -1,5 +1,7 @@
 import { connect, type Socket } from 'node:net';
+import { Duplex } from 'node:stream';
 import { createInterface } from 'node:readline';
+import { boundedJsonFrames } from '../packages/resources/attachment-context.entry-point.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import {
     attachmentMaxFrameBytes,
@@ -10,7 +12,6 @@ import {
     type AttachmentResponse
 } from './attachment-protocol.ts';
 import { attachmentReplySchema } from './attachment-wire-schema.ts';
-import { boundedAttachmentFrames } from './attachment-frames.ts';
 
 export type AttachmentConnection = {
     readonly ready: Promise<void>;
@@ -61,9 +62,10 @@ function attachmentChannelReceive(state: AttachmentChannelState, line: string): 
 function attachmentChannelObserve(state: AttachmentChannelState): void {
     const { endpoint, socket } = state;
 
-    const frames = boundedAttachmentFrames(
-        endpoint.limits.maxInlineBytes * jsonEscapeExpansion + attachmentMaxFrameBytes
-    );
+    const frames = Duplex.fromWeb(boundedJsonFrames(
+        endpoint.limits.maxInlineBytes * jsonEscapeExpansion + attachmentMaxFrameBytes,
+        'Attachment'
+    ));
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
     frames.on('error', function (error: Error) {
         attachmentChannelFail(state, error);

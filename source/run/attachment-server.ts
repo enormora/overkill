@@ -1,8 +1,9 @@
-import type { Transform } from 'node:stream';
+import { Duplex } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
 import { createInterface, type Interface } from 'node:readline';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
+import { boundedJsonFrames } from '../packages/resources/attachment-context.entry-point.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import type { AttachmentStore } from './attachment-store.ts';
 import {
@@ -12,7 +13,6 @@ import {
     type AttachmentOwner
 } from './attachment-protocol.ts';
 import { attachmentRequestSchema } from './attachment-wire-schema.ts';
-import { boundedAttachmentFrames } from './attachment-frames.ts';
 
 export type AttachmentServer = {
     readonly endpoint: AttachmentEndpoint;
@@ -84,7 +84,7 @@ async function attachmentServerChannelsInterrupt(
     await previous;
     abandoned.push(...await store.finish(channel));
 }
-function observeAttachmentChannelFailures(socket: Socket, frames: Transform, lines: Interface): void {
+function observeAttachmentChannelFailures(socket: Socket, frames: Readonly<Duplex>, lines: Interface): void {
     frames.on('error', function () {
         socket.destroy();
     });
@@ -100,7 +100,7 @@ function attachmentServerChannelsAccept(state: AttachmentServerChannelsState, so
 
     sockets.add(socket);
     const channel = randomUUID();
-    const frames = boundedAttachmentFrames(attachmentMaxFrameBytes);
+    const frames = Duplex.fromWeb(boundedJsonFrames(attachmentMaxFrameBytes, 'Attachment'));
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
     let queue = Promise.resolve();
     const queued = createStoredRunValue(0);

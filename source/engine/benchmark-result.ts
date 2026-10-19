@@ -18,6 +18,9 @@ export type BenchmarkDefinitionSummary = {
             readonly name: string;
             readonly metrics: readonly (MetricProvenance & { readonly name: string; })[];
         }[];
+    } | {
+        readonly mode: 'process';
+        readonly instrumentation: 'node' | 'off';
     };
     readonly diagnostics: readonly string[];
     readonly budgets: Readonly<

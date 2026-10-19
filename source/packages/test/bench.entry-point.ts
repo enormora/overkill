@@ -1,4 +1,5 @@
 export {
+    processMeasurement,
     defineMacro,
     defineParameterizedTestBody,
     skippedTest,
@@ -8,6 +9,15 @@ export {
     workload
 } from '../bench/bench.entry-point.ts';
 export type {
+    ProcessInstrumentation,
+    ProcessMeasurementStrategy,
+    ProcessSample,
+    ProcessRequest,
+    ProcessCompletion,
+    ProcessMarker,
+    ProcessStep,
+    ProcessObservation,
+    MeasuredProcess,
     Workload,
     WorkloadParameters,
     AuthoringAnnotations,

@@ -11,17 +11,20 @@ import { validateSamplingPolicy } from './sampling-policy.ts';
 import { asyncMeasurementStrategy, measurementStrategy } from './measurement-strategy.ts';
 import type { AsyncMeasurementStrategy, MeasurementStrategy } from './measurement-types.ts';
 import { resolveBenchmarkLifecyclePolicy } from './benchmark-lifecycle-policy.ts';
+import { processMeasurement, type ProcessMeasurementStrategy } from './process-measurement.ts';
 
 type BenchmarkCore = Pick<
     BenchmarkDefinition<WorkloadParameters>,
     'budgets' | 'diagnosticMetrics' | 'kind' | 'workloads'
 >;
-type MeasurementDefinition = { readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy; };
+type MeasurementDefinition = {
+    readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy | ProcessMeasurementStrategy;
+};
 type BenchmarkDefinitionData = BenchmarkCore & MeasurementDefinition;
 export type ResolvedBenchmarkDefinition = {
     readonly lifecycle: BenchmarkLifecyclePolicy;
     readonly summary: BenchmarkDefinitionSummary;
-    readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy;
+    readonly measurement: MeasurementDefinition['measurement'];
     readonly budgets: ReadonlyMap<string, readonly NormalizedMetricBudget[]>;
 };
 
@@ -74,6 +77,9 @@ function resolveBudgets(
 function measurementSummary(
     measurement: ResolvedBenchmarkDefinition['measurement']
 ): BenchmarkDefinitionSummary['measurement'] {
+    if (measurement.mode === 'process') {
+        return processMeasurement(measurement);
+    }
     return Object.freeze({
         mode: measurement.mode,
         collectors: Object.freeze(measurement.collectors.map(function collectorDefinition(collector) {
@@ -85,6 +91,15 @@ function measurementSummary(
             });
         }))
     });
+}
+
+function resolveMeasurement(measurement: MeasurementDefinition['measurement']): MeasurementDefinition['measurement'] {
+    if (measurement.mode === 'process') {
+        return processMeasurement(measurement);
+    }
+    return measurement.mode === 'sync'
+        ? measurementStrategy(measurement.collectors)
+        : asyncMeasurementStrategy(measurement.collectors);
 }
 
 export function resolveBenchmarkDefinition(
@@ -101,9 +116,7 @@ export function resolveBenchmarkDefinition(
     if (names.length === 0 || uniqueNames.size !== names.length) {
         throw new TypeError('Benchmark requires unique workloads.');
     }
-    const measurement = definition.measurement.mode === 'sync'
-        ? measurementStrategy(definition.measurement.collectors)
-        : asyncMeasurementStrategy(definition.measurement.collectors);
+    const measurement = resolveMeasurement(definition.measurement);
     const budgets = resolveBudgets(definition, names);
     const lifecycle = resolveBenchmarkLifecyclePolicy(options.lifecycle);
     const summary = Object.freeze({

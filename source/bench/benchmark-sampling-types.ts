@@ -7,6 +7,7 @@ import type {
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import type { NormalizedMetricBudget } from './benchmark-budget-definition.ts';
 import type { AsyncMeasurementStrategy, MeasurementStrategy } from './measurement-types.ts';
+import type { ProcessMeasurementStrategy } from './process-measurement.ts';
 
 export type SamplingSessionInput = {
     readonly lifecycle: ResolvedBenchmarkLifecyclePolicy;
@@ -14,7 +15,7 @@ export type SamplingSessionInput = {
     readonly context: Readonly<Record<string, unknown>>;
     readonly scope: BenchmarkScope;
     readonly workload: BenchmarkWorkload;
-    readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy;
+    readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy | ProcessMeasurementStrategy;
     readonly budgets: readonly NormalizedMetricBudget[];
     readonly diagnostics: readonly string[];
     readonly policy: SamplingPolicy;

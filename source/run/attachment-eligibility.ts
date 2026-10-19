@@ -1,6 +1,20 @@
 import { workIdentityKey } from '../engine/identity.ts';
+import type { TestPlanCase } from '../engine/test-plan.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
-import type { ResolvedRun } from './run-types.ts';
+import type { ResolvedRun, CollectedRunCase } from './run-types.ts';
+
+function isLocalCase(testCase: CollectedRunCase | TestPlanCase): testCase is TestPlanCase {
+    return Object.hasOwn(testCase, 'execution');
+}
+
+function hasProcessMeasurement(testCase: CollectedRunCase | TestPlanCase): boolean {
+    if (isLocalCase(testCase)) {
+        const { execution } = testCase;
+        return execution.kind === 'body' && execution.bodyMode === 'benchmark' &&
+            execution.definition.measurement.mode === 'process';
+    }
+    return testCase.benchmark?.measurement.mode === 'process';
+}
 
 export function runHasAttachmentScopes(resolved: ResolvedRun): boolean {
     if (
@@ -19,7 +33,7 @@ export function runHasAttachmentScopes(resolved: ResolvedRun): boolean {
         : collectedRunCaseEntries(resolved.plan.collectedPlan);
     return cases.some(function hasAttachmentScope(entry) {
         return selected.has(workIdentityKey(entry.workId)) &&
-            (entry.testCase.resourceAttachments.resourceGraph.length > 0 ||
+            (hasProcessMeasurement(entry.testCase) || entry.testCase.resourceAttachments.resourceGraph.length > 0 ||
                 entry.testCase.resourceAttachments.runtimeGraphs.length > 0);
     });
 }

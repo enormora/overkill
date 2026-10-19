@@ -8,7 +8,7 @@ const provenanceSchema = z.strictObject({
     scope: z.enum([ 'region', 'thread', 'process', 'runtime', 'custom' ]),
     unit: z.string().min(1)
 });
-export const metricReadingSchema = z.discriminatedUnion('availability', [
+export const metricReadingSchema: z.ZodType<MetricReading> = z.discriminatedUnion('availability', [
     z.strictObject({ availability: z.literal('available'), value: z.number(), provenance: provenanceSchema }),
     z.strictObject({ availability: z.literal('unavailable'), reason: z.string().min(1), provenance: provenanceSchema })
 ]);

@@ -5,6 +5,7 @@ import { testNode as measurementContractsTestNode } from './measurement-contract
 import { testNode as benchmarkAuthoringTestNode } from './benchmark-authoring.test.ts';
 import { testNode as benchmarkBudgetTestNode } from './benchmark-budget.test.ts';
 import { testNode as measurementRegionTestNode } from './measurement-region.test.ts';
+import { testNode as processContractsTestNode } from './process-contracts.test.ts';
 
 export const testNode = suite('benchmark measurement', [
     measurementContractsTestNode,
@@ -12,5 +13,6 @@ export const testNode = suite('benchmark measurement', [
     rawEvidenceTestNode,
     benchmarkAuthoringTestNode,
     benchmarkBudgetTestNode,
-    measurementRegionTestNode
+    measurementRegionTestNode,
+    processContractsTestNode
 ]);

@@ -13,7 +13,7 @@ assert.deepEqual(Object.keys(bench).sort(), [
     'asyncMeasurementStrategy', 'availableMetric', 'benchmark',
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
     'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
-    'processCpuCollector', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
+    'processCpuCollector', 'processMeasurement', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
     'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 assert.deepEqual(Object.keys(standard).sort(), Object.keys(bench).sort());
@@ -119,6 +119,45 @@ assert.deepEqual(workloadPlan.cases[0].workloadParameters, {packages: 5});
 assert.equal((await execute(workloadPlan)).summary.passed, 1);
 assert.equal(acquisitions, 1);
 assert.equal(disposedPackages, 5);
+for (const api of [bench, standard]) {
+    for (const kind of ['pipes', 'pty']) {
+        const processNode = api.benchmark('packaged process', {
+            kind: 'startup', workloads: [api.workload('one', {})],
+            measurement: api.processMeasurement({instrumentation: 'node'}),
+            async measure({sample}) {
+                const child = await sample.process({
+                    command: [
+                        process.execPath, '-e',
+                        'process.stdout.write("Ready "+Boolean(process.stdout.isTTY));process.exit(0)'
+                    ],
+                    cwd: process.cwd(), env: null,
+                    io: kind === 'pipes' ? {kind} : {kind, name: 'xterm', columns: 80, rows: 24},
+                    completion: {kind: 'exit', readiness: null, steps: [], expectedExitCodes: [0]}
+                });
+                assert.equal(child.metrics.processCpuTotalMicroseconds.availability, 'available');
+                assert.equal(child.value.metadata.runtime, process.version);
+                assert.equal(child.value.metadata.backend, kind);
+                const output = child.value.output;
+                assert.equal(output.kind, kind === 'pipes' ? 'pipes' : 'terminal');
+                assert.equal(
+                    output.kind === 'pipes' ? output.stdout.text : output.terminal.text,
+                    'Ready ' + (kind === 'pty')
+                );
+                return {durationMicroseconds: child.metrics.durationMicroseconds};
+            }, diagnosticMetrics: [],
+            budgets: {one: {durationMicroseconds: {maximum: 60000000, statistic: {kind: 'observed-maximum'}}}}
+        }, {
+            annotations: {}, controls: {},
+            sampling: {...api.defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2},
+            lifecycle: {garbageCollection: 'off', warmupSamples: 0, cooldown: {mode: 'off'}}
+        });
+        const processResult = await execute(createTestPlan(createRoot({
+            annotations: {}, controls: {}, title: 'packaged processes', children: [processNode]
+        })));
+        assert.equal(processResult.summary.passed, 1, JSON.stringify(processResult.perTest));
+        assert.deepEqual(processResult.runnerErrors, []);
+    }
+}
 console.log('bench authoring passed');
 `;
 
@@ -257,7 +296,7 @@ assert.deepEqual(Object.keys(bench).sort(), [
     'asyncMeasurementStrategy', 'availableMetric', 'benchmark',
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
     'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
-    'processCpuCollector', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
+    'processCpuCollector', 'processMeasurement', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
     'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 let calls = 0;

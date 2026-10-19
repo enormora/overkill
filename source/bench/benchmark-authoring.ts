@@ -8,6 +8,7 @@ import { benchmarkResourceEnvelope } from './benchmark-resource-envelope.ts';
 import { resolveBenchmarkDefinition } from './benchmark-definition-resolution.ts';
 import { defaultSamplingPolicy } from './sampling-policy.ts';
 import { workloadIdentity, type Workload } from './workload.ts';
+import type { ProcessMeasurementStrategy, ProcessSample } from './process-measurement.ts';
 import type {
     AsyncMeasurementSample,
     AsyncMeasurementStrategy,
@@ -15,22 +16,26 @@ import type {
     MeasurementStrategy
 } from './measurement-types.ts';
 
-type StrategySamples = { readonly async: AsyncMeasurementSample; readonly sync: MeasurementSample; };
-type SampleForStrategy<Strategy extends AsyncMeasurementStrategy | MeasurementStrategy> =
-    StrategySamples[Strategy['mode']];
+type Strategy = AsyncMeasurementStrategy | MeasurementStrategy | ProcessMeasurementStrategy;
+type StrategySamples = {
+    readonly async: AsyncMeasurementSample;
+    readonly sync: MeasurementSample;
+    readonly process: ProcessSample;
+};
+type SampleForStrategy<Measurement extends Strategy> = StrategySamples[Measurement['mode']];
 type AuthoredBenchmark<
     Workloads extends readonly Workload[],
-    Strategy extends AsyncMeasurementStrategy | MeasurementStrategy
-> = BenchmarkDefinition<Workloads[number]['parameters'], SampleForStrategy<Strategy>, Strategy> & {
+    Measurement extends Strategy
+> = BenchmarkDefinition<Workloads[number]['parameters'], SampleForStrategy<Measurement>, Measurement> & {
     readonly workloads: Workloads;
 };
 
 export function benchmark<
     const Workloads extends readonly Workload[],
-    Strategy extends AsyncMeasurementStrategy | MeasurementStrategy
+    Measurement extends Strategy
 >(
     title: string,
-    definition: AuthoredBenchmark<Workloads, Strategy>,
+    definition: AuthoredBenchmark<Workloads, Measurement>,
     ...configuration: readonly [] | readonly [BenchmarkOptions]
 ): TestCase {
     if (typeof definition.measure !== 'function') {

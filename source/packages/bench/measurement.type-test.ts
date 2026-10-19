@@ -8,6 +8,30 @@ const operationCount = 2;
 const asyncValue = 7;
 
 describe('benchmark measurement authoring', function () {
+    test('provides a process-only sample for process strategies', function () {
+        bench.benchmark('command', {
+            kind: 'startup',
+            workloads: [ bench.workload('one', {}) ],
+            measurement: bench.processMeasurement({ instrumentation: 'off' }),
+            async measure({ sample }) {
+                expect(sample).type.toBe<bench.BenchmarkSample<bench.ProcessSample>>();
+                expect(sample).type.not.toHaveProperty('measure');
+                const measured = await sample.process({
+                    command: [ 'node', 'cli.js' ],
+                    cwd: '.',
+                    env: null,
+                    io: { kind: 'pipes' },
+                    completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
+                });
+                expect(measured).type.toBe<bench.MeasuredProcess>();
+                return { durationMicroseconds: measured.metrics.durationMicroseconds };
+            },
+            diagnosticMetrics: [],
+            budgets: { one: { durationMicroseconds: { maximum: 100 } } }
+        });
+        expect(standard.processMeasurement).type.toBe<typeof bench.processMeasurement>();
+        expect<bench.MeasurementSample>().type.not.toHaveProperty('process');
+    });
     test('infers workload parameters and synchronous region values', function () {
         const node = bench.benchmark('serialize', {
             kind: 'runtime',

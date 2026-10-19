@@ -10,18 +10,21 @@ export const benchmarkDefinitionSchema: z.ZodType<BenchmarkDefinitionSummary> = 
     lifecycle: benchmarkLifecyclePolicySchema.nullable().default(null),
     kind: z.string(),
     workloads: z.array(z.strictObject({ name: z.string(), parameters: z.record(z.string(), z.json()) })),
-    measurement: z.strictObject({
-        mode: z.enum([ 'async', 'sync' ]),
-        collectors: z.array(z.strictObject({
-            name: z.string(),
-            metrics: z.array(z.strictObject({
+    measurement: z.union([
+        z.strictObject({
+            mode: z.enum([ 'async', 'sync' ]),
+            collectors: z.array(z.strictObject({
                 name: z.string(),
-                collector: z.string(),
-                scope: z.enum([ 'region', 'thread', 'process', 'runtime', 'custom' ]),
-                unit: z.string()
+                metrics: z.array(z.strictObject({
+                    name: z.string(),
+                    collector: z.string(),
+                    scope: z.enum([ 'region', 'thread', 'process', 'runtime', 'custom' ]),
+                    unit: z.string()
+                }))
             }))
-        }))
-    }),
+        }),
+        z.strictObject({ mode: z.literal('process'), instrumentation: z.enum([ 'node', 'off' ]) })
+    ]),
     diagnostics: z.array(z.string()),
     budgets: z.record(
         z.string(),
