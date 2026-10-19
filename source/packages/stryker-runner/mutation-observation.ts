@@ -98,6 +98,49 @@ function expectedCatalog(root: string, data: LifecycleData, expectation: Mutatio
         });
 }
 
+function validFailureEvidence(data: LifecycleData): boolean {
+    const selected = new Set(data.selected);
+    const completed = new Set(data.completed);
+    const runnable = new Set(
+        data
+            .catalog
+            .filter(function runnableCase(entry) {
+                return entry.skipReason === null;
+            })
+            .map(function caseIdentity(entry) {
+                return entry.id;
+            })
+    );
+    const failures = new Set(data.caseFailures.map(function failedIdentity(failure) {
+        return failure.id;
+    }));
+    const ordered = data.completed.filter(function failedCompletion(id) {
+        return failures.has(id);
+    });
+    return completed.size === data.completed.length && completed.isSubsetOf(selected) &&
+        failures.size === data.caseFailures.length && failures.isSubsetOf(completed) && failures.isSubsetOf(runnable) &&
+        data.caseFailures.every(function orderedFailure(failure, index) {
+            return failure.id === ordered[index];
+        });
+}
+
+export function mutationSnapshotError(
+    root: string,
+    data: LifecycleData,
+    expectation: MutationInvocationExpectation
+): string | null {
+    const checks: readonly (readonly [boolean, string])[] = [
+        [ expectedCatalog(root, data, expectation), 'Eligible test catalog changed under mutation.' ],
+        [ expectedSelection(data, expectation), 'Execution changed the requested test selection.' ],
+        [ validFailureEvidence(data), 'Execution returned invalid case failure evidence.' ]
+    ];
+    return checks
+        .find(function invalidEvidence([ valid ]) {
+            return !valid;
+        })
+        ?.[1] ?? null;
+}
+
 export function mutationObservationError(
     root: string,
     reply: ResultReply,
@@ -113,7 +156,8 @@ export function mutationObservationError(
         [ validTestOutcome(root, reply, data), 'Mutant execution changed intentional skip state or test identity.' ],
         [ observedIdentities(root, reply, data), 'Execution did not deliver complete case lifecycle observations.' ],
         [ validCoverageOwners(data), 'Instrumentation coverage contains an unknown or incomplete test identity.' ],
-        [ completedSelection(reply, data, allowBail), 'Execution did not complete the selected test catalog.' ]
+        [ completedSelection(reply, data, allowBail), 'Execution did not complete the selected test catalog.' ],
+        [ validFailureEvidence(data), 'Execution returned invalid case failure evidence.' ]
     ];
     return checks
         .find(function failedObservation([ valid ]) {

@@ -22,7 +22,11 @@ const scenarios = [
     'rejection',
     'exception',
     'cleanup',
-    'cleanup-policy'
+    'cleanup-policy',
+    'kill-cleanup-timeout',
+    'kill-cleanup-error-timeout',
+    'continued-timeout',
+    'continued-cleanup-error-timeout'
 ];
 const modes = [
     { processModel: 'in-process', freshState: false },

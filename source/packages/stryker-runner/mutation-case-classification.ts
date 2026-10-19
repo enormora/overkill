@@ -3,15 +3,16 @@ import { workIdentityKey, type PerTestResult, type RunnerError } from '../run/ru
 import { canonicalWork } from './mutation-catalog.ts';
 
 type TestOutcome = PerTestResult['outcome'];
+type NonFailingMutationCase = { readonly kind: 'pass'; } | { readonly kind: 'skip'; };
 
-export type MutationCaseClassification = {
+export type MutationCaseClassification = NonFailingMutationCase | {
     readonly kind: 'error';
     readonly message: string;
 } | {
     readonly kind: 'killed' | 'timeout';
     readonly message: string;
     readonly runnerErrors: readonly RunnerError[];
-} | { readonly kind: 'pass' | 'skip'; };
+};
 
 function errorOwnsCase(root: string, result: PerTestResult, error: RunnerError): boolean {
     const work = error.attributedToWork ?? null;
@@ -76,6 +77,9 @@ function caseKind(result: PerTestResult, errors: readonly RunnerError[]): Mutati
     if (result.verdict === 'skip') {
         return 'skip';
     }
+    if (!terminalEvidence(result, errors)) {
+        return 'error';
+    }
     const outcomes = [ result.outcome, result.attempts[0].outcome ];
     if (
         outcomes.some(function timedOut(outcome) {
@@ -83,9 +87,6 @@ function caseKind(result: PerTestResult, errors: readonly RunnerError[]): Mutati
         })
     ) {
         return 'timeout';
-    }
-    if (!terminalEvidence(result, errors)) {
-        return 'error';
     }
     const killed = errors.length > 0 || outcomes.some(function killingFailure(outcome) {
         return hasFailure(outcome, 'killed');

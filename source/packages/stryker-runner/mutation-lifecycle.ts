@@ -17,7 +17,7 @@ import {
     sameMutationCatalog,
     type MutationCatalog
 } from './mutation-catalog.ts';
-import { classifyMutationCase } from './mutation-case-classification.ts';
+import { createMutationDiagnostics } from './mutation-diagnostics.ts';
 import { mutationCaseMatchesCatalog } from './mutation-observation.ts';
 import { createInvocationInstrumentation } from './instrumentation-context.entry-point.ts';
 
@@ -122,6 +122,7 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
     const instrumentation = createInvocationInstrumentation();
     let selection: MutationCaseSelection | null = null;
     let bailed = false;
+    const diagnostics = createMutationDiagnostics(input.root);
     const admission: MutationAdmission = {
         active: new Set(),
         completed: new Set()
@@ -155,14 +156,15 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
         async completeCase(result, errors) {
             delete instrumentation.context.currentTestId;
             recordMutationCompletion(input.root, selection, admission, result);
-            const stop = input.mode !== 'dry' && !input.disableBail &&
-                classifyMutationCase(input.root, result, errors).kind === 'killed';
+            const classification = diagnostics.record(result, errors);
+            const stop = input.mode !== 'dry' && !input.disableBail && classification.kind === 'killed';
             bailed = stop;
             return stop ? 'stop' : 'continue';
         },
         snapshot() {
             const collected = selection ?? { catalog: [], selected: [] };
             return mutationLifecycleDataSchema.parse({
+                ...diagnostics.snapshot(),
                 catalog: collected.catalog,
                 coverage: structuredClone(instrumentation.context.mutantCoverage),
                 hitLimitExceeded: input.hitLimit !== null && (instrumentation.context.hitCount ?? 0) > input.hitLimit,

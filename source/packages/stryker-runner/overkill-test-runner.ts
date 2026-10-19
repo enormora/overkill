@@ -5,6 +5,7 @@ import { DryRunStatus, MutantRunStatus, type TestRunner } from '@stryker-mutator
 import { createMutationRunnerLifecycle } from './mutation-runner-lifecycle.ts';
 import { createMutationBaseline } from './mutation-baseline.ts';
 import { createMutationRunnerInvocations } from './mutation-runner-invocations.ts';
+import { expiredMutantResult } from './mutation-results.ts';
 
 export function createOverkillTestRunner(
     options: Readonly<Record<string, unknown>>,
@@ -43,9 +44,7 @@ export function createOverkillTestRunner(
                     async function (runner, remaining) {
                         return await invocations.mutant(runner, input, remaining);
                     },
-                    function () {
-                        return { status: MutantRunStatus.Timeout, reason: 'Mutant invocation exceeded its deadline.' };
-                    }
+                    expiredMutantResult
                 );
             } catch (error: unknown) {
                 return { status: MutantRunStatus.Error, errorMessage: String(error) };

@@ -58,6 +58,8 @@ export function mutationCoverageFixture(
                 selected: identities,
                 completed: identities,
                 bailed: false,
+                caseFailures: [],
+                infrastructureErrors: [],
                 hitLimitExceeded: false
             }
         },

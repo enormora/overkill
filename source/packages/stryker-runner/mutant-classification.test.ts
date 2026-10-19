@@ -182,6 +182,24 @@ export const testNode = suite('mutant case classification', [
         scope.assert.equal(translate(result, [ policyError(result, 'permission') ]).status, 'error');
         return scope.assert.collect();
     }),
+    ...([ 'crashed', 'runtime-policy' ] as const).map(function terminalVerdict(verdict) {
+        return test(`keeps missing ${verdict} attribution ahead of retained timeouts`, function (scope) {
+            const original = caseResult(null, verdict);
+            const outcome = {
+                kind: 'fail',
+                failures: [ {
+                    kind: 'timeout',
+                    deadlineMilliseconds: 1,
+                    elapsedMilliseconds: 2
+                } ]
+            } as const;
+            const result = { ...original, attempts: [ { ...original.attempts[0], outcome } ] } as const;
+            const subtype = verdict === 'crashed' ? 'uncaught-exception' : 'permission';
+            scope.assert.equal(translate(result, []).status, 'error');
+            scope.assert.equal(translate(result, [ policyError(result, subtype) ]).status, 'timeout');
+            return scope.assert.collect();
+        });
+    }),
     test('rejects retry histories, conflicting identities, and contradictory verdicts', function (scope) {
         const result = caseResult({ kind: 'fail', failures: [ bodyFailure ] }, 'fail');
         const invalid: readonly PerTestResult[] = [
