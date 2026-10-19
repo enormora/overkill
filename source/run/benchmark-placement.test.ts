@@ -35,6 +35,18 @@ export const testNode = suite('adaptive benchmark placement policy', [
         }
         return scope.assert.collect();
     }),
+    test('serializes process strategies even for artifact-size kinds without timing budgets', function (scope) {
+        const facts = resolveBenchmarkPlacement({
+            definitions: [ { ...definition(), measurement: { mode: 'process', instrumentation: 'off' } } ],
+            host: quietHost(),
+            processModel: 'worker-pool'
+        });
+        scope.assert.equal(facts.maximumWorkers, 1);
+        scope.assert.true(facts.limits.some(function measurementLimit(limit) {
+            return limit.reason === 'measurement';
+        }));
+        return scope.assert.collect();
+    }),
     test('serializes timing metrics, every collector, other kinds, missing metadata and mixed work', function (scope) {
         const size = definition();
         const sensitive = [

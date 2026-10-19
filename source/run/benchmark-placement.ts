@@ -17,7 +17,10 @@ const timingMetrics: ReadonlySet<string> = new Set([ 'durationMicroseconds', 'op
 const percentScale = 100;
 
 function parallelMeasurement(definition: BenchmarkDefinitionSummary | null): boolean {
-    if (definition?.kind !== 'bundle-size' || definition.measurement.collectors.length > 0) {
+    if (
+        definition?.kind !== 'bundle-size' || definition.measurement.mode === 'process' ||
+        definition.measurement.collectors.length > 0
+    ) {
         return false;
     }
     const metrics = [

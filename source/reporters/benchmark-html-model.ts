@@ -4,6 +4,7 @@ import type { PerformanceBaselineEvidence } from '../baselines/performance-prese
 import { readPerformanceBaselineReport, type PerformanceBaselineReport } from '../baselines/performance-report.ts';
 import { formatCaseId, workIdentityKey } from '../engine/identity.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { processEvidenceForWork } from '../bench/process-evidence-query.ts';
 import type { BenchmarkHtmlReport, BaselineChartRow } from './benchmark-html-data.ts';
 import { benchmarkMetricGroups, formatBenchmarkWorkload } from './benchmark-html-metrics.ts';
 
@@ -74,7 +75,12 @@ export function createBenchmarkHtmlReport(result: RunResult): BenchmarkHtmlRepor
                 label: `${formatCaseId(test.id)} / ${formatBenchmarkWorkload(test)}`,
                 verdict: test.verdict,
                 details: JSON.stringify(
-                    { benchmark: test.benchmark, outcome: test.outcome, attempts: test.attempts },
+                    {
+                        benchmark: test.benchmark,
+                        outcome: test.outcome,
+                        attempts: test.attempts,
+                        processes: processEvidenceForWork(result, test.workId)
+                    },
                     null,
                     jsonIndentation
                 )

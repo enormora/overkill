@@ -228,9 +228,14 @@ export const configuration = {
             description: 'Workload measurement and performance budgets for Overkill benchmark suites.',
             roots: {
                 main: moduleRoot('packages/bench/bench.entry-point'),
+                processHelper: { javaScript: 'packages/bench/process-helper.entry-point.js' },
+                processNodeProbe: { javaScript: 'packages/bench/process-node-probe.entry-point.js' },
                 calibration: moduleRoot('packages/bench/calibration.entry-point')
             },
-            packageInterface: { modules: packageModules({ '.': 'main', './calibration': 'calibration' }) },
+            packageInterface: {
+                modules: packageModules({ '.': 'main', './calibration': 'calibration' }),
+                privateRoots: [ 'processHelper', 'processNodeProbe' ]
+            },
             bundlePeerDependencies: [
                 '@overkill-dev/engine',
                 '@overkill-dev/simulation',

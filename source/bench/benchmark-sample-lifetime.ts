@@ -2,6 +2,13 @@ import { CaseRunnerError, isCaseRunnerError } from '../engine/run-result.ts';
 import type { BenchmarkLifecycle } from './benchmark-lifecycle.ts';
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
+import type { ProcessSamplingSession } from './process-sampling.ts';
+import type { ProcessPhase } from './process-evidence.ts';
+
+export type InvocationMeasurement = {
+    readonly processes: ProcessSamplingSession | null;
+    readonly phase: ProcessPhase;
+};
 
 type SampleCleanupResult = { readonly callbacks: number; readonly failures: number; };
 type SampleCleanup = {
@@ -37,15 +44,31 @@ function createSampleCleanup(reportError: (error: unknown) => void): SampleClean
     };
 }
 
+type FunctionSampleLifetime = ReturnType<typeof createAsyncMeasurementSample | typeof createMeasurementSample>;
+
+function functionSample(input: SamplingSessionInput): FunctionSampleLifetime {
+    if (input.measurement.mode === 'sync') {
+        return createMeasurementSample(input.measurement, input.scope.signal);
+    }
+    if (input.measurement.mode === 'async') {
+        return createAsyncMeasurementSample(input.measurement, input.scope.signal);
+    }
+    throw new TypeError('Process sampling requires an owned process session.');
+}
+
 async function observeInvocation(
     input: SamplingSessionInput,
     cleanup: SampleCleanup,
-    observe: (returned: unknown) => void
+    observe: (returned: unknown) => void,
+    measurement: InvocationMeasurement
 ): Promise<void> {
     input.scope.signal.throwIfAborted();
-    const lifecycle = input.measurement.mode === 'sync'
-        ? createMeasurementSample(input.measurement, input.scope.signal)
-        : createAsyncMeasurementSample(input.measurement, input.scope.signal);
+    await using disposal = new AsyncDisposableStack();
+    const processes = measurement.processes?.sample(measurement.phase) ?? null;
+    disposal.defer(async function disposeProcesses() {
+        await processes?.dispose();
+    });
+    const lifecycle = processes ?? functionSample(input);
     const returned: unknown = await Reflect.apply(input.body, undefined, [ {
         ...input.context,
         workload: input.workload,
@@ -62,10 +85,11 @@ type InvocationOutcome = { readonly kind: 'complete'; } | { readonly kind: 'fail
 async function attemptInvocation(
     input: SamplingSessionInput,
     cleanup: SampleCleanup,
-    observe: (returned: unknown) => void
+    observe: (returned: unknown) => void,
+    measurement: InvocationMeasurement
 ): Promise<InvocationOutcome> {
     try {
-        await observeInvocation(input, cleanup, observe);
+        await observeInvocation(input, cleanup, observe, measurement);
         return { kind: 'complete' };
     } catch (error: unknown) {
         return { kind: 'failed', error };
@@ -87,10 +111,11 @@ function collectAfterCleanup(input: SamplingSessionInput, failed: boolean, colle
 export async function measureBenchmarkInvocation(
     input: SamplingSessionInput,
     observe: (returned: unknown) => void,
-    lifecycle: Pick<BenchmarkLifecycle, 'garbageCollection' | 'recordCleanup'>
+    lifecycle: Pick<BenchmarkLifecycle, 'garbageCollection' | 'recordCleanup'>,
+    measurement: InvocationMeasurement
 ): Promise<void> {
     const cleanup = createSampleCleanup(input.scope.reportCleanupError);
-    const invocation = await attemptInvocation(input, cleanup, observe);
+    const invocation = await attemptInvocation(input, cleanup, observe, measurement);
     const result = await cleanup.finish();
     lifecycle.recordCleanup(result);
     collectAfterCleanup(

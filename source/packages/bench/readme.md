@@ -255,7 +255,7 @@ interruptions retain confirmed prefixes; hard termination retains the last
 delivered progress snapshot. Historical results without lifecycle evidence
 decode it as `null`.
 
-External-process measurement and browser collectors remain later milestones.
+Browser collectors remain a later milestone.
 Benchmark HTML reports show warmup and lifecycle evidence separately from
 measured distributions and budgets, and are available through
 `createBenchmarkHtmlReporter` from `@overkill-dev/test/reporters`.
@@ -290,6 +290,67 @@ Cross-class comparison has no fallback. Calibration does not itself normalize
 observations. An adapter can explicitly use `normalizeBenchmarkDuration` from
 `@overkill-dev/bench/calibration` for CPU duration metrics; unsuitable metrics
 should retain their own comparison policy.
+
+## External processes and terminals
+
+Use `processMeasurement({ instrumentation: 'off' })` for commands on Linux or
+macOS. Each warmup and measured invocation must await exactly one
+`sample.process(...)`. Commands run directly without a shell, in a fresh owned
+process group. `env: null` inherits the environment; a record replaces it.
+
+```ts
+import { benchmark, processMeasurement, workload } from '@overkill-dev/test/bench';
+
+export const testNode = benchmark('CLI startup', {
+    kind: 'startup',
+    workloads: [ workload('one', {}) ],
+    measurement: processMeasurement({ instrumentation: 'off' }),
+    async measure({ sample }) {
+        const child = await sample.process({
+            command: [ 'node', 'cli.js' ],
+            cwd: '.',
+            env: null,
+            io: { kind: 'pipes' },
+            completion: {
+                kind: 'ready',
+                marker: { stream: 'stdout', text: 'Ready' }
+            }
+        });
+        return { startupMilliseconds: child.metrics.startupMilliseconds };
+    },
+    diagnosticMetrics: [],
+    budgets: { one: { startupMilliseconds: { maximum: 500 } } }
+});
+```
+
+Import `benchmark`, `workload`, and `processMeasurement` from
+`@overkill-dev/test/bench` or `@overkill-dev/bench`.
+
+`completion.kind` selects exit, readiness, or the final scripted interaction.
+Exit completion declares `expectedExitCodes`, nullable `readiness`, and `steps`.
+Interaction completion declares nullable `readiness` and a nonempty script
+ending with `expect` or a named `interaction`. Steps support `write`, literal
+`expect`, `interaction`, pipe `close-input`, and terminal `resize`. Interaction steps use
+`name`, `input`, and `marker` and expose
+`interaction.<name>.durationMicroseconds`.
+
+Use `io: { kind: 'pty', name: 'xterm-256color', columns: 80, rows: 24 }` for a
+terminal. Terminal markers select `stream: 'terminal'`; pipes select `stdout`
+or `stderr`. Matching preserves ANSI sequences and continues beyond retained
+output limits. First output and explicit readiness are separate metrics.
+
+`instrumentation: 'node'` requires the command executable to be Node. Its probe
+reports child CPU, memory, and event loop readings with a separate observation
+window. CPU totals and peak RSS cover the child lifetime; event loop observation
+starts when the probe loads. Delay readings stay unavailable until an event loop
+observation exists. Instrumentation off returns these readings as unavailable.
+Wall time starts at target launch and ends at the selected checkpoint; teardown is outside
+that interval. Cancellation and completion terminate the owned process group,
+with forced termination after a bounded grace period.
+
+Runner results retain bounded output, phase, completion, and probe metadata as
+process evidence. HTML case details include that evidence. Process benchmarks
+run serially under existing benchmark host checks and sampling policies.
 
 ## Host conditions
 
