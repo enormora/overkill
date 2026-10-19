@@ -163,6 +163,14 @@ async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<Tim
     };
 }
 
+function attributeCaseAttempt(input: ExecuteCaseInput, errors: readonly RunnerError[]): readonly RunnerError[] {
+    return errors.map(function attributeAttempt(error) {
+        return error.attributedToWork === input.testCase.workId && error.attributedToAttempt === null
+            ? { ...error, attributedToAttempt: { index: input.attempt } }
+            : error;
+    });
+}
+
 async function executeAttempt(input: ExecuteCaseInput, started: boolean): Promise<ReportedCase> {
     const startErrors = started ? [] : await reportTestStart(
         input.testCase,
@@ -170,16 +178,11 @@ async function executeAttempt(input: ExecuteCaseInput, started: boolean): Promis
         input.context.reporterDelivery
     );
     const { endedAtMicroseconds, leakCheckedCase, startedAtMicroseconds } = await executeTimedLeakCheckedCase(input);
-    const caseRunnerErrors = [
+    const caseRunnerErrors = attributeCaseAttempt(input, [
         ...input.context.dependencies.globalErrorObserver.takeErrors(),
         ...leakCheckedCase.executedCase.runnerErrors,
         ...leakCheckedCase.runnerErrors
-    ]
-        .map(function attributeAttempt(error) {
-            return error.attributedToWork === input.testCase.workId && error.attributedToAttempt === null
-                ? { ...error, attributedToAttempt: { index: input.attempt } }
-                : error;
-        });
+    ]);
 
     for (const runnerError of caseRunnerErrors) {
         input.supervision.recordRunnerError(runnerError);
@@ -243,14 +246,17 @@ async function completeLogicalCase(input: ExecuteCaseInput, executed: ReportedCa
     if (input.testCase.execution.kind === 'skip' || policy === null || policy === undefined) {
         return executed;
     }
-    const errors = await completeCaseWithAsyncLeakPolicy({
-        dependencies: input.context.dependencies,
-        includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
-        testCase: input.testCase,
-        async complete() {
-            return await completionErrors(input, policy);
-        }
-    });
+    const errors = attributeCaseAttempt(
+        input,
+        await completeCaseWithAsyncLeakPolicy({
+            dependencies: input.context.dependencies,
+            includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
+            testCase: input.testCase,
+            async complete() {
+                return await completionErrors(input, policy);
+            }
+        })
+    );
     for (const error of errors) {
         input.supervision.recordRunnerError(error);
     }

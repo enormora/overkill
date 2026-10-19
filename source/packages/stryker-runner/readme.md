@@ -145,6 +145,17 @@ affected IDs and complete case failure lists alongside runner diagnostics,
 and do not publish a baseline. Timeouts return `Timeout`. Stryker aborts these
 invocations before mutation execution and produces no mutation score.
 
+Mutants are killed by eligible-case assertions, body errors, test-contract
+failures, or policy violations safely attributed to the executing case and
+attempt. This includes permission denials, forbidden console output, async
+leaks, uncaught exceptions, and unhandled rejections. Killing results include
+stable test IDs and structured failure diagnostics.
+
+Loading, collection, infrastructure, reporter, transport, and persistence
+failures return `Error`. Missing or conflicting attribution, inconclusive
+results, and cleanup failures also return `Error`, including cleanup errors
+retained beneath a policy verdict. Serial execution alone never proves ownership.
+
 Set Stryker's `coverageAnalysis` to `perTest` (the normal optimized mode), `all`,
 or `off`. `perTest` returns Stryker's case counters and narrows execution only
 when the requested cases include every recorded covering case. `all` returns
