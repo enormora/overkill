@@ -102,6 +102,7 @@ function dropBodyReadPermission(command: SupervisedRunCommand): void {
 await runSupervisedChild(
     {
         disconnect,
+        flush: outbox.flush,
         discoverRunFiles: runDiscovery.discoverRunFiles,
         dropBodyReadPermission,
         observeIpcListeners(record) {

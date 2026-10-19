@@ -1,4 +1,5 @@
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import { InvocationDeadlineExceededError, isInvocationCancellation } from '../invocation-budget.ts';
 import { initializeRun } from './initialized-run.ts';
 import { withExecutionLifecycle } from './execution-session-lifecycle.ts';
 import { runExecutionFailure } from './execution-failure.ts';
@@ -48,15 +49,23 @@ export function createCollectedExecutionSession(
                 return await withExecutionLifecycle(
                     call.transport,
                     options.command.policy.moduleBoundary,
+                    call,
                     async function (lifecycle) {
                         try {
                             return await executeCollectedInvocation({ options, dependencies, collection }, lifecycle);
                         } finally {
                             reply.write(lifecycle.snapshot());
+                            await call.checkpoint(reply.read());
                         }
                     }
                 );
             } catch (error: unknown) {
+                if (
+                    call.signal.reason instanceof InvocationDeadlineExceededError &&
+                    isInvocationCancellation(error, call.signal)
+                ) {
+                    return { kind: 'timeout', data: reply.read() };
+                }
                 return { kind: 'failure', failure: runExecutionFailure(error), data: reply.read() };
             }
         }

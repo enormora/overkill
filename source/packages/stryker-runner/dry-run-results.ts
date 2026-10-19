@@ -9,6 +9,8 @@ import {
 import { workIdentityKey, type PerTestResult, type RunExecutionReply } from '../run/run.entry-point.ts';
 import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { mutationObservationError, type MutationInvocationExpectation } from './mutation-observation.ts';
+import { isInterruptedExecution, isTimeoutInterruption } from './mutation-timeout.ts';
+import { hasMutationExecutionError } from './mutation-diagnostics.ts';
 
 type ResultReply = Extract<RunExecutionReply, { readonly kind: 'result'; }>;
 type LifecycleData = Readonly<ReturnType<typeof mutationLifecycleDataSchema.parse>>;
@@ -90,6 +92,45 @@ function fullSuiteCoverage(data: LifecycleData): LifecycleData['coverage'] {
     return { static: counts, perTest: {} };
 }
 
+function timedOutDryRun(reply: Extract<RunExecutionReply, { readonly kind: 'timeout'; }>): DryRunResult {
+    if (reply.data === null) {
+        return { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' };
+    }
+    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
+    if (!parsed.success) {
+        return { status: DryRunStatus.Error, errorMessage: `Invalid mutation lifecycle data: ${parsed.error.message}` };
+    }
+    const { data } = parsed;
+    return hasMutationExecutionError(data)
+        ? {
+            status: DryRunStatus.Error,
+            errorMessage: [
+                ...data.infrastructureErrors,
+                ...data.caseFailures.map(function diagnostic(failure) {
+                    return failure.message;
+                })
+            ]
+                .join('\n')
+        }
+        : { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' };
+}
+
+function interruptedDryRun(reply: ResultReply): DryRunResult {
+    const failures = reply.result.runnerErrors.filter(function independentFailure(error) {
+        return !isTimeoutInterruption(error);
+    });
+    return failures.length === 0
+        ? timedOutDryRun({ kind: 'timeout', data: reply.data })
+        : {
+            status: DryRunStatus.Error,
+            errorMessage: failures
+                .map(function diagnostic(error) {
+                    return error.message;
+                })
+                .join('\n')
+        };
+}
+
 function completeDryRun(
     root: string,
     reply: ResultReply,
@@ -124,7 +165,10 @@ export function dryMutationResult(
         return { status: DryRunStatus.Error, errorMessage: reply.failure.message };
     }
     if (reply.kind === 'timeout') {
-        return { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' };
+        return timedOutDryRun(reply);
+    }
+    if (isInterruptedExecution(reply)) {
+        return interruptedDryRun(reply);
     }
     return completeDryRun(root, reply, coverage, expectation);
 }

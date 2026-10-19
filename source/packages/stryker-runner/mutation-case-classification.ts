@@ -1,6 +1,7 @@
 import { inspect, isDeepStrictEqual } from 'node:util';
 import { workIdentityKey, type PerTestResult, type RunnerError } from '../run/run.entry-point.ts';
 import { canonicalWork } from './mutation-catalog.ts';
+import { isHitLimitGuard } from './mutation-hit-limit.ts';
 
 type TestOutcome = PerTestResult['outcome'];
 type NonFailingMutationCase = { readonly kind: 'pass'; } | { readonly kind: 'skip'; };
@@ -34,10 +35,11 @@ function safelyAttributedError(root: string, result: PerTestResult, error: Runne
         isDeepStrictEqual(error.attributedToAttempt, result.attempts[0].attempt);
 }
 
-function supportedOutcome(outcome: TestOutcome): boolean {
+function supportedOutcome(outcome: TestOutcome, hitLimitExceeded: boolean): boolean {
     if (outcome?.kind === 'fail') {
         return outcome.failures.every(function supportedFailure(failure) {
-            return [ 'assertion', 'body-error', 'test-contract', 'timeout' ].includes(failure.kind);
+            return [ 'assertion', 'body-error', 'test-contract', 'timeout' ].includes(failure.kind) ||
+                failure.kind === 'cleanup-error' && hitLimitExceeded && isHitLimitGuard(failure.error.thrown);
         });
     }
     return outcome?.kind !== 'inconclusive';
@@ -73,7 +75,17 @@ function terminalEvidence(result: PerTestResult, errors: readonly RunnerError[])
     return result.verdict !== 'runtime-policy' || errors.length > 0;
 }
 
-function caseKind(result: PerTestResult, errors: readonly RunnerError[]): MutationCaseClassification['kind'] {
+function hasCaseTimeout(outcomes: readonly TestOutcome[], hitLimitExceeded: boolean): boolean {
+    return hitLimitExceeded || outcomes.some(function timedOut(outcome) {
+        return hasFailure(outcome, 'timeout');
+    });
+}
+
+function caseKind(
+    result: PerTestResult,
+    errors: readonly RunnerError[],
+    hitLimitExceeded: boolean
+): MutationCaseClassification['kind'] {
     if (result.verdict === 'skip') {
         return 'skip';
     }
@@ -82,9 +94,7 @@ function caseKind(result: PerTestResult, errors: readonly RunnerError[]): Mutati
     }
     const outcomes = [ result.outcome, result.attempts[0].outcome ];
     if (
-        outcomes.some(function timedOut(outcome) {
-            return hasFailure(outcome, 'timeout');
-        })
+        hasCaseTimeout(outcomes, hitLimitExceeded)
     ) {
         return 'timeout';
     }
@@ -107,14 +117,18 @@ function caseDiagnostic(root: string, result: PerTestResult, errors: readonly Ru
 export function classifyMutationCase(
     root: string,
     result: PerTestResult,
-    errors: readonly RunnerError[]
+    errors: readonly RunnerError[],
+    hitLimitExceeded: boolean
 ): MutationCaseClassification {
     const runnerErrors = errors.filter(function attributedError(error) {
         return safelyAttributedError(root, result, error);
     });
     const outcomes = [ result.outcome, result.attempts[0].outcome ];
-    const kind = consistentResult(root, result) && outcomes.every(supportedOutcome)
-        ? caseKind(result, runnerErrors)
+    const supported = outcomes.every(function supportedResult(outcome) {
+        return supportedOutcome(outcome, hitLimitExceeded);
+    });
+    const kind = consistentResult(root, result) && supported
+        ? caseKind(result, runnerErrors, hitLimitExceeded)
         : 'error';
     if (kind === 'error') {
         return { kind, message: caseDiagnostic(root, result, runnerErrors) };

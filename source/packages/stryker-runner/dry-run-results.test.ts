@@ -286,6 +286,40 @@ export const testNode = suite('structured dry-run results', [
         }
         return scope.assert.collect();
     }),
+    test('retains checkpoint infrastructure errors when a later case exceeds its deadline', function (scope) {
+        const { reply } = mutationCoverageFixture('off');
+        const data = mutationLifecycleDataSchema.parse(reply.data);
+        scope.assert.deepEqual(
+            dryMutationResult(
+                '/project',
+                {
+                    kind: 'timeout',
+                    data: { ...data, infrastructureErrors: [ 'cleanup sentinel' ] }
+                },
+                'off',
+                expectation
+            ),
+            { status: DryRunStatus.Error, errorMessage: 'cleanup sentinel' }
+        );
+        scope.assert.deepEqual(
+            dryMutationResult(
+                '/project',
+                {
+                    kind: 'timeout',
+                    data: { ...data, caseFailures: [ { id: 'case', kind: 'error', message: 'case sentinel' } ] }
+                },
+                'off',
+                expectation
+            ),
+            { status: DryRunStatus.Error, errorMessage: 'case sentinel' }
+        );
+        return scope.assert.collect();
+    }),
+    test('rejects malformed timeout checkpoints', function (scope) {
+        const result = dryMutationResult('/project', { kind: 'timeout', data: {} }, 'off', expectation);
+        scope.assert.equal(result.status, DryRunStatus.Error);
+        return scope.assert.collect();
+    }),
     test('returns execution failure diagnostics without completing a dry run', function (scope) {
         const result = dryMutationResult(
             '/project',

@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
-import { loadConfig } from '../packages/run/config.entry-point.ts';
+import { ConfigError, loadConfig } from '../packages/run/config.entry-point.ts';
+import { runExecutionFailure } from './execution-failure.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 import { freezeRunPolicy } from './freeze-run-policy.ts';
 import type { FrozenMicrotestPolicy } from './run-types.ts';
 import { policyBaselineCommand } from './frozen-run-policy.ts';
@@ -69,7 +71,11 @@ async function reevaluatePolicy(
     } catch (error: unknown) {
         throw new RunResolutionError(
             `Frozen policy revalidation failed: ${revalidationFailure(error)}`,
-            { cause: error },
+            {
+                cause: currentExecutionSession() !== null && error instanceof ConfigError
+                    ? { kind: 'configuration-loading', failure: runExecutionFailure(error) }
+                    : error
+            },
             'invalid-request'
         );
     }

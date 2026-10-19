@@ -16,18 +16,18 @@ export function createOverkillTestRunner(
     const invocations = createMutationRunnerInvocations(createMutationBaseline(), options.ignoreStatic === true);
     return {
         async capabilities() {
-            const runner = await lifecycle.ready();
+            const runner = await lifecycle.ready(null);
             return { reloadEnvironment: runner.execution.environmentLifetime === 'fresh' };
         },
         async init() {
-            await lifecycle.ready();
+            await lifecycle.ready(null);
         },
         async dryRun(input) {
             try {
                 return await lifecycle.invoke(
                     input.timeout,
-                    async function (runner, remaining) {
-                        return await invocations.dry(runner, input, remaining);
+                    async function (runner, budget) {
+                        return await invocations.dry(runner, input, budget);
                     },
                     function () {
                         return { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline.' };
@@ -41,8 +41,8 @@ export function createOverkillTestRunner(
             try {
                 return await lifecycle.invoke(
                     input.timeout,
-                    async function (runner, remaining) {
-                        return await invocations.mutant(runner, input, remaining);
+                    async function (runner, budget) {
+                        return await invocations.mutant(runner, input, budget);
                     },
                     expiredMutantResult
                 );

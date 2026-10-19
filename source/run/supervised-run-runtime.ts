@@ -344,7 +344,7 @@ export function handleChildMessage(
     message: NonTimingSupervisedChildMessage,
     runtime: SupervisedRunRuntime
 ): void {
-    if (message.kind === 'execution-data') {
+    if (message.kind === 'execution-data' || message.kind === 'execution-checkpoint') {
         return;
     }
     if (message.kind === 'collected') {

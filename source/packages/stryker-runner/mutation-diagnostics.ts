@@ -8,7 +8,11 @@ type MutationCaseObservation = {
 };
 type LifecycleData = ReturnType<typeof mutationLifecycleDataSchema.parse>;
 type MutationDiagnosticRecorder = {
-    readonly record: (result: PerTestResult, errors: readonly RunnerError[]) => MutationCaseClassification;
+    readonly record: (
+        result: PerTestResult,
+        errors: readonly RunnerError[],
+        hitLimitExceeded: boolean
+    ) => MutationCaseClassification;
     readonly snapshot: () => Pick<LifecycleData, 'caseFailures' | 'infrastructureErrors'>;
 };
 
@@ -48,8 +52,8 @@ export function createMutationDiagnostics(root: string): MutationDiagnosticRecor
     const observations: MutationCaseObservation[] = [];
     const observedErrors = new Set<RunnerError>();
     return {
-        record(result, errors) {
-            const classification = classifyMutationCase(root, result, errors);
+        record(result, errors, hitLimitExceeded) {
+            const classification = classifyMutationCase(root, result, errors, hitLimitExceeded);
             observations.push({ id: workIdentityKey(canonicalWork(root, result.workId)), classification });
             for (const error of errors) {
                 observedErrors.add(error);

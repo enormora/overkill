@@ -4,6 +4,7 @@ import type { RunExecutionLifecycle, RunExecutionLifecycleFactory, FileModuleBou
 import { withExecutionSession, type RunExecutionTransport } from './execution-session-context.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
 import { parseRunSelection } from './run-selection-schema.ts';
+import type { ExecutionSessionObservation } from './execution-session-runtime-types.ts';
 
 function isLifecycleFactory(value: unknown): value is RunExecutionLifecycleFactory {
     return typeof value === 'function';
@@ -14,19 +15,31 @@ function isExecutionLifecycle(value: unknown): value is RunExecutionLifecycle {
             return typeof Reflect.get(value, method) === 'function';
         });
 }
-function validatedLifecycle(lifecycle: RunExecutionLifecycle): RunExecutionLifecycle {
+function validatedLifecycle(
+    lifecycle: RunExecutionLifecycle,
+    observation: ExecutionSessionObservation
+): RunExecutionLifecycle {
     return {
         async select(plan) {
-            return parseRunSelection(await lifecycle.select(plan));
+            observation.signal.throwIfAborted();
+            const selection = parseRunSelection(await lifecycle.select(plan));
+            await observation.checkpoint(z.json().parse(lifecycle.snapshot()));
+            return selection;
         },
         async beforeCases() {
+            observation.signal.throwIfAborted();
             await lifecycle.beforeCases();
         },
         async enterCase(work) {
+            observation.signal.throwIfAborted();
             await lifecycle.enterCase(work);
         },
         async completeCase(result, errors) {
-            return z.enum([ 'continue', 'stop' ]).parse(await lifecycle.completeCase(result, errors));
+            const admission = z.enum([ 'continue', 'stop' ]).parse(await lifecycle.completeCase(result, errors));
+            if (![ 'pass', 'skip' ].includes(result.verdict) || errors.length > 0) {
+                await observation.checkpoint(z.json().parse(lifecycle.snapshot()));
+            }
+            return observation.signal.aborted ? 'stop' : admission;
         },
         snapshot() {
             return z.json().parse(lifecycle.snapshot());
@@ -49,7 +62,7 @@ async function loadExecutionLifecycle(transport: RunExecutionTransport): Promise
     if (!isExecutionLifecycle(created)) {
         throw new TypeError('Execution lifecycle factory returned an invalid lifecycle.');
     }
-    return validatedLifecycle(created);
+    return created;
 }
 
 async function runOwnedLifecycle<Value>(
@@ -84,11 +97,12 @@ async function runOwnedLifecycle<Value>(
 export async function withExecutionLifecycle<Value>(
     transport: RunExecutionTransport,
     boundary: FileModuleBoundary | null,
+    observation: ExecutionSessionObservation,
     run: (lifecycle: RunExecutionLifecycle) => Promise<Value>
 ): Promise<Value> {
     return await withExecutionSession(transport, async function () {
         return await withFileModuleBoundary(boundary, async function () {
-            const lifecycle = await loadExecutionLifecycle(transport);
+            const lifecycle = validatedLifecycle(await loadExecutionLifecycle(transport), observation);
             return await runOwnedLifecycle(lifecycle, run);
         });
     });

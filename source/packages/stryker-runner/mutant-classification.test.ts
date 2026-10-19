@@ -217,7 +217,10 @@ export const testNode = suite('mutant case classification', [
     }),
     test('never treats a skipped case as a policy kill', function (scope) {
         const result = caseResult({ kind: 'skip', reason: 'intentional' }, 'skip');
-        scope.assert.equal(classifyMutationCase(root, result, [ policyError(result, 'permission') ]).kind, 'skip');
+        scope.assert.equal(
+            classifyMutationCase(root, result, [ policyError(result, 'permission') ], false).kind,
+            'skip'
+        );
         return scope.assert.collect();
     })
 ]);

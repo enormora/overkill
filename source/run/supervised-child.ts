@@ -71,6 +71,7 @@ export type SupervisedChildHost = RuntimeCapabilityPolicyDependencies & {
     readonly receiveAssignment: () => Promise<SupervisedAssignmentCommand>;
     readonly receiveCommand: () => Promise<SupervisedChildCommand>;
     readonly send: (message: SupervisedChildMessage) => void;
+    readonly flush: () => Promise<void>;
     readonly setExitCode: (code: number) => void;
     readonly validatePermissionHost: (command: SupervisedChildCommand) => void;
 };
@@ -319,8 +320,9 @@ async function completeReceivedCommand(
     if (command.kind === 'collect' || command.kind === 'collect-frozen') {
         await collect(command, host);
     } else if (command.kind === 'run-session') {
-        const result = await completeSupervisedExecutionSession(command, function sendSessionData(data) {
-            host.send({ kind: 'execution-data', data });
+        const result = await completeSupervisedExecutionSession(command, async function sendSessionData(data, kind) {
+            host.send({ kind, data });
+            await host.flush();
         }, async function executeSession(select) {
             return await run(command, host, dependencies, select);
         });

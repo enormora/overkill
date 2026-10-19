@@ -1,6 +1,7 @@
 import { fork } from 'node:child_process';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { currentExecutionSession } from './execution-session-context.ts';
 import {
     childProcessEntryPointUrl
 } from './child-process.entry-point.ts';
@@ -34,6 +35,7 @@ function forkSupervisedChildProcess(
         cwd: options.cwd,
         env: options.env,
         execArgv: Array.from(options.execArgv),
+        serialization: currentExecutionSession() === null ? 'json' : 'advanced',
         stdio: Array.from(options.stdio)
     });
 

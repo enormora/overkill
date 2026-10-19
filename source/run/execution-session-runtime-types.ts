@@ -1,10 +1,15 @@
+import type { JsonValue } from 'type-fest';
 import type { RunExecutionReply } from './execution-session-types.ts';
 import type { RunExecutionTransport } from './execution-session-context.ts';
 
-export type ExecutionSessionCall = {
+export type ExecutionSessionObservation = {
+    readonly signal: AbortSignal;
+    readonly checkpoint: (data: JsonValue) => Promise<void>;
+};
+
+export type ExecutionSessionCall = ExecutionSessionObservation & {
     readonly transport: RunExecutionTransport;
     readonly timeoutMilliseconds: number;
-    readonly signal: AbortSignal;
 };
 export type ExecutionSessionEnvironment = {
     readonly lifetime: 'fresh' | 'reused';

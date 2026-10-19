@@ -4,7 +4,7 @@ import { parseFrozenMicrotestPolicy, parseRunResult, parseRunExecutionFailure } 
 import { campaignBaselineSchema } from './mutation-catalog.ts';
 import { mutationSandboxSchema } from './mutation-sandbox.ts';
 
-export const campaignProtocolVersion = 3;
+export const campaignProtocolVersion = 4;
 
 const jsonSchema: z.ZodType<JsonValue> = z.json();
 
@@ -16,9 +16,11 @@ export const campaignSessionSchema = z.strictObject({
     lifecycle: z.strictObject({ moduleUrl: z.url(), exportName: z.string().min(1) })
 });
 export const campaignRequestSchema = z.strictObject({
+    kind: z.literal('request'),
     version: z.literal(campaignProtocolVersion),
     token: z.uuid(),
     id: z.number().int().nonnegative(),
+    timeoutMilliseconds: z.number().nullable(),
     request: z.discriminatedUnion('kind', [
         z.strictObject({ kind: z.literal('register'), root: z.string().min(1) }),
         z.strictObject({ kind: z.literal('resolve-policy'), sandbox: mutationSandboxSchema, settings: z.unknown() }),
@@ -27,12 +29,21 @@ export const campaignRequestSchema = z.strictObject({
         z.strictObject({
             kind: z.literal('invoke'),
             session: campaignSessionSchema,
-            data: jsonSchema,
-            deadlineUnixMilliseconds: z.number().positive()
+            data: jsonSchema
         }),
         z.strictObject({ kind: z.literal('release') })
     ])
 });
+export const campaignFrameSchema = z.union([
+    campaignRequestSchema,
+    z.strictObject({
+        kind: z.literal('cancel'),
+        version: z.literal(campaignProtocolVersion),
+        token: z.uuid(),
+        cancel: z.number().int().nonnegative(),
+        reason: z.enum([ 'deadline', 'cancelled' ])
+    })
+]);
 export type CampaignRequest = Readonly<z.input<typeof campaignRequestSchema>['request']>;
 export const campaignResponseSchema = z.strictObject({
     version: z.literal(campaignProtocolVersion),

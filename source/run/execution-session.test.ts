@@ -158,13 +158,13 @@ function diagnosticMessage(error: unknown): string {
     return message;
 }
 
-function assertCombinedLifecycleFailure(scope: TestScope, reply: RunExecutionReply): void {
+function assertCombinedLifecycleFailure(scope: TestScope, reply: RunExecutionReply, executionMessage: string): void {
     const details = combinedFailureDetails(reply);
     assert.ok(typeof details === 'object' && details !== null);
     const errors: unknown = Reflect.get(details, 'errors');
     assert.ok(Array.isArray(errors));
-    scope.assert.deepEqual(errors.map(diagnosticMessage), [ 'Lifecycle before failed.', 'Lifecycle dispose failed.' ]);
-    scope.assert.equal(diagnosticMessage(Reflect.get(details, 'cause')), 'Lifecycle before failed.');
+    scope.assert.deepEqual(errors.map(diagnosticMessage), [ executionMessage, 'Lifecycle dispose failed.' ]);
+    scope.assert.equal(diagnosticMessage(Reflect.get(details, 'cause')), executionMessage);
 }
 
 export const testNode = suite('public execution session boundaries', [
@@ -198,8 +198,8 @@ export const testNode = suite('public execution session boundaries', [
             assert.deepEqual(
                 snapshot.data,
                 data === 'pass'
-                    ? [ 'select', 'before', 'enter', 'complete', 'snapshot' ]
-                    : [ 'select', 'before', 'snapshot' ],
+                    ? [ 'select', 'snapshot', 'before', 'enter', 'complete', 'snapshot' ]
+                    : [ 'select', 'snapshot', 'before', 'snapshot' ],
                 JSON.stringify(messages)
             );
             scope.assert.equal(child.exitCode(), data === 'pass' ? 0 : 1, { message: JSON.stringify(messages) });
@@ -309,7 +309,7 @@ export const testNode = suite('public execution session boundaries', [
             assert.ok(reply.kind === 'result', JSON.stringify(reply));
             scope.assert.equal(reply.result.status, 'passed');
             scope.assert.equal(reply.result.summary.passed, 1);
-            assert.deepEqual(reply.data, [ 'select', 'before', 'enter', 'complete', 'snapshot' ]);
+            assert.deepEqual(reply.data, [ 'select', 'snapshot', 'before', 'enter', 'complete', 'snapshot' ]);
         }
         scope.assert.equal(session.environmentLifetime, 'reused');
         return scope.assert.collect();
@@ -398,7 +398,7 @@ export const testNode = suite('public execution session boundaries', [
         const reply = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
         assert.ok(reply.kind === 'result', JSON.stringify(reply));
         scope.assert.equal(reply.result.status, 'passed');
-        assert.deepEqual(reply.data, [ 'select', 'before', 'enter', 'complete', 'snapshot' ]);
+        assert.deepEqual(reply.data, [ 'select', 'snapshot', 'before', 'enter', 'complete', 'snapshot' ]);
         return scope.assert.collect();
     }),
     ...[ 'select', 'before', 'snapshot', 'dispose' ].map(function failedPhase(data) {
@@ -418,18 +418,25 @@ export const testNode = suite('public execution session boundaries', [
             const session = await sessionAtBoundary(mode);
             scope.cleanup(session.dispose);
             const failed = await session.run({ data: 'before-and-dispose', timeoutMilliseconds: 30_000, signal: null });
-            assertCombinedLifecycleFailure(scope, failed);
+            assertCombinedLifecycleFailure(scope, failed, 'Lifecycle before failed.');
             const completed = await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null });
             requirePassedExecution(completed);
             return scope.assert.collect();
         });
     }),
+    test('retains disposal failures when execution is cancelled by its deadline', async function (scope) {
+        const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
+        scope.cleanup(session.dispose);
+        requirePassedExecution(await session.run({ data: 'pass', timeoutMilliseconds: 30_000, signal: null }));
+        const failed = await session.run({ data: 'late-select-and-dispose', timeoutMilliseconds: 5, signal: null });
+        assertCombinedLifecycleFailure(scope, failed, 'Invocation deadline exceeded.');
+        return scope.assert.collect();
+    }),
     test('reports completed work past its deadline and preserves late infrastructure failures', async function (scope) {
         const session = orchestrator.createExecutionSession(await sessionOptions('in-process', passingFiles));
         scope.cleanup(session.dispose);
         const completed = await session.run({ data: 'late-result', timeoutMilliseconds: 1, signal: null });
-        assert.ok(completed.kind === 'result', JSON.stringify(completed));
-        scope.assert.equal(completed.deadlineExceeded, true);
+        scope.assert.equal(completed.kind, 'timeout', { message: JSON.stringify(completed) });
         const failed = await session.run({ data: 'late-failure', timeoutMilliseconds: 1, signal: null });
         assert.ok(failed.kind === 'failure', JSON.stringify(failed));
         scope.assert.equal(failed.failure.message, 'Lifecycle failed after the deadline.');

@@ -41,7 +41,7 @@ export const supervisedParentMessageSchema: z.ZodType<SupervisedAssignmentComman
     assignmentSchema
 ]);
 export const supervisedChildMessageSchema: z.ZodType<SupervisedChildMessage> = z.discriminatedUnion('kind', [
-    z.strictObject({ kind: z.literal('execution-data'), data: z.json() }),
+    z.strictObject({ kind: z.enum([ 'execution-data', 'execution-checkpoint' ]), data: z.json() }),
     z.strictObject({
         kind: z.literal('collected'),
         collectedPlan: collectedRunPlanSchema,

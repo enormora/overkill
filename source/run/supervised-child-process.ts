@@ -4,7 +4,7 @@ import { startChildShutdown } from './child-process-shutdown.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
 import type { ResolvedRun, RunRequest, RunTestFamily } from './run-types.ts';
-import { crashError } from './supervised-run-process-policy.ts';
+import { hardTimeoutError } from './supervised-run-process-policy.ts';
 import {
     remainingHardTimeoutMilliseconds,
     type StoredRunValue,
@@ -100,7 +100,10 @@ export function createSupervisedHardTimeout(
 
             hardTimeout = runtime.dependencies.wallClock.setTimeout(function killHardTimedOutChild() {
                 runtime.terminalFailure.write(true);
-                runtime.state.recordRunnerError(crashError(runtime.state, 'Supervised child exceeded hard timeout.'));
+                runtime.state.recordRunnerError(hardTimeoutError(
+                    runtime.state,
+                    runtime.resolvedRun.facts.execution.timeoutPolicy.hardMilliseconds
+                ));
                 runtime.state.recordTerminalActiveCases(
                     'crashed',
                     Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)

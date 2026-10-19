@@ -25,7 +25,7 @@ export function createExecutionSessionEnvironment(
                     options.command,
                     call.transport,
                     call.timeoutMilliseconds,
-                    call.signal
+                    call
                 );
             }
         };

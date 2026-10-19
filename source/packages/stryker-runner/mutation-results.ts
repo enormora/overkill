@@ -11,7 +11,12 @@ import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.t
 import { mutationObservationError, type MutationInvocationExpectation } from './mutation-observation.ts';
 import { classifyMutationCase, type MutationCaseClassification } from './mutation-case-classification.ts';
 import { mutationDiagnostics, hasMutationExecutionError } from './mutation-diagnostics.ts';
-import { interruptedMutantResult } from './mutation-interrupted-result.ts';
+import {
+    interruptedMutantResult,
+    interruptedCompletedMutant,
+    hitLimitCollectionReply
+} from './mutation-interrupted-result.ts';
+import { isInterruptedExecution } from './mutation-timeout.ts';
 
 type ResultReply = Extract<RunExecutionReply, { readonly kind: 'result'; }>;
 
@@ -118,13 +123,30 @@ function observedMutantResult(
     if (reply.kind !== 'result') {
         return interruptedMutantResult(root, reply, expectation);
     }
+    const collection = hitLimitCollectionReply(reply);
+    if (collection !== null) {
+        return interruptedMutantResult(root, collection, expectation);
+    }
+    if (isInterruptedExecution(reply)) {
+        return interruptedCompletedMutant(root, reply, expectation);
+    }
+    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
     const observations = reply.result.perTest.map(function observeCase(result) {
+        const id = workIdentityKey(canonicalWork(root, result.workId));
+        const hitLimitExceeded = parsed.data?.hitLimitExceeded === true &&
+            parsed.data.caseFailures.some(function verifiedTimeout(failure) {
+                return failure.id === id && failure.kind === 'timeout';
+            });
         return {
-            id: workIdentityKey(canonicalWork(root, result.workId)),
-            classification: classifyMutationCase(root, result, reply.result.runnerErrors)
+            id,
+            classification: classifyMutationCase(
+                root,
+                result,
+                reply.result.runnerErrors,
+                hitLimitExceeded
+            )
         };
     });
-    const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
     return completedMutantResult(root, reply, {
         data: parsed.data ?? null,
         observation: parsed.success
