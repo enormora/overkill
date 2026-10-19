@@ -19,6 +19,43 @@ type ObservedCase<Value> = {
 };
 
 const activeResourceOwners = new AsyncLocalStorage<ResourceOwnerBaseline>();
+const activeAcquisition = new AsyncLocalStorage<symbol>();
+type ResourceAcquisition = {
+    readonly owner: symbol;
+    readonly record: (type: string) => void;
+    readonly owns: (type: string) => boolean;
+};
+const acquisitions = new Set<ResourceAcquisition>();
+
+function createResourceAcquisition(): ResourceAcquisition {
+    const owner = Symbol('resource acquisition');
+    const allocations = new Set<string>();
+    const ownedAllocations = new Map<string, number>();
+    return {
+        owner,
+        record(type) {
+            allocations.add(type);
+            if (activeAcquisition.getStore() === owner) {
+                ownedAllocations.set(type, (ownedAllocations.get(type) ?? 0) + 1);
+            }
+        },
+        owns(type) {
+            const provider = type.replace('Socket', '').toUpperCase();
+            if (!allocations.has(provider)) {
+                return true;
+            }
+            const count = ownedAllocations.get(provider) ?? 0;
+            ownedAllocations.set(provider, Math.max(0, count - 1));
+            return count > 0;
+        }
+    };
+}
+
+export function recordResourceOwnerAllocation(type: string): void {
+    for (const acquisition of acquisitions) {
+        acquisition.record(type);
+    }
+}
 
 function newResourceTypes(before: readonly string[], after: readonly string[]): readonly string[] {
     const remaining = new Map<string, number>();
@@ -32,16 +69,30 @@ function newResourceTypes(before: readonly string[], after: readonly string[]): 
     });
 }
 
+async function acquiredResourceTypes<Value>(
+    read: () => readonly string[],
+    create: () => Promise<Value>
+): Promise<{ readonly value: Value; readonly resources: readonly string[]; }> {
+    const acquisition = createResourceAcquisition();
+    const before = Array.from(read());
+    acquisitions.add(acquisition);
+    try {
+        const value = await activeAcquisition.run(acquisition.owner, create);
+        return { value, resources: newResourceTypes(before, read()).filter(acquisition.owns) };
+    } finally {
+        acquisitions.delete(acquisition);
+    }
+}
+
 export async function observeResourceOwnerAcquisition<Value>(
     create: () => Promise<Value>
 ): Promise<ObservedResourceAcquisition<Value>> {
     const observation = activeResourceOwners.getStore();
-    const before = Array.from(observation?.read() ?? []);
-    const value = await create();
-    const resources = newResourceTypes(before, observation?.read() ?? []);
-    if (observation !== undefined) {
-        observation.append(resources);
+    if (observation === undefined) {
+        return { value: await create(), owner: { resources: [] } };
     }
+    const { value, resources } = await acquiredResourceTypes(observation.read, create);
+    observation.append(resources);
     return { value, owner: { resources } };
 }
 
