@@ -81,7 +81,13 @@ export const mutationLifecycleDataSchema = z.strictObject({
     hitLimitExceeded: z.boolean(),
     selected: z.array(z.string()),
     completed: z.array(z.string()),
-    bailed: z.boolean()
+    bailed: z.boolean(),
+    caseFailures: z.array(z.strictObject({
+        id: z.string(),
+        kind: z.enum([ 'error', 'timeout', 'killed' ]),
+        message: z.string()
+    })),
+    infrastructureErrors: z.array(z.string())
 });
 
 export function projectFile(root: string, file: string): string {

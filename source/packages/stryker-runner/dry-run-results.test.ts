@@ -7,6 +7,7 @@ import { testNode as executionTestNode } from '../../integration-tests/run/runne
 import { dryMutationResult } from './dry-run-results.ts';
 import { mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { testNode as mutantResultsTestNode } from './mutation-results.test.ts';
+import { testNode as precedenceTestNode } from './mutation-precedence.test.ts';
 
 type ResultReply = Extract<RunExecutionReply, { readonly kind: 'result'; }>;
 const expectation = { kind: 'dry', baseline: null, testFiles: null } as const;
@@ -40,6 +41,7 @@ function withOutcome(reply: ResultReply, outcome: PerTestResult['outcome']): Res
 }
 
 export const testNode = suite('structured dry-run results', [
+    precedenceTestNode,
     mutantResultsTestNode,
     executionTestNode,
     test('reports mixed outcomes with structural identities and fractional millisecond durations', function (scope) {
@@ -340,6 +342,8 @@ export const testNode = suite('structured dry-run results', [
                     completed: ids,
                     coverage: { static: {}, perTest: {} },
                     bailed: false,
+                    caseFailures: [],
+                    infrastructureErrors: [],
                     hitLimitExceeded: false
                 }
             },

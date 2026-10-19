@@ -12,6 +12,14 @@ const mutant = instrumented.mutants.find(mutant => mutant.mutatorName === 'Boole
 assert.ok(mutant);
 await writeFile('package.json','{"type":"module"}');
 await writeFile('subject.mjs',instrumented.files[0].content);
+const caseTimeoutMilliseconds = 1000;
+const cleanupDelay = "const deadline=performance.now()+"+(caseTimeoutMilliseconds*2)+
+    ";while(performance.now()<deadline){}";
+const continued = scenario.startsWith('continued-');
+const cleanupError = scenario.includes('cleanup-error');
+const timedOut = scenario.endsWith('timeout');
+const delayedCleanup = "scope.cleanup(()=>{"+cleanupDelay+
+    (cleanupError ? "throw new Error('cleanup sentinel');" : '')+"});";
 const effects = {
     assertion:"scope.assert.true(value());",
     body:"if(!value())throw new Error('body sentinel');",
@@ -26,17 +34,25 @@ const effects = {
         "await new Promise(resolve=>setImmediate(resolve));}",
     cleanup:"if(!value())scope.cleanup(()=>{throw new Error('cleanup sentinel');});",
     'cleanup-policy':"if(!value())scope.cleanup(()=>{console.log('cleanup policy sentinel');});",
-    'pre-case':""
+    'pre-case':"",
+    'kill-cleanup-timeout':"scope.assert.true(value());if(!value())"+delayedCleanup,
+    'kill-cleanup-error-timeout':"scope.assert.true(value());if(!value())"+delayedCleanup,
+    'continued-timeout':"if(!value()){if(++mutatedCases===1){scope.assert.true(value());}else{"+delayedCleanup+"}}",
+    'continued-cleanup-error-timeout':"if(!value()){if(++mutatedCases===1){scope.assert.true(value());}else{"+
+        delayedCleanup+"}}"
 };
 const before = scenario === 'pre-case' ? "if(!value())throw new Error('pre-case sentinel');" : '';
 const effect = effects[scenario];
 assert.notEqual(effect,undefined);
+const controls = JSON.stringify(timedOut ? {timeoutMilliseconds:caseTimeoutMilliseconds} : {});
+const cases = (continued ? ['first case','second case'] : ['affected case']).map(title =>
+    "createTestCase({...metadata,title:"+JSON.stringify(title)+",async body(scope){"+
+    effect+"scope.assert.true(true);return scope.assert.collect();}})").join(',');
 await writeFile('case.test.mjs','import {createSuite,createTestCase} from '+JSON.stringify(engine)+';'+
     "import {value} from './subject.mjs';"+before+
-    "const pendingPromises=[];const metadata={annotations:{},controls:{},definitionLocations:[{kind:'unknown'}]};"+
-    "export const testNode=createSuite({...metadata,title:'classification',children:["+
-    "createTestCase({...metadata,title:'affected case',async body(scope){"+
-    effect+"scope.assert.true(true);return scope.assert.collect();}})]});");
+    "const pendingPromises=[];let mutatedCases=0;const metadata={annotations:{},controls:"+controls+
+    ",definitionLocations:[{kind:'unknown'}]};"+
+    "export const testNode=createSuite({...metadata,title:'classification',children:["+cases+"]});");
 await writeFile('overkill.config.mjs','import {defineConfig} from '+JSON.stringify(configApi)+';'+
     'export const config=defineConfig('+JSON.stringify({profiles:{microtest:{testFamily:'microtest',
         files:{include:['case.test.mjs']},execution:{processModel,scheduling:'concurrent'},
@@ -50,18 +66,25 @@ try {
     assert.equal(dry.status,'complete',JSON.stringify(dry));
     assert.equal(dry.tests[0].status,TestStatus.Success,JSON.stringify(dry));
     const options = {activeMutant:mutant,mutantActivation:scenario === 'pre-case' ? 'static' : 'runtime',
-        reloadEnvironment:false,sandboxFileName:process.cwd()+'/subject.mjs',timeout:30000,disableBail:false};
+        reloadEnvironment:false,sandboxFileName:process.cwd()+'/subject.mjs',timeout:30000,disableBail:continued};
     const result = await runner.mutantRun(options);
-    const error = scenario === 'cleanup' || scenario === 'pre-case';
-    assert.equal(result.status,error ? 'error' : 'killed',JSON.stringify(result));
+    const error = scenario === 'cleanup' || scenario === 'pre-case' || cleanupError;
+    assert.equal(result.status,error ? 'error' : timedOut ? 'timeout' : 'killed',JSON.stringify(result));
+    if(timedOut){
+        const message=error ? result.errorMessage : result.reason;
+        for(const test of dry.tests){assert.ok(message.includes(test.id),JSON.stringify(result));}
+        assert.match(message,/assertion/);
+        assert.match(message,/timeout/);
+        if(error){assert.match(message,/cleanup sentinel/);}
+    }
     if(error){
         if(scenario === 'pre-case'){
             const message = processModel === 'supervised-process'
-                ? 'Eligible test catalog changed under mutation.'
+                ? 'Eligible test catalog changed under mutation.\\nFailed to load test module: case.test.mjs'
                 : 'Failed to load test module: case.test.mjs';
             assert.equal(result.errorMessage,message);
         } else {assert.match(result.errorMessage,/cleanup sentinel/);}
-    } else {
+    } else if(!timedOut) {
         assert.deepEqual(result.killedBy,[dry.tests[0].id]);
         assert.equal(result.nrOfTests,1);
         assert.ok(result.failureMessage.includes(dry.tests[0].id));

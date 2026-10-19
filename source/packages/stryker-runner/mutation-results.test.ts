@@ -68,6 +68,8 @@ function failedReply(
             selected: [ id ],
             completed: [ id ],
             bailed: false,
+            caseFailures: [],
+            infrastructureErrors: [],
             coverage: { static: {}, perTest: {} },
             hitLimitExceeded
         })
@@ -208,7 +210,12 @@ export const testNode = suite('Stryker result ownership', [
             failedReply(errors, true, true),
             mutantExpectation(failedReply(errors, true, true))
         );
-        scope.assert.deepEqual(result, { status: 'error', errorMessage: 'delivery failed' });
+        scope.assert.equal(result.status, 'error');
+        if (result.status !== MutantRunStatus.Error) {
+            throw new Error('Expected an infrastructure error.');
+        }
+        scope.assert.true(result.errorMessage.startsWith('delivery failed\n'));
+        scope.assert.true(result.errorMessage.includes('assertion'));
         return scope.assert.collect();
     }),
     test('keeps tracked hit limits and deadlines ahead of kills', function (scope) {

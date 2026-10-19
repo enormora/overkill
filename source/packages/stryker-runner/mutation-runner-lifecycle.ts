@@ -26,7 +26,7 @@ export type MutationRunnerLifecycle = {
     readonly invoke: <Value extends { readonly status: string; }>(
         timeout: number,
         run: (runner: ReadyMutationRunner, remaining: number) => Promise<Value>,
-        expired: () => Value
+        expired: (completed: Value | null) => Value
     ) => Promise<Value>;
     readonly dispose: () => Promise<void>;
 };
@@ -35,7 +35,7 @@ type MutationInvocation<Value> = {
     readonly timeout: number;
     readonly started: number;
     readonly run: (runner: ReadyMutationRunner, remaining: number) => Promise<Value>;
-    readonly expired: () => Value;
+    readonly expired: (completed: Value | null) => Value;
 };
 
 type RegisteredRunnerInitialization = {
@@ -104,10 +104,12 @@ async function runBeforeDeadline<Value extends { readonly status: string; }>(
     const { timeout, started, run, expired } = invocation;
     const remaining = timeout - (performance.now() - started);
     if (remaining <= 0) {
-        return expired();
+        return expired(null);
     }
     const result = await run(runner, remaining);
-    return result.status !== 'error' && performance.now() - started >= timeout ? expired() : result;
+    return result.status !== 'error' && result.status !== 'timeout' && performance.now() - started >= timeout
+        ? expired(result)
+        : result;
 }
 
 export function createMutationRunnerLifecycle(
