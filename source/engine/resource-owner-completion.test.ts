@@ -10,7 +10,7 @@ function ignoreOutput(): void {
     return undefined;
 }
 
-async function executeOwnedFixture(cleanup: boolean): Promise<RunResult> {
+async function executeOwnedFixture(disposal: 'clean' | 'leak' | 'retain'): Promise<RunResult> {
     const activeResources: string[] = [];
     const fixture = defineResource({
         name: 'registry',
@@ -21,8 +21,11 @@ async function executeOwnedFixture(cleanup: boolean): Promise<RunResult> {
             return 'registry';
         },
         dispose() {
-            if (cleanup) {
+            if (disposal !== 'retain') {
                 activeResources.length = 0;
+            }
+            if (disposal === 'leak') {
+                activeResources.push('leaked socket');
             }
         },
         serializeHandle(handle) {
@@ -69,18 +72,36 @@ async function executeOwnedFixture(cleanup: boolean): Promise<RunResult> {
 
 export const testNode = suite('resource owner completion', [
     test('permits shared native handles until successful disposal', async function (scope) {
-        const result = await executeOwnedFixture(true);
+        const result = await executeOwnedFixture('clean');
         scope.assert.equal(result.status, 'passed');
         scope.assert.deepEqual(result.runnerErrors, []);
         return scope.assert.collect();
     }),
     test('reports shared native handles left alive after disposal', async function (scope) {
-        const result = await executeOwnedFixture(false);
+        const result = await executeOwnedFixture('retain');
         scope.assert.equal(result.status, 'failed');
         scope.assert.partialDeepEqual(result.runnerErrors, [ {
             subtype: 'runtime-policy',
             cause: { capability: 'async-leak', resourceTypes: [ 'server' ] }
         } ]);
         return scope.assert.collect();
+    }),
+    test('attributes resources leaked during logical completion to the completed attempt', async function (scope) {
+        const result = await executeOwnedFixture('leak');
+        const completed = result.perTest[0];
+        if (completed === undefined) {
+            throw new Error('Missing completed resource case.');
+        }
+        scope.assert.partialDeepEqual(result.runnerErrors, [ {
+            attributedTo: completed.id,
+            attributedToWork: completed.workId,
+            attributedToAttempt: { index: 0 },
+            subtype: 'runtime-policy',
+            cause: { capability: 'async-leak', resourceTypes: [ 'leaked socket' ] }
+        } ]);
+        return scope.assert.collect();
     })
 ]);
+
+const { runIfMain } = await import('../test-support/run-if-main.ts');
+await runIfMain(import.meta, testNode);

@@ -47,6 +47,7 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-stryker-lifecycle.test.ts
     node source/integration-tests/run/runner-stryker-catalog.test.ts
     node source/integration-tests/run/runner-stryker-dry-run.test.ts
+    node source/integration-tests/run/runner-stryker-classification.test.ts
     node source/integration-tests/run/runner-collected-lifecycle.test.ts
     node source/integration-tests/run/runner-workloads.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts

@@ -428,10 +428,17 @@ function planFailure(recorder: AssertionRecorder, executedBody: ExecutedBody): T
     return recorder.validateAssertionCount(executedBody.returnedAssertions.length);
 }
 
-function createInconclusiveOutcome(executedBody: ExecutedBody): TestOutcome | null {
+function runnerErrorOutcome(executedBody: ExecutedBody): TestOutcome | null {
     const [ runnerError ] = executedBody.runnerErrors;
 
     if (runnerError === undefined) {
+        return { kind: 'pass' };
+    }
+    if (
+        executedBody.runnerErrors.every(function permissionFailure(error) {
+            return error.subtype === 'permission';
+        })
+    ) {
         return null;
     }
 
@@ -441,7 +448,11 @@ function createInconclusiveOutcome(executedBody: ExecutedBody): TestOutcome | nu
     };
 }
 
-function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody, generated: boolean): TestOutcome {
+function createOutcome(
+    recorder: AssertionRecorder,
+    executedBody: ExecutedBody,
+    generated: boolean
+): TestOutcome | null {
     const failures = [
         assertionFailure(executedBody.returnedAssertions),
         ...bodyFailures(executedBody),
@@ -452,7 +463,7 @@ function createOutcome(recorder: AssertionRecorder, executedBody: ExecutedBody, 
         });
 
     if (failures.length === 0) {
-        return createInconclusiveOutcome(executedBody) ?? { kind: 'pass' };
+        return runnerErrorOutcome(executedBody);
     }
 
     assertNonEmptyItems(failures, 'Expected test failures to be non-empty.');
@@ -544,7 +555,7 @@ export async function runTestCase(
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,
             outcome,
-            verdict: verdictFromOutcome(outcome),
+            verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome),
             workId: testCase.workId,
             durationMicroseconds
         }, { index: 0 }),

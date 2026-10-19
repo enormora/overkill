@@ -1,9 +1,14 @@
 import { z } from 'zod/v4';
 import { TestStatus, DryRunStatus, MutantRunStatus } from '@stryker-mutator/api/test-runner';
 import { suite, test } from '../test/test.entry-point.ts';
-import { workIdentityKey, type PerTestResult, type RunnerError } from '../engine/engine.entry-point.ts';
-import type { RunExecutionReply } from '../run/run.entry-point.ts';
+import {
+    workIdentityKey,
+    type PerTestResult,
+    type RunnerError,
+    type RunExecutionReply
+} from '../run/run.entry-point.ts';
 import { runResultFactory } from '../../test-support/run-result-factory.ts';
+import { testNode as classificationTestNode } from './mutant-classification.test.ts';
 import { mutantExecutionResult } from './mutation-results.ts';
 import { dryMutationResult } from './dry-run-results.ts';
 import type { MutationInvocationExpectation } from './mutation-observation.ts';
@@ -122,6 +127,7 @@ function originAliasReply(): ResultReply {
 }
 
 export const testNode = suite('Stryker result ownership', [
+    classificationTestNode,
     test('matches result aliases to canonical coverage owners and killing IDs', function (scope) {
         const reply = originAliasReply();
         const dry = dryMutationResult(root, reply, 'perTest', { kind: 'dry', baseline: null, testFiles: null });

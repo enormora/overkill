@@ -17,7 +17,7 @@ import {
     sameMutationCatalog,
     type MutationCatalog
 } from './mutation-catalog.ts';
-import { safeMutationFailure } from './mutation-results.ts';
+import { classifyMutationCase } from './mutation-case-classification.ts';
 import { mutationCaseMatchesCatalog } from './mutation-observation.ts';
 import { createInvocationInstrumentation } from './instrumentation-context.entry-point.ts';
 
@@ -155,7 +155,8 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
         async completeCase(result, errors) {
             delete instrumentation.context.currentTestId;
             recordMutationCompletion(input.root, selection, admission, result);
-            const stop = input.mode !== 'dry' && !input.disableBail && safeMutationFailure(input.root, result, errors);
+            const stop = input.mode !== 'dry' && !input.disableBail &&
+                classifyMutationCase(input.root, result, errors).kind === 'killed';
             bailed = stop;
             return stop ? 'stop' : 'continue';
         },
