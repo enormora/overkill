@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 import type { RunArtifact, PerTestResult, RunResult } from '../engine/run-result.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { workIdentityKey } from '../engine/identity.ts';
-import { metricReadingSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
+import { metricReadingSchema } from './benchmark-statistics-schema.ts';
 
 const samplesSchema = z.record(z.string(), z.array(metricReadingSchema));
 type AvailableSamples = {
