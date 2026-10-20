@@ -36,6 +36,27 @@ function rejectInfrastructure(): void {
     process.emit('unhandledRejection', new Error('infrastructure rejection'), Promise.resolve());
 }
 
+async function executeOwnershipProbe(script: string, modules: readonly URL[]): Promise<string> {
+    return await new Promise<string>(function runProbe(resolve, reject) {
+        execFile(process.execPath, [
+            '--input-type=module',
+            '--eval',
+            script,
+            ...modules.map(function moduleUrl(module) {
+                return module.href;
+            })
+        ], {
+            timeout: 30_000
+        }, function receiveProbe(error, stdout, stderr) {
+            if (error === null) {
+                resolve(stdout);
+            } else {
+                reject(new Error(stderr, { cause: error }));
+            }
+        });
+    });
+}
+
 async function copiedObserverProbe(): Promise<string> {
     const extension = extname(import.meta.url);
     const observer = new URL(`./execution-global-error-observer${extension}`, import.meta.url);
@@ -69,17 +90,45 @@ async function copiedObserverProbe(): Promise<string> {
         result.remainingListeners = process.listenerCount('unhandledRejection');
         process.stdout.write(JSON.stringify(result));
     `;
-    return await new Promise<string>(function runProbe(resolve, reject) {
-        execFile(process.execPath, [ '--input-type=module', '--eval', script, observer.href, ownership.href ], {
-            timeout: 30_000
-        }, function receiveProbe(error, stdout, stderr) {
-            if (error === null) {
-                resolve(stdout);
-            } else {
-                reject(new Error(stderr, { cause: error }));
-            }
+    return await executeOwnershipProbe(script, [ observer, ownership ]);
+}
+
+async function lateHookProbe(): Promise<string> {
+    const extension = extname(import.meta.url);
+    const observer = new URL(`./execution-global-error-observer${extension}`, import.meta.url);
+    const fixture = new URL(`../test-support/create-test-engine${extension}`, import.meta.url);
+    const script = `
+        import { AsyncResource } from 'node:async_hooks';
+        const {createExecutionGlobalErrorObserver} = await import(process.argv[1]);
+        const {createTestEngine} = await import(process.argv[2]);
+        const engine = createTestEngine();
+        const node = engine.createTestCase({
+            title: 'previous case', annotations: {}, controls: {}, definitionLocations: [{kind:'unknown'}],
+            body(scope) { scope.assert.true(true); return scope.assert.collect(); }
         });
-    });
+        const testCase = engine.createTestPlan(engine.createRoot({
+            title: 'root', annotations: {}, controls: {}, children: [node]
+        })).cases[0];
+        const previous = createExecutionGlobalErrorObserver('in-process');
+        const late = await previous.runBoundary(async () => previous.runCase(testCase, {index:0}, async () =>
+            new AsyncResource('previous invocation')));
+        previous.stop();
+        const current = createExecutionGlobalErrorObserver('in-process');
+        await current.runBoundary(async () => current.runCase(testCase, {index:1}, async () => {
+            late.runInAsyncScope(() => {
+                process.emit('unhandledRejection', new Error('previous run sentinel'), Promise.resolve());
+            });
+        }));
+        const errors = current.takeErrors();
+        const error = errors[0];
+        const result = {errorCount:errors.length,subtype:error.subtype,attributedTo:error.attributedTo,
+            originAttempt:error.cause.origin.attempt.index,originTitle:error.cause.origin.case.title};
+        current.stop();
+        late.emitDestroy();
+        result.remainingListeners = process.listenerCount('unhandledRejection');
+        process.stdout.write(JSON.stringify(result));
+    `;
+    return await executeOwnershipProbe(script, [ observer, fixture ]);
 }
 
 async function rejectedObservationValue(operation: Promise<unknown>): Promise<unknown> {
@@ -92,6 +141,20 @@ async function rejectedObservationValue(operation: Promise<unknown>): Promise<un
 }
 
 export const testNode = suite('native error ownership', [
+    test('retains closed invocation hook origins without blaming a later attempt', async function (scope) {
+        scope.assert.equal(
+            await lateHookProbe(),
+            JSON.stringify({
+                errorCount: 1,
+                subtype: 'attribution-drift',
+                attributedTo: null,
+                originAttempt: 0,
+                originTitle: 'previous case',
+                remainingListeners: 0
+            })
+        );
+        return scope.assert.collect();
+    }),
     test('shares process hooks and attribution between module copies', async function (scope) {
         scope.assert.equal(
             await copiedObserverProbe(),

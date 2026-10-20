@@ -1,10 +1,10 @@
 import { AsyncResource } from 'node:async_hooks';
 import { channel } from 'node:diagnostics_channel';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createRuntimeCapabilityPolicy, type RuntimeCapabilityPolicy } from '../run/capability-policy.ts';
 import { observeProcessIpcListeners } from '../run/node-process-policy-observation.ts';
-import type { TestPlanCase } from './test-plan.ts';
 import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 import {
     registerExecutionDisposal,
@@ -15,6 +15,7 @@ import {
 const external = new AsyncResource('external guard ownership probe');
 const consoleChannel = channel('console.log');
 const permissionChannel = channel('node:permission-model:fs');
+type PolicyTestCase = Parameters<RuntimeCapabilityPolicy['runAttempt']>[0];
 
 function policy(): RuntimeCapabilityPolicy {
     const environment = {};
@@ -40,7 +41,7 @@ function policy(): RuntimeCapabilityPolicy {
     });
 }
 
-function guardCase(): TestPlanCase {
+function guardCase(): PolicyTestCase {
     const engine = createTestEngine();
     return engine
         .createTestPlan(engine.createRoot({
@@ -66,7 +67,39 @@ function publishDiagnostics(): void {
     permissionChannel.publish({ permission: 'FileSystemWrite', resource: 'guard-probe' });
 }
 
+function createGuardTimer(owner: TestScope): void {
+    const timer = scheduleTimer(function unusedGuardTimer() {
+        return undefined;
+    }, 60_000);
+    owner.cleanup(function closeGuardTimer() {
+        cancelTimer(timer);
+    });
+}
+
 export const testNode = suite('native guard ownership', [
+    test('retains native timer restrictions while excluding infrastructure timers', async function (scope) {
+        const observed = policy();
+        scope.cleanup(function stopTimerPolicy() {
+            observed.takeRunErrors();
+        });
+        const testCase = guardCase();
+        await observed.runAttempt(testCase, { index: 0 }, async function allocateObservedTimers() {
+            createGuardTimer(scope);
+            withRunnerInfrastructure(function allocateWatchdog() {
+                createGuardTimer(scope);
+            });
+        });
+        const errors = observed.takeAttemptErrors(testCase, { index: 0 });
+        scope.assert.equal(errors.length, 1);
+        scope.assert.partialDeepEqual(errors, [ {
+            attributedTo: testCase.id,
+            attributedToAttempt: { index: 0 },
+            subtype: 'runtime-policy',
+            cause: { capability: 'timer' }
+        } ]);
+        scope.assert.deepEqual(observed.takeRunErrors(), []);
+        return scope.assert.collect();
+    }),
     test('does not dispose unowned infrastructure when an unrelated run ends', async function (scope) {
         let disposed = false;
         const unregister = external.runInAsyncScope(function unownedInfrastructure() {

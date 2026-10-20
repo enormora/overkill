@@ -305,16 +305,8 @@ function scopeIncludesCase(
     return activeCase !== null && activeCase.scope === scope;
 }
 
-function activePermissionCase(input: HookFailureInput): ActiveCaseContext | null {
-    if (!scopeIncludesCase(input.scope, input.activeCase)) {
-        return null;
-    }
-
-    return input.scope.hasActiveCase(input.activeCase) ? input.activeCase : null;
-}
-
 function permissionErrorForScope(input: HookFailureInput): RunnerError | null {
-    const activeCase = activePermissionCase(input);
+    const activeCase = scopeIncludesCase(input.scope, input.activeCase) ? input.activeCase : null;
 
     const attribution = activeCase === null
         ? { attributedTo: null, attributedToWork: null, phase: input.scope.phase() }
@@ -329,16 +321,13 @@ function permissionErrorForScope(input: HookFailureInput): RunnerError | null {
 }
 
 function ownedHookError(input: HookFailureInput): RunnerError {
-    if (!scopeIncludesCase(input.scope, input.activeCase)) {
-        const error = runLevelHookError(input.scope, input.hook, input.reason);
-        return input.scope.observation.attribute(error).subtype === 'attribution-drift'
-            ? attributionDriftError(input.scope, input.hook, input.reason, input.activeCase)
-            : error;
-    }
-    if (input.scope.hasActiveCase(input.activeCase)) {
+    if (scopeIncludesCase(input.scope, input.activeCase)) {
         return attributedError(input.scope, input.hook, input.reason, input.activeCase);
     }
-    return attributionDriftError(input.scope, input.hook, input.reason, input.activeCase);
+    const error = runLevelHookError(input.scope, input.hook, input.reason);
+    return input.scope.observation.attribute(error).subtype === 'attribution-drift'
+        ? attributionDriftError(input.scope, input.hook, input.reason, input.activeCase)
+        : error;
 }
 
 function errorForScope(input: HookFailureInput): RunnerError {
