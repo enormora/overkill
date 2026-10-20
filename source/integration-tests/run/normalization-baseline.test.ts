@@ -1,3 +1,7 @@
+import { mkdir, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import type { StoredCalibration } from '../../baselines/calibration-reference.ts';
+import { readCalibrationReferenceReport } from '../../packages/bench/bench.entry-point.ts';
 import type { RunResult } from '../../engine/run-result.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
@@ -138,7 +142,144 @@ async function assertStaleDiffAndApply(scope: TestScope, raw: RunCommand): Promi
     scope.assert.equal(applied.result.status, 'passed');
     scope.assert.deepEqual(await store.list(), []);
 }
+function boundedCapture(command: RunCommand): RunCommand {
+    const profile = command.config.profiles.bench;
+    if (profile?.testFamily !== 'benchmark') {
+        throw new Error('Expected benchmark profile.');
+    }
+    return {
+        ...command,
+        config: {
+            ...command.config,
+            profiles: {
+                ...command
+                    .config
+                    .profiles,
+                bench: { ...profile, attachments: { ...profile.attachments, maxArtifactBytes: 1 } }
+            }
+        }
+    };
+}
+function completeCapture(command: RunCommand): RunCommand {
+    const profile = command.config.profiles.bench;
+    if (profile?.testFamily !== 'benchmark') {
+        throw new Error('Expected benchmark profile.');
+    }
+    return {
+        ...command,
+        request: { ...command.request, selection: { kind: 'all' } },
+        config: {
+            ...command.config,
+            profiles: {
+                ...command
+                    .config
+                    .profiles,
+                bench: {
+                    ...profile,
+                    files: {
+                        exclude: [],
+                        include: [
+                            'source/integration-tests/run/fixtures/normalization.bench.test.ts',
+                            'source/integration-tests/run/fixtures/normalization-raw.bench.test.ts'
+                        ]
+                    }
+                }
+            }
+        }
+    };
+}
+async function captureReferences(scope: TestScope, command: RunCommand): Promise<readonly StoredCalibration[]> {
+    const capture = await orchestrator.bench.calibrate(command, { timing: null });
+    scope.assert.deepEqual(capture.result.runnerErrors, []);
+    scope.assert.equal(capture.result.status, 'passed');
+    const store = await normalizationReferences(command);
+    return await store.list();
+}
+async function preparePartialCaptureFailure(scope: TestScope, command: RunCommand): Promise<string> {
+    const store = await normalizationReferences(command);
+    const references = await captureReferences(scope, command);
+    const first = references.find(function (reference) {
+        return reference.snapshot.identity.workload.name === 'reference ticks';
+    });
+    const second = references.find(function (reference) {
+        return reference.snapshot.identity.workload.name === 'second reference ticks';
+    });
+    scope.require.defined(first);
+    scope.require.defined(second);
+    await store.remove(references);
+    await mkdir(join(command.cwd, store.pathOf(second)), { recursive: true });
+    return store.pathOf(first);
+}
 export const testNode = suite('saved normalization references', [
+    test('reports completed references after a later publication failure', async function (scope: TestScope) {
+        const command = await normalizationCommand(scope, 'reuse', 'capture multiple references');
+        const completedPath = await preparePartialCaptureFailure(scope, command);
+        const capture = await orchestrator.bench.calibrate(command, { timing: null });
+        const report = readCalibrationReferenceReport(capture.result);
+        scope.require.defined(report);
+        scope.assert.equal(capture.result.status, 'failed');
+        scope.assert.deepEqual({ outcome: report.outcome, completed: report.completed }, {
+            outcome: 'failed',
+            completed: [ completedPath ]
+        });
+        const written = await stat(join(command.cwd, completedPath));
+        scope.assert.true(written.isFile());
+        return scope.assert.collect();
+    }),
+    test('blocks capture when its reference report cannot fit the artifact limit', async function (scope: TestScope) {
+        const command = boundedCapture(await normalizationCommand(scope, 'reuse', 'normalized metric'));
+        const capture = await orchestrator.bench.calibrate(command, { timing: null });
+        const store = await normalizationReferences(command);
+        scope.assert.equal(capture.result.status, 'failed');
+        scope.assert.true(capture.result.runnerErrors.some(function (error) {
+            return error.subtype === 'artifact';
+        }));
+        scope.assert.deepEqual(await store.list(), []);
+        return scope.assert.collect();
+    }),
+    test('captures raw benchmarks without writing calibration references', async function (scope: TestScope) {
+        const command = rawCommand(await normalizationCommand(scope, 'reuse', 'normalized metric'));
+        const capture = await orchestrator.bench.calibrate(command, { timing: null });
+        const store = await normalizationReferences(command);
+        scope.assert.equal(capture.result.status, 'passed');
+        scope.assert.equal(capture.result.perTest[0]?.benchmark?.samples, 0);
+        const report = readCalibrationReferenceReport(capture.result);
+        scope.require.defined(report);
+        scope.assert.deepEqual(report, {
+            version: 1,
+            changes: [],
+            completed: [],
+            outcome: 'written'
+        });
+        scope.assert.deepEqual(await store.list(), []);
+        return scope.assert.collect();
+    }),
+    test('deduplicates captures and excludes raw cases from calibration ownership', async function (scope: TestScope) {
+        const command = completeCapture(await normalizationCommand(scope, 'reuse', 'normalized metric'));
+        const references = await captureReferences(scope, command);
+        const first = references.find(function (reference) {
+            return reference.snapshot.identity.workload.name === 'reference ticks';
+        });
+        scope.require.defined(first);
+        scope.assert.equal(references.length, 2);
+        scope.assert.deepEqual(
+            first
+                .owners
+                .map(function (owner) {
+                    return owner.case.title;
+                })
+                .toSorted(function alphabetical(left, right) {
+                    return left.localeCompare(right);
+                }),
+            [
+                'capture multiple references',
+                'capture skips benchmark fixtures',
+                'mixed normalized and raw metrics',
+                'normalized metric'
+            ]
+        );
+        return scope.assert.collect();
+    }),
     test('uses saved references while preserving the original budget basis', async function (scope: TestScope) {
         const command = await baselineCommand(scope, [ 'reference' ]);
         await saveReference(scope, command);
@@ -167,6 +308,43 @@ export const testNode = suite('saved normalization references', [
             return error.subtype === 'measurement' && error.message.includes('disagree');
         }));
         scope.assert.equal(result.perTest[0]?.benchmark?.normalization?.comparability.kind, 'non-comparable');
+        return scope.assert.collect();
+    }),
+    test('preserves references when applying a title-filtered inventory', async function (scope: TestScope) {
+        const command = await normalizationCommand(scope, 'reuse', 'normalized metric');
+        const references = await captureReferences(scope, command);
+        const raw = rawCommand(command);
+        const filtered = {
+            ...raw,
+            request: {
+                ...raw.request,
+                selection: {
+                    kind: 'filter' as const,
+                    filter: { kind: 'equals' as const, field: 'title' as const, value: 'raw metric' }
+                }
+            }
+        };
+        const applied = await orchestrator.bench.baseline.apply(filtered, { timing: null });
+        const store = await normalizationReferences(command);
+        scope.assert.equal(applied.result.status, 'passed');
+        scope.assert.deepEqual(await store.list(), references);
+        return scope.assert.collect();
+    }),
+    test('preserves references when applying a path-limited inventory', async function (scope: TestScope) {
+        const command = await normalizationCommand(scope, 'reuse', 'normalized metric');
+        const references = await captureReferences(scope, command);
+        const raw = rawCommand(command);
+        const partial = {
+            ...raw,
+            request: {
+                ...raw.request,
+                paths: [ 'source/integration-tests/run/fixtures/normalization-raw.bench.test.ts' ]
+            }
+        };
+        const applied = await orchestrator.bench.baseline.apply(partial, { timing: null });
+        const store = await normalizationReferences(command);
+        scope.assert.equal(applied.result.status, 'passed');
+        scope.assert.deepEqual(await store.list(), references);
         return scope.assert.collect();
     }),
     test('previews stale references and removes them only on full apply', async function (scope: TestScope) {

@@ -1,5 +1,6 @@
 import {
     type BenchmarkMeasureContext,
+    type CalibrationResource,
     type BenchmarkMetrics,
     availableMetric,
     benchmark,
@@ -20,8 +21,9 @@ const ticks = defineResource({
     dispose: null,
     acquire() { return 200; }
 });
-const calibration = defineCalibrationResource({
-    workload: workload('reference ticks', {iterations: 1}),
+function referenceCalibration(name: string): CalibrationResource {
+    return defineCalibrationResource({
+    workload: workload(name, {iterations: 1}),
     version: '1',
     unit: 'ticks',
     dependencies: {ticks},
@@ -34,6 +36,9 @@ const calibration = defineCalibrationResource({
     sampling: {...defaultSamplingPolicy, minimumSamples: 128, maximumSamples: 128},
     lifecycle: {garbageCollection: 'off', warmupSamples: 0, cooldown: {mode: 'off'}}
 });
+}
+const calibration = referenceCalibration('reference ticks');
+const secondCalibration = referenceCalibration('second reference ticks');
 const measurement = calibratedMeasurement(wallClockMeasurement(), {value: {calibration, scaling: 'proportional'}});
 const unrelated = defineResource({
     name: 'unrelated benchmark fixture',
@@ -68,6 +73,18 @@ export const testNode = suite('normalization', [
             value: {maximum: 75, statistic: {kind: 'observed-maximum'}},
             constructor: {maximum: 150, statistic: {kind: 'observed-maximum' as const}}
         }}
+    }, options),
+    benchmark('capture multiple references', {
+        kind: 'runtime', workloads: [workload('one', {})],
+        measurement: calibratedMeasurement(wallClockMeasurement(), {
+            value: {calibration, scaling: 'proportional'},
+            second: {calibration: secondCalibration, scaling: 'proportional'}
+        }),
+        measure({sample}) {
+            const value = sample.measure(function measuredValue() {return 100;}).value;
+            return {value, second: value};
+        },
+        diagnosticMetrics: [], budgets: {one: {value: {maximum: 75}, second: {maximum: 75}}}
     }, options),
     benchmark('capture skips benchmark fixtures', {
         kind: 'runtime',

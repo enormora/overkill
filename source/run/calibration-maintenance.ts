@@ -12,12 +12,12 @@ import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunResultSession } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
-type MaintenanceInput = {
+export type MaintenanceInput = {
     readonly input: ResolvedRunInput;
     readonly references: CalibrationInventory;
     readonly store: CalibrationReferenceStore;
     readonly baseline: RunResultSession | null;
-    readonly dependencies: RunOrchestratorDependencies;
+    readonly dependencies: Pick<RunOrchestratorDependencies, 'reporterDispatcher' | 'wallClock'>;
 };
 function completeInventory(input: ResolvedRunInput): boolean {
     return input.request.paths.length === 0 && input.request.selection.kind === 'all' &&

@@ -90,6 +90,77 @@ export const testNode = suite('benchmark normalization intervals', [
         scope.assert.notDeepEqual(lateInterval, earlyInterval);
         return scope.assert.collect();
     }),
+    test('preserves uncertainty when the actual and reference snapshots are identical', function (scope: TestScope) {
+        const snapshot = constantCalibration(200);
+        scope.assert.deepEqual(
+            normalizeStatisticalInterval({ estimate: 40, lower: 30, upper: 50 }, {
+                actual: snapshot,
+                reference: snapshot,
+                scaling: 'proportional'
+            }, 0.05),
+            { estimate: 40, lower: 30, upper: 50 }
+        );
+        return scope.assert.collect();
+    }),
+    test('retains zero and absent bounds and makes overflowing bounds unbounded', function (scope: TestScope) {
+        const scale = {
+            actual: constantCalibration(100),
+            reference: constantCalibration(200),
+            scaling: 'proportional'
+        } as const;
+        scope.assert.deepEqual(normalizeStatisticalInterval({ estimate: 0, lower: 0, upper: null }, scale, 0.05), {
+            estimate: 0,
+            lower: 0,
+            upper: null
+        });
+        scope.assert.deepEqual(
+            normalizeStatisticalInterval({ estimate: 0, lower: 0, upper: Number.MAX_VALUE }, scale, 0.05),
+            {
+                estimate: 0,
+                lower: 0,
+                upper: null
+            }
+        );
+        return scope.assert.collect();
+    }),
+    test('rejects ratios outside the finite positive number range', function (scope: TestScope) {
+        const actual = constantCalibration(1e200);
+        const reference = constantCalibration(1e-200);
+        for (const scaling of [ 'proportional', 'inverse' ] as const) {
+            scope.assert.throws(function () {
+                return calibrationFactor(actual, reference, scaling);
+            }, {
+                message: 'Normalization factor must be finite and positive.'
+            });
+        }
+        return scope.assert.collect();
+    }),
+    test('rejects changed calibration identities and execution arguments', function (scope: TestScope) {
+        const actual = constantCalibration(200);
+        const references = [
+            { ...actual, identity: { ...actual.identity, version: 'other' } },
+            { ...actual, execution: { ...actual.execution, nodeArguments: [ '--jitless' ] } }
+        ];
+        for (const reference of references) {
+            scope.assert.throws(function () {
+                return calibrationFactor(actual, reference, 'proportional');
+            }, {
+                message: 'Calibration references are not comparable.'
+            });
+        }
+        return scope.assert.collect();
+    }),
+    test('keeps inverse scaling unbounded when the calibration numerator is uncertain', function (scope: TestScope) {
+        scope.assert.deepEqual(
+            normalizeStatisticalInterval({ estimate: 40, lower: 30, upper: 50 }, {
+                actual: calibrationSnapshot([ 128, 384 ]),
+                reference: constantCalibration(128),
+                scaling: 'inverse'
+            }, 0.05),
+            { estimate: 80, lower: 0, upper: null }
+        );
+        return scope.assert.collect();
+    }),
     test('rejects overflow and incompatible machine classes', function (scope: TestScope) {
         const actual = constantCalibration(200);
         const reference = constantCalibration(100);
