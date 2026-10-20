@@ -4,7 +4,7 @@ import { canonicalIdentityJson } from '../canonical-identity.ts';
 import type { CalibrationResult } from '../engine/benchmark-result.ts';
 import { resolveBenchmarkLifecyclePolicy } from './benchmark-lifecycle-policy.ts';
 import { defaultSamplingPolicy, validateSamplingPolicy } from './sampling-policy.ts';
-import { sampleCalibration } from './calibration-sampling.ts';
+import { createCalibrationSampler } from './calibration-sampling.ts';
 import type { UncalibratedMeasurement } from './measurement-definition.ts';
 import type {
     CalibrationDefinition,
@@ -35,14 +35,14 @@ export function defineCalibrationResource<
     ) {
         throw new TypeError('Calibration requires an explicit version and unit.');
     }
-    const identity = Object.freeze({
+    const calibration = createCalibrationSampler(Object.freeze({
         workload: workloadIdentity(referenceWorkload),
         version: definition.version,
         unit: definition.unit
-    });
+    }));
     const resource = defineResource({
-        name: `calibration:${canonicalIdentityJson(identity)}`,
-        scope: 'shared-per-worker',
+        name: `calibration:${canonicalIdentityJson(calibration.identity)}`,
+        scope: Object.keys(definition.dependencies).length === 0 ? 'per-case' : 'shared-per-worker',
         dependencies: definition.dependencies,
         requirements: [ { kind: 'single-worker' } ],
         dispose: null,
@@ -50,7 +50,7 @@ export function defineCalibrationResource<
             let pending: Promise<CalibrationResult> | null = null;
             return {
                 async collect(scope) {
-                    pending = pending ?? sampleCalibration(identity, {
+                    pending = pending ?? calibration.sample({
                         lifecycle: {
                             ...lifecycle,
                             garbageCollection: resolveBenchmarkGarbageCollection(
@@ -74,5 +74,9 @@ export function defineCalibrationResource<
             };
         }
     });
-    return Object.freeze({ ...resource, calibration: identity, garbageCollection: lifecycle.garbageCollection });
+    return Object.freeze({
+        ...resource,
+        calibration: calibration.identity,
+        garbageCollection: lifecycle.garbageCollection
+    });
 }

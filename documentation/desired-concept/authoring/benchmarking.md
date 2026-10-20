@@ -607,7 +607,7 @@ All observations stop before execution. `bench list` and baseline `list` omit
 the pass. Version 3 benchmark-run artifacts retain host and placement evidence on successful and
 rejected runs; historical version 1 artifacts retain an explicit absent host. Versions 1 and 2
 retain an explicit absent placement decision.
-CPU-reference calibration and machine-class stratification remain separate.
+Host placement calibration and metric normalization remain separate.
 
 Warmup, calibration, cleanup, and cooldown are distinct phases:
 
@@ -675,22 +675,27 @@ evidence retains absent GC observations rather than invented counts.
 
 ## Calibration And Normalization
 
-`calibratedMeasurement` attaches explicit proportional or inverse scaling rules to
-selected metrics. Built-in `cpuCalibration()` and custom
-`defineCalibrationResource` workloads acquire ordinary dependencies and sample once
-per worker before benchmark warmup. `overkill bench calibrate` captures reviewable
-reference files without executing benchmark bodies or unrelated fixtures.
+Built-in duration, throughput, and native CPU metrics normalize automatically
+against `cpuCalibration()`. Byte and count metrics remain raw. Use `rawMeasurement`
+to opt out, or `calibratedMeasurement` to select representative reference workloads
+and proportional or inverse scaling for other domains. `defineCalibrationResource`
+supports custom workloads and ordinary resource dependencies. Calibration runs
+before benchmark warmup and is cached within an execution context.
 
-Saved expectations supply references when present; otherwise fixed references do.
-Saved expectations retain the original fixed budget basis. Switching references
-changes display units while preserving the canonical budget gate. Adapters retain
-their own observation and comparison policy. Conflicting adapter references fail.
+Budgets use reference-workload units: a proportional value is the measured value
+divided by the local calibration median. Equivalent work can share one budget
+across machines. Saved expectations retain that budget basis. Optional captures
+from `overkill bench calibrate` change display units without changing the gate;
+ordinary runs require no captured files. Performance adapters receive normalized
+benchmark samples while persisted artifacts retain raw observations.
 
 Results retain raw and normalized summaries, actual and reference calibration
 samples, factors, machine metadata, and explicit measurement failures. Budget
 intervals include calibration uncertainty and checkpoint spending. Comparisons
-require the same machine class and independent, stationary observations. They do
-not correct arbitrary host interference or establish cross-hardware portability.
+require compatible workload identities, versions, units, and execution arguments,
+with independent, stationary observations. Normalized snapshots match across
+machine classes. Portability depends on the reference representing the measured
+work; calibration cannot remove arbitrary host interference.
 
 Full baseline inventories detect stale calibration references. Baseline diff/apply
 preview and remove them, preserving filtered, sharded, skipped and foreign scopes.
@@ -877,5 +882,6 @@ adapters or introducing comparison policy. Saved legacy reports remain readable.
 actual observation and nullable existing expectation. Each declared metric has a
 name, unit, raw or explicitly described normalized scale, nullable actual value,
 and missing, point, or bounded-range reference. Values must be finite; ranges
-require at least one ordered bound. Adapters perform their own normalization.
+require at least one ordered bound. Adapters receive normalized benchmark samples
+and describe any additional transformation of other artifacts.
 Presentation errors fail infrastructure reporting after valid baseline writes.

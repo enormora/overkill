@@ -10,7 +10,7 @@ import {
 } from '../packages/test/resource-wrapper-composition.ts';
 import type { ResolvedBenchmarkDefinition } from './benchmark-definition-resolution.ts';
 import { collectBenchmarkNormalization, calibrationResourceKey } from './benchmark-normalization.ts';
-import type { MetricNormalization } from './calibrated-measurement.ts';
+import type { MetricNormalization } from './calibration-definition.ts';
 
 export function attachCalibrationResources(
     body: (scope: never) => unknown,

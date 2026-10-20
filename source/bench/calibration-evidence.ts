@@ -37,13 +37,25 @@ export const calibrationSnapshotSchema: z.ZodType<CalibrationSnapshot> = z
             snapshot.sampling.maximumSamples
         );
     });
-const savedCalibrationSchema: z.ZodType<SavedCalibration> = z.strictObject({
+const legacySavedCalibrationSchema = z.strictObject({
     work: workIdSchema,
     metric: z.string().min(1),
     actual: calibrationSnapshotSchema,
     budgetReference: calibrationSnapshotSchema
 });
+const savedCalibrationSchema: z.ZodType<SavedCalibration> = z.union([
+    legacySavedCalibrationSchema.omit({ actual: true }).extend({ reference: calibrationSnapshotSchema }),
+    legacySavedCalibrationSchema.transform(function selectedReference(entry) {
+        return {
+            work: entry.work,
+            metric: entry.metric,
+            reference: entry.actual,
+            budgetReference: entry.budgetReference
+        };
+    })
+]);
 export const benchmarkNormalizationContextSchema: z.ZodType<BenchmarkNormalizationContext> = z.strictObject({
+    executionId: z.string().min(1).nullable().default(null),
     mode: z.enum([ 'capture', 'compare' ]),
     profile: z.string().min(1),
     machine: z.strictObject({ machineClass: z.string().min(1), metadata: z.json() }),
@@ -70,8 +82,9 @@ export const normalizationEvidenceSchema: z.ZodType<BenchmarkNormalizationEviden
             scaling: z.enum([ 'proportional', 'inverse' ]),
             actual: calibrationSnapshotSchema,
             budgetReference: calibrationSnapshotSchema,
+            budgetFactor: z.number().positive().nullable().default(null),
             reference: calibrationSnapshotSchema,
-            source: z.enum([ 'baseline', 'fixed' ]),
+            source: z.enum([ 'baseline', 'canonical', 'fixed' ]),
             factor: z
                 .strictObject({ estimate: z.number(), lower: z.number().nullable(), upper: z.number().nullable() })
                 .nullable(),

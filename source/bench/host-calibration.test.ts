@@ -2,6 +2,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import {
     calibrateBenchmarkHost,
     normalizeBenchmarkDuration,
+    readBenchmarkMachine,
     type ComparableCalibration
 } from '../packages/run/benchmark-calibration.entry-point.ts';
 
@@ -30,6 +31,7 @@ export const testNode = suite('benchmark calibration', [
             throw new Error('Reference calibration was not comparable.');
         }
         scope.assert.equal(first.machineClass, second.machineClass);
+        scope.assert.equal(readBenchmarkMachine().machineClass, first.machineClass);
         scope.assert.notEqual(first.context, null);
         scope.assert.equal(
             normalizeBenchmarkDuration({

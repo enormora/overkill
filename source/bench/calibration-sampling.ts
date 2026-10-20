@@ -93,3 +93,31 @@ export async function sampleCalibration(
         };
     }
 }
+
+type CalibrationSampler = {
+    readonly identity: CalibrationIdentity;
+    readonly sample: (input: CalibrationSamplingInput) => Promise<CalibrationResult>;
+};
+type CachedCalibration = {
+    readonly execution: BenchmarkNormalizationContext | string;
+    readonly result: Promise<CalibrationResult>;
+};
+function calibrationExecution(input: CalibrationSamplingInput): BenchmarkNormalizationContext | string | null {
+    const context = input.scope.benchmarkEnvironment?.normalization ?? null;
+    return context === null ? null : context.executionId ?? context;
+}
+export function createCalibrationSampler(identity: CalibrationIdentity): CalibrationSampler {
+    let latest: CachedCalibration | null = null;
+    return {
+        identity,
+        async sample(input) {
+            const execution = calibrationExecution(input);
+            if (execution !== null && latest?.execution === execution) {
+                return latest.result;
+            }
+            const result = sampleCalibration(identity, input);
+            latest = execution === null ? null : { execution, result };
+            return result;
+        }
+    };
+}

@@ -22,7 +22,7 @@ function assertComparableCalibrations(actual: CalibrationSnapshot, reference: Ca
     const identityMatches = canonicalIdentityJson(actual.identity) === canonicalIdentityJson(reference.identity);
     const executionMatches = canonicalIdentityJson(actual.execution.nodeArguments) ===
         canonicalIdentityJson(reference.execution.nodeArguments);
-    if (actual.machineClass !== reference.machineClass || !identityMatches || !executionMatches) {
+    if (!identityMatches || !executionMatches) {
         throw new TypeError('Calibration references are not comparable.');
     }
 }

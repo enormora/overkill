@@ -554,7 +554,12 @@ visible and may be restricted further by calibration. Configured unavailable
 signals block execution. See [Host conditions](../bench/readme.md#host-conditions) for limits, formulas, probe availability, and
 snapshot timing. Baseline normalization remains in `benchmarkCalibration`.
 
-`overkill bench calibrate` captures declared calibration resources for the selected
+Built-in timing and CPU metrics normalize automatically. Custom domains select
+representative workloads with `calibratedMeasurement`. Calibration is cached within
+an execution context; ordinary runs require no captured files. Normalized budgets
+and snapshots use a shared reference-workload scale across hardware.
+
+`overkill bench calibrate` optionally captures display references for the selected
 benchmark profile. `orchestrator.bench.calibrate(command, { timing: null })` exposes
 the same operation. Capture skips benchmark bodies and unrelated fixtures. Reference
 files live under the baseline directory's `calibration` subdirectory. Version 4
@@ -565,3 +570,8 @@ for scaling, uncertainty, saved expectations, and stale-reference maintenance.
 `runCpuCalibrationWorkload()` from `@overkill-dev/run/benchmark-calibration` runs
 the fixed integer-mix reference workload and returns its checksum. The built-in
 CPU calibration resource measures this same workload.
+
+`readBenchmarkMachine()` reads host identity and metadata without running a
+reference workload. `metricReadingSchema` validates metric readings shared by
+collectors and persisted samples. Both are exported by
+`@overkill-dev/run/benchmark-calibration`.

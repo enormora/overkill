@@ -15,8 +15,9 @@ import {
 import { startResources } from '../packages/resources/resources.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
-import { sampleCalibration, type CalibrationSamplingInput } from './calibration-sampling.ts';
+import { sampleCalibration, createCalibrationSampler, type CalibrationSamplingInput } from './calibration-sampling.ts';
 import { calibrationResourceKey, collectBenchmarkNormalization } from './benchmark-normalization.ts';
+import { benchmarkNormalizationContextSchema } from './calibration-evidence.ts';
 
 const reference = calibrationSnapshot(Array.from({ length: 128 }, function () {
     return 100;
@@ -39,6 +40,7 @@ function calibrationScope(scope: TestScope): BenchmarkScope {
             garbageCollection: { kind: 'unavailable', reason: 'GC unavailable' },
             normalization: {
                 mode: 'compare',
+                executionId: null,
                 profile: 'bench',
                 machine: {
                     machineClass: reference.machineClass,
@@ -106,7 +108,74 @@ function referenceResource(): CalibrationResource {
         }
     }, { sampling: policy, lifecycle: reference.lifecycle });
 }
+function referenceExecution(input: CalibrationSamplingInput, executionId: string): CalibrationSamplingInput {
+    const environment = input.scope.benchmarkEnvironment;
+    if (environment === null) {
+        throw new Error('Expected a calibration environment.');
+    }
+    const { normalization } = environment;
+    if (normalization === null) {
+        throw new Error('Expected a calibration environment.');
+    }
+    return {
+        ...input,
+        scope: {
+            ...input.scope,
+            benchmarkEnvironment: {
+                ...environment,
+                normalization: { ...structuredClone(normalization), executionId }
+            }
+        }
+    };
+}
 export const testNode = suite('calibration sampling lifetimes', [
+    test('reads historical normalization contexts without an execution ID', function (scope: TestScope) {
+        const environment = calibrationScope(scope).benchmarkEnvironment;
+        scope.require.defined(environment);
+        const { normalization } = environment;
+        scope.require.defined(normalization);
+        Reflect.deleteProperty(normalization, 'executionId');
+        const restored = benchmarkNormalizationContextSchema.parse(normalization);
+        scope.assert.equal(restored.executionId, null);
+        return scope.assert.collect();
+    }),
+    test(
+        'reuses calibration across worker messages and refreshes it for a new execution',
+        async function (scope: TestScope) {
+            let samples = 0;
+            const sampler = createCalibrationSampler(reference.identity);
+            const input = referenceExecution(
+                samplingInput(calibrationScope(scope), function measured(context) {
+                    samples += 1;
+                    return measuredReference(context);
+                }, 128),
+                'first-run'
+            );
+            const first = await sampler.sample(input);
+            scope.assert.equal(await sampler.sample(referenceExecution(input, 'first-run')), first);
+            scope.assert.equal(samples, 128);
+            await sampler.sample(referenceExecution(input, 'next-run'));
+            scope.assert.equal(samples, 256);
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'caches reference samples within a context and refreshes them for a new run',
+        async function (scope: TestScope) {
+            let samples = 0;
+            const sampler = createCalibrationSampler(reference.identity);
+            const input = samplingInput(calibrationScope(scope), function measured(context) {
+                samples += 1;
+                return measuredReference(context);
+            }, 128);
+            const first = await sampler.sample(input);
+            scope.assert.equal(await sampler.sample({ ...input }), first);
+            scope.assert.equal(samples, 128);
+            await sampler.sample({ ...input, scope: calibrationScope(scope) });
+            scope.assert.equal(samples, 256);
+            return scope.assert.collect();
+        }
+    ),
     ...[ false, true ].map(function missingContextCase(missingEnvironment) {
         return test(
             `rejects missing ${missingEnvironment ? 'execution environment' : 'normalization context'}`,

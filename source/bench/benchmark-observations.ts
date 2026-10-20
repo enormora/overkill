@@ -1,17 +1,9 @@
 import { z } from 'zod/v4';
+import { metricReadingSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
 import type { BenchmarkMetricSummary, MetricReading } from '../engine/benchmark-result.ts';
 import { observationMean, observationMedian } from './statistical-primitives.ts';
 import { availableMetric } from './metric-reading.ts';
 
-const provenanceSchema = z.strictObject({
-    collector: z.string().min(1),
-    scope: z.enum([ 'region', 'thread', 'process', 'runtime', 'custom' ]),
-    unit: z.string().min(1)
-});
-export const metricReadingSchema: z.ZodType<MetricReading> = z.discriminatedUnion('availability', [
-    z.strictObject({ availability: z.literal('available'), value: z.number(), provenance: provenanceSchema }),
-    z.strictObject({ availability: z.literal('unavailable'), reason: z.string().min(1), provenance: provenanceSchema })
-]);
 const returnedMetricsSchema = z.record(z.string().min(1), z.union([ z.number(), metricReadingSchema ]));
 
 export type MetricObservations = {

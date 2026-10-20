@@ -4,10 +4,11 @@ import type {
     BenchmarkNormalizationContext,
     BenchmarkNormalizationEvidence,
     CalibrationSnapshot,
+    NormalizationRuleSummary,
     SavedCalibration
 } from '../engine/benchmark-result.ts';
+import { canonicalCalibration } from './canonical-calibration.ts';
 import { calibrationFactor } from './normalization-interval.ts';
-import type { MetricNormalization } from './calibrated-measurement.ts';
 
 type MetricEvidence = BenchmarkNormalizationEvidence['metrics'][string];
 type ReferenceChoice = Pick<MetricEvidence, 'budgetReference' | 'reference' | 'source'>;
@@ -21,19 +22,23 @@ function matchingSaved(input: ReferenceSelection): readonly SavedCalibration[] {
     const identity = canonicalIdentityJson(input.actual.identity);
     return input.context.saved.filter(function matchingReference(entry) {
         return entry.metric === input.metric && workIdentityKey(entry.work) === workIdentityKey(input.work) &&
-            canonicalIdentityJson(entry.actual.identity) === identity;
+            canonicalIdentityJson(entry.reference.identity) === identity;
     });
 }
 function fixedReference(input: ReferenceSelection): ReferenceChoice {
     const identity = canonicalIdentityJson(input.actual.identity);
-    const reference = input.context.references.find(function matchingReference(candidate) {
+    const execution = canonicalIdentityJson(input.actual.execution.nodeArguments);
+    const references = input.context.references.filter(function matchingReference(candidate) {
         return canonicalIdentityJson(candidate.identity) === identity &&
-            candidate.machineClass === input.actual.machineClass;
+            canonicalIdentityJson(candidate.execution.nodeArguments) === execution;
     });
-    if (reference === undefined) {
-        throw new TypeError('Missing calibration reference. Run overkill bench calibrate for this machine class.');
-    }
-    return { reference, budgetReference: reference, source: 'fixed' };
+    const reference = references.find(function localReference(candidate) {
+        return candidate.machineClass === input.actual.machineClass;
+    }) ?? references[0];
+    const canonical = canonicalCalibration(input.actual);
+    return reference === undefined
+        ? { reference: canonical, budgetReference: canonical, source: 'canonical' }
+        : { reference, budgetReference: canonical, source: 'fixed' };
 }
 function selectedReference(input: ReferenceSelection): ReferenceChoice {
     const saved = matchingSaved(input);
@@ -41,19 +46,30 @@ function selectedReference(input: ReferenceSelection): ReferenceChoice {
     if (first === undefined) {
         return fixedReference(input);
     }
-    const key = canonicalIdentityJson([ first.actual, first.budgetReference ]);
+    const key = canonicalIdentityJson([ first.reference, first.budgetReference ]);
     if (
         saved.some(function conflictingReference(entry) {
-            return canonicalIdentityJson([ entry.actual, entry.budgetReference ]) !== key;
+            return canonicalIdentityJson([ entry.reference, entry.budgetReference ]) !== key;
         })
     ) {
         throw new TypeError('Saved expectations disagree about the calibration reference.');
     }
-    return { reference: first.actual, budgetReference: first.budgetReference, source: 'baseline' };
+    return { reference: first.reference, budgetReference: first.budgetReference, source: 'baseline' };
 }
-export function selectCalibrationReference(input: ReferenceSelection, rule: MetricNormalization): MetricEvidence {
+export function selectCalibrationReference(
+    input: ReferenceSelection,
+    scaling: NormalizationRuleSummary['scaling']
+): MetricEvidence {
     const selected = selectedReference(input);
-    calibrationFactor(input.actual, selected.reference, rule.scaling);
-    calibrationFactor(input.actual, selected.budgetReference, rule.scaling);
-    return { ...selected, scaling: rule.scaling, actual: input.actual, factor: null, summary: null, budgets: [] };
+    calibrationFactor(input.actual, selected.reference, scaling);
+    const budgetFactor = calibrationFactor(input.actual, selected.budgetReference, scaling);
+    return {
+        ...selected,
+        budgetFactor,
+        scaling,
+        actual: input.actual,
+        factor: null,
+        summary: null,
+        budgets: []
+    };
 }

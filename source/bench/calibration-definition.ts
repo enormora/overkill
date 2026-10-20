@@ -46,3 +46,8 @@ export type CalibrationDefinition<Dependencies extends ResourceDependencies, Str
             context: CalibrationMeasureContext<Dependencies, SampleForStrategy<Strategy>>
         ) => MetricReading | Promise<MetricReading>;
     };
+
+export type MetricNormalization = {
+    readonly calibration: CalibrationResource;
+    readonly scaling: 'inverse' | 'proportional';
+};

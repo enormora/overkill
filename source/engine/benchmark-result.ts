@@ -186,10 +186,11 @@ export type CalibrationResult = { readonly kind: 'comparable'; readonly snapshot
 export type SavedCalibration = {
     readonly work: WorkId;
     readonly metric: string;
-    readonly actual: CalibrationSnapshot;
+    readonly reference: CalibrationSnapshot;
     readonly budgetReference: CalibrationSnapshot;
 };
 export type BenchmarkNormalizationContext = {
+    readonly executionId: string | null;
     readonly mode: 'capture' | 'compare';
     readonly profile: string;
     readonly machine: { readonly machineClass: string; readonly metadata: ReadonlyDeep<JsonValue>; };
@@ -207,11 +208,12 @@ type BenchmarkNormalizationFactor = {
     readonly upper: number | null;
 };
 export type BenchmarkMetricNormalization = {
+    readonly budgetFactor: number | null;
     readonly scaling: NormalizationRuleSummary['scaling'];
     readonly actual: CalibrationSnapshot;
     readonly budgetReference: CalibrationSnapshot;
     readonly reference: CalibrationSnapshot;
-    readonly source: 'baseline' | 'fixed';
+    readonly source: 'baseline' | 'canonical' | 'fixed';
     readonly factor: BenchmarkNormalizationFactor | null;
     readonly summary: BenchmarkMetricSummary | null;
     readonly budgets: readonly BenchmarkBudgetResult[];

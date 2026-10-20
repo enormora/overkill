@@ -1,6 +1,5 @@
 import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import { snapshotJson } from '../attachments/json-snapshot.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import { failedPerformanceBaselineCheck, type BenchmarkCaseEnd } from './performance-check.ts';
@@ -12,6 +11,7 @@ import type {
 } from './performance-adapter.ts';
 import type { BaselineChange, BaselineUpdateMode, StoredPerformanceBaseline } from './performance-baseline.ts';
 import type { PerformanceObservationEvidence } from './performance-presentation.ts';
+import { observePerformance } from './performance-observation.ts';
 import { proposePerformanceBaseline } from './performance-plan.ts';
 
 export type PerformanceEvaluation = {
@@ -72,32 +72,29 @@ function baselineChecks(input: PerformanceEvaluationInput, actual: PerformanceBa
     };
 }
 
-function snapshotObservation(value: unknown, input: PerformanceEvaluationInput): PerformanceBaselineValue {
-    const snapshot = snapshotJson(value, input.maxBytes);
-    if (snapshot === null) {
-        throw new Error('Performance observation exceeds the configured artifact byte limit.');
-    }
-    return { calibration: input.calibration, value: snapshot.value };
-}
-
 function benchmarkNormalization(input: PerformanceEvaluationInput): PerformanceProposalNormalization {
     return input.event.benchmark?.normalization ?? null;
 }
 type PerformanceProposalNormalization = BenchmarkNormalizationEvidence | null;
 export function evaluatePerformanceBaseline(input: PerformanceEvaluationInput): PerformanceEvaluation {
     const work = input.event.workId ?? createDefaultWorkId(input.event.case);
-    const observation = input.adapter.observe({
-        artifacts: input.event.artifacts,
-        calibration: input.calibration,
-        work
-    });
+    const observation = observePerformance(
+        input.adapter,
+        {
+            artifacts: input.event.artifacts,
+            calibration: input.calibration,
+            work
+        },
+        benchmarkNormalization(input),
+        input.maxBytes
+    );
     if (observation.kind === 'not-applicable') {
         return { change: null, checks: [], participates: false, observation: { kind: 'not-applicable' } };
     }
     if (observation.kind === 'missing') {
         throw new Error(observation.reason);
     }
-    const actual = snapshotObservation(observation.value, input);
+    const actual = { calibration: input.calibration, value: observation.value };
     const change = proposePerformanceBaseline({
         ...input,
         actual,

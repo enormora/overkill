@@ -94,16 +94,17 @@ export {
     defaultRuntimeCooldownPolicy
 } from '../../bench/benchmark-lifecycle-policy.ts';
 
-export { calibratedMeasurement } from '../../bench/calibrated-measurement.ts';
+export { calibratedMeasurement, rawMeasurement } from '../../bench/calibrated-measurement.ts';
 export { cpuCalibration } from '../../bench/cpu-calibration.ts';
 export { defineCalibrationResource } from '../../bench/calibration-resource.ts';
 export type {
+    MetricNormalization,
     CalibrationResource,
     CalibrationOptions,
     CalibrationDefinition,
     CalibrationMeasureContext
 } from '../../bench/calibration-definition.ts';
-export type { CalibratedMeasurement, MetricNormalization } from '../../bench/calibrated-measurement.ts';
+export type { CalibratedMeasurement } from '../../bench/calibrated-measurement.ts';
 export type {
     CalibrationSnapshot,
     CalibrationResult,

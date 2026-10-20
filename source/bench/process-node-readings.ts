@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 import type { ReadonlyDeep } from 'type-fest';
-import { metricReadingSchema } from './benchmark-observations.ts';
+import { metricReadingSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
 import { unavailableMetric } from './metric-reading.ts';
 
 export const nodeProbeMaximumReportBytes = 65_536;

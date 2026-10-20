@@ -13,7 +13,8 @@ A `PerformanceBaselineAdapter` has a unique `id` and three synchronous methods:
   diagnostics containing JSON `actual`, JSON `expected`, and `summary`.
 
 `actual` and `expected` contain `value` and recorded `calibration`. Adapters own
-metric extraction, tolerance, and any explicit normalization. Proposals are stored
+metric extraction, tolerance, and transformations of custom artifacts. Benchmark
+sample artifacts arrive normalized when calibration applies. Proposals are stored
 with `actual.calibration`; return values expressed in that calibration context.
 Storage and command behavior belong to the runner. This package does not collect measurements.
 
@@ -33,8 +34,11 @@ export const config = defineConfig({
 
 `directory` defaults to `test-baselines`; `adapters` defaults to `[]`.
 Performance JSON files live in its `performance` subdirectory. Each identity
-includes profile, adapter, full work identity, and machine class. Other profiles,
-machine classes, and baseline subtypes remain separate.
+includes profile, adapter, and full work identity. Version 3 normalized expectations
+match by calibration workload identity and scaling across machines. Raw and legacy
+expectations also include machine class. Other profiles and baseline subtypes
+remain separate. Adapters receive normalized `benchmark-samples` when calibration
+applies; persisted sample artifacts retain raw values.
 
 ## Benchmark chart metadata
 

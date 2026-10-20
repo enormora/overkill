@@ -286,10 +286,11 @@ attachment and the programmatic command result.
 Runs using performance baselines perform a real CPU reference calibration in a
 separate process with the benchmark Node arguments and sanitized environment.
 Recorded metadata identifies the machine class and preserves reference samples.
-Cross-class comparison has no fallback. Calibration does not itself normalize
-observations. An adapter can explicitly use `normalizeBenchmarkDuration` from
-`@overkill-dev/bench/calibration` for CPU duration metrics; unsuitable metrics
-should retain their own comparison policy.
+This legacy adapter context remains separate from automatic metric normalization.
+Adapters receive normalized benchmark samples; normalized expectations can match
+across machine classes. `normalizeBenchmarkDuration` from
+`@overkill-dev/bench/calibration` remains available for custom artifacts that use
+the legacy context. Avoid applying it again to already normalized samples.
 
 ## External processes and terminals
 
@@ -451,7 +452,11 @@ resolved policy and collection counts; historical results retain absent GC evide
 
 ### Calibration and normalization
 
-Declare scaling per metric. Metrics without a rule remain raw.
+Built-in duration, throughput, and native CPU metrics normalize automatically using
+`cpuCalibration()`. Byte and count metrics remain raw. Use
+`rawMeasurement(wallClockMeasurement())` for explicit raw timing budgets.
+Use `calibratedMeasurement` to select another domain's representative workload or
+to declare scaling for custom metrics:
 
 ```ts
 import {
@@ -471,42 +476,62 @@ readings by reference median / actual median. Inverse scaling uses actual median
 reference median, for metrics such as throughput. Only positive, finite calibration
 readings in the declared unit are accepted.
 
-Run `overkill bench calibrate` to capture references for the selected profile and
-machine class. Commit the generated `calibration/*.calibration.json` files under
+Ordinary runs need no captured files. Budgets use reference-workload units:
+proportional readings divide by the local calibration median, while inverse
+readings multiply by it. Equivalent workloads can share budgets across machines.
+For example, a normalized duration budget of `2` allows twice the CPU reference
+workload's duration, regardless of the host's absolute speed.
+
+When migrating raw timing budgets, convert thresholds to reference-workload units
+and update performance expectations. Use `rawMeasurement` to retain existing raw
+thresholds or an adapter that already normalizes samples.
+
+Optionally run `overkill bench calibrate` to capture display references for the
+selected profile and machine class. Commit the generated `calibration/*.calibration.json` files under
 the profile's baseline directory. Capture acquires calibration dependencies and
 samples their workloads, without running benchmark bodies or unrelated fixtures.
 Listing does not acquire calibration resources.
+Capture selection prefers the current machine, then compatible captures from other
+machines. Incompatible workload versions or Node arguments fall back to canonical
+units. Saved expectations still require comparable calibration inputs.
 
 `defineCalibrationResource` accepts `workload`, `version`, `unit`, `dependencies`,
 `measurement`, and `measure`. The callback receives `dependencies`, `attachments`,
 `sample`, `signal`, and `cleanup`, and returns one `MetricReading`. Its optional
 configuration supplies both `sampling` and `lifecycle`. Calibration absolute
 precision uses the `reference` key in `sampling.absolutePrecision`. Change `version` when the
-reference workload changes. Resources are shared per worker and sampled before
-benchmark warmup in the executing process. Normalized runs use serial placement.
+reference workload changes. Calibration samples are cached within an execution
+context and collected before benchmark warmup in the executing process. Reused
+workers keep the same reference across batches of one run and refresh it for a new
+run.
+Normalized runs use serial placement.
 
-Saved performance expectations supply their reference when available. Otherwise,
-the checked-in reference supplies it. Matching adapters must agree on the reference. Unchanged expectations keep their
+Saved performance expectations supply their selected display reference when available. Otherwise,
+an optional checked-in capture supplies display units, falling back to canonical
+reference-workload units. Matching adapters must agree on the reference. Unchanged expectations keep their
 saved reference when fresh calibration readings arrive.
-The original fixed budget basis is retained with saved expectations, so changing
-references changes displayed units without relaxing the gate. Adapter values remain
-opaque and follow the adapter's own comparison policy. Legacy expectations remain
-readable and fall back to fixed references.
+The original canonical budget basis is retained with saved expectations, so changing
+display references cannot relax the gate. Adapters receive normalized
+`benchmark-samples`; other artifacts retain their original contents. Adapter
+proposals and comparisons remain adapter policy. Version 3 normalized expectations
+match across hardware by calibration identity and scaling. Legacy expectations
+remain readable and machine scoped.
 
 Budget inference includes uncertainty in both calibration medians, with confidence
 allocated across budget targets and sampling checkpoints. Budget thresholds and
-absolute precision use the fixed-reference units; mean support bounds stay in raw
+absolute precision use canonical reference-workload units; mean support bounds stay in raw
 units. Calibration precision can limit a run even when workload readings are
 stable. Insufficient, invalid, or incompatible evidence fails measurement and blocks
-baseline writes. Comparability is restricted to the recorded machine class; it does
-not establish portability across hardware classes or remove changing host load.
+baseline writes. Comparisons require compatible workload identities, versions,
+units, and execution arguments. Portability depends on representative reference
+work; a CPU reference cannot compensate for unrelated storage or network behavior.
 Inference retains the independent, stationary observation assumption.
 
 Results retain raw summaries, calibration samples, reference selection, factors,
 normalized summaries, and converted display budgets. JSON and HTML preserve both
 scales. `RunFacts.benchmarkNormalization` and version 4 `benchmark-run` artifacts
 record reference inputs; older artifacts remain readable. Direct engine execution
-of normalized benchmarks requires the runner's reference context.
+also supplies automatic calibration context.
 
 Capture and baseline cleanup emit a `calibration-references` report, readable with
 `readCalibrationReferenceReport`, including completed paths after partial writes.

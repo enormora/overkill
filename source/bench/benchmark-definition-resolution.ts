@@ -3,7 +3,7 @@ import type { BenchmarkDefinitionSummary, BenchmarkLifecyclePolicy } from '../en
 import type { UncalibratedMeasurement } from './measurement-definition.ts';
 import {
     resolveCalibratedMeasurement,
-    type MetricNormalization
+    type ResolvedMeasurement
 } from './calibrated-measurement.ts';
 import type { BenchmarkDefinition, BenchmarkOptions } from './benchmark-definition.ts';
 import {
@@ -26,7 +26,7 @@ export type ResolvedBenchmarkDefinition = {
     readonly lifecycle: BenchmarkLifecyclePolicy;
     readonly summary: BenchmarkDefinitionSummary;
     readonly measurement: UncalibratedMeasurement;
-    readonly normalization: Readonly<Record<string, MetricNormalization>>;
+    readonly normalization: ResolvedMeasurement['normalization'];
     readonly budgets: ReadonlyMap<string, readonly NormalizedMetricBudget[]>;
 };
 
@@ -97,7 +97,7 @@ function measurementSummary(
 
 function validateNormalizedMetrics(
     definition: BenchmarkDefinitionData,
-    normalization: Readonly<Record<string, MetricNormalization>>
+    normalization: ResolvedMeasurement['normalization']
 ): void {
     const declared = new Set([
         ...definition.diagnosticMetrics,
@@ -126,7 +126,13 @@ export function resolveBenchmarkDefinition(
     if (names.length === 0 || uniqueNames.size !== names.length) {
         throw new TypeError('Benchmark requires unique workloads.');
     }
-    const { normalization, measurement } = resolveCalibratedMeasurement(definition.measurement);
+    const { normalization, measurement } = resolveCalibratedMeasurement(
+        definition.measurement,
+        new Set([
+            ...definition.diagnosticMetrics,
+            ...Object.values(definition.budgets).flatMap(Object.keys)
+        ])
+    );
     validateNormalizedMetrics(definition, normalization);
     const budgets = resolveBudgets(definition, names);
 

@@ -11,6 +11,9 @@ import {
 import type { PerformanceBaselineAdapter } from './performance-adapter.ts';
 import {
     performanceBaselineIdentity,
+    performanceComparisonClass,
+    normalizedPerformanceBaselineVersion,
+    type PerformanceBaselineIdentity,
     type BaselineChange,
     type BaselineUpdateMode,
     type StoredPerformanceBaseline
@@ -190,19 +193,28 @@ function reconcileInventory(
     ) ];
 }
 
+function expectedIdentity(
+    input: PerformanceWorkflowInput,
+    event: BenchmarkCaseEnd,
+    adapter: PerformanceBaselineAdapter
+): PerformanceBaselineIdentity {
+    return {
+        adapter: adapter.id,
+        machineClass: performanceComparisonClass(
+            input.calibration.machineClass,
+            event.benchmark?.normalization ?? null
+        ),
+        profile: input.profile,
+        work: event.workId ?? createDefaultWorkId(event.case)
+    };
+}
 function evaluateAdapter(
     input: PerformanceWorkflowInput,
     state: WorkflowState,
     event: BenchmarkCaseEnd,
     adapter: PerformanceBaselineAdapter
 ): readonly FailedCheck[] {
-    const work = event.workId ?? createDefaultWorkId(event.case);
-    const key = performanceBaselineKey({
-        adapter: adapter.id,
-        machineClass: input.calibration.machineClass,
-        profile: input.profile,
-        work
-    });
+    const key = performanceBaselineKey(expectedIdentity(input, event, adapter));
     const evaluation = evaluatePerformanceBaseline({
         adapter,
         calibration: input.calibration,
@@ -283,15 +295,21 @@ function evaluateCase(
     return evaluation;
 }
 
+function belongsToRun(input: PerformanceWorkflowInput, baseline: StoredPerformanceBaseline): boolean {
+    const sameProfile = baseline.profile.normalize('NFC') === input.profile.normalize('NFC');
+    const sameMachine = baseline.expected.calibration.machineClass === input.calibration.machineClass;
+    const portable = baseline.version === normalizedPerformanceBaselineVersion &&
+        performanceBaselineIdentity(baseline).machineClass !== baseline.expected.calibration.machineClass;
+    return sameProfile && (sameMachine || portable);
+}
 export async function createPerformanceWorkflow(input: PerformanceWorkflowInput): Promise<PerformanceWorkflow> {
     const store = await createPerformanceBaselineStore(input);
     const entries = await store.list();
     const state = createWorkflowState(
         new Map(
             entries
-                .filter(function belongsToRun(entry) {
-                    return entry.baseline.profile.normalize('NFC') === input.profile.normalize('NFC') &&
-                        entry.baseline.expected.calibration.machineClass === input.calibration.machineClass;
+                .filter(function selectedBaseline(entry) {
+                    return belongsToRun(input, entry.baseline);
                 })
                 .map(function baselineEntry(entry) {
                     return [ performanceBaselineKey(performanceBaselineIdentity(entry.baseline)), entry.baseline ];
