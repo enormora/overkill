@@ -177,6 +177,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkNormalization: null,
             benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,

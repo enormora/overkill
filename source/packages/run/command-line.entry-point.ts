@@ -71,6 +71,10 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
     return {
         baseline: nodeCommandNamespace.baseline,
         bench: {
+            async calibrate(request) {
+                const loadedRunner = await loadRunner();
+                return await loadedRunner.bench.calibrate(request);
+            },
             baseline: nodeCommandNamespace.bench.baseline,
             async listBenchmarks(request) {
                 const loadedRunner = await loadRunner();

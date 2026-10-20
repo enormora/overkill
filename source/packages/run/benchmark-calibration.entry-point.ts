@@ -1,29 +1,12 @@
-import { createHash } from 'node:crypto';
-import os from 'node:os';
-import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
-
-export type ComparableCalibration = {
-    readonly context: ReadonlyDeep<JsonValue>;
-    readonly kind: 'comparable';
-    readonly machineClass: string;
-    readonly metadata: ReadonlyDeep<JsonValue>;
-};
-type NonComparableCalibration = {
-    readonly kind: 'non-comparable';
-    readonly metadata: ReadonlyDeep<JsonValue>;
-    readonly reason: string;
-};
-export type BenchmarkCalibrationResult = ComparableCalibration | NonComparableCalibration;
+import type { ComparableCalibration, BenchmarkCalibrationResult } from '../../bench/host-calibration-result.ts';
+import { readCalibrationHostMetadata, calibrationMachineClass } from '../../bench/calibration-machine.ts';
+import { referenceChecksum } from '../../bench/cpu-reference-workload.ts';
 
 const iterations = 2_000_000;
 const sampleCount = 7;
 const referenceWorkload = 'integer-mix-v1';
-const multiplier = 1_664_525;
-const increment = 1_013_904_223;
-const integerRange = 4_294_967_296;
 const nanosecondsPerMicrosecond = 1000;
-const machineClassDigestLength = 16;
 const medianDivisor = 2;
 const referenceContextSchema = z
     .strictObject({
@@ -35,75 +18,11 @@ const referenceContextSchema = z
     })
     .readonly();
 type ReferenceCalibration = z.infer<typeof referenceContextSchema>;
-type HostMetadata = {
-    readonly architecture: string;
-    readonly availableParallelism: number;
-    readonly cpuCount: number;
-    readonly cpuModels: readonly string[];
-    readonly freeMemoryBytes: number;
-    readonly loadAverage: readonly number[];
-    readonly nodeArguments: readonly string[];
-    readonly nodeVersion: string;
-    readonly operatingSystem: string;
-    readonly operatingSystemRelease: string;
-    readonly totalMemoryBytes: number;
-};
 type DurationNormalizationInput = {
     readonly actualCalibration: ComparableCalibration;
     readonly baselineCalibration: ComparableCalibration;
     readonly durationMicroseconds: number;
 };
-
-function referenceChecksum(): number {
-    let checksum = 1;
-    for (let index = 0; index < iterations; index += 1) {
-        checksum = Math.abs(Math.imul(checksum + index, multiplier) + increment) % integerRange;
-    }
-    return checksum;
-}
-
-function hostMetadata(): HostMetadata {
-    const cpus = os.cpus();
-    return {
-        architecture: process.arch,
-        availableParallelism: os.availableParallelism(),
-        cpuCount: cpus.length,
-        cpuModels: Array
-            .from(
-                new Set(cpus.map(function cpuModel(cpu) {
-                    return cpu.model;
-                }))
-            )
-            .toSorted(function alphabetical(left, right) {
-                return left.localeCompare(right);
-            }),
-        freeMemoryBytes: os.freemem(),
-        loadAverage: os.loadavg(),
-        nodeArguments: Array.from(process.execArgv),
-        nodeVersion: process.versions.node,
-        operatingSystem: process.platform,
-        operatingSystemRelease: os.release(),
-        totalMemoryBytes: os.totalmem()
-    };
-}
-
-function machineClass(metadata: HostMetadata): string {
-    const classification = JSON.stringify({
-        architecture: metadata.architecture,
-        cpuCount: metadata.cpuCount,
-        cpuModels: metadata.cpuModels.map(function (model) {
-            return model.normalize('NFC');
-        }),
-        nodeArguments: metadata.nodeArguments.map(function (argument) {
-            return argument.normalize('NFC');
-        }),
-        nodeMajor: metadata.nodeVersion.split('.', 1)[0],
-        operatingSystem: metadata.operatingSystem,
-        totalMemoryBytes: metadata.totalMemoryBytes
-    });
-    const digest = createHash('sha256').update(classification).digest('hex').slice(0, machineClassDigestLength);
-    return `${metadata.operatingSystem}-${metadata.architecture}-${digest}`;
-}
 
 function calibrationSamples(expectedChecksum: number): readonly number[] | null {
     referenceChecksum();
@@ -140,7 +59,7 @@ function referenceCalibration(): ReferenceCalibration | null {
 }
 
 export function calibrateBenchmarkHost(): BenchmarkCalibrationResult {
-    const metadata = hostMetadata();
+    const metadata = readCalibrationHostMetadata(Array.from(process.execArgv));
     if (metadata.cpuModels.length === 0) {
         return {
             kind: 'non-comparable',
@@ -151,7 +70,7 @@ export function calibrateBenchmarkHost(): BenchmarkCalibrationResult {
     const context = referenceCalibration();
     return context === null
         ? { kind: 'non-comparable', metadata, reason: 'CPU reference calibration did not produce valid samples.' }
-        : { context, kind: 'comparable', machineClass: machineClass(metadata), metadata };
+        : { context, kind: 'comparable', machineClass: calibrationMachineClass(metadata), metadata };
 }
 
 export function normalizeBenchmarkDuration(input: DurationNormalizationInput): number {
@@ -169,3 +88,9 @@ export function normalizeBenchmarkDuration(input: DurationNormalizationInput): n
     }
     return normalized;
 }
+
+export { referenceChecksum as runCpuCalibrationWorkload } from '../../bench/cpu-reference-workload.ts';
+export { readCalibrationReferenceReport } from '../../bench/calibration-report.ts';
+export type { CalibrationReferenceReport } from '../../bench/calibration-report.ts';
+
+export type { ComparableCalibration, BenchmarkCalibrationResult } from '../../bench/host-calibration-result.ts';

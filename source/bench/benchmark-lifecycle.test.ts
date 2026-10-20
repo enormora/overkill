@@ -1,3 +1,4 @@
+import { benchmarkLifecyclePolicySchema } from '../run/benchmark-policy-schema.ts';
 import { createRoot, createTestPlan, execute, type TestCase } from '../packages/engine/engine.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
@@ -12,7 +13,7 @@ import {
 } from '../packages/bench/bench.entry-point.ts';
 import type { BenchmarkExecutionResult, BenchmarkLifecycleResult } from '../engine/benchmark-result.ts';
 import { CaseRunnerError, type RunResult, type TestOutcome } from '../engine/run-result.ts';
-import { benchmarkResultSchema, benchmarkLifecyclePolicySchema } from '../run/benchmark-result-schema.ts';
+import { benchmarkResultSchema } from '../run/benchmark-result-schema.ts';
 
 const shortSampling = { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 };
 const measuredOnly: BenchmarkOptions = {

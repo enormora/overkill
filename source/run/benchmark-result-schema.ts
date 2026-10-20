@@ -1,60 +1,18 @@
 import { z } from 'zod/v4';
+import { metricSummarySchema, benchmarkBudgetResultSchema } from '../bench/benchmark-statistics-schema.ts';
+import { normalizationEvidenceSchema } from '../bench/calibration-evidence.ts';
 import {
     benchmarkLifecycleVersion,
     type BenchmarkExecutionResult,
-    type BenchmarkLifecycleResult,
-    type BudgetStatistic
+    type BenchmarkLifecycleResult
 } from '../engine/benchmark-result.ts';
 import { workloadIdSchema } from '../engine/identity-schema.ts';
-import { minimumInferentialSamples, maximumRetainedSamples } from '../engine/benchmark-limits.ts';
+import { samplingPolicySchema, legacyLifecyclePolicySchema } from './benchmark-policy-schema.ts';
 
-const minimumCooldownMilliseconds = 100;
-const maximumCooldownMilliseconds = 60_000;
-const legacyLifecyclePolicySchema = z.strictObject({
-    warmupSamples: z.number().int().min(0).max(maximumRetainedSamples),
-    cooldown: z.discriminatedUnion('mode', [
-        z.strictObject({ mode: z.literal('off') }),
-        z.strictObject({
-            mode: z.literal('runtime'),
-            maximumEventLoopUtilization: z.number().min(0).max(1),
-            timeoutMilliseconds: z.number().int().gt(minimumCooldownMilliseconds).max(maximumCooldownMilliseconds)
-        })
-    ])
-});
-
-export const benchmarkLifecyclePolicySchema = legacyLifecyclePolicySchema.extend({
-    garbageCollection: z.enum([ 'off', 'after-sample', 'profile-default' ]).default('off')
-});
 const resolvedLifecyclePolicySchema = legacyLifecyclePolicySchema.extend({
     garbageCollection: z.enum([ 'off', 'after-sample' ])
 });
 
-export const budgetStatisticSchema: z.ZodType<BudgetStatistic> = z.discriminatedUnion('kind', [
-    z.strictObject({ kind: z.literal('quantile'), probability: z.number().gt(0).lt(1) }),
-    z.strictObject({ kind: z.literal('mean'), range: z.strictObject({ minimum: z.number(), maximum: z.number() }) }),
-    z.strictObject({ kind: z.literal('observed-minimum') }),
-    z.strictObject({ kind: z.literal('observed-maximum') })
-]);
-export const samplingPolicySchema = z.strictObject({
-    confidenceLevel: z.number().gt(0).lt(1),
-    relativePrecision: z.number().nonnegative(),
-    absolutePrecision: z.record(z.string(), z.number().nonnegative()),
-    minimumSamples: z.number().int().min(minimumInferentialSamples),
-    maximumSamples: z.number().int().min(minimumInferentialSamples).max(maximumRetainedSamples)
-});
-const metricSummarySchema = z.strictObject({
-    count: z.number().int().nonnegative(),
-    minimum: z.number().nullable(),
-    maximum: z.number().nullable(),
-    mean: z.number().nullable(),
-    median: z.number().nullable(),
-    provenance: z.strictObject({
-        collector: z.string(),
-        scope: z.enum([ 'region', 'thread', 'process', 'runtime', 'custom' ]),
-        unit: z.string()
-    }),
-    unavailableReasons: z.array(z.string())
-});
 const rawSamplesSchema = z.strictObject({
     status: z.enum([ 'recorded', 'omitted', 'truncated' ]),
     reference: z.string().nullable(),
@@ -108,6 +66,7 @@ const lifecycleResultSchema = z.union([
 ]);
 
 export const benchmarkResultSchema: z.ZodType<BenchmarkExecutionResult> = z.strictObject({
+    normalization: normalizationEvidenceSchema.nullable().default(null),
     lifecycle: lifecycleResultSchema.nullable().default(null),
     workload: workloadIdSchema,
     policy: samplingPolicySchema,
@@ -115,15 +74,6 @@ export const benchmarkResultSchema: z.ZodType<BenchmarkExecutionResult> = z.stri
     status: z.enum([ 'sampling', 'complete', 'incomplete' ]),
     assumption: z.literal('independent-stationary-observations'),
     metrics: z.record(z.string(), metricSummarySchema),
-    budgets: z.array(z.strictObject({
-        metric: z.string(),
-        statistic: budgetStatisticSchema,
-        minimum: z.number().nullable(),
-        maximum: z.number().nullable(),
-        estimate: z.number().nullable(),
-        interval: z.strictObject({ lower: z.number().nullable(), upper: z.number().nullable() }),
-        precise: z.boolean(),
-        decision: z.enum([ 'pass', 'fail', 'undecided', 'unavailable' ])
-    })),
+    budgets: z.array(benchmarkBudgetResultSchema),
     rawSamples: rawSamplesSchema
 });

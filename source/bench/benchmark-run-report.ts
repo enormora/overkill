@@ -1,10 +1,12 @@
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
 import type { RunResult } from '../engine/run-result.ts';
+import { benchmarkNormalizationContextSchema } from './calibration-evidence.ts';
 import { benchmarkCalibrationSchema } from './calibration-schema.ts';
 import { benchmarkPlacementFactsSchema, benchmarkHostAssessmentSchema } from './benchmark-host-snapshot.ts';
 
-const benchmarkRunMetadataVersion = 3;
+export const benchmarkRunMetadataVersion = 4;
+const placementMetadataVersion = 3;
 const hostMetadataVersion = 2;
 
 const legacyMetadataSchema = z.strictObject({
@@ -24,18 +26,25 @@ const hostMetadataSchema = legacyMetadataSchema.extend({
     version: z.literal(hostMetadataVersion),
     host: benchmarkHostAssessmentSchema.nullable()
 });
-const metadataSchema = hostMetadataSchema.extend({
-    version: z.literal(benchmarkRunMetadataVersion),
+const placementMetadataSchema = hostMetadataSchema.extend({
+    version: z.literal(placementMetadataVersion),
     placement: benchmarkPlacementFactsSchema.nullable()
+});
+const metadataSchema = placementMetadataSchema.extend({
+    version: z.literal(benchmarkRunMetadataVersion),
+    normalization: benchmarkNormalizationContextSchema.nullable()
 });
 export type BenchmarkRunMetadata = ReadonlyDeep<z.infer<typeof metadataSchema>>;
 const recordedMetadataSchema = z.union([
     metadataSchema,
+    placementMetadataSchema.transform(function historicalNormalization(value): BenchmarkRunMetadata {
+        return { ...value, version: benchmarkRunMetadataVersion, normalization: null };
+    }),
     hostMetadataSchema.transform(function historicalPlacement(value): BenchmarkRunMetadata {
-        return { ...value, version: benchmarkRunMetadataVersion, placement: null };
+        return { ...value, version: benchmarkRunMetadataVersion, placement: null, normalization: null };
     }),
     legacyMetadataSchema.transform(function legacyHostMetadata(value): BenchmarkRunMetadata {
-        return { ...value, version: benchmarkRunMetadataVersion, host: null, placement: null };
+        return { ...value, version: benchmarkRunMetadataVersion, host: null, placement: null, normalization: null };
     })
 ]);
 export const benchmarkRunMediaType = 'application/vnd.overkill.benchmark-run+json';

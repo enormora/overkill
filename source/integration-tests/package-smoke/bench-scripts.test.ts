@@ -10,10 +10,11 @@ import { defineResource, withResource } from '@overkill-dev/test/resources';
 const benchManifest = new URL('../../package.json', import.meta.resolve('@overkill-dev/bench'));
 const manifest = JSON.parse(readFileSync(benchManifest, 'utf8'));
 assert.deepEqual(Object.keys(bench).sort(), [
-    'asyncMeasurementStrategy', 'availableMetric', 'benchmark',
+    'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'calibratedMeasurement', 'cpuCalibration',
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
-    'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
-    'processCpuCollector', 'processMeasurement', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
+    'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
+    'processCpuCollector', 'processMeasurement', 'processResourceCollector',
+    'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
     'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 assert.deepEqual(Object.keys(standard).sort(), Object.keys(bench).sort());
@@ -293,10 +294,11 @@ import { suite, test } from '@overkill-dev/test';
 import * as bench from '@overkill-dev/test/bench';
 
 assert.deepEqual(Object.keys(bench).sort(), [
-    'asyncMeasurementStrategy', 'availableMetric', 'benchmark',
+    'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'calibratedMeasurement', 'cpuCalibration',
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
-    'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
-    'processCpuCollector', 'processMeasurement', 'processResourceCollector', 'runtimeHealthCollector', 'skippedTest',
+    'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
+    'processCpuCollector', 'processMeasurement', 'processResourceCollector',
+    'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
     'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 let calls = 0;

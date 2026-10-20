@@ -3,13 +3,12 @@ import { runIsolatedProcessCommand } from './run-isolated-process.ts';
 import { runLocalCommand } from './run-local-command.ts';
 import { cancelledRunResult } from './run-cancellation.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { PreparedBenchmarkRun } from './benchmark-baseline-run.ts';
+import type { PreparedBenchmarkRun } from './benchmark-baseline-preparation.ts';
 import type { CollectionSource as RunCollectionSource } from './run-collection-source.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
 import type { RunCommand } from './run-types.ts';
-import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 export type RunExecutionInvocation = RunInvocation & {
     readonly signal: Readonly<AbortSignal> | null;
@@ -25,7 +24,7 @@ async function prepareRun(
     invocation: RunInvocation,
     options: RunPreparationInput
 ): Promise<PreparedBenchmarkRun | RunResult> {
-    if (invocation.namespace !== 'bench') {
+    if (invocation.namespace === 'test') {
         return { input: options.input, session: null };
     }
     const { prepareBenchmarkExecution } = await import('./benchmark-baseline-run.ts');

@@ -31,7 +31,7 @@ function parallelMeasurement(definition: BenchmarkDefinitionSummary | null): boo
             });
         })
     ];
-    return metrics.every(function artifactMetric(name) {
+    return Object.keys(definition.normalization).length === 0 && metrics.every(function artifactMetric(name) {
         return !timingMetrics.has(name);
     });
 }

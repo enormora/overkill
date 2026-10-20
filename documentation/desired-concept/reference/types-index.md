@@ -940,6 +940,11 @@ type BenchmarkGarbageCollectionResult = import('@overkill-dev/bench').BenchmarkG
 type BenchmarkLifecyclePolicy = import('@overkill-dev/bench').BenchmarkLifecyclePolicy;
 type ResolvedBenchmarkLifecyclePolicy = import('@overkill-dev/bench').ResolvedBenchmarkLifecyclePolicy;
 type BenchmarkExecutionEnvironment = import('@overkill-dev/engine').BenchmarkExecutionEnvironment;
+type CalibrationResource = import('@overkill-dev/bench').CalibrationResource;
+type CalibrationSnapshot = import('@overkill-dev/bench').CalibrationSnapshot;
+type CalibrationResult = import('@overkill-dev/bench').CalibrationResult;
+type BenchmarkNormalizationEvidence = import('@overkill-dev/bench').BenchmarkNormalizationEvidence;
+type CalibrationReferenceReport = import('@overkill-dev/bench').CalibrationReferenceReport;
 type BenchmarkGarbageCollectionCapability = import('@overkill-dev/engine').BenchmarkGarbageCollectionCapability;
 
 declare function resolveBenchmarkGarbageCollection(

@@ -25,6 +25,7 @@ export type RunFactsInput = {
     readonly benchmarkHost: RunFacts['benchmarkHost'];
     readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
     readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
+    readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly cases: readonly RunCaseFacts[];
     readonly config: NormalizedConfig;
     readonly dependencies: RunFactsDependencies;
@@ -120,6 +121,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
         benchmarkHost: input.benchmarkHost,
         benchmarkPlacement: input.benchmarkPlacement,
         benchmarkCalibration: input.benchmarkCalibration,
+        benchmarkNormalization: input.benchmarkNormalization,
         cases: input.cases,
         coveragePolicy: input.request.coverage && profile.testFamily === 'microtest' ? profile.coverage : null,
         durationHistory: input.durationHistory,

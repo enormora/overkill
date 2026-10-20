@@ -1,8 +1,13 @@
+import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
 import type {
     BenchmarkCalibrationResult as BenchmarkCalibrationResultDefinition
-} from '../packages/run/benchmark-calibration.entry-point.ts';
+} from '../bench/host-calibration-result.ts';
 import type { WorkId } from '../engine/identity.ts';
 import type { PerformanceBaselineValue } from './performance-adapter.ts';
+
+export const normalizedPerformanceBaselineVersion = 2;
+
+export type CalibrationReferenceChange = { readonly kind: 'remove' | 'write'; readonly path: string; };
 
 export type BaselineSubtype = 'content-snapshot' | 'performance-baseline' | 'terminal-snapshot' | 'visual-snapshot';
 export type PerformanceBaselineIdentity = {
@@ -11,14 +16,19 @@ export type PerformanceBaselineIdentity = {
     readonly profile: string;
     readonly work: WorkId;
 };
-export type StoredPerformanceBaseline = {
+type PerformanceBaselineData = {
     readonly adapter: string;
     readonly expected: PerformanceBaselineValue;
     readonly profile: string;
     readonly subtype: 'performance-baseline';
-    readonly version: 1;
     readonly work: WorkId;
 };
+type LegacyPerformanceBaseline = PerformanceBaselineData & { readonly version: 1; };
+type NormalizedPerformanceBaseline = PerformanceBaselineData & {
+    readonly version: typeof normalizedPerformanceBaselineVersion;
+    readonly normalization: BenchmarkNormalizationEvidence | null;
+};
+export type StoredPerformanceBaseline = LegacyPerformanceBaseline | NormalizedPerformanceBaseline;
 export type BaselineEntry = {
     readonly baseline: StoredPerformanceBaseline;
     readonly path: string;

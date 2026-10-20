@@ -6,7 +6,7 @@ import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
+import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
 import {
     loadRunEngineModule,
     loadRunTestModules,
@@ -90,7 +90,7 @@ async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<Tes
 export async function collectTestPlan(command: WorkerPoolCommand): Promise<CollectedWorkerPoolTestPlan> {
     return {
         runnerErrors: [],
-        testPlan: await createWorkerPoolTestPlan(command)
+        testPlan: calibrationCapturePlan(await createWorkerPoolTestPlan(command), command.benchmarkNormalization)
     };
 }
 

@@ -18,6 +18,7 @@ export type IsolatedRunCollectionSource = CollectionSource;
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
 type SupervisedCommandBase = {
+    readonly benchmarkNormalization: SupervisedRunCommand['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: SupervisedRunCommand['benchmarkGarbageCollection'];
     readonly propertyPolicy: SupervisedRunCommand['propertyPolicy'];
     readonly retryPolicy: SupervisedRunCommand['retryPolicy'];
@@ -39,6 +40,7 @@ type SupervisedCommandBase = {
 };
 
 type SupervisedCommandBaseInput = {
+    readonly benchmarkNormalization: SupervisedRunCommand['benchmarkNormalization'];
     readonly capture: RunRequest['capture'];
     readonly command: RunCommand;
     readonly definitionLocationCapture: SupervisedRunCommand['definitionLocationCapture'];
@@ -48,6 +50,7 @@ type SupervisedCommandBaseInput = {
 };
 
 type WorkerPoolCommandInput = {
+    readonly benchmarkNormalization: SupervisedRunCommand['benchmarkNormalization'];
     readonly command: RunCommand;
     readonly definitionLocationCapture: SupervisedRunCommand['definitionLocationCapture'];
     readonly files: ResolvedRunInput['files'];
@@ -111,6 +114,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
     const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
+        benchmarkNormalization: input.benchmarkNormalization,
         benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,
         propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
         capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
@@ -132,14 +136,20 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
     };
 }
 
+type SupervisedCollectionContext = {
+    readonly source: IsolatedRunCollectionSource;
+    readonly normalization: SupervisedRunCommand['benchmarkNormalization'];
+};
 export function createSupervisedCollectCommand(
     command: RunCommand,
     profile: ResolvedRunInput['profile'],
     files: ResolvedRunInput['files'],
-    source: IsolatedRunCollectionSource
+    context: SupervisedCollectionContext
 ): SupervisedCollectCommand {
+    const { source, normalization: benchmarkNormalization } = context;
     return {
         ...createSupervisedCommandBase({
+            benchmarkNormalization,
             capture: 'buffered',
             command,
             definitionLocationCapture: 'enabled',
@@ -167,10 +177,12 @@ export function createSupervisedRunCommand(
     command: RunCommand,
     profile: ResolvedRunInput['profile'],
     files: ResolvedRunInput['files'],
-    source: IsolatedRunCollectionSource
+    context: SupervisedCollectionContext
 ): SupervisedRunCommand {
+    const { source, normalization: benchmarkNormalization } = context;
     return {
         ...createSupervisedCommandBase({
+            benchmarkNormalization,
             capture: command.request.capture,
             command,
             definitionLocationCapture: source.kind === 'direct-entrypoint' ? 'enabled' : 'disabled',
@@ -188,6 +200,7 @@ export function createWorkerPoolCommand(
     const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
+        benchmarkNormalization: input.benchmarkNormalization,
         benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,
         attachmentEndpoint: null,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,

@@ -407,11 +407,11 @@ in the snapshot belong to that observer; execution host arguments retain their
 ordinary execution facts.
 
 `RunFacts.benchmarkHost` contains the snapshot, configured limits, and check
-results. Version 3 `benchmark-run` artifacts retain host evidence and the nullable
-`placement` decision for JSON and HTML reporting, including rejected runs.
-Versions 1 and 2 remain readable with `placement: null`; version 1 also uses
-`host: null`. Host observations are separate from
-`RunFacts.benchmarkCalibration`, which retains CPU normalization references.
+results. Version 4 `benchmark-run` artifacts retain host evidence, the nullable
+`placement` decision, and normalization inputs for JSON and HTML reporting.
+Versions 1 through 3 remain readable with `normalization: null`. Versions 1 and 2
+also use `placement: null`; version 1 uses `host: null`. Host observations are separate from
+`RunFacts.benchmarkCalibration`, which retains the legacy adapter CPU reference.
 The snapshot describes its recorded moment; collection and fixture startup may
 change conditions afterward. Sampling does not recheck host conditions.
 
@@ -448,3 +448,68 @@ GC. Direct engine execution with requested GC fails even if the caller exposes G
 Failed invocations still collect after cleanup unless cancelled. Collection failure
 retains incomplete readings and blocks baseline writes. Lifecycle evidence records
 resolved policy and collection counts; historical results retain absent GC evidence.
+
+### Calibration and normalization
+
+Declare scaling per metric. Metrics without a rule remain raw.
+
+```ts
+import {
+    benchmark,
+    calibratedMeasurement,
+    cpuCalibration,
+    wallClockMeasurement
+} from '@overkill-dev/bench';
+
+const measurement = calibratedMeasurement(wallClockMeasurement(), {
+    durationMicroseconds: { calibration: cpuCalibration(), scaling: 'proportional' }
+});
+```
+
+Use `measurement` in the benchmark definition. Proportional scaling multiplies
+readings by reference median / actual median. Inverse scaling uses actual median /
+reference median, for metrics such as throughput. Only positive, finite calibration
+readings in the declared unit are accepted.
+
+Run `overkill bench calibrate` to capture references for the selected profile and
+machine class. Commit the generated `calibration/*.calibration.json` files under
+the profile's baseline directory. Capture acquires calibration dependencies and
+samples their workloads, without running benchmark bodies or unrelated fixtures.
+Listing does not acquire calibration resources.
+
+`defineCalibrationResource` accepts `workload`, `version`, `unit`, `dependencies`,
+`measurement`, and `measure`. The callback receives `dependencies`, `attachments`,
+`sample`, `signal`, and `cleanup`, and returns one `MetricReading`. Its optional
+configuration supplies both `sampling` and `lifecycle`. Calibration absolute
+precision uses the `reference` key in `sampling.absolutePrecision`. Change `version` when the
+reference workload changes. Resources are shared per worker and sampled before
+benchmark warmup in the executing process. Normalized runs use serial placement.
+
+Saved performance expectations supply their reference when available. Otherwise,
+the checked-in reference supplies it. Matching adapters must agree on the reference. Unchanged expectations keep their
+saved reference when fresh calibration readings arrive.
+The original fixed budget basis is retained with saved expectations, so changing
+references changes displayed units without relaxing the gate. Adapter values remain
+opaque and follow the adapter's own comparison policy. Legacy expectations remain
+readable and fall back to fixed references.
+
+Budget inference includes uncertainty in both calibration medians, with confidence
+allocated across budget targets and sampling checkpoints. Budget thresholds and
+absolute precision use the fixed-reference units; mean support bounds stay in raw
+units. Calibration precision can limit a run even when workload readings are
+stable. Insufficient, invalid, or incompatible evidence fails measurement and blocks
+baseline writes. Comparability is restricted to the recorded machine class; it does
+not establish portability across hardware classes or remove changing host load.
+Inference retains the independent, stationary observation assumption.
+
+Results retain raw summaries, calibration samples, reference selection, factors,
+normalized summaries, and converted display budgets. JSON and HTML preserve both
+scales. `RunFacts.benchmarkNormalization` and version 4 `benchmark-run` artifacts
+record reference inputs; older artifacts remain readable. Direct engine execution
+of normalized benchmarks requires the runner's reference context.
+
+Capture and baseline cleanup emit a `calibration-references` report, readable with
+`readCalibrationReferenceReport`, including completed paths after partial writes.
+A full inventory detects stale references. `overkill bench baseline diff` previews
+removals and `overkill bench baseline apply` removes them. Filtered, sharded, skipped,
+foreign-profile, and foreign-class references are preserved.

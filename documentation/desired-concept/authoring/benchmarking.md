@@ -675,18 +675,27 @@ evidence retains absent GC observations rather than invented counts.
 
 ## Calibration And Normalization
 
-Some benchmark suites need hardware normalization. The concept should therefore include:
+`calibratedMeasurement` attaches explicit proportional or inverse scaling rules to
+selected metrics. Built-in `cpuCalibration()` and custom
+`defineCalibrationResource` workloads acquire ordinary dependencies and sample once
+per worker before benchmark warmup. `overkill bench calibrate` captures reviewable
+reference files without executing benchmark bodies or unrelated fixtures.
 
-- calibration workloads
-- scaling rules
-- explicit reporting of raw and normalized numbers
-- reviewable checked-in budget metadata
-- recorded machine metadata
-- explicit distinction between comparable and non-comparable runs
+Saved expectations supply references when present; otherwise fixed references do.
+Saved expectations retain the original fixed budget basis. Switching references
+changes display units while preserving the canonical budget gate. Adapters retain
+their own observation and comparison policy. Conflicting adapter references fail.
 
-The ESLint benchmark suite's `cpuSpeed` factor is a minimal version of this
-idea. Overkill should turn that from a hand-written local trick into a
-first-class benchmark-harness concept.
+Results retain raw and normalized summaries, actual and reference calibration
+samples, factors, machine metadata, and explicit measurement failures. Budget
+intervals include calibration uncertainty and checkpoint spending. Comparisons
+require the same machine class and independent, stationary observations. They do
+not correct arbitrary host interference or establish cross-hardware portability.
+
+Full baseline inventories detect stale calibration references. Baseline diff/apply
+preview and remove them, preserving filtered, sharded, skipped and foreign scopes.
+See the [benchmark guide](../../../source/packages/bench/readme.md#calibration-and-normalization)
+for authoring, capture, persistence, and reporting behavior.
 
 ## External Process Benchmarking
 

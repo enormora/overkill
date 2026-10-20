@@ -12,7 +12,7 @@ import {
     type BenchmarkMetrics,
     type BenchmarkLifecyclePolicy
 } from '../packages/bench/bench.entry-point.ts';
-import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-garbage-collection.ts';
+import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environment.ts';
 
 const epoch = new Date(0);
 

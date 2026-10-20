@@ -73,8 +73,10 @@ async function resolvedSupervisedExecution(resolution: SupervisedResolution): Pr
     assertExpectedDirectEntrypointCollection(expectedDirectPlan, collection.collectedPlan);
 
     return await createResolvedRunFromCollection({
+        benchmarkPurpose: input.benchmarkPurpose,
         benchmarkHost: input.benchmarkHost,
         benchmarkCalibration: input.benchmarkCalibration,
+        benchmarkNormalization: input.benchmarkNormalization,
         allowEmptySelection,
         collection,
         command,
@@ -100,13 +102,19 @@ export async function createSupervisedResolvedRun(
         emptyCollectionTimingMetadata,
         async function collectTimedSupervisedRun() {
             return await collectSupervisedRun(
-                createSupervisedCollectCommand(command, input.profile, input.files, source),
+                createSupervisedCollectCommand(command, input.profile, input.files, {
+                    source,
+                    normalization: input.benchmarkNormalization
+                }),
                 dependencies,
                 timing
             );
         }
     ) ?? collectSupervisedRun(
-        createSupervisedCollectCommand(command, input.profile, input.files, source),
+        createSupervisedCollectCommand(command, input.profile, input.files, {
+            source,
+            normalization: input.benchmarkNormalization
+        }),
         dependencies,
         null
     ));
@@ -126,7 +134,10 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
     const expectedDirectPlan = await createExpectedDirectEntrypointPlan(command, dependencies, input, source);
 
     return await runSupervisedCommand(
-        createSupervisedRunCommand(command, input.profile, input.files, source),
+        createSupervisedRunCommand(command, input.profile, input.files, {
+            source,
+            normalization: input.benchmarkNormalization
+        }),
         dependencies,
         async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
             const run = await resolvedSupervisedExecution({

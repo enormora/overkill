@@ -8,7 +8,9 @@ export type BenchmarkGarbageCollection = {
     readonly snapshot: () => BenchmarkGarbageCollectionResult;
 };
 
-export function createBenchmarkGarbageCollection(input: SamplingSessionInput): BenchmarkGarbageCollection {
+export function createBenchmarkGarbageCollection(
+    input: Pick<SamplingSessionInput, 'lifecycle' | 'scope'>
+): BenchmarkGarbageCollection {
     const capability = input.scope.benchmarkEnvironment?.garbageCollection ?? {
         kind: 'unavailable',
         reason: 'Forced garbage collection requires supervised or hosted benchmark execution.'

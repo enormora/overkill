@@ -2,7 +2,7 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
-import { defaultRunEngine } from './default-run-engine.ts';
+import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
 import {
@@ -117,7 +117,7 @@ export async function createSupervisedChildTestPlan(
         ? await createRunTestPlan(input)
         : await createRunTestPlanFromFiles({ ...input, files: policy.files });
 
-    return resolveTestPlanCollectionPolicy(testPlan, command);
+    return calibrationCapturePlan(resolveTestPlanCollectionPolicy(testPlan, command), command.benchmarkNormalization);
 }
 
 export async function validateSupervisedPolicy(

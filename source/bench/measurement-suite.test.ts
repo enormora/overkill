@@ -1,4 +1,5 @@
 import { suite } from '../packages/test/test.entry-point.ts';
+import { testNode as calibrationTestNode } from './calibration-suite.test.ts';
 import { testNode as executionContractsTestNode } from './benchmark-execution-contracts.test.ts';
 import { testNode as rawEvidenceTestNode } from './benchmark-raw-evidence.test.ts';
 import { testNode as measurementContractsTestNode } from './measurement-contracts.test.ts';
@@ -8,6 +9,7 @@ import { testNode as measurementRegionTestNode } from './measurement-region.test
 import { testNode as processContractsTestNode } from './process-contracts.test.ts';
 
 export const testNode = suite('benchmark measurement', [
+    calibrationTestNode,
     measurementContractsTestNode,
     executionContractsTestNode,
     rawEvidenceTestNode,

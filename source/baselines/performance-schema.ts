@@ -1,9 +1,10 @@
 import { z } from 'zod/v4';
+import { normalizationEvidenceSchema } from '../bench/calibration-evidence.ts';
 import { comparableCalibrationSchema } from '../bench/calibration-schema.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
-import type { StoredPerformanceBaseline } from './performance-baseline.ts';
+import { normalizedPerformanceBaselineVersion, type StoredPerformanceBaseline } from './performance-baseline.ts';
 
-export const storedPerformanceBaselineSchema: z.ZodType<StoredPerformanceBaseline> = z.strictObject({
+const legacyPerformanceBaselineSchema = z.strictObject({
     adapter: z.string().min(1),
     expected: z.strictObject({ calibration: comparableCalibrationSchema, value: z.json() }),
     profile: z.string().min(1),
@@ -11,3 +12,11 @@ export const storedPerformanceBaselineSchema: z.ZodType<StoredPerformanceBaselin
     version: z.literal(1),
     work: workIdSchema
 });
+
+export const storedPerformanceBaselineSchema: z.ZodType<StoredPerformanceBaseline> = z.union([
+    legacyPerformanceBaselineSchema,
+    legacyPerformanceBaselineSchema.extend({
+        version: z.literal(normalizedPerformanceBaselineVersion),
+        normalization: normalizationEvidenceSchema.nullable()
+    })
+]);

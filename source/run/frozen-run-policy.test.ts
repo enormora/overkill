@@ -84,7 +84,7 @@ export const testNode = suite('frozen microtest policy', [
             policyBaselineCommand(policy),
             { ...policy.profile, reporters: null },
             policy.files,
-            { kind: 'frozen-policy', policy }
+            { source: { kind: 'frozen-policy', policy }, normalization: null }
         );
         const wire = JSON.stringify(supervised);
         const transported: unknown = JSON.parse(wire);

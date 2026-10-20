@@ -65,6 +65,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
                 };
             }, shortLifecycle);
             const result = await executeGarbageCollectionBenchmark(node, {
+                normalization: null,
                 profileGarbageCollection: 'off',
                 garbageCollection: {
                     kind: 'available',
@@ -107,6 +108,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
                         garbageCollection: request
                     }),
                     {
+                        normalization: null,
                         profileGarbageCollection: profile,
                         garbageCollection: {
                             kind: 'available',
@@ -165,6 +167,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
                     throw new Error('body failed');
                 }, shortLifecycle),
                 {
+                    normalization: null,
                     profileGarbageCollection: 'off',
                     garbageCollection: {
                         kind: 'available',
@@ -192,6 +195,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
                 };
             }, { ...shortLifecycle, warmupSamples: 0 }),
             {
+                normalization: null,
                 profileGarbageCollection: 'off',
                 garbageCollection: {
                     kind: 'available',
@@ -225,6 +229,7 @@ export const testNode = suite('explicit benchmark garbage collection', [
                 };
             }, { ...shortLifecycle, warmupSamples: 0 }),
             {
+                normalization: null,
                 profileGarbageCollection: 'off',
                 garbageCollection: {
                     kind: 'available',

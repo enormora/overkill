@@ -1,5 +1,6 @@
+import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import type { WorkloadParameters } from './workload-parameters.ts';
-import type { WorkloadId } from './identity.ts';
+import type { WorkId, WorkloadId } from './identity.ts';
 
 export const benchmarkLifecycleVersion = 2;
 
@@ -9,6 +10,9 @@ export type BenchmarkWorkload<Parameters extends WorkloadParameters = WorkloadPa
 };
 
 export type BenchmarkDefinitionSummary = {
+    readonly normalization: Readonly<
+        Record<string, NormalizationRuleSummary>
+    >;
     readonly lifecycle: BenchmarkLifecyclePolicy | null;
     readonly kind: string;
     readonly workloads: readonly BenchmarkWorkload[];
@@ -87,6 +91,7 @@ export type BenchmarkMetricSummary = {
 };
 
 export type BenchmarkExecutionResult = {
+    readonly normalization: BenchmarkNormalizationEvidence | null;
     readonly lifecycle: BenchmarkLifecycleResult | null;
     readonly workload: WorkloadId;
     readonly policy: SamplingPolicy;
@@ -159,4 +164,64 @@ export type BenchmarkLifecycleResult = {
     };
     readonly cleanup: { readonly callbacks: number; readonly failures: number; };
     readonly cooldown: BenchmarkCooldownResult;
+};
+
+export type CalibrationIdentity = { readonly workload: WorkloadId; readonly version: string; readonly unit: string; };
+export type CalibrationSnapshot = {
+    readonly version: 1;
+    readonly identity: CalibrationIdentity;
+    readonly machineClass: string;
+    readonly metadata: ReadonlyDeep<JsonValue>;
+    readonly execution: { readonly nodeVersion: string; readonly nodeArguments: readonly string[]; };
+    readonly sampling: SamplingPolicy;
+    readonly lifecycle: BenchmarkLifecyclePolicy;
+    readonly checkpoint: number;
+    readonly samples: readonly number[];
+};
+export type CalibrationResult = { readonly kind: 'comparable'; readonly snapshot: CalibrationSnapshot; } | {
+    readonly kind: 'non-comparable';
+    readonly reason: string;
+    readonly samples: readonly number[];
+};
+export type SavedCalibration = {
+    readonly work: WorkId;
+    readonly metric: string;
+    readonly actual: CalibrationSnapshot;
+    readonly budgetReference: CalibrationSnapshot;
+};
+export type BenchmarkNormalizationContext = {
+    readonly mode: 'capture' | 'compare';
+    readonly profile: string;
+    readonly machine: { readonly machineClass: string; readonly metadata: ReadonlyDeep<JsonValue>; };
+    readonly references: readonly CalibrationSnapshot[];
+    readonly saved: readonly SavedCalibration[];
+};
+export type NormalizationRuleSummary = {
+    readonly garbageCollection: BenchmarkGarbageCollectionRequest;
+    readonly calibration: CalibrationIdentity;
+    readonly scaling: 'inverse' | 'proportional';
+};
+type BenchmarkNormalizationFactor = {
+    readonly estimate: number;
+    readonly lower: number | null;
+    readonly upper: number | null;
+};
+export type BenchmarkMetricNormalization = {
+    readonly scaling: NormalizationRuleSummary['scaling'];
+    readonly actual: CalibrationSnapshot;
+    readonly budgetReference: CalibrationSnapshot;
+    readonly reference: CalibrationSnapshot;
+    readonly source: 'baseline' | 'fixed';
+    readonly factor: BenchmarkNormalizationFactor | null;
+    readonly summary: BenchmarkMetricSummary | null;
+    readonly budgets: readonly BenchmarkBudgetResult[];
+};
+export type BenchmarkNormalizationEvidence = {
+    readonly version: 1;
+    readonly comparability: { readonly kind: 'comparable'; } | {
+        readonly kind: 'non-comparable';
+        readonly reason: string;
+    };
+    readonly calibrations: readonly CalibrationSnapshot[];
+    readonly metrics: Readonly<Record<string, BenchmarkMetricNormalization>>;
 };

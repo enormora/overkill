@@ -21,6 +21,7 @@ type SupervisedChildMessageListener = (message: unknown) => void;
 
 function supervisedCollectCommand(): SupervisedCollectCommand {
     return {
+        benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         retryPolicy: null,
         capabilityRestrictions: { mode: 'disabled' },

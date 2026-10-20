@@ -7,10 +7,21 @@ import { invalidRequest } from './run-errors.ts';
 type BenchmarkCases = readonly { readonly testCase: CollectedRunCase; }[];
 
 function requiresGarbageCollection(cases: BenchmarkCases, profile: BenchmarkGarbageCollectionPolicy): boolean {
-    return cases.some(function requestsCollection({ testCase }) {
-        const request = testCase.benchmark?.lifecycle?.garbageCollection ?? 'off';
-        return testCase.skipReason === null && resolveBenchmarkGarbageCollection(request, profile) === 'after-sample';
-    });
+    return cases
+        .filter(function activeCase({ testCase }) {
+            return testCase.skipReason === null;
+        })
+        .some(function requestsCollection({ testCase }) {
+            const requests = [
+                testCase.benchmark?.lifecycle?.garbageCollection ?? 'off',
+                ...Object.values(testCase.benchmark?.normalization ?? {}).map(function calibrationRequest(rule) {
+                    return rule.garbageCollection;
+                })
+            ];
+            return requests.some(function enabled(request) {
+                return resolveBenchmarkGarbageCollection(request, profile) === 'after-sample';
+            });
+        });
 }
 
 function garbageCollectionArguments(nodeArguments: readonly string[]): readonly string[] {

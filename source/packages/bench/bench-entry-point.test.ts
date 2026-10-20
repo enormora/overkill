@@ -1,3 +1,4 @@
+import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
 import {
     createEngine,
     createRoot,
@@ -97,30 +98,7 @@ export const testNode = suite('source/packages/bench/bench-entry-point.test.ts',
             Object.keys(bench).toSorted(function compareNames(left, right) {
                 return left.localeCompare(right);
             }),
-            [
-                'asyncMeasurementStrategy',
-                'availableMetric',
-                'benchmark',
-                'defaultBenchmarkLifecyclePolicy',
-                'defaultRuntimeCooldownPolicy',
-                'defaultSamplingPolicy',
-                'defineMacro',
-                'defineParameterizedTestBody',
-                'measurementStrategy',
-                'memoryCollector',
-                'processCpuCollector',
-                'processMeasurement',
-                'processResourceCollector',
-                'runtimeHealthCollector',
-                'skippedTest',
-                'suite',
-                'table',
-                'test',
-                'threadCpuCollector',
-                'unavailableMetric',
-                'wallClockMeasurement',
-                'workload'
-            ]
+            benchmarkAuthoringExports
         );
         return scope.assert.collect();
     }),

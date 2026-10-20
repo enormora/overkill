@@ -1,10 +1,22 @@
+import type {
+    BenchmarkNormalizationEvidence,
+    CalibrationIdentity,
+    CalibrationSnapshot,
+    NormalizationRuleSummary
+} from '../engine/benchmark-result.ts';
 import { compareExactly } from '../compare/raw-comparison.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
 import type { WorkId } from '../engine/identity.ts';
 import type { PerformanceBaselineAdapter, PerformanceBaselineValue } from './performance-adapter.ts';
-import type { BaselineChange, BaselineUpdateMode, StoredPerformanceBaseline } from './performance-baseline.ts';
+import {
+    normalizedPerformanceBaselineVersion,
+    type BaselineChange,
+    type BaselineUpdateMode,
+    type StoredPerformanceBaseline
+} from './performance-baseline.ts';
 
 type PerformanceProposalPlan = {
+    readonly normalization: BenchmarkNormalizationEvidence | null;
     readonly actual: PerformanceBaselineValue;
     readonly adapter: PerformanceBaselineAdapter;
     readonly existing: StoredPerformanceBaseline | null;
@@ -22,6 +34,36 @@ function previousExpectation(existing: StoredPerformanceBaseline | null): Perfor
     return existing === null ? null : existing.expected;
 }
 
+type NormalizationBudgetBasis = {
+    readonly calibration: CalibrationIdentity;
+    readonly scaling: NormalizationRuleSummary['scaling'];
+    readonly budgetReference: CalibrationSnapshot;
+};
+function normalizationBudgetBasis(
+    evidence: BenchmarkNormalizationEvidence | null
+): Readonly<Record<string, NormalizationBudgetBasis>> | null {
+    if (evidence === null) {
+        return null;
+    }
+    return Object.fromEntries(
+        Object.entries(evidence.metrics).map(function metricBasis([ name, metric ]) {
+            return [ name, {
+                calibration: metric.actual.identity,
+                scaling: metric.scaling,
+                budgetReference: metric.budgetReference
+            } ];
+        })
+    );
+}
+function unchangedExpectation(input: PerformanceProposalPlan, value: PerformanceBaselineValue['value']): boolean {
+    const { existing } = input;
+    if (existing === null) {
+        return false;
+    }
+    const normalization = existing.version === normalizedPerformanceBaselineVersion ? existing.normalization : null;
+    return compareExactly(existing.expected.value, value) &&
+        compareExactly(normalizationBudgetBasis(normalization), normalizationBudgetBasis(input.normalization));
+}
 export function proposePerformanceBaseline(input: PerformanceProposalPlan): BaselineChange | null {
     if (preservesBaseline(input)) {
         return null;
@@ -31,7 +73,7 @@ export function proposePerformanceBaseline(input: PerformanceProposalPlan): Base
     if (snapshot === null) {
         throw new Error('Performance baseline proposal exceeds the configured artifact byte limit.');
     }
-    if (input.existing !== null && compareExactly(input.existing.expected.value, snapshot.value)) {
+    if (unchangedExpectation(input, snapshot.value)) {
         return null;
     }
     const baseline: StoredPerformanceBaseline = {
@@ -39,7 +81,9 @@ export function proposePerformanceBaseline(input: PerformanceProposalPlan): Base
         expected: { calibration: input.actual.calibration, value: snapshot.value },
         profile: input.profile,
         subtype: 'performance-baseline',
-        version: 1,
+        ...input.normalization === null
+            ? { version: 1 as const }
+            : { version: normalizedPerformanceBaselineVersion, normalization: input.normalization },
         work: input.work
     };
     return input.existing === null

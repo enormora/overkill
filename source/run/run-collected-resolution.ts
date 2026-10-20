@@ -1,4 +1,4 @@
-import { collectedRunPlanFromEntries } from './collected-run-plan.ts';
+import { collectedRunPlanFromEntries, type CollectedRunCaseEntry } from './collected-run-plan.ts';
 import { collectedRunCaseFactsFromEntries } from './run-case-facts.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
 import {
@@ -58,6 +58,15 @@ function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: str
     };
 }
 
+function selectedNormalization(
+    input: CollectedResolvedRunInput,
+    cases: readonly CollectedRunCaseEntry[]
+): ResolvedRunInput['benchmarkNormalization'] {
+    const normalized = cases.some(function normalizedCase(entry) {
+        return Object.keys(entry.testCase.benchmark?.normalization ?? {}).length > 0;
+    });
+    return input.benchmarkPurpose === 'capture' || normalized ? input.benchmarkNormalization : null;
+}
 async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): Promise<ResolvedRun> {
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
     assertCollectedRunPlanCasesMatchProfilePolicy(input.collectedPlan, input.profile);
@@ -74,6 +83,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         benchmarkHost: input.benchmarkHost,
         benchmarkPlacement,
         benchmarkCalibration: input.benchmarkCalibration,
+        benchmarkNormalization: selectedNormalization(input, orderedCases),
         cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
         config: input.config,
         dependencies: input.dependencies,

@@ -1,6 +1,6 @@
 import type { Clock } from '@enormora/clock';
 import { createExecute, type Execute } from '../engine/execution.ts';
-import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-garbage-collection.ts';
+import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environment.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
 import { silentOutputSinks } from './worker-pool-output.ts';
@@ -15,7 +15,8 @@ export async function createWorkerExecute(command: WorkerPoolCommand, wallClock:
         const { createBenchmarkExecutionEnvironment } = await import('./benchmark-execution-environment.ts');
         benchmarkEnvironment = createBenchmarkExecutionEnvironment(
             command.benchmarkGarbageCollection,
-            command.hostProcess.kind === 'child' ? 'hosted-worker' : 'direct'
+            command.hostProcess.kind === 'child' ? 'hosted-worker' : 'direct',
+            command.benchmarkNormalization
         );
     }
     return createExecute({

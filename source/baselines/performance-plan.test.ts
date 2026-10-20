@@ -1,3 +1,9 @@
+import type {
+    BenchmarkNormalizationEvidence,
+    CalibrationSnapshot,
+    NormalizationRuleSummary
+} from '../engine/benchmark-result.ts';
+import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { proposePerformanceBaseline } from './performance-plan.ts';
@@ -20,6 +26,7 @@ const adapter: PerformanceBaselineAdapter = {
     }
 };
 const input = {
+    normalization: null,
     actual,
     adapter,
     existing: null,
@@ -29,6 +36,29 @@ const input = {
     work: createDefaultWorkId(createCaseId('startup.bench.ts', [], 'starts', null))
 } as const;
 
+function normalizedEvidence(
+    measured: CalibrationSnapshot,
+    budgetReference: CalibrationSnapshot,
+    scaling: NormalizationRuleSummary['scaling']
+): BenchmarkNormalizationEvidence {
+    return {
+        version: 1,
+        comparability: { kind: 'comparable' },
+        calibrations: [ measured ],
+        metrics: {
+            duration: {
+                actual: measured,
+                budgetReference,
+                reference: budgetReference,
+                scaling,
+                source: 'fixed',
+                factor: null,
+                summary: null,
+                budgets: []
+            }
+        }
+    };
+}
 export const testNode = suite('performance baseline change planning', [
     test('creates missing expectations only for explicit update modes', function (scope: TestScope) {
         scope.assert.equal(proposePerformanceBaseline({ ...input, mode: 'none' }), null);
@@ -53,6 +83,43 @@ export const testNode = suite('performance baseline change planning', [
             return scope.assert.collect();
         }
     ),
+    test('preserves saved references when only calibration readings change', function (scope: TestScope) {
+        const basis = { ...calibrationSnapshot([ 100, 100 ]), machineClass: actual.calibration.machineClass };
+        const original = { ...input, normalization: normalizedEvidence(basis, basis, 'proportional') };
+        const creation = proposePerformanceBaseline(original);
+        scope.require.defined(creation);
+        const measured = { ...basis, samples: [ 200, 200 ] };
+        const changed = {
+            ...original,
+            existing: creation.baseline,
+            normalization: normalizedEvidence(measured, basis, 'proportional')
+        };
+        scope.assert.equal(proposePerformanceBaseline({ ...changed, mode: 'diff' }), null);
+        scope.assert.equal(proposePerformanceBaseline(changed), null);
+        scope.assert.equal(
+            proposePerformanceBaseline({ ...changed, actual: { ...actual, value: { duration: 110 } } })?.kind,
+            'update'
+        );
+        return scope.assert.collect();
+    }),
+    test('updates unchanged values when metric scaling changes', function (scope: TestScope) {
+        const basis = { ...calibrationSnapshot([ 100, 100 ]), machineClass: actual.calibration.machineClass };
+        const creation = proposePerformanceBaseline({
+            ...input,
+            normalization: normalizedEvidence(basis, basis, 'proportional')
+        });
+        scope.require.defined(creation);
+        scope.assert.equal(
+            proposePerformanceBaseline({
+                ...input,
+                existing: creation.baseline,
+                normalization: normalizedEvidence(basis, basis, 'inverse')
+            })
+                ?.kind,
+            'update'
+        );
+        return scope.assert.collect();
+    }),
     test('rejects invalid or oversized proposals', function (scope: TestScope) {
         scope.assert.throws(function rejectOversizedProposal() {
             proposePerformanceBaseline({ ...input, maxBytes: 1 });

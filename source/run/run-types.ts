@@ -2,6 +2,7 @@ import type { Except, JsonValue } from 'type-fest';
 import type { BenchmarkHostAssessment, BenchmarkPlacementFacts } from '../bench/benchmark-host-snapshot.ts';
 import type {
     BenchmarkCalibrationResult,
+    CalibrationReferenceChange,
     BaselineChange,
     BaselineEntry,
     BaselineUpdateMode,
@@ -44,6 +45,7 @@ import type {
     PerTestResult,
     RunnerError,
     Execute,
+    ExecuteDependencies,
     OrphanedNode,
     RunResult,
     TestPlan,
@@ -224,6 +226,7 @@ export type RunFacts = {
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
+    readonly benchmarkNormalization: NonNullable<ExecuteDependencies['benchmarkEnvironment']>['normalization'];
     readonly coveragePolicy: CoveragePolicy | null;
     readonly cases: readonly RunCaseFacts[];
     readonly durationHistory: DurationHistoryInput | null;
@@ -399,6 +402,7 @@ export type BenchmarkBaselineListCommand = Pick<RunCommand, 'config' | 'cwd'> & 
 };
 
 export type BenchmarkBaselineRunResult = RunReporterDeliveryResult & {
+    readonly calibrationChanges: readonly CalibrationReferenceChange[];
     readonly changes: readonly BaselineChange[];
     readonly writeOutcome: BaselineWriteOutcome;
 };
@@ -424,6 +428,10 @@ export type BenchmarkBaselineOrchestrator = {
 };
 
 export type BenchmarkOrchestrator = {
+    readonly calibrate: (
+        command: RunCommand,
+        options: RunInvocationTimingOptions
+    ) => Promise<RunReporterDeliveryResult>;
     readonly baseline: BenchmarkBaselineOrchestrator;
     readonly list: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>;
     readonly run: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunResult>;

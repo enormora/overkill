@@ -1,7 +1,7 @@
 import { caseIdentityKey, createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { runStatusFromPlan, type PerTestResult, type RunResult, type RunnerError } from '../engine/run-result.ts';
-import type { ComparableCalibration } from '../packages/run/benchmark-calibration.entry-point.ts';
+import type { ComparableCalibration } from '../bench/host-calibration-result.ts';
 import type { BenchmarkCaseEnd } from './performance-check.ts';
 import {
     presentPerformanceMetrics,

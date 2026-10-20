@@ -70,8 +70,10 @@ async function createResolvedExecutionRun(resolution: ExecutionResolutionInput):
     }
 
     return await createResolvedRunFromCollection({
+        benchmarkPurpose: resolution.input.benchmarkPurpose,
         benchmarkHost: resolution.input.benchmarkHost,
         benchmarkCalibration: resolution.input.benchmarkCalibration,
+        benchmarkNormalization: resolution.input.benchmarkNormalization,
         allowEmptySelection: resolution.allowEmptySelection,
         collection: resolution.collection,
         command: resolution.command,
@@ -120,6 +122,7 @@ async function createWorkerPoolResolvedRun(
         async function collectTimedWorkerPoolRun() {
             return await collectWorkerPoolRun(
                 createWorkerPoolCommand({
+                    benchmarkNormalization: input.benchmarkNormalization,
                     command,
                     definitionLocationCapture: 'enabled',
                     files: input.files,
@@ -132,6 +135,7 @@ async function createWorkerPoolResolvedRun(
         }
     ) ?? collectWorkerPoolRun(
         createWorkerPoolCommand({
+            benchmarkNormalization: input.benchmarkNormalization,
             command,
             definitionLocationCapture: 'enabled',
             files: input.files,
@@ -196,6 +200,7 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
 
     return await runWorkerPoolCommand(
         createWorkerPoolCommand({
+            benchmarkNormalization: input.benchmarkNormalization,
             command,
             definitionLocationCapture: source.kind === 'direct-entrypoint' ? 'enabled' : 'disabled',
             files: input.files,

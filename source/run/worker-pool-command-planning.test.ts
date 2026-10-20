@@ -82,17 +82,16 @@ export const testNode = createOverkillSuite({
                 const command = createRunCommand(profile);
 
                 scope.assert.deepEqual(
-                    createSupervisedCollectCommand(
-                        command,
-                        profile,
-                        discoveredFiles(),
-                        configuredFilesRunCollectionSource
-                    )
+                    createSupervisedCollectCommand(command, profile, discoveredFiles(), {
+                        source: configuredFilesRunCollectionSource,
+                        normalization: null
+                    })
                         .capabilityRestrictions,
                     { mode: 'disabled' }
                 );
                 scope.assert.deepEqual(
                     createWorkerPoolCommand({
+                        benchmarkNormalization: null,
                         command,
                         definitionLocationCapture: 'enabled',
                         files: discoveredFiles(),
@@ -122,6 +121,7 @@ export const testNode = createOverkillSuite({
                 });
                 const command = createRunCommand(profile);
                 const workerCommand = createWorkerPoolCommand({
+                    benchmarkNormalization: null,
                     command,
                     definitionLocationCapture: 'disabled',
                     files: discoveredFiles(),
@@ -153,6 +153,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.throws(function createCommandForInstanceEngine() {
                     createWorkerPoolCommand({
+                        benchmarkNormalization: null,
                         command,
                         definitionLocationCapture: 'enabled',
                         files: discoveredFiles(),

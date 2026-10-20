@@ -56,6 +56,34 @@ export const testNode = suite('benchmark GC host policy', [
         }
         return scope.assert.collect();
     }),
+    test('resolves a GC-capable host for calibration-only requests', function (scope: TestScope) {
+        const cases = selected('off').map(function calibrationCase(entry) {
+            return {
+                testCase: {
+                    ...entry.testCase,
+                    benchmark: {
+                        ...definition(),
+                        normalization: {
+                            value: {
+                                calibration: {
+                                    workload: { name: 'reference', params: {} },
+                                    version: '1',
+                                    unit: 'ticks'
+                                },
+                                scaling: 'proportional' as const,
+                                garbageCollection: 'after-sample' as const
+                            }
+                        }
+                    }
+                }
+            };
+        });
+        scope.assert.deepEqual(resolveBenchmarkGarbageCollectionHost({ kind: 'direct' }, 'off', cases), {
+            kind: 'child',
+            nodeArguments: [ '--expose-gc' ]
+        });
+        return scope.assert.collect();
+    }),
     test('ignores absent and skipped selected work', function (scope: TestScope) {
         const original = { kind: 'direct' } as const;
         scope.assert.equal(resolveBenchmarkGarbageCollectionHost(original, 'off', []), original);

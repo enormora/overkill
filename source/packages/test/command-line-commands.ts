@@ -306,7 +306,10 @@ type ParserExitResult = {
 
 type CommandLineDispatchResult = DispatchedCommandResult | ParserExitResult;
 
-type ParsedBenchmarkRun = { readonly command: 'list' | 'run'; readonly value: Promise<CommandLineRunnerResult>; };
+type ParsedBenchmarkRun = {
+    readonly command: 'calibrate' | 'list' | 'run';
+    readonly value: Promise<CommandLineRunnerResult>;
+};
 type ParsedBenchmarkBaseline = {
     readonly command: 'baseline';
     readonly value: { readonly value: Promise<CommandLineRunnerResult>; };
@@ -398,6 +401,15 @@ export async function dispatchOverkillCommand(
                     const runner = await loadRunner();
 
                     return await runner.bench.listBenchmarks(createListTestsRequest(args, cwd));
+                }
+            }),
+            calibrate: command({
+                name: 'calibrate',
+                description: 'Capture benchmark calibration references.',
+                args: { ...benchmarkCommandArguments, ...runExecutionArguments },
+                async handler(args) {
+                    const runner = await loadRunner();
+                    return await runner.bench.calibrate(createRunTestsRequest({ ...args, coverage: false }, cwd));
                 }
             }),
             run: command({

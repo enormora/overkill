@@ -4,6 +4,7 @@ import type { BenchmarkBody, BenchmarkScope } from '../engine/test-node.ts';
 import { mapComposedResourceBody } from '../packages/test/resource-wrapper-composition.ts';
 import { readTestBodyFamily, resolveTestBodyWorkload } from '../engine/test-body.ts';
 import { resolveBenchmarkGarbageCollection } from '../engine/benchmark-garbage-collection.ts';
+import { collectBenchmarkNormalization } from './benchmark-normalization.ts';
 import { workload } from './workload.ts';
 import { sampleBenchmark } from './benchmark-sampling.ts';
 import type { ResolvedBenchmarkDefinition } from './benchmark-definition-resolution.ts';
@@ -25,6 +26,22 @@ function allowedMeasurementField([ name ]: readonly [string, unknown]): boolean 
         .includes(name);
 }
 
+function measurementContext(context: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
+    const fields = Object.entries(context).filter(allowedMeasurementField);
+    const resources = Reflect.get(context, 'resources');
+    if (typeof resources !== 'object' || resources === null) {
+        return Object.fromEntries(fields);
+    }
+    return {
+        ...Object.fromEntries(fields),
+        resources: Object.fromEntries(
+            Object.entries(resources).filter(function publicResource([ name ]) {
+                return !name.startsWith('calibration:');
+            })
+        )
+    };
+}
+
 export function benchmarkResourceEnvelope(
     measure: (scope: never) => unknown,
     definition: ResolvedBenchmarkDefinition,
@@ -42,7 +59,14 @@ export function benchmarkResourceEnvelope(
         const envelope = mapComposedResourceBody(
             selectedBody,
             async function sampleResourceEnvelope(body, context) {
+                const normalization = await collectBenchmarkNormalization(
+                    scope,
+                    Reflect.get(context, 'resources'),
+                    definition.normalization,
+                    definition.summary.policy
+                );
                 return await sampleBenchmark({
+                    normalization,
                     lifecycle: {
                         ...definition.lifecycle,
                         garbageCollection: resolveBenchmarkGarbageCollection(
@@ -51,7 +75,7 @@ export function benchmarkResourceEnvelope(
                         )
                     },
                     body,
-                    context: Object.fromEntries(Object.entries(context).filter(allowedMeasurementField)),
+                    context: measurementContext(context),
                     scope,
                     workload: workload(selected.name, selected.parameters),
                     measurement: definition.measurement,

@@ -42,13 +42,18 @@ function baselineCommandResult(
     verb: BenchmarkBaselineVerb
 ): CommandLineRunnerResult {
     const runExitCode = readExitCodeFromRunResult(result.result);
+    const changed = result.changes.length > 0 || result.calibrationChanges.length > 0;
+    const previewChanged = verb === 'diff' && runExitCode === commandLineExitCodes.pass && changed;
     return {
-        exitCode: verb === 'diff' && runExitCode === commandLineExitCodes.pass && result.changes.length > 0
-            ? commandLineExitCodes.testFailure
-            : runExitCode,
+        exitCode: previewChanged ? commandLineExitCodes.testFailure : runExitCode,
         fallbackDiagnostics: formatRunnerErrorDiagnostics(result.undeliveredRunnerErrors),
         runResult: result.result,
-        stdoutLines: result.changes.map(renderChange)
+        stdoutLines: [
+            ...result.changes.map(renderChange),
+            ...result.calibrationChanges.map(function calibrationChange(change) {
+                return `${change.kind} ${change.path}`;
+            })
+        ]
     };
 }
 

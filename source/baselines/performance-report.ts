@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 import { runJsonArtifact } from '../attachments/run-json-artifact.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
-import type { ComparableCalibration } from '../packages/run/benchmark-calibration.entry-point.ts';
+import type { ComparableCalibration } from '../bench/host-calibration-result.ts';
 import { comparableCalibrationSchema } from '../bench/calibration-schema.ts';
 import { performanceEvidenceSchema, type PerformanceBaselineEvidence } from './performance-presentation.ts';
 import { storedPerformanceBaselineSchema } from './performance-schema.ts';

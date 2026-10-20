@@ -17,6 +17,7 @@ import type { DefinitionLocationCapture } from './definition-location-capture.ts
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
 import type {
     FrozenWorkloadInput,
+    RunFacts,
     CollectedRunPlan,
     RunCommand,
     RunCollectionRoot,
@@ -32,6 +33,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly attachmentEndpoint: AttachmentEndpoint | null;
     readonly retryPolicy: IntegrationProfileConfig['retries'];
