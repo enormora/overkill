@@ -1,10 +1,15 @@
 import { execFile } from 'node:child_process';
 import { extname } from 'node:path';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import { createExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
-import { createExecutionObservation, withRunnerInfrastructure } from './execution-observation.ts';
+import {
+    createExecutionObservation,
+    registerExecutionDisposal,
+    withExecutionObservation,
+    withRunnerInfrastructure
+} from './execution-observation.ts';
 
 function guardCase(): TestPlanCase {
     const engine = createTestEngine();
@@ -34,11 +39,20 @@ function rejectInfrastructure(): void {
 async function copiedObserverProbe(): Promise<string> {
     const extension = extname(import.meta.url);
     const observer = new URL(`./execution-global-error-observer${extension}`, import.meta.url);
+    const ownership = new URL(`./execution-observation${extension}`, import.meta.url);
     const script = `
         const first = await import(process.argv[1]);
         const copiedUrl = new URL(process.argv[1]);
         copiedUrl.search = '?ownership-copy';
         const second = await import(copiedUrl.href);
+        const ownership = await import(process.argv[2]);
+        const copiedOwnershipUrl = new URL(process.argv[2]);
+        copiedOwnershipUrl.search = '?ownership-copy';
+        const copiedOwnership = await import(copiedOwnershipUrl.href);
+        const observation = ownership.createExecutionObservation();
+        const excludesInfrastructure = await observation.run(async () =>
+            copiedOwnership.withRunnerInfrastructure(() => !observation.accepts()));
+        observation.stop();
         const outer = first.createExecutionGlobalErrorObserver('in-process');
         const inner = second.createExecutionGlobalErrorObserver('in-process');
         let listeners = 0;
@@ -49,13 +63,14 @@ async function copiedObserverProbe(): Promise<string> {
             });
             inner.stop();
         });
-        const result = {listeners, outerErrors: outer.takeErrors().length, innerErrors: inner.takeErrors().length};
+        const result = {listeners, outerErrors: outer.takeErrors().length, innerErrors: inner.takeErrors().length,
+            excludesInfrastructure};
         outer.stop();
         result.remainingListeners = process.listenerCount('unhandledRejection');
         process.stdout.write(JSON.stringify(result));
     `;
     return await new Promise<string>(function runProbe(resolve, reject) {
-        execFile(process.execPath, [ '--input-type=module', '--eval', script, observer.href ], {
+        execFile(process.execPath, [ '--input-type=module', '--eval', script, observer.href, ownership.href ], {
             timeout: 30_000
         }, function receiveProbe(error, stdout, stderr) {
             if (error === null) {
@@ -67,6 +82,15 @@ async function copiedObserverProbe(): Promise<string> {
     });
 }
 
+async function rejectedObservationValue(operation: Promise<unknown>): Promise<unknown> {
+    try {
+        await operation;
+        return null;
+    } catch (error: unknown) {
+        return error;
+    }
+}
+
 export const testNode = suite('native error ownership', [
     test('shares process hooks and attribution between module copies', async function (scope) {
         scope.assert.equal(
@@ -75,6 +99,7 @@ export const testNode = suite('native error ownership', [
                 listeners: 1,
                 outerErrors: 0,
                 innerErrors: 1,
+                excludesInfrastructure: true,
                 remainingListeners: 0
             })
         );
@@ -98,7 +123,24 @@ export const testNode = suite('native error ownership', [
         } ]);
         return scope.assert.collect();
     }),
-    test('attempts every observation disposer and stops only once', function (scope) {
+    test('preserves operation and observation shutdown failures', async function (scope: TestScope) {
+        const operationError = new Error('operation sentinel');
+        const shutdownError = new Error('shutdown sentinel');
+        const operation = withExecutionObservation(async function failedOperation() {
+            registerExecutionDisposal(function failedShutdown() {
+                throw shutdownError;
+            });
+            throw operationError;
+        });
+        const error = await rejectedObservationValue(operation);
+        scope.require.instanceOf(error, AggregateError);
+        scope.assert.equal(error.errors[0], operationError);
+        const shutdown: unknown = error.errors[1];
+        scope.require.instanceOf(shutdown, AggregateError);
+        scope.assert.deepEqual(shutdown.errors, [ shutdownError ]);
+        return scope.assert.collect();
+    }),
+    test('attempts every disposer and immediately disposes registrations after stop', function (scope) {
         const observation = createExecutionObservation();
         const stopped: string[] = [];
         observation.register(function failingDisposal() {
@@ -109,8 +151,11 @@ export const testNode = suite('native error ownership', [
             stopped.push('second');
         });
         scope.assert.throws(observation.stop, { message: 'Execution observation shutdown failed.' });
+        observation.register(function lateDisposal() {
+            stopped.push('late');
+        });
         observation.stop();
-        scope.assert.deepEqual(stopped, [ 'first', 'second' ]);
+        scope.assert.deepEqual(stopped, [ 'first', 'second', 'late' ]);
         return scope.assert.collect();
     })
 ]);

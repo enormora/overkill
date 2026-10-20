@@ -7,6 +7,7 @@ import { observeProcessIpcListeners } from '../run/node-process-policy-observati
 import type { TestPlanCase } from './test-plan.ts';
 import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 import {
+    registerExecutionDisposal,
     withExecutionObservation,
     withRunnerInfrastructure
 } from './execution-observation.ts';
@@ -66,6 +67,22 @@ function publishDiagnostics(): void {
 }
 
 export const testNode = suite('native guard ownership', [
+    test('does not dispose unowned infrastructure when an unrelated run ends', async function (scope) {
+        let disposed = false;
+        const unregister = external.runInAsyncScope(function unownedInfrastructure() {
+            return withRunnerInfrastructure(function registerUnownedResource() {
+                return registerExecutionDisposal(function disposeExternalResource() {
+                    disposed = true;
+                });
+            });
+        });
+        await withExecutionObservation(async function unrelatedRun() {
+            return undefined;
+        });
+        unregister();
+        scope.assert.false(disposed);
+        return scope.assert.collect();
+    }),
     test('retains late diagnostics from a closed invocation as run errors', async function (scope) {
         const previous = policy();
         const testCase = guardCase();
