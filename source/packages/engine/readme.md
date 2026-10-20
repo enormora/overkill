@@ -111,6 +111,11 @@ explicit admission policy, for example
 Use `maxConcurrency: 'unlimited'` for unbounded admission. A case's timeout and
 duration start after admission, so time waiting for a slot is excluded.
 
+Each execution owns its native error and async-leak observations. Nested and
+overlapping executions keep separate ownership, and observations stop when
+execution completes or fails. Runner watchdogs and reporter callbacks do not
+become test-policy effects. Native runtime methods remain unchanged.
+
 `ExecuteOptions.retryPolicy` is `null` by default. Set `{ maxAttempts: 3 }`
 to allow up to three completed attempts, including the first. Explicit
 non-integration test families reject this policy; family-neutral plans can

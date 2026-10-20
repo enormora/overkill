@@ -8,7 +8,8 @@ import {
 } from './resource-lifecycle.ts';
 import {
     createPermissionDenialRuntimePolicy,
-    createRuntimeCapabilityPolicy
+    createRuntimeCapabilityPolicy,
+    withRuntimePolicy
 } from './capability-policy.ts';
 import type { RunCommand, RunEngineFacts, RunRequest, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -201,17 +202,20 @@ export function runEngineFacts(engine: RunEngineSelection): RunEngineFacts {
     return { kind: 'default' };
 }
 
-export function createRunRuntimePolicy(
+export async function observeRunRuntimePolicy<Value>(
     request: RunRequest,
-    dependencies: RunOrchestratorDependencies
-): RunRuntimePolicy {
-    return request.capabilityRestrictions.mode === 'enabled'
-        ? createRuntimeCapabilityPolicy({
-            dependencies: dependencies.runtimeCapabilityPolicy,
-            observedStderr: false,
-            observedStdout: false
-        })
-        : createPermissionDenialRuntimePolicy();
+    dependencies: RunOrchestratorDependencies,
+    execute: (policy: RunRuntimePolicy) => Promise<Value>
+): Promise<Value> {
+    return await withRuntimePolicy(function createConfiguredPolicy() {
+        return request.capabilityRestrictions.mode === 'enabled'
+            ? createRuntimeCapabilityPolicy({
+                dependencies: dependencies.runtimeCapabilityPolicy,
+                observedStderr: false,
+                observedStdout: false
+            })
+            : createPermissionDenialRuntimePolicy();
+    }, execute);
 }
 
 export const runWithWorkerAttachments: typeof executeWorkerAttachments = executeWorkerAttachments;

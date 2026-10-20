@@ -35,10 +35,43 @@ function observedOrchestrator(): ObservedOrchestrator {
     };
 }
 
+function rejectedCollectionOrchestrator(pendingImport: Promise<void>): RunOrchestrator {
+    return createCurrentProcessRunOrchestrator(defaultRunEngine, {
+        discoverRunFilesWithProjectRoot: runDiscovery.discoverRunFilesWithProjectRoot,
+        loadRunEngineModule,
+        async loadRunTestModules(files, engine) {
+            const modules = await loadRunTestModules(files, engine);
+            process.emit('unhandledRejection', new Error('collection hook sentinel'), Promise.resolve());
+            await pendingImport;
+            return modules;
+        },
+        startSupervisedChild,
+        startWorkerPoolHost
+    });
+}
+
 export const testNode = createSuite({
     ...metadata,
     title: 'runner initialization',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'collection rejects process failures while an import is pending and stops native policy observers',
+            async body(scope) {
+                const pending = Promise.withResolvers<undefined>();
+                scope.cleanup(function releasePendingImport() {
+                    pending.resolve(undefined);
+                });
+                const ready = await rejectedCollectionOrchestrator(pending.promise).initialize(collectedRunCommand());
+                const listeners = process.listenerCount('newListener');
+                await scope.assert.rejects(async function collectRejectedImport() {
+                    await ready.collect();
+                }, { message: 'Unhandled rejection: collection hook sentinel' });
+                pending.resolve(undefined);
+                scope.assert.equal(process.listenerCount('newListener'), listeners);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'initialization imports nothing and collection and execution retain one load',

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { collectLifecycleRun, collectedRunCommand } from '../../../test-support/collected-run-fixtures.ts';
 
 const { collected, state } = await collectLifecycleRun(collectedRunCommand());
-assert.equal((await collected.run({ selection: { kind: 'all' } })).status, 'passed');
+const originalRun = await collected.run({ selection: { kind: 'all' } });
+assert.equal(originalRun.status, 'passed');
 const raisePreviousError = state.raiseLateError;
 const started = Promise.withResolvers<undefined>();
 const gate = Promise.withResolvers<undefined>();
@@ -20,6 +21,12 @@ assert.equal(failed.status, 'failed');
 assert.ok(error);
 assert.equal(error.attributedTo, null);
 assert.equal(error.attributedToWork, null);
+assert.equal(error.subtype, 'attribution-drift');
+const origin = originalRun.perTest.at(-1);
+assert.ok(origin);
+assert.partialDeepStrictEqual(error.cause, {
+    origin: { case: origin.id, work: origin.workId, attempt: { index: 0 } }
+});
 state.gate = null;
 state.notifyStarted = function noNotification() { return undefined; };
 const recovered = await collected.run({ selection: { kind: 'all' } });

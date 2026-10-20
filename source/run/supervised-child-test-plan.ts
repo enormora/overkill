@@ -76,7 +76,7 @@ export function runnerErrorFromSupervisedChildFailure(error: unknown): RunnerErr
 
 export async function runObservedSupervisedChildCommand(
     command: SupervisedChildCommand,
-    run: () => Promise<void>
+    run: (stopObserving: () => unknown) => Promise<void>
 ): Promise<void> {
     const globalErrorObserver = createExecutionGlobalErrorObserver('supervised-child');
     const boundary = frozenSupervisedPolicy(command)?.moduleBoundary ?? null;
@@ -86,7 +86,7 @@ export async function runObservedSupervisedChildCommand(
             await globalErrorObserver.runBoundary(async function runObservedCommand() {
                 await globalErrorObserver.runPhase('collection', async function completeObservedCommand() {
                     await Promise.race([
-                        run(),
+                        run(globalErrorObserver.stop),
                         waitForObservedChildError(globalErrorObserver)
                     ]);
                 });

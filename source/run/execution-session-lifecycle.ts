@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
 import { withCaseExecutionLifecycle } from '../engine/case-execution-lifecycle.ts';
 import type { RunExecutionLifecycle, RunExecutionLifecycleFactory, FileModuleBoundary } from './run-types.ts';
 import { withExecutionSession, type RunExecutionTransport } from './execution-session-context.ts';
@@ -22,30 +23,50 @@ function validatedLifecycle(
     return {
         async select(plan) {
             observation.signal.throwIfAborted();
-            const selection = parseRunSelection(await lifecycle.select(plan));
-            await observation.checkpoint(z.json().parse(lifecycle.snapshot()));
+            const selection = parseRunSelection(
+                await withRunnerInfrastructure(async function selectLifecyclePlan() {
+                    return await lifecycle.select(plan);
+                })
+            );
+            await withRunnerInfrastructure(async function deliverLifecycleCheckpoint() {
+                await observation.checkpoint(z.json().parse(lifecycle.snapshot()));
+            });
             return selection;
         },
         async beforeCases() {
             observation.signal.throwIfAborted();
-            await lifecycle.beforeCases();
+            await withRunnerInfrastructure(async function runLifecycleOperation() {
+                await lifecycle.beforeCases();
+            });
         },
         async enterCase(work) {
             observation.signal.throwIfAborted();
-            await lifecycle.enterCase(work);
+            await withRunnerInfrastructure(async function runLifecycleOperation() {
+                await lifecycle.enterCase(work);
+            });
         },
         async completeCase(result, errors) {
-            const admission = z.enum([ 'continue', 'stop' ]).parse(await lifecycle.completeCase(result, errors));
+            const admission = z.enum([ 'continue', 'stop' ]).parse(
+                await withRunnerInfrastructure(async function completeLifecycleCase() {
+                    return await lifecycle.completeCase(result, errors);
+                })
+            );
             if (![ 'pass', 'skip' ].includes(result.verdict) || errors.length > 0) {
-                await observation.checkpoint(z.json().parse(lifecycle.snapshot()));
+                await withRunnerInfrastructure(async function deliverLifecycleCheckpoint() {
+                    await observation.checkpoint(z.json().parse(lifecycle.snapshot()));
+                });
             }
             return observation.signal.aborted ? 'stop' : admission;
         },
         snapshot() {
-            return z.json().parse(lifecycle.snapshot());
+            return withRunnerInfrastructure(function readLifecycleSnapshot() {
+                return z.json().parse(lifecycle.snapshot());
+            });
         },
         async dispose() {
-            await lifecycle.dispose();
+            await withRunnerInfrastructure(async function runLifecycleOperation() {
+                await lifecycle.dispose();
+            });
         }
     };
 }
@@ -102,7 +123,12 @@ export async function withExecutionLifecycle<Value>(
 ): Promise<Value> {
     return await withExecutionSession(transport, async function () {
         return await withFileModuleBoundary(boundary, async function () {
-            const lifecycle = validatedLifecycle(await loadExecutionLifecycle(transport), observation);
+            const lifecycle = validatedLifecycle(
+                await withRunnerInfrastructure(async function bootstrapLifecycle() {
+                    return await loadExecutionLifecycle(transport);
+                }),
+                observation
+            );
             return await runOwnedLifecycle(lifecycle, run);
         });
     });

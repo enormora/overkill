@@ -1,9 +1,11 @@
+import { channel } from 'node:diagnostics_channel';
 import { createDeterministicClock } from '@enormora/clock';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { createRuntimeCapabilityPolicy } from '../run/capability-policy.ts';
 import {
     createPlainOutputRenderer,
     defineOutputRenderer,
@@ -119,12 +121,54 @@ function errorMessages(errors: readonly RunnerError[]): readonly string[] {
     });
 }
 
+function ignoreProcessObservation(): () => void {
+    return function stopUnusedObservation() {
+        return undefined;
+    };
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/reporter-managed-output.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'native policy retains reporter console restrictions without test-policy attribution',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const environment = {};
+                const policy = createRuntimeCapabilityPolicy({
+                    dependencies: {
+                        observeIpcListeners: ignoreProcessObservation,
+                        observeProcessExit: ignoreProcessObservation,
+                        readEnvironment() {
+                            return environment;
+                        },
+                        readStorage() {
+                            return null;
+                        }
+                    },
+                    observedStderr: false,
+                    observedStdout: false
+                });
+                scope.cleanup(function stopReporterPolicy() {
+                    policy.takeRunErrors();
+                });
+                const result = await policy.runLoad(async function reportWithNativePolicy() {
+                    return runWithReporterOutputScopeNow([], function deniedReporterConsole(method) {
+                        return `blocked ${method}`;
+                    }, function publishReporterDiagnostic() {
+                        channel('console.log').publish({});
+                    });
+                });
+                scope.assert.deepEqual(result.violations, [ 'blocked log' ]);
+                scope.assert.deepEqual(policy.takeRunErrors(), []);
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'reporter dispatcher writes managed output in reporter registration order',

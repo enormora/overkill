@@ -1,6 +1,7 @@
 import { observeCaseResourceOwners } from './resource-owner-observation.ts';
 import {
     caseWithAsyncLeakPolicy,
+    hasCasePolicyErrors,
     completeCaseWithAsyncLeakPolicy,
     type AsyncLeakCheckedCase,
     type AsyncLeakDependencies
@@ -117,22 +118,16 @@ async function reportBenchmarkProgress(
 }
 
 async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnType<typeof executeCaseBody>>> {
-    return await input.context.dependencies.globalErrorObserver.runCase(
-        input.testCase,
-        { index: input.attempt },
-        async function executeObservedBody() {
-            return await executeCaseBody({
-                async onBenchmarkUpdate(benchmark) {
-                    await reportBenchmarkProgress(input, benchmark);
-                },
-                testCase: input.testCase,
-                timeoutPolicy: input.options.timeoutPolicy,
-                supervision: input.supervision,
-                dependencies: input.context.dependencies,
-                attempt: { index: input.attempt }
-            });
-        }
-    );
+    return await executeCaseBody({
+        async onBenchmarkUpdate(benchmark) {
+            await reportBenchmarkProgress(input, benchmark);
+        },
+        testCase: input.testCase,
+        timeoutPolicy: input.options.timeoutPolicy,
+        supervision: input.supervision,
+        dependencies: input.context.dependencies,
+        attempt: { index: input.attempt }
+    });
 }
 
 async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<TimedLeakCheckedCase> {
@@ -149,7 +144,12 @@ async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<Tim
         }
     );
     const leakCheckedCase = await caseWithAsyncLeakPolicy({
-        activeResourceTypesBefore: observedCase.baseline,
+        readResourceBaseline() {
+            return observedCase.baseline;
+        },
+        ambiguousResources() {
+            return observedCase.ambiguousResources;
+        },
         dependencies: input.context.dependencies,
         executedCase: observedCase.result,
         includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
@@ -267,7 +267,9 @@ async function completeLogicalCase(input: ExecuteCaseInput, executed: ReportedCa
             ...await reportRunnerErrorEvents(input.context.reporterDelivery, errors)
         ],
         runnerErrors: [ ...executed.runnerErrors, ...errors ],
-        result: errors.length === 0 ? executed.result : { ...executed.result, outcome: null, verdict: 'runtime-policy' }
+        result: hasCasePolicyErrors(errors)
+            ? { ...executed.result, outcome: null, verdict: 'runtime-policy' }
+            : executed.result
     };
 }
 
@@ -321,9 +323,16 @@ export async function executeCase(input: ExecuteCaseInput, started: boolean): Pr
         history: null
     };
     for (;;) {
-        const executed = await executeAttempt(chain.current, chain.started);
-        const retry = canRetryCase(chain.current, executed);
-        const completed = await finishAttempt(chain.current, executed, retry);
+        const current = chain;
+        const { retry, completed } = await input.context.dependencies.globalErrorObserver.runCase(
+            current.current.testCase,
+            { index: current.current.attempt },
+            async function observeCompleteAttempt() {
+                const executed = await executeAttempt(current.current, current.started);
+                const retryAllowed = canRetryCase(current.current, executed);
+                return { retry: retryAllowed, completed: await finishAttempt(current.current, executed, retryAllowed) };
+            }
+        );
         const history = appendAttempt(
             chain.history,
             retry && !acceptsAnotherAttempt(chain.current)

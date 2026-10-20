@@ -1,5 +1,6 @@
 import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
-import { recordResourceOwnerAllocation } from './resource-owner-observation.ts';
+import { observeResourceOwnerAllocations } from './resource-owner-observation.ts';
+import { createExecutionObservation } from './execution-observation.ts';
 import type { CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -65,7 +66,6 @@ type ActiveResourceLeakInput = {
     readonly phase: ActiveResourceLeakCause['phase'];
 };
 
-const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
 const ignoredActiveResourceTypes = new Set([ 'PipeWrap' ]);
 
 function sortedResourceTypes(types: readonly string[]): readonly string[] {
@@ -183,6 +183,9 @@ function createTrackedPromise(activeCase: ActiveCase): TrackedPromise {
 }
 
 export function createAsyncLeakMonitor(): AsyncLeakMonitor {
+    const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
+    const observation = createExecutionObservation();
+    const stopResourceAllocations = observeResourceOwnerAllocations();
     const promises = new Map<number, TrackedPromise>();
     const attempts = new WeakMap<TestPlanCase, ActiveCase>();
     const createHookKey = 'createHook';
@@ -191,8 +194,7 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
             promises.delete(asyncId);
         },
         init(asyncId, type, triggerAsyncId) {
-            recordResourceOwnerAllocation(type);
-            if (type !== 'PROMISE') {
+            if (type !== 'PROMISE' || !observation.accepts()) {
                 return;
             }
 
@@ -218,6 +220,11 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
     });
 
     hook.enable();
+    observation.register(function stopPromiseObservation() {
+        hook.disable();
+        stopResourceAllocations();
+        promises.clear();
+    });
 
     return {
         async runOutsideCase(run) {
@@ -241,11 +248,15 @@ export function createAsyncLeakMonitor(): AsyncLeakMonitor {
         async runCase(testCase, run) {
             const activeCase = { testCase };
             attempts.set(testCase, activeCase);
-            return await activeCaseStorage.run(activeCase, run);
+            const operation = async function trackCasePromises(): Promise<Awaited<ReturnType<typeof run>>> {
+                return await activeCaseStorage.run(activeCase, run);
+            };
+            return observation.hasActiveAttempt()
+                ? await operation()
+                : await observation.runAttempt(testCase, { index: 0 }, operation);
         },
         stop() {
-            hook.disable();
-            promises.clear();
+            observation.stop();
         }
     };
 }

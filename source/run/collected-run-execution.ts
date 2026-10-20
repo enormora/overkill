@@ -5,7 +5,7 @@ import { reportCollectionErrorResult } from './run-collection-error-result.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
 import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
 import {
-    createRunRuntimePolicy,
+    observeRunRuntimePolicy,
     finalizeResultWithDurationHistory,
     type ResolvedRunResultFinalizer,
     type RunRuntimePolicy
@@ -53,12 +53,13 @@ async function executeCollectedPlan(
     timing: RunTimingMeasurement,
     finalizeResult: ResolvedRunResultFinalizer
 ): Promise<RunResult> {
-    const runtimePolicy = createRunRuntimePolicy(plan.resolved.request, context.dependencies);
-    try {
-        return await executeObservedCollectedPlan({ context, finalizeResult, plan, runtimePolicy, timing });
-    } finally {
-        runtimePolicy.takeRunErrors();
-    }
+    return await observeRunRuntimePolicy(
+        plan.resolved.request,
+        context.dependencies,
+        async function executeObservedInvocation(runtimePolicy) {
+            return await executeObservedCollectedPlan({ context, finalizeResult, plan, runtimePolicy, timing });
+        }
+    );
 }
 
 export async function executeCollectedInvocation(

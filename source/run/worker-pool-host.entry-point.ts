@@ -222,8 +222,8 @@ async function destroy(): Promise<void> {
     state.pool.write(null);
     finishProcessUsageTracking();
     await poolToDestroy?.destroy();
-    send({ kind: 'destroyed' });
     globalErrorObserver.stop();
+    send({ kind: 'destroyed' });
     await outbox.disconnect();
 }
 

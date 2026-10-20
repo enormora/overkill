@@ -1,4 +1,13 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
+import asyncHooks, { AsyncLocalStorage, type AsyncHook } from 'node:async_hooks';
+import { createStoredValue } from '../stored-value.ts';
+import { registerExecutionDisposal } from './execution-observation.ts';
+import {
+    recordInfrastructureResource,
+    forgetInfrastructureResource,
+    clearInfrastructureResources,
+    observeInfrastructureResources,
+    sameNativeResourceType
+} from './infrastructure-resource-observation.ts';
 
 export type ResourceOwnerObservation = {
     readonly resources: readonly string[];
@@ -14,6 +23,7 @@ type ObservedResourceAcquisition<Value> = {
     readonly value: Value;
 };
 type ObservedCase<Value> = {
+    readonly ambiguousResources: readonly string[];
     readonly baseline: readonly string[];
     readonly result: Value;
 };
@@ -51,10 +61,40 @@ function createResourceAcquisition(): ResourceAcquisition {
     };
 }
 
-export function recordResourceOwnerAllocation(type: string): void {
+function recordResourceOwnerAllocation(type: string): void {
     for (const acquisition of acquisitions) {
         acquisition.record(type);
     }
+}
+
+const allocationObservers = new Set<symbol>();
+const allocationHook = createStoredValue<AsyncHook | null>(null);
+
+export function observeResourceOwnerAllocations(): () => void {
+    const observer = Symbol('resource allocation observer');
+    allocationObservers.add(observer);
+    if (allocationHook.read() === null) {
+        const createHookKey = 'createHook';
+        const hook = asyncHooks[createHookKey]({
+            init(id, type, _trigger, resource: unknown) {
+                recordResourceOwnerAllocation(type);
+                recordInfrastructureResource(id, type, resource);
+            },
+            destroy(id) {
+                forgetInfrastructureResource(id);
+            }
+        });
+        hook.enable();
+        allocationHook.write(hook);
+    }
+    return function stopResourceOwnerAllocations() {
+        allocationObservers.delete(observer);
+        if (allocationObservers.size === 0) {
+            allocationHook.read()?.disable();
+            allocationHook.write(null);
+            clearInfrastructureResources();
+        }
+    };
 }
 
 function newResourceTypes(before: readonly string[], after: readonly string[]): readonly string[] {
@@ -76,10 +116,14 @@ async function acquiredResourceTypes<Value>(
     const acquisition = createResourceAcquisition();
     const before = Array.from(read());
     acquisitions.add(acquisition);
+    const unregister = registerExecutionDisposal(function stopAcquisitionObservation() {
+        acquisitions.delete(acquisition);
+    });
     try {
         const value = await activeAcquisition.run(acquisition.owner, create);
         return { value, resources: newResourceTypes(before, read()).filter(acquisition.owns) };
     } finally {
+        unregister();
         acquisitions.delete(acquisition);
     }
 }
@@ -109,6 +153,7 @@ export async function observeCaseResourceOwners<Value>(
     run: () => Promise<Value>
 ): Promise<ObservedCase<Value>> {
     const resources = Array.from(read());
+    const infrastructure = observeInfrastructureResources();
     const observation: ResourceOwnerBaseline = {
         read,
         append(types) {
@@ -127,5 +172,18 @@ export async function observeCaseResourceOwners<Value>(
         }
     };
     const result = await activeResourceOwners.run(observation, run);
-    return { result, baseline: observation.baseline() };
+    return {
+        result,
+        get baseline() {
+            return [ ...observation.baseline(), ...infrastructure().active ];
+        },
+        get ambiguousResources() {
+            const growth = newResourceTypes(observation.baseline(), read());
+            return growth.filter(function uncertainInfrastructure(type) {
+                return infrastructure().uncertain.some(function matchingProvider(provider) {
+                    return sameNativeResourceType(type, provider);
+                });
+            });
+        }
+    };
 }

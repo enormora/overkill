@@ -4,7 +4,7 @@ import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
 import type { RunCollectionSource } from './run-isolated-process.ts';
 import { createLocalRunOrEmptySelectionResultFromInput } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { createRunRuntimePolicy, finalizeResultWithDurationHistory, type RunRuntimePolicy } from './run-support.ts';
+import { observeRunRuntimePolicy, finalizeResultWithDurationHistory, type RunRuntimePolicy } from './run-support.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
 import type { ResolvedRun, RunCommand } from './run-types.ts';
 
@@ -106,12 +106,13 @@ async function executeCoveredWithPolicy(
 }
 
 export async function executeCoverageLocalRun(execution: CoverageLocalExecution): Promise<RunResult> {
-    const runtimePolicy = createRunRuntimePolicy(execution.command.request, execution.dependencies);
-    try {
-        return await executeCoveredWithPolicy(execution, runtimePolicy);
-    } finally {
-        runtimePolicy.takeRunErrors();
-    }
+    return await observeRunRuntimePolicy(
+        execution.command.request,
+        execution.dependencies,
+        async function executeObservedCoverage(runtimePolicy) {
+            return await executeCoveredWithPolicy(execution, runtimePolicy);
+        }
+    );
 }
 
 type CoverageLocalCommand = Pick<CoverageLocalExecution, 'command' | 'dependencies' | 'input' | 'source' | 'timing'>;

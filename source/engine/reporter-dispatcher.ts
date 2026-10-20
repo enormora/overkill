@@ -1,4 +1,5 @@
 import type { Clock } from '@enormora/clock';
+import { withRunnerInfrastructure } from './execution-observation.ts';
 import {
     createReporterDisposal as createReporterDisposalFromCallback,
     type ReporterDisposal as CoreReporterDisposal
@@ -221,9 +222,11 @@ function createReporterTimeout(
     reporter: Reporter
 ): ReporterTimeout {
     const { promise, reject } = Promise.withResolvers<never>();
-    const timeout = dependencies.wallClock.setTimeout(function rejectTimedOutCallback() {
-        reject(timeoutError(reporter));
-    }, callbackTimeoutMs);
+    const timeout = withRunnerInfrastructure(function scheduleReporterTimeout() {
+        return dependencies.wallClock.setTimeout(function rejectTimedOutCallback() {
+            reject(timeoutError(reporter));
+        }, callbackTimeoutMs);
+    });
 
     return {
         cancel() {

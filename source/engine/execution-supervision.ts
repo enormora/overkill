@@ -28,6 +28,7 @@ import {
     createExecutionSupervision as createExecutionSupervisionState,
     createBenchmarkState,
     createCaseCompletion,
+    scheduleSupervisionTimeout,
     type BenchmarkState,
     type ActiveCase as SupervisedActiveCase,
     type CaseCompletion,
@@ -388,7 +389,7 @@ async function runCaseWithSoftTimeout(
     }
 
     const timing = { timedOut: false };
-    const softTimeout = input.dependencies.wallClock.setTimeout(function abortTimedOutCase() {
+    const softTimeout = scheduleSupervisionTimeout(input.dependencies.wallClock, function abortTimedOutCase() {
         timing.timedOut = true;
         input.controller.abort();
     }, input.timeoutMilliseconds);
@@ -422,7 +423,7 @@ function registerActiveCase(input: ActiveCaseInput): SupervisedActiveCase {
     const startedAtMicroseconds = Number(input.dependencies.wallClock.currentMonotonicMicroseconds);
     const hardTimeout = input.timeoutPolicy === null || input.timeoutPolicy === undefined
         ? null
-        : input.dependencies.wallClock.setTimeout(function hardTimeoutActiveCases() {
+        : scheduleSupervisionTimeout(input.dependencies.wallClock, function hardTimeoutActiveCases() {
             completeActiveCasesWithCrash(input.supervision, input.dependencies);
         }, input.timeoutPolicy.hardTimeoutMilliseconds);
     const activeCase: SupervisedActiveCase = {
