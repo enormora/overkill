@@ -9,8 +9,7 @@ import { createPerformanceBaselineStore, type PerformanceBaselineStore } from '.
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
 import { normalizationBaselineAdapter } from '../../test-support/normalization-baseline-adapter.ts';
 
-async function baselineCommand(scope: TestScope, adapters: readonly string[]): Promise<RunCommand> {
-    const command = await normalizationCommand(scope, 'reuse', 'normalized metric');
+function withBaselineAdapters(command: RunCommand, adapters: readonly string[]): RunCommand {
     const profile = command.config.profiles.bench;
     if (profile?.testFamily !== 'benchmark') {
         throw new Error('Expected benchmark profile.');
@@ -30,6 +29,9 @@ async function baselineCommand(scope: TestScope, adapters: readonly string[]): P
             }
         }
     };
+}
+async function baselineCommand(scope: TestScope, adapters: readonly string[]): Promise<RunCommand> {
+    return withBaselineAdapters(await normalizationCommand(scope, 'reuse', 'normalized metric'), adapters);
 }
 async function saveReference(scope: TestScope, command: RunCommand): Promise<void> {
     const capture = await orchestrator.bench.calibrate(command, { timing: null });
@@ -60,7 +62,11 @@ async function performanceStore(command: RunCommand): Promise<PerformanceBaselin
         maxBytes: profile.attachments.maxArtifactBytes
     });
 }
-async function replaceSavedReference(scope: TestScope, command: RunCommand): Promise<void> {
+async function replaceSavedCalibration(
+    scope: TestScope,
+    command: RunCommand,
+    component: 'actual' | 'reference'
+): Promise<void> {
     const store = await performanceStore(command);
     const [ entry ] = await store.list();
     scope.require.defined(entry);
@@ -76,10 +82,9 @@ async function replaceSavedReference(scope: TestScope, command: RunCommand): Pro
             ...baseline.normalization.metrics,
             value: {
                 ...metric,
-                actual: {
-                    ...metric.actual,
-                    samples: metric
-                        .actual
+                [component]: {
+                    ...metric[component],
+                    samples: metric[component]
                         .samples
                         .map(function savedSample() {
                             return 400;
@@ -283,7 +288,7 @@ export const testNode = suite('saved normalization references', [
     test('uses saved references while preserving the original budget basis', async function (scope: TestScope) {
         const command = await baselineCommand(scope, [ 'reference' ]);
         await saveReference(scope, command);
-        await replaceSavedReference(scope, command);
+        await replaceSavedCalibration(scope, command, 'reference');
         const result = await orchestrator.bench.run(command, { timing: null });
         scope.assert.deepEqual(result.runnerErrors, []);
         scope.assert.equal(result.status, 'passed');
@@ -298,10 +303,22 @@ export const testNode = suite('saved normalization references', [
         scope.assert.equal(diff.result.status, 'passed');
         return scope.assert.collect();
     }),
+    test('adds adapters without conflicting with earlier calibration samples', async function (scope: TestScope) {
+        const command = await baselineCommand(scope, [ 'first' ]);
+        await saveReference(scope, command);
+        await replaceSavedCalibration(scope, command, 'actual');
+        const expanded = withBaselineAdapters(command, [ 'first', 'second' ]);
+        const updated = await orchestrator.bench.baseline.update(expanded, { timing: null });
+        scope.assert.equal(updated.result.status, 'passed');
+        const result = await orchestrator.bench.run(expanded, { timing: null });
+        scope.assert.deepEqual(result.runnerErrors, []);
+        scope.assert.equal(result.status, 'passed');
+        return scope.assert.collect();
+    }),
     test('rejects conflicting references from matching adapters', async function (scope: TestScope) {
         const conflicting = await baselineCommand(scope, [ 'first', 'second' ]);
         await saveReference(scope, conflicting);
-        await replaceSavedReference(scope, conflicting);
+        await replaceSavedCalibration(scope, conflicting, 'reference');
         const result = await orchestrator.bench.run(conflicting, { timing: null });
         scope.assert.equal(result.status, 'failed');
         scope.assert.true(result.runnerErrors.some(function incompatibleReference(error) {

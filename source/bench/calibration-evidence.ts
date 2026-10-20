@@ -37,12 +37,23 @@ export const calibrationSnapshotSchema: z.ZodType<CalibrationSnapshot> = z
             snapshot.sampling.maximumSamples
         );
     });
-const savedCalibrationSchema: z.ZodType<SavedCalibration> = z.strictObject({
+const legacySavedCalibrationSchema = z.strictObject({
     work: workIdSchema,
     metric: z.string().min(1),
     actual: calibrationSnapshotSchema,
     budgetReference: calibrationSnapshotSchema
 });
+const savedCalibrationSchema: z.ZodType<SavedCalibration> = z.union([
+    legacySavedCalibrationSchema.omit({ actual: true }).extend({ reference: calibrationSnapshotSchema }),
+    legacySavedCalibrationSchema.transform(function selectedReference(entry) {
+        return {
+            work: entry.work,
+            metric: entry.metric,
+            reference: entry.actual,
+            budgetReference: entry.budgetReference
+        };
+    })
+]);
 export const benchmarkNormalizationContextSchema: z.ZodType<BenchmarkNormalizationContext> = z.strictObject({
     executionId: z.string().min(1).nullable().default(null),
     mode: z.enum([ 'capture', 'compare' ]),

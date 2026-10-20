@@ -22,7 +22,7 @@ function matchingSaved(input: ReferenceSelection): readonly SavedCalibration[] {
     const identity = canonicalIdentityJson(input.actual.identity);
     return input.context.saved.filter(function matchingReference(entry) {
         return entry.metric === input.metric && workIdentityKey(entry.work) === workIdentityKey(input.work) &&
-            canonicalIdentityJson(entry.actual.identity) === identity;
+            canonicalIdentityJson(entry.reference.identity) === identity;
     });
 }
 function fixedReference(input: ReferenceSelection): ReferenceChoice {
@@ -46,15 +46,15 @@ function selectedReference(input: ReferenceSelection): ReferenceChoice {
     if (first === undefined) {
         return fixedReference(input);
     }
-    const key = canonicalIdentityJson([ first.actual, first.budgetReference ]);
+    const key = canonicalIdentityJson([ first.reference, first.budgetReference ]);
     if (
         saved.some(function conflictingReference(entry) {
-            return canonicalIdentityJson([ entry.actual, entry.budgetReference ]) !== key;
+            return canonicalIdentityJson([ entry.reference, entry.budgetReference ]) !== key;
         })
     ) {
         throw new TypeError('Saved expectations disagree about the calibration reference.');
     }
-    return { reference: first.actual, budgetReference: first.budgetReference, source: 'baseline' };
+    return { reference: first.reference, budgetReference: first.budgetReference, source: 'baseline' };
 }
 export function selectCalibrationReference(
     input: ReferenceSelection,

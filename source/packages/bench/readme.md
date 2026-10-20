@@ -506,7 +506,7 @@ workers keep the same reference across batches of one run and refresh it for a n
 run.
 Normalized runs use serial placement.
 
-Saved performance expectations supply their reference when available. Otherwise,
+Saved performance expectations supply their selected display reference when available. Otherwise,
 an optional checked-in capture supplies display units, falling back to canonical
 reference-workload units. Matching adapters must agree on the reference. Unchanged expectations keep their
 saved reference when fresh calibration readings arrive.

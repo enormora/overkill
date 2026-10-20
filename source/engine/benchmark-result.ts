@@ -186,7 +186,7 @@ export type CalibrationResult = { readonly kind: 'comparable'; readonly snapshot
 export type SavedCalibration = {
     readonly work: WorkId;
     readonly metric: string;
-    readonly actual: CalibrationSnapshot;
+    readonly reference: CalibrationSnapshot;
     readonly budgetReference: CalibrationSnapshot;
 };
 export type BenchmarkNormalizationContext = {

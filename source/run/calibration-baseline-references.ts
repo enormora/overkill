@@ -26,7 +26,7 @@ function storedReferences(baseline: StoredPerformanceBaseline): readonly SavedCa
         return {
             work: baseline.work,
             metric: name,
-            actual: evidence.actual,
+            reference: evidence.reference,
             budgetReference: evidence.budgetReference
         };
     });

@@ -2,6 +2,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { selectCalibrationReference } from './calibration-references.ts';
+import { benchmarkNormalizationContextSchema } from './calibration-evidence.ts';
 
 const actual = { ...calibrationSnapshot([ 100, 100 ]), machineClass: 'fast-mac' };
 const foreign = { ...actual, machineClass: 'slow-arm-runner', samples: [ 400, 400 ] };
@@ -33,27 +34,43 @@ const scenarios = [
 ] as const;
 export const testNode = suite(
     'calibration reference selection',
-    scenarios.map(function scenario(input) {
-        return test(input.title, function (scope: TestScope) {
-            const selected = selectCalibrationReference({
-                actual,
-                metric: 'value',
-                work,
-                context: {
-                    mode: 'compare',
-                    executionId: null,
-                    profile: 'bench',
-                    machine: { machineClass: actual.machineClass, metadata: {} },
-                    references: input.references,
-                    saved: []
-                }
-            }, 'proportional');
-            scope.assert.equal(selected.source, input.source);
-            scope.assert.equal(selected.reference.machineClass, input.machineClass);
-            scope.assert.equal(selected.reference.samples[0], input.sample);
-            scope.assert.equal(selected.budgetReference.machineClass, 'reference-workload');
-            scope.assert.equal(selected.budgetFactor, 0.01);
+    [
+        test('reads historical saved calibration references', function (scope: TestScope) {
+            const restored = benchmarkNormalizationContextSchema.parse({
+                mode: 'compare',
+                profile: 'bench',
+                machine: { machineClass: actual.machineClass, metadata: {} },
+                references: [],
+                saved: [ { work, metric: 'value', actual, budgetReference: actual } ]
+            });
+            const saved = restored.saved[0];
+            scope.require.defined(saved);
+            scope.assert.deepEqual(saved.reference, actual);
+            scope.assert.false(Object.hasOwn(saved, 'actual'));
             return scope.assert.collect();
-        });
-    })
+        }),
+        ...scenarios.map(function scenario(input) {
+            return test(input.title, function (scope: TestScope) {
+                const selected = selectCalibrationReference({
+                    actual,
+                    metric: 'value',
+                    work,
+                    context: {
+                        mode: 'compare',
+                        executionId: null,
+                        profile: 'bench',
+                        machine: { machineClass: actual.machineClass, metadata: {} },
+                        references: input.references,
+                        saved: []
+                    }
+                }, 'proportional');
+                scope.assert.equal(selected.source, input.source);
+                scope.assert.equal(selected.reference.machineClass, input.machineClass);
+                scope.assert.equal(selected.reference.samples[0], input.sample);
+                scope.assert.equal(selected.budgetReference.machineClass, 'reference-workload');
+                scope.assert.equal(selected.budgetFactor, 0.01);
+                return scope.assert.collect();
+            });
+        })
+    ]
 );
