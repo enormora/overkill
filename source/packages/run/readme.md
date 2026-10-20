@@ -549,7 +549,6 @@ visible and may be restricted further by calibration. Configured unavailable
 signals block execution. See [Host conditions](../bench/readme.md#host-conditions) for limits, formulas, probe availability, and
 snapshot timing. Baseline normalization remains in `benchmarkCalibration`.
 
-
 `overkill bench calibrate` captures declared calibration resources for the selected
 benchmark profile. `orchestrator.bench.calibrate(command, { timing: null })` exposes
 the same operation. Capture skips benchmark bodies and unrelated fixtures. Reference

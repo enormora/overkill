@@ -256,7 +256,6 @@ Assertion bodies:
   provide `location`; use `captureSourceLocation()` for accuracy or
   `unknownSourceLocation` when unavailable.
 
-
 Benchmark integrations can attach a calibration-only execution body with
 `attachBenchmarkCalibrationBody` and retrieve it with `readBenchmarkCalibrationBody`.
 The runner uses that body to acquire calibration dependencies during capture while

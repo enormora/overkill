@@ -449,14 +449,16 @@ Failed invocations still collect after cleanup unless cancelled. Collection fail
 retains incomplete readings and blocks baseline writes. Lifecycle evidence records
 resolved policy and collection counts; historical results retain absent GC evidence.
 
-
 ### Calibration and normalization
 
 Declare scaling per metric. Metrics without a rule remain raw.
 
 ```ts
 import {
-    benchmark, calibratedMeasurement, cpuCalibration, wallClockMeasurement
+    benchmark,
+    calibratedMeasurement,
+    cpuCalibration,
+    wallClockMeasurement
 } from '@overkill-dev/bench';
 
 const measurement = calibratedMeasurement(wallClockMeasurement(), {

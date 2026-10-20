@@ -400,7 +400,6 @@ That is enough to make:
   plan
 - [Benchmarking](../authoring/benchmarking.md) - calibration and machine-class stratification
 
-
 Declared calibration resources retain workload identity, version, units, sampling
 policy, samples, machine metadata, and executing Node arguments. Metric scaling is
 explicit. Saved expectations supply references and retain their original fixed
