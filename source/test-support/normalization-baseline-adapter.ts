@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { metricReadingSchema } from '../bench/benchmark-observations.ts';
+import { metricReadingSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
 import type {
     PerformanceBaselineAdapter,
     PerformanceObservationInput,

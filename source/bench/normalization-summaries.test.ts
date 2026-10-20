@@ -3,6 +3,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
 import { benchmarkMetricGroups } from '../reporters/benchmark-html-metrics.ts';
+import { benchmarkResultSchema } from '../run/benchmark-result-schema.ts';
 import { summarizeNormalization } from './normalization-summaries.ts';
 
 function normalizedResult(): BenchmarkExecutionResult {
@@ -30,6 +31,7 @@ function normalizedResult(): BenchmarkExecutionResult {
                     actual,
                     reference,
                     budgetReference: actual,
+                    budgetFactor: 1,
                     scaling: 'proportional',
                     source: 'fixed',
                     factor: null,
@@ -63,6 +65,15 @@ function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionRes
     };
 }
 export const testNode = suite('normalization summaries', [
+    test('reads historical normalized results without inventing a budget scale', function (scope: TestScope) {
+        const result = normalizedResult();
+        const metric = result.normalization?.metrics.latency;
+        scope.require.defined(metric);
+        Reflect.deleteProperty(metric, 'budgetFactor');
+        const restored = benchmarkResultSchema.parse(result);
+        scope.assert.equal(restored.normalization?.metrics.latency?.budgetFactor, null);
+        return scope.assert.collect();
+    }),
     ...([ 'summary', 'factor' ] as const).map(function incompleteDisplayCase(missing) {
         return test(`keeps only raw charts when the normalized ${missing} is unavailable`, function (scope: TestScope) {
             const fixture = benchmarkHtmlFixture('incomplete normalization');

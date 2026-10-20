@@ -207,6 +207,7 @@ type BenchmarkNormalizationFactor = {
     readonly upper: number | null;
 };
 export type BenchmarkMetricNormalization = {
+    readonly budgetFactor: number | null;
     readonly scaling: NormalizationRuleSummary['scaling'];
     readonly actual: CalibrationSnapshot;
     readonly budgetReference: CalibrationSnapshot;

@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 import type { ReadonlyDeep } from 'type-fest';
-import { metricReadingSchema } from './benchmark-observations.ts';
+import { metricReadingSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
 import { nodeChildReadingsSchema } from './process-node-readings.ts';
 
 const captureSchema = z.strictObject({ text: z.string(), bytes: z.number().nonnegative(), truncated: z.boolean() });

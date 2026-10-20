@@ -49,6 +49,7 @@ function normalizedEvidence(
             duration: {
                 actual: measured,
                 budgetReference,
+                budgetFactor: null,
                 reference: budgetReference,
                 scaling,
                 source: 'fixed',

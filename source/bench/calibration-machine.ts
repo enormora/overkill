@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import os from 'node:os';
 
 const machineClassDigestLength = 16;
-type HostMetadata = {
+export type HostMetadata = {
     readonly architecture: string;
     readonly availableParallelism: number;
     readonly cpuCount: number;

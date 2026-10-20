@@ -70,6 +70,7 @@ export const normalizationEvidenceSchema: z.ZodType<BenchmarkNormalizationEviden
             scaling: z.enum([ 'proportional', 'inverse' ]),
             actual: calibrationSnapshotSchema,
             budgetReference: calibrationSnapshotSchema,
+            budgetFactor: z.number().positive().nullable().default(null),
             reference: calibrationSnapshotSchema,
             source: z.enum([ 'baseline', 'canonical', 'fixed' ]),
             factor: z

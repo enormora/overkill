@@ -1,13 +1,13 @@
 import type { BenchmarkLifecyclePolicy, ResolvedBenchmarkLifecyclePolicy } from '../engine/benchmark-result.ts';
 import { resolveBenchmarkGarbageCollection } from '../engine/benchmark-garbage-collection.ts';
 import type { BenchmarkScope } from '../engine/benchmark-node.ts';
-import { calibrationMachineClass, readCalibrationHostMetadata } from './calibration-machine.ts';
+import { readBenchmarkMachine } from '../packages/run/benchmark-calibration.entry-point.ts';
 
 export function directBenchmarkEnvironment(scope: BenchmarkScope): BenchmarkScope {
     if (scope.benchmarkEnvironment !== null && scope.benchmarkEnvironment.normalization !== null) {
         return scope;
     }
-    const metadata = readCalibrationHostMetadata(process.execArgv);
+    const machine = readBenchmarkMachine();
     return {
         ...scope,
         benchmarkEnvironment: {
@@ -20,7 +20,7 @@ export function directBenchmarkEnvironment(scope: BenchmarkScope): BenchmarkScop
             normalization: {
                 mode: 'compare',
                 profile: 'direct',
-                machine: { machineClass: calibrationMachineClass(metadata), metadata },
+                machine,
                 references: [],
                 saved: []
             }

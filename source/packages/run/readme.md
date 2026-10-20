@@ -565,3 +565,8 @@ for scaling, uncertainty, saved expectations, and stale-reference maintenance.
 `runCpuCalibrationWorkload()` from `@overkill-dev/run/benchmark-calibration` runs
 the fixed integer-mix reference workload and returns its checksum. The built-in
 CPU calibration resource measures this same workload.
+
+`readBenchmarkMachine()` reads host identity and metadata without running a
+reference workload. `metricReadingSchema` validates metric readings shared by
+collectors and persisted samples. Both are exported by
+`@overkill-dev/run/benchmark-calibration`.

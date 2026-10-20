@@ -54,6 +54,14 @@ function selectedReference(input: ReferenceSelection): ReferenceChoice {
 export function selectCalibrationReference(input: ReferenceSelection, rule: MetricNormalization): MetricEvidence {
     const selected = selectedReference(input);
     calibrationFactor(input.actual, selected.reference, rule.scaling);
-    calibrationFactor(input.actual, selected.budgetReference, rule.scaling);
-    return { ...selected, scaling: rule.scaling, actual: input.actual, factor: null, summary: null, budgets: [] };
+    const budgetFactor = calibrationFactor(input.actual, selected.budgetReference, rule.scaling);
+    return {
+        ...selected,
+        budgetFactor,
+        scaling: rule.scaling,
+        actual: input.actual,
+        factor: null,
+        summary: null,
+        budgets: []
+    };
 }

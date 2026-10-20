@@ -3,9 +3,7 @@ import type { BenchmarkNormalizationEvidence, MetricReading } from '../engine/be
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
-import { metricReadingSchema } from '../bench/benchmark-observations.ts';
-import { calibrationFactor } from '../bench/normalization-interval.ts';
-import { metricNormalizationEvidence } from '../bench/metric-normalization-evidence.ts';
+import { metricReadingSchema } from '../bench/benchmark-statistics-schema.ts';
 import type {
     PerformanceBaselineAdapter,
     PerformanceObservation,
@@ -42,13 +40,16 @@ function normalizedPerformanceArtifacts(
         const samples = samplesSchema.parse(artifact.payload.content.value);
         const value = Object.fromEntries(
             Object.entries(samples).map(function normalizeMetric([ name, readings ]) {
-                const metric = metricNormalizationEvidence(normalization, name);
-                const factor = metric === null
+                const metric = Object.hasOwn(normalization.metrics, name) ? normalization.metrics[name] : undefined;
+                const factor = metric === undefined
                     ? 1
-                    : calibrationFactor(metric.actual, metric.budgetReference, metric.scaling);
+                    : metric.budgetFactor;
                 return [
                     name,
                     readings.map(function reading(observation) {
+                        if (factor === null) {
+                            throw new TypeError('Benchmark normalization is missing its budget scale.');
+                        }
                         return scaledReading(observation, factor);
                     })
                 ];

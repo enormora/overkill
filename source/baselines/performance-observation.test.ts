@@ -60,6 +60,7 @@ function normalization(cost: number): BenchmarkNormalizationEvidence {
                 actual,
                 reference,
                 budgetReference: reference,
+                budgetFactor: 1 / cost,
                 source: 'canonical',
                 scaling: 'proportional',
                 factor: null,
@@ -70,6 +71,21 @@ function normalization(cost: number): BenchmarkNormalizationEvidence {
     };
 }
 export const testNode = suite('performance observation normalization', [
+    test('rejects legacy sample normalization without an explicit budget scale', function (scope: TestScope) {
+        const evidence = normalization(10);
+        const metric = evidence.metrics.value;
+        scope.require.defined(metric);
+        const legacy = { ...evidence, metrics: { value: { ...metric, budgetFactor: null } } };
+        scope.assert.throws(function () {
+            return observePerformance(
+                adapter,
+                { artifacts: [ samples([ availableMetric(100, provenance) ]) ], calibration, work },
+                legacy,
+                4096
+            );
+        }, { message: 'Benchmark normalization is missing its budget scale.' });
+        return scope.assert.collect();
+    }),
     test(
         'normalizes adapter samples while retaining unavailable readings, raw metrics and original artifacts',
         function (scope: TestScope) {

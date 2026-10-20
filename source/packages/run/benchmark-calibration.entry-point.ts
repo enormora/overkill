@@ -1,6 +1,10 @@
 import { z } from 'zod/v4';
 import type { ComparableCalibration, BenchmarkCalibrationResult } from '../../bench/host-calibration-result.ts';
-import { readCalibrationHostMetadata, calibrationMachineClass } from '../../bench/calibration-machine.ts';
+import {
+    readCalibrationHostMetadata,
+    calibrationMachineClass,
+    type HostMetadata
+} from '../../bench/calibration-machine.ts';
 import { referenceChecksum } from '../../bench/cpu-reference-workload.ts';
 
 const iterations = 2_000_000;
@@ -94,3 +98,13 @@ export { readCalibrationReferenceReport } from '../../bench/calibration-report.t
 export type { CalibrationReferenceReport } from '../../bench/calibration-report.ts';
 
 export type { ComparableCalibration, BenchmarkCalibrationResult } from '../../bench/host-calibration-result.ts';
+
+export { metricReadingSchema } from '../../bench/benchmark-statistics-schema.ts';
+type BenchmarkMachine = {
+    readonly machineClass: string;
+    readonly metadata: HostMetadata;
+};
+export function readBenchmarkMachine(): BenchmarkMachine {
+    const metadata = readCalibrationHostMetadata(process.execArgv);
+    return { machineClass: calibrationMachineClass(metadata), metadata };
+}
