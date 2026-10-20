@@ -41,6 +41,7 @@ export const testNode = suite(
                 work,
                 context: {
                     mode: 'compare',
+                    executionId: null,
                     profile: 'bench',
                     machine: { machineClass: actual.machineClass, metadata: {} },
                     references: input.references,

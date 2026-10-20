@@ -36,6 +36,7 @@ function maintenance(remove: MaintenanceInput['store']['remove']): MaintenanceIn
             benchmarkCalibration: null,
             benchmarkNormalization: {
                 mode: 'compare',
+                executionId: null,
                 profile: 'bench',
                 machine: { machineClass: snapshot.machineClass, metadata: {} },
                 references: [],

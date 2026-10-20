@@ -44,6 +44,7 @@ const savedCalibrationSchema: z.ZodType<SavedCalibration> = z.strictObject({
     budgetReference: calibrationSnapshotSchema
 });
 export const benchmarkNormalizationContextSchema: z.ZodType<BenchmarkNormalizationContext> = z.strictObject({
+    executionId: z.string().min(1).nullable().default(null),
     mode: z.enum([ 'capture', 'compare' ]),
     profile: z.string().min(1),
     machine: z.strictObject({ machineClass: z.string().min(1), metadata: z.json() }),

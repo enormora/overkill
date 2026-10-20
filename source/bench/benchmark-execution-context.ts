@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { BenchmarkLifecyclePolicy, ResolvedBenchmarkLifecyclePolicy } from '../engine/benchmark-result.ts';
 import { resolveBenchmarkGarbageCollection } from '../engine/benchmark-garbage-collection.ts';
 import type { BenchmarkScope } from '../engine/benchmark-node.ts';
@@ -18,6 +19,7 @@ export function directBenchmarkEnvironment(scope: BenchmarkScope): BenchmarkScop
             },
             ...scope.benchmarkEnvironment,
             normalization: {
+                executionId: randomUUID(),
                 mode: 'compare',
                 profile: 'direct',
                 machine,

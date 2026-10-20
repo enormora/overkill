@@ -111,6 +111,7 @@ export async function measuredMachine(
         garbageCollection: { kind: 'unavailable', reason: 'Not requested.' },
         normalization: {
             mode: 'compare',
+            executionId: null,
             profile: 'bench',
             machine: { machineClass, metadata: {} },
             references: [],

@@ -501,7 +501,9 @@ units. Saved expectations still require comparable calibration inputs.
 configuration supplies both `sampling` and `lifecycle`. Calibration absolute
 precision uses the `reference` key in `sampling.absolutePrecision`. Change `version` when the
 reference workload changes. Calibration samples are cached within an execution
-context and collected before benchmark warmup in the executing process.
+context and collected before benchmark warmup in the executing process. Reused
+workers keep the same reference across batches of one run and refresh it for a new
+run.
 Normalized runs use serial placement.
 
 Saved performance expectations supply their reference when available. Otherwise,

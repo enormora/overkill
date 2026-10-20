@@ -190,6 +190,7 @@ export type SavedCalibration = {
     readonly budgetReference: CalibrationSnapshot;
 };
 export type BenchmarkNormalizationContext = {
+    readonly executionId: string | null;
     readonly mode: 'capture' | 'compare';
     readonly profile: string;
     readonly machine: { readonly machineClass: string; readonly metadata: ReadonlyDeep<JsonValue>; };

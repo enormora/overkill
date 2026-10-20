@@ -1,7 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { createCalibrationReferenceStore } from '../baselines/calibration-store.ts';
-import { readCalibrationHostMetadata, calibrationMachineClass } from '../bench/calibration-machine.ts';
 import type { BenchmarkNormalizationContext } from '../engine/benchmark-result.ts';
-import { calibrationNodeArguments } from './benchmark-calibration.ts';
+import { benchmarkNormalizationMachine } from './benchmark-calibration.ts';
 import { calibrationMaintenanceSession } from './calibration-maintenance.ts';
 import { createCalibrationCaptureSession } from './calibration-capture-session.ts';
 import { readSavedCalibrationReferences } from './calibration-baseline-references.ts';
@@ -18,18 +18,6 @@ type NormalizationPreparation = {
     readonly capture: RunResultSession | null;
     readonly maintain: (baseline: RunResultSession | null) => RunResultSession | null;
 };
-function normalizationMachine(
-    input: ResolvedRunInput,
-    calibration: ComparableCalibration | null
-): BenchmarkNormalizationContext['machine'] {
-    if (input.profile.testFamily !== 'benchmark') {
-        throw new TypeError('Calibration requires a benchmark profile.');
-    }
-    const metadata = readCalibrationHostMetadata(calibrationNodeArguments(input.profile.execution));
-    return calibration === null
-        ? { machineClass: calibrationMachineClass(metadata), metadata }
-        : { machineClass: calibration.machineClass, metadata: calibration.metadata };
-}
 export async function prepareBenchmarkNormalization(
     input: ResolvedRunInput,
     calibration: ComparableCalibration | null,
@@ -45,8 +33,9 @@ export async function prepareBenchmarkNormalization(
     };
     const store = await createCalibrationReferenceStore(storeInput);
     const references = input.benchmarkPurpose === 'capture' ? [] : await store.list();
-    const machine = normalizationMachine(input, calibration);
+    const machine = benchmarkNormalizationMachine(input.profile.execution, calibration);
     const context: BenchmarkNormalizationContext = {
+        executionId: randomUUID(),
         mode: input.benchmarkPurpose,
         profile: input.request.profile,
         machine,
