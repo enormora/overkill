@@ -67,6 +67,30 @@ try {
     assert.equal(cancelled.runnerErrors[0].attributedTo, null);
     assert.match(cancelled.runnerErrors[0].message, /cancelled/);
     assert.equal(globalThis.importCount, 1);
+    await writeFile(join(cwd, 'nested.test.mjs'),
+        'import {createRoot,createTestCase,createTestPlan,execute} from '+JSON.stringify(engine)+';'+
+        'const metadata={annotations:{},controls:{},definitionLocations:[{kind:"unknown"}]};'+
+        'export const testNode=createTestCase({...metadata,title:"outer case",async body(scope){'+
+        'const inner=createTestCase({...metadata,title:"inner rejection",async body(innerScope){'+
+        'Promise.reject(new Error("nested rejection"));await new Promise(resolve=>setImmediate(resolve));'+
+        'innerScope.assert.true(true);return innerScope.assert.collect();}});'+
+        'const result=await execute(createTestPlan(createRoot({...metadata,title:"inner",children:[inner]})));'+
+        'scope.assert.equal(result.status,"failed");'+
+        'scope.assert.equal(result.runnerErrors.length,1);'+
+        'scope.assert.equal(result.runnerErrors[0].attributedTo.title,"inner rejection");'+
+        'return scope.assert.collect();}});');
+    for (const processModel of ['in-process','supervised-process']) {
+        const nested = await orchestrator.run({
+            ...command,
+            config: normalizeConfig({profiles: {microtest: {
+                testFamily: 'microtest', files: {include: ['nested.test.mjs']},
+                execution: {processModel, scheduling: 'serial'}
+            }}})
+        });
+        assert.equal(nested.status, 'passed', JSON.stringify(nested));
+        assert.deepEqual(nested.runnerErrors, []);
+        assert.equal(nested.summary.passed, 1);
+    }
     process.stdout.write('packaged collected lifecycle passed\\n');
 } finally {
     await rm(cwd, {recursive: true, force: true});

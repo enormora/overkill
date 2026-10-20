@@ -1,29 +1,12 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { workIdentityKey, type AttemptId, type CaseId, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey } from '../engine/identity.ts';
 import {
     permissionDeniedRunnerErrorFromDiagnostic,
     type PermissionDeniedRunnerErrorPhase,
-    type PermissionDeniedRunnerErrorContext,
     type RunnerError
 } from '../engine/run-result.ts';
+import { createExecutionObservation, type ExecutionObservation } from '../engine/execution-observation.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
-
-export type PermissionRuntimeActiveCase = {
-    readonly attempt: AttemptId;
-    readonly id: CaseId;
-    readonly key: string;
-    readonly workId: WorkId;
-};
-
-type Subscription = {
-    readonly unsubscribe: () => void;
-};
-
-type PermissionErrorStore = {
-    readonly recordCaseError: (key: string, error: RunnerError) => void;
-    readonly recordRunError: (error: RunnerError) => void;
-};
 
 const permissionDiagnosticsCapabilities: Readonly<Record<string, string>> = {
     'node:permission-model:child': 'child-process',
@@ -54,63 +37,37 @@ function ignorePermissionDropDiagnostics(
     };
 }
 
-function diagnosticContext(
-    activeCase: PermissionRuntimeActiveCase | undefined,
-    name: string,
-    phase: () => PermissionDeniedRunnerErrorPhase
-): PermissionDeniedRunnerErrorContext {
-    return {
-        attributedTo: activeCase?.id ?? null,
-        attributedToWork: activeCase?.workId ?? null,
-        boundary: null,
-        diagnosticChannel: name,
-        hook: null,
-        phase: activeCase === undefined ? phase() : 'body'
-    };
-}
-
 export function createPermissionDiagnosticsSubscriptions(
-    activeCaseStorage: AsyncLocalStorage<PermissionRuntimeActiveCase>,
+    observation: ExecutionObservation,
     phase: () => PermissionDeniedRunnerErrorPhase,
     recordError: (error: RunnerError) => void
-): readonly Subscription[] {
-    return Object.entries(permissionDiagnosticsCapabilities).map(function subscribeToPermissionChannel(
-        [ name, capability ]
-    ) {
+): void {
+    for (const [ name, capability ] of Object.entries(permissionDiagnosticsCapabilities)) {
         const channel = diagnosticsChannel.channel(name);
         const listener = ignorePermissionDropDiagnostics(function recordDiagnostic(message: unknown): void {
-            const activeCase = activeCaseStorage.getStore();
-
+            if (!observation.accepts()) {
+                return;
+            }
             const error = permissionDeniedRunnerErrorFromDiagnostic({
                 channel: name,
                 fallbackCapability: capability,
                 message
-            }, diagnosticContext(activeCase, name, phase));
-            recordError({ ...error, attributedToAttempt: activeCase?.attempt ?? null });
+            }, {
+                attributedTo: null,
+                attributedToWork: null,
+                boundary: null,
+                diagnosticChannel: name,
+                hook: null,
+                phase: observation.hasActiveAttempt() ? 'body' : phase()
+            });
+            recordError(observation.attribute(error));
         });
         channel.subscribe(listener);
 
-        return {
-            unsubscribe() {
-                channel.unsubscribe(listener);
-            }
-        };
-    });
-}
-
-function recordPermissionError(
-    activeCaseStorage: AsyncLocalStorage<PermissionRuntimeActiveCase>,
-    store: PermissionErrorStore,
-    error: RunnerError
-): void {
-    const activeCase = activeCaseStorage.getStore();
-
-    if (activeCase === undefined) {
-        store.recordRunError(error);
-        return;
+        observation.register(function stopPermissionDiagnostic() {
+            channel.unsubscribe(listener);
+        });
     }
-
-    store.recordCaseError(activeCase.key, error);
 }
 
 function tryRecordPermissionError(record: (error: RunnerError) => void, error: RunnerError): void {
@@ -121,23 +78,23 @@ function tryRecordPermissionError(record: (error: RunnerError) => void, error: R
 }
 
 export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
-    const activeCaseStorage = new AsyncLocalStorage<PermissionRuntimeActiveCase>();
+    const observation = createExecutionObservation();
     const caseErrors = new Map<string, RunnerError[]>();
     const runErrors: RunnerError[] = [];
-    const store = {
-        recordCaseError(key: string, error: RunnerError) {
-            caseErrors.set(key, [ ...caseErrors.get(key) ?? [], error ]);
-        },
-        recordRunError(error: RunnerError) {
-            runErrors.push(error);
-        }
-    };
     let loadComplete = false;
     const record = function recordError(error: RunnerError): void {
-        recordPermissionError(activeCaseStorage, store, error);
+        if (
+            error.attributedToWork === null || error.attributedToWork === undefined ||
+            error.attributedToAttempt === null
+        ) {
+            runErrors.push(error);
+            return;
+        }
+        const key = `${workIdentityKey(error.attributedToWork)}:${error.attributedToAttempt.index}`;
+        caseErrors.set(key, [ ...caseErrors.get(key) ?? [], error ]);
     };
-    const subscriptions = createPermissionDiagnosticsSubscriptions(
-        activeCaseStorage,
+    createPermissionDiagnosticsSubscriptions(
+        observation,
         function currentPermissionDiagnosticsPhase() {
             return permissionDiagnosticsPhase(loadComplete);
         },
@@ -156,16 +113,11 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
         async runAttempt(testCase, attempt, run) {
             loadComplete = true;
 
-            return await activeCaseStorage.run({
-                attempt,
-                id: testCase.id,
-                key: `${workIdentityKey(testCase.workId)}:${attempt.index}`,
-                workId: testCase.workId
-            }, run);
+            return await observation.runAttempt(testCase, attempt, run);
         },
         async runLoad(run) {
             try {
-                return await run();
+                return await observation.run(run);
             } finally {
                 loadComplete = true;
             }
@@ -184,9 +136,7 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
             return errors;
         },
         takeRunErrors() {
-            for (const subscription of subscriptions) {
-                subscription.unsubscribe();
-            }
+            observation.stop();
 
             const errors = Array.from(runErrors);
             runErrors.length = 0;

@@ -3,6 +3,7 @@ import { createServer } from 'node:net';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
 import { testNode as resourceOwnerCompletionTestNode } from './resource-owner-completion.test.ts';
+import { testNode as nativeResourceOwnershipTestNode } from './native-resource-ownership.test.ts';
 import {
     observeCaseResourceOwners,
     observeResourceOwnerAcquisition,
@@ -13,6 +14,7 @@ const unownedContext = new AsyncResource('unowned-resource-context');
 
 export const testNode = suite('resource owner observation', [
     resourceOwnerCompletionTestNode,
+    nativeResourceOwnershipTestNode,
     test('acquires and releases resources outside a case observation', async function (scope) {
         const acquired = await unownedContext.runInAsyncScope(async function () {
             const result = await observeResourceOwnerAcquisition(async function () {

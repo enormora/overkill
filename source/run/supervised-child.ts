@@ -15,6 +15,7 @@ import {
 import {
     createPermissionDenialRuntimePolicy,
     createRuntimeCapabilityPolicy,
+    withRuntimePolicy,
     type CapabilityPolicyOptions
 } from './capability-policy.ts';
 import {
@@ -213,13 +214,14 @@ function sendCollectedPlan(collectedPlan: CollectedTestPlan, host: SupervisedChi
 }
 
 async function collect(command: SupervisedChildCommand, host: SupervisedChildHost): Promise<CollectedTestPlan> {
-    host.validatePermissionHost(command);
-    await validateSupervisedPolicy(command, host);
-    const runtimePolicy = createRuntimePolicy(command, host);
-    const collectedPlan = await createCollectedTestPlan(command, host, runtimePolicy);
-    sendCollectedPlan(collectedPlan, host);
-
-    return collectedPlan;
+    return await withRuntimePolicy(function createChildPolicy() {
+        return createRuntimePolicy(command, host);
+    }, async function observeChildCollection(runtimePolicy) {
+        host.validatePermissionHost(command);
+        await validateSupervisedPolicy(command, host);
+        const collectedPlan = await createCollectedTestPlan(command, host, runtimePolicy);
+        return collectedPlan;
+    });
 }
 
 function sendRunResult(host: SupervisedChildHost, result: RunResult): void {
@@ -236,33 +238,36 @@ function startedAtIso(startedAtMs: number): string {
 }
 
 async function executeAssignment(input: SupervisedAssignmentExecution): Promise<RunResult> {
-    const runtimePolicy = createRuntimePolicy(input.command, input.host);
-    const execute = await createSupervisedChildExecute(input.wallClock, input.command);
-    input.host.dropBodyReadPermission(input.command);
-    const testPlan = input.command.kind === 'run-session'
-        ? input.collectedPlan.testPlan
-        : supervisedAssignedPlan(input.collectedPlan.testPlan, input.assignment);
-    const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
+    return await withRuntimePolicy(function createChildPolicy() {
+        return createRuntimePolicy(input.command, input.host);
+    }, async function observeChildAssignment(runtimePolicy) {
+        const execute = await createSupervisedChildExecute(input.wallClock, input.command);
+        input.host.dropBodyReadPermission(input.command);
+        const testPlan = input.command.kind === 'run-session'
+            ? input.collectedPlan.testPlan
+            : supervisedAssignedPlan(input.collectedPlan.testPlan, input.assignment);
+        const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
-    return await execute(testPlan, {
-        execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
-        outputRenderer: createPlainOutputRenderer(),
-        reporters: [ createSupervisedChildReporter(input.host) ],
-        retryPolicy: input.command.retryPolicy,
-        processBudgets: input.command.processBudgets,
-        processUsageTracker: createForwardingProcessUsageTracker(
-            input.command,
-            input.host,
-            input.dependencies,
-            input.wallClock
-        ),
-        runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
-        runFacts: {},
-        startedAt: startedAtIso(input.startedAtMs),
-        timeoutPolicy: {
-            hardTimeoutMilliseconds: input.command.hardTimeoutMilliseconds,
-            timeoutMilliseconds: input.command.timeoutMilliseconds
-        }
+        return await execute(testPlan, {
+            execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
+            outputRenderer: createPlainOutputRenderer(),
+            reporters: [ createSupervisedChildReporter(input.host) ],
+            retryPolicy: input.command.retryPolicy,
+            processBudgets: input.command.processBudgets,
+            processUsageTracker: createForwardingProcessUsageTracker(
+                input.command,
+                input.host,
+                input.dependencies,
+                input.wallClock
+            ),
+            runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
+            runFacts: {},
+            startedAt: startedAtIso(input.startedAtMs),
+            timeoutPolicy: {
+                hardTimeoutMilliseconds: input.command.hardTimeoutMilliseconds,
+                timeoutMilliseconds: input.command.timeoutMilliseconds
+            }
+        });
     });
 }
 
@@ -275,6 +280,7 @@ async function run(
     const wallClock = dependencies.createClock();
     const startedAtMs = wallClock.currentUnixEpochMilliseconds;
     const collectedPlan = await collect(command, host);
+    sendCollectedPlan(collectedPlan, host);
     const assignment = await host.receiveAssignment();
     const selected = select === null
         ? collectedPlan
@@ -315,12 +321,18 @@ function sendFailure(error: unknown, host: SupervisedChildHost): void {
 async function completeReceivedCommand(
     command: SupervisedChildCommand,
     host: SupervisedChildHost,
-    dependencies: SupervisedChildDependencies
+    dependencies: SupervisedChildDependencies,
+    stopObserving: () => unknown
 ): Promise<void> {
     if (command.kind === 'collect' || command.kind === 'collect-frozen') {
-        await collect(command, host);
+        const collectedPlan = await collect(command, host);
+        stopObserving();
+        sendCollectedPlan(collectedPlan, host);
     } else if (command.kind === 'run-session') {
         const result = await completeSupervisedExecutionSession(command, async function sendSessionData(data, kind) {
+            if (kind === 'execution-data') {
+                stopObserving();
+            }
             host.send({ kind, data });
             await host.flush();
         }, async function executeSession(select) {
@@ -328,7 +340,9 @@ async function completeReceivedCommand(
         });
         sendRunResult(host, result);
     } else {
-        sendRunResult(host, await run(command, host, dependencies, null));
+        const result = await run(command, host, dependencies, null);
+        stopObserving();
+        sendRunResult(host, result);
     }
 
     host.setExitCode(0);
@@ -340,8 +354,8 @@ async function runReceivedCommand(
     dependencies: SupervisedChildDependencies
 ): Promise<void> {
     try {
-        await runObservedSupervisedChildCommand(command, async function completeObservedCommand() {
-            await completeReceivedCommand(command, host, dependencies);
+        await runObservedSupervisedChildCommand(command, async function completeObservedCommand(stopObserving) {
+            await completeReceivedCommand(command, host, dependencies, stopObserving);
         });
     } catch (error: unknown) {
         sendFailure(error, host);

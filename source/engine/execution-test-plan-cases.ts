@@ -1,6 +1,6 @@
 import pLimit from 'p-limit';
 import {
-    concurrentRunActiveResourceLeak
+    observeConcurrentResourceLeaks
 } from './execution-async-leak-policy.ts';
 import type { NormalizedExecuteOptions } from './execution-options.ts';
 import type {
@@ -320,18 +320,20 @@ async function executeConcurrentTestPlanCases(
     input: ExecuteTestPlanCasesInput,
     execution: ConcurrentExecuteExecution
 ): Promise<ExecutedTestPlan> {
-    const activeResourceTypesBefore = input.context.dependencies.readActiveResourceTypes();
-    const concurrentCaseExecution = await executeConcurrentCases({
-        context: input.context,
-        options: { ...input.options, execution },
-        reportQueue: createReporterEventQueue(input.context.reporterDelivery),
-        supervision: input.supervision,
-        testPlan: input.testPlan
-    });
-    const activeLeakError = concurrentRunActiveResourceLeak(
+    const observed = await observeConcurrentResourceLeaks(
         input.context.dependencies,
-        activeResourceTypesBefore
+        async function observeConcurrentResources() {
+            return await executeConcurrentCases({
+                context: input.context,
+                options: { ...input.options, execution },
+                reportQueue: createReporterEventQueue(input.context.reporterDelivery),
+                supervision: input.supervision,
+                testPlan: input.testPlan
+            });
+        }
     );
+    const concurrentCaseExecution = observed.result;
+    const activeLeakError = observed.runnerError;
     const runnerErrors = activeLeakError === null
         ? concurrentCaseExecution.runnerErrors
         : [ ...concurrentCaseExecution.runnerErrors, activeLeakError ];

@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { withRunnerInfrastructure } from './execution-observation.ts';
 
 export type ReporterConsoleMethod = 'debug' | 'error' | 'info' | 'log' | 'warn';
 
@@ -59,7 +60,9 @@ export async function runWithReporterOutputScope<Value>(
             return violations;
         }
     };
-    const result = await reporterOutputScopeStorage.run(scope, run);
+    const result = await withRunnerInfrastructure(async function runReporterOperation() {
+        return reporterOutputScopeStorage.run(scope, run);
+    });
 
     return {
         result,
@@ -83,7 +86,9 @@ export function runWithReporterOutputScopeNow<Value>(
             return violations;
         }
     };
-    const result = reporterOutputScopeStorage.run(scope, run);
+    const result = withRunnerInfrastructure(function runReporterOperation() {
+        return reporterOutputScopeStorage.run(scope, run);
+    });
 
     return {
         result,

@@ -1,41 +1,28 @@
-import type { Clock } from '@enormora/clock';
-import {
-    createExecutionAsyncLeakMonitor,
-    type AsyncLeakDependencies,
-    type AsyncLeakDiagnostics
-} from './execution-async-leak-policy.ts';
-import {
-    createExecutionGlobalErrorObserver,
-    type ExecutionGlobalErrorObserver
-} from './execution-global-error-observer.ts';
-import {
-    executeOptionsWithDefaults,
-    type ExecuteExecution as ExecuteExecutionDefinition,
-    type ExecuteOptions as ExecuteOptionsDefinition,
-    type NormalizedExecuteOptions
+import type {
+    ExecuteExecution as ExecuteExecutionDefinition,
+    ExecuteOptions as ExecuteOptionsDefinition,
+    NormalizedExecuteOptions
 } from './execution-options.ts';
 import { appendRunnerErrors, createRunResult, throwWithCleanupErrors } from './execution-result.ts';
 import { executeTestPlanCasesAndMeasureProcessUsage } from './execution-test-plan-process-usage.ts';
 import {
     createReporterDisposal,
     type ReporterDelivery,
-    type ReporterDispatcher,
     type ReporterDisposal
 } from './reporter-dispatcher.ts';
 import { reportRunnerErrors } from './runner-error-reporting.ts';
 import type { RunResult } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
+import {
+    withPreparedExecution,
+    type ExecuteDependencies as PreparationDependencies,
+    type PreparedExecution
+} from './execution-preparation.ts';
+
+export type ExecuteDependencies = PreparationDependencies;
 
 export type ExecuteExecution = ExecuteExecutionDefinition;
 export type ExecuteOptions = ExecuteOptionsDefinition;
-
-export type ExecuteDependencies = {
-    readonly benchmarkEnvironment: NormalizedExecuteOptions['benchmarkEnvironment'];
-    readonly asyncLeakDiagnostics: AsyncLeakDiagnostics;
-    readonly readActiveResourceTypes: () => readonly string[];
-    readonly reporterDispatcher: ReporterDispatcher;
-    readonly wallClock: Clock;
-};
 
 type ExecuteRunInput = {
     readonly context: ExecutionReportingContext;
@@ -44,30 +31,15 @@ type ExecuteRunInput = {
     readonly testPlan: TestPlan;
 };
 
-type ExecutionDependencies = AsyncLeakDependencies & {
-    readonly benchmarkEnvironment: NormalizedExecuteOptions['benchmarkEnvironment'];
-    readonly globalErrorObserver: ExecutionGlobalErrorObserver;
-    readonly runtimePolicy: NormalizedExecuteOptions['runtimePolicy'];
-    readonly reporterDispatcher: ReporterDispatcher;
-    readonly wallClock: Clock;
-};
-
 type ExecutionReportingContext = {
-    readonly dependencies: ExecutionDependencies;
+    readonly dependencies: PreparedExecution['dependencies'];
     readonly reporterDelivery: ReporterDelivery;
-};
-
-type PreparedExecution = {
-    readonly asyncLeakMonitor: AsyncLeakDependencies['asyncLeakMonitor'];
-    readonly dependencies: ExecutionDependencies;
-    readonly globalErrorObserver: ExecutionGlobalErrorObserver;
-    readonly options: NormalizedExecuteOptions;
 };
 
 async function createRunResultBeforeRunEnd(
     testPlan: TestPlan,
     options: NormalizedExecuteOptions,
-    dependencies: ExecutionDependencies,
+    dependencies: PreparedExecution['dependencies'],
     reporterDelivery: ReporterDelivery
 ): Promise<RunResult> {
     const startedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
@@ -137,29 +109,6 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
 
 export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
 
-function prepareExecution(
-    dependencies: ExecuteDependencies,
-    options: ExecuteOptions | undefined,
-    testPlan: TestPlan
-): PreparedExecution {
-    const executeOptions = executeOptionsWithDefaults(options, testPlan, dependencies.benchmarkEnvironment);
-    const asyncLeakMonitor = createExecutionAsyncLeakMonitor(dependencies.asyncLeakDiagnostics);
-    const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
-
-    return {
-        asyncLeakMonitor,
-        dependencies: {
-            asyncLeakMonitor,
-            globalErrorObserver,
-            ...dependencies,
-            benchmarkEnvironment: executeOptions.benchmarkEnvironment,
-            runtimePolicy: executeOptions.runtimePolicy
-        },
-        globalErrorObserver,
-        options: executeOptions
-    };
-}
-
 async function executeWithReporterDelivery(prepared: PreparedExecution, testPlan: TestPlan): Promise<RunResult> {
     const reporterDelivery = await prepared.dependencies.reporterDispatcher.createDelivery(
         prepared.options.reporters,
@@ -182,12 +131,8 @@ async function executeWithReporterDelivery(prepared: PreparedExecution, testPlan
 
 export function createExecute(dependencies: ExecuteDependencies): Execute {
     return async function execute(testPlan, options) {
-        const prepared = prepareExecution(dependencies, options, testPlan);
-        try {
+        return await withPreparedExecution(dependencies, options, testPlan, async function executePrepared(prepared) {
             return await executeWithReporterDelivery(prepared, testPlan);
-        } finally {
-            prepared.asyncLeakMonitor.stop();
-            prepared.globalErrorObserver.stop();
-        }
+        });
     };
 }

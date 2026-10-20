@@ -1,6 +1,11 @@
-import asyncHooks, { AsyncLocalStorage } from 'node:async_hooks';
+import asyncHooks from 'node:async_hooks';
 import diagnosticsChannel from 'node:diagnostics_channel';
-import { workIdentityKey, type AttemptId, type CaseId, type WorkId } from '../engine/identity.ts';
+import { workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import {
+    createExecutionObservation,
+    withExecutionObservation,
+    type ExecutionObservation
+} from '../engine/execution-observation.ts';
 import { recordReporterConsoleDiagnostic } from '../engine/reporter-output-scope.ts';
 import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution.ts';
@@ -56,13 +61,6 @@ export type CapabilityPolicyOptions = {
     readonly observedStdout: boolean;
 };
 
-type ActiveCase = {
-    readonly attempt: AttemptId;
-    readonly id: CaseId;
-    readonly key: string;
-    readonly workId: WorkId;
-};
-
 type RuntimePolicyViolation = {
     readonly capability: RuntimePolicyCapability;
     readonly caseId: CaseId | null;
@@ -85,12 +83,6 @@ type Subscription = {
 type AsyncResourceHook = {
     readonly disable: () => void;
     readonly enable: () => void;
-};
-
-type RuntimePolicyMonitoring = {
-    readonly hook: AsyncResourceHook;
-    readonly stopObservingProcess: () => void;
-    readonly subscriptions: readonly Subscription[];
 };
 
 const asyncFileResourceTypes = new Set([
@@ -161,7 +153,7 @@ function asyncResourceReport(
 }
 
 function createAsyncResourceHook(
-    activeCaseStorage: AsyncLocalStorage<ActiveCase>,
+    observation: ExecutionObservation,
     recordViolation: (violation: RuntimePolicyReport) => void
 ): AsyncResourceHook {
     const createHookKey = 'createHook';
@@ -169,7 +161,7 @@ function createAsyncResourceHook(
 
     return createHook({
         init(_asyncId, type) {
-            const report = asyncResourceReport(type, activeCaseStorage.getStore() !== undefined);
+            const report = asyncResourceReport(type, observation.hasActiveAttempt());
 
             if (report !== null) {
                 recordViolation(report);
@@ -194,6 +186,21 @@ function runtimePolicyError(violation: RuntimePolicyViolation): RunnerError {
     };
 }
 
+function observedPolicyError(
+    violation: RuntimePolicyReport,
+    observation: ExecutionObservation,
+    phase: RuntimePolicyPhase
+): RunnerError {
+    const error = observation.attribute(runtimePolicyError({ ...violation, caseId: null, workId: null, phase }));
+    if (error.subtype !== 'runtime-policy') {
+        return error;
+    }
+    return {
+        ...error,
+        cause: { ...violation, caseId: error.attributedTo, workId: error.attributedToWork ?? null, phase }
+    };
+}
+
 function ignoredLoadCapability(capability: RuntimePolicyCapability): boolean {
     return capability === runtimePolicyCapabilities.dynamicModuleLoad ||
         capability === runtimePolicyCapabilities.fileRead;
@@ -201,18 +208,18 @@ function ignoredLoadCapability(capability: RuntimePolicyCapability): boolean {
 
 function ignoredViolation(
     violation: RuntimePolicyReport,
-    activeCase: ActiveCase | undefined,
+    hasActiveCase: boolean,
     loadComplete: boolean
 ): boolean {
-    return activeCase === undefined &&
+    return !hasActiveCase &&
         (
             violation.capability === runtimePolicyCapabilities.fileRead ||
             !loadComplete && ignoredLoadCapability(violation.capability)
         );
 }
 
-function violationPhase(activeCase: ActiveCase | undefined, loadComplete: boolean): RuntimePolicyPhase {
-    if (activeCase !== undefined) {
+function violationPhase(hasActiveCase: boolean, loadComplete: boolean): RuntimePolicyPhase {
+    if (hasActiveCase) {
         return 'body';
     }
 
@@ -279,8 +286,9 @@ function recordSnapshotChanges(
 
 function observeRuntimeProcessEvents(
     dependencies: RuntimeCapabilityPolicyDependencies,
-    record: (violation: RuntimePolicyReport) => RunnerError
-): () => void {
+    record: (violation: RuntimePolicyReport) => RunnerError,
+    observation: ExecutionObservation
+): void {
     const stopObservingExit = dependencies.observeProcessExit(
         function recordProcessExecutionViolation(message) {
             return record({
@@ -290,6 +298,7 @@ function observeRuntimeProcessEvents(
             });
         }
     );
+    observation.register(stopObservingExit);
     const stopObservingIpc = dependencies.observeIpcListeners(function recordIpcViolation(message) {
         record({
             capability: runtimePolicyCapabilities.childProcess,
@@ -298,17 +307,14 @@ function observeRuntimeProcessEvents(
         });
     });
 
-    return function stopObservingRuntimeProcess(): void {
-        stopObservingIpc();
-        stopObservingExit();
-    };
+    observation.register(stopObservingIpc);
 }
 
 function startRuntimePolicyMonitoring(
-    activeCaseStorage: AsyncLocalStorage<ActiveCase>,
+    observation: ExecutionObservation,
     record: (violation: RuntimePolicyReport) => RunnerError,
     dependencies: RuntimeCapabilityPolicyDependencies
-): RuntimePolicyMonitoring {
+): void {
     function recordObservedViolation(violation: RuntimePolicyReport): void {
         try {
             record(violation);
@@ -316,21 +322,15 @@ function startRuntimePolicyMonitoring(
         }
     }
     const subscriptions = createDiagnosticsSubscriptions(recordObservedViolation);
-    const hook = createAsyncResourceHook(activeCaseStorage, recordObservedViolation);
-    const stopObservingProcess = observeRuntimeProcessEvents(dependencies, record);
-
-    hook.enable();
-
-    return { hook, stopObservingProcess, subscriptions };
-}
-
-function stopRuntimePolicyMonitoring(monitoring: RuntimePolicyMonitoring): void {
-    monitoring.hook.disable();
-    monitoring.stopObservingProcess();
-
-    for (const subscription of monitoring.subscriptions) {
-        subscription.unsubscribe();
+    for (const subscription of subscriptions) {
+        observation.register(subscription.unsubscribe);
     }
+    const hook = createAsyncResourceHook(observation, recordObservedViolation);
+    observation.register(function stopAsyncResources() {
+        hook.disable();
+    });
+    observeRuntimeProcessEvents(dependencies, record, observation);
+    hook.enable();
 }
 
 function rawOutputPolicyError(capability: RuntimePolicyCapability, message: string): RunnerError {
@@ -355,66 +355,63 @@ function rawOutputPolicyErrors(options: CapabilityPolicyOptions): readonly Runne
     return errors;
 }
 
-function completedRuntimePolicyViolation(
-    violation: RuntimePolicyReport,
-    activeCase: ActiveCase | undefined,
-    loadComplete: boolean
-): RuntimePolicyViolation {
-    return {
-        ...violation,
-        caseId: activeCase?.id ?? null,
-        workId: activeCase?.workId ?? null,
-        phase: violationPhase(activeCase, loadComplete)
-    };
-}
-
 function permissionDiagnosticsPhase(loadComplete: boolean): RuntimePolicyPhase {
     return loadComplete ? 'out-of-test' : 'load';
 }
 
 export const createPermissionDenialRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicyCore;
 
+export async function withRuntimePolicy<Value>(
+    create: () => TestRuntimePolicy,
+    execute: (policy: TestRuntimePolicy) => Promise<Value>
+): Promise<Value> {
+    return await withExecutionObservation(async function observeRuntimePolicy() {
+        const policy = create();
+        try {
+            return await execute(policy);
+        } finally {
+            policy.takeRunErrors();
+        }
+    });
+}
+
 export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions): RuntimeCapabilityPolicy {
-    const activeCaseStorage = new AsyncLocalStorage<ActiveCase>();
+    const observation = createExecutionObservation();
     const caseErrors = new Map<string, RunnerError[]>();
     const runErrors: RunnerError[] = [];
     const lifecycle = { loadComplete: false, stopped: false };
 
-    function record(violation: RuntimePolicyReport): RunnerError {
-        const activeCase = activeCaseStorage.getStore();
-
-        const completedViolation = completedRuntimePolicyViolation(violation, activeCase, lifecycle.loadComplete);
-        const error = { ...runtimePolicyError(completedViolation), attributedToAttempt: activeCase?.attempt ?? null };
-
-        if (!ignoredViolation(violation, activeCase, lifecycle.loadComplete)) {
-            if (activeCase === undefined) {
-                runErrors.push(error);
-            } else {
-                caseErrors.set(activeCase.key, [ ...caseErrors.get(activeCase.key) ?? [], error ]);
-            }
-        }
-
-        return error;
-    }
-
     function recordPermissionError(error: RunnerError): void {
-        const activeCase = activeCaseStorage.getStore();
-
-        if (activeCase === undefined) {
+        if (
+            error.attributedToWork === null || error.attributedToWork === undefined ||
+            error.attributedToAttempt === null
+        ) {
             runErrors.push(error);
             return;
         }
+        const key = `${workIdentityKey(error.attributedToWork)}:${error.attributedToAttempt.index}`;
+        caseErrors.set(key, [ ...caseErrors.get(key) ?? [], error ]);
+    }
 
-        caseErrors.set(activeCase.key, [ ...caseErrors.get(activeCase.key) ?? [], error ]);
+    function record(violation: RuntimePolicyReport): RunnerError {
+        const phase = violationPhase(observation.hasActiveAttempt(), lifecycle.loadComplete);
+        const error = observedPolicyError(violation, observation, phase);
+        if (
+            observation.accepts() &&
+            !ignoredViolation(violation, observation.hasActiveAttempt(), lifecycle.loadComplete)
+        ) {
+            recordPermissionError(error);
+        }
+        return error;
     }
 
     function recordWithoutReturning(violation: RuntimePolicyReport): void {
         record(violation);
     }
 
-    const monitoring = startRuntimePolicyMonitoring(activeCaseStorage, record, options.dependencies);
-    const permissionDiagnosticsSubscriptions = createPermissionDiagnosticsSubscriptions(
-        activeCaseStorage,
+    startRuntimePolicyMonitoring(observation, record, options.dependencies);
+    createPermissionDiagnosticsSubscriptions(
+        observation,
         function currentPermissionDiagnosticsPhase() {
             return permissionDiagnosticsPhase(lifecycle.loadComplete);
         },
@@ -428,7 +425,15 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
 
     return {
         recordViolation(capability, message, strictness) {
-            record({ capability, message, strictness });
+            if (!observation.open()) {
+                return;
+            }
+            const error = observedPolicyError(
+                { capability, message, strictness },
+                observation,
+                violationPhase(observation.hasActiveAttempt(), lifecycle.loadComplete)
+            );
+            recordPermissionError(error);
         },
         async prepareAttempt() {
             return undefined;
@@ -438,31 +443,25 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         },
         async runAttempt(testCase, attempt, run) {
             lifecycle.loadComplete = true;
-            const activeCase = {
-                attempt,
-                id: testCase.id,
-                key: `${workIdentityKey(testCase.workId)}:${attempt.index}`,
-                workId: testCase.workId
-            };
-            const before = takeSnapshots(options.dependencies);
-
-            try {
-                return await activeCaseStorage.run(activeCase, run);
-            } finally {
-                activeCaseStorage.run(activeCase, function recordCaseSnapshotChanges() {
+            return await observation.runAttempt(testCase, attempt, async function observeCaseSnapshots() {
+                const before = takeSnapshots(options.dependencies);
+                try {
+                    return await run();
+                } finally {
                     recordSnapshotChanges(before, options.dependencies, recordWithoutReturning);
-                });
-            }
+                }
+            });
         },
         async runLoad(run) {
-            const before = takeSnapshots(options.dependencies);
-
-            try {
-                return await run();
-            } finally {
-                recordSnapshotChanges(before, options.dependencies, recordWithoutReturning);
-                lifecycle.loadComplete = true;
-            }
+            return await observation.run(async function observeLoadSnapshots() {
+                const before = takeSnapshots(options.dependencies);
+                try {
+                    return await run();
+                } finally {
+                    recordSnapshotChanges(before, options.dependencies, recordWithoutReturning);
+                    lifecycle.loadComplete = true;
+                }
+            });
         },
         takeAttemptErrors(testCase, attempt) {
             const key = `${workIdentityKey(testCase.workId)}:${attempt.index}`;
@@ -480,12 +479,9 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         takeRunErrors() {
             if (!lifecycle.stopped) {
                 lifecycle.stopped = true;
-                stopRuntimePolicyMonitoring(monitoring);
-                for (const subscription of permissionDiagnosticsSubscriptions) {
-                    subscription.unsubscribe();
-                }
+                observation.stop();
+                runErrors.push(...rawOutputPolicyErrors(options));
             }
-            runErrors.push(...rawOutputPolicyErrors(options));
 
             const errors = Array.from(runErrors);
             runErrors.length = 0;

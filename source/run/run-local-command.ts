@@ -11,7 +11,7 @@ import {
 } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
-    createRunRuntimePolicy,
+    observeRunRuntimePolicy,
     finalizeResultWithDurationHistory,
     type RunResultSession,
     type RunRuntimePolicy
@@ -106,12 +106,13 @@ async function runOrdinaryLocalCommand(
     dependencies: RunOrchestratorDependencies,
     options: LocalRunOptions
 ): Promise<RunResult> {
-    const runtimePolicy = createRunRuntimePolicy(command.request, dependencies);
-    try {
-        return await runLocalWithPolicy(command, dependencies, options, runtimePolicy);
-    } finally {
-        runtimePolicy.takeRunErrors();
-    }
+    return await observeRunRuntimePolicy(
+        command.request,
+        dependencies,
+        async function executeObservedRun(runtimePolicy) {
+            return await runLocalWithPolicy(command, dependencies, options, runtimePolicy);
+        }
+    );
 }
 
 export async function runLocalCommand(

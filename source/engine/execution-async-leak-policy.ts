@@ -23,7 +23,8 @@ export type AsyncLeakCheckedCase = {
 };
 
 export type CaseAsyncLeakPolicyInput = {
-    readonly activeResourceTypesBefore: readonly string[];
+    readonly readResourceBaseline: () => readonly string[];
+    readonly ambiguousResources: () => readonly string[];
     readonly dependencies: AsyncLeakDependencies;
     readonly executedCase: ConcurrentCase;
     readonly includeActiveResourceLeaks: boolean;
@@ -42,6 +43,12 @@ export function createExecutionAsyncLeakMonitor(diagnostics: AsyncLeakDiagnostic
         : createDisabledAsyncLeakMonitor();
 }
 
+export function hasCasePolicyErrors(errors: readonly RunnerError[]): boolean {
+    return errors.some(function caseOwned(error) {
+        return error.attributedTo !== null;
+    });
+}
+
 function runtimePolicyCase(executedCase: ConcurrentCase): ConcurrentCase {
     return {
         result: { ...executedCase.result, outcome: null, verdict: 'runtime-policy' },
@@ -58,6 +65,20 @@ function hasPromiseTrackingContractFailure(executedCase: ConcurrentCase): boolea
     });
 }
 
+function caseActiveResourceLeak(input: CaseAsyncLeakPolicyInput): RunnerError | null {
+    if (!input.includeActiveResourceLeaks) {
+        return null;
+    }
+    const attribution = input.ambiguousResources().length > 0
+        ? { attributedTo: null, attributedToWork: null, phase: 'run' as const }
+        : { attributedTo: input.testCase.id, attributedToWork: input.testCase.workId, phase: 'body' as const };
+    return activeResourceLeakError({
+        ...attribution,
+        after: input.dependencies.readActiveResourceTypes(),
+        before: input.readResourceBaseline()
+    });
+}
+
 export async function caseWithAsyncLeakPolicy(input: CaseAsyncLeakPolicyInput): Promise<AsyncLeakCheckedCase> {
     if (input.executedCase.result.outcome === null) {
         return {
@@ -71,17 +92,7 @@ export async function caseWithAsyncLeakPolicy(input: CaseAsyncLeakPolicyInput): 
     const promiseLeakError = hasPromiseTrackingContractFailure(input.executedCase)
         ? null
         : input.dependencies.asyncLeakMonitor.casePromiseLeakError(input.testCase);
-    const activeLeakError = input.includeActiveResourceLeaks
-        ? activeResourceLeakError(
-            {
-                after: input.dependencies.readActiveResourceTypes(),
-                attributedTo: input.testCase.id,
-                attributedToWork: input.testCase.workId,
-                before: input.activeResourceTypesBefore,
-                phase: 'body'
-            }
-        )
-        : null;
+    const activeLeakError = caseActiveResourceLeak(input);
     const runnerErrors = [ promiseLeakError, activeLeakError ].filter(function isRunnerError(
         error
     ): error is RunnerError {
@@ -89,9 +100,9 @@ export async function caseWithAsyncLeakPolicy(input: CaseAsyncLeakPolicyInput): 
     });
 
     return {
-        executedCase: runnerErrors.length === 0
-            ? input.executedCase
-            : runtimePolicyCase(input.executedCase),
+        executedCase: hasCasePolicyErrors(runnerErrors)
+            ? runtimePolicyCase(input.executedCase)
+            : input.executedCase,
         runnerErrors
     };
 }
@@ -110,25 +121,28 @@ export async function completeCaseWithAsyncLeakPolicy(input: CaseCompletionInput
         ? activeResourceLeakError({
             after: input.dependencies.readActiveResourceTypes(),
             before: observed.baseline,
-            attributedTo: input.testCase.id,
-            attributedToWork: input.testCase.workId,
-            phase: 'body'
+            attributedTo: observed.ambiguousResources.length === 0 ? input.testCase.id : null,
+            attributedToWork: observed.ambiguousResources.length === 0 ? input.testCase.workId : null,
+            phase: observed.ambiguousResources.length === 0 ? 'body' : 'run'
         })
         : null;
     return leak === null ? observed.result : [ ...observed.result, leak ];
 }
 
-export function concurrentRunActiveResourceLeak(
+export async function observeConcurrentResourceLeaks<Value>(
     dependencies: AsyncLeakDependencies,
-    activeResourceTypesBefore: readonly string[]
-): RunnerError | null {
-    return activeResourceLeakError(
-        {
+    execute: () => Promise<Value>
+): Promise<{ readonly result: Value; readonly runnerError: RunnerError | null; }> {
+    const observed = await observeCaseResourceOwners(dependencies.readActiveResourceTypes, execute);
+    await settleAsyncWork();
+    return {
+        result: observed.result,
+        runnerError: activeResourceLeakError({
             after: dependencies.readActiveResourceTypes(),
+            before: observed.baseline,
             attributedTo: null,
             attributedToWork: null,
-            before: activeResourceTypesBefore,
             phase: 'run'
-        }
-    );
+        })
+    };
 }

@@ -1,3 +1,4 @@
+import { withExecutionObservation } from '../engine/execution-observation.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -57,20 +58,22 @@ async function runScopePermissionDiagnostics(): Promise<{
     readonly loadError: RunnerError;
     readonly runError: RunnerError;
 }> {
-    const policy = createPermissionDenialRuntimePolicy();
-    const channel = await readPermissionDiagnosticChannel();
+    return await withExecutionObservation(async function observePermissionRun() {
+        const policy = createPermissionDenialRuntimePolicy();
+        const channel = await readPermissionDiagnosticChannel();
 
-    publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/load.txt');
-    const loadError = firstRunnerError(policy.takePendingRunErrors());
-    await policy.runLoad(async function finishLoading() {
-        return undefined;
+        publishPermissionDiagnostic(channel, 'FileSystemRead', '/project/load.txt');
+        const loadError = firstRunnerError(policy.takePendingRunErrors());
+        await policy.runLoad(async function finishLoading() {
+            return undefined;
+        });
+        publishPermissionDiagnostic(channel, 'FileSystemWrite', '/project/after.txt');
+
+        return {
+            loadError,
+            runError: firstRunnerError(policy.takeRunErrors())
+        };
     });
-    publishPermissionDiagnostic(channel, 'FileSystemWrite', '/project/after.txt');
-
-    return {
-        loadError,
-        runError: firstRunnerError(policy.takeRunErrors())
-    };
 }
 
 export const testNode = createOverkillSuite({

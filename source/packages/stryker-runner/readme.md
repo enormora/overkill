@@ -192,6 +192,12 @@ Every invocation gets fresh scopes, observers, cleanup, and results. Failed
 collection remains cached in reused mode; fresh mode can collect again on the
 next invocation. Fresh hosts terminate before their invocation settles.
 
+Console, permission, uncaught-error, rejection, and async-leak checks remain
+active through test cleanup. Bootstrap, logging, transport, and lifecycle
+checkpoints have infrastructure ownership. Native observations close before
+results return to Stryker, including on errors and cancellation. Unknown or
+late observations remain execution errors; they never establish a mutant kill.
+
 The earlier applicable profile case timeout or Stryker invocation deadline wins.
 One monotonic invocation budget covers lazy initialization, policy resolution,
 collection, execution, cleanup, and campaign result delivery. IPC carries remaining

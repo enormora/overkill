@@ -28,7 +28,8 @@ const results = await new Stryker({
     files: ['package.json', 'subject.mjs', 'case.test.mjs', 'overkill.config.mjs'],
     overkill: { configPath: 'overkill.config.mjs', freshState: freshState === 'true', seed: '42' },
     mutator: { excludedMutations: ['BlockStatement'] },
-    concurrency: 2, maxTestRunnerReuse: Number(process.argv[7] ?? '1'), reporters: [], logLevel: 'off',
+    concurrency: 2, maxTestRunnerReuse: Number(process.argv[7] ?? '1'), reporters: [],
+    logLevel: 'off', fileLogLevel: 'debug',
     timeoutMS: looping ? 5000 : 30000, dryRunTimeoutMinutes: 2, coverageAnalysis: process.argv[8] ?? 'perTest',
     cleanTempDir: true, tempDirName: '.stryker-tmp'
 }).runMutationTest();

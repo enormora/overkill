@@ -541,6 +541,7 @@ export const testNode = createOverkillSuite({
                     [ 'raw-stderr', 'observed' ]
                 ]);
                 scope.assert.equal(runnerErrorPhase(runErrors[4]), 'out-of-test');
+                scope.assert.deepEqual(policy.takeRunErrors(), []);
 
                 return scope.assert.collect();
             }

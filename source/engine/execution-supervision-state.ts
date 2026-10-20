@@ -1,10 +1,23 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Clock } from '@enormora/clock';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import { withRunnerInfrastructure } from './execution-observation.ts';
 import { currentCaseExecutionLifecycle, type CaseExecutionLifecycle } from './case-execution-lifecycle.ts';
 import type { PerTestResult, RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import type { AttemptId } from './identity.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
+
+export function scheduleSupervisionTimeout(
+    wallClock: Clock,
+    callback: () => void,
+    milliseconds: number
+): ReturnType<Clock['setTimeout']> {
+    const ownedCallback = AsyncLocalStorage.bind(callback);
+    return withRunnerInfrastructure(function scheduleWatchdog() {
+        return wallClock.setTimeout(ownedCallback, milliseconds);
+    });
+}
 
 export type BenchmarkState = StoredValue<BenchmarkExecutionResult | null>;
 export function createBenchmarkState(): BenchmarkState {

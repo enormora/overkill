@@ -406,6 +406,12 @@ Detection:
   active-resource growth is reported at run level because multiple cases may
   overlap
 
+Exclude infrastructure resources only with positive ownership evidence. Native
+timer reference state can establish an active infrastructure timer; its allowance
+must not hide a test timer of the same type. Resource-type snapshots do not
+identify arbitrary handles. Growth that could belong to infrastructure remains
+a run-level error when ownership cannot be established safely.
+
 After the test body returns or throws, the runner aborts `scope.signal`, runs
 registered `scope.cleanup(...)` callbacks, drains one microtask checkpoint,
 and then validates declared in-flight tasks and observed leaks.

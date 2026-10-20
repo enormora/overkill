@@ -95,6 +95,11 @@ Explicit ordinary coverage creates a fresh session and run record each time;
 previous collection imports are not repeated for coverage. No disposal call is
 required for an idle handle.
 
+Native policy observations follow run and attempt ownership. Runner transport,
+lifecycle callbacks, and reporter work do not acquire test-policy attribution.
+Unknown observations remain run errors. Late test diagnostics retain their
+original identity as attribution drift instead of blaming a later attempt.
+
 Use `source: { kind: 'memory' }` for supplied config, or
 `{ kind: 'config-file', request: { cwd, configPath }, resolvedPath }` for loaded
 config. `resolvedPath` is the loaded config's `configPath`, including `null` for
