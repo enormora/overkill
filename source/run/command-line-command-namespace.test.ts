@@ -78,6 +78,7 @@ const benchmarkBaselineCommandsFactory = createFactory<CommandLineBenchmarkBasel
 
 const benchmarkCommandsFactory = createFactory<CommandLineBenchmarkCommands>(function createBenchmarkCommands() {
     return {
+        calibrate: createCommandReturningDiagnostic('bench calibrate'),
         baseline: benchmarkBaselineCommandsFactory,
         listBenchmarks: createCommandReturningDiagnostic('bench list'),
         runBenchmarks: createCommandReturningDiagnostic('bench run')

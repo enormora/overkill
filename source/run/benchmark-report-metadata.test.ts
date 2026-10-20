@@ -30,6 +30,7 @@ function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
         hostProcess: null,
         benchmarkHost: null,
         benchmarkCalibration: null,
+        benchmarkNormalization: null,
         benchmarkPlacement: {
             policy: 'conservative-size-only-v1',
             maximumWorkers: 1,

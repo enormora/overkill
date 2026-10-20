@@ -16,12 +16,12 @@ const command = {
     engine: { kind: 'default' },
     request: defaultRunRequest({ paths: [ file ] })
 } as const;
-const supervisedCommand = createSupervisedRunCommand(
-    command,
-    profile,
-    [ { file, fileSet: null, href: `virtual:${file}`, path: file } ],
-    { kind: 'configured-files' }
-);
+const supervisedCommand = createSupervisedRunCommand(command, profile, [ {
+    file,
+    fileSet: null,
+    href: `virtual:${file}`,
+    path: file
+} ], { source: { kind: 'configured-files' }, normalization: null });
 const collectionError = {
     attributedTo: null,
     attributedToAttempt: null,

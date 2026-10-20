@@ -1,3 +1,4 @@
+import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
@@ -79,6 +80,10 @@ function snapshotObservation(value: unknown, input: PerformanceEvaluationInput):
     return { calibration: input.calibration, value: snapshot.value };
 }
 
+function benchmarkNormalization(input: PerformanceEvaluationInput): PerformanceProposalNormalization {
+    return input.event.benchmark?.normalization ?? null;
+}
+type PerformanceProposalNormalization = BenchmarkNormalizationEvidence | null;
 export function evaluatePerformanceBaseline(input: PerformanceEvaluationInput): PerformanceEvaluation {
     const work = input.event.workId ?? createDefaultWorkId(input.event.case);
     const observation = input.adapter.observe({
@@ -93,7 +98,12 @@ export function evaluatePerformanceBaseline(input: PerformanceEvaluationInput): 
         throw new Error(observation.reason);
     }
     const actual = snapshotObservation(observation.value, input);
-    const change = proposePerformanceBaseline({ ...input, actual, work });
+    const change = proposePerformanceBaseline({
+        ...input,
+        actual,
+        work,
+        normalization: benchmarkNormalization(input)
+    });
     const checked = baselineChecks(input, actual);
     return {
         change,

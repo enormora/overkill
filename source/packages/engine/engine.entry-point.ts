@@ -126,12 +126,22 @@ export function createBenchmarkTestCase(
     return defaultEngine.createBenchmarkTestCase(options);
 }
 
+export { attachBenchmarkCalibrationBody, readBenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
+export type { BenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
 export type { BenchmarkBody, BenchmarkScope, BenchmarkTestCaseOptions } from '../../engine/test-node.ts';
 export { maximumRetainedSamples, minimumInferentialSamples } from '../../engine/benchmark-limits.ts';
 export { benchmarkLifecycleVersion } from '../../engine/benchmark-result.ts';
 export { resolveBenchmarkGarbageCollection } from '../../engine/benchmark-garbage-collection.ts';
 export type {
     BenchmarkDefinitionSummary,
+    CalibrationIdentity,
+    CalibrationSnapshot,
+    CalibrationResult,
+    SavedCalibration,
+    BenchmarkNormalizationContext,
+    NormalizationRuleSummary,
+    BenchmarkMetricNormalization,
+    BenchmarkNormalizationEvidence,
     BenchmarkGarbageCollectionPolicy,
     BenchmarkGarbageCollectionRequest,
     BenchmarkGarbageCollectionResult,
@@ -201,7 +211,6 @@ export function ownsTestNode(value: unknown): value is TestNode {
 
 export type { Engine } from '../../engine/engine.ts';
 export type {
-    BenchmarkExecutionEnvironment,
     BenchmarkGarbageCollectionCapability
 } from '../../engine/benchmark-garbage-collection.ts';
 export type { Execute, ExecuteExecution, ExecuteOptions } from '../../engine/execution.ts';
@@ -514,3 +523,5 @@ export type { ResourceOwnerObservation } from '../../engine/resource-owner-obser
 
 export { snapshotWorkloadInput, workloadParameterIdentity } from '../../engine/workload-input.ts';
 export { snapshotWorkloadParameters } from '../../engine/workload-parameters.ts';
+
+export type { BenchmarkExecutionEnvironment } from '../../engine/benchmark-environment.ts';

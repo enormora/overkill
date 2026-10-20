@@ -77,6 +77,7 @@ function commandLineRunner(requestRecorder: RequestRecorder): CommandLineRunner 
             update: unexpectedCommand
         },
         bench: {
+            calibrate: unexpectedCommand,
             baseline: {
                 apply: unexpectedCommand,
                 bootstrap: unexpectedCommand,

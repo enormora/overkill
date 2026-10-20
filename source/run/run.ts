@@ -9,12 +9,13 @@ import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 
 function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     const benchmark = createRunOperations(dependencies, 'bench');
+    const calibration = createRunOperations(dependencies, 'bench-calibrate');
     function baselineVerb(verb: 'apply' | 'bootstrap' | 'diff' | 'update') {
         return async function executeBaselineVerb(
             command: BenchmarkBaselineCommand,
             options: RunInvocationTimingOptions
         ) {
-            const { runBenchmarkBaselineVerb } = await import('./benchmark-baseline-operations.ts');
+            const { runBenchmarkBaselineVerb } = await import('./benchmark-baseline-execution.ts');
             return await runBenchmarkBaselineVerb({ command, operations: benchmark, options, verb });
         };
     }
@@ -31,6 +32,7 @@ function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOr
             return await initializeRun(command, dependencies);
         },
         bench: {
+            calibrate: calibration.runWithReporterDelivery,
             baseline: {
                 apply: baselineVerb('apply'),
                 bootstrap: baselineVerb('bootstrap'),

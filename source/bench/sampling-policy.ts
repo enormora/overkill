@@ -9,7 +9,7 @@ export const defaultSamplingPolicy: SamplingPolicy = Object.freeze({
     minimumSamples: 128,
     maximumSamples: maximumRetainedSamples
 });
-const policySchema = z
+const samplingPolicySchema = z
     .strictObject({
         confidenceLevel: z.number().gt(0).lt(1),
         relativePrecision: z.number().nonnegative(),
@@ -22,6 +22,6 @@ const policySchema = z
     });
 
 export function validateSamplingPolicy(policy: SamplingPolicy): SamplingPolicy {
-    const validated = policySchema.parse(policy);
+    const validated = samplingPolicySchema.parse(policy);
     return Object.freeze({ ...validated, absolutePrecision: Object.freeze(validated.absolutePrecision) });
 }

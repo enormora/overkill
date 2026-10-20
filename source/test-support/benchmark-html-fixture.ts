@@ -54,6 +54,7 @@ export function benchmarkHtmlFixture(title: string): RunResult {
         }
     };
     const benchmark: BenchmarkExecutionResult = {
+        normalization: null,
         lifecycle: null,
         workload: workId.workload,
         policy: defaultSamplingPolicy,

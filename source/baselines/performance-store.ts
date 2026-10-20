@@ -4,7 +4,7 @@ import path from 'node:path';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { createNodeFileStore, type FileStore } from '../file-store.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
-import { isPathInside } from '../run/path-containment.ts';
+import { isPathInside, existingPathAncestor } from '../run/path-containment.ts';
 import { storedPerformanceBaselineSchema } from './performance-schema.ts';
 import {
     performanceBaselineIdentity,
@@ -41,22 +41,10 @@ function missingFile(error: unknown): boolean {
     return error instanceof Error && Reflect.get(error, 'code') === 'ENOENT';
 }
 
-async function existingAncestor(candidate: string): Promise<string> {
-    try {
-        return await realpath(candidate);
-    } catch (error: unknown) {
-        const parent = path.dirname(candidate);
-        if (!missingFile(error) || parent === candidate) {
-            throw error;
-        }
-        return await existingAncestor(parent);
-    }
-}
-
 async function validateDirectory(location: StoreLocation): Promise<void> {
     if (
         !isPathInside(location.root, location.directory) ||
-        !isPathInside(location.root, await existingAncestor(location.directory))
+        !isPathInside(location.root, await existingPathAncestor(location.directory))
     ) {
         throw new Error('Performance baseline directory must remain inside the project root.');
     }

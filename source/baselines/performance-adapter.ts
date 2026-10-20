@@ -3,7 +3,7 @@ import type { WorkId } from '../engine/identity.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
 import type {
     ComparableCalibration as ComparableCalibrationDefinition
-} from '../packages/run/benchmark-calibration.entry-point.ts';
+} from '../bench/host-calibration-result.ts';
 
 export type BaselineJson = ReadonlyDeep<JsonValue>;
 export type PerformanceBaselineValue = {

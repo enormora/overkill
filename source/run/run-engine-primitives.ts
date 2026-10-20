@@ -7,7 +7,10 @@ import type {
     WorkloadId as WorkloadIdDefinition
 } from '../engine/identity.ts';
 import type { Engine as EngineDefinition } from '../engine/engine.ts';
-import type { Execute as ExecuteDefinition } from '../engine/execution.ts';
+import type {
+    Execute as ExecuteDefinition,
+    ExecuteDependencies as ExecuteDependenciesDefinition
+} from '../engine/execution.ts';
 import type {
     ReporterDelivery as ReporterDeliveryDefinition,
     ReporterDispatcher as ReporterDispatcherDefinition
@@ -62,3 +65,5 @@ export type TestPlanRootOptions = TestPlanRootOptionsDefinition;
 type PropertyExecution = Extract<TestPlanCaseDefinition['execution'], { readonly bodyMode: 'property'; }>;
 export type PropertyBodyDefinition = PropertyExecution['definition'];
 export type PropertyPolicy = Extract<PropertyExecution['policy'], { readonly kind: 'resolved'; }>['policy'];
+
+export type ExecuteDependencies = ExecuteDependenciesDefinition;

@@ -16,12 +16,14 @@ export type RunInputResolutionDependencies = Pick<RunOrchestratorDependencies, '
 
 export type RunInvocation = {
     readonly command: RunCommand;
-    readonly namespace: 'bench' | 'test';
+    readonly namespace: 'bench' | 'bench-calibrate' | 'test';
 };
 
 export type ResolvedRunInput = {
+    readonly benchmarkPurpose: 'capture' | 'compare';
     readonly benchmarkHost: RunFacts['benchmarkHost'];
     readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
+    readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly config: NormalizedConfig;
     readonly engine: RunCommand['engine'];
     readonly files: Awaited<ReturnType<RunOrchestratorDependencies['discoverRunFilesWithProjectRoot']>>['files'];
@@ -92,9 +94,9 @@ export async function readResolvedRunInput(
     validateRunInput(command);
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyConfig(command.config));
-    const profile = namespace === 'bench'
-        ? selectBenchmarkProfile(request.profile, config)
-        : selectTestProfile(request.profile, config);
+    const profile = namespace === 'test'
+        ? selectTestProfile(request.profile, config)
+        : selectBenchmarkProfile(request.profile, config);
     assertProfileRequestSupported(request, profile, namespace, config.reporters);
     assertSupportedProcessEngine(command, profile);
     const engine = freezeValue(copyRunEngineSelection(command.engine));
@@ -111,8 +113,10 @@ export async function readResolvedRunInput(
             })
     );
     return {
+        benchmarkPurpose: namespace === 'bench-calibrate' ? 'capture' : 'compare',
         benchmarkHost: null,
         benchmarkCalibration: null,
+        benchmarkNormalization: null,
         config,
         engine,
         files: discovery.files,

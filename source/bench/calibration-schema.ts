@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 import type {
     BenchmarkCalibrationResult as BenchmarkCalibrationResultDefinition,
     ComparableCalibration
-} from '../packages/run/benchmark-calibration.entry-point.ts';
+} from './host-calibration-result.ts';
 
 export const comparableCalibrationSchema: z.ZodType<ComparableCalibration> = z.strictObject({
     context: z.json(),

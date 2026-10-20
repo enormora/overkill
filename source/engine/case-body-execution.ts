@@ -1,5 +1,5 @@
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
-import type { BenchmarkExecutionEnvironment } from './benchmark-garbage-collection.ts';
+import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import { readTestBodyFamily } from './test-body.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import {
@@ -70,6 +70,7 @@ export function builderBodyForAttempt(
     }
     return async function runBenchmark(scope) {
         return execution.body({
+            workId: testCase.workId,
             benchmarkEnvironment: attempt.benchmarkEnvironment,
             reportCleanupError: attempt.reportCleanupError,
             cleanup: scope.cleanup,

@@ -15,6 +15,7 @@ type RunFactsKeys = readonly [
     'benchmarkHost',
     'benchmarkPlacement',
     'benchmarkCalibration',
+    'benchmarkNormalization',
     'cases',
     'coveragePolicy',
     'durationHistory',

@@ -19,8 +19,8 @@ export const frozenSupervisedCommandSchema: z.ZodType<SupervisedChildCommand> = 
         const profile = { ...policy.profile, reporters: null };
         const source = { kind: 'frozen-policy' as const, policy };
         const expected = command.kind === 'collect-frozen'
-            ? createSupervisedCollectCommand(baseline, profile, policy.files, source)
-            : createSupervisedRunCommand(baseline, profile, policy.files, source);
+            ? createSupervisedCollectCommand(baseline, profile, policy.files, { source, normalization: null })
+            : createSupervisedRunCommand(baseline, profile, policy.files, { source, normalization: null });
         const normalized = expected.kind === 'run-session'
             ? Object.fromEntries(
                 Object.entries({ ...expected, kind: 'run-frozen' }).filter(function ([ key ]) {

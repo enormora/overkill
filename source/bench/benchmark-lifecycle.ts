@@ -20,7 +20,9 @@ export type BenchmarkLifecycle = {
     readonly snapshot: () => BenchmarkLifecycleResult;
 };
 
-export function createBenchmarkLifecycle(input: SamplingSessionInput): BenchmarkLifecycle {
+export function createBenchmarkLifecycle(
+    input: Pick<SamplingSessionInput, 'budgets' | 'diagnostics' | 'lifecycle' | 'scope'>
+): BenchmarkLifecycle {
     const observations = createObservationSet([
         ...input.budgets.map(function metricName(budget) {
             return budget.metric;

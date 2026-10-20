@@ -8,11 +8,6 @@ export type BenchmarkGarbageCollectionCapability = {
     readonly reason: string;
 };
 
-export type BenchmarkExecutionEnvironment = {
-    readonly profileGarbageCollection: BenchmarkGarbageCollectionPolicy;
-    readonly garbageCollection: BenchmarkGarbageCollectionCapability;
-};
-
 export function resolveBenchmarkGarbageCollection(
     request: BenchmarkGarbageCollectionRequest,
     profile: BenchmarkGarbageCollectionPolicy

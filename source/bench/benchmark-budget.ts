@@ -69,7 +69,11 @@ export function boundedMeanInterval(
     };
 }
 
-function statisticInterval(values: readonly number[], statistic: BudgetStatistic, delta: number): StatisticalInterval {
+export function statisticInterval(
+    values: readonly number[],
+    statistic: BudgetStatistic,
+    delta: number
+): StatisticalInterval {
     if (statistic.kind === 'quantile') {
         return quantileInterval(values, statistic.probability, delta);
     }
@@ -128,10 +132,24 @@ function sufficientlyPrecise(
 ): boolean {
     const tolerance = Math.max(
         Math.abs(interval.estimate) * policy.relativePrecision,
-        policy.absolutePrecision[budget.metric] ?? 0
+        Object.hasOwn(policy.absolutePrecision, budget.metric) ? policy.absolutePrecision[budget.metric] ?? 0 : 0
     );
     return interval.lower !== null && interval.upper !== null &&
         (interval.upper - interval.lower) / twoSidedIntervalCount <= tolerance;
+}
+
+export function evaluateBudgetInterval(
+    interval: StatisticalInterval,
+    budget: NormalizedMetricBudget,
+    policy: SamplingPolicy
+): BenchmarkBudgetResult {
+    return {
+        ...budget,
+        estimate: interval.estimate,
+        interval: { lower: interval.lower, upper: interval.upper },
+        precise: sufficientlyPrecise(interval, budget, policy),
+        decision: intervalDecision(interval, budget)
+    };
 }
 
 export function evaluateMetricBudget(
@@ -149,14 +167,7 @@ export function evaluateMetricBudget(
             decision: 'unavailable'
         };
     }
-    const interval = statisticInterval(values, budget.statistic, delta);
-    return {
-        ...budget,
-        estimate: interval.estimate,
-        interval: { lower: interval.lower, upper: interval.upper },
-        precise: sufficientlyPrecise(interval, budget, policy),
-        decision: intervalDecision(interval, budget)
-    };
+    return evaluateBudgetInterval(statisticInterval(values, budget.statistic, delta), budget, policy);
 }
 
 export function inferentialTargetKey(budget: NormalizedMetricBudget): string | null {

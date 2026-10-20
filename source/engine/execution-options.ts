@@ -1,4 +1,4 @@
-import type { BenchmarkExecutionEnvironment } from './benchmark-garbage-collection.ts';
+import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporter-output.ts';
 import { validateReporterRunFacts, type DefinedReporter, type RunFacts } from './reporter.ts';
 import type { RunResult } from './run-result.ts';

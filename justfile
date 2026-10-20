@@ -40,6 +40,7 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/process-lifetime.test.ts
     node source/integration-tests/run/process-execution.test.ts
     node source/integration-tests/run/runner-external-process.test.ts
+    node source/integration-tests/run/runner-benchmark-normalization.test.ts
     node source/integration-tests/run/runner-benchmark-garbage-collection.test.ts
     node source/integration-tests/run/runner-benchmark-placement.test.ts
     node source/integration-tests/run/runner-benchmark-host.test.ts

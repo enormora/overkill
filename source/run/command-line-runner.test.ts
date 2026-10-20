@@ -108,6 +108,7 @@ async function resolveRunCommand(command: RunCommand): ReturnType<ConfiguredRunO
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkNormalization: null,
             benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,

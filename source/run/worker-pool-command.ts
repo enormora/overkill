@@ -59,6 +59,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
+        benchmarkNormalization: runtime.resolvedRun.facts.benchmarkNormalization,
         benchmarkGarbageCollection: execution.benchmarkGarbageCollection,
         attachmentEndpoint: runtime.attachments?.endpoint ?? null,
         collectionTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,

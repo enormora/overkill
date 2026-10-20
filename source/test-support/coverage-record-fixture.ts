@@ -59,8 +59,10 @@ async function createCoverageRecordFixture(
     const records: RecordSnapshot[] = [];
     let writes = 0;
     const input = {
+        benchmarkPurpose: 'compare' as const,
         benchmarkHost: null,
         benchmarkCalibration: null,
+        benchmarkNormalization: null,
         config: { ...config, runtimeStateDir: directory },
         engine: { kind: 'default' as const },
         files: [ { file: 'fixture.ts', fileSet: null, href: 'file:///fixture.ts', path: '/fixture.ts' } ] as const,
@@ -104,6 +106,7 @@ async function createCoverageRecordFixture(
             hostProcess: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkNormalization: null,
             benchmarkPlacement: null,
             cases: [],
             config: input.config,

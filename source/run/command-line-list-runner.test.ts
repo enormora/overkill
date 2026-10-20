@@ -141,6 +141,7 @@ export function createResolvedRun(
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkNormalization: null,
             benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,

@@ -549,3 +549,10 @@ normalization remain adapter-owned. Existing adapters and legacy reports retain
 structured diagnostics without invented chart metadata. Chart metadata errors
 are infrastructure errors after valid baseline operations; completed writes
 remain visible. The reporter retains the 100 ms callback timeout.
+
+
+Normalized benchmark reports preserve raw readings and separately show normalized
+summaries and converted display budgets. Chart groups distinguish the calibration
+workload, version, machine class, and reference source. Budget decisions retain the
+original fixed reference basis and include calibration uncertainty. Saved JSON
+results retain the underlying actual and reference samples for inspection.

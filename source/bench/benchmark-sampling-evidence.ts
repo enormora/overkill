@@ -24,6 +24,7 @@ export function summarizedSamplingResult(
 ): BenchmarkExecutionResult {
     return {
         ...snapshot,
+        normalization: input.normalization,
         workload: input.scope.workload,
         policy: input.policy,
         assumption: 'independent-stationary-observations',

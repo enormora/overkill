@@ -10,9 +10,8 @@ import {
     type TestScope
 } from '../engine/engine.entry-point.ts';
 import { createReportingContext } from '../../engine/reporting-context.ts';
+import { testNode as benchmarkSubpathsTestNode } from './benchmark-subpaths.test.ts';
 import * as assertSubpath from './assert.entry-point.ts';
-import * as baselinesSubpath from './baselines.entry-point.ts';
-import * as benchSubpath from './bench.entry-point.ts';
 import * as configSubpath from './config.entry-point.ts';
 import * as reportersSubpath from './reporters.entry-point.ts';
 import * as resourcesSubpath from './resources.entry-point.ts';
@@ -493,46 +492,7 @@ export const testNode = createSuite({
                 return scope.assert.collect();
             }
         }),
-        createTestCase({
-            ...testCaseMetadata,
-            title: '@overkill-dev/test/bench exposes the leaf authoring surface',
-            body(scope: TestScope) {
-                scope.assert.deepEqual(sortedKeys(benchSubpath), [
-                    'asyncMeasurementStrategy',
-                    'availableMetric',
-                    'benchmark',
-                    'defaultBenchmarkLifecyclePolicy',
-                    'defaultRuntimeCooldownPolicy',
-                    'defaultSamplingPolicy',
-                    'defineMacro',
-                    'defineParameterizedTestBody',
-                    'measurementStrategy',
-                    'memoryCollector',
-                    'processCpuCollector',
-                    'processMeasurement',
-                    'processResourceCollector',
-                    'runtimeHealthCollector',
-                    'skippedTest',
-                    'suite',
-                    'table',
-                    'test',
-                    'threadCpuCollector',
-                    'unavailableMetric',
-                    'wallClockMeasurement',
-                    'workload'
-                ]);
-                return scope.assert.collect();
-            }
-        }),
-        createTestCase({
-            ...testCaseMetadata,
-            title: '@overkill-dev/test/baselines exposes contracts without loading storage',
-            body(scope: TestScope) {
-                scope.assert.deepEqual(sortedKeys(baselinesSubpath), []);
-
-                return scope.assert.collect();
-            }
-        })
+        benchmarkSubpathsTestNode
     ]
 });
 
