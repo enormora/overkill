@@ -2,6 +2,7 @@ import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
+import { benchmarkMetricGroups } from '../reporters/benchmark-html-metrics.ts';
 import { summarizeNormalization } from './normalization-summaries.ts';
 
 function normalizedResult(): BenchmarkExecutionResult {
@@ -39,7 +40,42 @@ function normalizedResult(): BenchmarkExecutionResult {
         }
     };
 }
+function incompleteDisplay(missing: 'factor' | 'summary'): BenchmarkExecutionResult {
+    const result = normalizedResult();
+    const { normalization } = result;
+    const metric = normalization?.metrics.latency;
+    if (normalization === null || metric === undefined) {
+        throw new Error('Expected normalized metric.');
+    }
+    return {
+        ...result,
+        normalization: {
+            ...normalization,
+            metrics: {
+                latency: {
+                    ...metric,
+                    summary: result.metrics.latency ?? null,
+                    factor: { estimate: 2, lower: 2, upper: 2 },
+                    [missing]: null
+                }
+            }
+        }
+    };
+}
 export const testNode = suite('normalization summaries', [
+    ...([ 'summary', 'factor' ] as const).map(function incompleteDisplayCase(missing) {
+        return test(`keeps only raw charts when the normalized ${missing} is unavailable`, function (scope: TestScope) {
+            const fixture = benchmarkHtmlFixture('incomplete normalization');
+            const measured = fixture.perTest[0];
+            scope.require.defined(measured);
+            const benchmark = incompleteDisplay(missing);
+            const groups = benchmarkMetricGroups({ ...fixture, perTest: [ { ...measured, benchmark } ] });
+            scope.assert.equal(groups.length, 1);
+            scope.assert.equal(groups[0]?.rows[0]?.summary, benchmark.metrics.latency);
+            scope.assert.deepEqual({ budgets: groups[0]?.rows[0]?.budgets }, { budgets: [] });
+            return scope.assert.collect();
+        });
+    }),
     test('scales displayed observations and budgets while retaining raw evidence', function (scope: TestScope) {
         const result = normalizedResult();
         const evidence = summarizeNormalization(result, 1);

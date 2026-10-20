@@ -69,6 +69,12 @@ function maintenance(remove: MaintenanceInput['store']['remove']): MaintenanceIn
     };
 }
 export const testNode = suite('calibration maintenance failures', [
+    test('preserves references outside the selected shard', function (scope: TestScope) {
+        const original = maintenance(unexpectedOperation);
+        const input = { ...original.input, request: { ...original.input.request, shard: { index: 1, total: 2 } } };
+        scope.assert.equal(calibrationMaintenanceSession({ ...original, input }), null);
+        return scope.assert.collect();
+    }),
     test('reports invalid profile types without deleting references', async function (scope: TestScope) {
         const original = maintenance(unexpectedOperation);
         const session = calibrationMaintenanceSession({

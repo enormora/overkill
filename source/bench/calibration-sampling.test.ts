@@ -7,6 +7,7 @@ import {
     processMeasurement,
     wallClockMeasurement,
     workload,
+    type CalibrationResource,
     type BenchmarkMeasureContext,
     type BenchmarkExecutionResult,
     type MetricReading
@@ -92,6 +93,18 @@ function samplingInput(
         diagnostics: [ 'reference' ],
         policy: { ...policy, minimumSamples, maximumSamples: minimumSamples }
     };
+}
+function referenceResource(): CalibrationResource {
+    return defineCalibrationResource({
+        workload: workload('reference', {}),
+        version: '1',
+        unit: 'ticks',
+        dependencies: {},
+        measurement: wallClockMeasurement(),
+        measure(context) {
+            return measuredReference({ ...context, workload: workload('reference', {}) }).reference;
+        }
+    }, { sampling: policy, lifecycle: reference.lifecycle });
 }
 export const testNode = suite('calibration sampling lifetimes', [
     ...[ false, true ].map(function missingContextCase(missingEnvironment) {
@@ -237,20 +250,45 @@ export const testNode = suite('calibration sampling lifetimes', [
         );
         return scope.assert.collect();
     }),
+    test('retains non-Error cancellation reasons from calibration sessions', async function (scope: TestScope) {
+        const calibration = referenceResource();
+        const rules = { value: { calibration, scaling: 'proportional' as const } };
+        const cancellation = AbortSignal.abort('reference cancelled');
+        const handles = {
+            [calibrationResourceKey(rules.value)]: {
+                async collect() {
+                    cancellation.throwIfAborted();
+                    return { kind: 'comparable', snapshot: reference };
+                }
+            }
+        };
+        const retained: BenchmarkExecutionResult[] = [];
+        await scope.assert.rejects(async function () {
+            return await collectBenchmarkNormalization(
+                {
+                    ...calibrationScope(scope),
+                    async updateResult(result) {
+                        retained.push(result);
+                    }
+                },
+                handles,
+                rules,
+                policy
+            );
+        }, { message: 'reference cancelled' });
+        scope.assert.deepEqual(
+            retained.map(function (result) {
+                return { status: result.status, comparability: result.normalization?.comparability };
+            }),
+            [ { status: 'incomplete', comparability: { kind: 'non-comparable', reason: 'reference cancelled' } } ]
+        );
+        return scope.assert.collect();
+    }),
     ...[ false, true ].map(function failedContextCase(cached) {
         return test(
             `retains calibration evidence when a ${cached ? 'cached' : 'new'} resource loses its runner context`,
             async function (scope: TestScope) {
-                const calibration = defineCalibrationResource({
-                    workload: workload('reference', {}),
-                    version: '1',
-                    unit: 'ticks',
-                    dependencies: {},
-                    measurement: wallClockMeasurement(),
-                    measure(context) {
-                        return measuredReference({ ...context, workload: workload('reference', {}) }).reference;
-                    }
-                }, { sampling: policy, lifecycle: reference.lifecycle });
+                const calibration = referenceResource();
                 const rules = { value: { calibration, scaling: 'proportional' as const } };
                 await using resources = await startResources({ resources: { calibration }, signal: scope.signal });
                 const handles = { [calibrationResourceKey(rules.value)]: resources.context.calibration };
