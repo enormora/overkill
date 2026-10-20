@@ -64,7 +64,7 @@ function assertExecution(
     scope.require.defined(metadata);
     scope.assert.deepEqual(result.runnerErrors, []);
     scope.assert.equal(result.summary.passed, 2);
-    scope.assert.equal(metadata.version, 3);
+    scope.assert.equal(metadata.version, 4);
     scope.assert.equal(
         metadata.execution.workerCount,
         scenario.execution.processModel === 'worker-pool' ? scenario.expectedWorkers : null

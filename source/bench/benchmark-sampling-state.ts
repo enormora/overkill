@@ -1,8 +1,8 @@
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import type { BenchmarkBudgetResult, BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
 import { CaseRunnerError, isCaseRunnerError } from '../engine/run-result.ts';
-import { evaluateMetricBudget, inferentialTargetKey } from './benchmark-budget.ts';
-import type { MetricObservations } from './benchmark-observations.ts';
+import { evaluateBenchmarkBudgets } from './benchmark-budget-evaluation.ts';
+import { summarizeNormalization } from './normalization-summaries.ts';
 import { commitObservation, createObservationSet } from './benchmark-observation-set.ts';
 import {
     generatedBudgetAssertions,
@@ -23,28 +23,6 @@ export type SamplingState = {
     readonly interrupt: (error: unknown) => Promise<AssertionResult>;
 };
 
-function inferentialTargetCount(input: SamplingSessionInput): number {
-    const targets = new Set(input.budgets.flatMap(function target(budget) {
-        const key = inferentialTargetKey(budget);
-        return key === null ? [] : [ key ];
-    }));
-    return Math.max(1, targets.size);
-}
-
-function evaluateBudgets(
-    input: SamplingSessionInput,
-    observations: ReadonlyMap<string, MetricObservations>,
-    checkpoint: number,
-    samples: number
-): readonly BenchmarkBudgetResult[] {
-    const delta = (1 - input.policy.confidenceLevel) / (inferentialTargetCount(input) * checkpoint * (checkpoint + 1));
-    return input.budgets.map(function evaluate(budget) {
-        const values = observations.get(budget.metric)?.values() ?? [];
-        const result = evaluateMetricBudget(values, budget, input.policy, delta);
-        return values.length === samples ? result : { ...result, decision: 'unavailable', precise: false };
-    });
-}
-
 function settledBudgets(results: readonly BenchmarkBudgetResult[]): boolean {
     return results.length > 0 && results.every(function settled(budget) {
         return budget.decision === 'unavailable' || budget.precise && budget.decision !== 'undecided';
@@ -64,12 +42,13 @@ export function createSamplingState(input: SamplingSessionInput, lifecycle: Benc
     let nextCheckpoint = input.policy.minimumSamples;
     let budgets: readonly BenchmarkBudgetResult[] = [];
     const summarize = function summarize(status: BenchmarkExecutionResult['status']): BenchmarkExecutionResult {
-        return summarizedSamplingResult(input, observations, {
+        const result = summarizedSamplingResult(input, observations, {
             samples,
             budgets,
             status,
             lifecycle: lifecycle.snapshot()
         });
+        return { ...result, normalization: summarizeNormalization(result, checkpoint) };
     };
     return {
         async progress() {
@@ -87,16 +66,17 @@ export function createSamplingState(input: SamplingSessionInput, lifecycle: Benc
                 return false;
             }
             checkpoint += 1;
-            budgets = evaluateBudgets(input, observations, checkpoint, samples);
+            budgets = evaluateBenchmarkBudgets(input, observations, checkpoint, samples);
             await input.scope.updateResult(summarize('sampling'));
             nextCheckpoint = Math.min(nextCheckpoint * checkpointGrowth, input.policy.maximumSamples);
             return settledBudgets(budgets);
         },
         async finish() {
             await lifecycle.retainWarmup();
-            const complete = settledBudgets(budgets);
+            const snapshot = summarize('complete');
+            const complete = settledBudgets(budgets) && snapshot.normalization?.comparability.kind !== 'non-comparable';
             const result = await recordRawSamples(
-                summarize(complete ? 'complete' : 'incomplete'),
+                { ...snapshot, status: complete ? 'complete' : 'incomplete' },
                 observations
             );
             await input.scope.updateResult(result);

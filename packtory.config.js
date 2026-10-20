@@ -162,12 +162,14 @@ export const configuration = {
                 attachmentRun: { javaScript: 'run/attachment-run.js' },
                 benchmarkCommands: moduleRoot('run/benchmark-commands'),
                 benchmarkBaselineCommands: { javaScript: 'run/benchmark-baseline-commands.js' },
+                benchmarkBaselineExecution: { javaScript: 'run/benchmark-baseline-execution.js' },
                 benchmarkBaselineOperations: { javaScript: 'run/benchmark-baseline-operations.js' },
                 benchmarkBaselineRun: { javaScript: 'run/benchmark-baseline-run.js' },
                 benchmarkBaselineSession: { javaScript: 'run/benchmark-baseline-session.js' },
                 benchmarkCalibration: { javaScript: 'run/benchmark-calibration.js' },
                 benchmarkCalibrationChild: { javaScript: 'run/benchmark-calibration.entry-point.js' },
                 benchmarkHost: { javaScript: 'run/benchmark-host.js' },
+                benchmarkNormalizationPreparation: { javaScript: 'run/benchmark-normalization-preparation.js' },
                 benchmarkGarbageCollection: { javaScript: 'run/benchmark-garbage-collection.js' },
                 benchmarkExecutionEnvironment: { javaScript: 'run/benchmark-execution-environment.js' },
                 benchmarkPlacement: { javaScript: 'run/benchmark-placement.js' },
@@ -200,12 +202,14 @@ export const configuration = {
                     'attachmentRun',
                     'benchmarkCommands',
                     'benchmarkBaselineCommands',
+                    'benchmarkBaselineExecution',
                     'benchmarkBaselineOperations',
                     'benchmarkBaselineRun',
                     'benchmarkBaselineSession',
                     'benchmarkCalibration',
                     'benchmarkCalibrationChild',
                     'benchmarkHost',
+                    'benchmarkNormalizationPreparation',
                     'benchmarkGarbageCollection',
                     'benchmarkExecutionEnvironment',
                     'benchmarkPlacement',
@@ -230,11 +234,12 @@ export const configuration = {
                 main: moduleRoot('packages/bench/bench.entry-point'),
                 processHelper: { javaScript: 'packages/bench/process-helper.entry-point.js' },
                 processNodeProbe: { javaScript: 'packages/bench/process-node-probe.entry-point.js' },
+                resourceWrapperSession: { javaScript: 'packages/test/resource-wrapper-session.js' },
                 calibration: moduleRoot('packages/bench/calibration.entry-point')
             },
             packageInterface: {
                 modules: packageModules({ '.': 'main', './calibration': 'calibration' }),
-                privateRoots: [ 'processHelper', 'processNodeProbe' ]
+                privateRoots: [ 'processHelper', 'processNodeProbe', 'resourceWrapperSession' ]
             },
             bundlePeerDependencies: [
                 '@overkill-dev/engine',

@@ -83,3 +83,19 @@ export type {
 } from '../bench/bench.entry-point.ts';
 
 export { defaultBenchmarkLifecyclePolicy, defaultRuntimeCooldownPolicy } from '../bench/bench.entry-point.ts';
+
+export { calibratedMeasurement, cpuCalibration, defineCalibrationResource } from '../bench/bench.entry-point.ts';
+export type {
+    CalibrationResource,
+    CalibrationOptions,
+    CalibrationDefinition,
+    CalibrationMeasureContext,
+    CalibratedMeasurement,
+    MetricNormalization,
+    CalibrationSnapshot,
+    CalibrationResult,
+    BenchmarkNormalizationEvidence
+} from '../bench/bench.entry-point.ts';
+
+export { readCalibrationReferenceReport } from '../bench/bench.entry-point.ts';
+export type { CalibrationReferenceReport } from '../bench/bench.entry-point.ts';

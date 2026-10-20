@@ -67,12 +67,12 @@ async function cancelAt(phase: Phase): ReturnType<RunOrchestrator['run']> {
         }
     });
     const completion = await runSupervisedCommand(
-        createSupervisedRunCommand(
-            command,
-            defaultMicrotestProfile(),
-            [ { file, fileSet: null, href: `virtual:${file}`, path: file } ],
-            { kind: 'configured-files' }
-        ),
+        createSupervisedRunCommand(command, defaultMicrotestProfile(), [ {
+            file,
+            fileSet: null,
+            href: `virtual:${file}`,
+            path: file
+        } ], { source: { kind: 'configured-files' }, normalization: null }),
         {
             ...fakeWorkerPoolRuntimeDependencies(),
             async startSupervisedChild() {

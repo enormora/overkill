@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { propertyPolicySchema } from '../config/property-policy.ts';
 
 export const hostProcessSchema = z.discriminatedUnion('kind', [
@@ -6,6 +7,7 @@ export const hostProcessSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
 export const executionCommandFields = {
+    benchmarkNormalization: benchmarkNormalizationContextSchema.nullable().default(null),
     benchmarkGarbageCollection: z.enum([ 'off', 'after-sample' ]).nullable().default(null),
     propertyPolicy: propertyPolicySchema.nullable().default(null),
     retryPolicy: z

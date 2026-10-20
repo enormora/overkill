@@ -23,6 +23,7 @@ const facts = createRunFacts({
     hostProcess: null,
     benchmarkHost: null,
     benchmarkCalibration: null,
+    benchmarkNormalization: null,
     benchmarkPlacement: null,
     cases: [],
     config: input.config,

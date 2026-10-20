@@ -8,6 +8,17 @@ const options: BenchmarkOptions = {
 };
 const budgets = { one: { durationMicroseconds: { maximum: 60_000_000, statistic: { kind: 'observed-maximum' } } } } as const;
 
+const terminalProgram = `
+process.stdin.on('data', function reply() {
+    if (process.stdout.columns !== 100 || process.stdout.rows !== 30) {
+        process.stdout.once('resize', reply);
+        return;
+    }
+    process.stdout.write('Reply ' + process.stdout.columns + ' ' + process.stdout.rows + '\\n');
+});
+process.stdout.write('Ready ' + process.stdin.isTTY + ' ' + process.stdout.columns + ' ' + process.stdout.rows + '\\n');
+`;
+
 export const testNode = suite('external process benchmarks', [
     benchmark('pipe child probe', {
         kind: 'startup', workloads: [ workload('one', {}) ], measurement: processMeasurement({ instrumentation: 'node' }),
@@ -25,7 +36,7 @@ export const testNode = suite('external process benchmarks', [
         kind: 'responsiveness', workloads: [ workload('one', {}) ], measurement: processMeasurement({ instrumentation: 'node' }),
         async measure({ sample }) {
             const run = await sample.process({
-                command: [ process.execPath, '-e', 'process.stdout.write("Ready "+process.stdin.isTTY+" "+process.stdout.columns+" "+process.stdout.rows+"\\n"); process.stdin.on("data",()=>setImmediate(()=>process.stdout.write("Reply "+process.stdout.columns+" "+process.stdout.rows+"\\n")));' ],
+                command: [ process.execPath, '-e', terminalProgram ],
                 cwd: process.cwd(), env: null, io: { kind: 'pty', name: 'xterm-256color', columns: 80, rows: 24 },
                 completion: {
                     kind: 'interaction', readiness: { stream: 'terminal', text: 'Ready true 80 24' },

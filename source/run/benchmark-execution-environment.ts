@@ -1,15 +1,17 @@
-import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-garbage-collection.ts';
-import type { BenchmarkGarbageCollectionPolicy } from '../engine/benchmark-result.ts';
+import type { BenchmarkNormalizationContext, BenchmarkGarbageCollectionPolicy } from '../engine/benchmark-result.ts';
+import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environment.ts';
 
 export function createBenchmarkExecutionEnvironment(
     policy: BenchmarkGarbageCollectionPolicy | null,
-    boundary: 'direct' | 'hosted-worker' | 'supervised-process'
+    boundary: 'direct' | 'hosted-worker' | 'supervised-process',
+    normalization: BenchmarkNormalizationContext | null
 ): BenchmarkExecutionEnvironment | null {
     if (policy === null) {
         return null;
     }
     const collect = globalThis.gc;
     return {
+        normalization,
         profileGarbageCollection: policy,
         garbageCollection: boundary !== 'direct' && typeof collect === 'function'
             ? {

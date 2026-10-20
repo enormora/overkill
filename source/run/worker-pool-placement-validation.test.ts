@@ -213,6 +213,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
         facts: {
             benchmarkHost: null,
             benchmarkCalibration: null,
+            benchmarkNormalization: null,
             benchmarkPlacement: null,
             coveragePolicy: null,
             durationHistory: null,

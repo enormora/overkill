@@ -76,6 +76,7 @@ export type CommandLineBenchmarkListRequest = ConfigLoadRequest & {
 };
 
 export type CommandLineBenchmarkCommands = {
+    readonly calibrate: (request: CommandLineBenchmarkRunRequest) => Promise<CommandLineRunnerResult>;
     readonly baseline: CommandLineBenchmarkBaselineCommands;
     readonly listBenchmarks: (request: CommandLineBenchmarkListRequest) => Promise<CommandLineRunnerResult>;
     readonly runBenchmarks: (request: CommandLineBenchmarkRunRequest) => Promise<CommandLineRunnerResult>;

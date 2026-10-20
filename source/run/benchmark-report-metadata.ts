@@ -3,6 +3,7 @@ import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { runJsonArtifact } from '../attachments/run-json-artifact.ts';
 import {
     benchmarkRunMediaType,
+    benchmarkRunMetadataVersion,
     readBenchmarkRunMetadata,
     type BenchmarkRunMetadata
 } from '../bench/benchmark-run-report.ts';
@@ -48,7 +49,8 @@ export function withBenchmarkRunMetadata(
         return result;
     }
     const metadata: BenchmarkRunMetadata = {
-        version: 3,
+        version: benchmarkRunMetadataVersion,
+        normalization: facts.benchmarkNormalization,
         host: facts.benchmarkHost,
         placement: facts.benchmarkPlacement,
         node: facts.environment.node,
@@ -80,7 +82,8 @@ export function withBenchmarkErrorMetadata(
         return result;
     }
     const metadata: BenchmarkRunMetadata = {
-        version: 3,
+        version: benchmarkRunMetadataVersion,
+        normalization: null,
         host,
         placement: null,
         node: { arch: process.arch, platform: process.platform, version: process.version },

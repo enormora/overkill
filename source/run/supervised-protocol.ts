@@ -11,6 +11,7 @@ import { assertFrozenAssignmentInputs } from './workload-input-validation.ts';
 import type {
     PropertyPolicy,
     FrozenWorkloadInput,
+    RunFacts,
     FrozenMicrotestPolicy,
     CollectedRunPlan,
     RunCommand,
@@ -30,6 +31,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly propertyPolicy: PropertyPolicy | null;
     readonly retryPolicy: IntegrationProfileConfig['retries'];

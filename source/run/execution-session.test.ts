@@ -75,7 +75,7 @@ async function createNativeSessionChild(data: string): Promise<ChildRunFixture> 
         policyBaselineCommand(policy),
         { ...policy.profile, reporters: null },
         policy.files,
-        { kind: 'frozen-policy', policy }
+        { source: { kind: 'frozen-policy', policy }, normalization: null }
     );
     return createChildRun({
         command: { ...command, kind: 'run-session', policy, session: { lifecycle: options.lifecycle, data } },

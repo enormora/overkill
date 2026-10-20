@@ -44,9 +44,14 @@ function createSampleCleanup(reportError: (error: unknown) => void): SampleClean
     };
 }
 
+export type BenchmarkInvocationInput = Pick<
+    SamplingSessionInput,
+    'body' | 'context' | 'lifecycle' | 'measurement' | 'scope' | 'workload'
+>;
+
 type FunctionSampleLifetime = ReturnType<typeof createAsyncMeasurementSample | typeof createMeasurementSample>;
 
-function functionSample(input: SamplingSessionInput): FunctionSampleLifetime {
+function functionSample(input: BenchmarkInvocationInput): FunctionSampleLifetime {
     if (input.measurement.mode === 'sync') {
         return createMeasurementSample(input.measurement, input.scope.signal);
     }
@@ -57,7 +62,7 @@ function functionSample(input: SamplingSessionInput): FunctionSampleLifetime {
 }
 
 async function observeInvocation(
-    input: SamplingSessionInput,
+    input: BenchmarkInvocationInput,
     cleanup: SampleCleanup,
     observe: (returned: unknown) => void,
     measurement: InvocationMeasurement
@@ -83,7 +88,7 @@ async function observeInvocation(
 type InvocationOutcome = { readonly kind: 'complete'; } | { readonly kind: 'failed'; readonly error: unknown; };
 
 async function attemptInvocation(
-    input: SamplingSessionInput,
+    input: BenchmarkInvocationInput,
     cleanup: SampleCleanup,
     observe: (returned: unknown) => void,
     measurement: InvocationMeasurement
@@ -96,7 +101,7 @@ async function attemptInvocation(
     }
 }
 
-function collectAfterCleanup(input: SamplingSessionInput, failed: boolean, collectGarbage: () => void): void {
+function collectAfterCleanup(input: BenchmarkInvocationInput, failed: boolean, collectGarbage: () => void): void {
     try {
         collectGarbage();
     } catch (error: unknown) {
@@ -109,7 +114,7 @@ function collectAfterCleanup(input: SamplingSessionInput, failed: boolean, colle
 }
 
 export async function measureBenchmarkInvocation(
-    input: SamplingSessionInput,
+    input: BenchmarkInvocationInput,
     observe: (returned: unknown) => void,
     lifecycle: Pick<BenchmarkLifecycle, 'garbageCollection' | 'recordCleanup'>,
     measurement: InvocationMeasurement

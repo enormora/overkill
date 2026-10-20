@@ -1,5 +1,10 @@
 import type { WorkloadParameters } from '../engine/workload-parameters.ts';
 import type { BenchmarkDefinitionSummary, BenchmarkLifecyclePolicy } from '../engine/benchmark-result.ts';
+import type { UncalibratedMeasurement } from './measurement-definition.ts';
+import {
+    resolveCalibratedMeasurement,
+    type MetricNormalization
+} from './calibrated-measurement.ts';
 import type { BenchmarkDefinition, BenchmarkOptions } from './benchmark-definition.ts';
 import {
     normalizeMetricBudget,
@@ -8,23 +13,20 @@ import {
 } from './benchmark-budget-definition.ts';
 import { workload } from './workload.ts';
 import { validateSamplingPolicy } from './sampling-policy.ts';
-import { asyncMeasurementStrategy, measurementStrategy } from './measurement-strategy.ts';
-import type { AsyncMeasurementStrategy, MeasurementStrategy } from './measurement-types.ts';
 import { resolveBenchmarkLifecyclePolicy } from './benchmark-lifecycle-policy.ts';
-import { processMeasurement, type ProcessMeasurementStrategy } from './process-measurement.ts';
+import { processMeasurement } from './process-measurement.ts';
 
 type BenchmarkCore = Pick<
     BenchmarkDefinition<WorkloadParameters>,
     'budgets' | 'diagnosticMetrics' | 'kind' | 'workloads'
 >;
-type MeasurementDefinition = {
-    readonly measurement: AsyncMeasurementStrategy | MeasurementStrategy | ProcessMeasurementStrategy;
-};
+type MeasurementDefinition = { readonly measurement: UncalibratedMeasurement; };
 type BenchmarkDefinitionData = BenchmarkCore & MeasurementDefinition;
 export type ResolvedBenchmarkDefinition = {
     readonly lifecycle: BenchmarkLifecyclePolicy;
     readonly summary: BenchmarkDefinitionSummary;
-    readonly measurement: MeasurementDefinition['measurement'];
+    readonly measurement: UncalibratedMeasurement;
+    readonly normalization: Readonly<Record<string, MetricNormalization>>;
     readonly budgets: ReadonlyMap<string, readonly NormalizedMetricBudget[]>;
 };
 
@@ -93,13 +95,21 @@ function measurementSummary(
     });
 }
 
-function resolveMeasurement(measurement: MeasurementDefinition['measurement']): MeasurementDefinition['measurement'] {
-    if (measurement.mode === 'process') {
-        return processMeasurement(measurement);
+function validateNormalizedMetrics(
+    definition: BenchmarkDefinitionData,
+    normalization: Readonly<Record<string, MetricNormalization>>
+): void {
+    const declared = new Set([
+        ...definition.diagnosticMetrics,
+        ...Object.values(definition.budgets).flatMap(Object.keys)
+    ]);
+    if (
+        Object.keys(normalization).some(function undeclaredMetric(name) {
+            return !declared.has(name);
+        })
+    ) {
+        throw new TypeError('Normalization references an undeclared metric.');
     }
-    return measurement.mode === 'sync'
-        ? measurementStrategy(measurement.collectors)
-        : asyncMeasurementStrategy(measurement.collectors);
 }
 
 export function resolveBenchmarkDefinition(
@@ -116,11 +126,25 @@ export function resolveBenchmarkDefinition(
     if (names.length === 0 || uniqueNames.size !== names.length) {
         throw new TypeError('Benchmark requires unique workloads.');
     }
-    const measurement = resolveMeasurement(definition.measurement);
+    const { normalization, measurement } = resolveCalibratedMeasurement(definition.measurement);
+    validateNormalizedMetrics(definition, normalization);
     const budgets = resolveBudgets(definition, names);
-    const lifecycle = resolveBenchmarkLifecyclePolicy(options.lifecycle);
+
     const summary = Object.freeze({
-        lifecycle,
+        normalization: Object.freeze(
+            Object.fromEntries(
+                Object
+                    .entries(normalization)
+                    .map(function normalizationSummary([ name, rule ]) {
+                        return [ name, {
+                            calibration: rule.calibration.calibration,
+                            scaling: rule.scaling,
+                            garbageCollection: rule.calibration.garbageCollection
+                        } ];
+                    })
+            )
+        ),
+        lifecycle: resolveBenchmarkLifecyclePolicy(options.lifecycle),
         kind: definition.kind,
         workloads: Object.freeze(workloads.map(function workloadSummary(work) {
             return Object.freeze({ name: work.name, parameters: work.parameters });
@@ -130,5 +154,5 @@ export function resolveBenchmarkDefinition(
         budgets: Object.freeze(Object.fromEntries(budgets)),
         policy: validateSamplingPolicy(options.sampling)
     });
-    return { summary, measurement, budgets, lifecycle };
+    return { summary, measurement, budgets, lifecycle: summary.lifecycle, normalization };
 }

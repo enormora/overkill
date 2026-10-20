@@ -40,6 +40,7 @@ function workId(): TestWorkId {
 
 function command(): WorkerPoolCommand {
     return {
+        benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         attachmentEndpoint: null,
         retryPolicy: null,

@@ -1,5 +1,5 @@
 import type { Clock } from '@enormora/clock';
-import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-garbage-collection.ts';
+import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environment.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter } from '../engine/reporter.ts';
@@ -38,14 +38,15 @@ function readActiveResourceTypes(): readonly string[] {
 
 export async function createSupervisedChildExecute(
     wallClock: Clock,
-    command: Pick<SupervisedRunCommand, 'benchmarkGarbageCollection' | 'testFamily'>
+    command: Pick<SupervisedRunCommand, 'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'testFamily'>
 ): Promise<Execute> {
     let benchmarkEnvironment: BenchmarkExecutionEnvironment | null = null;
     if (command.testFamily === 'benchmark') {
         const { createBenchmarkExecutionEnvironment } = await import('./benchmark-execution-environment.ts');
         benchmarkEnvironment = createBenchmarkExecutionEnvironment(
             command.benchmarkGarbageCollection,
-            'supervised-process'
+            'supervised-process',
+            command.benchmarkNormalization
         );
     }
     return createExecute({

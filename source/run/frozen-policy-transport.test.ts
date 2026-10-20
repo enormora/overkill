@@ -122,7 +122,7 @@ export const testNode = suite('frozen policy transport', [
             policyBaselineCommand(policy),
             { ...policy.profile, reporters: null },
             policy.files,
-            { kind: 'frozen-policy', policy }
+            { source: { kind: 'frozen-policy', policy }, normalization: null }
         );
         const wire = JSON.stringify(command);
         const transported: unknown = JSON.parse(wire);

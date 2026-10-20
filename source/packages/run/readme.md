@@ -548,3 +548,15 @@ unknown measurements remain serial. Requested worker and profile caps remain
 visible and may be restricted further by calibration. Configured unavailable
 signals block execution. See [Host conditions](../bench/readme.md#host-conditions) for limits, formulas, probe availability, and
 snapshot timing. Baseline normalization remains in `benchmarkCalibration`.
+
+`overkill bench calibrate` captures declared calibration resources for the selected
+benchmark profile. `orchestrator.bench.calibrate(command, { timing: null })` exposes
+the same operation. Capture skips benchmark bodies and unrelated fixtures. Reference
+files live under the baseline directory's `calibration` subdirectory. Version 4
+`benchmark-run` artifacts and `RunFacts.benchmarkNormalization` retain reference
+inputs. See the [benchmark guide](../bench/readme.md#calibration-and-normalization)
+for scaling, uncertainty, saved expectations, and stale-reference maintenance.
+
+`runCpuCalibrationWorkload()` from `@overkill-dev/run/benchmark-calibration` runs
+the fixed integer-mix reference workload and returns its checksum. The built-in
+CPU calibration resource measures this same workload.

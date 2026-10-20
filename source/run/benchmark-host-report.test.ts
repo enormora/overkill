@@ -45,7 +45,7 @@ export const testNode = suite('benchmark host reporting', [
         });
         const decoded = readBenchmarkRunMetadata({ ...result, artifacts: [ artifact ] });
         scope.assert.equal(decoded?.host, null);
-        scope.assert.equal(decoded?.version, 3);
+        scope.assert.equal(decoded?.version, 4);
         scope.assert.equal(decoded?.execution.profile, 'legacy');
         return scope.assert.collect();
     }),
@@ -68,7 +68,7 @@ export const testNode = suite('benchmark host reporting', [
             }
         });
         const decoded = readBenchmarkRunMetadata({ ...result, artifacts: [ artifact ] });
-        scope.assert.equal(decoded?.version, 3);
+        scope.assert.equal(decoded?.version, 4);
         scope.assert.equal(decoded?.placement, null);
         scope.require.defined(decoded);
         scope.assert.deepEqual(decoded.node, metadata.node);

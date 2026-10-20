@@ -42,6 +42,7 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         attachmentEndpoint: null,
         retryPolicy: null,

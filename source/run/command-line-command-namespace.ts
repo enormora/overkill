@@ -61,6 +61,9 @@ export function createCommandLineCommandNamespace(loaders: CommandLineCommandLoa
             })
         },
         bench: {
+            calibrate: routeBenchmarkCommand(loaders.loadBenchmarkCommands, function selectCalibrateCommand(commands) {
+                return commands.calibrate;
+            }),
             baseline: {
                 apply: routeBenchmarkCommand(loaders.loadBenchmarkCommands, function selectApplyCommand(commands) {
                     return commands.baseline.apply;

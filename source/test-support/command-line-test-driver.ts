@@ -126,6 +126,7 @@ function createRunner(
             update: unexpectedCommand
         },
         bench: {
+            calibrate: unexpectedCommand,
             baseline: createBenchmarkBaselineCommands(requestRecorder, result),
             async listBenchmarks(context) {
                 requestRecorder.recordBenchmarkList(context);

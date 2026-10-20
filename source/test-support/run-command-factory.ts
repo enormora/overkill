@@ -125,6 +125,7 @@ function defaultCoveragePolicy(overrides: Partial<CoveragePolicy> = {}): Coverag
 
 export function testRunExecutionFacts(command: RunCommand, profile: TestProfileConfig): RunExecutionFacts {
     const facts = {
+        benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         attachments: profile.testFamily === 'integration' ? profile.attachments : null,
         propertyPolicy: profile.testFamily === 'property' ? profile.property : null,
@@ -369,6 +370,7 @@ async function rejectUnexpectedBenchmark(): Promise<never> {
 }
 
 export const unexpectedBenchmarkOrchestrator: BenchmarkOrchestrator = {
+    calibrate: rejectUnexpectedBenchmark,
     baseline: {
         apply: rejectUnexpectedBenchmark,
         bootstrap: rejectUnexpectedBenchmark,

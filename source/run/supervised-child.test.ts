@@ -32,6 +32,7 @@ const policyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy
 
 function command(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
     return {
+        benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         retryPolicy: null,
         capabilityRestrictions: { mode: 'disabled' },

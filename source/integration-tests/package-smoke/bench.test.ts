@@ -1,9 +1,11 @@
 import { execFile } from 'node:child_process';
-import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { z } from 'zod/v4';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
+import { normalizedBenchConfigScript, normalizedBenchFixtureScript } from './normalization-scripts.test.ts';
 import { runIfMain } from './direct-launcher.test.ts';
 import {
     benchAuthoringScript,
@@ -62,9 +64,60 @@ async function createStandardBenchConsumer(scope: TestScope): Promise<string> {
     return consumerFolder;
 }
 
+const calibrationReferenceSchema = z.looseObject({
+    snapshot: z.looseObject({ samples: z.array(z.number().positive()) })
+});
+async function useFasterCalibrationReference(consumerFolder: string): Promise<void> {
+    const directory = path.join(consumerFolder, 'references/calibration');
+    const [ name ] = await readdir(directory);
+    if (name === undefined) {
+        throw new Error('Missing captured calibration reference.');
+    }
+    const filename = path.join(directory, name);
+    const reference = calibrationReferenceSchema.parse(JSON.parse(await readFile(filename, 'utf8')));
+    const samples = reference.snapshot.samples.map(function fasterSample(value) {
+        return value / 2;
+    });
+    await writeFile(filename, JSON.stringify({ ...reference, snapshot: { ...reference.snapshot, samples } }));
+}
+function assertSuccessfulCommand(scope: TestScope, result: ScriptOutput): void {
+    scope.assert.equal(result.exitCode, 0);
+    scope.assert.equal(result.stderr, '');
+}
+
+async function captureFixedCalibration(scope: TestScope, binary: string, consumerFolder: string): Promise<void> {
+    const captured = await executeNode([ binary, 'bench', 'calibrate', '--profile', 'normalized' ], consumerFolder);
+    assertSuccessfulCommand(scope, captured);
+    scope.assert.includes(captured.stdout, 'Captured calibration reference');
+    await useFasterCalibrationReference(consumerFolder);
+}
+
 export const testNode = createSuite({
     annotations: {},
     children: [
+        createTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'standard-only installation captures and normalizes declared calibration resources',
+            async body(scope) {
+                const consumerFolder = await createStandardBenchConsumer(scope);
+                await writeFile(path.join(consumerFolder, 'overkill.config.js'), normalizedBenchConfigScript);
+                await writeFile(path.join(consumerFolder, 'normalization.bench.mjs'), normalizedBenchFixtureScript);
+                const binary = path.join(
+                    consumerFolder,
+                    'node_modules/@overkill-dev/test/packages/test/overkill.entry-point.js'
+                );
+                await captureFixedCalibration(scope, binary, consumerFolder);
+                const measured = await executeNode(
+                    [ binary, 'bench', 'run', '--profile', 'normalized' ],
+                    consumerFolder
+                );
+                assertSuccessfulCommand(scope, measured);
+                scope.assert.includes(measured.stdout, '(1 pass, 0 fail');
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             annotations: {},
             controls: {},

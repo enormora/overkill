@@ -1,44 +1,13 @@
 import { realpath } from 'node:fs/promises';
 import { posix as path } from 'node:path';
 import { createPerformanceBaselineStore } from '../baselines/performance-store.ts';
-import { readPerformanceBaselineReport } from '../baselines/performance-report.ts';
 import type { BaselineEntry } from '../baselines/performance-baseline.ts';
 import type { BenchmarkProfileConfig } from '../config/types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { selectBenchmarkProfile } from './test-profile.ts';
 import type {
-    BenchmarkBaselineCommand,
-    BenchmarkBaselineListCommand,
-    BenchmarkBaselineRunResult,
-    RunCommand,
-    RunOperations
+    BenchmarkBaselineListCommand
 } from './run-types.ts';
-import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
-
-type ExecutingBaselineVerb = 'apply' | 'bootstrap' | 'diff' | 'update';
-
-type BenchmarkBaselineInvocation = {
-    readonly command: BenchmarkBaselineCommand;
-    readonly operations: Pick<RunOperations<RunCommand>, 'runWithReporterDelivery'>;
-    readonly options: RunInvocationTimingOptions;
-    readonly verb: ExecutingBaselineVerb;
-};
-
-export async function runBenchmarkBaselineVerb(
-    input: BenchmarkBaselineInvocation
-): Promise<BenchmarkBaselineRunResult> {
-    const command: RunCommand = {
-        ...input.command,
-        request: { ...input.command.request, baselineUpdateMode: input.verb }
-    };
-    const delivery = await input.operations.runWithReporterDelivery(command, input.options);
-    const report = readPerformanceBaselineReport(delivery.result);
-    return {
-        ...delivery,
-        changes: report?.changes ?? [],
-        writeOutcome: report?.writeOutcome ?? { kind: 'blocked' }
-    };
-}
 
 function matchesSourcePath(file: string | null, paths: readonly string[]): boolean {
     if (paths.length === 0) {

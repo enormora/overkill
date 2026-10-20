@@ -3,26 +3,14 @@ import {
     type TestCase
 } from '../packages/engine/engine.entry-point.ts';
 import { definitionLocationsForAuthoringCall } from '../packages/test/authoring-source-locations.ts';
+import { attachCalibrationResources, attachCalibrationExecution } from './calibration-resource-body.ts';
 import type { BenchmarkDefinition, BenchmarkOptions } from './benchmark-definition.ts';
 import { benchmarkResourceEnvelope } from './benchmark-resource-envelope.ts';
 import { resolveBenchmarkDefinition } from './benchmark-definition-resolution.ts';
 import { defaultSamplingPolicy } from './sampling-policy.ts';
 import { workloadIdentity, type Workload } from './workload.ts';
-import type { ProcessMeasurementStrategy, ProcessSample } from './process-measurement.ts';
-import type {
-    AsyncMeasurementSample,
-    AsyncMeasurementStrategy,
-    MeasurementSample,
-    MeasurementStrategy
-} from './measurement-types.ts';
+import type { UncalibratedMeasurement as Strategy, SampleForStrategy } from './measurement-definition.ts';
 
-type Strategy = AsyncMeasurementStrategy | MeasurementStrategy | ProcessMeasurementStrategy;
-type StrategySamples = {
-    readonly async: AsyncMeasurementSample;
-    readonly sync: MeasurementSample;
-    readonly process: ProcessSample;
-};
-type SampleForStrategy<Measurement extends Strategy> = StrategySamples[Measurement['mode']];
 type AuthoredBenchmark<
     Workloads extends readonly Workload[],
     Measurement extends Strategy
@@ -44,9 +32,11 @@ export function benchmark<
     const options = configuration[0] ?? { annotations: {}, controls: {}, sampling: defaultSamplingPolicy };
     const resolved = resolveBenchmarkDefinition(definition, options);
     const locations = definitionLocationsForAuthoringCall();
-    const body = benchmarkResourceEnvelope(definition.measure, resolved, locations);
+    const resourceBody = attachCalibrationResources(definition.measure, resolved.normalization);
+    const body = benchmarkResourceEnvelope(resourceBody, resolved, locations);
+    attachCalibrationExecution(body, resolved, locations);
     return createBenchmarkTestCase({
-        resourceBody: definition.measure,
+        resourceBody,
         definition: resolved.summary,
         annotations: options.annotations,
         body,

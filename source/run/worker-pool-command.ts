@@ -31,14 +31,6 @@ function unitPaths(unit: WorkUnit): readonly string[] {
     );
 }
 
-function memberPaths(members: readonly WorkerPoolLeaseMember[]): readonly string[] {
-    return Array.from(
-        new Set(members.flatMap(function toPaths(member) {
-            return unitPaths(member.unit);
-        }))
-    );
-}
-
 export function placementRunWork(plan: PlacementPlan): readonly WorkId[] {
     return plan.units.flatMap(function toWork(unit) {
         return unit.work;
@@ -59,6 +51,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
+        benchmarkNormalization: runtime.resolvedRun.facts.benchmarkNormalization,
         benchmarkGarbageCollection: execution.benchmarkGarbageCollection,
         attachmentEndpoint: runtime.attachments?.endpoint ?? null,
         collectionTimeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.collectionMilliseconds,
@@ -98,6 +91,8 @@ export function createBatchRunCommand(
 
     return {
         ...createRunCommand(runtime, first.unit),
-        paths: memberPaths(members)
+        paths: runtime.collectedPlan.files.map(function collectedFile(file) {
+            return file.file;
+        })
     };
 }

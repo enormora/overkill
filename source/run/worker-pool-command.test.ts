@@ -103,6 +103,27 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             ...testCaseMetadata,
+            title: 'batch commands collect files needed by the complete resource lifecycle',
+            body(scope: OverkillScope) {
+                const collectedPlan = createCollectedPlan();
+                const file = collectedPlan.files[0];
+                scope.require.defined(file);
+                const runtime = fakeWorkerRuntime({
+                    ...collectedPlan,
+                    files: [ file, { ...file, file: 'source/integration-tests/run/fixtures/delayed-pass.test.ts' } ]
+                });
+                const command = createBatchRunCommand(runtime, [ leaseMember(firstUnit(runtime)) ]);
+
+                scope.assert.deepEqual(command.paths, [
+                    'source/integration-tests/run/fixtures/passing.test.ts',
+                    'source/integration-tests/run/fixtures/delayed-pass.test.ts'
+                ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
             title: 'worker-pool command helpers read placement work',
             body(scope: OverkillScope) {
                 const runtime = fakeWorkerRuntime(createCollectedPlan());

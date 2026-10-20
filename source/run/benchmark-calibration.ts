@@ -24,7 +24,7 @@ async function calibrationOutput(args: readonly string[], options: ExecFileOptio
     });
 }
 
-function calibrationNodeArguments(execution: BenchmarkProfileConfig['execution']): readonly string[] {
+export function calibrationNodeArguments(execution: BenchmarkProfileConfig['execution']): readonly string[] {
     if (execution.processModel !== 'worker-pool') {
         return [];
     }

@@ -1,5 +1,5 @@
 import type { Clock } from '@enormora/clock';
-import type { BenchmarkExecutionEnvironment } from './benchmark-garbage-collection.ts';
+import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import {
     invalidTimeoutControlFailure,
     runTestCase,

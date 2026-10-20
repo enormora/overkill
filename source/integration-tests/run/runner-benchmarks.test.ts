@@ -183,7 +183,7 @@ function assertBenchmarkArtifacts(scope: TestScope, result: RunResult): void {
 function assertBenchmarkHostMetadata(scope: TestScope, result: RunResult, observer: BenchmarkObserver): void {
     const runMetadata = readBenchmarkRunMetadata(result);
     scope.require.defined(runMetadata?.host);
-    scope.assert.equal(runMetadata.version, 3);
+    scope.assert.equal(runMetadata.version, 4);
     scope.assert.equal(runMetadata.calibration, null);
     scope.assert.equal(runMetadata.host.snapshot.version, 1);
     const start = observer.events.find(function runStart(event) {

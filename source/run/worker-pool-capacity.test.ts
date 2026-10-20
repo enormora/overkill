@@ -214,6 +214,7 @@ export const testNode = createOverkillSuite({
                         hostProcess: null,
                         benchmarkHost: null,
                         benchmarkCalibration: null,
+                        benchmarkNormalization: null,
                         benchmarkPlacement: null,
                         cases: [],
                         config: defaultRunConfig({ profiles: { integration: profile } }),

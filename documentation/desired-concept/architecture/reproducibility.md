@@ -399,3 +399,11 @@ That is enough to make:
 - [Test Data And Selection](./test-data-and-selection.md) - resolved test data is part of the
   plan
 - [Benchmarking](../authoring/benchmarking.md) - calibration and machine-class stratification
+
+Declared calibration resources retain workload identity, version, units, sampling
+policy, samples, machine metadata, and executing Node arguments. Metric scaling is
+explicit. Saved expectations supply references and retain their original fixed
+budget basis; missing references fall back to checked-in captures from
+`overkill bench calibrate`. Incompatible classes, execution arguments, or conflicting
+adapter references fail measurement. Budget intervals account for reference
+uncertainty under the independent, stationary observation assumption.

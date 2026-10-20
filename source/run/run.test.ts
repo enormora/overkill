@@ -14,7 +14,7 @@ import {
 import type { NormalizedConfig } from '../config/types.ts';
 import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
 import { RunResolutionError } from './run-errors.ts';
-import type { RunCaseFacts, RunCommand, RunRequest } from './run-types.ts';
+import type { RunCaseFacts, RunCommand, RunRequest, RunFacts } from './run-types.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;
@@ -33,11 +33,10 @@ const defaultConfig: NormalizedConfig = defaultRunConfig({
         })
     }
 });
-const supervisedCollectionConfig: NormalizedConfig = defaultConfig;
 
 const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
 
-function expectedRunEnvironment(): unknown {
+function expectedRunEnvironment(): RunFacts['environment'] {
     return {
         node: {
             arch: 'x64',
@@ -204,6 +203,7 @@ export const testNode = createOverkillSuite({
                     ],
                     benchmarkHost: null,
                     benchmarkCalibration: null,
+                    benchmarkNormalization: null,
                     benchmarkPlacement: null,
                     coveragePolicy: null,
                     durationHistory: null,
@@ -263,7 +263,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
-                    config: supervisedCollectionConfig,
+                    config: defaultConfig,
                     cwd: process.cwd(),
                     engine: { kind: 'default' },
                     request: {
@@ -417,6 +417,7 @@ export const testNode = createOverkillSuite({
                     ],
                     benchmarkHost: null,
                     benchmarkCalibration: null,
+                    benchmarkNormalization: null,
                     benchmarkPlacement: null,
                     coveragePolicy: null,
                     durationHistory: null,
