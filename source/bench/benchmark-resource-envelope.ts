@@ -3,7 +3,7 @@ import type { ResolvableSourceLocations } from '../assertion-protocol/assertion-
 import type { BenchmarkBody, BenchmarkScope } from '../engine/test-node.ts';
 import { mapComposedResourceBody } from '../packages/test/resource-wrapper-composition.ts';
 import { readTestBodyFamily, resolveTestBodyWorkload } from '../engine/test-body.ts';
-import { resolveBenchmarkGarbageCollection } from '../engine/benchmark-garbage-collection.ts';
+import { directBenchmarkEnvironment, benchmarkLifecyclePolicy } from './benchmark-execution-context.ts';
 import { collectBenchmarkNormalization } from './benchmark-normalization.ts';
 import { workload } from './workload.ts';
 import { sampleBenchmark } from './benchmark-sampling.ts';
@@ -47,7 +47,8 @@ export function benchmarkResourceEnvelope(
     definition: ResolvedBenchmarkDefinition,
     locations: ResolvableSourceLocations
 ): BenchmarkBody {
-    return async function executeBenchmark(scope: BenchmarkScope): Promise<AssertionResult> {
+    return async function executeBenchmark(original: BenchmarkScope): Promise<AssertionResult> {
+        const scope = directBenchmarkEnvironment(original);
         const selected = definition.summary.workloads.find(function selectedWorkload(work) {
             return work.name === scope.workload.name;
         });
@@ -67,13 +68,7 @@ export function benchmarkResourceEnvelope(
                 );
                 return await sampleBenchmark({
                     normalization,
-                    lifecycle: {
-                        ...definition.lifecycle,
-                        garbageCollection: resolveBenchmarkGarbageCollection(
-                            definition.lifecycle.garbageCollection,
-                            scope.benchmarkEnvironment?.profileGarbageCollection ?? 'off'
-                        )
-                    },
+                    lifecycle: benchmarkLifecyclePolicy(definition.lifecycle, scope),
                     body,
                     context: measurementContext(context),
                     scope,

@@ -31,8 +31,18 @@ function assertNormalizedResult(scope: TestScope, result: RunResult): void {
     const metric = normalization.metrics.value;
     scope.require.defined(metric);
     scope.assert.equal(metric.summary?.median, 50);
-    scope.assert.equal(measured.budgets[0]?.estimate, 50);
+    scope.assert.equal(measured.budgets[0]?.estimate, 0.5);
     assertChartScales(scope, result);
+}
+function assertAutomaticResult(scope: TestScope, result: RunResult): void {
+    scope.assert.equal(result.status, 'passed');
+    scope.assert.deepEqual(result.runnerErrors, []);
+    const measured = result.perTest[0]?.benchmark;
+    scope.require.defined(measured);
+    const { normalization } = measured;
+    scope.require.defined(normalization);
+    scope.assert.equal(measured.budgets[0]?.estimate, 0.5);
+    scope.assert.equal(normalization.metrics.value?.source, 'canonical');
 }
 async function captureFixedReference(
     scope: TestScope,
@@ -100,21 +110,15 @@ export const testNode = suite('benchmark normalization process boundaries', [
             measured.budgets.map(function estimate(budget) {
                 return budget.estimate;
             }),
-            [ 50, 100 ]
+            [ 0.5, 100 ]
         );
         scope.assert.equal(createBenchmarkHtmlReport(result).charts.groups.length, 3);
         return scope.assert.collect();
     }),
-    test('rejects missing references without publishing baseline data', async function (scope: TestScope) {
+    test('normalizes automatically without captured references', async function (scope: TestScope) {
         const command = await normalizationCommand(scope, 'supervised-process', 'normalized metric');
         const result = await orchestrator.bench.run(command, { timing: null });
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.true(result.perTest.some(function retainedCalibration(entry) {
-            return entry.benchmark?.normalization?.calibrations.length === 1;
-        }));
-        scope.assert.true(result.runnerErrors.some(function missingReference(error) {
-            return error.message.includes('Missing calibration reference');
-        }));
+        assertAutomaticResult(scope, result);
         const store = await normalizationReferences(command);
         scope.assert.deepEqual(await store.list(), []);
         return scope.assert.collect();

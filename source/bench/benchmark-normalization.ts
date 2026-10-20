@@ -8,8 +8,7 @@ import { canonicalIdentityJson } from '../canonical-identity.ts';
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import { CaseRunnerError, isCaseRunnerError } from '../engine/run-result.ts';
 import { retainCalibrationFailure } from './calibration-failure.ts';
-import type { CalibrationSession } from './calibration-definition.ts';
-import type { MetricNormalization } from './calibrated-measurement.ts';
+import type { CalibrationSession, MetricNormalization } from './calibration-definition.ts';
 import { selectCalibrationReference } from './calibration-references.ts';
 
 const sessionSchema = z.strictObject({

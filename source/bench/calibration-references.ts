@@ -6,8 +6,9 @@ import type {
     CalibrationSnapshot,
     SavedCalibration
 } from '../engine/benchmark-result.ts';
+import { canonicalCalibration } from './canonical-calibration.ts';
 import { calibrationFactor } from './normalization-interval.ts';
-import type { MetricNormalization } from './calibrated-measurement.ts';
+import type { MetricNormalization } from './calibration-definition.ts';
 
 type MetricEvidence = BenchmarkNormalizationEvidence['metrics'][string];
 type ReferenceChoice = Pick<MetricEvidence, 'budgetReference' | 'reference' | 'source'>;
@@ -27,13 +28,12 @@ function matchingSaved(input: ReferenceSelection): readonly SavedCalibration[] {
 function fixedReference(input: ReferenceSelection): ReferenceChoice {
     const identity = canonicalIdentityJson(input.actual.identity);
     const reference = input.context.references.find(function matchingReference(candidate) {
-        return canonicalIdentityJson(candidate.identity) === identity &&
-            candidate.machineClass === input.actual.machineClass;
+        return canonicalIdentityJson(candidate.identity) === identity;
     });
-    if (reference === undefined) {
-        throw new TypeError('Missing calibration reference. Run overkill bench calibrate for this machine class.');
-    }
-    return { reference, budgetReference: reference, source: 'fixed' };
+    const canonical = canonicalCalibration(input.actual);
+    return reference === undefined
+        ? { reference: canonical, budgetReference: canonical, source: 'canonical' }
+        : { reference, budgetReference: canonical, source: 'fixed' };
 }
 function selectedReference(input: ReferenceSelection): ReferenceChoice {
     const saved = matchingSaved(input);

@@ -52,7 +52,7 @@ export async function prepareBenchmarkNormalization(
         machine,
         references: references
             .filter(function matchingReference(entry) {
-                return entry.profile === input.request.profile && entry.snapshot.machineClass === machine.machineClass;
+                return entry.profile === input.request.profile;
             })
             .map(function snapshot(entry) {
                 return entry.snapshot;
@@ -60,7 +60,6 @@ export async function prepareBenchmarkNormalization(
         saved: await readSavedCalibrationReferences({
             profile: input.profile,
             profileName: input.request.profile,
-            machineClass: machine.machineClass,
             projectRoot: input.projectRoot,
             purpose: input.benchmarkPurpose
         })

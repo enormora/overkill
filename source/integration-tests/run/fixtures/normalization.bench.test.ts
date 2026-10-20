@@ -60,7 +60,7 @@ export const testNode = suite('normalization', [
         measurement,
         measure({sample}) {return {value: sample.measure(function measuredValue() {return 100;}).value};},
         diagnosticMetrics: [],
-        budgets: {one: {value: {maximum: 75, statistic: {kind: 'observed-maximum'}}}}
+        budgets: {one: {value: {maximum: 0.75, statistic: {kind: 'observed-maximum'}}}}
     }, options),
     benchmark('mixed normalized and raw metrics', {
         kind: 'runtime', workloads: [workload('one', {})], measurement,
@@ -70,7 +70,7 @@ export const testNode = suite('normalization', [
         },
         diagnosticMetrics: [],
         budgets: {one: {
-            value: {maximum: 75, statistic: {kind: 'observed-maximum'}},
+            value: {maximum: 0.75, statistic: {kind: 'observed-maximum'}},
             constructor: {maximum: 150, statistic: {kind: 'observed-maximum' as const}}
         }}
     }, options),
@@ -84,7 +84,7 @@ export const testNode = suite('normalization', [
             const value = sample.measure(function measuredValue() {return 100;}).value;
             return {value, second: value};
         },
-        diagnosticMetrics: [], budgets: {one: {value: {maximum: 75}, second: {maximum: 75}}}
+        diagnosticMetrics: [], budgets: {one: {value: {maximum: 0.75}, second: {maximum: 0.75}}}
     }, options),
     benchmark('capture skips benchmark fixtures', {
         kind: 'runtime',
@@ -94,6 +94,6 @@ export const testNode = suite('normalization', [
             throw new Error(context.signal.aborted ? 'Cancelled' : 'Benchmark callbacks must not execute during calibration capture.');
         }),
         diagnosticMetrics: [],
-        budgets: {one: {value: {maximum: 75}}}
+        budgets: {one: {value: {maximum: 0.75}}}
     }, options)
 ]);

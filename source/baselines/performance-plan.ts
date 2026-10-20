@@ -4,6 +4,7 @@ import type {
     CalibrationSnapshot,
     NormalizationRuleSummary
 } from '../engine/benchmark-result.ts';
+import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { compareExactly } from '../compare/raw-comparison.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
 import type { WorkId } from '../engine/identity.ts';
@@ -61,8 +62,9 @@ function unchangedExpectation(input: PerformanceProposalPlan, value: Performance
         return false;
     }
     const normalization = existing.version === normalizedPerformanceBaselineVersion ? existing.normalization : null;
-    return compareExactly(existing.expected.value, value) &&
-        compareExactly(normalizationBudgetBasis(normalization), normalizationBudgetBasis(input.normalization));
+    const storedBasis = canonicalIdentityJson(normalizationBudgetBasis(normalization));
+    const currentBasis = canonicalIdentityJson(normalizationBudgetBasis(input.normalization));
+    return compareExactly(existing.expected.value, value) && storedBasis === currentBasis;
 }
 export function proposePerformanceBaseline(input: PerformanceProposalPlan): BaselineChange | null {
     if (preservesBaseline(input)) {

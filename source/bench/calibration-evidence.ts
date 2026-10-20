@@ -71,7 +71,7 @@ export const normalizationEvidenceSchema: z.ZodType<BenchmarkNormalizationEviden
             actual: calibrationSnapshotSchema,
             budgetReference: calibrationSnapshotSchema,
             reference: calibrationSnapshotSchema,
-            source: z.enum([ 'baseline', 'fixed' ]),
+            source: z.enum([ 'baseline', 'canonical', 'fixed' ]),
             factor: z
                 .strictObject({ estimate: z.number(), lower: z.number().nullable(), upper: z.number().nullable() })
                 .nullable(),

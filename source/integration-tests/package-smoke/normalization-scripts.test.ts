@@ -33,7 +33,7 @@ export const testNode = benchmark('normalized metric', {
     }),
     measure({ sample }) { return { value: sample.measure(() => 100).value }; },
     diagnosticMetrics: [],
-    budgets: { one: { value: { maximum: 75, statistic: { kind: 'observed-maximum' } } } }
+    budgets: { one: { value: { maximum: 0.75, statistic: { kind: 'observed-maximum' } } } }
 }, { sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 },
     lifecycle, annotations: {}, controls: {} });
 `;

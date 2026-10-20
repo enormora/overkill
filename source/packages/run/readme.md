@@ -549,7 +549,12 @@ visible and may be restricted further by calibration. Configured unavailable
 signals block execution. See [Host conditions](../bench/readme.md#host-conditions) for limits, formulas, probe availability, and
 snapshot timing. Baseline normalization remains in `benchmarkCalibration`.
 
-`overkill bench calibrate` captures declared calibration resources for the selected
+Built-in timing and CPU metrics normalize automatically. Custom domains select
+representative workloads with `calibratedMeasurement`. Calibration is cached within
+an execution context; ordinary runs require no captured files. Normalized budgets
+and snapshots use a shared reference-workload scale across hardware.
+
+`overkill bench calibrate` optionally captures display references for the selected
 benchmark profile. `orchestrator.bench.calibrate(command, { timing: null })` exposes
 the same operation. Capture skips benchmark bodies and unrelated fixtures. Reference
 files live under the baseline directory's `calibration` subdirectory. Version 4

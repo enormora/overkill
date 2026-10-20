@@ -93,3 +93,23 @@ export async function sampleCalibration(
         };
     }
 }
+
+type CalibrationSampler = {
+    readonly identity: CalibrationIdentity;
+    readonly sample: (input: CalibrationSamplingInput) => Promise<CalibrationResult>;
+};
+export function createCalibrationSampler(identity: CalibrationIdentity): CalibrationSampler {
+    const references = new WeakMap<BenchmarkNormalizationContext, Promise<CalibrationResult>>();
+    return {
+        identity,
+        async sample(input) {
+            const key = input.scope.benchmarkEnvironment?.normalization;
+            if (key === null || key === undefined) {
+                return sampleCalibration(identity, input);
+            }
+            const pending = references.get(key) ?? sampleCalibration(identity, input);
+            references.set(key, pending);
+            return pending;
+        }
+    };
+}

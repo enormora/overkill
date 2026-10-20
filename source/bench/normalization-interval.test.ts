@@ -161,7 +161,7 @@ export const testNode = suite('benchmark normalization intervals', [
         );
         return scope.assert.collect();
     }),
-    test('rejects overflow and incompatible machine classes', function (scope: TestScope) {
+    test('rejects overflow and normalizes across machine classes', function (scope: TestScope) {
         const actual = constantCalibration(200);
         const reference = constantCalibration(100);
         scope.assert.throws(function overflow() {
@@ -171,9 +171,7 @@ export const testNode = suite('benchmark normalization intervals', [
                 scaling: 'inverse'
             }, 0.05);
         }, { message: 'Normalized benchmark estimate is not finite.' });
-        scope.assert.throws(function otherMachine() {
-            return calibrationFactor(actual, { ...reference, machineClass: 'other' }, 'proportional');
-        }, { message: 'Calibration references are not comparable.' });
+        scope.assert.equal(calibrationFactor(actual, { ...reference, machineClass: 'other' }, 'proportional'), 0.5);
         return scope.assert.collect();
     })
 ]);

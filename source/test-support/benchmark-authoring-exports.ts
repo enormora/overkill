@@ -15,6 +15,7 @@ export const benchmarkAuthoringExports = [
     'processCpuCollector',
     'processMeasurement',
     'processResourceCollector',
+    'rawMeasurement',
     'readCalibrationReferenceReport',
     'runtimeHealthCollector',
     'skippedTest',

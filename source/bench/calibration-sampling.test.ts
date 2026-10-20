@@ -15,7 +15,7 @@ import {
 import { startResources } from '../packages/resources/resources.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { calibrationSnapshot } from '../test-support/calibration-fixture.ts';
-import { sampleCalibration, type CalibrationSamplingInput } from './calibration-sampling.ts';
+import { sampleCalibration, createCalibrationSampler, type CalibrationSamplingInput } from './calibration-sampling.ts';
 import { calibrationResourceKey, collectBenchmarkNormalization } from './benchmark-normalization.ts';
 
 const reference = calibrationSnapshot(Array.from({ length: 128 }, function () {
@@ -107,6 +107,23 @@ function referenceResource(): CalibrationResource {
     }, { sampling: policy, lifecycle: reference.lifecycle });
 }
 export const testNode = suite('calibration sampling lifetimes', [
+    test(
+        'caches reference samples within a context and refreshes them for a new run',
+        async function (scope: TestScope) {
+            let samples = 0;
+            const sampler = createCalibrationSampler(reference.identity);
+            const input = samplingInput(calibrationScope(scope), function measured(context) {
+                samples += 1;
+                return measuredReference(context);
+            }, 128);
+            const first = await sampler.sample(input);
+            scope.assert.equal(await sampler.sample({ ...input }), first);
+            scope.assert.equal(samples, 128);
+            await sampler.sample({ ...input, scope: calibrationScope(scope) });
+            scope.assert.equal(samples, 256);
+            return scope.assert.collect();
+        }
+    ),
     ...[ false, true ].map(function missingContextCase(missingEnvironment) {
         return test(
             `rejects missing ${missingEnvironment ? 'execution environment' : 'normalization context'}`,

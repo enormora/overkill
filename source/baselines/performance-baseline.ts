@@ -1,3 +1,4 @@
+import { canonicalIdentityJson } from '../canonical-identity.ts';
 import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.ts';
 import type {
     BenchmarkCalibrationResult as BenchmarkCalibrationResultDefinition
@@ -5,7 +6,8 @@ import type {
 import type { WorkId } from '../engine/identity.ts';
 import type { PerformanceBaselineValue } from './performance-adapter.ts';
 
-export const normalizedPerformanceBaselineVersion = 2;
+export const previousNormalizedPerformanceBaselineVersion = 2;
+export const normalizedPerformanceBaselineVersion = 3;
 
 export type CalibrationReferenceChange = { readonly kind: 'remove' | 'write'; readonly path: string; };
 
@@ -25,7 +27,7 @@ type PerformanceBaselineData = {
 };
 type LegacyPerformanceBaseline = PerformanceBaselineData & { readonly version: 1; };
 type NormalizedPerformanceBaseline = PerformanceBaselineData & {
-    readonly version: typeof normalizedPerformanceBaselineVersion;
+    readonly version: typeof normalizedPerformanceBaselineVersion | typeof previousNormalizedPerformanceBaselineVersion;
     readonly normalization: BenchmarkNormalizationEvidence | null;
 };
 export type StoredPerformanceBaseline = LegacyPerformanceBaseline | NormalizedPerformanceBaseline;
@@ -48,10 +50,27 @@ type ReadOnlyBaselines = { readonly kind: 'read-only'; };
 export type BaselineWriteOutcome = BlockedBaselineWrites | FailedBaselineWrites | ReadOnlyBaselines | WrittenBaselines;
 export type BaselineUpdateMode = 'apply' | 'bootstrap' | 'diff' | 'none' | 'update';
 
+export function performanceComparisonClass(
+    machineClass: string,
+    normalization: BenchmarkNormalizationEvidence | null
+): string {
+    if (normalization === null || Object.keys(normalization.metrics).length === 0) {
+        return machineClass;
+    }
+    const metrics = Object.fromEntries(
+        Object.entries(normalization.metrics).map(function metricIdentity([ name, metric ]) {
+            return [ name, { calibration: metric.actual.identity, scaling: metric.scaling } ];
+        })
+    );
+    return `normalized:${canonicalIdentityJson(metrics)}`;
+}
 export function performanceBaselineIdentity(baseline: StoredPerformanceBaseline): PerformanceBaselineIdentity {
     return {
         adapter: baseline.adapter,
-        machineClass: baseline.expected.calibration.machineClass,
+        machineClass: performanceComparisonClass(
+            baseline.expected.calibration.machineClass,
+            baseline.version === normalizedPerformanceBaselineVersion ? baseline.normalization : null
+        ),
         profile: baseline.profile,
         work: baseline.work
     };

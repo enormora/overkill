@@ -211,7 +211,7 @@ export type BenchmarkMetricNormalization = {
     readonly actual: CalibrationSnapshot;
     readonly budgetReference: CalibrationSnapshot;
     readonly reference: CalibrationSnapshot;
-    readonly source: 'baseline' | 'fixed';
+    readonly source: 'baseline' | 'canonical' | 'fixed';
     readonly factor: BenchmarkNormalizationFactor | null;
     readonly summary: BenchmarkMetricSummary | null;
     readonly budgets: readonly BenchmarkBudgetResult[];

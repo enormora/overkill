@@ -4,6 +4,7 @@ import {
     availableMetric,
     unavailableMetric,
     calibratedMeasurement,
+    rawMeasurement,
     defineCalibrationResource,
     wallClockMeasurement,
     workload,
@@ -53,6 +54,12 @@ const benchmarkDefinition = {
     budgets: { one: { value: { maximum: 200 } } }
 };
 export const testNode = suite('calibration contracts', [
+    test('rejects repeated raw measurement wrappers', function (scope: TestScope) {
+        scope.assert.throws(function () {
+            return rawMeasurement(rawMeasurement(wallClockMeasurement()));
+        }, { message: 'Raw measurement requires an uncalibrated strategy.' });
+        return scope.assert.collect();
+    }),
     test('rejects normalization rules for undeclared benchmark metrics', function (scope: TestScope) {
         const calibration = defineCalibrationResource(referenceDefinition('1', 'ticks'));
         scope.assert.throws(function () {

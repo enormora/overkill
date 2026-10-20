@@ -6,7 +6,7 @@ import type {
     PerformanceObservation
 } from '../baselines/performance-adapter.ts';
 
-const sampleSchema = z.strictObject({ value: z.array(metricReadingSchema) });
+const sampleSchema = z.object({ value: z.array(metricReadingSchema) });
 function observedValue(input: PerformanceObservationInput): PerformanceObservation {
     const artifact = input.artifacts.find(function rawSamples(candidate) {
         return candidate.payload.kind === 'runtime-attachment' && candidate.payload.name === 'benchmark-samples';

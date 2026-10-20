@@ -14,7 +14,7 @@ assert.deepEqual(Object.keys(bench).sort(), [
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
     'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
     'processCpuCollector', 'processMeasurement', 'processResourceCollector',
-    'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
+    'rawMeasurement', 'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
     'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 assert.deepEqual(Object.keys(standard).sort(), Object.keys(bench).sort());
@@ -298,7 +298,7 @@ assert.deepEqual(Object.keys(bench).sort(), [
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
     'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
     'processCpuCollector', 'processMeasurement', 'processResourceCollector',
-    'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
+    'rawMeasurement', 'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
     'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 let calls = 0;

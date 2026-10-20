@@ -9,13 +9,11 @@ import type { BenchmarkProfileConfig } from '../config/types.ts';
 type ReferenceLookup = {
     readonly profile: BenchmarkProfileConfig;
     readonly profileName: string;
-    readonly machineClass: string;
     readonly projectRoot: string;
     readonly purpose: 'capture' | 'compare';
 };
 function selectedBaseline(input: ReferenceLookup, baseline: StoredPerformanceBaseline): boolean {
     return baseline.profile === input.profileName &&
-        baseline.expected.calibration.machineClass === input.machineClass &&
         input.profile.baselines.adapters.some(function selectedAdapter(adapter) {
             return adapter.id === baseline.adapter;
         });

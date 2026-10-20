@@ -297,17 +297,19 @@ Some metrics inherently vary across machines. Overkill's policy:
   tolerance pass.
 - **Performance baselines** explicitly do _not_ require exact
   reproducibility. Calibration records a reference workload on the current machine. Adapters
-  explicitly select normalization appropriate to their metrics; baselines are stored as
-  machine-class-stratified (e.g. `linux-x64-ci-shared` vs
-  `darwin-arm64-dev`). See [Benchmarking § Calibration And Normalization](../authoring/benchmarking.md#calibration-and-normalization).
+  receive automatically normalized benchmark samples. Normalized expectations
+  match by calibration workload identity across machine classes; raw and legacy
+  expectations remain machine scoped. Custom domains select representative
+  calibration workloads. See [Benchmarking § Calibration And Normalization](../authoring/benchmarking.md#calibration-and-normalization).
 - **Witnesses from deterministic-simulation tests** require exact
   reproducibility (the whole point of DST).
 
 When machine-class stratification is in effect, the run record includes
 the resolved machine class so reports can show "this baseline was set on
 machine class X." Performance expectations retain their calibration metadata
-and reference samples. A missing or non-comparable calibration fails the run;
-there is no fallback to another machine class.
+and reference samples. Invalid or non-comparable calibration fails the run.
+Captured reference files are optional; automatic normalization uses stable
+reference-workload units for budgets.
 
 ## Replay
 
@@ -398,12 +400,13 @@ That is enough to make:
 - [Failure Artifacts](../authoring/failure-artifacts.md) - witnesses are first-class artifacts
 - [Test Data And Selection](./test-data-and-selection.md) - resolved test data is part of the
   plan
-- [Benchmarking](../authoring/benchmarking.md) - calibration and machine-class stratification
+- [Benchmarking](../authoring/benchmarking.md) - calibration and portable normalized budgets
 
 Declared calibration resources retain workload identity, version, units, sampling
-policy, samples, machine metadata, and executing Node arguments. Metric scaling is
-explicit. Saved expectations supply references and retain their original fixed
-budget basis; missing references fall back to checked-in captures from
-`overkill bench calibrate`. Incompatible classes, execution arguments, or conflicting
-adapter references fail measurement. Budget intervals account for reference
+policy, samples, machine metadata, and executing Node arguments. Built-in timing
+and CPU metrics normalize by default; custom domains declare their own workloads.
+Saved expectations retain their original budget basis. Optional captures from
+`overkill bench calibrate` provide display references. Incompatible workload
+identities, execution arguments, or conflicting adapter references fail measurement.
+Budget intervals account for reference
 uncertainty under the independent, stationary observation assumption.

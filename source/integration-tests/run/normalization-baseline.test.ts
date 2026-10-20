@@ -65,7 +65,7 @@ async function replaceSavedReference(scope: TestScope, command: RunCommand): Pro
     const [ entry ] = await store.list();
     scope.require.defined(entry);
     const { baseline } = entry;
-    if (baseline.version !== 2 || baseline.normalization === null) {
+    if (baseline.version === 1 || baseline.normalization === null) {
         throw new Error('Expected normalized baseline.');
     }
     const metric = baseline.normalization.metrics.value;
@@ -100,7 +100,7 @@ function assertSavedReference(scope: TestScope, result: RunResult): void {
     scope.assert.equal(metric.source, 'baseline');
     scope.assert.equal(metric.summary?.median, 200);
     scope.assert.equal(metric.budgets[0]?.maximum, 300);
-    scope.assert.equal(measured.budgets[0]?.estimate, 50);
+    scope.assert.equal(measured.budgets[0]?.estimate, 0.5);
 }
 function rawCommand(command: RunCommand): RunCommand {
     const profile = command.config.profiles.bench;
