@@ -491,6 +491,9 @@ selected profile and machine class. Commit the generated `calibration/*.calibrat
 the profile's baseline directory. Capture acquires calibration dependencies and
 samples their workloads, without running benchmark bodies or unrelated fixtures.
 Listing does not acquire calibration resources.
+Capture selection prefers the current machine, then compatible captures from other
+machines. Incompatible workload versions or Node arguments fall back to canonical
+units. Saved expectations still require comparable calibration inputs.
 
 `defineCalibrationResource` accepts `workload`, `version`, `unit`, `dependencies`,
 `measurement`, and `measure`. The callback receives `dependencies`, `attachments`,

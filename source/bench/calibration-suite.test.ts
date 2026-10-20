@@ -1,4 +1,5 @@
 import { suite } from '../packages/test/test.entry-point.ts';
+import { testNode as references } from './calibration-references.test.ts';
 import { testNode as automatic } from './automatic-normalization.test.ts';
 import { testNode as summaries } from './normalization-summaries.test.ts';
 import { testNode as sampling } from './calibration-sampling.test.ts';
@@ -8,6 +9,7 @@ import { testNode as intervals } from './normalization-interval.test.ts';
 
 export const testNode = suite('benchmark calibration', [
     contracts,
+    references,
     reports,
     intervals,
     sampling,

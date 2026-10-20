@@ -43,7 +43,7 @@ function referenceEvidence(
     }
     return context.mode === 'capture'
         ? null
-        : selectCalibrationReference({ context, work: scope.workId, metric, actual }, rule);
+        : selectCalibrationReference({ context, work: scope.workId, metric, actual }, rule.scaling);
 }
 async function collectNormalization(
     scope: BenchmarkScope,

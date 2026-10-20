@@ -4,11 +4,11 @@ import type {
     BenchmarkNormalizationContext,
     BenchmarkNormalizationEvidence,
     CalibrationSnapshot,
+    NormalizationRuleSummary,
     SavedCalibration
 } from '../engine/benchmark-result.ts';
 import { canonicalCalibration } from './canonical-calibration.ts';
 import { calibrationFactor } from './normalization-interval.ts';
-import type { MetricNormalization } from './calibration-definition.ts';
 
 type MetricEvidence = BenchmarkNormalizationEvidence['metrics'][string];
 type ReferenceChoice = Pick<MetricEvidence, 'budgetReference' | 'reference' | 'source'>;
@@ -27,9 +27,14 @@ function matchingSaved(input: ReferenceSelection): readonly SavedCalibration[] {
 }
 function fixedReference(input: ReferenceSelection): ReferenceChoice {
     const identity = canonicalIdentityJson(input.actual.identity);
-    const reference = input.context.references.find(function matchingReference(candidate) {
-        return canonicalIdentityJson(candidate.identity) === identity;
+    const execution = canonicalIdentityJson(input.actual.execution.nodeArguments);
+    const references = input.context.references.filter(function matchingReference(candidate) {
+        return canonicalIdentityJson(candidate.identity) === identity &&
+            canonicalIdentityJson(candidate.execution.nodeArguments) === execution;
     });
+    const reference = references.find(function localReference(candidate) {
+        return candidate.machineClass === input.actual.machineClass;
+    }) ?? references[0];
     const canonical = canonicalCalibration(input.actual);
     return reference === undefined
         ? { reference: canonical, budgetReference: canonical, source: 'canonical' }
@@ -51,14 +56,17 @@ function selectedReference(input: ReferenceSelection): ReferenceChoice {
     }
     return { reference: first.actual, budgetReference: first.budgetReference, source: 'baseline' };
 }
-export function selectCalibrationReference(input: ReferenceSelection, rule: MetricNormalization): MetricEvidence {
+export function selectCalibrationReference(
+    input: ReferenceSelection,
+    scaling: NormalizationRuleSummary['scaling']
+): MetricEvidence {
     const selected = selectedReference(input);
-    calibrationFactor(input.actual, selected.reference, rule.scaling);
-    const budgetFactor = calibrationFactor(input.actual, selected.budgetReference, rule.scaling);
+    calibrationFactor(input.actual, selected.reference, scaling);
+    const budgetFactor = calibrationFactor(input.actual, selected.budgetReference, scaling);
     return {
         ...selected,
         budgetFactor,
-        scaling: rule.scaling,
+        scaling,
         actual: input.actual,
         factor: null,
         summary: null,
