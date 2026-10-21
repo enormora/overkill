@@ -67,13 +67,25 @@ function categoricalChart(title: string, labels: readonly string[], unit: string
         dataZoom: [ { type: 'inside' }, { type: 'slider', bottom: 10 } ]
     };
 }
-function budgetTooltip(budget: BenchmarkBudgetResult): string {
+type BudgetTooltipRow = readonly [name: string, value: number | null, unavailable: string];
+function budgetTooltip(budget: BenchmarkBudgetResult, label: string): string {
+    const rows: readonly BudgetTooltipRow[] = [
+        [ 'estimate', budget.estimate, 'unavailable' ],
+        [ 'interval lower', budget.interval.lower, '-unbounded' ],
+        [ 'interval upper', budget.interval.upper, 'unbounded' ],
+        [ 'minimum', budget.minimum, '-unbounded' ],
+        [ 'minimum delta', difference(budget.estimate, budget.minimum), 'unavailable' ],
+        [ 'minimum delta %', percentDifference(budget.estimate, budget.minimum), 'unavailable' ],
+        [ 'maximum', budget.maximum, 'unbounded' ],
+        [ 'maximum delta', difference(budget.estimate, budget.maximum), 'unavailable' ],
+        [ 'maximum delta %', percentDifference(budget.estimate, budget.maximum), 'unavailable' ]
+    ];
     return [
-        `estimate: ${budget.estimate ?? 'unavailable'}`,
-        `minimum delta: ${difference(budget.estimate, budget.minimum) ?? 'unavailable'}`,
-        `minimum delta %: ${percentDifference(budget.estimate, budget.minimum) ?? 'unavailable'}`,
-        `maximum delta: ${difference(budget.estimate, budget.maximum) ?? 'unavailable'}`,
-        `maximum delta %: ${percentDifference(budget.estimate, budget.maximum) ?? 'unavailable'}`
+        label,
+        ...rows.map(function recordedValue([ fieldLabel, value, unavailable ]) {
+            return `${fieldLabel}: ${value ?? unavailable}`;
+        }),
+        `precision met: ${String(budget.precise)}`
     ]
         .join('\n');
 }
@@ -144,7 +156,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 data: budgets.map(function interval(budget) {
                     return budget.estimate !== null && budget.interval.lower !== null && budget.interval.upper !== null
                         ? {
-                            name: budgetTooltip(budget),
+                            name: budgetTooltip(budget, budget.label),
                             value: [ budget.estimate, budget.estimate, budget.interval.lower, budget.interval.upper ]
                         }
                         : '-';
@@ -154,7 +166,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 type: 'scatter',
                 name: 'estimate',
                 data: budgets.map(function estimate(budget) {
-                    return { name: budgetTooltip(budget), value: budget.estimate };
+                    return { name: budgetTooltip(budget, budget.label), value: budget.estimate };
                 })
             },
             {
@@ -162,7 +174,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 name: 'minimum',
                 symbol: 'triangle',
                 data: budgets.map(function minimum(budget) {
-                    return { name: budgetTooltip(budget), value: budget.minimum };
+                    return { name: budgetTooltip(budget, budget.label), value: budget.minimum };
                 })
             },
             {
@@ -170,7 +182,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 name: 'maximum',
                 symbol: 'triangle',
                 data: budgets.map(function maximum(budget) {
-                    return { name: budgetTooltip(budget), value: budget.maximum };
+                    return { name: budgetTooltip(budget, budget.label), value: budget.maximum };
                 })
             }
         ]
