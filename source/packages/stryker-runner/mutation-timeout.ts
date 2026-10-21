@@ -7,5 +7,8 @@ export function isTimeoutInterruption(error: RunnerError): boolean {
 }
 
 export function isInterruptedExecution(reply: ResultReply): boolean {
-    return reply.deadlineExceeded && reply.result.runnerErrors.some(isTimeoutInterruption);
+    return reply.result.runnerErrors.some(function knownTimeout(error) {
+        return isTimeoutInterruption(error) &&
+            (reply.deadlineExceeded || executionTermination(error.cause) === 'hard-timeout');
+    });
 }

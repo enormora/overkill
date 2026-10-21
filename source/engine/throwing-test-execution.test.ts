@@ -1,11 +1,13 @@
 import { AssertionError } from 'node:assert';
 import assert from 'node:assert/strict';
+import { createPermissionDenialRuntimePolicy } from '../run/capability-policy.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
+import type { TestRuntimePolicy } from './case-execution.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from './run-result.ts';
 import type { ThrowingTestBody, ThrowingTestScope } from './test-node.ts';
 import {
@@ -13,7 +15,10 @@ import {
     nodeAssertionErrorFailure
 } from './node-assertion-error.ts';
 
-async function executeSingleThrowingBody(body: ThrowingTestBody): Promise<RunResult> {
+async function executeSingleThrowingBody(
+    body: ThrowingTestBody,
+    runtimePolicy: TestRuntimePolicy | null
+): Promise<RunResult> {
     const engine = createEngine();
 
     return await engine.execute(
@@ -32,7 +37,15 @@ async function executeSingleThrowingBody(body: ThrowingTestBody): Promise<RunRes
                 controls: {},
                 title: 'root'
             })
-        )
+        ),
+        {
+            runtimePolicy,
+            execution: { mode: 'serial-in-process' },
+            retryPolicy: null,
+            reporters: [],
+            runFacts: {},
+            startedAt: '1970-01-01T00:00:00.000Z'
+        }
     );
 }
 
@@ -123,6 +136,36 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'retains preparation failures alongside a thrown Node assertion',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const policy = createPermissionDenialRuntimePolicy();
+                scope.cleanup(function stopPreparationPolicy() {
+                    policy.takeRunErrors();
+                });
+                const result = await executeSingleThrowingBody(function failedNodeAssertion() {
+                    assert.equal(1, 2);
+                }, {
+                    ...policy,
+                    async prepareAttempt() {
+                        throw new Error('preparation sentinel');
+                    }
+                });
+                const outcome = firstFailOutcome(result);
+                scope.require.notNull(outcome);
+                scope.assert.deepEqual(
+                    outcome.failures.map(function failureKind(failure) {
+                        return failure.kind;
+                    }),
+                    [ 'assertion', 'cleanup-error' ]
+                );
+                scope.assert.match(JSON.stringify(outcome), /preparation sentinel/);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'execute() lets throwing test cases pass with no recorded assertions',
             annotations: {},
@@ -130,7 +173,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const result = await executeSingleThrowingBody(function noAssertions() {
                     return undefined;
-                });
+                }, null);
 
                 scope.assert.equal(result.summary.passed, 1);
                 scope.assert.equal(result.summary.failed, 0);
@@ -146,7 +189,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const result = await executeSingleThrowingBody(function failedAssertion(testScope) {
                     testScope.assert.equal(1, 2, { message: 'wrong count' });
-                });
+                }, null);
                 const outcome = firstFailOutcome(result);
 
                 scope.require.notNull(outcome);
@@ -169,7 +212,7 @@ export const testNode = createOverkillSuite({
                     }, { message: 'no rejection' }) ];
 
                     testScope.assert.equal(pendingAssertions.length, 1);
-                });
+                }, null);
                 const outcome = firstFailOutcome(result);
 
                 scope.require.notNull(outcome);
@@ -195,7 +238,8 @@ export const testNode = createOverkillSuite({
                 const result = await executeSingleThrowingBody(
                     function failedRequirement(testScope: ThrowingTestScope) {
                         testScope.require.string(1, { message: 'required string' });
-                    }
+                    },
+                    null
                 );
                 const outcome = firstFailOutcome(result);
 
@@ -216,7 +260,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const result = await executeSingleThrowingBody(function nodeAssertFailure() {
                     assert.equal(1, 2, 'wrong count');
-                });
+                }, null);
                 const outcome = firstFailOutcome(result);
 
                 scope.require.notNull(outcome);
@@ -271,7 +315,7 @@ export const testNode = createOverkillSuite({
 
                     Reflect.deleteProperty(error, 'stack');
                     throw error;
-                });
+                }, null);
                 const outcome = firstFailOutcome(result);
 
                 scope.require.notNull(outcome);
@@ -325,7 +369,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const result = await executeSingleThrowingBody(function bodyError() {
                     throw new Error('boom');
-                });
+                }, null);
                 const outcome = firstFailOutcome(result);
 
                 scope.require.notNull(outcome);

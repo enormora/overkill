@@ -416,6 +416,17 @@ After the test body returns or throws, the runner aborts `scope.signal`, runs
 registered `scope.cleanup(...)` callbacks, drains one microtask checkpoint,
 and then validates declared in-flight tasks and observed leaks.
 
+If an observable fatal error or timeout ends an in-process attempt while its
+body is still pending, the runner closes the scope and awaits registered cleanup
+without waiting for that body. Cleanup runs once under the original attempt's
+policy. Later body settlement cannot repeat cleanup or change delivered results.
+Closed scopes reject new cleanup callbacks and in-flight tasks. Native process
+termination may prevent cleanup entirely.
+
+Resource growth from a closed, foreign, or unknown attempt remains a run-level
+error, even during serial execution. It cannot be attributed to the current case
+merely because both allocations have the same native resource type.
+
 Leak diagnostics are reported as runner errors with subtype `runtime-policy`.
 A case-attributed leak gives that case verdict `runtime-policy`; a run-level
 leak remains attached to the run. This is the leak-vs-hang split named in

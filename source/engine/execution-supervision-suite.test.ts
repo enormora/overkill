@@ -4,6 +4,7 @@ import { testNode as nativeGuardOwnershipTestNode } from './native-guard-ownersh
 import { testNode as nativeErrorOwnershipTestNode } from './native-error-ownership.test.ts';
 import { testNode as timeoutSupervisionTestNode } from './execution-timeout-supervision.test.ts';
 import { testNode as retryExecutionTestNode } from './retry-execution.test.ts';
+import { testNode as interruptedCleanupTestNode } from './interrupted-case-cleanup.test.ts';
 
 export const testNode = createSuite({
     annotations: {},
@@ -15,7 +16,8 @@ export const testNode = createSuite({
         nativeGuardOwnershipTestNode,
         nativeErrorOwnershipTestNode,
         timeoutSupervisionTestNode,
-        retryExecutionTestNode
+        retryExecutionTestNode,
+        interruptedCleanupTestNode
     ]
 });
 const { runIfMain } = await import('../test-support/run-if-main.ts');

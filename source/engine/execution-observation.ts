@@ -11,6 +11,7 @@ type ObservationLifetime = {
 
 type RunOwner = ObservationLifetime & { readonly identity: symbol; };
 type AttemptOwner = ObservationLifetime & {
+    readonly identity: symbol;
     readonly caseId: CaseId;
     readonly workId: WorkId;
     readonly attempt: AttemptId;
@@ -110,6 +111,15 @@ function createRunOwner(): RunOwner {
 
 export function observingInfrastructure(): boolean {
     return ownership.getStore()?.kind === 'infrastructure';
+}
+
+export function currentAttemptIdentity(): symbol | null {
+    const owner = ownership.getStore();
+    if (owner?.kind !== 'attempt' || !owner.run.open() || !owner.attempt.open()) {
+        return null;
+    }
+    const identity: unknown = Reflect.get(owner.attempt, 'identity');
+    return typeof identity === 'symbol' ? identity : null;
 }
 
 export function registerExecutionDisposal(dispose: () => void): () => void {
@@ -215,7 +225,13 @@ async function runOwnedAttempt<Value>(
     ) {
         return await operation();
     }
-    const owner = { ...createLifetime(), caseId: testCase.id, workId: testCase.workId, attempt };
+    const owner = {
+        ...createLifetime(),
+        identity: Symbol('execution attempt'),
+        caseId: testCase.id,
+        workId: testCase.workId,
+        attempt
+    };
     try {
         return await ownership.run({ kind: 'attempt', run, attempt: owner }, operation);
     } finally {

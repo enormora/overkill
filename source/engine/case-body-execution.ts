@@ -1,13 +1,21 @@
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
-import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
-import { readTestBodyFamily } from './test-body.ts';
-import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import {
+    isTestContractFailure,
+    RequireFailedSignalError,
+    TestContractSignalError,
+    type AssertionRecorder
+} from './assertion-recorder.ts';
+import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
+import {
+    type TestContractFailure,
     isCaseRunnerError,
     permissionDeniedRunnerErrorFromThrown,
     type CaseRunnerError,
     type RunnerError
 } from './run-result.ts';
+import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
+import { readTestBodyFamily } from './test-body.ts';
+import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import type { TestBody } from './test-node.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
@@ -99,7 +107,7 @@ type FinishedCaseCleanup = {
     readonly cleanupErrors: readonly ThrownErrorRecord[];
     readonly runnerErrors: readonly RunnerError[];
 };
-export function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
+function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerError | null {
     if (isCaseRunnerError(error)) {
         return error.runnerError(testCase.id, testCase.workId);
     }
@@ -114,7 +122,7 @@ export function caseRunnerError(testCase: TestPlanCase, error: unknown): RunnerE
     });
 }
 
-export function finishedCaseCleanup(testCase: TestPlanCase, cleanupErrors: readonly unknown[]): FinishedCaseCleanup {
+function finishedCaseCleanup(testCase: TestPlanCase, cleanupErrors: readonly unknown[]): FinishedCaseCleanup {
     const bodyErrors: ThrownErrorRecord[] = [];
     const runnerErrors: RunnerError[] = [];
 
@@ -131,5 +139,220 @@ export function finishedCaseCleanup(testCase: TestPlanCase, cleanupErrors: reado
     return {
         cleanupErrors: bodyErrors,
         runnerErrors
+    };
+}
+
+type AssertionResult = Parameters<AssertionRecorder['returnedAssertions']>[0];
+type AssertionNode = ReturnType<AssertionRecorder['activeRecordedAssertions']>[number];
+
+type BodyErrorRecord = ThrownErrorRecord;
+
+export type ExecutedBody = {
+    readonly bodyError: BodyErrorRecord | null;
+    readonly cleanupErrors: readonly BodyErrorRecord[];
+    readonly contractFailures: readonly TestContractFailure[];
+    readonly requireFailed: boolean;
+    readonly runnerErrors: readonly RunnerError[];
+    readonly returnedAssertions: readonly AssertionNode[];
+};
+
+type FailedBodyInput = {
+    readonly context: BodyResultContext;
+    readonly error: unknown;
+    readonly testCase: TestPlanCase;
+};
+
+type CompletedBodyInput = {
+    readonly assertionResult: AssertionResult;
+    readonly context: BodyResultContext;
+};
+
+export type BodyResultContext = {
+    readonly cleanupErrors: readonly BodyErrorRecord[];
+    readonly contractFailures: readonly TestContractFailure[];
+    readonly recorder: AssertionRecorder;
+    readonly runnerErrors: readonly RunnerError[];
+};
+
+type FinishedScope = {
+    readonly cleanupErrors: readonly unknown[];
+    readonly lifecycleFailures: readonly TestContractFailure[];
+};
+
+function requireFailedBody(context: BodyResultContext): ExecutedBody {
+    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
+
+    return {
+        bodyError: null,
+        cleanupErrors,
+        contractFailures,
+        requireFailed: true,
+        runnerErrors,
+        returnedAssertions: recorder.activeRecordedAssertions()
+    };
+}
+
+function contractFailedBody(
+    context: BodyResultContext,
+    contractFailures: readonly TestContractFailure[]
+): ExecutedBody {
+    const { cleanupErrors, recorder, runnerErrors } = context;
+
+    return {
+        bodyError: null,
+        cleanupErrors,
+        contractFailures,
+        requireFailed: false,
+        runnerErrors,
+        returnedAssertions: recorder.activeRecordedAssertions()
+    };
+}
+
+export function bodyErrorResult(context: BodyResultContext, error: unknown): ExecutedBody {
+    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
+
+    return {
+        bodyError: createThrownErrorRecord(error),
+        cleanupErrors,
+        contractFailures,
+        requireFailed: false,
+        runnerErrors,
+        returnedAssertions: recorder.activeRecordedAssertions()
+    };
+}
+
+function caseRunnerErrorBody(
+    context: BodyResultContext,
+    runnerError: RunnerError
+): ExecutedBody {
+    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
+
+    return {
+        bodyError: null,
+        cleanupErrors,
+        contractFailures,
+        requireFailed: false,
+        runnerErrors: [ runnerError, ...runnerErrors ],
+        returnedAssertions: recorder.activeRecordedAssertions()
+    };
+}
+
+function nodeAssertionFailedBody(
+    testCase: TestPlanCase,
+    context: BodyResultContext,
+    error: unknown
+): ExecutedBody {
+    return {
+        bodyError: null,
+        cleanupErrors: context.cleanupErrors,
+        contractFailures: context.contractFailures,
+        requireFailed: false,
+        runnerErrors: context.runnerErrors,
+        returnedAssertions: [
+            ...context.recorder.activeRecordedAssertions(),
+            nodeAssertionErrorFailure(error, testCase.definitionLocations[0])
+        ]
+    };
+}
+
+export function completedBody(input: CompletedBodyInput): ExecutedBody {
+    const { assertionResult, context } = input;
+    const { recorder } = context;
+
+    if (recorder.requireFailed()) {
+        return requireFailedBody(context);
+    }
+
+    const returnedAssertions = recorder.returnedAssertions(assertionResult);
+
+    if (isTestContractFailure(returnedAssertions)) {
+        return contractFailedBody(context, [ returnedAssertions, ...context.contractFailures ]);
+    }
+
+    return {
+        bodyError: null,
+        cleanupErrors: context.cleanupErrors,
+        contractFailures: context.contractFailures,
+        requireFailed: false,
+        runnerErrors: context.runnerErrors,
+        returnedAssertions
+    };
+}
+
+export function completedThrowingBody(recorder: AssertionRecorder): ExecutedBody {
+    if (recorder.requireFailed()) {
+        return requireFailedBody({
+            cleanupErrors: [],
+            contractFailures: [],
+            recorder,
+            runnerErrors: []
+        });
+    }
+
+    const returnedAssertions = recorder.completedThrowingAssertions();
+
+    return isTestContractFailure(returnedAssertions)
+        ? contractFailedBody({
+            cleanupErrors: [],
+            contractFailures: [],
+            recorder,
+            runnerErrors: []
+        }, [ returnedAssertions ])
+        : {
+            bodyError: null,
+            cleanupErrors: [],
+            contractFailures: [],
+            requireFailed: false,
+            runnerErrors: [],
+            returnedAssertions
+        };
+}
+
+function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
+    const { context, error, testCase } = input;
+
+    if (error instanceof RequireFailedSignalError) {
+        return requireFailedBody(context);
+    }
+
+    if (error instanceof TestContractSignalError) {
+        return contractFailedBody(context, [ error.failure(), ...context.contractFailures ]);
+    }
+
+    if (
+        testCase.execution.kind === 'body' &&
+        testCase.execution.bodyMode === 'throwing' &&
+        isNodeAssertionError(error)
+    ) {
+        return nodeAssertionFailedBody(testCase, context, error);
+    }
+
+    return bodyErrorResult(context, error);
+}
+
+export function failedBody(input: FailedBodyInput): ExecutedBody {
+    const { context, error, testCase } = input;
+    const runnerError = caseRunnerError(testCase, error);
+
+    if (runnerError !== null) {
+        return caseRunnerErrorBody(context, runnerError);
+    }
+
+    return nonRunnerFailedBody(input);
+}
+
+export function bodyResultContext(
+    recorder: AssertionRecorder,
+    testCase: TestPlanCase,
+    finishedScope: FinishedScope,
+    sampleCleanupErrors: readonly unknown[]
+): BodyResultContext {
+    const cleanup = finishedCaseCleanup(testCase, [ ...sampleCleanupErrors, ...finishedScope.cleanupErrors ]);
+
+    return {
+        cleanupErrors: cleanup.cleanupErrors,
+        contractFailures: finishedScope.lifecycleFailures,
+        recorder,
+        runnerErrors: cleanup.runnerErrors
     };
 }

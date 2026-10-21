@@ -540,6 +540,8 @@ Source: [Test Ergonomics § startInFlight(...)](../authoring/test-ergonomics.md#
 
 A teardown callback registered through `scope.cleanup(...)`. The registration
 is synchronous, the callback may be async, and callbacks run after the test
-body in reverse registration order.
+body in reverse registration order. An interrupted in-process attempt starts
+registered cleanup without waiting for its pending body. Finalization runs once;
+native process termination may prevent it.
 
 Source: [Test Ergonomics § Async-Control Helpers](../authoring/test-ergonomics.md#async-control-helpers).

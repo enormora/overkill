@@ -159,9 +159,10 @@ async function serialTestPlanReporterErrors(
 async function completeSerialCase(input: ExecuteTestPlanCasesInput, state: SerialCaseExecutionState): Promise<void> {
     const result = state.perTest.at(-1);
     const { lifecycle } = input.supervision;
+    const errors = Array.from(new Set([ ...state.reportedRunnerErrors, ...input.supervision.runnerErrors ]));
     if (
         lifecycle !== null && result !== undefined &&
-        await lifecycle.complete(result, state.reportedRunnerErrors) === 'stop'
+        await lifecycle.complete(result, errors) === 'stop'
     ) {
         input.supervision.stopAcceptingCases();
     }
@@ -260,7 +261,8 @@ async function executeStartedConcurrentCase(
         supervision: input.supervision,
         testCase
     }, true);
-    if (lifecycle !== null && await lifecycle.complete(executed.result, executed.runnerErrors) === 'stop') {
+    const errors = Array.from(new Set([ ...executed.runnerErrors, ...input.supervision.runnerErrors ]));
+    if (lifecycle !== null && await lifecycle.complete(executed.result, errors) === 'stop') {
         input.supervision.stopAcceptingCases();
     }
     return executed;

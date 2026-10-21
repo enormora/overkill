@@ -25,6 +25,7 @@ export type AsyncControlState = {
     readonly registerCleanup: (callback: CleanupCallback) => void;
     readonly registerInFlight: (record: InFlightRecord<unknown>) => void;
     readonly startCleanup: () => readonly CleanupCallback[];
+    readonly releaseInFlight: () => void;
 };
 
 const settleCheckpointCount = 5;
@@ -66,7 +67,12 @@ export function createAsyncControlState(): AsyncControlState {
         },
         startCleanup() {
             cleanupStarted = true;
-            return cleanupCallbacks;
+            const registered = Array.from(cleanupCallbacks);
+            cleanupCallbacks.length = 0;
+            return registered;
+        },
+        releaseInFlight() {
+            inFlightRecords.length = 0;
         }
     };
 }
@@ -101,6 +107,9 @@ export function startInFlight<Value>(
     assertContext: Pick<AssertAssertionFacade, 'rejects'>,
     operation: () => PromiseLike<Value>
 ): InFlightTask<Value> {
+    if (state.cleanupStarted()) {
+        throw new TypeError('scope.startInFlight() cannot be called after test cleanup has started.');
+    }
     let observed = false;
     let settled = false;
     const promise = operationPromise(operation);
@@ -200,5 +209,6 @@ export function validateInFlightTasks(state: AsyncControlState): readonly TestCo
         failures.push(unobservedInFlightTaskFailure(unobservedCount));
     }
 
+    state.releaseInFlight();
     return failures;
 }

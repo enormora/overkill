@@ -317,6 +317,11 @@ Semantics:
 - `scope.cleanup(...)` registers teardown callbacks. Registration is
   synchronous; the callback itself may be async. Cleanups run after the test
   body, after `scope.signal` is aborted, and in reverse registration order.
+  If an observable fatal error or timeout ends the attempt while the body is
+  pending, registered cleanups run without waiting for it. Finalization runs
+  once, and closed scopes reject new cleanup callbacks and in-flight tasks.
+  A body may resume after closure; its settlement cannot repeat cleanup.
+  Native process termination cannot guarantee cleanup.
 
 These are useful because they do **not** require global time monkey
 patching or a mandatory production-side clock abstraction.
