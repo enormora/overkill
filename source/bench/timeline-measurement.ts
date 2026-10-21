@@ -1,5 +1,5 @@
 import type { BenchmarkTimelinePolicy } from '../engine/benchmark-timeline.ts';
-import { benchmarkTimelinePolicySchema } from '../packages/run/benchmark-calibration.entry-point.ts';
+import { benchmarkTimelinePolicySchema } from './timeline-schema.ts';
 import type { UncalibratedMeasurement } from './measurement-definition.ts';
 
 export type TimelineMeasurement<Strategy extends UncalibratedMeasurement = UncalibratedMeasurement> = Strategy & {

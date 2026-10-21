@@ -2,7 +2,7 @@ import type { BenchmarkTimelineReport } from '../engine/benchmark-timeline.ts';
 import type { RunResult, PerTestResult, RunArtifact } from '../engine/run-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
-import { benchmarkTimelineReportSchema } from '../packages/run/benchmark-calibration.entry-point.ts';
+import { benchmarkTimelineReportSchema } from './timeline-schema.ts';
 
 export const benchmarkTimelineMediaType = 'application/vnd.overkill.benchmark-timeline+json';
 function assertOwner(artifact: RunArtifact, test: PerTestResult): void {
