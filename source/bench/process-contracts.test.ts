@@ -1,5 +1,4 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
-import { processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
+import { suite, test, processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
 import { testNode as moduleProtocolTestNode } from './module-import-session.test.ts';
 import { testNode as processTimelineTestNode } from './process-timeline.test.ts';
@@ -8,6 +7,7 @@ import { testNode as moduleContractsTestNode } from './module-contracts.test.ts'
 import { parseProcessRequest, processRequestSchema } from './process-command.ts';
 import { processOutput } from './process-output.ts';
 import { testNode as moduleEvidenceTestNode } from './module-evidence.test.ts';
+import { testNode as probeProtocolTestNode } from './process-probe-session.test.ts';
 
 const command = {
     command: [ 'node', 'cli.js' ],
@@ -39,6 +39,7 @@ export const testNode = suite('external process contracts', [
     }),
     moduleContractsTestNode,
     moduleProtocolTestNode,
+    probeProtocolTestNode,
     processTimelineTestNode,
     test('rejects incompatible stream selectors and terminal-only steps on pipes', function (scope) {
         scope.assert.false(
