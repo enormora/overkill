@@ -1,5 +1,5 @@
 import {
-    benchmark, defaultSamplingPolicy, processMeasurement, suite, workload, type BenchmarkOptions
+    benchmark, defaultSamplingPolicy, processMeasurement, rawMeasurement, suite, workload, type BenchmarkOptions
 } from '../../../packages/bench/bench.entry-point.ts';
 
 const options: BenchmarkOptions = {
@@ -21,7 +21,8 @@ process.stdout.write('Ready ' + process.stdin.isTTY + ' ' + process.stdout.colum
 
 export const testNode = suite('external process benchmarks', [
     benchmark('pipe child probe', {
-        kind: 'startup', workloads: [ workload('one', {}) ], measurement: processMeasurement({ instrumentation: 'node' }),
+        kind: 'startup', workloads: [ workload('one', {}) ],
+        measurement: rawMeasurement(processMeasurement({ instrumentation: 'node' })),
         async measure({ sample }) {
             const run = await sample.process({
                 command: [ process.execPath, '-e', 'process.stdout.write(String(process.pid)); process.stderr.write("diagnostic"); process.exit(0)' ],
@@ -33,7 +34,8 @@ export const testNode = suite('external process benchmarks', [
         diagnosticMetrics: [ 'outputBytes' ], budgets
     }, options),
     benchmark('terminal interaction', {
-        kind: 'responsiveness', workloads: [ workload('one', {}) ], measurement: processMeasurement({ instrumentation: 'node' }),
+        kind: 'responsiveness', workloads: [ workload('one', {}) ],
+        measurement: rawMeasurement(processMeasurement({ instrumentation: 'node' })),
         async measure({ sample }) {
             const run = await sample.process({
                 command: [ process.execPath, '-e', terminalProgram ],

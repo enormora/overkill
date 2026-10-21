@@ -12,6 +12,7 @@ import type { ProcessCommand } from './process-command.ts';
 import type { ProcessInstrumentation } from './process-measurement.ts';
 import { signalProcessGroup } from './process-child.ts';
 import { withinProcessDeadline } from './process-deadline.ts';
+import { timelineContext } from './timeline-context.ts';
 
 type PendingProcess = Readonly<PromiseWithResolvers<ProcessExecution>> & { readonly id: number; };
 type HelperConnection = {
@@ -72,12 +73,25 @@ function finishHelperInvocation(
     pending.resolve(execution);
 }
 
-function completeHelperReply(connection: HelperConnection, reply: ProcessHelperReply): void {
-    if (reply.kind === 'ready') {
-        clearStartup(connection);
-        connection.ready.resolve(undefined);
+function recordProcessCheckpoint(reply: Extract<ProcessHelperReply, { readonly kind: 'checkpoint'; }>): void {
+    const recording = timelineContext.getStore();
+    if (recording === undefined) {
         return;
     }
+    const attribution = recording.attribution();
+    recording.append({
+        ...attribution,
+        name: reply.name,
+        source: 'process',
+        clockDomain: `process:${attribution.phase}:${attribution.sample}`,
+        startMicroseconds: reply.startMicroseconds,
+        durationMicroseconds: reply.durationMicroseconds,
+        outcome: reply.outcome
+    });
+}
+
+type InvocationReply = Exclude<ProcessHelperReply, { readonly kind: 'checkpoint' | 'ready'; }>;
+function completeInvocationReply(connection: HelperConnection, reply: InvocationReply): void {
     const pending = connection.pending.read();
     if (pending?.id !== reply.id) {
         throw new Error('Process helper replied to an unknown invocation.');
@@ -86,6 +100,18 @@ function completeHelperReply(connection: HelperConnection, reply: ProcessHelperR
         connection.group.write(reply.pid);
     } else {
         finishHelperInvocation(connection, pending, reply.execution);
+    }
+}
+function completeHelperReply(connection: HelperConnection, reply: ProcessHelperReply): void {
+    if (reply.kind === 'ready') {
+        clearStartup(connection);
+        connection.ready.resolve(undefined);
+    } else if (reply.kind === 'checkpoint') {
+        if (connection.pending.read()?.id === reply.id) {
+            recordProcessCheckpoint(reply);
+        }
+    } else {
+        completeInvocationReply(connection, reply);
     }
 }
 
@@ -149,6 +175,7 @@ async function helperRequest(
     signal.addEventListener('abort', abort, { once: true });
     sendHelperRequest(connection, {
         kind: 'run',
+        timeline: timelineContext.getStore() !== undefined,
         id: completed.id,
         request,
         instrumentation: connection.instrumentation,

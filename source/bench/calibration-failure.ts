@@ -10,6 +10,7 @@ export async function retainCalibrationFailure(
     const { error, calibrations } = failure;
     const reason = error instanceof Error ? error.message : String(error);
     await scope.updateResult({
+        timeline: null,
         workload: scope.workload,
         policy,
         samples: 0,

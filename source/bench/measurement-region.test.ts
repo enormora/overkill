@@ -381,7 +381,7 @@ export const testNode = suite('measurement regions and collectors', [
         }
         return scope.assert.collect();
     }),
-    test('primes and drains runtime observers outside synchronous work', async function (scope) {
+    test('primes observers without inventing loop observations for synchronous work', async function (scope) {
         const lifecycle = createAsyncMeasurementSample(
             asyncMeasurementStrategy([ runtimeHealthCollector() ]),
             scope.signal
@@ -396,7 +396,7 @@ export const testNode = suite('measurement regions and collectors', [
         });
         scope.assert.equal(measured.value, 'complete');
         scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.provenance.scope, 'runtime');
-        scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.availability, 'available');
+        scope.assert.equal(measured.metrics.eventLoopDelayMeanMicroseconds?.availability, 'unavailable');
         scope.assert.equal(measured.metrics.gcObservedDurationMicroseconds?.provenance.unit, 'microseconds');
         return scope.assert.collect();
     })

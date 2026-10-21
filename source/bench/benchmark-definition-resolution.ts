@@ -1,6 +1,6 @@
 import type { WorkloadParameters } from '../engine/workload-parameters.ts';
 import type { BenchmarkDefinitionSummary, BenchmarkLifecyclePolicy } from '../engine/benchmark-result.ts';
-import type { UncalibratedMeasurement } from './measurement-definition.ts';
+import { summarizeMeasurement, type UncalibratedMeasurement } from './measurement-definition.ts';
 import {
     resolveCalibratedMeasurement,
     type ResolvedMeasurement
@@ -14,7 +14,7 @@ import {
 import { workload } from './workload.ts';
 import { validateSamplingPolicy } from './sampling-policy.ts';
 import { resolveBenchmarkLifecyclePolicy } from './benchmark-lifecycle-policy.ts';
-import { processMeasurement } from './process-measurement.ts';
+import { measurementTimelinePolicy } from './timeline-measurement.ts';
 
 type BenchmarkCore = Pick<
     BenchmarkDefinition<WorkloadParameters>,
@@ -76,25 +76,6 @@ function resolveBudgets(
     }));
 }
 
-function measurementSummary(
-    measurement: ResolvedBenchmarkDefinition['measurement']
-): BenchmarkDefinitionSummary['measurement'] {
-    if (measurement.mode === 'process') {
-        return processMeasurement(measurement);
-    }
-    return Object.freeze({
-        mode: measurement.mode,
-        collectors: Object.freeze(measurement.collectors.map(function collectorDefinition(collector) {
-            return Object.freeze({
-                name: collector.name,
-                metrics: Object.freeze(collector.metrics.map(function declaration(metric) {
-                    return Object.freeze({ ...metric });
-                }))
-            });
-        }))
-    });
-}
-
 function validateNormalizedMetrics(
     definition: BenchmarkDefinitionData,
     normalization: ResolvedMeasurement['normalization']
@@ -137,6 +118,7 @@ export function resolveBenchmarkDefinition(
     const budgets = resolveBudgets(definition, names);
 
     const summary = Object.freeze({
+        timeline: measurementTimelinePolicy(measurement),
         normalization: Object.freeze(
             Object.fromEntries(
                 Object
@@ -155,7 +137,7 @@ export function resolveBenchmarkDefinition(
         workloads: Object.freeze(workloads.map(function workloadSummary(work) {
             return Object.freeze({ name: work.name, parameters: work.parameters });
         })),
-        measurement: measurementSummary(measurement),
+        measurement: summarizeMeasurement(measurement),
         diagnostics: Object.freeze(Array.from(definition.diagnosticMetrics)),
         budgets: Object.freeze(Object.fromEntries(budgets)),
         policy: validateSamplingPolicy(options.sampling)

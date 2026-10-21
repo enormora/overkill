@@ -7,6 +7,7 @@ import {
 import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import type { MetricObservations } from './benchmark-observations.ts';
 import { summarizeObservations } from './benchmark-observation-set.ts';
+import { timelineContext } from './timeline-context.ts';
 
 type BudgetAssertionContext = Pick<SamplingSessionInput, 'locations' | 'workload'>;
 
@@ -24,6 +25,7 @@ export function summarizedSamplingResult(
 ): BenchmarkExecutionResult {
     return {
         ...snapshot,
+        timeline: timelineContext.getStore()?.evidence() ?? null,
         normalization: input.normalization,
         workload: input.scope.workload,
         policy: input.policy,
@@ -83,4 +85,9 @@ export function generatedBudgetAssertions(
         throw new TypeError('Benchmark requires generated budget assertions.');
     }
     return [ first, ...checks.slice(1) ];
+}
+
+export async function retainBenchmarkEvidence(retainWarmup: () => Promise<void>): Promise<void> {
+    await retainWarmup();
+    await timelineContext.getStore()?.retain();
 }

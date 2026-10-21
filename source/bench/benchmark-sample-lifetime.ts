@@ -4,6 +4,8 @@ import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 import type { ProcessSamplingSession } from './process-sampling.ts';
 import type { ProcessPhase } from './process-evidence.ts';
+import { createModuleSample, type ModuleSampleLifetime } from './module-sampling.ts';
+import { sampleTimeline, beginTimelineInvocation, timelineSpan } from './timeline-context.ts';
 
 export type InvocationMeasurement = {
     readonly processes: ProcessSamplingSession | null;
@@ -61,6 +63,17 @@ function functionSample(input: BenchmarkInvocationInput): FunctionSampleLifetime
     throw new TypeError('Process sampling requires an owned process session.');
 }
 
+type ProcessInvocationLifetime = ReturnType<ProcessSamplingSession['sample']>;
+type OwnedSampleLifetime = ModuleSampleLifetime | ProcessInvocationLifetime;
+function ownedSample(input: BenchmarkInvocationInput, measurement: InvocationMeasurement): OwnedSampleLifetime | null {
+    if (measurement.processes === null) {
+        return null;
+    }
+    return input.measurement.mode === 'module'
+        ? createModuleSample(measurement.processes, measurement.phase)
+        : measurement.processes.sample(measurement.phase);
+}
+
 async function observeInvocation(
     input: BenchmarkInvocationInput,
     cleanup: SampleCleanup,
@@ -69,7 +82,7 @@ async function observeInvocation(
 ): Promise<void> {
     input.scope.signal.throwIfAborted();
     await using disposal = new AsyncDisposableStack();
-    const processes = measurement.processes?.sample(measurement.phase) ?? null;
+    const processes = ownedSample(input, measurement);
     disposal.defer(async function disposeProcesses() {
         await processes?.dispose();
     });
@@ -77,7 +90,7 @@ async function observeInvocation(
     const returned: unknown = await Reflect.apply(input.body, undefined, [ {
         ...input.context,
         workload: input.workload,
-        sample: { ...lifecycle.sample, cleanup: cleanup.register },
+        sample: { ...lifecycle.sample, cleanup: cleanup.register, timeline: sampleTimeline },
         signal: input.scope.signal,
         cleanup: input.scope.cleanup
     } ]);
@@ -94,7 +107,9 @@ async function attemptInvocation(
     measurement: InvocationMeasurement
 ): Promise<InvocationOutcome> {
     try {
-        await observeInvocation(input, cleanup, observe, measurement);
+        await timelineSpan('harness', 'invocation', async function prepareAndMeasure() {
+            await observeInvocation(input, cleanup, observe, measurement);
+        });
         return { kind: 'complete' };
     } catch (error: unknown) {
         return { kind: 'failed', error };
@@ -113,21 +128,35 @@ function collectAfterCleanup(input: BenchmarkInvocationInput, failed: boolean, c
     }
 }
 
-export async function measureBenchmarkInvocation(
+type InvocationLifecycle = Pick<BenchmarkLifecycle, 'garbageCollection' | 'recordCleanup'>;
+function collectInvocationGarbage(
     input: BenchmarkInvocationInput,
-    observe: (returned: unknown) => void,
-    lifecycle: Pick<BenchmarkLifecycle, 'garbageCollection' | 'recordCleanup'>,
-    measurement: InvocationMeasurement
+    lifecycle: InvocationLifecycle,
+    invocation: InvocationOutcome,
+    result: SampleCleanupResult
+): void {
+    const collect = function collectAfterInvocation(): void {
+        collectAfterCleanup(
+            input,
+            invocation.kind === 'failed' || result.failures > 0,
+            lifecycle.garbageCollection.collect
+        );
+    };
+    if (input.lifecycle.garbageCollection === 'after-sample') {
+        timelineSpan('harness', 'forced GC', collect);
+    } else {
+        collect();
+    }
+}
+async function completeInvocation(
+    input: BenchmarkInvocationInput,
+    lifecycle: InvocationLifecycle,
+    cleanup: SampleCleanup,
+    invocation: InvocationOutcome
 ): Promise<void> {
-    const cleanup = createSampleCleanup(input.scope.reportCleanupError);
-    const invocation = await attemptInvocation(input, cleanup, observe, measurement);
-    const result = await cleanup.finish();
+    const result = await timelineSpan('harness', 'sample cleanup', cleanup.finish);
     lifecycle.recordCleanup(result);
-    collectAfterCleanup(
-        input,
-        invocation.kind === 'failed' || result.failures > 0,
-        lifecycle.garbageCollection.collect
-    );
+    collectInvocationGarbage(input, lifecycle, invocation, result);
     if (invocation.kind === 'failed') {
         throw invocation.error;
     }
@@ -135,4 +164,16 @@ export async function measureBenchmarkInvocation(
         throw new CaseRunnerError('Benchmark sample cleanup failed.', { subtype: 'measurement', cause: result });
     }
     input.scope.signal.throwIfAborted();
+}
+
+export async function measureBenchmarkInvocation(
+    input: BenchmarkInvocationInput,
+    observe: (returned: unknown) => void,
+    lifecycle: InvocationLifecycle,
+    measurement: InvocationMeasurement
+): Promise<void> {
+    beginTimelineInvocation(measurement.phase);
+    const cleanup = createSampleCleanup(input.scope.reportCleanupError);
+    const invocation = await attemptInvocation(input, cleanup, observe, measurement);
+    await completeInvocation(input, lifecycle, cleanup, invocation);
 }

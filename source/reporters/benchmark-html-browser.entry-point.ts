@@ -1,6 +1,6 @@
 import { init, use, type EChartsType } from 'echarts/core';
-import type { EChartsOption } from 'echarts';
-import { BarChart, BoxplotChart, CandlestickChart, ScatterChart } from 'echarts/charts';
+import type { EChartsOption, CustomSeriesRenderItem } from 'echarts';
+import { BarChart, BoxplotChart, CandlestickChart, ScatterChart, CustomChart } from 'echarts/charts';
 import {
     AriaComponent,
     DataZoomComponent,
@@ -11,6 +11,9 @@ import {
     TitleComponent
 } from 'echarts/components';
 import { SVGRenderer } from 'echarts/renderers';
+import type { BenchmarkBudgetResult } from '../engine/benchmark-result.ts';
+import type { BenchmarkTimelineEvent } from '../engine/benchmark-timeline.ts';
+import { difference, percentDifference } from './benchmark-deltas.ts';
 import type { BenchmarkHtmlChartData, BenchmarkChartGroup, BaselineChartRow } from './benchmark-html-data.ts';
 
 use([
@@ -18,6 +21,7 @@ use([
     BoxplotChart,
     CandlestickChart,
     ScatterChart,
+    CustomChart,
     AriaComponent,
     DataZoomComponent,
     GridComponent,
@@ -62,6 +66,28 @@ function categoricalChart(title: string, labels: readonly string[], unit: string
         yAxis: { type: 'value', name: unit, scale: true },
         dataZoom: [ { type: 'inside' }, { type: 'slider', bottom: 10 } ]
     };
+}
+type BudgetTooltipRow = readonly [name: string, value: number | null, unavailable: string];
+function budgetTooltip(budget: BenchmarkBudgetResult, label: string): string {
+    const rows: readonly BudgetTooltipRow[] = [
+        [ 'estimate', budget.estimate, 'unavailable' ],
+        [ 'interval lower', budget.interval.lower, '-unbounded' ],
+        [ 'interval upper', budget.interval.upper, 'unbounded' ],
+        [ 'minimum', budget.minimum, '-unbounded' ],
+        [ 'minimum delta', difference(budget.estimate, budget.minimum), 'unavailable' ],
+        [ 'minimum delta %', percentDifference(budget.estimate, budget.minimum), 'unavailable' ],
+        [ 'maximum', budget.maximum, 'unbounded' ],
+        [ 'maximum delta', difference(budget.estimate, budget.maximum), 'unavailable' ],
+        [ 'maximum delta %', percentDifference(budget.estimate, budget.maximum), 'unavailable' ]
+    ];
+    return [
+        label,
+        ...rows.map(function recordedValue([ fieldLabel, value, unavailable ]) {
+            return `${fieldLabel}: ${value ?? unavailable}`;
+        }),
+        `precision met: ${String(budget.precise)}`
+    ]
+        .join('\n');
 }
 function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selected: ReadonlySet<string>): void {
     const rows = group.rows.filter(function selectedRow(row) {
@@ -122,13 +148,17 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
             }),
             group.unit
         ),
+        tooltip: { trigger: 'item', renderMode: 'richText', formatter: '{b}' },
         series: [
             {
                 type: 'candlestick',
                 name: 'recorded interval',
                 data: budgets.map(function interval(budget) {
                     return budget.estimate !== null && budget.interval.lower !== null && budget.interval.upper !== null
-                        ? [ budget.estimate, budget.estimate, budget.interval.lower, budget.interval.upper ]
+                        ? {
+                            name: budgetTooltip(budget, budget.label),
+                            value: [ budget.estimate, budget.estimate, budget.interval.lower, budget.interval.upper ]
+                        }
                         : '-';
                 })
             },
@@ -136,7 +166,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 type: 'scatter',
                 name: 'estimate',
                 data: budgets.map(function estimate(budget) {
-                    return budget.estimate;
+                    return { name: budgetTooltip(budget, budget.label), value: budget.estimate };
                 })
             },
             {
@@ -144,7 +174,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 name: 'minimum',
                 symbol: 'triangle',
                 data: budgets.map(function minimum(budget) {
-                    return budget.minimum;
+                    return { name: budgetTooltip(budget, budget.label), value: budget.minimum };
                 })
             },
             {
@@ -152,7 +182,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 name: 'maximum',
                 symbol: 'triangle',
                 data: budgets.map(function maximum(budget) {
-                    return budget.maximum;
+                    return { name: budgetTooltip(budget, budget.label), value: budget.maximum };
                 })
             }
         ]
@@ -263,6 +293,115 @@ function connectBaselineSelection(data: BenchmarkHtmlChartData): void {
     selection.addEventListener('change', refreshBaselines);
     refreshBaselines();
 }
+const timelineLaneIndex = 2;
+const timelineHalfHeight = 5;
+const timelineMinimumWidth = 2;
+const renderTimelineEvent: CustomSeriesRenderItem = function renderEvent(_parameters, api) {
+    const start = api.coord([ api.value(0), api.value(timelineLaneIndex) ]);
+    const end = api.coord([ api.value(1), api.value(timelineLaneIndex) ]);
+    return {
+        type: 'rect',
+        shape: {
+            x: start[0] ?? 0,
+            y: (start[1] ?? 0) - timelineHalfHeight,
+            width: Math.max(timelineMinimumWidth, (end[0] ?? 0) - (start[0] ?? 0)),
+            height: timelineHalfHeight + timelineHalfHeight
+        },
+        style: { fill: '#3865b4' }
+    };
+};
+function renderTimeline(chart: EChartsType, events: readonly BenchmarkTimelineEvent[], clock: string): void {
+    chart.setOption({
+        title: { text: `Timeline / ${clock.length > 0 ? clock : 'no recorded events'}` },
+        animation: false,
+        aria: { enabled: true },
+        tooltip: { renderMode: 'richText' },
+        grid: { left: 190, right: 30, top: 60, bottom: 65 },
+        xAxis: { type: 'value', name: 'raw microseconds', scale: true },
+        yAxis: {
+            type: 'category',
+            data: events.map(function eventLabel(observation) {
+                return `${observation.phase} ${observation.sample} / ${observation.name} (${observation.outcome})`;
+            })
+        },
+        dataZoom: [ { type: 'inside' }, { type: 'slider' }, { type: 'slider', yAxisIndex: 0, right: 0 } ],
+        series: [ {
+            type: 'custom',
+            renderItem: renderTimelineEvent,
+            encode: { x: [ 0, 1 ], y: 2 },
+            data: events.map(function eventInterval(observation, index) {
+                return {
+                    name: `${observation.name} / ${observation.source}`,
+                    value: [
+                        observation.startMicroseconds,
+                        observation.startMicroseconds + (observation.durationMicroseconds ?? 0),
+                        index
+                    ]
+                };
+            })
+        } ]
+    }, true);
+}
+function timelineSelections(): Readonly<Record<'clock' | 'phase' | 'sample' | 'selection', HTMLSelectElement>> {
+    return {
+        selection: selectionAt('timeline-selection'),
+        phase: selectionAt('timeline-phase'),
+        sample: selectionAt('timeline-sample'),
+        clock: selectionAt('timeline-clock')
+    };
+}
+function replaceTimelineFilters(
+    events: readonly BenchmarkTimelineEvent[],
+    sample: HTMLSelectElement,
+    clock: HTMLSelectElement
+): void {
+    const samples = new Set(events.map(function sampleIndex(observation) {
+        return observation.sample;
+    }));
+    const clocks = new Set(events.map(function eventClock(observation) {
+        return observation.clockDomain;
+    }));
+    sample.replaceChildren(new Option('All', 'all'));
+    clock.replaceChildren();
+    for (const index of samples) {
+        sample.add(new Option(String(index), String(index)));
+    }
+    for (const domain of clocks) {
+        clock.add(new Option(domain, domain));
+    }
+}
+function listenSelections(selections: readonly HTMLSelectElement[], refresh: () => void): void {
+    for (const selection of selections) {
+        selection.addEventListener('change', refresh);
+    }
+}
+function connectTimelineSelection(data: BenchmarkHtmlChartData): void {
+    const { selection, phase, sample, clock } = timelineSelections();
+    const chart = chartAt('timeline-chart');
+    for (const [ index, timeline ] of data.timelines.entries()) {
+        selection.add(new Option(timeline.label, String(index)));
+    }
+    function phaseEvents(): readonly BenchmarkTimelineEvent[] {
+        return (data.timelines[Number(selection.value)]?.events ?? []).filter(function selectedPhase(observation) {
+            return phase.value === 'all' || observation.phase === phase.value;
+        });
+    }
+    function refreshChart(): void {
+        const events = phaseEvents().filter(function selectedEvent(observation) {
+            return (sample.value === 'all' || String(observation.sample) === sample.value) &&
+                observation.clockDomain === clock.value;
+        });
+        renderTimeline(chart, events, clock.value);
+    }
+    function refreshFilters(): void {
+        const events = phaseEvents();
+        replaceTimelineFilters(events, sample, clock);
+        refreshChart();
+    }
+    listenSelections([ selection, phase ], refreshFilters);
+    listenSelections([ sample, clock ], refreshChart);
+    refreshFilters();
+}
 function renderBenchmarkCharts(data: BenchmarkHtmlChartData): void {
     connectWorkloadSelection(data, {
         distribution: chartAt('distribution'),
@@ -271,5 +410,6 @@ function renderBenchmarkCharts(data: BenchmarkHtmlChartData): void {
         budgets: chartAt('budgets')
     });
     connectBaselineSelection(data);
+    connectTimelineSelection(data);
 }
 Object.assign(globalThis, { renderBenchmarkCharts });

@@ -16,11 +16,20 @@ type BenchmarkPlacementInput = {
 const timingMetrics: ReadonlySet<string> = new Set([ 'durationMicroseconds', 'operationsPerSecond' ]);
 const percentScale = 100;
 
+function isRegionMeasurement(
+    measurement: BenchmarkDefinitionSummary['measurement']
+): measurement is Extract<BenchmarkDefinitionSummary['measurement'], { readonly mode: 'async' | 'sync'; }> {
+    return measurement.mode === 'sync' || measurement.mode === 'async';
+}
 function parallelMeasurement(definition: BenchmarkDefinitionSummary | null): boolean {
-    if (
-        definition?.kind !== 'bundle-size' || definition.measurement.mode === 'process' ||
-        definition.measurement.collectors.length > 0
-    ) {
+    if (definition?.kind !== 'bundle-size') {
+        return false;
+    }
+    const { measurement } = definition;
+    if (!isRegionMeasurement(measurement)) {
+        return false;
+    }
+    if (measurement.collectors.length > 0) {
         return false;
     }
     const metrics = [

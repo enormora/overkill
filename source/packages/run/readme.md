@@ -575,3 +575,7 @@ CPU calibration resource measures this same workload.
 reference workload. `metricReadingSchema` validates metric readings shared by
 collectors and persisted samples. Both are exported by
 `@overkill-dev/run/benchmark-calibration`.
+
+`benchmarkTimelinePolicySchema`, `benchmarkTimelineEvidenceSchema`, and
+`benchmarkTimelineReportSchema` validate timeline policy, retention metadata,
+and saved event payloads across benchmark and runner packages.

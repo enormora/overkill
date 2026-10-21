@@ -256,6 +256,8 @@ delivered progress snapshot. Historical results without lifecycle evidence
 decode it as `null`.
 
 Browser collectors remain a later milestone.
+Cold-module imports and opt-in benchmark timelines use the same sampling and
+result pipeline described below.
 Benchmark HTML reports show warmup and lifecycle evidence separately from
 measured distributions and budgets, and are available through
 `createBenchmarkHtmlReporter` from `@overkill-dev/test/reporters`.
@@ -352,6 +354,70 @@ with forced termination after a bounded grace period.
 Runner results retain bounded output, phase, completion, and probe metadata as
 process evidence. HTML case details include that evidence. Process benchmarks
 run serially under existing benchmark host checks and sampling policies.
+
+## Cold-module imports
+
+`moduleMeasurement()` gives each warmup and measured invocation a fresh Node
+process and user-module graph. Import timing starts inside the child after its
+bootstrap and finishes when `import()` settles. Process startup, IPC, and
+teardown are excluded. Filesystem and operating-system caches are not cleared.
+
+```ts
+measurement: rawMeasurement(moduleMeasurement()),
+async measure({ sample }) {
+    const imported = await sample.importModule({
+        url: new URL('./application.ts', import.meta.url),
+        cwd: process.cwd(),
+        env: null,
+        nodeArguments: []
+    });
+    return { durationMicroseconds: imported.metrics.durationMicroseconds };
+}
+```
+
+Each invocation must await exactly one successful import. The URL must use
+`file:`; Node supplies ESM, CommonJS, and supported TypeScript loading.
+`env: null` inherits the environment. Explicit Node arguments configure the
+child independently of the runner. Module exports are not transported.
+The harness terminates the process group after import completion, including
+handles opened by imported modules.
+
+Metrics include import `durationMicroseconds`, `operationsPerSecond`, separate
+`processStartupMilliseconds`, and `outputBytes`. Startup is observed from the
+launch request to child import readiness, including helper startup and IPC.
+Return budgeted metrics and declare other returned metrics as diagnostics. Duration and throughput normalize
+automatically unless wrapped in `rawMeasurement`; custom calibration also works.
+Retained process evidence records the URL, Node version and arguments, import
+duration, startup, output, and import failures. Module measurements stay serial
+and use the existing Linux/macOS process cancellation and deadline policy.
+
+## Benchmark timelines
+
+Wrap a strategy with `timelineMeasurement(strategy, { maximumEvents: 4096 })`
+to record a bounded timeline. Recording is off by default. The wrapper composes
+with raw and calibrated measurements in either order.
+
+`sample.timeline.mark(name)` records an instant. `sample.timeline.span(name,
+callback)` records a named interval and returns the callback's value or promise,
+preserving synchronous execution and failures. Calls are inert when recording
+is off. Names must be nonblank and contain no control characters.
+
+Timelines include invocation phases, measurement regions, sample cleanup, forced
+GC, cooldown, runtime GC observations, process checkpoints, and authored events.
+Events retain warmup/measured phase, zero-based sample index, source, raw
+microsecond timestamps, outcome, and clock domain. Child clocks have separate
+origins and are not presented as synchronized with the executing runtime.
+Recording and authored instrumentation may add overhead to measured work.
+
+Limits are positive integers up to 65536 events per attempt; attachment byte
+limits also apply. Excess events are omitted with explicit counts and do not
+change budget decisions. Cooperative failures retain partial evidence. Hard
+termination may leave no timeline attachment; pending or unavailable evidence
+remains explicit. Historical results decode absent timeline evidence as `null`.
+
+`readBenchmarkTimeline(result, test)` reads retained evidence without rerunning
+work. Offline HTML reports provide workload, phase, sample, and clock selectors,
+an interactive timeline, and static event tables.
 
 ## Host conditions
 

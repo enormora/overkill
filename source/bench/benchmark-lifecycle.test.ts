@@ -88,6 +88,30 @@ function assertRuntimeSettling(scope: TestScope, result: RunResult): void {
 }
 
 export const testNode = suite('benchmark invocation lifetimes', [
+    test('rejects invalid cleanup callbacks while releasing already registered resources', async function (scope) {
+        let cleanups = 0;
+        const result = await runBenchmark(benchmark(
+            'invalid cleanup',
+            valueBenchmark(function ({ sample }) {
+                sample.cleanup(function releaseResource() {
+                    cleanups += 1;
+                });
+                const measured = sample.measure(function () {
+                    return 1;
+                });
+                Reflect.apply(sample.cleanup, undefined, [ null ]);
+                return { value: measured.value };
+            }),
+            measuredOnly
+        ));
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.equal(cleanups, 1);
+        scope.assert.partialDeepEqual(failureOutcome(result), {
+            failures: [ { kind: 'body-error', error: { message: 'sample.cleanup() requires a callback.' } } ]
+        });
+        scope.assert.deepEqual(measurementResult(result).lifecycle.cleanup, { callbacks: 1, failures: 0 });
+        return scope.assert.collect();
+    }),
     test('preserves established budget failures through a measurement interruption', async function (scope: TestScope) {
         let calls = 0;
         const result = await runBenchmark(benchmark('interrupted budgets', {

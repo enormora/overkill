@@ -1,6 +1,8 @@
 import { measurementStrategy, asyncMeasurementStrategy } from './measurement-strategy.ts';
 import { defaultMetricNormalization } from './default-normalization.ts';
 import { processMeasurement } from './process-measurement.ts';
+import { moduleMeasurement } from './module-measurement.ts';
+import { measurementTimelinePolicy, timelineMeasurement } from './timeline-measurement.ts';
 import type { MetricNormalization } from './calibration-definition.ts';
 
 import type { UncalibratedMeasurement } from './measurement-definition.ts';
@@ -37,13 +39,21 @@ export function calibratedMeasurement<Strategy extends UncalibratedMeasurement>(
     Object.freeze(calibrated);
     return calibrated;
 }
-function resolvedStrategy(measurement: UncalibratedMeasurement): UncalibratedMeasurement {
+function plainStrategy(measurement: UncalibratedMeasurement): UncalibratedMeasurement {
+    if (measurement.mode === 'module') {
+        return moduleMeasurement();
+    }
     if (measurement.mode === 'process') {
         return processMeasurement(measurement);
     }
     return measurement.mode === 'sync'
         ? measurementStrategy(measurement.collectors)
         : asyncMeasurementStrategy(measurement.collectors);
+}
+function resolvedStrategy(measurement: UncalibratedMeasurement): UncalibratedMeasurement {
+    const strategy = plainStrategy(measurement);
+    const timeline = measurementTimelinePolicy(measurement);
+    return timeline === null ? strategy : timelineMeasurement(strategy, timeline);
 }
 export type ResolvedMeasurement = {
     readonly measurement: UncalibratedMeasurement;

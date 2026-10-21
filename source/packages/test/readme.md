@@ -110,13 +110,14 @@ Standard subpaths:
 - `@overkill-dev/test/simulation` re-exports simulation descriptors from
   `@overkill-dev/simulation`. Import `@overkill-dev/simulation/http` directly
   for the standalone HTTP launcher.
-- `@overkill-dev/test/bench` re-exports workload descriptors and ordinary node-authoring helpers from
+- `@overkill-dev/test/bench` re-exports benchmark authoring, collectors, calibration,
+  cold-module imports, timelines, and ordinary node-authoring helpers from
   [`@overkill-dev/bench`](../bench/readme.md), included in the standard
-  distribution. These constructors are family-neutral and do not measure
-  performance. The workload model supports the future benchmark measurement
-  and budget authoring API. Bench code stays behind this explicit subpath,
+  distribution. `benchmark(...)` measures named workloads and generates budget
+  assertions. Bench code stays behind this explicit subpath,
   outside root imports and ordinary microtest startup.
-- `@overkill-dev/test/baselines` is reserved and exports only `unavailable()`.
+- `@overkill-dev/test/baselines` re-exports baseline adapter and comparison types.
+  Performance baseline commands live under `overkill bench baseline`.
 
 Implemented root authoring forms:
 
@@ -528,6 +529,8 @@ Supported command-line surface:
 - `overkill list [paths...]`
 - `overkill bench run [paths...]`
 - `overkill bench list [paths...]`
+- `overkill bench calibrate [paths...]`
+- `overkill bench baseline <update|apply|bootstrap|list|diff> [paths...]`
 - `--config <path>`
 - `--file <path>`
 - `--filter <expr>`
@@ -547,8 +550,9 @@ and use regular planning, execution, results, and reporters. They accept
 `--config`, `--profile`, and the same selection flags as ordinary commands.
 Run accepts `--no-capture`, `--timings`, and `--workers`; list accepts
 `--with-locations` and `--with-orphans`. Coverage remains microtest-only.
-Benchmarks execute serially in one lane. `--filter 'workload=small'` selects
-resolved workloads. Measurement and budgets remain separate milestones.
+Benchmarks stay serial within each worker. Eligible collector-free artifact-size
+measurements may use parallel lanes when host conditions permit it.
+`--filter 'workload=small'` selects resolved workloads.
 See [`@overkill-dev/bench`](../bench/readme.md).
 
 Configure process usage measurement and budgets through the selected

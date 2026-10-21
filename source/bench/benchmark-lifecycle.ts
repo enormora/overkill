@@ -9,6 +9,7 @@ import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { commitObservation, createObservationSet, summarizeObservations } from './benchmark-observation-set.ts';
 import { recordObservationSamples } from './benchmark-sampling-evidence.ts';
 import { createRuntimeCooldownDependencies, settleBenchmarkRuntime } from './benchmark-runtime-cooldown.ts';
+import { timelineSpan } from './timeline-context.ts';
 
 export type BenchmarkLifecycle = {
     readonly garbageCollection: BenchmarkGarbageCollection;
@@ -69,12 +70,15 @@ export function createBenchmarkLifecycle(
             if (input.lifecycle.cooldown.mode === 'off' || previous.mode === 'off') {
                 return;
             }
-            const settled = await settleBenchmarkRuntime(
-                input.lifecycle.cooldown,
-                input.scope.signal,
-                previous,
-                createRuntimeCooldownDependencies()
-            );
+            const policy = input.lifecycle.cooldown;
+            const settled = await timelineSpan('harness', 'cooldown', async function settleRuntime() {
+                return await settleBenchmarkRuntime(
+                    policy,
+                    input.scope.signal,
+                    previous,
+                    createRuntimeCooldownDependencies()
+                );
+            });
             cooldown.write(settled.evidence);
             if (settled.error !== null) {
                 throw settled.error;

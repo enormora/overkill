@@ -1,5 +1,12 @@
 export { workload } from '../../bench/workload.ts';
 export { processMeasurement } from '../../bench/process-measurement.ts';
+export { moduleMeasurement } from '../../bench/module-measurement.ts';
+export type {
+    ModuleMeasurementStrategy,
+    ModuleImportRequest,
+    ModuleSample,
+    MeasuredModuleImport
+} from '../../bench/module-measurement.ts';
 export type {
     ProcessInstrumentation,
     ProcessMeasurementStrategy,
@@ -113,3 +120,13 @@ export type {
 
 export { readCalibrationReferenceReport } from '../run/benchmark-calibration.entry-point.ts';
 export type { CalibrationReferenceReport } from '../run/benchmark-calibration.entry-point.ts';
+export { timelineMeasurement } from '../../bench/timeline-measurement.ts';
+export type { TimelineMeasurement } from '../../bench/timeline-measurement.ts';
+export { readBenchmarkTimeline } from '../../bench/timeline-report.ts';
+export type {
+    BenchmarkTimeline,
+    BenchmarkTimelinePolicy,
+    BenchmarkTimelineEvent,
+    BenchmarkTimelineEvidence,
+    BenchmarkTimelineReport
+} from '../../engine/benchmark-timeline.ts';

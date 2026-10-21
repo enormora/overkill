@@ -540,7 +540,9 @@ empirical box summaries, workload comparisons, recorded budget intervals and
 thresholds, adapter-declared baseline point/range charts, and recorded
 machine/process metadata. Descriptive sample quantiles are not confidence
 intervals. Missing raw samples disable distribution views with an explicit
-reason. The HTML embeds chart-ready summaries, not individual samples.
+reason. The HTML embeds chart-ready summaries and bounded timeline events. Timeline views filter by case,
+phase, sample, and clock domain. Budget tables and tooltips show signed estimate-minus-bound deltas
+and percentages; zero or missing bounds have no percentage delta.
 
 Benchmark producers retain versioned run metadata and baseline comparison
 artifacts. Baseline adapters may declare chart values, units, reference ranges,

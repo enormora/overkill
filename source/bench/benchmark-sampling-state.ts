@@ -6,6 +6,7 @@ import { summarizeNormalization } from './normalization-summaries.ts';
 import { commitObservation, createObservationSet } from './benchmark-observation-set.ts';
 import {
     generatedBudgetAssertions,
+    retainBenchmarkEvidence,
     recordRawSamples,
     summarizedSamplingResult
 } from './benchmark-sampling-evidence.ts';
@@ -72,7 +73,7 @@ export function createSamplingState(input: SamplingSessionInput, lifecycle: Benc
             return settledBudgets(budgets);
         },
         async finish() {
-            await lifecycle.retainWarmup();
+            await retainBenchmarkEvidence(lifecycle.retainWarmup);
             const snapshot = summarize('complete');
             const complete = settledBudgets(budgets) && snapshot.normalization?.comparability.kind !== 'non-comparable';
             const result = await recordRawSamples(
@@ -92,7 +93,7 @@ export function createSamplingState(input: SamplingSessionInput, lifecycle: Benc
         },
         async interrupt(error) {
             try {
-                await lifecycle.retainWarmup();
+                await retainBenchmarkEvidence(lifecycle.retainWarmup);
                 await input.scope.updateResult(await recordRawSamples(summarize('incomplete'), observations));
             } catch (evidenceError: unknown) {
                 throw new AggregateError(

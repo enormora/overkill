@@ -9,6 +9,8 @@ import {
     benchmark,
     asyncMeasurementStrategy,
     defaultSamplingPolicy,
+    rawMeasurement,
+    timelineMeasurement,
     wallClockMeasurement,
     workload,
     type BenchmarkMeasureContext
@@ -38,7 +40,62 @@ function assertFirstWorkload(scope: TestScope, result: RunResult): void {
     scope.assert.equal(first.attempts[0].benchmark?.status, 'complete');
 }
 
+function assertBoundedTimeline(scope: TestScope, result: RunResult): void {
+    const measured = result.perTest[0]?.benchmark;
+    scope.require.defined(measured);
+    const { timeline } = measured;
+    scope.require.defined(timeline);
+    scope.assert.equal(measured.samples, 2);
+    scope.assert.equal(timeline.events, 3);
+    scope.assert.equal(timeline.status, 'omitted');
+    scope.assert.true(timeline.omitted > 0);
+}
+
+function assertCompletedCooldown(scope: TestScope, result: RunResult): void {
+    const cooldown = result.perTest[0]?.benchmark?.lifecycle?.cooldown;
+    if (cooldown?.mode !== 'runtime') {
+        throw new Error('Expected retained runtime cooldown evidence.');
+    }
+    scope.assert.equal(cooldown.completed, 35);
+    scope.assert.equal(cooldown.outcome, 'settled');
+}
+
 export const testNode = suite('benchmark authoring and sampling', [
+    test('bounds lifecycle traces without changing warmup, cleanup, or budgets', async function (scope) {
+        let cleanups = 0;
+        const result = await executeBenchmark(benchmark('bounded timeline', {
+            kind: 'runtime',
+            workloads: [ workload('one', {}) ],
+            measurement: rawMeasurement(timelineMeasurement(wallClockMeasurement(), { maximumEvents: 3 })),
+            measure({ sample }) {
+                sample.cleanup(function reset() {
+                    cleanups += 1;
+                    sample.timeline.mark('reset');
+                });
+                sample.timeline.mark('prepared');
+                const measured = sample.measure(function operation() {
+                    return 42;
+                });
+                return { value: measured.value };
+            },
+            diagnosticMetrics: [],
+            budgets: { one: { value: { minimum: 42, maximum: 42, statistic: { kind: 'observed-maximum' } } } }
+        }, {
+            annotations: {},
+            controls: {},
+            lifecycle: {
+                garbageCollection: 'off',
+                warmupSamples: 33,
+                cooldown: { mode: 'runtime', maximumEventLoopUtilization: 1, timeoutMilliseconds: 60_000 }
+            },
+            sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 }
+        }));
+        scope.assert.equal(result.summary.passed, 1);
+        assertBoundedTimeline(scope, result);
+        scope.assert.equal(cleanups, 35);
+        assertCompletedCooldown(scope, result);
+        return scope.assert.collect();
+    }),
     test('samples asynchronous strategies with explicit diagnostic metrics', async function (scope) {
         const result = await executeBenchmark(benchmark('async', {
             kind: 'runtime',

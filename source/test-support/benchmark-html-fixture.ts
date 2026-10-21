@@ -13,6 +13,7 @@ function fixtureTest(result: RunResult): PerTestResult {
     }
     return test;
 }
+
 export function benchmarkHtmlFixture(title: string): RunResult {
     const id = createCaseId('fixture.bench.ts', [ 'benchmarks' ], title, null);
     const workId = { case: id, workload: { name: 'small', params: {} }, runtimes: [] };
@@ -54,6 +55,7 @@ export function benchmarkHtmlFixture(title: string): RunResult {
         }
     };
     const benchmark: BenchmarkExecutionResult = {
+        timeline: null,
         normalization: null,
         lifecycle: null,
         workload: workId.workload,
@@ -80,5 +82,62 @@ export function benchmarkHtmlFixture(title: string): RunResult {
         ...base,
         artifacts: [ samples ],
         perTest: [ { ...test, benchmark, attempts: [ { ...test.attempts[0], benchmark } ] } ]
+    };
+}
+
+export function benchmarkHtmlTimelineFixture(title: string, name: string): RunResult {
+    const result = benchmarkHtmlFixture(title);
+    const test = fixtureTest(result);
+    const artifact = result.artifacts[0];
+    if (test.benchmark === null || artifact === undefined) {
+        throw new Error('Timeline fixture requires benchmark evidence.');
+    }
+    const id = { ...artifact.id, subtype: 'attachment' as const, sequence: 1 };
+    return {
+        ...result,
+        perTest: [ {
+            ...test,
+            benchmark: {
+                ...test.benchmark,
+                timeline: {
+                    version: 1,
+                    events: 1,
+                    omitted: 0,
+                    status: 'recorded',
+                    reference: JSON.stringify(id),
+                    reason: null
+                }
+            }
+        } ],
+        artifacts: [ ...result.artifacts, {
+            id,
+            source: 'native',
+            payload: {
+                kind: 'runtime-attachment',
+                name: 'benchmark-timeline',
+                mediaType: 'application/vnd.overkill.benchmark-timeline+json',
+                capturedAtMicroseconds: 0,
+                capture: 'opt-in',
+                producer: { kind: 'case' },
+                content: {
+                    kind: 'json',
+                    byteLength: 0,
+                    value: {
+                        version: 1,
+                        omitted: 0,
+                        events: [ {
+                            name,
+                            source: 'authored',
+                            phase: 'measured',
+                            sample: 0,
+                            clockDomain: 'runtime',
+                            startMicroseconds: 1,
+                            durationMicroseconds: null,
+                            outcome: 'complete'
+                        } ]
+                    }
+                }
+            }
+        } ]
     };
 }

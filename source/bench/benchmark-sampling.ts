@@ -5,6 +5,7 @@ import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { createBenchmarkLifecycle, type BenchmarkLifecycle } from './benchmark-lifecycle.ts';
 import { measureBenchmarkInvocation } from './benchmark-sample-lifetime.ts';
 import { createProcessSamplingSession, type ProcessSamplingSession } from './process-sampling.ts';
+import { withBenchmarkTimeline } from './timeline-execution.ts';
 
 const maximumSamplesPerTurn = 32;
 
@@ -63,8 +64,11 @@ async function sampledExecution(
     await state.progress();
     lifecycle.garbageCollection.validate();
     await using disposal = new AsyncDisposableStack();
-    const processes = input.measurement.mode === 'process'
-        ? createProcessSamplingSession(input.measurement, input.scope.signal)
+    const processes = input.measurement.mode === 'process' || input.measurement.mode === 'module'
+        ? createProcessSamplingSession(
+            input.measurement.mode === 'module' ? { mode: 'process', instrumentation: 'off' } : input.measurement,
+            input.scope.signal
+        )
         : null;
     disposal.defer(async function disposeProcesses() {
         await processes?.dispose();
@@ -74,7 +78,7 @@ async function sampledExecution(
     return await state.finish();
 }
 
-export async function sampleBenchmark(input: SamplingSessionInput): Promise<AssertionResult> {
+async function executeSampling(input: SamplingSessionInput): Promise<AssertionResult> {
     const lifecycle = createBenchmarkLifecycle(input);
     const state = createSamplingState(input, lifecycle);
     try {
@@ -82,4 +86,10 @@ export async function sampleBenchmark(input: SamplingSessionInput): Promise<Asse
     } catch (error: unknown) {
         return await state.interrupt(error);
     }
+}
+
+export async function sampleBenchmark(input: SamplingSessionInput): Promise<AssertionResult> {
+    return await withBenchmarkTimeline(input.measurement, async function collectBenchmarkSamples() {
+        return await executeSampling(input);
+    });
 }

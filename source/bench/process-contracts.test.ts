@@ -1,8 +1,13 @@
-import { suite, test } from '../packages/test/test.entry-point.ts';
-import { processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
+import { suite, test, processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
+import { testNode as moduleProtocolTestNode } from './module-import-session.test.ts';
+import { testNode as processTimelineTestNode } from './process-timeline.test.ts';
+import { processEvidenceSchema } from './process-evidence.ts';
+import { testNode as moduleContractsTestNode } from './module-contracts.test.ts';
 import { parseProcessRequest, processRequestSchema } from './process-command.ts';
 import { processOutput } from './process-output.ts';
+import { testNode as moduleEvidenceTestNode } from './module-evidence.test.ts';
+import { testNode as probeProtocolTestNode } from './process-probe-session.test.ts';
 
 const command = {
     command: [ 'node', 'cli.js' ],
@@ -12,6 +17,30 @@ const command = {
 } as const;
 
 export const testNode = suite('external process contracts', [
+    moduleEvidenceTestNode,
+    test('reads historical process evidence without inventing module observations', function (scope) {
+        const execution = {
+            status: 'failed',
+            message: 'fixture failed',
+            cleanupFailure: null,
+            output: processOutput('pipes', 100).snapshot()
+        };
+        const evidence = processEvidenceSchema.parse({
+            version: 1,
+            entries: [ { phase: 'warmup', execution } ],
+            omitted: 1
+        });
+        scope.assert.equal(evidence.version, 2);
+        scope.assert.equal(evidence.entries[0]?.module, null);
+        scope.assert.equal(evidence.entries[0]?.phase, 'warmup');
+        scope.assert.equal(evidence.entries[0]?.execution.status, 'failed');
+        scope.assert.equal(evidence.omitted, 1);
+        return scope.assert.collect();
+    }),
+    moduleContractsTestNode,
+    moduleProtocolTestNode,
+    probeProtocolTestNode,
+    processTimelineTestNode,
     test('rejects incompatible stream selectors and terminal-only steps on pipes', function (scope) {
         scope.assert.false(
             processRequestSchema
@@ -116,6 +145,9 @@ export const testNode = suite('external process contracts', [
         output.finish(new Error('process closed'));
         await scope.assert.rejects(async function () {
             return pending;
+        }, { message: 'process closed' });
+        await scope.assert.rejects(async function afterClosing() {
+            return await output.expect({ stream: 'stdout', text: 'missing' }, 'readiness');
         }, { message: 'process closed' });
         return scope.assert.collect();
     }),

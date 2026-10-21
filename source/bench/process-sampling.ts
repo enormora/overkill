@@ -8,9 +8,11 @@ import type { ProcessMeasurementStrategy } from './process-measurement.ts';
 import { createProcessEvidence, type ProcessEvidence, type ProcessPhase } from './process-evidence.ts';
 import { MeasurementContractError } from './measurement-contract-error.ts';
 import { createProcessInvocation, type ProcessSampleLifetime } from './process-invocation.ts';
+import type { ModuleImportObservation } from './module-measurement.ts';
 
 export type ProcessSamplingSession = {
     readonly sample: (phase: ProcessPhase) => ProcessSampleLifetime;
+    readonly moduleImport: (observation: ModuleImportObservation) => void;
     readonly dispose: () => Promise<void>;
 };
 type ProcessBenchmarkSession = {
@@ -70,6 +72,7 @@ export function createProcessSamplingSession(
     };
     signal.addEventListener('abort', session.abort);
     return {
+        moduleImport: session.evidence.moduleImport,
         sample(phase) {
             return createProcessInvocation({
                 helper() {

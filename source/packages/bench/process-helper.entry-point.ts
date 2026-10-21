@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'node:url';
+import { withProcessTimeline, type ProcessCheckpoint } from '../../bench/process-timeline.ts';
 import { createStoredValue, type StoredValue } from '../../stored-value.ts';
 import { executeProcessCommand } from '../../bench/process-execution.ts';
 import {
     processHelperRequestSchema,
+    type ProcessExecution,
     type ProcessHelperReply,
     type ProcessHelperRequest
 } from '../../bench/process-protocol.ts';
@@ -34,9 +36,14 @@ async function shutdownHost(host: ProcessHost): Promise<void> {
     }
 }
 
-async function executeHostedCommand(host: ProcessHost, message: ProcessRunRequest, signal: AbortSignal): Promise<void> {
-    try {
-        const execution = await executeProcessCommand({
+async function executeRequestedCommand(message: ProcessRunRequest, signal: AbortSignal): Promise<ProcessExecution> {
+    const record = message.timeline
+        ? function checkpoint(value: ProcessCheckpoint): void {
+            sendReply({ ...value, kind: 'checkpoint', id: message.id });
+        }
+        : null;
+    return await withProcessTimeline(record, async function runCommand() {
+        return await executeProcessCommand({
             ...message,
             signal,
             environment: process.env,
@@ -44,6 +51,12 @@ async function executeHostedCommand(host: ProcessHost, message: ProcessRunReques
                 sendReply({ kind: 'started', id: message.id, pid });
             }
         });
+    });
+}
+
+async function executeHostedCommand(host: ProcessHost, message: ProcessRunRequest, signal: AbortSignal): Promise<void> {
+    try {
+        const execution = await executeRequestedCommand(message, signal);
         sendReply({ kind: 'complete', id: message.id, execution });
     } finally {
         host.running.write(null);

@@ -9,6 +9,7 @@ import type {
 } from './measurement-types.ts';
 import { availableMetric, unavailableMetric } from './metric-reading.ts';
 import { MeasurementContractError } from './measurement-contract-error.ts';
+import { timelineSpan } from './timeline-context.ts';
 import {
     prepareAsyncMeasurementResources,
     prepareMeasurementResources,
@@ -74,7 +75,7 @@ async function awaitTimedValue<Value>(pending: Promise<Value>, start: bigint): P
 }
 function timedOperation<Value>(operation: RegionOperation<Value>): Promise<TimedValue<Value>> | TimedValue<Value> {
     const start = process.hrtime.bigint();
-    const value = operation();
+    const value = timelineSpan('harness', 'measurement', operation);
     return isOperationPromise(value) ? awaitTimedValue(value, start) : { value, duration: elapsedMicroseconds(start) };
 }
 function completeRegion<Value>(

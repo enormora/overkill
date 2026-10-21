@@ -195,10 +195,8 @@ builds the equivalent typed equality filter. Logical case filters select all
 workloads of that case. List and human failure output identify workloads with
 `[workload=<name>]`.
 
-The later measurement and budget milestones complete `benchmark(...)` using
-this model. The workload milestone adds no public assertion-based wrapper or
-alternate benchmark authoring constructor. Workload-aware fixtures use ordinary
-resource descriptors. Identity-only `{ id, body }` variants remain supported
+`benchmark(...)` uses this workload model for measurement and generated budget
+assertions. Workload-aware fixtures use ordinary resource descriptors. Identity-only `{ id, body }` variants remain supported
 when their resources are workload-independent.
 
 The conceptual unit should be a **workload-oriented benchmark**, not just “function X.”
@@ -701,6 +699,15 @@ Full baseline inventories detect stale calibration references. Baseline diff/app
 preview and remove them, preserving filtered, sharded, skipped and foreign scopes.
 See the [benchmark guide](../../../source/packages/bench/readme.md#calibration-and-normalization)
 for authoring, capture, persistence, and reporting behavior.
+
+## Cold Imports And Timelines
+
+`moduleMeasurement()` supplies cold-module imports in fresh processes, timing
+the import after bootstrap and retaining startup separately. `timelineMeasurement`
+opts an existing strategy into bounded harness/runtime events and authored
+`sample.timeline.mark` and `sample.timeline.span` instrumentation. Both compose
+with existing normalization and sampling. The package guide specifies their
+interfaces, process ownership, clock domains, and retention behavior.
 
 ## External Process Benchmarking
 

@@ -1,6 +1,7 @@
 import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import type { WorkloadParameters } from './workload-parameters.ts';
 import type { WorkId, WorkloadId } from './identity.ts';
+import type { BenchmarkTimelineEvidence, BenchmarkTimelinePolicy } from './benchmark-timeline.ts';
 
 export const benchmarkLifecycleVersion = 2;
 
@@ -10,6 +11,7 @@ export type BenchmarkWorkload<Parameters extends WorkloadParameters = WorkloadPa
 };
 
 export type BenchmarkDefinitionSummary = {
+    readonly timeline: BenchmarkTimelinePolicy | null;
     readonly normalization: Readonly<
         Record<string, NormalizationRuleSummary>
     >;
@@ -22,6 +24,8 @@ export type BenchmarkDefinitionSummary = {
             readonly name: string;
             readonly metrics: readonly (MetricProvenance & { readonly name: string; })[];
         }[];
+    } | {
+        readonly mode: 'module';
     } | {
         readonly mode: 'process';
         readonly instrumentation: 'node' | 'off';
@@ -91,6 +95,7 @@ export type BenchmarkMetricSummary = {
 };
 
 export type BenchmarkExecutionResult = {
+    readonly timeline: BenchmarkTimelineEvidence | null;
     readonly normalization: BenchmarkNormalizationEvidence | null;
     readonly lifecycle: BenchmarkLifecycleResult | null;
     readonly workload: WorkloadId;

@@ -1,3 +1,6 @@
+import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
+import { moduleBenchmarkScript } from './module-scripts.test.ts';
+
 export const benchAuthoringScript = `
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -9,14 +12,7 @@ import { defineResource, withResource } from '@overkill-dev/test/resources';
 
 const benchManifest = new URL('../../package.json', import.meta.resolve('@overkill-dev/bench'));
 const manifest = JSON.parse(readFileSync(benchManifest, 'utf8'));
-assert.deepEqual(Object.keys(bench).sort(), [
-    'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'calibratedMeasurement', 'cpuCalibration',
-    'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
-    'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
-    'processCpuCollector', 'processMeasurement', 'processResourceCollector',
-    'rawMeasurement', 'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
-    'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
-]);
+assert.deepEqual(Object.keys(bench).sort(), ${JSON.stringify(benchmarkAuthoringExports)});
 assert.deepEqual(Object.keys(standard).sort(), Object.keys(bench).sort());
 assert.deepEqual(manifest.exports['.'], {
     import: './packages/bench/bench.entry-point.js',
@@ -124,7 +120,7 @@ for (const api of [bench, standard]) {
     for (const kind of ['pipes', 'pty']) {
         const processNode = api.benchmark('packaged process', {
             kind: 'startup', workloads: [api.workload('one', {})],
-            measurement: api.processMeasurement({instrumentation: 'node'}),
+            measurement: api.rawMeasurement(api.processMeasurement({instrumentation: 'node'})),
             async measure({sample}) {
                 const child = await sample.process({
                     command: [
@@ -157,8 +153,10 @@ for (const api of [bench, standard]) {
         })));
         assert.equal(processResult.summary.passed, 1, JSON.stringify(processResult.perTest));
         assert.deepEqual(processResult.runnerErrors, []);
+        assert.equal(processResult.perTest[0].benchmark.normalization, null);
     }
 }
+${moduleBenchmarkScript}
 console.log('bench authoring passed');
 `;
 
@@ -293,14 +291,7 @@ import assert from 'node:assert/strict';
 import { suite, test } from '@overkill-dev/test';
 import * as bench from '@overkill-dev/test/bench';
 
-assert.deepEqual(Object.keys(bench).sort(), [
-    'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'calibratedMeasurement', 'cpuCalibration',
-    'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
-    'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
-    'processCpuCollector', 'processMeasurement', 'processResourceCollector',
-    'rawMeasurement', 'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
-    'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
-]);
+assert.deepEqual(Object.keys(bench).sort(), ${JSON.stringify(benchmarkAuthoringExports)});
 let calls = 0;
 const body = bench.defineParameterizedTestBody((scope, value) => {
     calls += 1;

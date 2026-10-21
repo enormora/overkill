@@ -104,3 +104,19 @@ export type {
 
 export { readCalibrationReferenceReport } from '../bench/bench.entry-point.ts';
 export type { CalibrationReferenceReport } from '../bench/bench.entry-point.ts';
+export { moduleMeasurement } from '../bench/bench.entry-point.ts';
+export type {
+    ModuleMeasurementStrategy,
+    ModuleImportRequest,
+    ModuleSample,
+    MeasuredModuleImport
+} from '../bench/bench.entry-point.ts';
+export { timelineMeasurement, readBenchmarkTimeline } from '../bench/bench.entry-point.ts';
+export type {
+    TimelineMeasurement,
+    BenchmarkTimeline,
+    BenchmarkTimelinePolicy,
+    BenchmarkTimelineEvent,
+    BenchmarkTimelineEvidence,
+    BenchmarkTimelineReport
+} from '../bench/bench.entry-point.ts';

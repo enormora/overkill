@@ -46,6 +46,8 @@ async function waitForWindow(clock: Clock, signal: AbortSignal): Promise<void> {
     signal.throwIfAborted();
     const pending = Promise.withResolvers<undefined>();
     const timer = createStoredValue<ReturnType<Clock['setTimeout']> | null>(null);
+    const completesAt = clock.currentMonotonicMicroseconds +
+        BigInt(runtimeCooldownWindowMilliseconds * microsecondsPerMillisecond);
     const abort = function abortWindow(): void {
         const pendingTimer = timer.read();
         if (pendingTimer !== null) {
@@ -53,10 +55,20 @@ async function waitForWindow(clock: Clock, signal: AbortSignal): Promise<void> {
         }
         pending.reject(new Error('Runtime cooldown observation cancelled.', { cause: signal.reason }));
     };
-    timer.write(clock.setTimeout(function finishWindow() {
-        signal.removeEventListener('abort', abort);
-        pending.resolve(undefined);
-    }, runtimeCooldownWindowMilliseconds));
+    const finish = function finishWhenWindowElapsed(): void {
+        const remainingMilliseconds = Number(completesAt - clock.currentMonotonicMicroseconds) /
+            microsecondsPerMillisecond;
+        if (remainingMilliseconds > 0 && !signal.aborted) {
+            timer.write(clock.setTimeout(
+                finishWhenWindowElapsed,
+                Math.ceil(remainingMilliseconds)
+            ));
+        } else {
+            signal.removeEventListener('abort', abort);
+            pending.resolve(undefined);
+        }
+    };
+    timer.write(clock.setTimeout(finish, runtimeCooldownWindowMilliseconds));
     signal.addEventListener('abort', abort, { once: true });
     await pending.promise;
 }

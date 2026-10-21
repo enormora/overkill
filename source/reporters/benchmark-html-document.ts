@@ -1,4 +1,5 @@
 import type { BenchmarkGarbageCollectionResult } from '../engine/benchmark-result.ts';
+import { difference, percentDifference } from './benchmark-deltas.ts';
 import type { BaselineChartRow, BenchmarkHtmlReport } from './benchmark-html-data.ts';
 
 function htmlText(value: unknown): string {
@@ -68,6 +69,10 @@ function metricTables(report: BenchmarkHtmlReport): string {
                     'Interval upper',
                     'Minimum',
                     'Maximum',
+                    'Delta from minimum',
+                    'Delta from minimum %',
+                    'Delta from maximum',
+                    'Delta from maximum %',
                     'Precision met',
                     'Decision'
                 ],
@@ -81,6 +86,10 @@ function metricTables(report: BenchmarkHtmlReport): string {
                             budget.interval.upper ?? 'unbounded',
                             budget.minimum ?? '-unbounded',
                             budget.maximum ?? 'unbounded',
+                            difference(budget.estimate, budget.minimum),
+                            percentDifference(budget.estimate, budget.minimum),
+                            difference(budget.estimate, budget.maximum),
+                            percentDifference(budget.estimate, budget.maximum),
                             budget.precise,
                             budget.decision
                         ];
@@ -88,6 +97,49 @@ function metricTables(report: BenchmarkHtmlReport): string {
                 })
             );
             return `<section><h3>${htmlText(group.name)}</h3>${metrics}${budgets}</section>`;
+        })
+        .join('');
+}
+function timelineTables(report: BenchmarkHtmlReport): string {
+    return report
+        .charts
+        .timelines
+        .map(function timelineDetails(timeline) {
+            const state = timeline.evidence === null
+                ? 'Timeline recording was disabled or not recorded by this version.'
+                : [
+                    `${timeline.evidence.status}: ${timeline.evidence.events} events,`,
+                    `${timeline.evidence.omitted} omitted.`,
+                    timeline.evidence.reason ?? '',
+                    timeline.events.length === 0 ? 'No timeline events are available.' : ''
+                ]
+                    .join(' ');
+            return `<section><h3>${htmlText(timeline.label)}</h3><p>${htmlText(state)}</p>${
+                table(
+                    [
+                        'Phase',
+                        'Sample',
+                        'Clock domain',
+                        'Source',
+                        'Event',
+                        'Start microseconds',
+                        'Duration microseconds',
+                        'Outcome'
+                    ],
+                    timeline.events.map(function eventRow(event) {
+                        return [
+                            event.phase,
+                            event.sample,
+                            event.clockDomain,
+                            event.source,
+                            event.name,
+                            event.startMicroseconds,
+                            event.durationMicroseconds,
+                            event.outcome
+                        ];
+                    })
+                )
+            }</section>`;
         })
         .join('');
 }
@@ -150,22 +202,6 @@ function lifecycleTables(report: BenchmarkHtmlReport): string {
             }</p></section>`;
         })
         .join('');
-}
-const percentMultiplier = 100;
-function difference(actual: number | null, expected: number | null): number | null {
-    if (actual === null || expected === null) {
-        return null;
-    }
-    const delta = actual - expected;
-    return Number.isFinite(delta) ? delta : null;
-}
-function percentDifference(actual: number | null, expected: number | null): number | null {
-    const delta = difference(actual, expected);
-    if (delta === null || expected === null || expected === 0) {
-        return null;
-    }
-    const percent = delta / Math.abs(expected) * percentMultiplier;
-    return Number.isFinite(percent) ? percent : null;
 }
 function baselineCells(row: BaselineChartRow): readonly unknown[] {
     const expected = row.expected.kind === 'value' ? row.expected.value : null;
@@ -243,6 +279,16 @@ ${metricTables(report)}
 <h2>Warmup, sample cleanup, and cooldown</h2>
 <p>Warmup observations are separate from measured distributions and budget decisions.</p>
 ${lifecycleTables(report)}
+<h2>Benchmark timelines</h2>
+<p>Recorded timings are raw. Each clock domain has its own origin; independent process clocks are not synchronized.
+Timeline capture and authored instrumentation may add measurement overhead.</p>
+<div class="controls">
+<label>Timeline workload <select id="timeline-selection"></select></label>
+<label>Phase <select id="timeline-phase"><option value="all">All</option><option value="warmup">Warmup</option>
+<option value="measured">Measured</option></select></label>
+<label>Sample <select id="timeline-sample"></select></label>
+<label>Clock domain <select id="timeline-clock"></select></label></div>
+<div class="chart" id="timeline-chart"></div>${timelineTables(report)}
 <h2>Baseline comparisons</h2><label>Baseline metric <select id="baseline-selection"></select></label>
 <div class="chart" id="baseline-chart"></div>${baselineTable(report)}
 <p>Deltas are arithmetic differences, not improvement classifications. Percentage deltas use the absolute
