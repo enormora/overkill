@@ -73,7 +73,6 @@ async function disposeInvocation(invocation: ProcessInvocation): Promise<void> {
     const pending = invocation.pending.read();
     if (pending !== null && invocation.state.read() !== 'complete') {
         invocation.controller.abort(new MeasurementContractError('Process sample was not awaited.', {}));
-        invocation.input.helper().cancel();
         await stopPending(pending);
     }
     invocation.state.write('closed');

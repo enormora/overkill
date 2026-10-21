@@ -60,6 +60,27 @@ function helperEvents(fixture: AttachmentFixture): readonly string[] {
 }
 
 export const testNode = suite('process timeline checkpoints', [
+    test('retains Node telemetry at a ready checkpoint before child shutdown', async function (scope: TestScope) {
+        const fixture = await captureProcessTimeline(scope, async function readyCheckpoint(processes) {
+            const sample = processes.sample('measured');
+            await using disposal = new AsyncDisposableStack();
+            disposal.defer(sample.dispose);
+            const result = await sample.sample.process({
+                command: [ process.execPath, '-e', "process.stdout.write('ready>'); setInterval(() => {}, 100);" ],
+                cwd: process.cwd(),
+                env: null,
+                io: { kind: 'pipes' },
+                completion: { kind: 'ready', marker: { stream: 'stdout', text: 'ready>' } }
+            });
+            scope.assert.equal(result.value.completion.kind, 'ready');
+            scope.assert.equal(result.metrics.startupMilliseconds.availability, 'available');
+            scope.assert.equal(result.metrics.processCpuTotalMicroseconds.availability, 'available');
+            sample.ensureMeasured();
+        }, 'node');
+        scope.assert.deepEqual(helperEvents(fixture), [ 'process:measured:0/readiness/complete' ]);
+        scope.assert.deepEqual(await fixture.execution.finish(), []);
+        return scope.assert.collect();
+    }),
     test('retains readiness and named interactions on the helper clock', async function (scope: TestScope) {
         const fixture = await captureProcessTimeline(scope, async function interact(processes) {
             const sample = processes.sample('measured');
@@ -206,6 +227,73 @@ export const testNode = suite('process timeline checkpoints', [
             }, { type: Error });
         }, 'off');
         scope.assert.deepEqual(helperEvents(fixture), [ 'process:measured:0/readiness/failed' ]);
+        scope.assert.deepEqual(await fixture.execution.finish(), []);
+        return scope.assert.collect();
+    }),
+    test('rejects duplicate process regions without launching another command', async function (scope: TestScope) {
+        const fixture = await captureProcessTimeline(scope, async function duplicateCommand(processes) {
+            const sample = processes.sample('measured');
+            await using disposal = new AsyncDisposableStack();
+            disposal.defer(sample.dispose);
+            const request = {
+                command: [ process.execPath, '-e', '' ],
+                cwd: process.cwd(),
+                env: null,
+                io: { kind: 'pipes' },
+                completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
+            } as const;
+            await sample.sample.process(request);
+            await scope.assert.rejects(async function duplicateRegion() {
+                return await sample.sample.process(request);
+            }, { message: 'Each process sample must await exactly one process region.' });
+            scope.assert.throws(sample.ensureMeasured, {
+                message: 'Each process sample must await exactly one complete process region.'
+            });
+        }, 'off');
+        scope.assert.deepEqual(helperEvents(fixture), [ 'process:measured:0/exit/complete' ]);
+        scope.assert.deepEqual(await fixture.execution.finish(), []);
+        return scope.assert.collect();
+    }),
+    test('cancels unawaited commands when their sample closes', async function (scope: TestScope) {
+        const fixture = await captureProcessTimeline(scope, async function abandonedCommand(processes) {
+            const sample = processes.sample('measured');
+            const pending = sample.sample.process({
+                command: [ process.execPath, '-e', 'setInterval(() => {}, 100);' ],
+                cwd: process.cwd(),
+                env: null,
+                io: { kind: 'pipes' },
+                completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
+            });
+            const checked = scope.assert.rejects(async function unawaitedCommand() {
+                return await pending;
+            }, { message: 'Process sample was not awaited.' });
+            await sample.dispose();
+            await checked;
+            scope.assert.throws(sample.ensureMeasured, {
+                message: 'Each process sample must await exactly one complete process region.'
+            });
+        }, 'off');
+        scope.assert.deepEqual(await fixture.execution.finish(), []);
+        return scope.assert.collect();
+    }),
+    test('keeps closed sessions closed after repeated disposal', async function (scope: TestScope) {
+        const fixture = await captureProcessTimeline(scope, async function closedSession(processes) {
+            await processes.dispose();
+            await processes.dispose();
+            const sample = processes.sample('measured');
+            await using disposal = new AsyncDisposableStack();
+            disposal.defer(sample.dispose);
+            await scope.assert.rejects(async function reuseClosedSession() {
+                return await sample.sample.process({
+                    command: [ process.execPath, '-e', '' ],
+                    cwd: process.cwd(),
+                    env: null,
+                    io: { kind: 'pipes' },
+                    completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
+                });
+            }, { message: 'Process sampling session is closed.' });
+        }, 'off');
+        scope.assert.deepEqual(helperEvents(fixture), []);
         scope.assert.deepEqual(await fixture.execution.finish(), []);
         return scope.assert.collect();
     })
