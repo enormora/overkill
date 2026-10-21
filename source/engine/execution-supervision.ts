@@ -402,7 +402,10 @@ async function runCaseWithSoftTimeout(
 
     const deadlineMicroseconds = input.timeoutMilliseconds * microsecondsPerMillisecond;
 
-    if (timing.timedOut || executedCase.durationMicroseconds >= deadlineMicroseconds) {
+    if (
+        !input.supervision.hasTerminalError() &&
+        (timing.timedOut || executedCase.durationMicroseconds >= deadlineMicroseconds)
+    ) {
         return resultWithTimeoutFailure(
             executedCase,
             input.timeoutMilliseconds,

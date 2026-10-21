@@ -51,6 +51,7 @@ export type ExecutionSupervision = {
     readonly lifecycle: CaseExecutionLifecycle | null;
     readonly acceptsNewCases: () => boolean;
     readonly closedBoundaryVerdict: () => PerTestResult['verdict'];
+    readonly hasTerminalError: () => boolean;
     readonly activeCases: ReadonlyMap<string, ActiveCase>;
     readonly addActiveCase: (key: string, activeCase: ActiveCase) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
@@ -74,6 +75,11 @@ export function createExecutionSupervision(): ExecutionSupervision {
                 return error.subtype === 'process-exhaustion';
             });
             return exhausted ? 'process-exhausted' : 'crashed';
+        },
+        hasTerminalError() {
+            return runnerErrors.some(function terminalError(error) {
+                return error.subtype === 'crash' || error.subtype === 'process-exhaustion';
+            });
         },
         activeCases,
         addActiveCase(key, activeCase) {
