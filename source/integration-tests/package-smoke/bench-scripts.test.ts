@@ -1,7 +1,6 @@
 import { moduleBenchmarkScript } from './module-scripts.test.ts';
 
-export const benchAuthoringScript = `${moduleBenchmarkScript}
-
+export const benchAuthoringScript = `
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import * as bench from '@overkill-dev/bench';
@@ -165,6 +164,7 @@ for (const api of [bench, standard]) {
         assert.deepEqual(processResult.runnerErrors, []);
     }
 }
+${moduleBenchmarkScript}
 console.log('bench authoring passed');
 `;
 
@@ -303,9 +303,11 @@ assert.deepEqual(Object.keys(bench).sort(), [
     'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'calibratedMeasurement', 'cpuCalibration',
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
     'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
+    'moduleMeasurement',
     'processCpuCollector', 'processMeasurement', 'processResourceCollector',
-    'rawMeasurement', 'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
-    'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
+    'rawMeasurement', 'readBenchmarkTimeline', 'readCalibrationReferenceReport', 'runtimeHealthCollector',
+    'skippedTest', 'suite', 'table', 'test', 'threadCpuCollector', 'timelineMeasurement',
+    'unavailableMetric', 'wallClockMeasurement', 'workload'
 ]);
 let calls = 0;
 const body = bench.defineParameterizedTestBody((scope, value) => {
