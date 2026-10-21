@@ -8,6 +8,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { builderBodyForAttempt, createBenchmarkAttempt } from '../engine/case-body-execution.ts';
+import { testNode as runtimeHealthBoundaryTestNode } from './runtime-health-boundary.test.ts';
 import { benchmark } from './benchmark-authoring.ts';
 import { wallClockMeasurement } from './measurement-strategy.ts';
 import { workload } from './workload.ts';
@@ -40,6 +41,7 @@ function benchmarkCase(): TestPlanCase {
 }
 
 export const testNode = suite('benchmark execution contracts', [
+    runtimeHealthBoundaryTestNode,
     test('rejects missing workload metadata at the engine boundary', function (scope) {
         const selected = benchmarkCase();
         const { execution } = selected;

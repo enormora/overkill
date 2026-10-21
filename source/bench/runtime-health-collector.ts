@@ -49,6 +49,7 @@ function runtimeSession(signal: AbortSignal): AsyncCollectorSession {
         utilization: runtimePerformance.eventLoopUtilization(),
         elapsedUtilization: 0
     };
+    let delayReadings: readonly (number | null)[] = [ null, null ];
     const record = function recordGc(entries: readonly RuntimeEntry[]): void {
         const observed = entries.filter(function withinRegion(entry) {
             return entry.startTime >= state.startTime && entry.startTime <= state.stopTime;
@@ -76,13 +77,17 @@ function runtimeSession(signal: AbortSignal): AsyncCollectorSession {
         stop() {
             state.stopTime = runtimePerformance.now();
             state.elapsedUtilization = runtimePerformance.eventLoopUtilization(state.utilization).utilization;
+            histogram.disable();
+            delayReadings = [
+                histogram.count === 0 ? null : histogram.mean / nanosecondsPerMicrosecond,
+                histogram.count === 0 ? null : histogram.max / nanosecondsPerMicrosecond
+            ];
         },
         async complete() {
             await drainObserver(signal);
             record(observer.takeRecords());
             return runtimeHealthReadings([
-                histogram.count === 0 ? null : histogram.mean / nanosecondsPerMicrosecond,
-                histogram.count === 0 ? null : histogram.max / nanosecondsPerMicrosecond,
+                ...delayReadings,
                 state.elapsedUtilization,
                 state.count,
                 state.duration
