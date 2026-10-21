@@ -254,6 +254,27 @@ export const testNode = suite('process timeline checkpoints', [
         scope.assert.deepEqual(await fixture.execution.finish(), []);
         return scope.assert.collect();
     }),
+    test('contains launch failures and leaves the sample safely disposable', async function (scope: TestScope) {
+        const fixture = await captureProcessTimeline(scope, async function missingExecutable(processes) {
+            const sample = processes.sample('measured');
+            await using disposal = new AsyncDisposableStack();
+            disposal.defer(sample.dispose);
+            await scope.assert.rejects(async function launchMissingCommand() {
+                return await sample.sample.process({
+                    command: [ '/overkill-missing-benchmark-executable' ],
+                    cwd: process.cwd(),
+                    env: null,
+                    io: { kind: 'pipes' },
+                    completion: { kind: 'exit', readiness: null, steps: [], expectedExitCodes: [ 0 ] }
+                });
+            }, { message: /ENOENT/u });
+            scope.assert.throws(sample.ensureMeasured, {
+                message: 'Each process sample must await exactly one complete process region.'
+            });
+        }, 'off');
+        scope.assert.deepEqual(await fixture.execution.finish(), []);
+        return scope.assert.collect();
+    }),
     test('cancels unawaited commands when their sample closes', async function (scope: TestScope) {
         const fixture = await captureProcessTimeline(scope, async function abandonedCommand(processes) {
             const sample = processes.sample('measured');
