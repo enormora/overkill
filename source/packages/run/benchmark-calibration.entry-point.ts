@@ -108,3 +108,9 @@ export function readBenchmarkMachine(): BenchmarkMachine {
     const metadata = readCalibrationHostMetadata(process.execArgv);
     return { machineClass: calibrationMachineClass(metadata), metadata };
 }
+
+export {
+    benchmarkTimelinePolicySchema,
+    benchmarkTimelineEvidenceSchema,
+    benchmarkTimelineReportSchema
+} from '../../bench/timeline-schema.ts';

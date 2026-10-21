@@ -6,6 +6,7 @@ import { parseProcessRequest, type ProcessCommand, type ProcessRequest } from '.
 import type { ProcessExecution } from './process-protocol.ts';
 import { MeasurementContractError } from './measurement-contract-error.ts';
 import type { MeasuredProcess } from './process-observation.ts';
+import { timelineSpan, timelineMark } from './timeline-context.ts';
 
 export type ProcessSampleLifetime = {
     readonly sample: ProcessSample;
@@ -29,7 +30,11 @@ type ProcessInvocation = {
 };
 
 async function measureInvocation(invocation: ProcessInvocation, command: ProcessCommand): Promise<MeasuredProcess> {
-    const execution = await invocation.input.helper().run({ ...command, cwd: resolve(command.cwd) }, invocation.signal);
+    timelineMark('process', 'launch requested');
+    const execution = await timelineSpan('process', 'command', async function executeCommand() {
+        return await invocation.input.helper().run({ ...command, cwd: resolve(command.cwd) }, invocation.signal);
+    });
+    timelineMark('process', execution.status === 'measured' ? execution.result.value.completion.kind : 'failed');
     invocation.cleanupFailure.write(execution.cleanupFailure);
     invocation.input.observe(execution);
     invocation.signal.throwIfAborted();

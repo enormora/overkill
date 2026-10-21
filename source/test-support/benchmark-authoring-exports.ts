@@ -16,6 +16,7 @@ export const benchmarkAuthoringExports = [
     'processMeasurement',
     'processResourceCollector',
     'rawMeasurement',
+    'readBenchmarkTimeline',
     'readCalibrationReferenceReport',
     'runtimeHealthCollector',
     'skippedTest',
@@ -23,6 +24,7 @@ export const benchmarkAuthoringExports = [
     'table',
     'test',
     'threadCpuCollector',
+    'timelineMeasurement',
     'unavailableMetric',
     'wallClockMeasurement',
     'workload'

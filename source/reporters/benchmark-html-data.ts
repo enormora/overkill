@@ -5,6 +5,7 @@ import type {
 } from '../engine/benchmark-result.ts';
 import type { PerformanceMetricComparison } from '../baselines/performance-adapter.ts';
 import type { RunSummary } from '../engine/run-result.ts';
+import type { BenchmarkTimelineEvent, BenchmarkTimelineEvidence } from '../engine/benchmark-timeline.ts';
 
 type BenchmarkChartRow = {
     readonly key: string;
@@ -30,6 +31,12 @@ export type BaselineChartRow = PerformanceMetricComparison & {
 export type BenchmarkHtmlChartData = {
     readonly groups: readonly BenchmarkChartGroup[];
     readonly baselines: readonly BaselineChartRow[];
+    readonly timelines: readonly BenchmarkTimelineChart[];
+};
+type BenchmarkTimelineChart = {
+    readonly label: string;
+    readonly evidence: BenchmarkTimelineEvidence | null;
+    readonly events: readonly BenchmarkTimelineEvent[];
 };
 export type BenchmarkHtmlReport = {
     readonly charts: BenchmarkHtmlChartData;

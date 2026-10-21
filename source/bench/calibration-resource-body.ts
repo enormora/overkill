@@ -50,6 +50,7 @@ function calibrationCaptureBody(
                         definition.summary.policy
                     );
                     await scope.updateResult({
+                        timeline: null,
                         normalization,
                         lifecycle: null,
                         workload: scope.workload,

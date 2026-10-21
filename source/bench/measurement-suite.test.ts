@@ -7,6 +7,7 @@ import { testNode as benchmarkAuthoringTestNode } from './benchmark-authoring.te
 import { testNode as benchmarkBudgetTestNode } from './benchmark-budget.test.ts';
 import { testNode as measurementRegionTestNode } from './measurement-region.test.ts';
 import { testNode as processContractsTestNode } from './process-contracts.test.ts';
+import { testNode as timelineMeasurementTestNode } from './timeline-measurement.test.ts';
 
 export const testNode = suite('benchmark measurement', [
     calibrationTestNode,
@@ -16,5 +17,6 @@ export const testNode = suite('benchmark measurement', [
     benchmarkAuthoringTestNode,
     benchmarkBudgetTestNode,
     measurementRegionTestNode,
-    processContractsTestNode
+    processContractsTestNode,
+    timelineMeasurementTestNode
 ]);

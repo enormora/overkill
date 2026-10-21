@@ -4,6 +4,7 @@ import type { ProcessOutput } from './process-output.ts';
 import type { MetricReadings } from './measurement-types.ts';
 import { availableMetric } from './metric-reading.ts';
 import { nanosecondsPerMicrosecond } from './measurement-units.ts';
+import { processCheckpoint } from './process-timeline.ts';
 
 export type ProcessCompletionResult = {
     readonly time: bigint;
@@ -58,7 +59,13 @@ async function processScript(
 ): Promise<MetricReadings> {
     const readings: Record<string, MetricReadings[string]> = {};
     for (const step of steps) {
-        Object.assign(readings, await performStep(step, child, output));
+        const name = step.kind === 'interaction' ? `interaction:${step.name}` : step.kind;
+        Object.assign(
+            readings,
+            await processCheckpoint(name, async function completeStep() {
+                return await performStep(step, child, output);
+            })
+        );
     }
     return readings;
 }
@@ -76,10 +83,17 @@ async function scriptedCompletion(
     child: ProcessChild,
     output: ProcessOutput
 ): Promise<ProcessCompletionResult> {
-    const readiness = completion.readiness === null
+    const marker = completion.readiness;
+    const readiness = marker === null
         ? Promise.resolve(null)
-        : output.expect(completion.readiness, 'readiness');
-    const exit = completion.kind === 'exit' ? expectedExit(completion, child) : Promise.resolve(null);
+        : processCheckpoint('readiness', async function ready() {
+            return await output.expect(marker, 'readiness');
+        });
+    const exit = completion.kind === 'exit'
+        ? processCheckpoint('exit', async function exited() {
+            return await expectedExit(completion, child);
+        })
+        : Promise.resolve(null);
     const [ interactions, ready, exited ] = await Promise.all([
         processScript(completion.steps, child, output),
         readiness,
@@ -96,6 +110,8 @@ export async function completeProcess(
     if (completion.kind !== 'ready') {
         return await scriptedCompletion(completion, child, output);
     }
-    const time = await output.expect(completion.marker, 'readiness');
+    const time = await processCheckpoint('readiness', async function ready() {
+        return await output.expect(completion.marker, 'readiness');
+    });
     return { time, readiness: time, interactions: {}, exit: null };
 }

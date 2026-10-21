@@ -2,6 +2,7 @@ import type { WorkloadParameters } from '../engine/workload-parameters.ts';
 import type { BenchmarkScope } from '../engine/test-node.ts';
 import type { BenchmarkLifecyclePolicy, MetricReading, SamplingPolicy } from '../engine/benchmark-result.ts';
 import type { AuthoringAnnotations, AuthoringControls } from '../packages/test/authoring-test-data.ts';
+import type { BenchmarkTimeline } from '../engine/benchmark-timeline.ts';
 import type { MeasurementSample, MeasurementStrategy } from './measurement-types.ts';
 import type { MetricBudget } from './benchmark-budget-definition.ts';
 import type { Workload } from './workload.ts';
@@ -18,6 +19,7 @@ type BenchmarkKinds = {
 export type BenchmarkKind = BenchmarkKinds[keyof BenchmarkKinds];
 export type BenchmarkMetrics = Readonly<Record<string, MetricReading | number>>;
 export type BenchmarkSample<Sample> = Sample & {
+    readonly timeline: BenchmarkTimeline;
     readonly cleanup: (callback: () => Promise<void> | void) => void;
 };
 export type BenchmarkMeasureContext<Parameters extends WorkloadParameters, Sample = MeasurementSample> = {

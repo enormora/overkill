@@ -525,3 +525,10 @@ export { snapshotWorkloadInput, workloadParameterIdentity } from '../../engine/w
 export { snapshotWorkloadParameters } from '../../engine/workload-parameters.ts';
 
 export type { BenchmarkExecutionEnvironment } from '../../engine/benchmark-environment.ts';
+export type {
+    BenchmarkTimeline,
+    BenchmarkTimelinePolicy,
+    BenchmarkTimelineEvent,
+    BenchmarkTimelineEvidence,
+    BenchmarkTimelineReport
+} from '../../engine/benchmark-timeline.ts';

@@ -5,6 +5,7 @@ import { readPerformanceBaselineReport, type PerformanceBaselineReport } from '.
 import { formatCaseId, workIdentityKey } from '../engine/identity.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { processEvidenceForWork } from '../bench/process-evidence-query.ts';
+import { readBenchmarkTimeline } from '../bench/timeline-report.ts';
 import type { BenchmarkHtmlReport, BaselineChartRow } from './benchmark-html-data.ts';
 import { benchmarkMetricGroups, formatBenchmarkWorkload } from './benchmark-html-metrics.ts';
 
@@ -63,7 +64,17 @@ export function createBenchmarkHtmlReport(result: RunResult): BenchmarkHtmlRepor
         throw new Error('Benchmark HTML reporter requires benchmark result evidence.');
     }
     return {
-        charts: { groups: benchmarkMetricGroups(result), baselines: baselineRows(baseline) },
+        charts: {
+            groups: benchmarkMetricGroups(result),
+            baselines: baselineRows(baseline),
+            timelines: result.perTest.map(function timeline(test) {
+                return {
+                    label: `${formatCaseId(test.id)} / ${formatBenchmarkWorkload(test)}`,
+                    evidence: test.benchmark?.timeline ?? null,
+                    events: readBenchmarkTimeline(result, test)?.events ?? []
+                };
+            })
+        },
         status: result.status,
         summary: result.summary,
         metadata: metadata === null

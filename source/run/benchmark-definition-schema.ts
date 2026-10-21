@@ -2,9 +2,11 @@ import { z } from 'zod/v4';
 import { normalizationRuleSummarySchema } from '../bench/calibration-evidence.ts';
 import type { BenchmarkDefinitionSummary } from '../engine/benchmark-result.ts';
 import { budgetStatisticSchema } from '../bench/benchmark-statistics-schema.ts';
+import { benchmarkTimelinePolicySchema } from '../bench/timeline-schema.ts';
 import { samplingPolicySchema, benchmarkLifecyclePolicySchema } from './benchmark-policy-schema.ts';
 
 export const benchmarkDefinitionSchema: z.ZodType<BenchmarkDefinitionSummary> = z.strictObject({
+    timeline: benchmarkTimelinePolicySchema.nullable().default(null),
     normalization: z.record(z.string(), normalizationRuleSummarySchema).default({}),
     lifecycle: benchmarkLifecyclePolicySchema.nullable().default(null),
     kind: z.string(),

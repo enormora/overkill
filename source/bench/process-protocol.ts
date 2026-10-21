@@ -21,6 +21,7 @@ export type ProcessExecution = ReadonlyDeep<z.infer<typeof processExecutionSchem
 export const processHelperRequestSchema = z.discriminatedUnion('kind', [
     z.strictObject({
         kind: z.literal('run'),
+        timeline: z.boolean().default(false),
         id: z.number().int().nonnegative(),
         request: processRequestSchema,
         instrumentation: z.enum([ 'node', 'off' ]),
@@ -32,6 +33,14 @@ export const processHelperRequestSchema = z.discriminatedUnion('kind', [
 export type ProcessHelperRequest = ReadonlyDeep<z.infer<typeof processHelperRequestSchema>>;
 export const processHelperReplySchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('ready'), version: z.literal(1) }),
+    z.strictObject({
+        kind: z.literal('checkpoint'),
+        id: z.number().int().nonnegative(),
+        name: z.string(),
+        startMicroseconds: z.number().nonnegative(),
+        durationMicroseconds: z.number().nonnegative(),
+        outcome: z.enum([ 'complete', 'failed' ])
+    }),
     z.strictObject({
         kind: z.literal('started'),
         id: z.number().int().nonnegative(),

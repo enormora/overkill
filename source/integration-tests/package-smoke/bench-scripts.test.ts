@@ -14,8 +14,10 @@ assert.deepEqual(Object.keys(bench).sort(), [
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
     'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
     'processCpuCollector', 'processMeasurement', 'processResourceCollector',
-    'rawMeasurement', 'readCalibrationReferenceReport', 'runtimeHealthCollector', 'skippedTest',
-    'suite', 'table', 'test', 'threadCpuCollector', 'unavailableMetric', 'wallClockMeasurement', 'workload'
+    'rawMeasurement', 'readBenchmarkTimeline', 'readCalibrationReferenceReport', 'runtimeHealthCollector',
+    'skippedTest',
+    'suite', 'table', 'test', 'threadCpuCollector', 'timelineMeasurement', 'unavailableMetric',
+    'wallClockMeasurement', 'workload'
 ]);
 assert.deepEqual(Object.keys(standard).sort(), Object.keys(bench).sort());
 assert.deepEqual(manifest.exports['.'], {

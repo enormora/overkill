@@ -7,6 +7,7 @@ import {
     type BenchmarkLifecycleResult
 } from '../engine/benchmark-result.ts';
 import { workloadIdSchema } from '../engine/identity-schema.ts';
+import { benchmarkTimelineEvidenceSchema } from '../bench/timeline-schema.ts';
 import { samplingPolicySchema, legacyLifecyclePolicySchema } from './benchmark-policy-schema.ts';
 
 const resolvedLifecyclePolicySchema = legacyLifecyclePolicySchema.extend({
@@ -66,6 +67,7 @@ const lifecycleResultSchema = z.union([
 ]);
 
 export const benchmarkResultSchema: z.ZodType<BenchmarkExecutionResult> = z.strictObject({
+    timeline: benchmarkTimelineEvidenceSchema.nullable().default(null),
     normalization: normalizationEvidenceSchema.nullable().default(null),
     lifecycle: lifecycleResultSchema.nullable().default(null),
     workload: workloadIdSchema,
