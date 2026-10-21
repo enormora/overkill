@@ -71,7 +71,7 @@
         "eslint": "10.7.0",
         "jscpd": "5.4.1",
         "knip": "6.41.0",
-        "rust-just": "1.57.0",
+        "rust-just": "1.59.0",
         "tstyche": "7.2.5",
         "typescript": "6.0.3"
     },
