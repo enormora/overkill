@@ -46,5 +46,24 @@ export const testNode = suite('benchmark HTML timeline evidence and deltas', [
             });
         }, { message: 'Timeline artifact belongs to another workload, runtime, case, or attempt.' });
         return scope.assert.collect();
+    }),
+    test('leaves missing retained timeline artifacts unavailable', function (scope: TestScope) {
+        const result = benchmarkHtmlTimelineFixture('missing evidence', 'marker');
+        const measured = result.perTest[0];
+        scope.require.defined(measured);
+        scope.assert.equal(readBenchmarkTimeline({ ...result, artifacts: [] }, measured), null);
+        return scope.assert.collect();
+    }),
+    test('rejects retained evidence from a different attempt', function (scope: TestScope) {
+        const result = benchmarkHtmlTimelineFixture('different attempt', 'marker');
+        const measured = result.perTest[0];
+        scope.require.defined(measured);
+        scope.assert.throws(function crossAttempt() {
+            readBenchmarkTimeline(result, {
+                ...measured,
+                attempts: [ { ...measured.attempts[0], attempt: { index: 1 } } ]
+            });
+        }, { message: 'Timeline artifact belongs to another workload, runtime, case, or attempt.' });
+        return scope.assert.collect();
     })
 ]);
