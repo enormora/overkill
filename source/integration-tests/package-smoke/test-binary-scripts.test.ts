@@ -1,3 +1,5 @@
+import { benchmarkAuthoringExports } from '../../test-support/benchmark-authoring-exports.ts';
+
 export const packageSmokeConfigScript = [
     "import { defineConfig } from '@overkill-dev/test/config';",
     "import { defineReporter } from '@overkill-dev/engine';",
@@ -474,7 +476,7 @@ export const expectedStandardSubpathImportOutput = [
     'api',
     'true',
     'true',
-    '["asyncMeasurementStrategy","availableMetric","benchmark","calibratedMeasurement","cpuCalibration","defaultBenchmarkLifecyclePolicy","defaultRuntimeCooldownPolicy","defaultSamplingPolicy","defineCalibrationResource","defineMacro","defineParameterizedTestBody","measurementStrategy","memoryCollector","processCpuCollector","processMeasurement","processResourceCollector","rawMeasurement","readCalibrationReferenceReport","runtimeHealthCollector","skippedTest","suite","table","test","threadCpuCollector","unavailableMetric","wallClockMeasurement","workload"]',
+    JSON.stringify(benchmarkAuthoringExports),
     '[]',
     '["readPerformanceBaselineReport"]',
     ''
