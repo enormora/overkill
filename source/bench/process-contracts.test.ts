@@ -1,6 +1,7 @@
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
+import { processEvidenceSchema } from './process-evidence.ts';
 import { testNode as moduleContractsTestNode } from './module-contracts.test.ts';
 import { parseProcessRequest, processRequestSchema } from './process-command.ts';
 import { processOutput } from './process-output.ts';
@@ -13,6 +14,25 @@ const command = {
 } as const;
 
 export const testNode = suite('external process contracts', [
+    test('reads historical process evidence without inventing module observations', function (scope) {
+        const execution = {
+            status: 'failed',
+            message: 'fixture failed',
+            cleanupFailure: null,
+            output: processOutput('pipes', 100).snapshot()
+        };
+        const evidence = processEvidenceSchema.parse({
+            version: 1,
+            entries: [ { phase: 'warmup', execution } ],
+            omitted: 1
+        });
+        scope.assert.equal(evidence.version, 2);
+        scope.assert.equal(evidence.entries[0]?.module, null);
+        scope.assert.equal(evidence.entries[0]?.phase, 'warmup');
+        scope.assert.equal(evidence.entries[0]?.execution.status, 'failed');
+        scope.assert.equal(evidence.omitted, 1);
+        return scope.assert.collect();
+    }),
     moduleContractsTestNode,
     test('rejects incompatible stream selectors and terminal-only steps on pipes', function (scope) {
         scope.assert.false(
