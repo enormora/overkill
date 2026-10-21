@@ -13,6 +13,7 @@ function transportedFailure(error: unknown): Error {
     const response = executionReplySchema.parse(deserialize(serialize({
         kind: 'failure',
         data: null,
+        artifacts: [],
         failure: runExecutionFailure(error)
     })));
     if (response.kind !== 'failure') {

@@ -83,7 +83,14 @@ async function withPolicy(processModel: ProcessModel, scope: TestScope, assertio
         const policy = await initializeMutationPolicy({
             sandbox: null,
             cwd,
-            settings: { freshState: false, seed: '42', configPath: 'overkill.config.mjs', paths: [], profile: null },
+            settings: {
+                freshState: false,
+                artifactPersistence: 'off',
+                seed: '42',
+                configPath: 'overkill.config.mjs',
+                paths: [],
+                profile: null
+            },
             signal: cancellation.signal
         });
         await assertResolverReaped(scope, cwd);

@@ -56,6 +56,7 @@ export const testNode = suite('mutation sandbox origins', [
                 paths: [ file, 'nested', paths.cwd ],
                 profile: 'unit',
                 freshState: false,
+                artifactPersistence: 'off',
                 seed: '42'
             });
             scope.assert.deepEqual(settings, {
@@ -63,6 +64,7 @@ export const testNode = suite('mutation sandbox origins', [
                 paths: [ join(paths.cwd, 'case.test.mjs'), join(paths.cwd, 'nested'), paths.cwd ],
                 profile: 'unit',
                 freshState: false,
+                artifactPersistence: 'off',
                 seed: '42'
             });
             scope.assert.throws(function rejectSiblingPrefix() {
@@ -71,6 +73,7 @@ export const testNode = suite('mutation sandbox origins', [
                     paths: [ `${paths.originalRoot}-other/case.mjs` ],
                     profile: null,
                     freshState: false,
+                    artifactPersistence: 'off',
                     seed: '42'
                 });
             }, { type: ConfigError, message: /escapes the Stryker sandbox/ });
@@ -80,6 +83,7 @@ export const testNode = suite('mutation sandbox origins', [
                     paths: [],
                     profile: null,
                     freshState: false,
+                    artifactPersistence: 'off',
                     seed: '42'
                 });
             }, { type: ConfigError, message: /escapes the Stryker sandbox/ });

@@ -792,12 +792,23 @@ Overkill writes nothing to disk by default during mutation invocations: no run
 records, results, duration history, artifacts, or reports. Stryker's sandbox and
 campaign reports remain governed by Stryker's configuration.
 
-One adapter artifact-persistence setting supports `off`, `failures`, and `all`,
+The adapter setting `overkill.artifactPersistence` supports `off`, `failures`, and `all`,
 defaulting to `off`. Opt-in persistence saves available diagnostic artifacts and
 transcripts with campaign, mutant, invocation, and case identity. It does not
 enable ordinary Overkill reports, run records, or duration-history persistence.
 `failures` means failed test invocations, including killed mutants, timeouts,
 execution errors, and failed dry runs; surviving mutants are included by `all`.
+
+Persisted diagnostics include available native failure outcomes and diffs,
+runner errors, and delivered artifacts or transcripts. They use a versioned
+diagnostic envelope, separate from ordinary result reports and run records.
+Store them under the launch project's configured runtime-state directory at
+`mutation/<campaign>/<invocation>/diagnostics.json`; copy file-backed evidence
+beside the document so it survives sandbox cleanup. Workers and replacements
+share campaign identity, while every invocation has a unique identity. Preserve
+structural case, work, and attempt identities and run-scoped attribution.
+Invocations without available diagnostic evidence create no files. Unattached
+transcript objects do not gain automatic recording.
 
 Use existing artifact production and limits. Persistence does not enable capture
 or capabilities forbidden by the selected profile. Runner-owned persistence

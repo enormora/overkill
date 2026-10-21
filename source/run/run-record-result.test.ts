@@ -5,7 +5,7 @@ import {
     type TestOutcome
 } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { recordedRunResult } from './run-record-result.ts';
+import { recordedRunResult, serializeRunDiagnostics, parseSerializedRunDiagnostics } from './run-record-result.ts';
 
 function opaqueFailure(): TestOutcome {
     const thrown = new Map<string, unknown>();
@@ -15,6 +15,33 @@ function opaqueFailure(): TestOutcome {
     return {
         kind: 'fail',
         failures: [
+            {
+                kind: 'assertion',
+                checks: [ {
+                    kind: 'composite',
+                    actual: { kind: 'null' },
+                    expected: { kind: 'null' },
+                    diff: null,
+                    id: 'composite',
+                    path: [],
+                    source: 'assert',
+                    sourceLocations: [ { kind: 'unknown' } ],
+                    summary: 'foreign failure',
+                    children: [ {
+                        kind: 'foreign',
+                        actual: { kind: 'null' },
+                        expected: { kind: 'null' },
+                        diff: null,
+                        id: 'foreign',
+                        path: [],
+                        source: 'assert',
+                        sourceLocations: [ { kind: 'unknown' } ],
+                        summary: 'foreign failure',
+                        error,
+                        label: 'foreign'
+                    } ]
+                } ]
+            },
             { error, kind: 'body-error' },
             { error, kind: 'cleanup-error' },
             {
@@ -40,6 +67,9 @@ function resultWithOpaqueEvidence(): RunResult {
         ...result,
         perTest: [ {
             ...test,
+            definitionLocations: [ function () {
+                return { kind: 'known', file: 'case.test.ts', line: 1, column: 1 };
+            } ],
             attempts: [ {
                 benchmark: null,
                 attempt: { index: 0 },
@@ -123,6 +153,36 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'round trips bounded diagnostic evidence without serializing it twice',
+            annotations: {},
+            controls: {},
+            body(scope) {
+                const live = resultWithOpaqueEvidence();
+                const diagnostics = serializeRunDiagnostics(live);
+                const encoded = JSON.stringify(diagnostics);
+                const restored = parseSerializedRunDiagnostics(JSON.parse(encoded));
+                scope.assert.equal(JSON.stringify(restored), encoded);
+                scope.assert.includes(encoded, '"file":"case.test.ts"');
+                scope.assert.equal(typeof live.perTest[0]?.definitionLocations[0], 'function');
+                scope.assert.throws(function rejectRawCause() {
+                    parseSerializedRunDiagnostics({
+                        ...diagnostics,
+                        runnerErrors: [ {
+                            attributedToAttempt: null,
+                            attributedTo: null,
+                            attributedToWork: null,
+                            cause: 42,
+                            diagnostics: [],
+                            message: 'raw cause',
+                            subtype: 'crash'
+                        } ]
+                    });
+                }, { name: 'ZodError' });
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'projects cyclic and bigint diagnostics without changing live outcomes or artifact identities',

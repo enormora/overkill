@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
-import { createPlainOutputRenderer, type TestScope } from '../../packages/engine/engine.entry-point.ts';
+import { createPlainOutputRenderer, type RunResult, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../../packages/test/test.entry-point.ts';
 import {
     ConfigError,
@@ -16,6 +16,11 @@ import { createMutationExecution, type MutationExecution } from './mutation-exec
 
 type ProjectDirectories = { readonly originalRoot: string; readonly cwd: string; };
 type ProcessModel = 'in-process' | 'supervised-process';
+type RejectedImport = {
+    readonly diagnostic: string;
+    readonly protectedFile: string;
+    readonly processModel: ProcessModel;
+};
 const engineModule = new URL(`../../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
 const engineUrl = engineModule.href;
 
@@ -54,6 +59,7 @@ async function policyFor(paths: ProjectDirectories, targets: readonly string[]):
         sandbox,
         settings: {
             freshState: false,
+            artifactPersistence: 'off',
             seed: '42',
             configPath: join(paths.originalRoot, 'policy.mjs'),
             paths: [],
@@ -92,28 +98,67 @@ function invocation(policy: FrozenMicrotestPolicy): FrozenRunCommand {
     } as const;
 }
 
+function assertRejectedCollection(
+    scope: TestScope,
+    result: RunResult,
+    expected: RejectedImport
+): void {
+    const { diagnostic, protectedFile, processModel } = expected;
+    scope.assert.partialDeepEqual(result, { status: 'failed', summary: { passed: 0, planned: 0 } });
+    if (
+        diagnostic === 'Failed to load test module' &&
+        processModel === 'supervised-process' &&
+        result.runnerErrors.some(function permissionDenial(error) {
+            return error.subtype === 'permission';
+        })
+    ) {
+        for (const error of result.runnerErrors) {
+            scope.assert.partialDeepEqual(error, {
+                subtype: 'permission',
+                attributedTo: null,
+                attributedToWork: null,
+                attributedToAttempt: null,
+                cause: {
+                    kind: 'node-permission-denial',
+                    capability: 'fs-read',
+                    permission: 'FileSystemRead',
+                    resource: protectedFile
+                }
+            });
+        }
+        return;
+    }
+    scope.assert.includes(
+        result
+            .runnerErrors
+            .map(function boundaryFailure(error) {
+                return error.message;
+            })
+            .join('\n'),
+        diagnostic
+    );
+    if (processModel === 'in-process') {
+        scope.assert.true(result.runnerErrors.some(function originalNeverEvaluated(error) {
+            return error.cause instanceof Error && error.cause.message.includes('Module import escapes');
+        }));
+    }
+}
+
 async function assertRejectedImport(
     scope: TestScope,
     policy: FrozenMicrotestPolicy,
-    diagnostic: string
+    diagnostic: string,
+    protectedFile: string
 ): Promise<void> {
-    if (policy.profile.execution.processModel === 'in-process' && diagnostic === 'Frozen policy revalidation failed') {
+    const { processModel } = policy.profile.execution;
+    if (processModel === 'in-process' && diagnostic === 'Frozen policy revalidation failed') {
         await scope.assert.rejects(async function runEscapingImport() {
             await orchestrator.run(invocation(policy));
         }, { message: new RegExp(diagnostic) });
         return;
     }
     const result = await orchestrator.run(invocation(policy));
-    scope.assert.equal(result.summary.passed, 0);
-    scope.assert.equal(result.summary.planned, 0);
-    scope.assert.true(result.runnerErrors.some(function boundaryFailure(error) {
-        return error.message.includes(diagnostic);
-    }));
-    if (policy.profile.execution.processModel === 'in-process') {
-        scope.assert.true(result.runnerErrors.some(function originalNeverEvaluated(error) {
-            return error.cause instanceof Error && error.cause.message.includes('Module import escapes');
-        }));
-    }
+    assertRejectedCollection(scope, result, { processModel, diagnostic, protectedFile });
 }
 
 async function assertFreshImports(
@@ -265,7 +310,8 @@ definitionLocations:[{kind:'unknown'}],body(scope){scope.assert.equal(value,2);r
                         await assertRejectedImport(
                             scope,
                             policy,
-                            file === 'policy.mjs' ? 'Frozen policy revalidation failed' : 'Failed to load test module'
+                            file === 'policy.mjs' ? 'Frozen policy revalidation failed' : 'Failed to load test module',
+                            join(paths.originalRoot, 'subject.mjs')
                         );
                         const originalFiles = await readdir(paths.originalRoot);
                         scope.assert.false(originalFiles.includes('original-evaluated'));

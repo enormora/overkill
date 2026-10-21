@@ -22,6 +22,8 @@ Top-level API:
 - `orchestrator.createExecutionSession(options)`
 - `parseFrozenMicrotestPolicy(value)`
 - `parseRunSelection(value)`, `parseRunResult(value)`, `parseRunnerError(value)`
+- `serializeRunDiagnostics(value)`, `parseSerializedRunDiagnostics(value)`
+- `createNodeFileStore()`, `FileStore`
 - `createRandomRunSeed()`
 - `withFileModuleBoundary(boundary, operation)`
 - `workIdentityKey(work)`
@@ -36,7 +38,8 @@ The lifecycle runs before configuration revalidation and collection, chooses a
 selection from the complete collected plan, and observes each case through
 awaited cleanup. Invocations accept JSON data, a deadline budget, and an explicit
 abort signal or `null`. Replies preserve native results, lifecycle data, typed
-failures, and deadline status. Sessions omit ordinary reporters and disk
+failures, and deadline status. Failure and timeout replies also retain artifacts
+already available to the execution owner. Sessions omit ordinary reporters and disk
 persistence. `dispose()` closes admission and awaits active work or owned child
 termination.
 
@@ -579,3 +582,11 @@ collectors and persisted samples. Both are exported by
 `benchmarkTimelinePolicySchema`, `benchmarkTimelineEvidenceSchema`, and
 `benchmarkTimelineReportSchema` validate timeline policy, retention metadata,
 and saved event payloads across benchmark and runner packages.
+
+`serializeRunDiagnostics` projects artifacts, case results, and runner errors
+into bounded JSON-safe evidence without writing a run record.
+`parseSerializedRunDiagnostics` validates that representation without serializing
+its values again.
+
+`createNodeFileStore` provides atomic runtime state writes and create-only
+publication, with temporary-file cleanup on failure.

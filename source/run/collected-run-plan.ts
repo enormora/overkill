@@ -1,9 +1,7 @@
 import type {
-    NonEmptyReadonlyArray,
-    ResolvableSourceLocation,
-    SourceLocation
+    NonEmptyReadonlyArray
 } from '../assertion-protocol/assertion-node-shape.ts';
-import { resolveSourceLocation } from '../assertion-protocol/source-location.ts';
+import { resolveSourceLocations } from '../assertion-protocol/source-location.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
     runStatusFromPlan,
@@ -48,21 +46,10 @@ function suiteTitles(suitePath: TestPlan['cases'][number]['suitePath']): readonl
     });
 }
 
-function resolvedDefinitionLocations(
-    locations: NonEmptyReadonlyArray<ResolvableSourceLocation>
-): NonEmptyReadonlyArray<SourceLocation> {
-    const [ firstLocation, ...remainingLocations ] = locations;
-
-    return [
-        resolveSourceLocation(firstLocation),
-        ...remainingLocations.map(resolveSourceLocation)
-    ];
-}
-
 function resolvedSuitePath(suitePath: TestPlan['cases'][number]['suitePath']): CollectedRunCase['suitePath'] {
     return suitePath.map(function resolveSuiteEntry(entry) {
         return {
-            definitionLocations: resolvedDefinitionLocations(entry.definitionLocations),
+            definitionLocations: resolveSourceLocations(entry.definitionLocations),
             title: entry.title
         };
     });
@@ -198,7 +185,7 @@ function collectRunPlanFile(file: string, cases: readonly TestPlan['cases'][numb
                     : null,
                 annotations: testCase.annotations,
                 controls: testCase.controls,
-                definitionLocations: resolvedDefinitionLocations(testCase.definitionLocations),
+                definitionLocations: resolveSourceLocations(testCase.definitionLocations),
                 params: testCase.id.params,
                 resourceAttachments: testCase.resourceAttachments,
                 suitePath: resolvedSuitePath(testCase.suitePath),
@@ -229,7 +216,7 @@ function collectedOrphanedNodes(testPlan: TestPlan): readonly CollectedOrphanedN
     return testPlan.orphans.map(function collectOrphan(orphan) {
         return {
             ...orphan,
-            definitionLocations: resolvedDefinitionLocations(orphan.definitionLocations)
+            definitionLocations: resolveSourceLocations(orphan.definitionLocations)
         };
     });
 }
@@ -237,7 +224,7 @@ function collectedOrphanedNodes(testPlan: TestPlan): readonly CollectedOrphanedN
 function resolvedTestPlanCaseDefinitionLocations(testCase: TestPlan['cases'][number]): TestPlan['cases'][number] {
     return {
         ...testCase,
-        definitionLocations: resolvedDefinitionLocations(testCase.definitionLocations),
+        definitionLocations: resolveSourceLocations(testCase.definitionLocations),
         suitePath: resolvedSuitePath(testCase.suitePath)
     };
 }
@@ -245,7 +232,7 @@ function resolvedTestPlanCaseDefinitionLocations(testCase: TestPlan['cases'][num
 function resolvedTestPlanOrphanDefinitionLocations(orphan: TestPlan['orphans'][number]): TestPlan['orphans'][number] {
     return {
         ...orphan,
-        definitionLocations: resolvedDefinitionLocations(orphan.definitionLocations)
+        definitionLocations: resolveSourceLocations(orphan.definitionLocations)
     };
 }
 

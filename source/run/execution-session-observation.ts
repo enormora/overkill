@@ -59,7 +59,7 @@ function missingDataReply(
             return error.subtype === 'crash';
         })
     ) {
-        return { kind: 'failure', failure: runExecutionFailure(call.signal.reason), data };
+        return { kind: 'failure', artifacts: result.artifacts, failure: runExecutionFailure(call.signal.reason), data };
     }
     const errors = result
         .runnerErrors
@@ -69,6 +69,7 @@ function missingDataReply(
         .join('\n');
     return {
         kind: 'failure',
+        artifacts: result.artifacts,
         failure: runExecutionFailure(new Error(`Execution lifecycle data was not delivered. ${errors}`)),
         data
     };
@@ -88,7 +89,7 @@ function interruptedExecutionReply(
         return error.subtype === 'crash' && executionTermination(error.cause) !== null;
     });
     return onlyInterruption
-        ? { kind: 'timeout', data: observation.data.read() }
+        ? { kind: 'timeout', artifacts: result.artifacts, data: observation.data.read() }
         : { kind: 'result', result, data: observation.data.read(), deadlineExceeded: true };
 }
 export function observedReply(
@@ -98,7 +99,12 @@ export function observedReply(
 ): RunExecutionReply {
     const failure = observation.failure.read();
     if (failure !== null) {
-        return { kind: 'failure', failure: runExecutionFailure(failure), data: observation.data.read() };
+        return {
+            kind: 'failure',
+            artifacts: result.artifacts,
+            failure: runExecutionFailure(failure),
+            data: observation.data.read()
+        };
     }
     if (!observation.delivered.read()) {
         return interruptedExecutionReply(result, call, observation);

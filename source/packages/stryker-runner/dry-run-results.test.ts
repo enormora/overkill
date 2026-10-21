@@ -273,7 +273,7 @@ export const testNode = suite('structured dry-run results', [
             const timedReply of [
                 { ...reply, deadlineExceeded: true },
                 withOutcome(reply, { kind: 'fail', failures: [ timeoutFailure ] }),
-                { kind: 'timeout', data: null }
+                { artifacts: [], kind: 'timeout', data: null }
             ] as const
         ) {
             const result = dryMutationResult('/project', timedReply, 'perTest', expectation);
@@ -292,10 +292,7 @@ export const testNode = suite('structured dry-run results', [
         scope.assert.deepEqual(
             dryMutationResult(
                 '/project',
-                {
-                    kind: 'timeout',
-                    data: { ...data, infrastructureErrors: [ 'cleanup sentinel' ] }
-                },
+                { artifacts: [], kind: 'timeout', data: { ...data, infrastructureErrors: [ 'cleanup sentinel' ] } },
                 'off',
                 expectation
             ),
@@ -305,6 +302,7 @@ export const testNode = suite('structured dry-run results', [
             dryMutationResult(
                 '/project',
                 {
+                    artifacts: [],
                     kind: 'timeout',
                     data: { ...data, caseFailures: [ { id: 'case', kind: 'error', message: 'case sentinel' } ] }
                 },
@@ -316,7 +314,7 @@ export const testNode = suite('structured dry-run results', [
         return scope.assert.collect();
     }),
     test('rejects malformed timeout checkpoints', function (scope) {
-        const result = dryMutationResult('/project', { kind: 'timeout', data: {} }, 'off', expectation);
+        const result = dryMutationResult('/project', { artifacts: [], kind: 'timeout', data: {} }, 'off', expectation);
         scope.assert.equal(result.status, DryRunStatus.Error);
         return scope.assert.collect();
     }),
@@ -324,6 +322,7 @@ export const testNode = suite('structured dry-run results', [
         const result = dryMutationResult(
             '/project',
             {
+                artifacts: [],
                 kind: 'failure',
                 data: null,
                 failure: { kind: 'error', name: 'Error', message: 'execution sentinel', cause: null, stack: null }

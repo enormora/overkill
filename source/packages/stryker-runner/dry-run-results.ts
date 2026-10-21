@@ -120,7 +120,7 @@ function interruptedDryRun(reply: ResultReply): DryRunResult {
         return !isTimeoutInterruption(error);
     });
     return failures.length === 0
-        ? timedOutDryRun({ kind: 'timeout', data: reply.data })
+        ? timedOutDryRun({ kind: 'timeout', artifacts: reply.result.artifacts, data: reply.data })
         : {
             status: DryRunStatus.Error,
             errorMessage: failures

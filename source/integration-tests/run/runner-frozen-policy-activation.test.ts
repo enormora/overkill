@@ -43,7 +43,14 @@ async function assertStaticPolicy(
     const policy = await initializeMutationPolicy({
         sandbox: null,
         cwd,
-        settings: { freshState: false, seed: '42', configPath: 'overkill.config.mjs', paths: [], profile: null },
+        settings: {
+            freshState: false,
+            artifactPersistence: 'off',
+            seed: '42',
+            configPath: 'overkill.config.mjs',
+            paths: [],
+            profile: null
+        },
         signal: controller.signal
     });
     scope.assert.equal(policy.profile.execution.processModel, 'in-process');

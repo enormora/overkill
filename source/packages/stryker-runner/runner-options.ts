@@ -10,7 +10,14 @@ export const defaultCampaignEndpoint = isStrykerWorker()
     : await campaignReceiver();
 const campaignOptionsSchema = workerOptionsSchema
     .extend({ seed: seedSchema.default(campaignSeed) })
-    .default({ configPath: null, paths: [], profile: null, freshState: false, seed: campaignSeed });
+    .default({
+        configPath: null,
+        paths: [],
+        profile: null,
+        freshState: false,
+        artifactPersistence: 'off',
+        seed: campaignSeed
+    });
 
 export const strykerValidationSchema = {
     type: 'object' as const,

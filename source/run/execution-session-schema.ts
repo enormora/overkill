@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import { frozenMicrotestPolicySchema } from './frozen-run-policy-schema.ts';
+import { runArtifactSchema } from './run-artifact-schema.ts';
 import { runResultSchema } from './run-result-schema.ts';
 import { runExecutionFailureSchema } from './execution-failure-schema.ts';
 import { runSelectionSchema } from './run-selection-schema.ts';
@@ -45,8 +46,13 @@ export const executionReplySchema = z.discriminatedUnion('kind', [
         data: z.json(),
         deadlineExceeded: z.boolean()
     }),
-    z.strictObject({ kind: z.literal('failure'), failure: runExecutionFailureSchema, data: z.json() }),
-    z.strictObject({ kind: z.literal('timeout'), data: z.json() })
+    z.strictObject({
+        kind: z.literal('failure'),
+        failure: runExecutionFailureSchema,
+        artifacts: z.array(runArtifactSchema),
+        data: z.json()
+    }),
+    z.strictObject({ kind: z.literal('timeout'), artifacts: z.array(runArtifactSchema), data: z.json() })
 ]);
 const executionCheckpointSchema = z.strictObject({ kind: z.literal('execution-checkpoint'), data: z.json() });
 export const executionHostMessageSchema = z.union([ executionReplySchema, executionCheckpointSchema ]);

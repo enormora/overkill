@@ -1667,8 +1667,13 @@ type RunExecutionReply =
         readonly data: JsonValue;
         readonly deadlineExceeded: boolean;
     }
-    | { readonly kind: 'failure'; readonly failure: RunExecutionFailure; readonly data: JsonValue; }
-    | { readonly kind: 'timeout'; readonly data: JsonValue; };
+    | {
+        readonly kind: 'failure';
+        readonly failure: RunExecutionFailure;
+        readonly artifacts: ReadonlyArray<RunArtifact>;
+        readonly data: JsonValue;
+    }
+    | { readonly kind: 'timeout'; readonly artifacts: ReadonlyArray<RunArtifact>; readonly data: JsonValue; };
 
 type RunExecutionSession = {
     readonly environmentLifetime: 'reused' | 'fresh';
@@ -1713,6 +1718,15 @@ type RunRecordCoverage = {
 };
 
 type RunRecordResult = import('@overkill-dev/run').RunRecordResult;
+type SerializedRunDiagnostics = import('@overkill-dev/run').SerializedRunDiagnostics;
+
+declare function serializeRunDiagnostics(
+    diagnostics: Pick<RunResult, 'artifacts' | 'perTest' | 'runnerErrors'>
+): SerializedRunDiagnostics;
+declare function parseSerializedRunDiagnostics(value: unknown): SerializedRunDiagnostics;
+
+type FileStore = import('@overkill-dev/run').FileStore;
+declare function createNodeFileStore(): FileStore;
 
 type SingleRunRecord = {
     readonly id: string; // ULID

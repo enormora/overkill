@@ -77,3 +77,7 @@ export const runArtifactSchema: z.ZodType<RunArtifact> = z.union([
         source: z.literal('native')
     })
 ]);
+
+export function parseRunArtifacts(value: unknown): readonly RunArtifact[] {
+    return z.array(runArtifactSchema).parse(value);
+}

@@ -8,6 +8,7 @@ export const workerOptionsSchema = z.strictObject({
     paths: z.array(z.string().regex(/\S/u, 'must not be blank')).readonly().default([]),
     profile: z.string().nullable().default(null),
     freshState: z.boolean().default(false),
+    artifactPersistence: z.enum([ 'off', 'failures', 'all' ]).default('off'),
     seed: seedSchema
 });
 const runnerOptionsSchema = workerOptionsSchema.readonly();

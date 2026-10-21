@@ -27,7 +27,10 @@ async function initializeExecutionEnvironment(
     return createExecutionSessionEnvironment(options, dependencies);
 }
 
-function deadlineCancelledReply(reply: RunExecutionReply, signal: AbortSignal): boolean {
+function deadlineCancelledReply(
+    reply: RunExecutionReply,
+    signal: AbortSignal
+): reply is Extract<RunExecutionReply, { readonly kind: 'failure'; }> {
     return reply.kind === 'failure' && signal.reason instanceof InvocationDeadlineExceededError &&
         isInvocationCancellation(reply.failure.cause, signal);
 }
@@ -51,7 +54,7 @@ async function completeInvocation(
         }
     });
     if (deadlineCancelledReply(reply, signal)) {
-        return { kind: 'timeout', data: reply.data };
+        return { kind: 'timeout', artifacts: reply.artifacts, data: reply.data };
     }
     return reply.kind === 'result' ? { ...reply, deadlineExceeded: reply.deadlineExceeded || budget.expired() } : reply;
 }
@@ -69,8 +72,8 @@ async function executeInvocation(
         const timedOut = budget.signal.reason instanceof InvocationDeadlineExceededError &&
             isInvocationCancellation(error, budget.signal);
         return timedOut
-            ? { kind: 'timeout', data: data.read() }
-            : { kind: 'failure', failure: runExecutionFailure(error), data: data.read() };
+            ? { kind: 'timeout', artifacts: [], data: data.read() }
+            : { kind: 'failure', artifacts: [], failure: runExecutionFailure(error), data: data.read() };
     } finally {
         budget.dispose();
     }
@@ -109,7 +112,7 @@ export function createExecutionSession(
         async run(invocation) {
             assertSessionAdmission(disposed.signal, active.read());
             if (!Number.isFinite(invocation.timeoutMilliseconds) || invocation.timeoutMilliseconds <= 0) {
-                return { kind: 'timeout', data: null };
+                return { kind: 'timeout', artifacts: [], data: null };
             }
             const signal = AbortSignal.any([
                 disposed.signal,

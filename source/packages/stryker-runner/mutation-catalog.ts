@@ -1,7 +1,13 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod/v4';
-import { workIdentityKey, type WorkId, type CollectedRunPlan, type RunSelection } from '../run/run.entry-point.ts';
+import {
+    parseSerializedRunDiagnostics,
+    workIdentityKey,
+    type WorkId,
+    type CollectedRunPlan,
+    type RunSelection
+} from '../run/run.entry-point.ts';
 
 const caseSchema = z.strictObject({
     file: z.string().nullable(),
@@ -75,6 +81,13 @@ export const campaignBaselineSchema = z
             });
     }, 'Campaign baseline must contain eligible tests and known coverage owners.');
 export type CampaignBaseline = Readonly<z.output<typeof campaignBaselineSchema>>;
+const diagnosticJsonSchema = z.json().superRefine(function validDiagnostics(value, context) {
+    try {
+        parseSerializedRunDiagnostics(value);
+    } catch (error: unknown) {
+        context.addIssue({ code: 'custom', message: String(error) });
+    }
+});
 export const mutationLifecycleDataSchema = z.strictObject({
     catalog: mutationCatalogSchema,
     coverage: mutantCoverageSchema,
@@ -87,7 +100,8 @@ export const mutationLifecycleDataSchema = z.strictObject({
         kind: z.enum([ 'error', 'timeout', 'killed' ]),
         message: z.string()
     })),
-    infrastructureErrors: z.array(z.string())
+    infrastructureErrors: z.array(z.string()),
+    diagnostics: diagnosticJsonSchema.nullable().default(null)
 });
 
 export function projectFile(root: string, file: string): string {

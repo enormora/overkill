@@ -30,8 +30,25 @@ export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
         'unhandled-rejection'
     ])
 });
-export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
+const diagnosticFields = {
     artifacts: z.array(runArtifactSchema),
+    perTest: z.array(z.strictObject({
+        benchmark: benchmarkResultSchema.nullable().default(null),
+        attempts: z.tuple([ testAttemptSchema ]).rest(testAttemptSchema),
+        retried: z.strictObject({ attempts: z.number(), finalVerdict: verdictSchema }).nullable(),
+        definitionLocations: sourceLocationsSchema,
+        id: caseIdSchema,
+        outcome: testOutcomeSchema.nullable(),
+        verdict: verdictSchema,
+        workId: workIdSchema,
+        durationMicroseconds: z.number()
+    })),
+    runnerErrors: z.array(runnerErrorSchema)
+};
+export const runDiagnosticsSchema: z.ZodType<Pick<RunResult, 'artifacts' | 'perTest' | 'runnerErrors'>> = z
+    .strictObject(diagnosticFields);
+export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
+    ...diagnosticFields,
     bySuite: z.record(
         z.string(),
         z.strictObject({ discovered: z.number(), executed: z.number(), planned: z.number() })
@@ -44,20 +61,8 @@ export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
             title: z.string()
         })
     ),
-    perTest: z.array(z.strictObject({
-        benchmark: benchmarkResultSchema.nullable().default(null),
-        attempts: z.tuple([ testAttemptSchema ]).rest(testAttemptSchema),
-        retried: z.strictObject({ attempts: z.number(), finalVerdict: verdictSchema }).nullable(),
-        definitionLocations: sourceLocationsSchema,
-        id: caseIdSchema,
-        outcome: testOutcomeSchema.nullable(),
-        verdict: verdictSchema,
-        workId: workIdSchema,
-        durationMicroseconds: z.number()
-    })),
     planStatus: z.enum([ 'empty-selection', 'empty-shard', 'planned' ]),
     processUsage: processUsageSchema.nullable(),
-    runnerErrors: z.array(runnerErrorSchema),
     status: z.enum([ 'failed', 'passed' ]),
     summary: z.strictObject({
         crashed: z.number(),

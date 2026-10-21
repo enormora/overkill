@@ -30,6 +30,7 @@ export type RunExecutionInvocation = {
 export type RunExecutionReply = {
     readonly kind: 'failure';
     readonly failure: RunExecutionFailure;
+    readonly artifacts: RunResult['artifacts'];
     readonly data: JsonValue;
 } | {
     readonly kind: 'result';
@@ -38,6 +39,7 @@ export type RunExecutionReply = {
     readonly deadlineExceeded: boolean;
 } | {
     readonly kind: 'timeout';
+    readonly artifacts: RunResult['artifacts'];
     readonly data: JsonValue;
 };
 export type RunExecutionSession = {

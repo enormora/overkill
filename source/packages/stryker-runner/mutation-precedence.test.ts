@@ -229,19 +229,23 @@ export const testNode = suite('mutation result precedence', [
         const data = { ...mutationLifecycleDataSchema.parse(reply.data), hitLimitExceeded: true };
         const { direct, valid, invalid } = hitLimitFailures();
         for (const failure of valid) {
-            scope.assert.deepEqual(mutantExecutionResult(root, { kind: 'failure', data, failure }, expectation), {
-                status: MutantRunStatus.Timeout,
-                reason: 'Mutant exceeded its hit limit.'
-            });
+            scope.assert.deepEqual(
+                mutantExecutionResult(root, { artifacts: [], kind: 'failure', data, failure }, expectation),
+                {
+                    status: MutantRunStatus.Timeout,
+                    reason: 'Mutant exceeded its hit limit.'
+                }
+            );
         }
         for (const failure of invalid) {
             scope.assert.equal(
-                mutantExecutionResult(root, { kind: 'failure', data, failure }, expectation).status,
+                mutantExecutionResult(root, { artifacts: [], kind: 'failure', data, failure }, expectation).status,
                 'error'
             );
         }
         scope.assert.equal(
-            mutantExecutionResult(root, { kind: 'failure', data: null, failure: direct }, expectation).status,
+            mutantExecutionResult(root, { artifacts: [], kind: 'failure', data: null, failure: direct }, expectation)
+                .status,
             'error'
         );
         return scope.assert.collect();

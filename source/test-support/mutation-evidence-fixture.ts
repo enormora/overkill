@@ -31,7 +31,10 @@ function failedCase(result: PerTestResult, kind: 'body-error' | 'cleanup-error')
     };
 }
 
-export async function createMutationEvidenceFixture(scope: TestScope): Promise<MutationEvidenceFixture> {
+export async function createMutationEvidenceFixture(
+    scope: TestScope,
+    retainDiagnostics: boolean
+): Promise<MutationEvidenceFixture> {
     const { baseline, reply } = mutationCoverageFixture('off');
     const first = reply.result.perTest[0];
     if (first === undefined) {
@@ -43,6 +46,7 @@ export async function createMutationEvidenceFixture(scope: TestScope): Promise<M
     const lifecycle = await createMutationLifecycle({
         root: '/project',
         mode: 'runtime',
+        retainDiagnostics,
         activeMutant: null,
         hitLimit: null,
         baseline: baseline.catalog,

@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import type {
     KnownSourceLocation,
+    NonEmptyReadonlyArray,
     ResolvableSourceLocation,
     SourceLocation,
     SourceLocationProvider
@@ -138,6 +139,13 @@ export function resolveSourceLocation(location: ResolvableSourceLocation): Sourc
     ensureValidSourceLocation(resolvedLocation);
 
     return resolvedLocation;
+}
+
+export function resolveSourceLocations(
+    locations: NonEmptyReadonlyArray<ResolvableSourceLocation>
+): NonEmptyReadonlyArray<SourceLocation> {
+    const [ first, ...remaining ] = locations;
+    return [ resolveSourceLocation(first), ...remaining.map(resolveSourceLocation) ];
 }
 
 export function ensureDefinitionLocations(definitionLocations: readonly ResolvableSourceLocation[]): void {

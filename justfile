@@ -36,6 +36,7 @@ test-unit: benchmark-html-browser
     node source/overkill.test.ts
 
 test-runner-integration: benchmark-html-browser
+    node source/integration-tests/run/runner-mutation-boundaries.test.ts
     node source/integration-tests/run/process-owner-death.test.ts
     node source/integration-tests/run/process-lifetime.test.ts
     node source/integration-tests/run/process-execution.test.ts
@@ -56,13 +57,13 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-stryker-dry-run.test.ts
     node source/integration-tests/run/runner-stryker-classification.test.ts
     node source/integration-tests/run/runner-stryker-timeouts.test.ts
+    node source/integration-tests/run/runner-stryker-persistence.test.ts
     node source/integration-tests/run/runner-collected-lifecycle.test.ts
     node source/integration-tests/run/runner-workloads.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
     node source/integration-tests/run/runner-benchmark-baselines.test.ts
     node source/integration-tests/run/runner-mutation-policy.test.ts
-    node source/integration-tests/run/runner-mutation-boundaries.test.ts
     node source/integration-tests/run/runner-frozen-policy.test.ts
     node source/integration-tests/run/runner-frozen-policy-activation.test.ts
     node source/integration-tests/run/runner-benchmarks.test.ts
@@ -100,6 +101,7 @@ test-package-smoke: compile
     node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/property.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
+    node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
