@@ -436,7 +436,7 @@ Defaults by family:
 | `microtest`   | 0.5 s            | 1 s when supervised; not enforceable for CPU-bound in-process |
 | `integration` | 5 s              | 7 s when the profile owns a worker or process boundary        |
 | `property`    | 1 s              | 2 s when supervised                                           |
-| `benchmark`   | 40 s             | 60 s; explicit profiles may lower both limits                |
+| `benchmark`   | 40 s             | 60 s; explicit profiles may lower both limits                 |
 | `type-test`   | adapter-declared | adapter-declared                                              |
 
 Rationale for the tight numbers: tests should be categorised

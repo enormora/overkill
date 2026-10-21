@@ -165,16 +165,16 @@ as an argument error. Names remain arbitrary, so a microtest profile named
 from the complete registry. Zero or multiple benchmark profiles require an
 explicit name; unknown names and other families are argument errors.
 
-| Command                                        | Behavior                                                                      | Reference                                                          |
-| ---------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `overkill bench run [paths...]`                | Execute benchmark profiles through regular runner planning and results.       | [Benchmarking](../authoring/benchmarking.md)                       |
-| `overkill bench list [paths...]`               | Print the resolved benchmark plan without executing bodies or resources.      | [Benchmarking](../authoring/benchmarking.md)                       |
-| `overkill bench calibrate [paths...]`          | Capture optional calibration display references without executing benchmark bodies. | [Benchmarking](../authoring/benchmarking.md)                  |
-| `overkill bench baseline update [paths...]`    | Update changed or missing performance baselines; leave stale baselines alone. | [Baselines And Snapshots](../authoring/baselines-and-snapshots.md) |
-| `overkill bench baseline apply [paths...]`     | Reconcile performance baselines, including stale removals.                    | same                                                               |
-| `overkill bench baseline bootstrap [paths...]` | Create missing performance baselines without overwriting existing baselines.  | same                                                               |
-| `overkill bench baseline list [paths...]`      | Print performance baselines on disk with their resolved identities.           | same                                                               |
-| `overkill bench baseline diff [paths...]`      | Show what benchmark baseline reconciliation would change without writing.     | same                                                               |
+| Command                                        | Behavior                                                                            | Reference                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `overkill bench run [paths...]`                | Execute benchmark profiles through regular runner planning and results.             | [Benchmarking](../authoring/benchmarking.md)                       |
+| `overkill bench list [paths...]`               | Print the resolved benchmark plan without executing bodies or resources.            | [Benchmarking](../authoring/benchmarking.md)                       |
+| `overkill bench calibrate [paths...]`          | Capture optional calibration display references without executing benchmark bodies. | [Benchmarking](../authoring/benchmarking.md)                       |
+| `overkill bench baseline update [paths...]`    | Update changed or missing performance baselines; leave stale baselines alone.       | [Baselines And Snapshots](../authoring/baselines-and-snapshots.md) |
+| `overkill bench baseline apply [paths...]`     | Reconcile performance baselines, including stale removals.                          | same                                                               |
+| `overkill bench baseline bootstrap [paths...]` | Create missing performance baselines without overwriting existing baselines.        | same                                                               |
+| `overkill bench baseline list [paths...]`      | Print performance baselines on disk with their resolved identities.                 | same                                                               |
+| `overkill bench baseline diff [paths...]`      | Show what benchmark baseline reconciliation would change without writing.           | same                                                               |
 
 ## Flags vs Subcommands
 
