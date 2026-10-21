@@ -1,4 +1,11 @@
-import { workIdentityKey, type PerTestResult, type RunnerError } from '../run/run.entry-point.ts';
+import { z } from 'zod/v4';
+import {
+    serializeRunDiagnostics,
+    type SerializedRunDiagnostics,
+    workIdentityKey,
+    type PerTestResult,
+    type RunnerError
+} from '../run/run.entry-point.ts';
 import { classifyMutationCase, type MutationCaseClassification } from './mutation-case-classification.ts';
 import { canonicalWork, type mutationLifecycleDataSchema } from './mutation-catalog.ts';
 
@@ -13,7 +20,7 @@ type MutationDiagnosticRecorder = {
         errors: readonly RunnerError[],
         hitLimitExceeded: boolean
     ) => MutationCaseClassification;
-    readonly snapshot: () => Pick<LifecycleData, 'caseFailures' | 'infrastructureErrors'>;
+    readonly snapshot: () => Pick<LifecycleData, 'caseFailures' | 'diagnostics' | 'infrastructureErrors'>;
 };
 
 export function mutationDiagnostics(
@@ -48,9 +55,10 @@ export function hasMutationExecutionError(
     });
 }
 
-export function createMutationDiagnostics(root: string): MutationDiagnosticRecorder {
+export function createMutationDiagnostics(root: string, retainDiagnostics: boolean): MutationDiagnosticRecorder {
     const observations: MutationCaseObservation[] = [];
     const observedErrors = new Set<RunnerError>();
+    const evidence: SerializedRunDiagnostics[] = [];
     return {
         record(result, errors, hitLimitExceeded) {
             const classification = classifyMutationCase(root, result, errors, hitLimitExceeded);
@@ -58,10 +66,26 @@ export function createMutationDiagnostics(root: string): MutationDiagnosticRecor
             for (const error of errors) {
                 observedErrors.add(error);
             }
+            if (retainDiagnostics && (result.verdict !== 'pass' || errors.length > 0)) {
+                evidence.push(serializeRunDiagnostics({ artifacts: [], perTest: [ result ], runnerErrors: errors }));
+            }
             return classification;
         },
         snapshot() {
-            return mutationDiagnostics(observations, Array.from(observedErrors));
+            return {
+                ...mutationDiagnostics(observations, Array.from(observedErrors)),
+                diagnostics: retainDiagnostics
+                    ? z.json().parse({
+                        artifacts: [],
+                        perTest: evidence.flatMap(function caseEvidence(entry) {
+                            return entry.perTest;
+                        }),
+                        runnerErrors: evidence.flatMap(function caseErrors(entry) {
+                            return entry.runnerErrors;
+                        })
+                    })
+                    : null
+            };
         }
     };
 }

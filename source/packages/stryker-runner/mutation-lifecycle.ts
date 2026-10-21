@@ -31,7 +31,8 @@ export const mutationLifecycleInputSchema = z.strictObject({
     baseline: mutationCatalogSchema.nullable(),
     selected: z.array(z.string()).nullable(),
     disableBail: z.boolean(),
-    files: z.array(z.string()).nullable()
+    files: z.array(z.string()).nullable(),
+    retainDiagnostics: z.boolean().default(false)
 });
 
 type MutationLifecycleInput = Readonly<z.output<typeof mutationLifecycleInputSchema>>;
@@ -122,7 +123,7 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
     const instrumentation = createInvocationInstrumentation();
     let selection: MutationCaseSelection | null = null;
     let bailed = false;
-    const diagnostics = createMutationDiagnostics(input.root);
+    const diagnostics = createMutationDiagnostics(input.root, input.retainDiagnostics);
     const admission: MutationAdmission = {
         active: new Set(),
         completed: new Set()
@@ -167,7 +168,7 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
         },
         snapshot() {
             const collected = selection ?? { catalog: [], selected: [] };
-            return mutationLifecycleDataSchema.parse({
+            return z.json().parse(mutationLifecycleDataSchema.parse({
                 ...diagnostics.snapshot(),
                 catalog: collected.catalog,
                 coverage: structuredClone(instrumentation.context.mutantCoverage),
@@ -175,7 +176,7 @@ export async function createMutationLifecycle(data: JsonValue): Promise<RunExecu
                 selected: collected.selected,
                 completed: Array.from(admission.completed),
                 bailed
-            });
+            }));
         },
         async dispose() {
             instrumentation.dispose();

@@ -170,6 +170,7 @@ export const testNode = suite('Stryker result ownership', [
     test('preserves lifecycle failures when instrumentation also exceeded its hit limit', function (scope) {
         const reply = failedReply([], true, false);
         const result = mutantExecutionResult(root, {
+            artifacts: [],
             kind: 'failure',
             data: reply.data,
             failure: {

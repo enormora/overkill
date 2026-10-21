@@ -42,7 +42,7 @@ async function admittedResponse(
         return await worker.respond(request, signal, timeoutMilliseconds);
     } catch (error: unknown) {
         if (signal.reason instanceof InvocationDeadlineExceededError && isInvocationCancellation(error, signal)) {
-            return { kind: 'timeout', data: null };
+            return { kind: 'timeout', artifacts: [], data: null };
         }
         return { kind: 'error', message: String(error) };
     }
@@ -54,7 +54,7 @@ async function workerResponse(
 ): Promise<ReturnType<typeof campaignResponseSchema.parse>> {
     const { frame, signal, budget } = delivery;
     const response = budget?.expired() === true && !signal.aborted
-        ? { kind: 'timeout' as const, data: null }
+        ? { kind: 'timeout' as const, artifacts: [], data: null }
         : await admittedResponse(worker, frame.request, signal, budget?.remainingMilliseconds() ?? null);
     return campaignResponseSchema.parse({ version: campaignProtocolVersion, id: frame.id, response });
 }
@@ -103,9 +103,14 @@ async function finishWorker(worker: CampaignWorker, previous: Promise<void>): Pr
     } catch {}
 }
 
-function serveWorker(socket: Socket, token: string, baselines: Readonly<Map<string, CampaignBaseline>>): void {
+function serveWorker(
+    socket: Socket,
+    token: string,
+    baselines: Readonly<Map<string, CampaignBaseline>>,
+    campaigns: Readonly<Map<string, string>>
+): void {
     socket.unref();
-    const worker = createCampaignWorker(baselines);
+    const worker = createCampaignWorker(baselines, campaigns);
     const clock = createClock();
     const operations = new Map<number, AbortController>();
     let pending = Promise.resolve();
@@ -140,8 +145,9 @@ function serveWorker(socket: Socket, token: string, baselines: Readonly<Map<stri
 async function startReceiver(): Promise<CampaignEndpoint> {
     const token = randomUUID();
     const baselines = new Map<string, CampaignBaseline>();
+    const campaigns = new Map<string, string>();
     const server = createServer(function (socket) {
-        serveWorker(socket, token, baselines);
+        serveWorker(socket, token, baselines, campaigns);
     });
     await new Promise<void>(function (resolve, reject) {
         server.once('error', reject);

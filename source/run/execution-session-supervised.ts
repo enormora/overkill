@@ -39,6 +39,9 @@ export async function runSupervisedExecutionSession(
     const ownership = createExecutionHostOwnership(dependencies.startSupervisedChild, call.signal);
     const operations = createRunOperations(observedDependencies(dependencies, observation, ownership.start), 'test');
     const signal = AbortSignal.any([ call.signal, observation.invalid.signal ]);
+    const artifacts = function (): Extract<RunExecutionReply, { readonly kind: 'result'; }>['result']['artifacts'] {
+        return observation.result.read()?.artifacts ?? [];
+    };
     try {
         const result = await withExecutionSession(
             call.transport,
@@ -49,8 +52,13 @@ export async function runSupervisedExecutionSession(
         return observedReply(result, call, observation);
     } catch (error: unknown) {
         return signal.reason instanceof InvocationDeadlineExceededError && isInvocationCancellation(error, signal)
-            ? { kind: 'timeout', data: observation.data.read() }
-            : { kind: 'failure', failure: runExecutionFailure(error), data: observation.data.read() };
+            ? { kind: 'timeout', artifacts: artifacts(), data: observation.data.read() }
+            : {
+                kind: 'failure',
+                artifacts: artifacts(),
+                failure: runExecutionFailure(error),
+                data: observation.data.read()
+            };
     } finally {
         await ownership.dispose();
     }

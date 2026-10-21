@@ -6,6 +6,7 @@ import {
     restoreRunExecutionFailure,
     type FrozenMicrotestPolicy
 } from '../run/run.entry-point.ts';
+import { createMutationDiagnosticContext, type MutationDiagnosticContext } from './mutation-diagnostic-storage.ts';
 import { defaultCampaignEndpoint } from './runner-options.ts';
 import { parseRunnerOptions, type OverkillRunnerOptions } from './runner-settings-schema.ts';
 import { assertExcludedAdapter, createMutationSandbox, type MutationSandbox } from './mutation-sandbox.ts';
@@ -18,6 +19,7 @@ export type ReadyMutationRunner = {
     readonly execution: MutationRunnerExecution;
     readonly client: CampaignClient;
     readonly root: string;
+    readonly diagnostics: MutationDiagnosticContext;
 };
 export type RunnerInitialization = {
     readonly options: Readonly<Record<string, unknown>>;
@@ -49,7 +51,13 @@ function resolvedPolicy(response: CampaignResponse): FrozenMicrotestPolicy {
 
 async function initializeRegisteredRunner(input: RegisteredRunnerInitialization): Promise<ReadyMutationRunner> {
     const { sandbox, settings, client, signal, budget } = input;
-    await client.request({ kind: 'register', root: sandbox.root }, budget());
+    const registered = await client.request({ kind: 'register', root: sandbox.root }, budget());
+    if (registered.kind === 'timeout') {
+        throw new InvocationDeadlineExceededError();
+    }
+    if (registered.kind !== 'registered') {
+        throw new Error('Campaign IPC did not return campaign identity.');
+    }
     const response = await client.request({ kind: 'resolve-policy', sandbox, settings }, budget());
     const policy = resolvedPolicy(response);
     const execution = createMutationRunnerExecution({
@@ -59,7 +67,18 @@ async function initializeRegisteredRunner(input: RegisteredRunnerInitialization)
         client,
         signal
     });
-    return { execution, client, root: sandbox.root };
+    return {
+        execution,
+        client,
+        root: sandbox.root,
+        diagnostics: createMutationDiagnosticContext({
+            originalRoot: sandbox.originalRoot,
+            root: sandbox.root,
+            settings,
+            policy,
+            campaign: registered.campaign
+        })
+    };
 }
 async function connectRegisteredCampaign(input: RunnerInitialization): Promise<CampaignClient> {
     const endpoint = campaignEndpointSchema.parse(input.options.overkillCampaign ?? defaultCampaignEndpoint);

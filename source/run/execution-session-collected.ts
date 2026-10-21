@@ -20,6 +20,7 @@ type CollectedExecution = {
     readonly options: RunExecutionSessionOptions;
     readonly dependencies: RunOrchestratorDependencies;
     readonly collection: StoredValue<Promise<CollectedRun> | null>;
+    readonly artifacts: StoredValue<Extract<RunExecutionReply, { readonly kind: 'result'; }>['result']['artifacts']>;
 };
 
 async function executeCollectedInvocation(
@@ -33,6 +34,7 @@ async function executeCollectedInvocation(
     const selection = await lifecycle.select(collected.plan);
     await lifecycle.beforeCases();
     const result = await collected.run({ selection });
+    execution.artifacts.write(result.artifacts);
     return { kind: 'result', result, data: lifecycle.snapshot(), deadlineExceeded: false };
 }
 
@@ -45,6 +47,9 @@ export function createCollectedExecutionSession(
         lifetime: 'reused',
         async execute(call) {
             const reply = createStoredValue<RunExecutionReply['data']>(null);
+            const artifacts = createStoredValue<
+                Extract<RunExecutionReply, { readonly kind: 'result'; }>['result']['artifacts']
+            >([]);
             try {
                 return await withExecutionLifecycle(
                     call.transport,
@@ -52,7 +57,10 @@ export function createCollectedExecutionSession(
                     call,
                     async function (lifecycle) {
                         try {
-                            return await executeCollectedInvocation({ options, dependencies, collection }, lifecycle);
+                            return await executeCollectedInvocation(
+                                { options, dependencies, collection, artifacts },
+                                lifecycle
+                            );
                         } finally {
                             reply.write(lifecycle.snapshot());
                             await call.checkpoint(reply.read());
@@ -64,9 +72,14 @@ export function createCollectedExecutionSession(
                     call.signal.reason instanceof InvocationDeadlineExceededError &&
                     isInvocationCancellation(error, call.signal)
                 ) {
-                    return { kind: 'timeout', data: reply.read() };
+                    return { kind: 'timeout', artifacts: artifacts.read(), data: reply.read() };
                 }
-                return { kind: 'failure', failure: runExecutionFailure(error), data: reply.read() };
+                return {
+                    kind: 'failure',
+                    artifacts: artifacts.read(),
+                    failure: runExecutionFailure(error),
+                    data: reply.read()
+                };
             }
         }
     };

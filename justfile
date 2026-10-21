@@ -56,6 +56,7 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-stryker-dry-run.test.ts
     node source/integration-tests/run/runner-stryker-classification.test.ts
     node source/integration-tests/run/runner-stryker-timeouts.test.ts
+    node source/integration-tests/run/runner-stryker-persistence.test.ts
     node source/integration-tests/run/runner-collected-lifecycle.test.ts
     node source/integration-tests/run/runner-workloads.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts
@@ -100,6 +101,7 @@ test-package-smoke: compile
     node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/property.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
+    node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js

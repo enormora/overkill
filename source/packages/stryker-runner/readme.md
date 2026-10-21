@@ -198,8 +198,8 @@ hit-limit state, and the activation environment variable are cleared on exit,
 including partial setup failures. Reset failures still attempt independent cleanup
 and return `Error` if state cannot be cleared; retained runtime objects are never
 replaced to recover. Detached result counters remain available after cleanup.
-Ordinary reporters, records, duration history, V8 coverage, and artifact-file
-persistence are disabled for these memory-only execution sessions.
+Ordinary reporters, records, duration history, and V8 coverage are disabled.
+Diagnostic persistence is opt-in through `overkill.artifactPersistence`.
 
 Every invocation gets fresh scopes, observers, cleanup, and results. Failed
 collection remains cached in reused mode; fresh mode can collect again on the
@@ -239,3 +239,36 @@ The adapter logs it through Stryker during initialization. Supply the logged
 value explicitly to reproduce ordering. Multiple programmatic campaigns in one
 Node process may share the generated schema default. Worker settings require the
 coordinator-resolved seed and never substitute another seed when it is missing.
+
+Diagnostic persistence accepts `'off'` (default), `'failures'`, or `'all'`:
+
+```js
+export default {
+    overkill: { artifactPersistence: 'failures' }
+};
+```
+
+`failures` retains available evidence from the whole failed invocation: killed
+mutants, timeouts, execution errors, and dry runs with failed tests. `all` also
+retains available evidence from successful dry runs and surviving mutants.
+Invocations without diagnostic evidence create no files.
+
+Files live under the launch project's configured `runtimeStateDir`:
+
+```text
+<runtimeStateDir>/mutation/<campaign>/<invocation>/diagnostics.json
+```
+
+Each document includes the campaign and invocation identities, mutant identity
+when applicable, campaign seed, profile, native failure outcomes, and delivered
+artifacts or transcripts. Case and work identities remain structural and
+project-relative. File-backed attachments are copied beside the document.
+Workers and replacements share the campaign identity; each invocation has a
+unique identity. These files survive Stryker sandbox cleanup.
+
+Persistence preserves existing production limits and truncation metadata. It
+does not enable capture, debug recording, capabilities, ordinary reports, run
+records, or history maintenance. Unattached transcript objects are not recorded.
+Forced termination can prevent delivery or writing; only evidence available to
+a surviving owner can be retained. Serialization, delivery, copy, and write
+failures return infrastructure errors, preserving earlier case diagnostics.

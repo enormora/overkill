@@ -54,6 +54,7 @@ async function policyFor(paths: ProjectDirectories, targets: readonly string[]):
         sandbox,
         settings: {
             freshState: false,
+            artifactPersistence: 'off',
             seed: '42',
             configPath: join(paths.originalRoot, 'policy.mjs'),
             paths: [],

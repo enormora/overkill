@@ -21,7 +21,7 @@ export function hitLimitCollectionReply(
         return error.subtype === 'loader' && isWrappedHitLimitGuard(error.cause);
     });
     return parsed.data?.hitLimitExceeded === true && reply.result.perTest.length === 0 && guardOnly
-        ? { kind: 'timeout', data: reply.data }
+        ? { kind: 'timeout', artifacts: reply.result.artifacts, data: reply.data }
         : null;
 }
 
@@ -166,6 +166,7 @@ export function interruptedCompletedMutant(
     if (hasMutationExecutionError(diagnostics)) {
         return interruptedMutantResult(root, {
             kind: 'failure',
+            artifacts: reply.result.artifacts,
             data: reply.data,
             failure: {
                 kind: 'error',
@@ -176,5 +177,9 @@ export function interruptedCompletedMutant(
             }
         }, expectation);
     }
-    return interruptedMutantResult(root, { kind: 'timeout', data: reply.data }, expectation);
+    return interruptedMutantResult(
+        root,
+        { kind: 'timeout', artifacts: reply.result.artifacts, data: reply.data },
+        expectation
+    );
 }

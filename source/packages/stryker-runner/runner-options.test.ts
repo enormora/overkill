@@ -23,7 +23,8 @@ export const testNode = suite('Stryker adapter settings', [
             paths: [],
             profile: null,
             seed: '900719925474099312345',
-            freshState: true
+            freshState: true,
+            artifactPersistence: 'off'
         });
         return scope.assert.collect();
     }),
@@ -34,12 +35,26 @@ export const testNode = suite('Stryker adapter settings', [
                 paths: [],
                 profile: null,
                 freshState: false,
+                artifactPersistence: 'off',
                 seed: '42'
             });
         }
         scope.assert.equal(parseRunnerOptions({ seed: '42', profile: ' unit-fast ' }).profile, ' unit-fast ');
         scope.assert.deepEqual(parseRunnerOptions({ seed: '42', paths: [ 'unit.test.ts' ] }).paths, [ 'unit.test.ts' ]);
         scope.assert.equal(parseRunnerOptions({ seed: '42', configPath: 'policy.ts' }).configPath, 'policy.ts');
+        return scope.assert.collect();
+    }),
+    test('normalizes diagnostic persistence without enabling other settings', function (scope) {
+        for (const artifactPersistence of [ 'off', 'failures', 'all' ]) {
+            const settings = parseRunnerOptions({ seed: '42', artifactPersistence });
+            scope.assert.equal(settings.artifactPersistence, artifactPersistence);
+            scope.assert.equal(settings.freshState, false);
+        }
+        for (const artifactPersistence of [ true, null, 'failure', 'ALL', [] ]) {
+            scope.assert.throws(function invalidPersistence() {
+                parseRunnerOptions({ seed: '42', artifactPersistence });
+            }, { type: ConfigError });
+        }
         return scope.assert.collect();
     }),
     test('rejects malformed settings and missing worker seeds', function (scope) {

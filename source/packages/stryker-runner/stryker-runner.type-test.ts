@@ -20,6 +20,7 @@ describe('Stryker profile initialization', function () {
             readonly paths: readonly string[];
             readonly profile: string | null;
             readonly freshState: boolean;
+            readonly artifactPersistence: 'all' | 'failures' | 'off';
             readonly seed: string;
         }>();
     });

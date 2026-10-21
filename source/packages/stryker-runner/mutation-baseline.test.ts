@@ -1,4 +1,5 @@
 import { realpath } from 'node:fs/promises';
+import { z } from 'zod/v4';
 import type { TestScope } from '../engine/engine.entry-point.ts';
 import { suite, test } from '../test/test.entry-point.ts';
 import { mutationCoverageFixture } from '../../test-support/mutation-coverage-fixture.ts';
@@ -19,8 +20,9 @@ async function expireNoRequests(): Promise<void> {
 
 async function registeredCampaign(scope: TestScope): Promise<RegisteredCampaign> {
     const baselines = new Map<string, CampaignBaseline>();
-    const worker = createCampaignWorker(baselines);
-    const replacement = createCampaignWorker(baselines);
+    const campaigns = new Map<string, string>();
+    const worker = createCampaignWorker(baselines, campaigns);
+    const replacement = createCampaignWorker(baselines, campaigns);
     const root = await realpath(process.cwd());
     scope.cleanup(async function disposeCampaignWorkers() {
         await Promise.all([ worker.dispose(), replacement.dispose() ]);
@@ -46,6 +48,30 @@ async function registeredCampaign(scope: TestScope): Promise<RegisteredCampaign>
 }
 
 export const testNode = suite('mutation baseline evidence', [
+    test('shares campaign identity across workers while separating canonical roots', async function (scope) {
+        const baselines = new Map<string, CampaignBaseline>();
+        const campaigns = new Map<string, string>();
+        const workers = [ process.cwd(), process.cwd(), import.meta.dirname ].map(function campaignWorker(root) {
+            return { root, worker: createCampaignWorker(baselines, campaigns) };
+        });
+        scope.cleanup(async function disposeWorkers() {
+            await Promise.all(workers.map(async function disposeWorker(entry) {
+                await entry.worker.dispose();
+            }));
+        });
+        const controller = new AbortController();
+        const identities = await Promise.all(workers.map(async function registerWorker(entry) {
+            const response = await entry.worker.respond(
+                { kind: 'register', root: entry.root },
+                controller.signal,
+                null
+            );
+            return z.object({ kind: z.literal('registered'), campaign: z.uuid() }).parse(response).campaign;
+        }));
+        scope.assert.equal(identities[0], identities[1]);
+        scope.assert.notEqual(identities[0], identities[2]);
+        return scope.assert.collect();
+    }),
     test('retains initially empty eligible files across worker replacement', async function (scope) {
         const { reply, baseline } = mutationCoverageFixture('perTest');
         const { client, replacement, signal } = await registeredCampaign(scope);
@@ -112,7 +138,7 @@ export const testNode = suite('mutation baseline evidence', [
         const client: CampaignClient = {
             expireRequests: expireNoRequests,
             async request() {
-                return { kind: 'timeout', data: null };
+                return { artifacts: [], kind: 'timeout', data: null };
             },
             dispose() {
                 return undefined;

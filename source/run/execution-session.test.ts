@@ -339,6 +339,7 @@ export const testNode = suite('public execution session boundaries', [
         scope.cleanup(session.dispose);
         for (const timeoutMilliseconds of [ 0, -1, Number.NaN, Number.POSITIVE_INFINITY ]) {
             scope.assert.deepEqual(await session.run({ data: null, timeoutMilliseconds, signal: null }), {
+                artifacts: [],
                 kind: 'timeout',
                 data: null
             });

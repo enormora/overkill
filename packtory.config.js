@@ -260,7 +260,7 @@ export const configuration = {
                 modules: packageModules({ '.': 'main' }),
                 privateRoots: [ 'mutationLifecycle' ]
             },
-            bundlePeerDependencies: [ '@overkill-dev/run' ]
+            bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ]
         },
         {
             name: 'property',

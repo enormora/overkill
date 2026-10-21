@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 import {
@@ -68,7 +69,10 @@ function registeredRoot(roots: ReadonlyMap<'sandbox', string>): string {
     return sandbox;
 }
 
-export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBaseline>>): CampaignWorker {
+export function createCampaignWorker(
+    baselines: Readonly<Map<string, CampaignBaseline>>,
+    campaigns: Readonly<Map<string, string>>
+): CampaignWorker {
     const cancellation = new AbortController();
     const ownership = {
         root: new Map<'sandbox', string>(),
@@ -82,8 +86,11 @@ export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBas
             throw new Error('Campaign worker is already registered.');
         }
         ownership.registering.add('started');
-        ownership.root.set('sandbox', await realpath(sandbox));
-        return { kind: 'accepted' };
+        const root = await realpath(sandbox);
+        ownership.root.set('sandbox', root);
+        const campaign = campaigns.get(root) ?? randomUUID();
+        campaigns.set(root, campaign);
+        return { kind: 'registered', campaign };
     }
     async function release(): Promise<CampaignResponse> {
         await ownership.session.get('active')?.dispose();
@@ -143,9 +150,9 @@ export function createCampaignWorker(baselines: Readonly<Map<string, CampaignBas
             return await freezeRegisteredPolicy(request, signal);
         } catch (error: unknown) {
             if (signal.reason instanceof InvocationDeadlineExceededError && isInvocationCancellation(error, signal)) {
-                return { kind: 'timeout', data: null };
+                return { kind: 'timeout', artifacts: [], data: null };
             }
-            return { kind: 'failure', failure: runExecutionFailure(error), data: null };
+            return { kind: 'failure', artifacts: [], failure: runExecutionFailure(error), data: null };
         }
     }
     async function respondRegistered(

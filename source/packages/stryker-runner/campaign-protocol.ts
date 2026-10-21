@@ -1,10 +1,15 @@
 import { z } from 'zod/v4';
 import type { JsonValue } from 'type-fest';
-import { parseFrozenMicrotestPolicy, parseRunResult, parseRunExecutionFailure } from '../run/run.entry-point.ts';
+import {
+    parseFrozenMicrotestPolicy,
+    parseRunResult,
+    parseRunExecutionFailure,
+    parseRunArtifacts
+} from '../run/run.entry-point.ts';
 import { campaignBaselineSchema } from './mutation-catalog.ts';
 import { mutationSandboxSchema } from './mutation-sandbox.ts';
 
-export const campaignProtocolVersion = 4;
+export const campaignProtocolVersion = 5;
 
 const jsonSchema: z.ZodType<JsonValue> = z.json();
 
@@ -50,6 +55,7 @@ export const campaignResponseSchema = z.strictObject({
     id: z.number().int().nonnegative(),
     response: z.discriminatedUnion('kind', [
         z.strictObject({ kind: z.literal('accepted') }),
+        z.strictObject({ kind: z.literal('registered'), campaign: z.uuid() }),
         z.strictObject({ kind: z.literal('policy'), policy: z.unknown().transform(parseFrozenMicrotestPolicy) }),
         z.strictObject({ kind: z.literal('baseline'), baseline: campaignBaselineSchema.nullable() }),
         z.strictObject({ kind: z.literal('error'), message: z.string() }),
@@ -62,9 +68,14 @@ export const campaignResponseSchema = z.strictObject({
         z.strictObject({
             kind: z.literal('failure'),
             failure: z.unknown().transform(parseRunExecutionFailure),
+            artifacts: z.unknown().transform(parseRunArtifacts),
             data: jsonSchema
         }),
-        z.strictObject({ kind: z.literal('timeout'), data: jsonSchema })
+        z.strictObject({
+            kind: z.literal('timeout'),
+            artifacts: z.unknown().transform(parseRunArtifacts),
+            data: jsonSchema
+        })
     ])
 });
 export type CampaignResponse = Readonly<z.output<typeof campaignResponseSchema>['response']>;
