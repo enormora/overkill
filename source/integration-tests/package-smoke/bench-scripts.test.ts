@@ -120,7 +120,7 @@ for (const api of [bench, standard]) {
     for (const kind of ['pipes', 'pty']) {
         const processNode = api.benchmark('packaged process', {
             kind: 'startup', workloads: [api.workload('one', {})],
-            measurement: api.processMeasurement({instrumentation: 'node'}),
+            measurement: api.rawMeasurement(api.processMeasurement({instrumentation: 'node'})),
             async measure({sample}) {
                 const child = await sample.process({
                     command: [
@@ -153,6 +153,7 @@ for (const api of [bench, standard]) {
         })));
         assert.equal(processResult.summary.passed, 1, JSON.stringify(processResult.perTest));
         assert.deepEqual(processResult.runnerErrors, []);
+        assert.equal(processResult.perTest[0].benchmark.normalization, null);
     }
 }
 ${moduleBenchmarkScript}
