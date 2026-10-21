@@ -2324,6 +2324,55 @@ type Generator<Value> = {
     readonly withCodec: (codec: PropertyInputCodec<Value>) => Generator<Value>;
 };
 
+type NumberBounds = {
+    readonly min: number;
+    readonly max: number;
+};
+
+type BigintBounds = {
+    readonly min: bigint;
+    readonly max: bigint;
+};
+
+type LengthBounds = {
+    readonly minLength: number;
+    readonly maxLength: number;
+};
+
+type GeneratorConstant = bigint | boolean | number | string | null | undefined;
+type GeneratorVariant<Value> = Value extends unknown ? Generator<Value> : never;
+type GeneratorAlternative<Value> = Generator<Value> | GeneratorVariant<Value>;
+
+type RecursiveGeneratorDefinition<Value> = {
+    readonly leaf: GeneratorAlternative<Value>;
+    readonly branch: (child: Generator<Value>) => GeneratorAlternative<Value>;
+    readonly maxDepth: number;
+};
+
+declare const gen: {
+    readonly boolean: () => Generator<boolean>;
+    readonly integer: (bounds: NumberBounds) => Generator<number>;
+    readonly number: (...bounds: readonly [] | readonly [NumberBounds]) => Generator<number>;
+    readonly bigint: (bounds: BigintBounds) => Generator<bigint>;
+    readonly string: (...bounds: readonly [] | readonly [LengthBounds]) => Generator<string>;
+    readonly bytes: (...bounds: readonly [] | readonly [LengthBounds]) => Generator<Uint8Array>;
+    readonly constant: <const Value extends GeneratorConstant>(value: Value) => Generator<Value>;
+    readonly array: <Value>(
+        element: Generator<Value>,
+        ...bounds: readonly [] | readonly [LengthBounds]
+    ) => Generator<Value[]>;
+    readonly tuple: <Values extends unknown[]>(
+        ...elements: { readonly [Key in keyof Values]: Generator<Values[Key]>; }
+    ) => Generator<Values>;
+    readonly record: <Values extends Record<string, unknown> = Record<PropertyKey, never>>(
+        fields: { readonly [Key in keyof Values]: Generator<Values[Key]>; }
+    ) => Generator<Values>;
+    readonly choice: <Values extends [unknown, ...unknown[]]>(
+        ...alternatives: { readonly [Key in keyof Values]: Generator<Values[Key]>; }
+    ) => Generator<Values[number]>;
+    readonly recursive: <Value>(definition: RecursiveGeneratorDefinition<Value>) => Generator<Value>;
+};
+
 type PropertySampleScope = TestScope & {
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;

@@ -1251,7 +1251,7 @@ as ordinary generation.
 authors negate a score when lower values are preferable. `sample.cover(label,
 condition)` records input-coverage observations against declared requirements.
 Invalid scores and labels are contract errors. Labels, retained search state,
-input sizes, and recursive depth are bounded by collected property policy.
+sizes declared by constructors, and recursive depth are bounded by collected property policy.
 
 Coverage requirements count accepted new exploration only, including targeted
 exploration. In exhaustive mode, their denominator is the complete enumerated
@@ -1456,6 +1456,36 @@ bounded integers, floating-point values, bigint, booleans, strings, bytes,
 constants, choices, arrays, tuples, records, and bounded recursive composition.
 String limits use UTF-16 code units; generators can exercise lone surrogates
 as well as valid Unicode. Byte generation uses owned Uint8Array storage.
+
+The concrete constructor names are `gen.boolean`, `gen.integer`,
+`gen.number`, `gen.bigint`, `gen.string`, `gen.bytes`, `gen.constant`,
+`gen.array`, `gen.tuple`, `gen.record`, `gen.choice`, and
+`gen.recursive`. Integer and bigint constructors require inclusive
+`{ min, max }` bounds. Unconstrained `gen.number()` includes all IEEE
+double values; explicit finite bounds exclude NaN and infinities.
+Constants are scalar singleton domains. Record declarations are plain objects
+or objects with a null prototype, with own enumerable string data fields;
+every field is required. Empty records and tuples are valid,
+while choices require at least one generator.
+
+Length bounds contain both `minLength` and `maxLength`.
+`maxSize` caps each declared string, byte array, and array independently;
+unbounded constructor forms use `0..maxSize`. Explicit maxima intersect
+that cap without relaxing declared minima. An excluded minimum exhausts
+the active domain. Size caps describe generator constructors, not a graph
+inspection of arbitrary mapped outputs. Pure transformations may expand
+their source values.
+
+Recursive composition uses `gen.recursive({ leaf, branch, maxDepth })`.
+The branch callback receives the recursive child generator. A leaf has
+depth zero, every expansion consumes one level, and the declaration's limit
+intersects the active remaining depth. Child domains are compiled lazily
+with that retained depth, including during dependent shrinking.
+
+Generator construction snapshots bounds and component declarations without
+running callbacks. Codec metadata attaches to the complete input:
+`filter` preserves it; `map`, `flatMap`, and structural composition
+clear inherited attachments. Attach the resulting input's codec afterward.
 
 ### Alternatives And Trade-offs
 
