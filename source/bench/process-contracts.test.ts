@@ -1,6 +1,8 @@
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { processMeasurement, type ProcessRequest } from '../packages/bench/bench.entry-point.ts';
 import { benchmarkDefinitionSchema } from '../run/benchmark-definition-schema.ts';
+import { testNode as moduleProtocolTestNode } from './module-import-session.test.ts';
+import { testNode as processTimelineTestNode } from './process-timeline.test.ts';
 import { processEvidenceSchema } from './process-evidence.ts';
 import { testNode as moduleContractsTestNode } from './module-contracts.test.ts';
 import { parseProcessRequest, processRequestSchema } from './process-command.ts';
@@ -34,6 +36,8 @@ export const testNode = suite('external process contracts', [
         return scope.assert.collect();
     }),
     moduleContractsTestNode,
+    moduleProtocolTestNode,
+    processTimelineTestNode,
     test('rejects incompatible stream selectors and terminal-only steps on pipes', function (scope) {
         scope.assert.false(
             processRequestSchema

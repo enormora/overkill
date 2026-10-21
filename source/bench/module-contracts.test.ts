@@ -26,6 +26,32 @@ async function moduleFile(scope: TestScope, name: string, source: string): Promi
 }
 
 export const testNode = suite('module import failure contracts', [
+    test('rejects non-file URLs before launching an import', async function (scope) {
+        const lifetime = await moduleSample(scope, scope.signal);
+        await scope.assert.rejects(async function unsupportedUrl() {
+            return await lifetime.sample.importModule({
+                url: new URL('https://example.invalid/module'),
+                cwd: process.cwd(),
+                env: null,
+                nodeArguments: []
+            });
+        }, { message: 'Module import requires an absolute file URL.' });
+        scope.assert.throws(lifetime.ensureMeasured, {
+            message: 'Each sample must await exactly one successful module import.'
+        });
+        return scope.assert.collect();
+    }),
+    test('rejects a child that exits before reporting its import', async function (scope) {
+        const url = await moduleFile(scope, 'entry.cjs', 'process.exit(0);');
+        const lifetime = await moduleSample(scope, scope.signal);
+        await scope.assert.rejects(async function missingReport() {
+            return await lifetime.sample.importModule({ url, cwd: process.cwd(), env: null, nodeArguments: [] });
+        }, { message: 'Module exited without an import report.' });
+        scope.assert.throws(lifetime.ensureMeasured, {
+            message: 'Each sample must await exactly one successful module import.'
+        });
+        return scope.assert.collect();
+    }),
     test('imports CommonJS without invoking exported functions and rejects a second import', async function (scope) {
         const url = await moduleFile(
             scope,

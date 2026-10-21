@@ -84,6 +84,7 @@ function observeSocket(messages: ModuleMessages, socket: Socket): void {
     frames.on('error', fail);
     socket.on('error', fail);
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
+    lines.on('error', fail);
     lines.on('line', function received(line) {
         try {
             receiveMessage(messages, socket, line);
@@ -153,6 +154,10 @@ export async function createModuleImportSession(): Promise<ModuleImportSession> 
             return messages.progress.read().startup;
         },
         async close() {
+            messages.reply.resolve({
+                kind: 'failed',
+                error: new Error('Module import session closed before reporting.')
+            });
             await closeServer(server, messages.sockets);
         }
     };
