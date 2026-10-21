@@ -107,9 +107,15 @@ async function assertRejectedImport(
     const result = await orchestrator.run(invocation(policy));
     scope.assert.equal(result.summary.passed, 0);
     scope.assert.equal(result.summary.planned, 0);
-    scope.assert.true(result.runnerErrors.some(function boundaryFailure(error) {
-        return error.message.includes(diagnostic);
-    }));
+    scope.assert.includes(
+        result
+            .runnerErrors
+            .map(function boundaryFailure(error) {
+                return error.message;
+            })
+            .join('\n'),
+        diagnostic
+    );
     if (policy.profile.execution.processModel === 'in-process') {
         scope.assert.true(result.runnerErrors.some(function originalNeverEvaluated(error) {
             return error.cause instanceof Error && error.cause.message.includes('Module import escapes');

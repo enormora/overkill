@@ -36,6 +36,7 @@ test-unit: benchmark-html-browser
     node source/overkill.test.ts
 
 test-runner-integration: benchmark-html-browser
+    node source/integration-tests/run/runner-mutation-boundaries.test.ts
     node source/integration-tests/run/process-owner-death.test.ts
     node source/integration-tests/run/process-lifetime.test.ts
     node source/integration-tests/run/process-execution.test.ts
@@ -63,7 +64,6 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
     node source/integration-tests/run/runner-benchmark-baselines.test.ts
     node source/integration-tests/run/runner-mutation-policy.test.ts
-    node source/integration-tests/run/runner-mutation-boundaries.test.ts
     node source/integration-tests/run/runner-frozen-policy.test.ts
     node source/integration-tests/run/runner-frozen-policy-activation.test.ts
     node source/integration-tests/run/runner-benchmarks.test.ts
