@@ -65,5 +65,42 @@ export const testNode = suite('benchmark HTML timeline evidence and deltas', [
             });
         }, { message: 'Timeline artifact belongs to another workload, runtime, case, or attempt.' });
         return scope.assert.collect();
+    }),
+    test('leaves incompatible timeline attachment media unavailable', function (scope: TestScope) {
+        const result = benchmarkHtmlTimelineFixture('incompatible evidence', 'marker');
+        const measured = result.perTest[0];
+        scope.require.defined(measured);
+        const artifacts = result.artifacts.map(function incompatibleMedia(artifact) {
+            return artifact.payload.kind === 'runtime-attachment'
+                ? {
+                    ...artifact,
+                    id: { ...artifact.id, subtype: 'attachment' as const },
+                    source: 'native' as const,
+                    payload: { ...artifact.payload, mediaType: 'text/plain' }
+                }
+                : artifact;
+        });
+        scope.assert.equal(readBenchmarkTimeline({ ...result, artifacts }, measured), null);
+        return scope.assert.collect();
+    }),
+    test('leaves byte-limited timeline attachment content unavailable', function (scope: TestScope) {
+        const result = benchmarkHtmlTimelineFixture('omitted evidence', 'marker');
+        const measured = result.perTest[0];
+        scope.require.defined(measured);
+        const artifacts = result.artifacts.map(function omittedContent(artifact) {
+            return artifact.payload.kind === 'runtime-attachment'
+                ? {
+                    ...artifact,
+                    id: { ...artifact.id, subtype: 'attachment' as const },
+                    source: 'native' as const,
+                    payload: {
+                        ...artifact.payload,
+                        content: { kind: 'omitted' as const, reason: 'byte-limit' as const, limit: 1 }
+                    }
+                }
+                : artifact;
+        });
+        scope.assert.equal(readBenchmarkTimeline({ ...result, artifacts }, measured), null);
+        return scope.assert.collect();
     })
 ]);
