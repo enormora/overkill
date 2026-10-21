@@ -4,6 +4,7 @@ import type { SamplingSessionInput } from './benchmark-sampling-types.ts';
 import { createAsyncMeasurementSample, createMeasurementSample } from './measurement-region.ts';
 import type { ProcessSamplingSession } from './process-sampling.ts';
 import type { ProcessPhase } from './process-evidence.ts';
+import { createModuleSample, type ModuleSampleLifetime } from './module-sampling.ts';
 import { sampleTimeline, beginTimelineInvocation, timelineSpan } from './timeline-context.ts';
 
 export type InvocationMeasurement = {
@@ -62,6 +63,17 @@ function functionSample(input: BenchmarkInvocationInput): FunctionSampleLifetime
     throw new TypeError('Process sampling requires an owned process session.');
 }
 
+type ProcessInvocationLifetime = ReturnType<ProcessSamplingSession['sample']>;
+type OwnedSampleLifetime = ModuleSampleLifetime | ProcessInvocationLifetime;
+function ownedSample(input: BenchmarkInvocationInput, measurement: InvocationMeasurement): OwnedSampleLifetime | null {
+    if (measurement.processes === null) {
+        return null;
+    }
+    return input.measurement.mode === 'module'
+        ? createModuleSample(measurement.processes, measurement.phase)
+        : measurement.processes.sample(measurement.phase);
+}
+
 async function observeInvocation(
     input: BenchmarkInvocationInput,
     cleanup: SampleCleanup,
@@ -70,7 +82,7 @@ async function observeInvocation(
 ): Promise<void> {
     input.scope.signal.throwIfAborted();
     await using disposal = new AsyncDisposableStack();
-    const processes = measurement.processes?.sample(measurement.phase) ?? null;
+    const processes = ownedSample(input, measurement);
     disposal.defer(async function disposeProcesses() {
         await processes?.dispose();
     });

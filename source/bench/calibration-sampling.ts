@@ -61,8 +61,11 @@ async function runCalibration(
     const lifecycle = createBenchmarkLifecycle(input);
     lifecycle.garbageCollection.validate();
     await using disposal = new AsyncDisposableStack();
-    const processes = input.measurement.mode === 'process'
-        ? createProcessSamplingSession(input.measurement, input.scope.signal)
+    const processes = input.measurement.mode === 'process' || input.measurement.mode === 'module'
+        ? createProcessSamplingSession(
+            input.measurement.mode === 'module' ? { mode: 'process', instrumentation: 'off' } : input.measurement,
+            input.scope.signal
+        )
         : null;
     disposal.defer(async function disposeCalibrationProcesses() {
         await processes?.dispose();

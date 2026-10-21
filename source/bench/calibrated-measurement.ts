@@ -1,6 +1,7 @@
 import { measurementStrategy, asyncMeasurementStrategy } from './measurement-strategy.ts';
 import { defaultMetricNormalization } from './default-normalization.ts';
 import { processMeasurement } from './process-measurement.ts';
+import { moduleMeasurement } from './module-measurement.ts';
 import { measurementTimelinePolicy, timelineMeasurement } from './timeline-measurement.ts';
 import type { MetricNormalization } from './calibration-definition.ts';
 
@@ -39,6 +40,9 @@ export function calibratedMeasurement<Strategy extends UncalibratedMeasurement>(
     return calibrated;
 }
 function plainStrategy(measurement: UncalibratedMeasurement): UncalibratedMeasurement {
+    if (measurement.mode === 'module') {
+        return moduleMeasurement();
+    }
     if (measurement.mode === 'process') {
         return processMeasurement(measurement);
     }

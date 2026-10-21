@@ -5,6 +5,7 @@ import { runWithAttachmentExecution } from '../run/resource-lifecycle-state.ts';
 import {
     wallClockMeasurement,
     cpuCalibration,
+    moduleMeasurement,
     type BenchmarkTimelineEvent
 } from '../packages/bench/bench.entry-point.ts';
 import { timelineMeasurement, measurementTimelinePolicy } from './timeline-measurement.ts';
@@ -84,37 +85,34 @@ export const testNode = suite('benchmark timelines', [
         return scope.assert.collect();
     }),
     test('bounds retention and reports unavailable attachment coordination', async function (scope: TestScope) {
-        await withBenchmarkTimeline(
-            timelineMeasurement(wallClockMeasurement(), { maximumEvents: 2 }),
-            async function () {
-                sampleTimeline.mark('one');
-                sampleTimeline.mark('two');
-                sampleTimeline.mark('three');
-                await timelineContext.getStore()?.retain();
-                const recording = timelineContext.getStore();
-                scope.require.defined(recording);
-                scope.assert.partialDeepEqual(recording.evidence(), {
-                    events: 2,
-                    omitted: 1,
-                    status: 'omitted',
-                    reason: 'No runner attachment coordinator is active.'
-                });
-            }
-        );
+        await withBenchmarkTimeline(timelineMeasurement(moduleMeasurement(), { maximumEvents: 2 }), async function () {
+            sampleTimeline.mark('one');
+            sampleTimeline.mark('two');
+            sampleTimeline.mark('three');
+            await timelineContext.getStore()?.retain();
+            const recording = timelineContext.getStore();
+            scope.require.defined(recording);
+            scope.assert.partialDeepEqual(recording.evidence(), {
+                events: 2,
+                omitted: 1,
+                status: 'omitted',
+                reason: 'No runner attachment coordinator is active.'
+            });
+        });
         return scope.assert.collect();
     }),
     test('preserves timeline policies through raw and calibrated wrappers in either order', function (scope) {
         const policy = { maximumEvents: 4096 };
         const rules = { durationMicroseconds: { calibration: cpuCalibration(), scaling: 'proportional' as const } };
         const strategies = [
-            rawMeasurement(timelineMeasurement(wallClockMeasurement(), policy)),
-            timelineMeasurement(rawMeasurement(wallClockMeasurement()), policy),
-            calibratedMeasurement(timelineMeasurement(wallClockMeasurement(), policy), rules),
-            timelineMeasurement(calibratedMeasurement(wallClockMeasurement(), rules), policy)
+            rawMeasurement(timelineMeasurement(moduleMeasurement(), policy)),
+            timelineMeasurement(rawMeasurement(moduleMeasurement()), policy),
+            calibratedMeasurement(timelineMeasurement(moduleMeasurement(), policy), rules),
+            timelineMeasurement(calibratedMeasurement(moduleMeasurement(), rules), policy)
         ];
         for (const strategy of strategies) {
             const resolved = resolveCalibratedMeasurement(strategy, new Set([ 'durationMicroseconds' ]));
-            scope.assert.equal(resolved.measurement.mode, 'sync');
+            scope.assert.equal(resolved.measurement.mode, 'module');
             scope.assert.equal(measurementTimelinePolicy(resolved.measurement)?.maximumEvents, policy.maximumEvents);
         }
         scope.assert.throws(function () {

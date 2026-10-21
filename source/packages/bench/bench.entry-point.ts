@@ -1,5 +1,12 @@
 export { workload } from '../../bench/workload.ts';
 export { processMeasurement } from '../../bench/process-measurement.ts';
+export { moduleMeasurement } from '../../bench/module-measurement.ts';
+export type {
+    ModuleMeasurementStrategy,
+    ModuleImportRequest,
+    ModuleSample,
+    MeasuredModuleImport
+} from '../../bench/module-measurement.ts';
 export type {
     ProcessInstrumentation,
     ProcessMeasurementStrategy,

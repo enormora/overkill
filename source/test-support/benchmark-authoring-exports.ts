@@ -12,6 +12,7 @@ export const benchmarkAuthoringExports = [
     'defineParameterizedTestBody',
     'measurementStrategy',
     'memoryCollector',
+    'moduleMeasurement',
     'processCpuCollector',
     'processMeasurement',
     'processResourceCollector',

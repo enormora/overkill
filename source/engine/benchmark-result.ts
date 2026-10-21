@@ -25,6 +25,8 @@ export type BenchmarkDefinitionSummary = {
             readonly metrics: readonly (MetricProvenance & { readonly name: string; })[];
         }[];
     } | {
+        readonly mode: 'module';
+    } | {
         readonly mode: 'process';
         readonly instrumentation: 'node' | 'off';
     };

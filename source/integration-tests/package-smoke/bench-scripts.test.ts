@@ -1,4 +1,7 @@
-export const benchAuthoringScript = `
+import { moduleBenchmarkScript } from './module-scripts.test.ts';
+
+export const benchAuthoringScript = `${moduleBenchmarkScript}
+
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import * as bench from '@overkill-dev/bench';
@@ -12,7 +15,8 @@ const manifest = JSON.parse(readFileSync(benchManifest, 'utf8'));
 assert.deepEqual(Object.keys(bench).sort(), [
     'asyncMeasurementStrategy', 'availableMetric', 'benchmark', 'calibratedMeasurement', 'cpuCalibration',
     'defaultBenchmarkLifecyclePolicy', 'defaultRuntimeCooldownPolicy', 'defaultSamplingPolicy',
-    'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy', 'memoryCollector',
+    'defineCalibrationResource', 'defineMacro', 'defineParameterizedTestBody', 'measurementStrategy',
+    'memoryCollector', 'moduleMeasurement',
     'processCpuCollector', 'processMeasurement', 'processResourceCollector',
     'rawMeasurement', 'readBenchmarkTimeline', 'readCalibrationReferenceReport', 'runtimeHealthCollector',
     'skippedTest',

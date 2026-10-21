@@ -10,7 +10,7 @@ function isLocalCase(testCase: CollectedRunCase | TestPlanCase): testCase is Tes
 
 function benchmarkAttachments(definition: BenchmarkDefinitionSummary | null): boolean {
     return definition !== null && (
-        definition.measurement.mode === 'process' ||
+        definition.measurement.mode === 'process' || definition.measurement.mode === 'module' ||
         definition.timeline !== null
     );
 }

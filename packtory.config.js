@@ -234,12 +234,13 @@ export const configuration = {
                 main: moduleRoot('packages/bench/bench.entry-point'),
                 processHelper: { javaScript: 'packages/bench/process-helper.entry-point.js' },
                 processNodeProbe: { javaScript: 'packages/bench/process-node-probe.entry-point.js' },
+                moduleImport: { javaScript: 'packages/bench/module-import.entry-point.js' },
                 resourceWrapperSession: { javaScript: 'packages/test/resource-wrapper-session.js' },
                 calibration: moduleRoot('packages/bench/calibration.entry-point')
             },
             packageInterface: {
                 modules: packageModules({ '.': 'main', './calibration': 'calibration' }),
-                privateRoots: [ 'processHelper', 'processNodeProbe', 'resourceWrapperSession' ]
+                privateRoots: [ 'processHelper', 'processNodeProbe', 'moduleImport', 'resourceWrapperSession' ]
             },
             bundlePeerDependencies: [
                 '@overkill-dev/engine',

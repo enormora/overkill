@@ -132,6 +132,7 @@ jobs:
             - run: node source/integration-tests/run/process-lifetime.test.ts
             - run: node source/integration-tests/run/process-owner-death.test.ts
             - run: node source/integration-tests/run/runner-external-process.test.ts
+            - run: node source/integration-tests/run/runner-module-imports.test.ts
 
     workflow-security:
         runs-on: ubuntu-latest
