@@ -104,7 +104,7 @@ import { defineConfig } from ${JSON.stringify(configUrl)};
 export const config = defineConfig({ profiles: { microtest: {
     testFamily: 'microtest', files: { include: ['case.test.mjs'] },
     execution: { processModel: ${JSON.stringify(processModel)}, scheduling: 'concurrent' },
-    timeouts: { collectionMilliseconds: 30000 }
+    timeouts: { collectionMilliseconds: 30000, softMilliseconds: 30000, hardMilliseconds: 60000 }
 } } });`
     );
     const mutantId = await writeMutationModules(cwd);
