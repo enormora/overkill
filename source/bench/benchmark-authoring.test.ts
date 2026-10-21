@@ -51,6 +51,15 @@ function assertBoundedTimeline(scope: TestScope, result: RunResult): void {
     scope.assert.true(timeline.omitted > 0);
 }
 
+function assertCompletedCooldown(scope: TestScope, result: RunResult): void {
+    const cooldown = result.perTest[0]?.benchmark?.lifecycle?.cooldown;
+    if (cooldown?.mode !== 'runtime') {
+        throw new Error('Expected retained runtime cooldown evidence.');
+    }
+    scope.assert.equal(cooldown.completed, 35);
+    scope.assert.equal(cooldown.outcome, 'settled');
+}
+
 export const testNode = suite('benchmark authoring and sampling', [
     test('bounds lifecycle traces without changing warmup, cleanup, or budgets', async function (scope) {
         let cleanups = 0;
@@ -74,12 +83,17 @@ export const testNode = suite('benchmark authoring and sampling', [
         }, {
             annotations: {},
             controls: {},
-            lifecycle: { garbageCollection: 'off', warmupSamples: 1, cooldown: { mode: 'off' } },
+            lifecycle: {
+                garbageCollection: 'off',
+                warmupSamples: 33,
+                cooldown: { mode: 'runtime', maximumEventLoopUtilization: 1, timeoutMilliseconds: 60_000 }
+            },
             sampling: { ...defaultSamplingPolicy, minimumSamples: 2, maximumSamples: 2 }
         }));
         scope.assert.equal(result.summary.passed, 1);
         assertBoundedTimeline(scope, result);
-        scope.assert.equal(cleanups, 3);
+        scope.assert.equal(cleanups, 35);
+        assertCompletedCooldown(scope, result);
         return scope.assert.collect();
     }),
     test('samples asynchronous strategies with explicit diagnostic metrics', async function (scope) {
