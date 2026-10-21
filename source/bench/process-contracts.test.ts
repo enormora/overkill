@@ -7,6 +7,7 @@ import { processEvidenceSchema } from './process-evidence.ts';
 import { testNode as moduleContractsTestNode } from './module-contracts.test.ts';
 import { parseProcessRequest, processRequestSchema } from './process-command.ts';
 import { processOutput } from './process-output.ts';
+import { testNode as moduleEvidenceTestNode } from './module-evidence.test.ts';
 
 const command = {
     command: [ 'node', 'cli.js' ],
@@ -16,6 +17,7 @@ const command = {
 } as const;
 
 export const testNode = suite('external process contracts', [
+    moduleEvidenceTestNode,
     test('reads historical process evidence without inventing module observations', function (scope) {
         const execution = {
             status: 'failed',
@@ -142,6 +144,9 @@ export const testNode = suite('external process contracts', [
         output.finish(new Error('process closed'));
         await scope.assert.rejects(async function () {
             return pending;
+        }, { message: 'process closed' });
+        await scope.assert.rejects(async function afterClosing() {
+            return await output.expect({ stream: 'stdout', text: 'missing' }, 'readiness');
         }, { message: 'process closed' });
         return scope.assert.collect();
     }),

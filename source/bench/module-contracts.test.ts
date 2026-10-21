@@ -4,9 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { processMeasurement, timelineMeasurement, moduleMeasurement } from '../packages/bench/bench.entry-point.ts';
 import { createModuleSample, type ModuleSampleLifetime } from './module-sampling.ts';
 import { createProcessSamplingSession } from './process-sampling.ts';
-import { processMeasurement } from './process-measurement.ts';
+import { withBenchmarkTimeline } from './timeline-execution.ts';
 
 async function moduleSample(scope: TestScope, signal: AbortSignal): Promise<ModuleSampleLifetime> {
     const session = createProcessSamplingSession(processMeasurement({ instrumentation: 'off' }), signal);
@@ -26,6 +27,22 @@ async function moduleFile(scope: TestScope, name: string, source: string): Promi
 }
 
 export const testNode = suite('module import failure contracts', [
+    test('requires URL instances from JavaScript callers', async function (scope) {
+        const lifetime = await moduleSample(scope, scope.signal);
+        await scope.assert.rejects(async function stringUrl() {
+            const result: unknown = Reflect.apply(lifetime.sample.importModule, undefined, [ {
+                url: 'file:///fixture.mjs',
+                cwd: process.cwd(),
+                env: null,
+                nodeArguments: []
+            } ]);
+            return await result;
+        }, { message: 'Module import requires an absolute file URL.' });
+        scope.assert.throws(lifetime.ensureMeasured, {
+            message: 'Each sample must await exactly one successful module import.'
+        });
+        return scope.assert.collect();
+    }),
     test('rejects non-file URLs before launching an import', async function (scope) {
         const lifetime = await moduleSample(scope, scope.signal);
         await scope.assert.rejects(async function unsupportedUrl() {
@@ -77,11 +94,18 @@ export const testNode = suite('module import failure contracts', [
     test('rejects module evaluation failures even when the caller catches them', async function (scope) {
         const url = await moduleFile(scope, 'entry.mjs', 'throw new Error("cold import failed");');
         const lifetime = await moduleSample(scope, scope.signal);
-        await scope.assert.rejects(
-            async function failedImport() {
-                return await lifetime.sample.importModule({ url, cwd: process.cwd(), env: null, nodeArguments: [] });
-            },
-            { message: 'cold import failed' }
+        await withBenchmarkTimeline(
+            timelineMeasurement(moduleMeasurement(), { maximumEvents: 128 }),
+            async function tracedFailure() {
+                await scope.assert.rejects(async function failedImport() {
+                    return await lifetime.sample.importModule({
+                        url,
+                        cwd: process.cwd(),
+                        env: null,
+                        nodeArguments: []
+                    });
+                }, { message: 'cold import failed' });
+            }
         );
         scope.assert.throws(lifetime.ensureMeasured, {
             message: 'Each sample must await exactly one successful module import.'
