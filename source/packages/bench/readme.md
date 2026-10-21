@@ -383,8 +383,9 @@ The harness terminates the process group after import completion, including
 handles opened by imported modules.
 
 Metrics include import `durationMicroseconds`, `operationsPerSecond`, separate
-`processStartupMilliseconds`, and `outputBytes`. Return budgeted metrics and
-declare other returned metrics as diagnostics. Duration and throughput normalize
+`processStartupMilliseconds`, and `outputBytes`. Startup is observed from the
+launch request to child import readiness, including helper startup and IPC.
+Return budgeted metrics and declare other returned metrics as diagnostics. Duration and throughput normalize
 automatically unless wrapped in `rawMeasurement`; custom calibration also works.
 Retained process evidence records the URL, Node version and arguments, import
 duration, startup, output, and import failures. Module measurements stay serial
