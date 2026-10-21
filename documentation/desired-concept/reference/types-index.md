@@ -2887,3 +2887,17 @@ and the standard reporters subpath. `ChartedPerformanceBaselineAdapter`,
 
 Canonical contracts: [Benchmark HTML Rendering](../architecture/reporters.md#benchmark-html-rendering)
 and [Retained Reporting Evidence](../authoring/benchmarking.md#retained-reporting-evidence).
+
+## Cold Module Imports And Benchmark Timelines
+
+Both benchmark authoring surfaces export `moduleMeasurement`, `ModuleMeasurementStrategy`,
+`ModuleSample`, `ModuleImportRequest`, and `MeasuredModuleImport`. Module samples expose
+`importModule(request)` and share sample cleanup and timeline operations.
+
+`timelineMeasurement(strategy, policy)` preserves the wrapped sample type.
+`BenchmarkTimelinePolicy` bounds retained events. `BenchmarkTimeline` exposes synchronous
+markers and spans that preserve callback return types. `BenchmarkTimelineEvent`,
+`BenchmarkTimelineEvidence`, and `BenchmarkTimelineReport` describe saved observations;
+`readBenchmarkTimeline(result, test)` reads an owned timeline attachment.
+
+Canonical usage: [Benchmarking](../authoring/benchmarking.md#cold-imports-and-timelines).

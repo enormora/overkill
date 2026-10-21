@@ -955,9 +955,9 @@ import { throwingTest } from '@overkill-dev/test/compatibility';
 
 Subpaths may re-export standard-stack packages for user ergonomics. They do
 not transfer semantic ownership away from those packages.
-Current reserved standard subpaths expose only `unavailable()` until their
-leaf package is integrated into the standard distribution. A standalone leaf
-facade may precede that integration.
+The benchmark and baseline subpaths expose their implemented leaf APIs.
+Reserved subpaths expose only `unavailable()` until their leaf package is
+integrated into the standard distribution.
 
 ### Load Boundaries
 

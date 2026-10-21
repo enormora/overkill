@@ -22,6 +22,15 @@ comparisons, policy outcomes, and recorded machine/process metadata. Use the
 metric and workload selectors, chart sliders, and tooltips to explore results.
 All scripts and styles are embedded. Tables remain readable without JavaScript.
 
+Budget tables and tooltips include signed deltas from each configured bound in
+the displayed raw or normalized scale. Percentage deltas divide by the absolute
+bound and remain unavailable for zero or missing bounds. Deltas never determine
+pass/fail; recorded budget intervals and decisions remain authoritative.
+
+Opt-in benchmark timelines provide workload, phase, sample, and clock-domain
+selectors plus static event tables. Separate process clocks retain their own
+origins. Missing attachments, historical absence, and omitted events are explicit.
+
 Charts embed aggregated data, not individual samples. Original sample artifacts
 remain under runner retention policy. Missing or omitted samples have an
 explicit reason; summary statistics and budget outcomes remain available.
