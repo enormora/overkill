@@ -1,3 +1,4 @@
+import { difference, percentDifference } from './benchmark-deltas.ts';
 import type { BenchmarkGarbageCollectionResult } from '../engine/benchmark-result.ts';
 import type { BaselineChartRow, BenchmarkHtmlReport } from './benchmark-html-data.ts';
 
@@ -68,6 +69,10 @@ function metricTables(report: BenchmarkHtmlReport): string {
                     'Interval upper',
                     'Minimum',
                     'Maximum',
+                    'Delta from minimum',
+                    'Delta from minimum %',
+                    'Delta from maximum',
+                    'Delta from maximum %',
                     'Precision met',
                     'Decision'
                 ],
@@ -81,6 +86,10 @@ function metricTables(report: BenchmarkHtmlReport): string {
                             budget.interval.upper ?? 'unbounded',
                             budget.minimum ?? '-unbounded',
                             budget.maximum ?? 'unbounded',
+                            difference(budget.estimate, budget.minimum),
+                            percentDifference(budget.estimate, budget.minimum),
+                            difference(budget.estimate, budget.maximum),
+                            percentDifference(budget.estimate, budget.maximum),
                             budget.precise,
                             budget.decision
                         ];
@@ -150,22 +159,6 @@ function lifecycleTables(report: BenchmarkHtmlReport): string {
             }</p></section>`;
         })
         .join('');
-}
-const percentMultiplier = 100;
-function difference(actual: number | null, expected: number | null): number | null {
-    if (actual === null || expected === null) {
-        return null;
-    }
-    const delta = actual - expected;
-    return Number.isFinite(delta) ? delta : null;
-}
-function percentDifference(actual: number | null, expected: number | null): number | null {
-    const delta = difference(actual, expected);
-    if (delta === null || expected === null || expected === 0) {
-        return null;
-    }
-    const percent = delta / Math.abs(expected) * percentMultiplier;
-    return Number.isFinite(percent) ? percent : null;
 }
 function baselineCells(row: BaselineChartRow): readonly unknown[] {
     const expected = row.expected.kind === 'value' ? row.expected.value : null;

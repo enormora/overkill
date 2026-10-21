@@ -1,3 +1,5 @@
+import { difference, percentDifference } from './benchmark-deltas.ts';
+import type { BenchmarkBudgetResult } from '../engine/benchmark-result.ts';
 import { init, use, type EChartsType } from 'echarts/core';
 import type { EChartsOption } from 'echarts';
 import { BarChart, BoxplotChart, CandlestickChart, ScatterChart } from 'echarts/charts';
@@ -63,6 +65,16 @@ function categoricalChart(title: string, labels: readonly string[], unit: string
         dataZoom: [ { type: 'inside' }, { type: 'slider', bottom: 10 } ]
     };
 }
+function budgetTooltip(budget: BenchmarkBudgetResult): string {
+    return [
+        `estimate: ${budget.estimate ?? 'unavailable'}`,
+        `minimum delta: ${difference(budget.estimate, budget.minimum) ?? 'unavailable'}`,
+        `minimum delta %: ${percentDifference(budget.estimate, budget.minimum) ?? 'unavailable'}`,
+        `maximum delta: ${difference(budget.estimate, budget.maximum) ?? 'unavailable'}`,
+        `maximum delta %: ${percentDifference(budget.estimate, budget.maximum) ?? 'unavailable'}`
+    ]
+        .join('\n');
+}
 function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selected: ReadonlySet<string>): void {
     const rows = group.rows.filter(function selectedRow(row) {
         return selected.has(row.key);
@@ -122,13 +134,17 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
             }),
             group.unit
         ),
+        tooltip: { trigger: 'item', renderMode: 'richText', formatter: '{b}' },
         series: [
             {
                 type: 'candlestick',
                 name: 'recorded interval',
                 data: budgets.map(function interval(budget) {
                     return budget.estimate !== null && budget.interval.lower !== null && budget.interval.upper !== null
-                        ? [ budget.estimate, budget.estimate, budget.interval.lower, budget.interval.upper ]
+                        ? {
+                            name: budgetTooltip(budget),
+                            value: [ budget.estimate, budget.estimate, budget.interval.lower, budget.interval.upper ]
+                        }
                         : '-';
                 })
             },
@@ -136,7 +152,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 type: 'scatter',
                 name: 'estimate',
                 data: budgets.map(function estimate(budget) {
-                    return budget.estimate;
+                    return { name: budgetTooltip(budget), value: budget.estimate };
                 })
             },
             {
@@ -144,7 +160,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 name: 'minimum',
                 symbol: 'triangle',
                 data: budgets.map(function minimum(budget) {
-                    return budget.minimum;
+                    return { name: budgetTooltip(budget), value: budget.minimum };
                 })
             },
             {
@@ -152,7 +168,7 @@ function renderGroup(charts: WorkloadCharts, group: BenchmarkChartGroup, selecte
                 name: 'maximum',
                 symbol: 'triangle',
                 data: budgets.map(function maximum(budget) {
-                    return budget.maximum;
+                    return { name: budgetTooltip(budget), value: budget.maximum };
                 })
             }
         ]
