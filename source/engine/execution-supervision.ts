@@ -63,6 +63,7 @@ type CrashCause = {
     readonly activeCases: readonly TestPlanCase['id'][];
     readonly activeWork: readonly WorkId[];
     readonly reason: 'hard-timeout';
+    readonly termination: 'hard-timeout';
 };
 
 export type ExecutionSupervision = ExecutionSupervisionState;
@@ -246,7 +247,8 @@ async function runTestCaseWithPolicy(
         benchmarkEnvironment: input.dependencies.benchmarkEnvironment,
         attempt: input.attempt,
         controller: input.controller,
-        runtimePolicy: input.dependencies.runtimePolicy ?? null
+        runtimePolicy: input.dependencies.runtimePolicy ?? null,
+        interruption: input.completion.promise
     });
 
     return policyCheckedCase(input, executedCase);
@@ -332,7 +334,8 @@ function completeActiveCasesWithCrash(
         }),
         activeCases: activeCaseIds(supervision.activeCases),
         activeWork: activeWorkIds(supervision.activeCases),
-        reason: 'hard-timeout'
+        reason: 'hard-timeout',
+        termination: 'hard-timeout'
     };
 
     if (cause.activeCases.length > 0) {
@@ -399,7 +402,10 @@ async function runCaseWithSoftTimeout(
 
     const deadlineMicroseconds = input.timeoutMilliseconds * microsecondsPerMillisecond;
 
-    if (timing.timedOut || executedCase.durationMicroseconds >= deadlineMicroseconds) {
+    if (
+        !input.supervision.hasTerminalError() &&
+        (timing.timedOut || executedCase.durationMicroseconds >= deadlineMicroseconds)
+    ) {
         return resultWithTimeoutFailure(
             executedCase,
             input.timeoutMilliseconds,
@@ -489,10 +495,7 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
     });
 
     try {
-        const executedCase = await Promise.race([
-            runCaseWithSoftTimeout(input),
-            input.completion.promise
-        ]);
+        const executedCase = await runCaseWithSoftTimeout(input);
         completeFinishedActiveCase(input, executedCase);
         return executedCase;
     } catch (error: unknown) {

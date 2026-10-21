@@ -883,6 +883,18 @@ state. Later observations still require safe attribution to the current attempt;
 unattributed failures remain errors. Stryker handles workers that exit, crash,
 exceed its invocation deadline, or require its normal environment reload.
 
+An observable interruption closes the attempt's scope and awaits its registered
+cleanups once, even if the body remains pending. Cleanup stays inside the original
+attempt's policy and instrumentation boundary. Late body settlement cannot deliver
+another result or repeat cleanup. If cleanup hangs in the reused plugin worker,
+the invocation remains pending for Stryker's existing deadline enforcement; the
+adapter adds no watchdog, retirement policy, or fresh-state fallback. Forced
+process termination cannot guarantee remaining cleanup.
+
+Resource allocations from closed or foreign attempts, and allocations without
+known ownership, remain ambiguous run errors. They do not become current-case
+failures based on serial timing or matching native resource types.
+
 The native-observation implementation merged in
 [PR #531](https://github.com/enormora/overkill/pull/531) removes process-method
 patches. It does not make diagnostics case-local: out-of-test console output and

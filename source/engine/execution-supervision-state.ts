@@ -7,6 +7,7 @@ import type { PerTestResult, RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import type { AttemptId } from './identity.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
+import type { ExecutedCase } from './case-interruption.ts';
 
 export function scheduleSupervisionTimeout(
     wallClock: Clock,
@@ -24,11 +25,7 @@ export function createBenchmarkState(): BenchmarkState {
     return createStoredValue<BenchmarkExecutionResult | null>(null);
 }
 
-export type ExecutionConcurrentCase = {
-    readonly result: PerTestResult;
-    readonly runnerErrors: readonly RunnerError[];
-    readonly durationMicroseconds: number;
-};
+export type ExecutionConcurrentCase = ExecutedCase;
 
 export type CaseCompletion = {
     readonly complete: (executedCase: ExecutionConcurrentCase) => void;
@@ -54,6 +51,7 @@ export type ExecutionSupervision = {
     readonly lifecycle: CaseExecutionLifecycle | null;
     readonly acceptsNewCases: () => boolean;
     readonly closedBoundaryVerdict: () => PerTestResult['verdict'];
+    readonly hasTerminalError: () => boolean;
     readonly activeCases: ReadonlyMap<string, ActiveCase>;
     readonly addActiveCase: (key: string, activeCase: ActiveCase) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
@@ -77,6 +75,11 @@ export function createExecutionSupervision(): ExecutionSupervision {
                 return error.subtype === 'process-exhaustion';
             });
             return exhausted ? 'process-exhausted' : 'crashed';
+        },
+        hasTerminalError() {
+            return runnerErrors.some(function terminalError(error) {
+                return error.subtype === 'crash' || error.subtype === 'process-exhaustion';
+            });
         },
         activeCases,
         addActiveCase(key, activeCase) {

@@ -89,6 +89,19 @@ plan and transitive module state inside Stryker's reusable plugin worker. Suites
 must support repeated execution. Persistent memoization, singleton state, and
 caches populated during collection or a dry run can hide runtime mutations.
 
+A surviving plugin worker remains reusable after a case timeout, leak, or
+unattributed error. Each invocation closes its scopes, native observations, and
+instrumentation bookkeeping before returning. Registered cleanups run once under
+the originating attempt's policy, even when an observable interruption leaves
+the body pending. Later body settlement cannot repeat cleanup or alter results.
+Leaked work and module state can remain; late or ambiguously owned observations
+are run errors rather than failures of the next case.
+
+A hanging cleanup keeps the invocation pending for Stryker's deadline enforcement.
+Stryker also handles dead workers and required environment reloads. The adapter
+does not retire a surviving worker or enable fresh state automatically. Forced
+process termination may prevent remaining cleanup.
+
 Set `freshState: true` to start a new invocation process, collect the complete
 eligible plan, and execute the requested selection for every invocation. This
 resets transitive ESM and CommonJS modules, globals, and process-local mutable

@@ -50,6 +50,7 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-supervised-cancellation.test.ts
     node source/integration-tests/run/runner-mutation-execution.test.ts
     node source/integration-tests/run/runner-stryker-lifecycle.test.ts
+    node source/integration-tests/run/runner-stryker-worker-reuse.test.ts
     node source/integration-tests/run/runner-stryker-catalog.test.ts
     node source/integration-tests/run/runner-stryker-dry-run.test.ts
     node source/integration-tests/run/runner-stryker-classification.test.ts

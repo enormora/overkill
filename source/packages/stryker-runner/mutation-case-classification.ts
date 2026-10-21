@@ -1,5 +1,5 @@
 import { inspect, isDeepStrictEqual } from 'node:util';
-import { workIdentityKey, type PerTestResult, type RunnerError } from '../run/run.entry-point.ts';
+import { executionTermination, workIdentityKey, type PerTestResult, type RunnerError } from '../run/run.entry-point.ts';
 import { canonicalWork } from './mutation-catalog.ts';
 import { isHitLimitGuard } from './mutation-hit-limit.ts';
 
@@ -31,7 +31,8 @@ function bodyPolicyError(error: RunnerError): boolean {
 }
 
 function safelyAttributedError(root: string, result: PerTestResult, error: RunnerError): boolean {
-    return errorOwnsCase(root, result, error) && bodyPolicyError(error) &&
+    const caseTimeout = error.subtype === 'crash' && executionTermination(error.cause) === 'hard-timeout';
+    return errorOwnsCase(root, result, error) && (bodyPolicyError(error) || caseTimeout) &&
         isDeepStrictEqual(error.attributedToAttempt, result.attempts[0].attempt);
 }
 
@@ -69,15 +70,22 @@ function consistentResult(root: string, result: PerTestResult): boolean {
 function terminalEvidence(result: PerTestResult, errors: readonly RunnerError[]): boolean {
     if (result.verdict === 'crashed') {
         return errors.some(function globalHook(error) {
-            return error.subtype === 'uncaught-exception' || error.subtype === 'unhandled-rejection';
+            return error.subtype === 'uncaught-exception' || error.subtype === 'unhandled-rejection' ||
+                error.subtype === 'crash' && executionTermination(error.cause) === 'hard-timeout';
         });
     }
     return result.verdict !== 'runtime-policy' || errors.length > 0;
 }
 
-function hasCaseTimeout(outcomes: readonly TestOutcome[], hitLimitExceeded: boolean): boolean {
+function hasCaseTimeout(
+    outcomes: readonly TestOutcome[],
+    errors: readonly RunnerError[],
+    hitLimitExceeded: boolean
+): boolean {
     return hitLimitExceeded || outcomes.some(function timedOut(outcome) {
         return hasFailure(outcome, 'timeout');
+    }) || errors.some(function hardTimeout(error) {
+        return error.subtype === 'crash' && executionTermination(error.cause) === 'hard-timeout';
     });
 }
 
@@ -94,7 +102,7 @@ function caseKind(
     }
     const outcomes = [ result.outcome, result.attempts[0].outcome ];
     if (
-        hasCaseTimeout(outcomes, hitLimitExceeded)
+        hasCaseTimeout(outcomes, errors, hitLimitExceeded)
     ) {
         return 'timeout';
     }

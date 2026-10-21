@@ -1,10 +1,14 @@
 import type { Clock } from '@enormora/clock';
 
-import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
 import {
     createBenchmarkAttempt,
-    caseRunnerError,
-    finishedCaseCleanup,
+    bodyResultContext,
+    bodyErrorResult,
+    completedBody,
+    completedThrowingBody,
+    failedBody,
+    type ExecutedBody,
+    type BodyResultContext,
     builderBodyForAttempt,
     testBodyExecutionError,
     type BenchmarkAttempt
@@ -13,12 +17,8 @@ import { assertionFailure } from './recorded-assertion-failure.ts';
 import {
     assertNonEmptyItems,
     createAssertionRecorder,
-    isTestContractFailure,
-    RequireFailedSignalError,
-    TestContractSignalError,
     type AssertionRecorder
 } from './assertion-recorder.ts';
-import { isNodeAssertionError, nodeAssertionErrorFailure } from './node-assertion-error.ts';
 import {
     singleAttemptResult,
     type PerTestResult,
@@ -30,58 +30,25 @@ import {
 } from './run-result.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 import { createThrowingTestScope } from './throwing-test-scope.ts';
+import { createCaseInterruption, type CaseInterruption, type ExecutedCase } from './case-interruption.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 type AttemptId = PerTestResult['attempts'][number]['attempt'];
 type AssertionResult = Parameters<AssertionRecorder['returnedAssertions']>[0];
-type AssertionNode = ReturnType<AssertionRecorder['activeRecordedAssertions']>[number];
-
-type BodyErrorRecord = ThrownErrorRecord;
-
-type ExecutedBody = {
-    readonly bodyError: BodyErrorRecord | null;
-    readonly cleanupErrors: readonly BodyErrorRecord[];
-    readonly contractFailures: readonly TestContractFailure[];
-    readonly requireFailed: boolean;
-    readonly runnerErrors: readonly RunnerError[];
-    readonly returnedAssertions: readonly AssertionNode[];
-};
-
-type ExecutedCase = {
-    readonly result: PerTestResult;
-    readonly runnerErrors: readonly RunnerError[];
-    readonly durationMicroseconds: number;
-};
-
-type FailedBodyInput = {
-    readonly context: BodyResultContext;
-    readonly error: unknown;
-    readonly testCase: TestPlanCase;
-};
-
-type CompletedBodyInput = {
-    readonly assertionResult: AssertionResult;
-    readonly context: BodyResultContext;
-};
-
-type BodyResultContext = {
-    readonly cleanupErrors: readonly BodyErrorRecord[];
-    readonly contractFailures: readonly TestContractFailure[];
-    readonly recorder: AssertionRecorder;
-    readonly runnerErrors: readonly RunnerError[];
-};
-
-type FinishedScope = {
-    readonly cleanupErrors: readonly unknown[];
-    readonly lifecycleFailures: readonly TestContractFailure[];
-};
-
-export type RunTestCaseOptions = {
+type CaseExecutionOptions = {
     readonly benchmarkEnvironment: BenchmarkAttempt['benchmarkEnvironment'];
     readonly onBenchmarkUpdate: BenchmarkAttempt['updateResult'];
     readonly attempt: AttemptId;
     readonly controller: AbortController;
     readonly runtimePolicy: TestRuntimePolicy | null;
+};
+
+export type RunTestCaseOptions = CaseExecutionOptions & {
+    readonly interruption: Promise<ExecutedCase> | null;
+};
+
+type CaseBodyOptions = CaseExecutionOptions & {
+    readonly interruption: CaseInterruption;
 };
 
 export type TestRuntimePolicy = {
@@ -98,189 +65,34 @@ export type TestRuntimePolicy = {
     readonly takeRunErrors: () => readonly RunnerError[];
 };
 
-function requireFailedBody(context: BodyResultContext): ExecutedBody {
-    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
-
-    return {
-        bodyError: null,
-        cleanupErrors,
-        contractFailures,
-        requireFailed: true,
-        runnerErrors,
-        returnedAssertions: recorder.activeRecordedAssertions()
-    };
-}
-
-function contractFailedBody(
-    context: BodyResultContext,
-    contractFailures: readonly TestContractFailure[]
-): ExecutedBody {
-    const { cleanupErrors, recorder, runnerErrors } = context;
-
-    return {
-        bodyError: null,
-        cleanupErrors,
-        contractFailures,
-        requireFailed: false,
-        runnerErrors,
-        returnedAssertions: recorder.activeRecordedAssertions()
-    };
-}
-
-function bodyErrorResult(context: BodyResultContext, error: unknown): ExecutedBody {
-    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
-
-    return {
-        bodyError: createThrownErrorRecord(error),
-        cleanupErrors,
-        contractFailures,
-        requireFailed: false,
-        runnerErrors,
-        returnedAssertions: recorder.activeRecordedAssertions()
-    };
-}
-
-function caseRunnerErrorBody(
-    context: BodyResultContext,
-    runnerError: RunnerError
-): ExecutedBody {
-    const { cleanupErrors, contractFailures, recorder, runnerErrors } = context;
-
-    return {
-        bodyError: null,
-        cleanupErrors,
-        contractFailures,
-        requireFailed: false,
-        runnerErrors: [ runnerError, ...runnerErrors ],
-        returnedAssertions: recorder.activeRecordedAssertions()
-    };
-}
-
-function nodeAssertionFailedBody(
-    testCase: TestPlanCase,
-    recorder: AssertionRecorder,
-    error: unknown
-): ExecutedBody {
-    return {
-        bodyError: null,
-        cleanupErrors: [],
-        contractFailures: [],
-        requireFailed: false,
-        runnerErrors: [],
-        returnedAssertions: [
-            ...recorder.activeRecordedAssertions(),
-            nodeAssertionErrorFailure(error, testCase.definitionLocations[0])
-        ]
-    };
-}
-
-function completedBody(input: CompletedBodyInput): ExecutedBody {
-    const { assertionResult, context } = input;
-    const { recorder } = context;
-
-    if (recorder.requireFailed()) {
-        return requireFailedBody(context);
+async function prepareCaseArtifacts(testCase: TestPlanCase, options: CaseBodyOptions): Promise<readonly unknown[]> {
+    const policy = options.runtimePolicy;
+    if (policy === null) {
+        return [];
     }
-
-    const returnedAssertions = recorder.returnedAssertions(assertionResult);
-
-    if (isTestContractFailure(returnedAssertions)) {
-        return contractFailedBody(context, [ returnedAssertions, ...context.contractFailures ]);
+    try {
+        await policy.prepareAttempt(testCase, options.attempt);
+        return [];
+    } catch (error: unknown) {
+        return [ error ];
     }
+}
 
+function interruptedBody(context: BodyResultContext): ExecutedBody {
     return {
         bodyError: null,
         cleanupErrors: context.cleanupErrors,
         contractFailures: context.contractFailures,
-        requireFailed: false,
+        requireFailed: context.recorder.requireFailed(),
         runnerErrors: context.runnerErrors,
-        returnedAssertions
-    };
-}
-
-function completedThrowingBody(recorder: AssertionRecorder): ExecutedBody {
-    if (recorder.requireFailed()) {
-        return requireFailedBody({
-            cleanupErrors: [],
-            contractFailures: [],
-            recorder,
-            runnerErrors: []
-        });
-    }
-
-    const returnedAssertions = recorder.completedThrowingAssertions();
-
-    return isTestContractFailure(returnedAssertions)
-        ? contractFailedBody({
-            cleanupErrors: [],
-            contractFailures: [],
-            recorder,
-            runnerErrors: []
-        }, [ returnedAssertions ])
-        : {
-            bodyError: null,
-            cleanupErrors: [],
-            contractFailures: [],
-            requireFailed: false,
-            runnerErrors: [],
-            returnedAssertions
-        };
-}
-
-function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
-    const { context, error, testCase } = input;
-    const { recorder } = context;
-
-    if (error instanceof RequireFailedSignalError) {
-        return requireFailedBody(context);
-    }
-
-    if (error instanceof TestContractSignalError) {
-        return contractFailedBody(context, [ error.failure(), ...context.contractFailures ]);
-    }
-
-    if (
-        testCase.execution.kind === 'body' &&
-        testCase.execution.bodyMode === 'throwing' &&
-        isNodeAssertionError(error)
-    ) {
-        return nodeAssertionFailedBody(testCase, recorder, error);
-    }
-
-    return bodyErrorResult(context, error);
-}
-
-function failedBody(input: FailedBodyInput): ExecutedBody {
-    const { context, error, testCase } = input;
-    const runnerError = caseRunnerError(testCase, error);
-
-    if (runnerError !== null) {
-        return caseRunnerErrorBody(context, runnerError);
-    }
-
-    return nonRunnerFailedBody(input);
-}
-
-function bodyResultContext(
-    recorder: AssertionRecorder,
-    testCase: TestPlanCase,
-    finishedScope: FinishedScope,
-    sampleCleanupErrors: readonly unknown[]
-): BodyResultContext {
-    const cleanup = finishedCaseCleanup(testCase, [ ...sampleCleanupErrors, ...finishedScope.cleanupErrors ]);
-
-    return {
-        cleanupErrors: cleanup.cleanupErrors,
-        contractFailures: finishedScope.lifecycleFailures,
-        recorder,
-        runnerErrors: cleanup.runnerErrors
+        returnedAssertions: context.recorder.activeRecordedAssertions()
     };
 }
 
 async function runBuilderCaseBody(
     testCase: TestPlanCase,
     recorder: AssertionRecorder,
-    options: RunTestCaseOptions,
+    options: CaseBodyOptions,
     benchmarkAttempt: BenchmarkAttempt
 ): Promise<ExecutedBody> {
     const lifecycle = createTestScopeLifecycle(recorder);
@@ -290,39 +102,21 @@ async function runBuilderCaseBody(
             builderBodyForAttempt(testCase, benchmarkAttempt)
         );
     };
-    let prepared = false;
-    const prepare = async function prepareCaseArtifacts(): Promise<void> {
-        if (!prepared) {
-            prepared = true;
-            await options.runtimePolicy?.prepareAttempt(testCase, options.attempt);
-        }
-    };
     const runAndCleanUp = async function runBodyAndScopeCleanup(): Promise<ExecutedBody> {
-        try {
-            const assertionResult = await runBody();
-            await prepare();
-            return completedBody({
-                assertionResult,
-                context: bodyResultContext(
-                    recorder,
-                    testCase,
-                    await lifecycle.finish(options.controller),
-                    benchmarkAttempt.cleanupErrors()
-                )
-            });
-        } catch (error: unknown) {
-            await prepare();
-            return failedBody({
-                context: bodyResultContext(
-                    recorder,
-                    testCase,
-                    await lifecycle.finish(options.controller),
-                    benchmarkAttempt.cleanupErrors()
-                ),
-                error,
-                testCase
-            });
+        const completion = await options.interruption.run(runBody);
+        const preparationErrors = await prepareCaseArtifacts(testCase, options);
+        const context = bodyResultContext(
+            recorder,
+            testCase,
+            await lifecycle.finish(options.controller),
+            [ ...preparationErrors, ...benchmarkAttempt.cleanupErrors() ]
+        );
+        if (completion.kind === 'returned') {
+            return completedBody({ assertionResult: completion.value, context });
         }
+        return completion.kind === 'threw'
+            ? failedBody({ context, error: completion.error, testCase })
+            : interruptedBody(context);
     };
 
     return options.runtimePolicy === null
@@ -333,51 +127,40 @@ async function runBuilderCaseBody(
 async function runThrowingCaseBody(
     testCase: TestPlanCase,
     recorder: AssertionRecorder,
-    options: RunTestCaseOptions
+    options: CaseBodyOptions
 ): Promise<ExecutedBody> {
     const runBody = async function runUserBody(): Promise<void> {
         if (testCase.execution.kind !== 'body' || testCase.execution.bodyMode !== 'throwing') {
             throw new TypeError('Non-throwing test cases do not have throwing bodies.');
         }
 
-        try {
-            await testCase.execution.body(createThrowingTestScope(recorder, options.controller.signal));
-        } finally {
-            await options.runtimePolicy?.prepareAttempt(testCase, options.attempt);
-        }
+        await testCase.execution.body(createThrowingTestScope(recorder, options.controller.signal));
     };
-    const runPolicyCheckedBody = async function runPolicyCheckedUserBody(): Promise<void> {
-        if (options.runtimePolicy === null) {
-            await runBody();
-
-            return;
+    const runAndPrepare = async function runThrowingBodyAndPreparation(): Promise<ExecutedBody> {
+        const completion = await options.interruption.run(runBody);
+        const preparationErrors = await prepareCaseArtifacts(testCase, options);
+        options.controller.abort();
+        const context = bodyResultContext(
+            recorder,
+            testCase,
+            { cleanupErrors: preparationErrors, lifecycleFailures: [] },
+            []
+        );
+        if (completion.kind === 'threw') {
+            return failedBody({ context, error: completion.error, testCase });
         }
-
-        await options.runtimePolicy.runAttempt(testCase, options.attempt, runBody);
+        const body = completion.kind === 'returned' ? completedThrowingBody(recorder) : interruptedBody(context);
+        return { ...body, cleanupErrors: context.cleanupErrors, runnerErrors: context.runnerErrors };
     };
-
-    try {
-        await runPolicyCheckedBody();
-
-        return completedThrowingBody(recorder);
-    } catch (error: unknown) {
-        return failedBody({
-            context: {
-                cleanupErrors: [],
-                contractFailures: [],
-                recorder,
-                runnerErrors: []
-            },
-            error,
-            testCase
-        });
-    }
+    return options.runtimePolicy === null
+        ? await runAndPrepare()
+        : await options.runtimePolicy.runAttempt(testCase, options.attempt, runAndPrepare);
 }
 
 async function runCaseBody(
     testCase: TestPlanCase,
     recorder: AssertionRecorder,
-    options: RunTestCaseOptions,
+    options: CaseBodyOptions,
     benchmarkAttempt: BenchmarkAttempt
 ): Promise<ExecutedBody> {
     if (testCase.execution.kind !== 'body') {
@@ -484,7 +267,8 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
         benchmarkEnvironment: null,
         attempt: { index: 0 },
         controller,
-        runtimePolicy: null
+        runtimePolicy: null,
+        interruption: null
     };
 }
 
@@ -527,6 +311,19 @@ function skippedCase(
     };
 }
 
+function completedCaseOutcome(
+    recorder: AssertionRecorder,
+    body: ExecutedBody,
+    terminal: ExecutedCase | null,
+    generated: boolean
+): Pick<PerTestResult, 'outcome' | 'verdict'> {
+    const outcome = createOutcome(recorder, body, terminal !== null || generated);
+    if (terminal !== null && (outcome === null || outcome.kind === 'pass')) {
+        return { outcome: terminal.result.outcome, verdict: terminal.result.verdict };
+    }
+    return { outcome, verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome) };
+}
+
 export async function runTestCase(
     testCase: TestPlanCase,
     wallClock: Clock,
@@ -542,20 +339,30 @@ export async function runTestCase(
         );
     }
 
-    const recorder = createAssertionRecorder();
-    const benchmarkAttempt = createBenchmarkAttempt(testCase, options.onBenchmarkUpdate, options.benchmarkEnvironment);
-    const completed = await runCaseBody(testCase, recorder, options, benchmarkAttempt);
-    const executedBody = { ...completed, runnerErrors: [ ...completed.runnerErrors, ...benchmarkAttempt.errors() ] };
-    const outcome = createOutcome(recorder, executedBody, testCase.execution.bodyMode === 'benchmark');
+    const execution = {
+        recorder: createAssertionRecorder(),
+        benchmark: createBenchmarkAttempt(testCase, options.onBenchmarkUpdate, options.benchmarkEnvironment),
+        interruption: createCaseInterruption(options.interruption)
+    };
+    const completed = await runCaseBody(testCase, execution.recorder, {
+        ...options,
+        interruption: execution.interruption
+    }, execution.benchmark);
+    const executedBody = { ...completed, runnerErrors: [ ...completed.runnerErrors, ...execution.benchmark.errors() ] };
+    const completion = completedCaseOutcome(
+        execution.recorder,
+        executedBody,
+        execution.interruption.result(),
+        testCase.execution.bodyMode === 'benchmark'
+    );
     const durationMicroseconds = Number(wallClock.currentMonotonicMicroseconds) - startedAtMicroseconds;
 
     return {
         result: singleAttemptResult({
-            benchmark: benchmarkAttempt.result(),
+            benchmark: execution.interruption.result()?.result.benchmark ?? execution.benchmark.result(),
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,
-            outcome,
-            verdict: outcome === null ? 'runtime-policy' : verdictFromOutcome(outcome),
+            ...completion,
             workId: testCase.workId,
             durationMicroseconds
         }, { index: 0 }),

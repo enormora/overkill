@@ -8,6 +8,8 @@ import { createTestEngine as createEngine } from '../test-support/create-test-en
 import {
     createExecutionSupervision,
     executeCaseBody,
+    type ExecuteTimeoutPolicy,
+    type ExecutionSupervision,
     type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
 import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
@@ -112,7 +114,8 @@ async function finishSoftTimedCase(
 
 async function executeHardTimedCase(
     wallClock: DeterministicClock,
-    supervision = createExecutionSupervision()
+    supervision: ExecutionSupervision,
+    timeoutPolicy: ExecuteTimeoutPolicy
 ): ReturnType<typeof executeCaseBody> {
     const bodyGate = Promise.withResolvers<never>();
     const testCase = createPlannedCase('hard timeout', async function hardTimeoutBody(testScope) {
@@ -126,10 +129,7 @@ async function executeHardTimedCase(
             return undefined;
         },
         testCase,
-        timeoutPolicy: {
-            hardTimeoutMilliseconds: 10,
-            timeoutMilliseconds: 100
-        },
+        timeoutPolicy,
         supervision,
         dependencies: executionDependencies(wallClock),
         attempt: { index: 0 }
@@ -155,24 +155,29 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'executeCaseBody() completes active cases after the hard timeout',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-                const supervision = createExecutionSupervision();
-                const execution = executeHardTimedCase(wallClock, supervision);
+        ...[ { hardTimeoutMilliseconds: 10, timeoutMilliseconds: 100 }, softTimeoutPolicy ].map(function timeoutOrder(
+            timeoutPolicy
+        ) {
+            return createOverkillTestCase({
+                definitionLocations: [ { kind: 'unknown' as const } ],
+                title:
+                    `executeCaseBody() retains hard timeout after a ${timeoutPolicy.timeoutMilliseconds} ms soft limit`,
+                annotations: {},
+                controls: {},
+                async body(scope: OverkillScope) {
+                    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+                    const supervision = createExecutionSupervision();
+                    const execution = executeHardTimedCase(wallClock, supervision, timeoutPolicy);
 
-                wallClock.advanceByMilliseconds(10);
-                const executedCase = await execution;
-                const [ error ] = supervision.runnerErrors;
+                    wallClock.advanceByMilliseconds(timeoutPolicy.hardTimeoutMilliseconds);
+                    const executedCase = await execution;
+                    const [ error ] = supervision.runnerErrors;
 
-                assertHardTimeoutResult(scope, executedCase, error);
+                    assertHardTimeoutResult(scope, executedCase, error);
 
-                return scope.assert.collect();
-            }
+                    return scope.assert.collect();
+                }
+            });
         }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],

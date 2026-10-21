@@ -2,12 +2,12 @@ import asyncHooks, { AsyncLocalStorage, type AsyncHook } from 'node:async_hooks'
 import { createStoredValue } from '../stored-value.ts';
 import { registerExecutionDisposal } from './execution-observation.ts';
 import {
-    recordInfrastructureResource,
-    forgetInfrastructureResource,
-    clearInfrastructureResources,
-    observeInfrastructureResources,
+    recordNativeResource,
+    forgetNativeResource,
+    clearNativeResources,
+    observeNativeResources,
     sameNativeResourceType
-} from './infrastructure-resource-observation.ts';
+} from './native-resource-observation.ts';
 
 export type ResourceOwnerObservation = {
     readonly resources: readonly string[];
@@ -22,7 +22,7 @@ type ObservedResourceAcquisition<Value> = {
     readonly owner: ResourceOwnerObservation;
     readonly value: Value;
 };
-type ObservedCase<Value> = {
+export type ObservedCase<Value> = {
     readonly ambiguousResources: readonly string[];
     readonly baseline: readonly string[];
     readonly result: Value;
@@ -78,10 +78,10 @@ export function observeResourceOwnerAllocations(): () => void {
         const hook = asyncHooks[createHookKey]({
             init(id, type, _trigger, resource: unknown) {
                 recordResourceOwnerAllocation(type);
-                recordInfrastructureResource(id, type, resource);
+                recordNativeResource(id, type, resource);
             },
             destroy(id) {
-                forgetInfrastructureResource(id);
+                forgetNativeResource(id);
             }
         });
         hook.enable();
@@ -92,7 +92,7 @@ export function observeResourceOwnerAllocations(): () => void {
         if (allocationObservers.size === 0) {
             allocationHook.read()?.disable();
             allocationHook.write(null);
-            clearInfrastructureResources();
+            clearNativeResources();
         }
     };
 }
@@ -153,7 +153,7 @@ export async function observeCaseResourceOwners<Value>(
     run: () => Promise<Value>
 ): Promise<ObservedCase<Value>> {
     const resources = Array.from(read());
-    const infrastructure = observeInfrastructureResources();
+    const nativeResources = observeNativeResources();
     const observation: ResourceOwnerBaseline = {
         read,
         append(types) {
@@ -175,12 +175,12 @@ export async function observeCaseResourceOwners<Value>(
     return {
         result,
         get baseline() {
-            return [ ...observation.baseline(), ...infrastructure().active ];
+            return [ ...observation.baseline(), ...nativeResources().active ];
         },
         get ambiguousResources() {
             const growth = newResourceTypes(observation.baseline(), read());
-            return growth.filter(function uncertainInfrastructure(type) {
-                return infrastructure().uncertain.some(function matchingProvider(provider) {
+            return growth.filter(function uncertainOwnership(type) {
+                return nativeResources().uncertain.some(function matchingProvider(provider) {
                     return sameNativeResourceType(type, provider);
                 });
             });

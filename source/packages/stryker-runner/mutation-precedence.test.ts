@@ -101,6 +101,33 @@ function hitLimitFailures(): HitLimitFailures {
 
 export const testNode = suite('mutation result precedence', [
     evidenceTestNode,
+    ...[ false, true ].map(function independentCancellation(cancelled) {
+        return test(`native case timeout preserves independent cancellation ${String(cancelled)}`, function (scope) {
+            const { reply, expectation } = mutationInvocation([]);
+            const { runnerErrors } = runResultFactory.build({
+                runnerErrors: [
+                    { subtype: 'crash', message: 'case hard timeout', cause: { termination: 'hard-timeout' } },
+                    ...cancelled
+                        ? [ {
+                            subtype: 'crash' as const,
+                            message: 'independent cancellation sentinel',
+                            cause: { termination: 'cancelled' }
+                        } ]
+                        : []
+                ]
+            });
+            const result = mutantExecutionResult(root, {
+                ...reply,
+                result: { ...reply.result, runnerErrors },
+                deadlineExceeded: false
+            }, expectation);
+            scope.assert.equal(result.status, cancelled ? 'error' : 'timeout');
+            if (cancelled) {
+                scope.assert.match(diagnostic(result), /independent cancellation sentinel/);
+            }
+            return scope.assert.collect();
+        });
+    }),
     ...[ false, true ].map(function cleanupError(withCleanupError) {
         return test(
             `retains an earlier kill alongside timeout and cleanup error ${String(withCleanupError)}`,

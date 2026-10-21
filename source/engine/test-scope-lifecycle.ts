@@ -31,6 +31,13 @@ export type TestScopeLifecycle = {
 
 export function createTestScopeLifecycle(recorder: AssertionRecorder): TestScopeLifecycle {
     const state = createAsyncControlState();
+    let finishing: Promise<FinishedScopeLifecycle> | null = null;
+    async function finish(controller: AbortController): Promise<FinishedScopeLifecycle> {
+        controller.abort();
+        const cleanupErrors = await runCleanups(state);
+        await drainMicrotasks();
+        return { cleanupErrors, lifecycleFailures: validateInFlightTasks(state) };
+    }
     const assertContext = Object.assign(
         createRecordingAssertFacade(
             {
@@ -85,16 +92,8 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder): TestScope
     return {
         createScope,
         async finish(controller) {
-            controller.abort();
-
-            const cleanupErrors = await runCleanups(state);
-
-            await drainMicrotasks();
-
-            return {
-                cleanupErrors,
-                lifecycleFailures: validateInFlightTasks(state)
-            };
+            finishing = finishing ?? finish(controller);
+            return await finishing;
         },
         async runBody(signal, body) {
             return await body(createScope(signal));

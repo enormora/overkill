@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
-import { workIdentityKey, type RunExecutionReply } from '../run/run.entry-point.ts';
+import { executionTermination, workIdentityKey, type RunExecutionReply } from '../run/run.entry-point.ts';
 import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.ts';
 import { mutationDiagnostics, hasMutationExecutionError } from './mutation-diagnostics.ts';
 import { mutationSnapshotError, type MutationInvocationExpectation } from './mutation-observation.ts';
@@ -141,7 +141,8 @@ export function interruptedCompletedMutant(
     expectation: Extract<MutationInvocationExpectation, { readonly kind: 'mutant'; }>
 ): MutantRunResult {
     const errors = reply.result.runnerErrors.filter(function independentFailure(error) {
-        return !isTimeoutInterruption(error);
+        return !isTimeoutInterruption(error) ||
+            !reply.deadlineExceeded && executionTermination(error.cause) !== 'hard-timeout';
     });
     const parsed = mutationLifecycleDataSchema.safeParse(reply.data);
     const completed = new Set(parsed.data?.completed);
@@ -152,7 +153,12 @@ export function interruptedCompletedMutant(
         cases.map(function observedCase(result) {
             return {
                 id: workIdentityKey(canonicalWork(root, result.workId)),
-                classification: classifyMutationCase(root, result, errors, parsed.data?.hitLimitExceeded === true)
+                classification: classifyMutationCase(
+                    root,
+                    result,
+                    reply.result.runnerErrors,
+                    parsed.data?.hitLimitExceeded === true
+                )
             };
         }),
         errors
