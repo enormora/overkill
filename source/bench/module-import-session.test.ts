@@ -1,5 +1,6 @@
 import { once } from 'node:events';
 import { connect, type Socket } from 'node:net';
+import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createModuleImportSession, type ModuleImportSession } from './module-import-session.ts';
 import { withinProcessDeadline } from './process-deadline.ts';
@@ -54,6 +55,32 @@ const invalidFrames: readonly InvalidFrame[] = [
 ];
 
 export const testNode = suite('module import control protocol', [
+    test('closing a session releases its frame-reader promises', async function (scope: TestScope) {
+        const engine = createTestEngine();
+        const nested = engine.createTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'open and close frame readers',
+            async body(innerScope) {
+                const peer = await modulePeer(innerScope);
+                peer.socket.end(`${JSON.stringify(importedMessage(peer.token))}\n`);
+                await innerScope.assert.rejects(async function reportInterruptedSession() {
+                    return await peer.session.report();
+                }, { message: 'Module import completed before readiness.' });
+                return innerScope.assert.collect();
+            }
+        });
+        const result = await engine.execute(engine.createTestPlan(engine.createRoot({
+            annotations: {},
+            controls: {},
+            title: 'module session',
+            children: [ nested ]
+        })));
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.deepEqual(result.runnerErrors, []);
+        return scope.assert.collect();
+    }),
     test('releases a pending report when its owner closes', async function (scope: TestScope) {
         const session = await createModuleImportSession();
         await using disposal = new AsyncDisposableStack();
