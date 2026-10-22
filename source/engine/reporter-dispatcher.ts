@@ -221,19 +221,18 @@ function createReporterTimeout(
     dependencies: ReporterDispatcherDependencies,
     reporter: Reporter
 ): ReporterTimeout {
-    const { promise, reject } = Promise.withResolvers<never>();
-    const timeout = withRunnerInfrastructure(function scheduleReporterTimeout() {
-        return dependencies.wallClock.setTimeout(function rejectTimedOutCallback() {
+    return withRunnerInfrastructure(function createReporterWatchdog() {
+        const { promise, reject } = Promise.withResolvers<never>();
+        const timeout = dependencies.wallClock.setTimeout(function rejectTimedOutCallback() {
             reject(timeoutError(reporter));
         }, callbackTimeoutMs);
+        return {
+            cancel() {
+                dependencies.wallClock.clearTimeout(timeout);
+            },
+            promise
+        };
     });
-
-    return {
-        cancel() {
-            dependencies.wallClock.clearTimeout(timeout);
-        },
-        promise
-    };
 }
 
 async function awaitReporterCallback(
