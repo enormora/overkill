@@ -28,6 +28,50 @@ async function withProjectDirectories(operation: (paths: ProjectDirectories) => 
 }
 
 export const testNode = suite('file module boundaries', [
+    test('rejects missing outside modules before filesystem resolution', async function (scope) {
+        await withProjectDirectories(async function assertMissingEscapes({ root, other }) {
+            const boundary = { projectRoot: root, sharedRoots: [] };
+            const missing = join(other, 'missing.mjs');
+            await writeFile(join(root, 'relative.mjs'), 'import "../original/missing.mjs";');
+            for (const href of [ pathToFileURL(missing).href, pathToFileURL(join(root, 'relative.mjs')).href ]) {
+                await scope.assert.rejects(async function importOutsideRoot() {
+                    await withFileModuleBoundary(boundary, async function loadOutsideRoot() {
+                        await import(href);
+                    });
+                }, { type: RunResolutionError, message: /Module import escapes/ });
+            }
+            await scope.assert.rejects(async function requireOutsideRoot() {
+                await withFileModuleBoundary(boundary, async function loadOutsideRoot() {
+                    createRequire(pathToFileURL(join(root, 'config.mjs')))(missing);
+                });
+            }, { type: RunResolutionError, message: /Module import escapes/ });
+        });
+        return scope.assert.collect();
+    }),
+    test('allows imports through declared project and shared root symlinks', async function (scope) {
+        await withProjectDirectories(async function assertDeclaredAliases({ root, other }) {
+            const projectAlias = join(other, 'project-link');
+            const shared = join(other, 'installed-package');
+            const sharedAlias = join(other, 'shared-link');
+            await mkdir(shared);
+            await symlink(root, projectAlias);
+            await symlink(shared, sharedAlias);
+            await writeFile(join(shared, 'value.mjs'), 'export const value = "shared-alias";');
+            await writeFile(
+                join(root, 'config.mjs'),
+                `import {value} from ${JSON.stringify(pathToFileURL(join(sharedAlias, 'value.mjs')).href)};
+export const config = {runtimeStateDir:value};`
+            );
+            const config = await withFileModuleBoundary(
+                { projectRoot: projectAlias, sharedRoots: [ sharedAlias ] },
+                async function loadDeclaredAliases() {
+                    return await loadConfig({ cwd: projectAlias, configPath: 'config.mjs' });
+                }
+            );
+            scope.assert.equal(config.runtimeStateDir, 'shared-alias');
+        });
+        return scope.assert.collect();
+    }),
     test('rejects shared roots that contain the project after resolving symlinks', async function (scope) {
         await withProjectDirectories(async function assertCanonicalRoots({ root, other }) {
             const shared = join(other, 'shared');

@@ -20,11 +20,89 @@ unbranded objects are not generators.
 Their private runtime symbol and shared declaration identity remain compatible
 across leaf and standard package copies.
 
+## Generators
+
+Import `gen` from either property entry point:
+
+```ts
+import { gen } from '@overkill-dev/test/property';
+
+const user = gen.record({
+    name: gen.string({ minLength: 1, maxLength: 64 }),
+    age: gen.integer({ min: 0, max: 120 })
+});
+
+const indexed = gen
+    .array(user, { minLength: 1, maxLength: 10 })
+    .flatMap((users) =>
+        gen.record({
+            users: gen.constant(null).map(() => users),
+            index: gen.integer({ min: 0, max: users.length - 1 })
+        })
+    );
+```
+
+| Constructor                                | Domain                                                                  |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| `boolean()`                                | Both boolean values                                                     |
+| `integer({ min, max })`                    | Inclusive safe-integer bounds                                           |
+| `number()`                                 | IEEE doubles, including NaN, infinities, and signed zero                |
+| `number({ min, max })`                     | Inclusive finite bounds                                                 |
+| `bigint({ min, max })`                     | Inclusive bigint bounds                                                 |
+| `string()`, `string(bounds)`               | UTF-16 code units, including lone surrogates                            |
+| `bytes()`, `bytes(bounds)`                 | Owned Uint8Array storage                                                |
+| `constant(value)`                          | A scalar singleton: null, undefined, boolean, number, bigint, or string |
+| `array(element)`, `array(element, bounds)` | Arrays of the element domain                                            |
+| `tuple(...elements)`                       | Heterogeneous tuples                                                    |
+| `record(fields)`                           | All declared fields, including an empty record                          |
+| `choice(...alternatives)`                  | At least one alternative                                                |
+| `recursive({ leaf, branch, maxDepth })`    | Bounded leaf-plus-expansion composition                                 |
+
+Length bounds require both `minLength` and `maxLength`. Without bounds,
+containers use `0..maxSize`. Effective maxima are capped by collected
+`maxSize`; declared minima are preserved. A cap below the minimum exhausts
+the domain. Numeric bounds are explicit for integers and bigints.
+Malformed bounds fail at construction.
+
+Record declarations use plain objects or objects with a null prototype.
+Fields must be own enumerable string data properties; accessors are rejected.
+
+`map` reapplies its pure transformation to source shrink candidates.
+`flatMap` regenerates dependent domains under each changed source.
+`filter` rejects invalid candidates during generation and shrinking, with
+bounded rejection. Callback errors remain errors. Custom generators return
+these compositions without supplying a separate shrinker.
+
+`maxSize` caps each declared string, byte array, and array independently.
+It does not inspect arbitrary transformed output graphs; pure mappings may
+expand their source. Work limits bound generator traversal.
+
+```ts
+type Tree = { readonly left: Tree; readonly right: Tree; } | null;
+
+const tree = gen.recursive<Tree>({
+    leaf: gen.constant(null),
+    branch: (child) => gen.record({ left: child, right: child }),
+    maxDepth: 4
+});
+```
+
+A leaf has recursive depth zero. Every branch expansion consumes one level.
+The effective depth also obeys the collected `maxDepth`, including while
+shrinking. Constructors snapshot options and components; callbacks remain
+deferred until execution.
+
+`withCodec(codec)` attaches codec metadata to the complete generated input
+without running its callbacks. Filtering preserves the attachment. Mapping,
+dependent composition, and structural constructors clear inherited attachments;
+attach the complete output's codec afterward. Codec execution follows in the
+codec milestone.
+
 ## Current availability
 
 Construction and collection are supported. They retain generator and callback
-declarations without executing them. Property profiles resolve and validate policy during collection. Generator
-constructors and trial execution are not implemented yet. Executing a property declaration
+declarations without executing them. Property profiles resolve and validate policy during collection. Fluent generator
+constructors are supported. Trial execution is not implemented yet. Executing a property declaration
 fails explicitly before user callbacks or resource acquisition.
 
 The standard subpath exposes the same authoring functions and types as this
