@@ -81,6 +81,7 @@ function attachmentChannelObserve(state: AttachmentChannelState): void {
     socket.on('close', function () {
         attachmentChannelFail(state, new Error('Attachment execution boundary disconnected.'));
         lines.close();
+        frames.destroy();
     });
     lines.on('line', function (line) {
         attachmentChannelReceive(state, line);

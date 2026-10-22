@@ -1,4 +1,6 @@
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as reporterFlushTestNode } from './supervised-reporter-flush.test.ts';
+import { testNode as definitionLocationsTestNode } from './supervised-definition-locations.test.ts';
 import { testNode as supervisedChildProcessTestNode } from './supervised-child-process.test.ts';
 import { testNode as supervisedChildTestNode } from './supervised-child.test.ts';
 
@@ -8,6 +10,8 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        reporterFlushTestNode,
+        definitionLocationsTestNode,
         supervisedChildProcessTestNode,
         supervisedChildTestNode
     ]
