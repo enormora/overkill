@@ -4,7 +4,7 @@ import { realpath } from 'node:fs/promises';
 // eslint-disable-next-line node/no-unsupported-features/node-builtins -- Synchronous hooks are supported on the pinned Node version.
 import { registerHooks } from 'node:module';
 import { isAbsolute, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v4';
 import { invalidRequest } from './run-errors.ts';
 import type { FileModuleBoundary } from './run-types.ts';
@@ -16,11 +16,50 @@ export const fileModuleBoundarySchema: z.ZodType<FileModuleBoundary> = z
     })
     .readonly();
 
-const activeModuleRoots = new AsyncLocalStorage<readonly string[]>();
+type ActiveModuleRoots = {
+    readonly requested: readonly string[];
+    readonly resolved: readonly string[];
+};
+
+const activeModuleRoots = new AsyncLocalStorage<ActiveModuleRoots>();
 
 function containsPath(root: string, path: string): boolean {
     const origin = relative(root, path);
     return origin !== '..' && !origin.startsWith(`..${sep}`) && !isAbsolute(origin);
+}
+
+function isRelativeFileSpecifier(specifier: string): boolean {
+    return specifier.startsWith('./') || specifier.startsWith('../');
+}
+
+function explicitFileURL(specifier: string, parentURL: string | undefined): string | null {
+    if (specifier.startsWith('file:')) {
+        return specifier;
+    }
+    if (isAbsolute(specifier)) {
+        return pathToFileURL(specifier).href;
+    }
+    if (isRelativeFileSpecifier(specifier) && parentURL?.startsWith('file:') === true) {
+        const requested = new URL(specifier, parentURL);
+        return requested.href;
+    }
+    return null;
+}
+
+function validateRequestedModule(specifier: string, parentURL: string | undefined): void {
+    const currentRoots = activeModuleRoots.getStore();
+    const url = explicitFileURL(specifier, parentURL);
+    if (currentRoots === undefined || url === null) {
+        return;
+    }
+    const path = fileURLToPath(url);
+    if (
+        currentRoots.requested.every(function containsModule(root) {
+            return !containsPath(root, path);
+        })
+    ) {
+        invalidRequest(`Module import escapes its boundary: ${path}`);
+    }
 }
 
 export function validateFileModuleBoundary(boundary: FileModuleBoundary): void {
@@ -52,7 +91,10 @@ export async function withFileModuleBoundary<Result>(
     ]);
     validateFileModuleBoundary({ projectRoot, sharedRoots });
 
-    return await activeModuleRoots.run([ projectRoot, ...sharedRoots ], async function runBoundedOperation() {
+    return await activeModuleRoots.run({
+        requested: [ boundary.projectRoot, ...boundary.sharedRoots, projectRoot, ...sharedRoots ],
+        resolved: [ projectRoot, ...sharedRoots ]
+    }, async function runBoundedOperation() {
         function validateModule(url: string): void {
             const currentRoots = activeModuleRoots.getStore();
             if (currentRoots === undefined || !url.startsWith('file:')) {
@@ -61,7 +103,7 @@ export async function withFileModuleBoundary<Result>(
             // eslint-disable-next-line node/no-sync -- Native synchronous hooks must reject symlink escapes before evaluation.
             const path = realpathSync(fileURLToPath(url));
             if (
-                currentRoots.every(function containsModule(root) {
+                currentRoots.resolved.every(function containsModule(root) {
                     return !containsPath(root, path);
                 })
             ) {
@@ -71,6 +113,7 @@ export async function withFileModuleBoundary<Result>(
 
         const hooks = registerHooks({
             resolve(specifier, context, nextResolve) {
+                validateRequestedModule(specifier, context.parentURL);
                 const resolved = nextResolve(specifier, context);
                 validateModule(resolved.url);
                 return resolved;
