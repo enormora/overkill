@@ -72,35 +72,38 @@ async function waitForObservedCollectionError(observer: ExecutionGlobalErrorObse
 }
 
 export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
-    let rejectCollection: (error: RunCollectionError) => void = function ignoreReject() {
-        return undefined;
-    };
     const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
-    const collectionTimeout = new Promise<never>(function rejectOnCollectionTimeout(_resolve, reject) {
-        rejectCollection = reject;
-    });
-    const timeout = input.dependencies.wallClock.setTimeout(function failTimedOutCollection() {
-        rejectCollection(
-            new RunCollectionError(
-                'Collection exceeded collection timeout.',
-                { cause: null },
-                'loader'
-            )
-        );
-    }, input.profile.timeouts.collectionMilliseconds);
-
     try {
         return await globalErrorObserver.runBoundary(async function runObservedCollection() {
-            return await globalErrorObserver.runPhase('collection', async function collectObservedTestPlan() {
-                return await Promise.race([
-                    createTestPlan(input),
-                    collectionTimeout,
-                    waitForObservedCollectionError(globalErrorObserver)
-                ]);
+            let rejectCollection: (error: RunCollectionError) => void = function ignoreReject() {
+                return undefined;
+            };
+            const collectionTimeout = new Promise<never>(function rejectOnCollectionTimeout(_resolve, reject) {
+                rejectCollection = reject;
             });
+            const timeout = input.dependencies.wallClock.setTimeout(function failTimedOutCollection() {
+                rejectCollection(
+                    new RunCollectionError(
+                        'Collection exceeded collection timeout.',
+                        { cause: null },
+                        'loader'
+                    )
+                );
+            }, input.profile.timeouts.collectionMilliseconds);
+
+            try {
+                return await globalErrorObserver.runPhase('collection', async function collectObservedTestPlan() {
+                    return await Promise.race([
+                        createTestPlan(input),
+                        collectionTimeout,
+                        waitForObservedCollectionError(globalErrorObserver)
+                    ]);
+                });
+            } finally {
+                input.dependencies.wallClock.clearTimeout(timeout);
+            }
         });
     } finally {
-        input.dependencies.wallClock.clearTimeout(timeout);
         globalErrorObserver.stop();
     }
 }
