@@ -5,6 +5,7 @@ import { testNode as runIfMainSelectionTestNode } from './run-if-main-selection.
 import { testNode as runIfMainTestNode } from './run-if-main.test.ts';
 import { testNode as directEntrypointCollectionTestNode } from './direct-entrypoint-collection.test.ts';
 import { testNode as directEntrypointSerializationTestNode } from './direct-entrypoint-serialization.test.ts';
+import { testNode as runLocalTestPlanObservationTestNode } from './run-local-test-plan-observation.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -14,6 +15,7 @@ export const testNode = createOverkillSuite({
     children: [
         directEntrypointCollectionTestNode,
         directEntrypointSerializationTestNode,
+        runLocalTestPlanObservationTestNode,
         runIfMainOptionsTestNode,
         runIfMainProfileFileSetsTestNode,
         runIfMainSelectionTestNode,
