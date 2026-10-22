@@ -1,4 +1,7 @@
 import { execFile } from 'node:child_process';
+import { rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
 import { createSuite, createTestCase } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from './direct-launcher.test.ts';
@@ -117,16 +120,61 @@ export const testNode = createSuite({
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'packaged public runner lifecycle',
-    children: [ createTestCase({
-        annotations: {},
-        controls: {},
-        definitionLocations: [ { kind: 'unknown' } ],
-        title: 'consumer bootstraps before imports and reruns the public collected handle',
-        async body(scope) {
-            scope.assert.equal(await executeLifecycleScript(), 'packaged collected lifecycle passed\n');
-            return scope.assert.collect();
-        }
-    }) ]
+    children: [
+        createTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'published runner accepts engine nodes, reporters, and renderers without type aliases',
+            async body(scope) {
+                const sourcePath = path.join(import.meta.dirname, 'run-consumer.mts');
+                scope.cleanup(async function removeConsumer() {
+                    await rm(sourcePath, { force: true });
+                });
+                await writeFile(
+                    sourcePath,
+                    `
+                import { createPlainOutputRenderer, createTestCase, defineReporter } from '@overkill-dev/engine';
+                import { normalizeConfig, runIfMain } from '@overkill-dev/run';
+                const testNode = createTestCase({
+                    annotations: {}, controls: {}, definitionLocations: [{ kind: 'unknown' }], title: 'consumer',
+                    body(scope) { scope.assert.true(true); return scope.assert.collect(); }
+                });
+                const reporter = defineReporter(() => ({
+                    dispose: null, kind: 'final-result', name: 'consumer', sinks: [], onResult() {}
+                }));
+                const outputRenderer = createPlainOutputRenderer();
+                normalizeConfig({ reporters: [reporter], outputRenderer });
+                await runIfMain(import.meta, testNode, { reporters: [reporter], outputRenderer });
+            `
+                );
+                const program = createProgram([ sourcePath ], {
+                    module: ModuleKind.NodeNext,
+                    target: ScriptTarget.ESNext,
+                    strict: true,
+                    noEmit: true,
+                    types: [ 'node' ]
+                });
+                scope.assert.deepEqual(
+                    getPreEmitDiagnostics(program).map(function diagnosticText(diagnostic) {
+                        return diagnostic.messageText;
+                    }),
+                    []
+                );
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'consumer bootstraps before imports and reruns the public collected handle',
+            async body(scope) {
+                scope.assert.equal(await executeLifecycleScript(), 'packaged collected lifecycle passed\n');
+                return scope.assert.collect();
+            }
+        })
+    ]
 });
 
 await runIfMain(import.meta, testNode, [ createLineReporter() ]);
