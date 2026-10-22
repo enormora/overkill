@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { compareDeepValues } from '../compare/comparison.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
@@ -27,9 +28,7 @@ export function assertDirectEntrypointCollectionMatches(
     const expected = normalizedCollectedPlan(collectedRunPlanFromTestPlan(expectedTestPlan));
     const normalizedActual = normalizedCollectedPlan(actual);
 
-    const comparison = compareDeepValues(normalizedActual, expected);
-
-    if (comparison.passed) {
+    if (isDeepStrictEqual(normalizedActual, expected)) {
         return;
     }
 
