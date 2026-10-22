@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { z } from 'zod/v4';
 import {
     createSuite as createOverkillSuite,
@@ -24,7 +25,6 @@ import {
     type SerializedError,
     serializeError,
     serializeWorkerPoolMessage,
-    type WorkerPoolHostCommand,
     workerPoolHostCorrelationId
 } from './worker-pool-host-protocol.ts';
 import { createWorkerPoolHostProcessStarter } from './worker-pool-host-process-starter.ts';
@@ -172,31 +172,43 @@ function assertWorkerMessageProtocol(scope: OverkillScope, fixture: ProtocolFixt
     );
 }
 
-function emitHostCommand(command: WorkerPoolHostCommand): boolean {
-    return process.emit(
-        'message',
-        childProcessEnvelope(workerPoolHostCorrelationId, command)
-    );
-}
-
-function assertHostCommandDispatch(scope: OverkillScope, command: WorkerPoolHostCommand): void {
-    scope.assert.equal(emitHostCommand(command), true);
-}
-
-function assertEntrypointDispatchesHostCommands(scope: OverkillScope): void {
-    scope.assert.equal(process.emit('message', childProcessEnvelope('other', { kind: 'destroy' })), true);
-    assertHostCommandDispatch(scope, {
-        kind: 'run-task',
-        task: {
-            command: workerPoolCommand(),
-            kind: 'collect'
-        },
-        taskId: 'not-configured'
+async function assertEntrypointDispatchesHostCommands(scope: OverkillScope): Promise<void> {
+    const commands = [
+        childProcessEnvelope('other', { kind: 'destroy' }),
+        ...[
+            { kind: 'run-task', task: { command: workerPoolCommand(), kind: 'collect' }, taskId: 'not-configured' },
+            { kind: 'abort-task', taskId: 'not-configured' },
+            { kind: 'start-process-usage-tracking', samplingIntervalMilliseconds: 1000 },
+            { kind: 'finish-process-usage-tracking' },
+            { kind: 'destroy' }
+        ]
+            .map(function envelope(command) {
+                return childProcessEnvelope(workerPoolHostCorrelationId, command);
+            })
+    ];
+    const entrypoint = new URL('./worker-pool-host.entry-point.ts', import.meta.url);
+    const script = `
+        import assert from 'node:assert/strict';
+        await import(${JSON.stringify(entrypoint.href)});
+        for (const command of ${JSON.stringify(commands)}) assert.equal(process.emit('message', command), true);
+        await new Promise(resolve => setImmediate(resolve));
+        process.stdout.write('host commands dispatched\\n');
+    `;
+    const output = await new Promise<string>(function runHostProbe(resolve, reject) {
+        execFile(
+            process.execPath,
+            [ '--input-type=module', '--eval', script ],
+            { timeout: 2000 },
+            function (error, stdout) {
+                if (error === null) {
+                    resolve(stdout);
+                } else {
+                    reject(new Error('Host command probe failed.', { cause: error }));
+                }
+            }
+        );
     });
-    assertHostCommandDispatch(scope, { kind: 'abort-task', taskId: 'not-configured' });
-    assertHostCommandDispatch(scope, { kind: 'start-process-usage-tracking', samplingIntervalMilliseconds: 1000 });
-    assertHostCommandDispatch(scope, { kind: 'finish-process-usage-tracking' });
-    assertHostCommandDispatch(scope, { kind: 'destroy' });
+    scope.assert.equal(output, 'host commands dispatched\n');
 }
 
 export const testNode = createOverkillSuite({
@@ -205,6 +217,24 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/worker-pool-host-protocol.test.ts',
     children: [
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'closing a worker channel settles completion without a terminal message',
+            async body(scope: OverkillScope) {
+                const channel = createWorkerPoolMessageChannel(function () {
+                    return undefined;
+                });
+                scope.cleanup(channel.close);
+                channel.close();
+                scope.assert.equal(
+                    await Promise.race([ channel.messagesCompleted, Promise.resolve('pending') ]),
+                    undefined
+                );
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             annotations: {},
             controls: {},
@@ -307,9 +337,7 @@ export const testNode = createOverkillSuite({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'worker-pool host entrypoint dispatches host commands',
             async body(scope: OverkillScope) {
-                await import('./worker-pool-host.entry-point.ts');
-                assertEntrypointDispatchesHostCommands(scope);
-                await Promise.resolve();
+                await assertEntrypointDispatchesHostCommands(scope);
 
                 return scope.assert.collect();
             }
