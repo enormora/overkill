@@ -1,3 +1,4 @@
+import { setTimeout as wait } from 'node:timers/promises';
 import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
@@ -368,6 +369,43 @@ export const testNode = createOverkillSuite({
                         title: 'support-root'
                     }
                 ]);
+
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'test support runIfMain() measures elapsed time for direct files',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const results: RunResult[] = [];
+
+                await runIfMain(
+                    importMeta(true),
+                    supportTestCase(async function delayedPass(testScope) {
+                        await wait(10);
+                        return passingBody(testScope);
+                    }),
+                    {
+                        reporters: [ defineFixedReporter({
+                            dispose: null,
+                            kind: 'final-result',
+                            name: 'capture-timings',
+                            onResult(result) {
+                                results.push(result);
+                            },
+                            sinks: []
+                        }) ]
+                    }
+                );
+
+                scope.assert.equal(results.length, 1);
+                const result = results[0];
+                scope.require.defined(result);
+                scope.assert.true((result.perTest[0]?.durationMicroseconds ?? 0) > 0);
+                scope.assert.true(result.timings.summary.testExecutionWallTimeMicroseconds > 0);
+                scope.assert.true(result.timings.summary.totalWallTimeMicroseconds > 0);
 
                 return scope.assert.collect();
             }

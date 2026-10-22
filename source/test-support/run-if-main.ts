@@ -1,4 +1,4 @@
-import { createDeterministicClock } from '@enormora/clock';
+import { createClock } from '@enormora/clock';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import {
@@ -110,7 +110,7 @@ export function createTestSupportRunIfMain(dependencies: TestSupportRunIfMainDep
             return;
         }
 
-        const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+        const wallClock = createClock();
         const execute = createExecute({
             benchmarkEnvironment: null,
             asyncLeakDiagnostics: 'disabled',
