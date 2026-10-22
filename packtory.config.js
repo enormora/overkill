@@ -157,6 +157,7 @@ export const configuration = {
         {
             name: 'run',
             description: 'Overkill run resolution and orchestration.',
+            bundlePeerDependencies: [ '@overkill-dev/engine' ],
             roots: {
                 attachmentConnection: { javaScript: 'run/attachment-connection.js' },
                 attachmentRun: { javaScript: 'run/attachment-run.js' },
