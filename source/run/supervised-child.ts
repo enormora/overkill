@@ -8,6 +8,7 @@ import type {
     TestPlan
 } from './run-engine-primitives.ts';
 import {
+    resolvedTestPlanDefinitionLocations,
     collectedRunPlanFromTestPlan,
     collectedRunPlanFromTestPlanCases,
     createRunResultFromCollectedPlan
@@ -248,7 +249,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
             : supervisedAssignedPlan(input.collectedPlan.testPlan, input.assignment);
         const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
-        return await execute(testPlan, {
+        return await execute(resolvedTestPlanDefinitionLocations(testPlan), {
             execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
             outputRenderer: createPlainOutputRenderer(),
             reporters: [ createSupervisedChildReporter(input.host) ],

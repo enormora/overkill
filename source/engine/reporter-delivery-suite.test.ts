@@ -1,4 +1,5 @@
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as reporterObservationTestNode } from './reporter-observation.test.ts';
 import { testNode as reporterDeliveryTestNode } from './reporter-delivery.test.ts';
 import { testNode as reporterTimingDeliveryTestNode } from './reporter-timing-delivery.test.ts';
 
@@ -7,7 +8,7 @@ export const testNode = createSuite({
     title: 'source/engine/reporter-delivery-suite.test.ts',
     annotations: {},
     controls: {},
-    children: [ reporterDeliveryTestNode, reporterTimingDeliveryTestNode ]
+    children: [ reporterDeliveryTestNode, reporterTimingDeliveryTestNode, reporterObservationTestNode ]
 });
 
 const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');

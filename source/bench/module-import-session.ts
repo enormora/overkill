@@ -85,6 +85,10 @@ function observeSocket(messages: ModuleMessages, socket: Socket): void {
     socket.on('error', fail);
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
     lines.on('error', fail);
+    socket.once('close', function closeFrameReaders() {
+        lines.close();
+        frames.destroy();
+    });
     lines.on('line', function received(line) {
         try {
             receiveMessage(messages, socket, line);

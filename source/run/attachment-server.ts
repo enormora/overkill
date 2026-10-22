@@ -118,6 +118,7 @@ function attachmentServerChannelsAccept(state: AttachmentServerChannelsState, so
     socket.on('close', function attachmentChannelClosed() {
         sockets.delete(socket);
         lines.close();
+        frames.destroy();
         state.operations.delete(queue);
         const interrupted = attachmentServerChannelsInterrupt(state, channel, queue);
         state.operations.add(interrupted);

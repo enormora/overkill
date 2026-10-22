@@ -93,6 +93,7 @@ function acceptProbe(session: ProbeSession, socket: Socket): void {
     });
     socket.on('close', function () {
         lines.close();
+        frames.destroy();
         session.sockets.delete(socket);
         session.identified.delete(socket);
         failProbe(session, socket, new Error('Node probe disconnected.'));

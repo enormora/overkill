@@ -223,6 +223,7 @@ export function createWorkerPoolMessageChannel(
             port2.postMessage(reply, []);
         },
         close() {
+            messagesCompleted.resolve(undefined);
             port1.close();
             port2.close();
         },

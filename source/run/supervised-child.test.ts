@@ -1,5 +1,9 @@
 import { setImmediate as scheduleImmediate } from 'node:timers';
-import { createChildRun, supervisedChildDependencies } from '../test-support/supervised-child-fixture.ts';
+import {
+    createChildRun,
+    supervisedChildCommand,
+    supervisedChildDependencies
+} from '../test-support/supervised-child-fixture.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -22,43 +26,12 @@ import {
 } from './supervised-child-test-plan.ts';
 import type {
     SupervisedAssignmentCommand,
-    SupervisedChildCommand,
     SupervisedChildMessage
 } from './supervised-protocol.ts';
 
 const cwd = '/project';
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const policyFixturePath = 'source/integration-tests/run/fixtures/load-env-policy.test.ts';
-
-function command(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
-    return {
-        benchmarkNormalization: null,
-        benchmarkGarbageCollection: null,
-        retryPolicy: null,
-        capabilityRestrictions: { mode: 'disabled' },
-        capture: 'buffered',
-        propertyPolicy: null,
-        collectionTimeoutMilliseconds: 1000,
-        cwd,
-        definitionLocationCapture: 'enabled',
-        engine: { kind: 'default' },
-        hardTimeoutMilliseconds: 2000,
-        maxConcurrency: 5,
-        kind,
-        paths: [ path ],
-        processBudgets: {
-            activeResourceCount: null,
-            javaScriptEngineHeapBytes: null,
-            residentSetBytes: null,
-            residentSetGrowthBytesPerSecond: null
-        },
-        processUsageSamplingIntervalMilliseconds: 10,
-        root: { annotations: {}, controls: {}, title: cwd },
-        scheduling: 'concurrent',
-        testFamily: 'microtest',
-        timeoutMilliseconds: 1000
-    };
-}
 
 function assignment(title: string): SupervisedAssignmentCommand {
     return {
@@ -125,7 +98,7 @@ function emitUnhandledRejection(message: string): void {
 async function collectObservedSupervisedFailure(): Promise<unknown> {
     try {
         await runObservedSupervisedChildCommand(
-            command('collect', 'tests/first.test.ts'),
+            supervisedChildCommand('collect', 'tests/first.test.ts'),
             async function collectChildPlan() {
                 emitUnhandledRejection('supervised collection failed');
                 await yieldToImmediate();
@@ -141,7 +114,7 @@ async function collectObservedSupervisedFailure(): Promise<unknown> {
 async function createModuleEngineSupervisedPlan(): Promise<TestPlan> {
     return await createSupervisedChildTestPlan(
         {
-            ...command('collect', passingFixturePath),
+            ...supervisedChildCommand('collect', passingFixturePath),
             engine: {
                 exportKind: 'value',
                 exportName: 'engine',
@@ -175,7 +148,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const childRun = createChildRun({
                     assignment: emptyAssignment(),
-                    command: command('collect', passingFixturePath),
+                    command: supervisedChildCommand('collect', passingFixturePath),
                     discoverRunFiles: createDiscovery([ passingFixturePath ]),
                     loadRunTestModules: loadDeterministicRunTestModules,
                     readEnvironment() {
@@ -207,7 +180,7 @@ export const testNode = createOverkillSuite({
                 const childRun = createChildRun({
                     assignment: emptyAssignment(),
                     command: {
-                        ...command('collect', policyFixturePath),
+                        ...supervisedChildCommand('collect', policyFixturePath),
                         capabilityRestrictions: { mode: 'enabled' }
                     },
                     discoverRunFiles: createDiscovery([ policyFixturePath ]),
@@ -239,7 +212,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const childRun = createChildRun({
                     assignment: emptyAssignment(),
-                    command: command('run', passingFixturePath),
+                    command: supervisedChildCommand('run', passingFixturePath),
                     discoverRunFiles: createDiscovery([ passingFixturePath ]),
                     loadRunTestModules: loadDeterministicRunTestModules,
                     readEnvironment() {
@@ -269,7 +242,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const childRun = createChildRun({
                     assignment: assignment('passes'),
-                    command: command('collect', passingFixturePath),
+                    command: supervisedChildCommand('collect', passingFixturePath),
                     async discoverRunFiles() {
                         throw new Error('plain failure');
                     },
@@ -327,7 +300,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const childRun = createChildRun({
                     assignment: assignment('missing-case'),
-                    command: command('run', passingFixturePath),
+                    command: supervisedChildCommand('run', passingFixturePath),
                     discoverRunFiles: createDiscovery([ passingFixturePath ]),
                     loadRunTestModules: loadDeterministicRunTestModules,
                     readEnvironment() {

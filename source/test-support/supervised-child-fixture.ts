@@ -117,3 +117,33 @@ export function createChildRun(input: ChildHostInput): ChildRunFixture {
 export function nativeChildDependencies(): SupervisedChildDependencies {
     return { createClock: createTestClock, createProcessUsageTracker: createNodeProcessUsageTracker };
 }
+
+export function supervisedChildCommand(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
+    return {
+        benchmarkNormalization: null,
+        benchmarkGarbageCollection: null,
+        retryPolicy: null,
+        capabilityRestrictions: { mode: 'disabled' },
+        capture: 'buffered',
+        propertyPolicy: null,
+        collectionTimeoutMilliseconds: 1000,
+        cwd: '/project',
+        definitionLocationCapture: 'enabled',
+        engine: { kind: 'default' },
+        hardTimeoutMilliseconds: 2000,
+        maxConcurrency: 5,
+        kind,
+        paths: [ path ],
+        processBudgets: {
+            activeResourceCount: null,
+            javaScriptEngineHeapBytes: null,
+            residentSetBytes: null,
+            residentSetGrowthBytesPerSecond: null
+        },
+        processUsageSamplingIntervalMilliseconds: 10,
+        root: { annotations: {}, controls: {}, title: '/project' },
+        scheduling: 'concurrent',
+        testFamily: 'microtest',
+        timeoutMilliseconds: 1000
+    };
+}
