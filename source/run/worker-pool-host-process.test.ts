@@ -126,13 +126,21 @@ const ignoreStartOptions: (options: WorkerPoolHostProcessStartOptions) => void =
     return undefined;
 };
 
+function closePoolAfterTest(scope: OverkillScope, fixture: HostedPoolFixture): void {
+    scope.cleanup(async function closeHostedPool() {
+        await fixture.pool.destroy();
+        fixture.child.emitExit();
+    });
+}
+
 function createPoolFixture(
+    scope: OverkillScope,
     options: WorkerPoolCreationOptions,
     onStart: (options: WorkerPoolHostProcessStartOptions) => void
 ): HostedPoolFixture {
     const child = createFakeHostChild();
 
-    return {
+    const fixture = {
         child,
         pool: createHostedWorkerPool({
             environmentVariables: {},
@@ -144,6 +152,8 @@ function createPoolFixture(
             }
         })
     };
+    closePoolAfterTest(scope, fixture);
+    return fixture;
 }
 
 async function waitForRunTaskCommand(
@@ -231,6 +241,7 @@ function createForwardingFixture(scope: OverkillScope): ForwardingFixture {
             return child;
         }
     });
+    closePoolAfterTest(scope, { child, pool });
     const port = createFakePort();
     const controller = new AbortController();
 
@@ -283,8 +294,9 @@ async function assertForwardingResult(scope: OverkillScope, fixture: ForwardingF
     scope.assert.equal(fixture.pool.options.maxThreads, 2);
 }
 
-function createTrackingFixture(): ProcessUsageTrackingFixture {
+function createTrackingFixture(scope: OverkillScope): ProcessUsageTrackingFixture {
     const fixture = createPoolFixture(
+        scope,
         workerPoolOptions({ workerLifecycle: 'fresh-worker-per-unit' }),
         ignoreStartOptions
     );
@@ -336,7 +348,7 @@ export const testNode = createOverkillSuite({
 
             title: 'createHostedWorkerPool() reports a missing host process usage sample',
             body(scope: OverkillScope) {
-                const { pool } = createPoolFixture(workerPoolOptions(), ignoreStartOptions);
+                const { pool } = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
                 const tracker = pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
                 scope.require.defined(tracker);
@@ -355,6 +367,7 @@ export const testNode = createOverkillSuite({
             title: 'createHostedWorkerPool() rejects task errors from the child host',
             async body(scope: OverkillScope) {
                 const fixture = await startRunTask(createPoolFixture(
+                    scope,
                     workerPoolOptions({ hostProcess: { kind: 'direct' } }),
                     function expectDirectHost(options) {
                         scope.assert.deepEqual(options.nodeArguments, []);
@@ -400,7 +413,7 @@ export const testNode = createOverkillSuite({
 
             title: 'createHostedWorkerPool() exposes host process usage samples',
             async body(scope: OverkillScope) {
-                const fixture = createTrackingFixture();
+                const fixture = createTrackingFixture(scope);
                 const usage = await collectTwoProcessUsageSamples(fixture);
 
                 scope.assert.deepEqual(fixture.observedSamples, [ 10, 20 ]);
@@ -420,7 +433,7 @@ export const testNode = createOverkillSuite({
 
             title: 'createHostedWorkerPool() rejects pending tasks when the host errors',
             async body(scope: OverkillScope) {
-                const fixture = await startRunTask(createPoolFixture(workerPoolOptions(), ignoreStartOptions));
+                const fixture = await startRunTask(createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions));
 
                 fixture.child.emitError(new Error('host failed'));
 
@@ -436,7 +449,7 @@ export const testNode = createOverkillSuite({
 
             title: 'createHostedWorkerPool() destroys an active host and ignores idle destroy',
             async body(scope: OverkillScope) {
-                const fixture = createPoolFixture(workerPoolOptions(), ignoreStartOptions);
+                const fixture = createPoolFixture(scope, workerPoolOptions(), ignoreStartOptions);
                 const tracker = fixture.pool.createProcessUsageTracker?.({ samplingIntervalMilliseconds: 25 });
 
                 scope.require.defined(tracker);
