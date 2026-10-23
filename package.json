@@ -60,7 +60,7 @@
         "@overkill-dev/assert": "0.0.59",
         "@overkill-dev/doubles": "0.0.57",
         "@overkill-dev/engine": "0.0.67",
-        "@overkill-dev/run": "0.0.86",
+        "@overkill-dev/run": "0.0.87",
         "@packtory/cli": "0.0.124",
         "@packtory/github-release-gate": "0.0.85",
         "@rspack/core": "2.2.9",
