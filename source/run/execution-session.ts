@@ -1,3 +1,4 @@
+import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import {
     createInvocationBudget,
@@ -23,7 +24,11 @@ async function initializeExecutionEnvironment(
     options: RunExecutionSessionOptions,
     dependencies: RunOrchestratorDependencies
 ): Promise<ExecutionSessionEnvironment> {
-    const { createExecutionSessionEnvironment } = await import('./execution-session-environment.ts');
+    const { createExecutionSessionEnvironment } = await withRunnerInfrastructure(
+        async function loadExecutionEnvironment() {
+            return await import('./execution-session-environment.ts');
+        }
+    );
     return createExecutionSessionEnvironment(options, dependencies);
 }
 
