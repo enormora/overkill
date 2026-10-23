@@ -1,3 +1,4 @@
+import { testNode as jsonFramesTestNode } from '../bounded-json-frames.test.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -495,6 +496,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        jsonFramesTestNode,
         resourceScenarioValidationTestNode,
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],

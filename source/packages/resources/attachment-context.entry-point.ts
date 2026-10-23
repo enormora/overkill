@@ -7,4 +7,4 @@ export {
 } from '../../attachments/attachment-context.ts';
 export type { AttachmentContext } from '../../attachments/attachment-context.ts';
 export { defaultAttachmentLimits } from '../../engine/runtime-attachment.ts';
-export { boundedJsonFrames } from '../../bounded-json-frames.ts';
+export { boundedJsonFrames, createJsonFrameLimiter } from '../../bounded-json-frames.ts';

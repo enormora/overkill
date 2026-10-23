@@ -1,9 +1,9 @@
-import { Duplex } from 'node:stream';
+import type { Duplex } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
 import { createInterface, type Interface } from 'node:readline';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
-import { boundedJsonFrames } from '../packages/resources/attachment-context.entry-point.ts';
+import { createJsonFrameLimiter } from '../packages/resources/attachment-context.entry-point.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import type { AttachmentStore } from './attachment-store.ts';
 import {
@@ -100,7 +100,7 @@ function attachmentServerChannelsAccept(state: AttachmentServerChannelsState, so
 
     sockets.add(socket);
     const channel = randomUUID();
-    const frames = Duplex.fromWeb(boundedJsonFrames(attachmentMaxFrameBytes, 'Attachment'));
+    const frames = createJsonFrameLimiter(attachmentMaxFrameBytes, 'Attachment');
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
     let queue = Promise.resolve();
     const queued = createStoredRunValue(0);

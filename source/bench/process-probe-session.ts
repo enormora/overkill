@@ -1,10 +1,9 @@
 import { randomBytes } from 'node:crypto';
-import { Duplex } from 'node:stream';
 import { createServer, type Server, type Socket } from 'node:net';
 import { createInterface } from 'node:readline';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { processNodeProbeEntryPointUrl } from '../packages/bench/process-node-probe.entry-point.ts';
-import { boundedJsonFrames } from '../packages/resources/attachment-context.entry-point.ts';
+import { createJsonFrameLimiter } from '../packages/resources/attachment-context.entry-point.ts';
 import {
     nodeProbeIdentitySchema,
     nodeProbeMaximumReportBytes,
@@ -81,7 +80,7 @@ function receiveProbe(session: ProbeSession, socket: Socket, line: string): void
 
 function acceptProbe(session: ProbeSession, socket: Socket): void {
     session.sockets.add(socket);
-    const frames = Duplex.fromWeb(boundedJsonFrames(nodeProbeMaximumReportBytes, 'Node probe'));
+    const frames = createJsonFrameLimiter(nodeProbeMaximumReportBytes, 'Node probe');
     const lines = createInterface({ input: socket.pipe(frames) });
     frames.on('error', function (error: Error) {
         failProbe(session, socket, error);
