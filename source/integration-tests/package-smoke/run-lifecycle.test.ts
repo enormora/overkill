@@ -31,7 +31,9 @@ try {
     const command = {
         cwd, engine: {kind: 'default'},
         config: normalizeConfig({profiles: {microtest: {
-            testFamily: 'microtest', files: {include: ['test.mjs']},
+            testFamily: 'microtest',
+            timeouts: {collectionMilliseconds: 5000},
+            files: {include: ['test.mjs']},
             execution: {processModel: 'in-process', scheduling: 'serial'}
         }}}),
         request: {
@@ -61,7 +63,9 @@ try {
     const cancelled = await orchestrator.run({
         ...command,
         config: normalizeConfig({profiles: {microtest: {
-            testFamily: 'microtest', files: {include: ['test.mjs']},
+            testFamily: 'microtest',
+            timeouts: {collectionMilliseconds: 5000},
+            files: {include: ['test.mjs']},
             execution: {processModel: 'supervised-process', scheduling: 'serial'}
         }}})
     }, {timing: null, signal: controller.signal});
@@ -86,7 +90,9 @@ try {
         const nested = await orchestrator.run({
             ...command,
             config: normalizeConfig({profiles: {microtest: {
-                testFamily: 'microtest', files: {include: ['nested.test.mjs']},
+                testFamily: 'microtest',
+                timeouts: {collectionMilliseconds: 5000},
+                files: {include: ['nested.test.mjs']},
                 execution: {processModel, scheduling: 'serial'}
             }}})
         });
