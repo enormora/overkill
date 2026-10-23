@@ -5,8 +5,8 @@ import path from 'node:path';
 import { z } from 'zod/v4';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
-import { normalizedBenchConfigScript, normalizedBenchFixtureScript } from './normalization-scripts.test.ts';
 import { runIfMain } from '#test-runner';
+import { normalizedBenchConfigScript, normalizedBenchFixtureScript } from './normalization-scripts.test.ts';
 import {
     benchAuthoringScript,
     benchMacroScript,

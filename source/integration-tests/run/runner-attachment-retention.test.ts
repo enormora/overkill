@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod/v4';
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -15,7 +16,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '#test-runner';
 
 const recordSchema = z.object({
     status: z.literal('completed'),

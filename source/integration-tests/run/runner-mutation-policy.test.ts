@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -14,7 +15,6 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
-import { runIfMain } from '#test-runner';
 
 const fixture = 'source/integration-tests/run/fixtures/mutation-policy.test.ts';
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;

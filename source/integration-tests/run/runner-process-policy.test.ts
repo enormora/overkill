@@ -1,9 +1,9 @@
 import { execFile } from 'node:child_process';
 import { z } from 'zod/v4';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { runResultSchema } from '../../run/run-result-schema.ts';
-import { runIfMain } from '#test-runner';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const processTimeoutMilliseconds = 15_000;

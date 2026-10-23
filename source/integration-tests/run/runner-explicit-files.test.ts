@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import type {
     RunCommand,
     RunRequest,
@@ -16,7 +17,6 @@ import {
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import {

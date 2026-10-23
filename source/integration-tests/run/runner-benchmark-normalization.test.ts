@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { runIfMain } from '#test-runner';
 import type { RunResult } from '../../engine/run-result.ts';
 import { normalizationCommand, normalizationReferences } from '../../test-support/benchmark-normalization-fixture.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -6,7 +7,6 @@ import { suite, test, type TestScope } from '../../packages/test/test.entry-poin
 import { orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { createBenchmarkHtmlReport } from '../../reporters/benchmark-html-model.ts';
 import { runResultSchema } from '../../run/run-result-schema.ts';
-import { runIfMain } from '#test-runner';
 import { testNode as baselineTests } from './normalization-baseline.test.ts';
 
 function assertChartScales(scope: TestScope, result: RunResult): void {

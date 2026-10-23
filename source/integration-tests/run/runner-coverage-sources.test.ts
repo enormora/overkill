@@ -1,5 +1,6 @@
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -14,7 +15,6 @@ import {
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 
 const fixtureRoot = 'source/integration-tests/run/fixtures/';
 const scenarios = [ 'unloaded', 'threshold', 'types-only', 'missing-sources', 'broken-map' ] as const;

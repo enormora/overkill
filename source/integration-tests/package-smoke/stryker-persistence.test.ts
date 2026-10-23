@@ -1,8 +1,8 @@
 import { execFile } from 'node:child_process';
 import { createSuite, createTestCase } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
-import { strykerPersistenceScript } from '../run/stryker-persistence-scripts.test.ts';
 import { runIfMain } from '#test-runner';
+import { strykerPersistenceScript } from '../run/stryker-persistence-scripts.test.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] as const };
 

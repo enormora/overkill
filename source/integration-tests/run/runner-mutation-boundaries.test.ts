@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { createPlainOutputRenderer, type RunResult, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../../packages/test/test.entry-point.ts';
 import {
@@ -11,7 +12,6 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createMutationSandbox } from '../../packages/stryker-runner/mutation-sandbox.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
-import { runIfMain } from '#test-runner';
 import { createMutationExecution, type MutationExecution } from './mutation-execution.test.ts';
 
 type ProjectDirectories = { readonly originalRoot: string; readonly cwd: string; };

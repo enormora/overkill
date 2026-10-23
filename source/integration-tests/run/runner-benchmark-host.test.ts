@@ -1,10 +1,10 @@
 import { createClock } from '@enormora/clock';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { benchmarkHostSnapshotSchema } from '../../bench/benchmark-host-snapshot.ts';
 import { collectBenchmarkHost } from '../../run/benchmark-host.ts';
 import { collectPlatformPressure } from '../../run/benchmark-host-platform.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 
 export const testNode = suite('benchmark host observer integration', [
     test('records no platform-specific pressure on unsupported platforms', async function (scope: TestScope) {

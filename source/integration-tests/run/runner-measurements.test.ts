@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -16,7 +17,6 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '#test-runner';
 import { canonicalIdentityJson } from '../../canonical-identity.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/measurement.bench.test.ts';

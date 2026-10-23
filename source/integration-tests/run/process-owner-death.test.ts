@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 import { Worker } from 'node:worker_threads';
 import { fork } from 'node:child_process';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 
 const pollMilliseconds = 25;
 const maximumPolls = 200;

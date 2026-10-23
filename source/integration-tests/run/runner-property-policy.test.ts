@@ -1,8 +1,8 @@
+import { runIfMain } from '#test-runner';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { suite, test } from '../../packages/test/test.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '#test-runner';
 
 const fixtureDirectory = 'source/integration-tests/run/fixtures/';
 

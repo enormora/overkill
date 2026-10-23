@@ -1,4 +1,5 @@
 import { mkdir, readFile, rename } from 'node:fs/promises';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { defineReporter, type DefinedReporter, type PerTestResult } from '../../packages/engine/engine.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
@@ -11,7 +12,6 @@ import {
     type BaselineFixture
 } from '../../test-support/benchmark-baseline-fixture.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 
 const execution = { processModel: 'supervised-process', maxConcurrency: 1, scheduling: 'serial' } as const;
 

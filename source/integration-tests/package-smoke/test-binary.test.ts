@@ -9,6 +9,7 @@ import {
     createLineReporter,
     createLineTreeReporter
 } from '@overkill-dev/reporter-line';
+import { runIfMain } from '#test-runner';
 import {
     assertPackagedFilters,
     assertResourcesPackageRootExport,
@@ -18,7 +19,6 @@ import {
     assertTestStandardSubpathExports,
     importPackagedFilters
 } from './package-export-assertions.test.ts';
-import { runIfMain } from '#test-runner';
 import {
     authoringSmokeScript,
     customAuthoringFacadeScript,

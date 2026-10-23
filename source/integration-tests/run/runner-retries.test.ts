@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -16,7 +17,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '#test-runner';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
 type RetryFixture = { readonly path: string; readonly timeouts: TimeoutPolicy | null; };

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -7,7 +8,6 @@ import {
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
-import { runIfMain } from '#test-runner';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,

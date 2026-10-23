@@ -1,9 +1,9 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 import { strykerCampaignScript, strykerHitLimitScript } from './stryker-campaign-scripts.test.ts';
 import { strykerCoverageScript } from './stryker-coverage-scripts.test.ts';
 import { strykerIdentityScript } from './stryker-identity-scripts.test.ts';

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -6,7 +7,6 @@ import {
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 import type { Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { defaultCoveragePolicy } from '../../config/defaults.ts';

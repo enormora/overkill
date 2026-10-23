@@ -1,4 +1,5 @@
 import { writeFile } from 'node:fs/promises';
+import { runIfMain } from '#test-runner';
 import type { CommandLineBenchmarkCommands } from '../../packages/run/command-line.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
@@ -11,7 +12,6 @@ import {
 import { createNullReporter } from '../../reporters/null-reporter.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '#test-runner';
 
 function baselineCommands(fixture: BaselineFixture): CommandLineBenchmarkCommands {
     const defaultReporter = createNullReporter();

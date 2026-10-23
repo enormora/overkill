@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -10,7 +11,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '#test-runner';
 import type { RunCommand, RunRequest } from '../../run/run-types.ts';
 import type { TimeoutPolicy } from '../../config/types.ts';
 

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../../packages/engine/engine.entry-point.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -6,7 +7,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '#test-runner';
 
 const fixturePath = 'source/integration-tests/run/fixtures/large-ipc-results.test.ts';
 const caseCount = 32;
