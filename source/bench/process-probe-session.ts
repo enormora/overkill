@@ -48,9 +48,13 @@ async function probeResult<Value>(pending: Promise<ProbeResult<Value>>): Promise
     return result.value;
 }
 
-function failProbe(session: ProbeSession, socket: Socket, error: Error): void {
+function failProbeSession(session: ProbeSession, error: Error): void {
     session.connected.resolve({ success: false, error });
     session.reading.resolve({ success: false, error });
+}
+
+function failProbe(session: ProbeSession, socket: Socket, error: Error): void {
+    failProbeSession(session, error);
     socket.destroy();
 }
 
@@ -134,6 +138,7 @@ async function closeProbeServer(session: ProbeSession): Promise<void> {
 }
 
 async function disposeProbe(session: ProbeSession): Promise<void> {
+    failProbeSession(session, new Error('Node probe disposed.'));
     for (const socket of session.sockets) {
         socket.destroy();
     }
