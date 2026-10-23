@@ -238,7 +238,8 @@ export const testNode = createSuite({
                     ownsTestNode
                 };
 
-                scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), 8);
+                const definedBefore = createTestPlan(createSmokeRoot([ testNode ])).defined;
+                scope.assert(smokeResult, await executeSmokePlan(topLevelEngine), definedBefore + 2);
 
                 return scope.assert.collect();
             }
