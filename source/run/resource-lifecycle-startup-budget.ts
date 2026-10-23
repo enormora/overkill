@@ -14,7 +14,7 @@ type StartupBudgetRequirement = {
 
 type StartupBudgetTimer = {
     readonly cancel: () => void;
-    readonly timeout: Promise<never>;
+    readonly timeout: Promise<void>;
 };
 
 const resourceStartupTimeoutBrand = Symbol('ResourceStartupTimeout');
@@ -60,26 +60,22 @@ function createStartupBudgetTimer(
     budgetMilliseconds: number,
     controller: AbortController
 ): StartupBudgetTimer {
-    let rejectTimeout = function rejectBeforeTimeoutReady(error: Error): void {
-        throw error;
-    };
-    const timeout = new Promise<never>(function createStartupTimeout(_resolve, reject) {
-        rejectTimeout = reject;
-    });
+    const timeout = Promise.withResolvers<undefined>();
     const timer = setNodeTimeout(function abortForStartupBudget() {
         const error = resourceStartupTimeoutError(
             `Resource "${resource.name}" exceeded startup budget of ${budgetMilliseconds} ms.`
         );
 
         controller.abort(error);
-        rejectTimeout(error);
+        timeout.reject(error);
     }, budgetMilliseconds);
 
     return {
         cancel() {
             clearNodeTimeout(timer);
+            timeout.resolve(undefined);
         },
-        timeout
+        timeout: timeout.promise
     };
 }
 
