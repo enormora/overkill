@@ -37,7 +37,6 @@ function sharedTranscriptScope(): TranscriptScopeStorage {
     return created;
 }
 const activeTranscriptScope = sharedTranscriptScope();
-const noEntries = Object.freeze([]);
 
 type RuntimeTranscriptView = TranscriptView & {
     readonly [transcriptIdentity]: true;
@@ -123,7 +122,12 @@ export function createTranscriptStore<Entry extends TranscriptEntry>(): Transcri
     function currentEntries(): readonly Entry[] {
         const scope = currentTranscriptScope();
 
-        return scope === null ? entries : scopedEntries.get(scope) ?? noEntries;
+        if (scope === null) {
+            return entries;
+        }
+        const scopeEntries = scopedEntries.get(scope) ?? [];
+        scopedEntries.set(scope, scopeEntries);
+        return scopeEntries;
     }
 
     const view = brandedView(currentEntries, listeners);

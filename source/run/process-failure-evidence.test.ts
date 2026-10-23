@@ -1,4 +1,5 @@
 import { setTimeout as wait } from 'node:timers/promises';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createLocalProcessServiceResource, withResources } from '../packages/test/resources.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -74,5 +75,4 @@ export const testNode = createSuite({
         });
     })
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

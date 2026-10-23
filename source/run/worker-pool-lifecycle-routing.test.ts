@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import {
     createSuite as createOverkillSuite,
@@ -379,6 +380,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

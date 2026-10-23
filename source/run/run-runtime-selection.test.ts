@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     attachTestBodyResourceAttachments,
     createRoot,
@@ -134,6 +135,4 @@ export const testNode = createSuite({
     title: 'source/run/run-runtime-selection.test.ts'
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

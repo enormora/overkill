@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { benchmarkHostLimitsSchema } from '../config/benchmark-host.ts';
 import { benchmarkHostSnapshot } from '../test-support/benchmark-host-snapshot.ts';
@@ -215,5 +216,4 @@ export const testNode = suite('benchmark host evidence', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

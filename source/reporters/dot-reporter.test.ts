@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
 import {
@@ -527,6 +528,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

@@ -1,4 +1,5 @@
 import { rm } from 'node:fs/promises';
+import { runIfMain } from '#test-runner';
 import { defaultAttachmentLimits } from '../../engine/runtime-attachment.ts';
 import {
     createSuite,
@@ -9,7 +10,6 @@ import {
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { defaultCoveragePolicy } from '../../config/defaults.ts';
 import type { RunCommand, RunRequest } from '../../run/run-types.ts';
@@ -354,4 +354,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

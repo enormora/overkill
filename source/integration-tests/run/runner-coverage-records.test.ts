@@ -1,5 +1,6 @@
 import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -18,7 +19,6 @@ import {
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 const coverageFile = 'source/integration-tests/run/fixtures/coverage.test.ts';
 type MicrotestProcessModel = MicrotestExecution['processModel'];
@@ -175,4 +175,4 @@ export const testNode = createSuite({
         ];
     })
 });
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

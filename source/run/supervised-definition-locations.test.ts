@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { runIfMain } from '#test-runner';
 import { createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     createChildRun,
@@ -92,5 +93,4 @@ export const testNode = createTestCase({
     }
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

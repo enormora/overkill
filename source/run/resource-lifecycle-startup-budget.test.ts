@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
 import {
@@ -168,6 +169,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

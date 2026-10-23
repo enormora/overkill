@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { runRecordVersions } from './run-record-versions.ts';
 
@@ -85,5 +86,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as workerPoolDistributionTestNode } from './worker-pool-distribution-suite.test.ts';
 import { testNode as workerPoolExecutionSuiteTestNode } from './worker-pool-execution-suite.test.ts';
@@ -25,6 +26,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

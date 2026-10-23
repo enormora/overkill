@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createRoot,
     createTestPlan,
@@ -278,5 +279,4 @@ export const testNode = suite('property collection', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

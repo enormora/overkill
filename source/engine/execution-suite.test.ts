@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as executionConcurrentReportingTestNode } from './execution-concurrent-reporting.test.ts';
 import { testNode as executionReportingTestNode } from './execution-reporting.test.ts';
@@ -23,6 +24,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

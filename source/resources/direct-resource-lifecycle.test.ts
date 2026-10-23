@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestNode, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defineResource,
@@ -385,6 +386,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

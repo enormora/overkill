@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as commandLineFallbackDiagnosticsTestNode } from './command-line-fallback-diagnostics.test.ts';
 import { testNode as commandLineCommandTestNode } from './command-line-command-suite.test.ts';
@@ -21,6 +22,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

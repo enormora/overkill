@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -224,5 +225,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

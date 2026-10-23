@@ -1,6 +1,7 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
 import { createServer, request as createRequest, type ServerResponse } from 'node:http';
 import { connect } from 'node:net';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     httpTranscriptBodyByteLimit,
@@ -169,7 +170,8 @@ async function assertRawRequest(scope: TestScope): Promise<void> {
 async function transcriptEntryCount(policy: DisabledTranscriptPolicy): Promise<number> {
     const session = await startResources({ resources: { app: localHttpResource(policy) }, signal: testSignal });
 
-    await fetch(session.context.app.baseUrl);
+    const response = await fetch(session.context.app.baseUrl);
+    await response.arrayBuffer();
     const { entryCount } = session.context.app.transcript;
 
     await session.disposeOnce({ signal: testSignal });
@@ -190,7 +192,8 @@ async function captureFailureEntries(): Promise<HttpTranscript<unknown>['entries
         signal: testSignal
     });
 
-    await fetch(session.context.app.baseUrl);
+    const response = await fetch(session.context.app.baseUrl);
+    await response.arrayBuffer();
     const { entries } = session.context.app.transcript;
 
     await session.disposeOnce({ signal: testSignal });
@@ -446,6 +449,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

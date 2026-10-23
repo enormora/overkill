@@ -1,138 +1,42 @@
-import { AsyncResource } from 'node:async_hooks';
-import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { createNativeWriteProbe, type NativeWriteProbe } from '../test-support/native-write-probe.ts';
-import { activeResourceLeakError, createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
-import { settleAsyncWork } from './async-control.ts';
-import { withRunnerInfrastructure } from './execution-observation.ts';
-import { observeCaseResourceOwners, type ObservedCase } from './resource-owner-observation.ts';
+import { execFile } from 'node:child_process';
+import { runIfMain } from '#test-runner';
+import { suite, test } from '../packages/test/test.entry-point.ts';
+import {
+    nativeWriteOwnershipTestNode,
+    nativeWriteOwnershipProbeUrl
+} from '../test-support/native-write-ownership-probe.ts';
 
-function ignoreWriteCompletion(): void {
-    return undefined;
-}
-
-async function assertInfrastructureWriteLifetime(
-    scope: TestScope,
-    probe: NativeWriteProbe
-): Promise<ObservedCase<{ readonly writing: Promise<void>; }>> {
-    const observed = await observeCaseResourceOwners(process.getActiveResourcesInfo, async function enqueueWrite() {
-        return { writing: withRunnerInfrastructure(probe.write) };
-    });
-    scope.assert.equal(observed.baseline.includes('SimpleWriteWrap'), true);
-    probe.drain();
-    await observed.result.writing;
-    await settleAsyncWork();
-    scope.assert.equal(observed.baseline.includes('SimpleWriteWrap'), false);
-    return observed;
-}
-
-async function assertOwnedWrite(scope: TestScope, probe: NativeWriteProbe, baseline: readonly string[]): Promise<void> {
-    probe.pause();
-    const writing = probe.write();
-    const error = activeResourceLeakError({
-        after: process.getActiveResourcesInfo(),
-        before: baseline,
-        attributedTo: null,
-        attributedToWork: null,
-        phase: 'run'
-    });
-    scope.assert.partialDeepEqual(error?.cause, { resourceTypes: [ 'SimpleWriteWrap' ] });
-    probe.drain();
-    await writing;
-}
-
-const pendingWrites = [ true, false ].flatMap(function infrastructureOwners(infrastructure) {
-    return [ true, false ].map(function requestLayouts(initialized) {
-        return { infrastructure, initialized };
-    });
-});
-
-export const testNode = suite('native write ownership', [
-    ...pendingWrites.map(function infrastructureWrite(scenario) {
-        const { infrastructure, initialized } = scenario;
-        return test(
-            `${initialized ? 'initialized' : 'legacy'} ${infrastructure ? 'infrastructure' : 'test-owned'} writes`,
-            async function (scope) {
-                const monitor = createAsyncLeakMonitor();
-                scope.cleanup(monitor.stop);
-                const resources: string[] = [];
-                const observed = await observeCaseResourceOwners(function readResources() {
-                    return resources;
-                }, async function allocateWriteRequest() {
-                    const createRequest = function createWriteRequest(): AsyncResource {
-                        const request = Object.assign(new AsyncResource('WRITEWRAP'), {
-                            oncomplete: ignoreWriteCompletion
-                        });
-                        if (initialized) {
-                            Object.assign(request, { async: false, handle: null });
-                        }
-                        return request;
-                    };
-                    const request = infrastructure ? withRunnerInfrastructure(createRequest) : createRequest();
-                    scope.cleanup(function closeWriteRequest() {
-                        request.emitDestroy();
-                    });
-                    resources.push('SimpleWriteWrap');
-                });
-                scope.assert.deepEqual(observed.baseline, infrastructure ? [ 'SimpleWriteWrap' ] : []);
-                scope.assert.deepEqual(observed.ambiguousResources, []);
-                const error = activeResourceLeakError({
-                    after: resources,
-                    before: observed.baseline,
-                    attributedTo: null,
-                    attributedToWork: null,
-                    phase: 'run'
-                });
-                scope.assert.equal(error === null, infrastructure);
-                return scope.assert.collect();
-            }
-        );
-    }),
-    ...([ true, false ] as const).map(function completedWrite(callbackRan) {
-        return test(
-            `completed infrastructure writes cannot mask owned writes after callback ${String(callbackRan)}`,
-            async function (scope) {
-                const monitor = createAsyncLeakMonitor();
-                scope.cleanup(monitor.stop);
-                const resources: string[] = [];
-                const observed = await observeCaseResourceOwners(function readResources() {
-                    return resources;
-                }, async function completeWriteRequest() {
-                    const request = withRunnerInfrastructure(function completedInfrastructureWrite() {
-                        return Object.assign(new AsyncResource('WRITEWRAP'), {
-                            async: callbackRan,
-                            oncomplete: ignoreWriteCompletion
-                        });
-                    });
-                    scope.cleanup(function closeWriteRequest() {
-                        request.emitDestroy();
-                    });
-                    if (callbackRan) {
-                        request.runInAsyncScope(ignoreWriteCompletion);
+export const testNode = suite(nativeWriteOwnershipTestNode.title, [
+    test('isolates native write probes from runner writes', async function (scope) {
+        const script = `
+            import assert from 'node:assert/strict';
+            const { createRoot, createTestPlan, execute } = await import('@overkill-dev/engine');
+            const { nativeWriteOwnershipTestNode } = await import(${JSON.stringify(nativeWriteOwnershipProbeUrl)});
+            const plan = createTestPlan(createRoot({
+                title: 'native write probe', annotations: {}, controls: {}, children: [nativeWriteOwnershipTestNode]
+            }));
+            const result = await execute(plan);
+            assert.equal(result.summary.passed, 8);
+            assert.equal(result.summary.failed, 0);
+            assert.deepEqual(result.runnerErrors, []);
+        `;
+        const output = await new Promise<string>(function runWriteProbe(resolve, reject) {
+            execFile(
+                process.execPath,
+                [ '--input-type=module', '--eval', script ],
+                { timeout: 5000 },
+                function (error, stdout, stderr) {
+                    if (error === null) {
+                        resolve(stdout);
+                    } else {
+                        reject(new Error(`Native write probe failed: ${stderr}`, { cause: error }));
                     }
-                    resources.push('SimpleWriteWrap');
-                });
-                scope.assert.deepEqual(observed.baseline, []);
-                const error = activeResourceLeakError({
-                    after: resources,
-                    before: observed.baseline,
-                    attributedTo: null,
-                    attributedToWork: null,
-                    phase: 'run'
-                });
-                scope.assert.partialDeepEqual(error?.cause, { resourceTypes: [ 'SimpleWriteWrap' ] });
-                return scope.assert.collect();
-            }
-        );
-    }),
-    test('tracks native writes through completion without masking a later owned write', async function (scope) {
-        const monitor = createAsyncLeakMonitor();
-        scope.cleanup(monitor.stop);
-        const probe = await createNativeWriteProbe(scope);
-        const observed = await assertInfrastructureWriteLifetime(scope, probe);
-        await assertOwnedWrite(scope, probe, observed.baseline);
+                }
+            );
+        });
+        scope.assert.equal(output, '');
         return scope.assert.collect();
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

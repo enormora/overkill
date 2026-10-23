@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
 import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
@@ -305,6 +306,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

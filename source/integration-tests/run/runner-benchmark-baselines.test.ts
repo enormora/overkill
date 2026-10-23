@@ -1,4 +1,5 @@
 import { posix as path } from 'node:path';
+import { runIfMain } from '#test-runner';
 import {
     createBenchmarkBaselineFixture,
     readBaselineContents,
@@ -14,7 +15,6 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createPerformanceBaselineStore } from '../../baselines/performance-store.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 function assertSuccessfulWrite(scope: TestScope, result: BenchmarkBaselineRunResult, count: number): void {
     scope.assert.equal(result.result.status, 'passed');
@@ -184,4 +184,4 @@ export const testNode = suite('benchmark baseline commands', [
     )
 ]);
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

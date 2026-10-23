@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig } from './config.ts';
 import { propertyProfileSchema } from './schema.ts';
@@ -126,5 +127,4 @@ export const testNode = suite('property profile', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

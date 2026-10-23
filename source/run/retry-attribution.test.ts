@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { singleAttemptResult, type TestVerdict } from '../engine/run-result.ts';
@@ -222,5 +223,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

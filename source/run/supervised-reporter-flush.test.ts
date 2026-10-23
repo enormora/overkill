@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { settleAsyncWork } from '../engine/async-control.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
@@ -50,5 +51,4 @@ export const testNode = createTestCase({
     }
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

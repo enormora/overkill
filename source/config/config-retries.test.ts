@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
 import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
@@ -70,5 +71,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

@@ -13,6 +13,7 @@
         "source/reporters/benchmark-html-browser.entry-point.ts",
         "dependency-cruiser.config.js",
         "packtory.config.js",
+        "overkill.config.js",
         "tstyche.json"
     ],
     "project": [

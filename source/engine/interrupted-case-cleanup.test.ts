@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { runIfMain } from '#test-runner';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createInterruptedCase, type InterruptedCase } from '../test-support/interrupted-case.ts';
@@ -222,5 +223,4 @@ export const testNode = suite('interrupted case cleanup', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

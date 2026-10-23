@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -310,7 +311,5 @@ export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/run/direct-entrypoint-collection.test.ts'
 });
-
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 
 await runIfMain(import.meta, testNode);

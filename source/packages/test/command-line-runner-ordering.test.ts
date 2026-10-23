@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../engine/engine.entry-point.ts';
 import type {
     CommandLineExitCode,
@@ -221,6 +222,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

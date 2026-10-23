@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { orchestrator, type RunOrchestrator } from '../packages/run/run.entry-point.ts';
 import { collectedRunCommand } from '../test-support/collected-run-fixtures.ts';
@@ -196,5 +197,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

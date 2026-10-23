@@ -1,6 +1,7 @@
 import { chmod, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createNodeFileStore } from '../file-store.ts';
 
@@ -94,5 +95,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

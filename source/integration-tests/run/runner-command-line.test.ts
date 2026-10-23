@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -7,7 +8,6 @@ import {
 } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type { Reporter } from '../../engine/reporter.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
@@ -368,4 +368,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

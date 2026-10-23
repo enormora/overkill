@@ -1,12 +1,14 @@
 import { spawn } from 'node:child_process';
 import type { Readable } from 'node:stream';
 import { setImmediate as scheduleImmediate } from 'node:timers';
+import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { sourceErrorObserverProbe } from '../test-support/source-error-observer-probe.ts';
 import {
     createDisabledExecutionGlobalErrorObserver,
     createExecutionGlobalErrorObserver,
@@ -14,6 +16,12 @@ import {
 } from './execution-global-error-observer.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
+
+const testCaseMetadata = {
+    annotations: {},
+    controls: {},
+    definitionLocations: [ { kind: 'unknown' as const } ]
+} as const;
 
 type SpawnOutput = {
     readonly code: number | null;
@@ -224,16 +232,14 @@ function parseJson(text: string): unknown {
     return JSON.parse(text) as unknown;
 }
 
-export const testNode = createOverkillSuite({
+export const globalErrorObserverTestNode = createOverkillSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/engine/execution-global-error-observer.test.ts',
     children: [
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
+            ...testCaseMetadata,
             title: 'late errors from a previous attempt are not attributed to its replacement',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -261,9 +267,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer attributes unhandled rejections to the active case',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -285,9 +289,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer attributes uncaught exceptions to the active case',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -308,9 +310,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer reports ended-case async failures as attribution drift',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -334,9 +334,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer records run-level failures with phase and reason details',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -358,9 +356,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer classifies permission hook failures as permission errors',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -388,9 +384,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer serializes errors without stack traces',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -413,9 +407,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer reports ambiguous boundary ownership in isolated processes',
             async body(scope: OverkillScope) {
                 const output = await runObserverScript(ambiguousBoundaryScript());
@@ -428,9 +420,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'worker-pool host entrypoint reports fatal global hook failures',
             async body(scope: OverkillScope) {
                 const output = await runObserverScript(hostFatalScript());
@@ -443,9 +433,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'observer resolves fatal signals and unregisters fatal handlers',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -458,9 +446,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'stopped observer ignores later hook failures',
             async body(scope: OverkillScope) {
                 const observer = createExecutionGlobalErrorObserver('in-process');
@@ -478,9 +464,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'disabled observer preserves boundary calls without recording failures',
             async body(scope: OverkillScope) {
                 const observer = createDisabledExecutionGlobalErrorObserver();
@@ -508,9 +492,7 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...testCaseMetadata,
             title: 'execute() surfaces global hook failures as runner errors',
             async body(scope: OverkillScope) {
                 const engine = createTestEngine();
@@ -551,6 +533,20 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
+export const testNode = createOverkillSuite({
+    ...testCaseMetadata,
+    title: globalErrorObserverTestNode.title,
+    children: [ createOverkillTestCase({
+        ...testCaseMetadata,
+        title: 'isolates source process hooks from the published runner',
+        async body(scope: OverkillScope) {
+            const output = await runObserverScript(sourceErrorObserverProbe(import.meta.url));
+            scope.assert.equal(output.code, 0);
+            scope.assert.equal(output.stderr, '');
+            scope.assert.equal(output.stdout, '');
+            return scope.assert.collect();
+        }
+    }) ]
+});
 
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

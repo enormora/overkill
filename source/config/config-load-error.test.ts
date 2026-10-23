@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createLineReporter as createOverkillLineReporter } from '../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
@@ -42,7 +43,5 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 
 await runIfMain(import.meta, testNode, { reporters: [ createOverkillLineReporter() ] });

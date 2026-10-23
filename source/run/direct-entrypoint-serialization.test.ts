@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestNode } from '../packages/engine/engine.entry-point.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
@@ -56,7 +57,5 @@ export const testNode = createTestCase({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'direct entrypoint collection accepts decoded sibling cases and rejects changed case data'
 });
-
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 
 await runIfMain(import.meta, testNode);

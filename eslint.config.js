@@ -26,8 +26,27 @@ export default [
         files: [ '**/*.test.ts' ]
     },
     {
+        files: [ 'source/**/*.ts' ],
+        ignores: [ '**/*.test.ts', '**/*.type-test.ts', 'source/test-support/**' ],
+        rules: {
+            '@typescript-eslint/no-restricted-imports': [ 'error', {
+                paths: [
+                    {
+                        name: '@enormora/clock',
+                        importNames: [ 'createDeterministicClock', 'DeterministicClock' ],
+                        message: 'Use createClock() outside tests and test-support files.'
+                    },
+                    {
+                        name: '@enormora/clock/deterministic-clock',
+                        message: 'Use a real clock outside tests and test-support files.'
+                    }
+                ]
+            } ]
+        }
+    },
+    {
         ...nodeConfigFileConfig,
-        files: [ 'dependency-cruiser.config.js', 'eslint.config.js' ]
+        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.js' ]
     },
     {
         ...nodeEntryPointFileConfig,

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as benchmarkProfileBoundaryTestNode } from './benchmark-profile-boundary.test.ts';
 import { testNode as collectedRunPlanTestNode } from './collected-run-plan.test.ts';
@@ -24,6 +25,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

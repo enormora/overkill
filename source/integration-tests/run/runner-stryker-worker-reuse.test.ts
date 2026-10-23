@@ -1,9 +1,9 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { suite, test } from '../../packages/test/test.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 import { adapterUrl, engineUrl, configUrl, executeMutationScript } from './stryker-lifecycle-fixture.test.ts';
 import { strykerWorkerReuseScript, strykerHungCleanupScript } from './stryker-worker-reuse-scripts.test.ts';
 
@@ -36,4 +36,4 @@ export const testNode = suite(
         })
 );
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

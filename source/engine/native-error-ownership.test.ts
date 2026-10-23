@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { extname } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -131,6 +132,28 @@ async function lateHookProbe(): Promise<string> {
     return await executeOwnershipProbe(script, [ observer, fixture ]);
 }
 
+async function unscopedHookProbe(): Promise<string> {
+    const observer = new URL(`./execution-global-error-observer${extname(import.meta.url)}`, import.meta.url);
+    const script = `
+        import { AsyncResource } from 'node:async_hooks';
+        const { createExecutionGlobalErrorObserver } = await import(process.argv[1]);
+        const external = new AsyncResource('unscoped rejection');
+        const observer = createExecutionGlobalErrorObserver('in-process');
+        await observer.runBoundary(async () => {
+            external.runInAsyncScope(() => process.emit('unhandledRejection', 'unscoped rejection', Promise.resolve()));
+        });
+        const error = observer.takeErrors()[0];
+        observer.stop();
+        external.emitDestroy();
+        process.stdout.write(JSON.stringify({
+            subtype: error.subtype, attributedTo: error.attributedTo,
+            boundary: error.cause.boundary, phase: error.cause.phase, reason: error.cause.reason,
+            remainingListeners: process.listenerCount('unhandledRejection')
+        }));
+    `;
+    return await executeOwnershipProbe(script, [ observer ]);
+}
+
 async function rejectedObservationValue(operation: Promise<unknown>): Promise<unknown> {
     try {
         await operation;
@@ -141,6 +164,20 @@ async function rejectedObservationValue(operation: Promise<unknown>): Promise<un
 }
 
 export const testNode = suite('native error ownership', [
+    test('attributes unscoped errors to the sole active boundary', async function (scope) {
+        scope.assert.equal(
+            await unscopedHookProbe(),
+            JSON.stringify({
+                subtype: 'unhandled-rejection',
+                attributedTo: null,
+                boundary: 'in-process',
+                phase: 'run',
+                reason: { message: 'unscoped rejection', name: 'Error', stack: null },
+                remainingListeners: 0
+            })
+        );
+        return scope.assert.collect();
+    }),
     test('retains closed invocation hook origins without blaming a later attempt', async function (scope) {
         scope.assert.equal(
             await lateHookProbe(),
@@ -223,5 +260,4 @@ export const testNode = suite('native error ownership', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

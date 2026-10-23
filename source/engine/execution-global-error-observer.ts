@@ -167,11 +167,9 @@ function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
 }
 
 export function createDisabledExecutionGlobalErrorObserver(): ExecutionGlobalErrorObserver {
-    const neverFatal: Promise<void> = Promise.race([]);
-
     return {
         async fatalSignal() {
-            await neverFatal;
+            await Promise.race([]);
         },
         hasFatalError() {
             return false;

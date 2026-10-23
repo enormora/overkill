@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type RunResult, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createFakeSupervisedChildProcess } from '../test-support/fake-supervised-child-process.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
@@ -159,5 +160,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

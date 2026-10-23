@@ -1,5 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import {
     createSuite,
@@ -17,7 +18,6 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/runtime-attachments.test.ts';
 const failureFixture = 'source/integration-tests/run/fixtures/integration-failure-artifacts.test.ts';
@@ -228,4 +228,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

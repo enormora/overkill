@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { fromObject } from 'convert-source-map';
 import { encodedMap, presortedDecodedMap } from '@jridgewell/trace-mapping';
 import * as typescript from 'typescript';
@@ -107,7 +108,5 @@ export const testNode = createSuite({
         })
     ]
 });
-
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 
 await runIfMain(import.meta, testNode);

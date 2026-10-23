@@ -5,6 +5,7 @@
             "@overkill-dev/assert": ["./packages/assert/assert.entry-point.ts"],
             "@overkill-dev/doubles": ["./packages/doubles/doubles.entry-point.ts"],
             "@overkill-dev/engine": ["./packages/engine/engine.entry-point.ts"],
+            "@overkill-dev/engine/*": ["./*"],
             "@overkill-dev/reporter-line": ["./packages/reporter-line/reporter-line.entry-point.ts"],
             "@overkill-dev/reporter-benchmark-html": [
                 "./packages/reporter-benchmark-html/reporter-benchmark-html.entry-point.ts"
@@ -23,7 +24,6 @@
         "./test-support/run-command-factory.ts",
         "./test-support/property-generator.ts",
         "./test-support/collected-run-fixtures.ts",
-        "./test-support/run-if-main.ts",
         "./test-support/benchmark-baseline-fixture.ts",
         "./test-support/benchmark-normalization-fixture.ts",
         "./test-support/benchmark-authoring-exports.ts",

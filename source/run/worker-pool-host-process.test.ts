@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createWorkerMessagePortFixture as createFakePort,
     type WorkerMessagePortFixture as FakePort
@@ -468,6 +469,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

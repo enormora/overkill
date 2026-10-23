@@ -1,13 +1,13 @@
 import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createPlainOutputRenderer } from '../../engine/reporter-output.ts';
 import type { Config, ProjectMicrotestProfileConfig } from '../../packages/run/config.entry-point.ts';
 import { orchestrator, type FrozenMicrotestPolicy, type FrozenRunCommand } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const engineModule = new URL(`../../packages/engine/engine.entry-point${extname(import.meta.url)}`, import.meta.url);
@@ -187,4 +187,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

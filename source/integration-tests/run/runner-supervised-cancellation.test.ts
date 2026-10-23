@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -17,7 +18,6 @@ import { defaultRunEngine } from '../../run/default-run-engine.ts';
 import { loadRunEngineModule, loadRunTestModules, runDiscovery } from '../../run/node-run-dependencies.entry-point.ts';
 import { startSupervisedChild, startWorkerPoolHost } from '../../run/node-child-process-starters.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const passing = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -196,4 +196,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

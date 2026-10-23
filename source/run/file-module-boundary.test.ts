@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { loadConfig } from '../packages/run/config.entry-point.ts';
 import { RunResolutionError, withFileModuleBoundary } from '../packages/run/run.entry-point.ts';
@@ -217,5 +218,4 @@ export const config = {runtimeStateDir:value};`
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

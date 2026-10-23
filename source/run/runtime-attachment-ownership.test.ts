@@ -1,4 +1,5 @@
 import { AsyncResource } from 'node:async_hooks';
+import { runIfMain } from '#test-runner';
 import {
     createFailureArtifactStream,
     closeAttemptFailureStreams,
@@ -300,5 +301,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

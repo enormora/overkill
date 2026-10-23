@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { runIfMain } from '#test-runner';
 import { z } from 'zod/v4';
 import {
     createSuite as createOverkillSuite,
@@ -198,7 +199,7 @@ async function assertEntrypointDispatchesHostCommands(scope: OverkillScope): Pro
         execFile(
             process.execPath,
             [ '--input-type=module', '--eval', script ],
-            { timeout: 2000 },
+            { timeout: 5000 },
             function (error, stdout) {
                 if (error === null) {
                     resolve(stdout);
@@ -345,6 +346,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

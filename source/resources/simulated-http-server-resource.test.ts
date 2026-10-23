@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defineSimulatedHttpServer } from '../simulation/simulation.ts';
@@ -107,6 +108,7 @@ async function assertHandlerErrorsFailResourceDisposal(scope: TestScope): Promis
     });
     const session = await startResources({ resources: { api: resource }, signal: testSignal() });
     const response = await fetch(session.context.api.baseUrl);
+    await response.arrayBuffer();
     const disposalError = await rejectedValue(session.disposeOnce({ signal: testSignal() }));
 
     scope.assert.equal(response.status, 500);
@@ -285,6 +287,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

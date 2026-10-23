@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
     orchestrator,
@@ -456,5 +457,4 @@ export const testNode = suite('public execution session boundaries', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

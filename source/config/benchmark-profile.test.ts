@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { ConfigError, defineConfig, normalizeConfig } from '../packages/run/config.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
@@ -210,5 +211,4 @@ export const testNode = suite('benchmark profile configuration', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

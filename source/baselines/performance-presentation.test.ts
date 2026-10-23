@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { testDouble } from '../doubles/test-double.ts';
@@ -134,5 +135,4 @@ export const testNode = suite('performance chart presentation', [
         return scope.assert.collect();
     })
 ]);
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

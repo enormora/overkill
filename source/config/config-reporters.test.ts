@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { selectTestProfile } from '../run/test-profile.ts';
 import {
     createSuite as createOverkillSuite,
@@ -101,6 +102,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

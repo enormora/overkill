@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -31,5 +32,4 @@ export const testNode = createSuite({
     }) ]
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

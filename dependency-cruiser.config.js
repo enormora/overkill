@@ -1,6 +1,7 @@
 const configFiles = [
     '^dependency-cruiser\\.config\\.js$',
     '^eslint\\.config\\.js$',
+    '^overkill\\.config\\.js$',
     '^packtory\\.config\\.js$'
 ];
 

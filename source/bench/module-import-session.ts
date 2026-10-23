@@ -1,10 +1,10 @@
+import { Transform } from 'node:stream';
 import { randomBytes } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
-import { Duplex } from 'node:stream';
 import { createInterface } from 'node:readline';
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
-import { boundedJsonFrames } from '../packages/resources/attachment-context.entry-point.ts';
+import { createJsonFrameLimiter } from '../json-frame-limiter.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { microsecondsPerMillisecond, nanosecondsPerMicrosecond } from './measurement-units.ts';
 
@@ -80,7 +80,7 @@ function observeSocket(messages: ModuleMessages, socket: Socket): void {
     const fail = function failed(error: unknown): void {
         messages.reply.resolve({ kind: 'failed', error });
     };
-    const frames = Duplex.fromWeb(boundedJsonFrames(maximumFrameBytes, 'Module import'));
+    const frames = new Transform({ transform: createJsonFrameLimiter(maximumFrameBytes, 'Module import') });
     frames.on('error', fail);
     socket.on('error', fail);
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });

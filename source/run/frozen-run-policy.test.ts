@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig } from '../packages/run/config.entry-point.ts';
 import { orchestrator, parseFrozenMicrotestPolicy, type RunCommand } from '../packages/run/run.entry-point.ts';
@@ -174,5 +175,4 @@ export const testNode = suite('frozen microtest policy', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

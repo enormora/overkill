@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -242,6 +243,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

@@ -2,12 +2,12 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { executeProcessCommand, type ProcessExecutionInput } from '../../bench/process-execution.ts';
 import { parseProcessRequest } from '../../bench/process-command.ts';
 import type { ProcessExecution } from '../../bench/process-protocol.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 function command(scope: TestScope, source: string): ProcessExecutionInput {
     return {
@@ -243,4 +243,4 @@ export const testNode = suite('external-process ownership', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

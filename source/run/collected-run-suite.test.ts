@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as budgets } from '../invocation-budget.test.ts';
 import { testNode as collection } from './initialized-run.test.ts';
@@ -16,5 +17,4 @@ export const testNode = createSuite({
     children: [ collection, execution, policy, coverage, boundaries, executionSession, executionFailure, budgets ]
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

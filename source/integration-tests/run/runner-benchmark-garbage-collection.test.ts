@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import type { RunResult } from '../../packages/engine/engine.entry-point.ts';
 import {
@@ -14,7 +15,6 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/garbage-collection.bench.test.ts';
 type Boundary = 'fresh-worker-per-unit' | 'reuse' | 'supervised-process';
@@ -193,4 +193,4 @@ export const testNode = suite('benchmark GC process boundaries', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

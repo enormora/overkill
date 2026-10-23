@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 import { testNode as executionTestNode } from '../../integration-tests/run/runner-stryker-classification.test.ts';
 import { suite, test } from '../test/test.entry-point.ts';
@@ -225,5 +226,4 @@ export const testNode = suite('mutant case classification', [
     })
 ]);
 
-const { runIfMain } = await import('../../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

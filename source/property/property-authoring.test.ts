@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createEngine,
     attachTestBodyFamily,
@@ -246,5 +247,4 @@ export const testNode = suite('property authoring', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

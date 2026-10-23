@@ -1,5 +1,6 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
 import { validateReporterRunFacts } from '../engine/reporter.ts';
@@ -155,5 +156,4 @@ export const testNode = suite('benchmark HTML reporter', [
         return scope.assert.collect();
     })
 ]);
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);

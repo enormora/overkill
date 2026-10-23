@@ -2,12 +2,12 @@ import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { INSTRUMENTER_CONSTANTS } from '@stryker-mutator/api/core';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createPlainOutputRenderer } from '../../engine/reporter-output.ts';
 import { orchestrator } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { initializeMutationPolicy } from '../../packages/stryker-runner/mutation-policy-process.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
@@ -108,4 +108,4 @@ export const testNode = createSuite({
     }) ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

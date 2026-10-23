@@ -147,10 +147,15 @@ export const configuration = {
             description: 'Typed Overkill resource and runtime descriptors.',
             roots: {
                 main: moduleRoot('packages/resources/resources.entry-point'),
-                attachmentContext: moduleRoot('packages/resources/attachment-context.entry-point')
+                attachmentContext: moduleRoot('packages/resources/attachment-context.entry-point'),
+                jsonFrameLimiter: moduleRoot('json-frame-limiter')
             },
             packageInterface: {
-                modules: packageModules({ '.': 'main', './attachment-context': 'attachmentContext' })
+                modules: packageModules({
+                    '.': 'main',
+                    './attachment-context': 'attachmentContext',
+                    './json-frame-limiter': 'jsonFrameLimiter'
+                })
             },
             bundlePeerDependencies: [ '@overkill-dev/simulation' ]
         },

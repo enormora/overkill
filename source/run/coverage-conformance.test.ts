@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { z } from 'zod/v4';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { collectCoverageScript, withCoverageSources } from '../test-support/coverage-source-fixture.ts';
@@ -93,7 +94,5 @@ export const testNode = createSuite({
         });
     })
 });
-
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 
 await runIfMain(import.meta, testNode);

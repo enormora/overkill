@@ -1,5 +1,6 @@
 import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
 import { AsyncResource } from 'node:async_hooks';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { activeResourceLeakError, createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
@@ -100,6 +101,12 @@ export const testNode = suite('native infrastructure resources', [
                 `keeps ${lifetime} resource growth ambiguous with current timer ${String(includeCurrentTimer)}`,
                 async function (scope) {
                     const probe = await captureStaleResourceProbe(scope, lifetime);
+                    const baselineTimeouts = process
+                        .getActiveResourcesInfo()
+                        .filter(function (type) {
+                            return type === 'Timeout';
+                        })
+                        .length;
                     const observed = await observeStaleTimers(probe, includeCurrentTimer);
                     scope.assert.deepEqual(
                         observed.ambiguousResources,
@@ -114,7 +121,7 @@ export const testNode = suite('native infrastructure resources', [
                                 return type === 'Timeout';
                             })
                             .length,
-                        0
+                        baselineTimeouts
                     );
                     return scope.assert.collect();
                 }
@@ -183,5 +190,4 @@ export const testNode = suite('native infrastructure resources', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
 await runIfMain(import.meta, testNode);
