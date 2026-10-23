@@ -1,6 +1,7 @@
+import { Transform } from 'node:stream';
 import { connect, type Socket } from 'node:net';
 import { createInterface } from 'node:readline';
-import { createJsonFrameLimiter } from '../json-frame-limiter.ts';
+import { createJsonFrameLimiter } from '../packages/resources/attachment-context.entry-point.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import {
     attachmentMaxFrameBytes,
@@ -61,10 +62,12 @@ function attachmentChannelReceive(state: AttachmentChannelState, line: string): 
 function attachmentChannelObserve(state: AttachmentChannelState): void {
     const { endpoint, socket } = state;
 
-    const frames = createJsonFrameLimiter(
-        endpoint.limits.maxInlineBytes * jsonEscapeExpansion + attachmentMaxFrameBytes,
-        'Attachment'
-    );
+    const frames = new Transform({
+        transform: createJsonFrameLimiter(
+            endpoint.limits.maxInlineBytes * jsonEscapeExpansion + attachmentMaxFrameBytes,
+            'Attachment'
+        )
+    });
     const lines = createInterface({ input: socket.pipe(frames), crlfDelay: Number.POSITIVE_INFINITY });
     frames.on('error', function (error: Error) {
         attachmentChannelFail(state, error);

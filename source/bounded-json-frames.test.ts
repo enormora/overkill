@@ -1,3 +1,4 @@
+import { Transform } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
 import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
 import { boundedJsonFrames } from './bounded-json-frames.ts';
@@ -43,7 +44,7 @@ export const testNode = suite('bounded JSON frames', [
         return scope.assert.collect();
     }),
     test('frame limiters retain chunks and reset at newlines', async function (scope) {
-        const frames = createJsonFrameLimiter(3, 'JSON');
+        const frames = new Transform({ transform: createJsonFrameLimiter(3, 'JSON') });
         const reading = buffer(frames);
         frames.write(Buffer.from('ab'));
         frames.end(Buffer.from('c\nabc\n'));
@@ -52,7 +53,7 @@ export const testNode = suite('bounded JSON frames', [
         return scope.assert.collect();
     }),
     test('frame limiters reject oversized frames across chunks', async function (scope) {
-        const frames = createJsonFrameLimiter(3, 'JSON');
+        const frames = new Transform({ transform: createJsonFrameLimiter(3, 'JSON') });
         const rejected = scope.assert.rejects(async function readOversizedFrame() {
             await buffer(frames);
         }, { message: 'JSON message exceeded its frame limit.' });
@@ -62,3 +63,6 @@ export const testNode = suite('bounded JSON frames', [
         return scope.assert.collect();
     })
 ]);
+
+const { runIfMain } = await import('#test-runner');
+await runIfMain(import.meta, testNode);
