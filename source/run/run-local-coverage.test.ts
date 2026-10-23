@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope, type RunResult } from '../packages/engine/engine.entry-point.ts';
 import { withCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
@@ -98,5 +99,4 @@ export const testNode = createSuite({
         });
     })
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

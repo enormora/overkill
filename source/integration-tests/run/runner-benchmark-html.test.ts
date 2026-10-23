@@ -1,5 +1,6 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import {
     orchestrator,
@@ -164,6 +165,5 @@ export const testNode = suite('benchmark HTML runner integration', [
         return scope.assert.collect();
     })
 ]);
-const { runIfMain } = await import('#test-runner');
 const { createLineReporter } = await import('../../packages/reporter-line/reporter-line.entry-point.ts');
 await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

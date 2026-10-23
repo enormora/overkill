@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { fromObject } from 'convert-source-map';
 import * as typescript from 'typescript';
 import { createCoverageTranspiler } from '../test-support/coverage-transpilation.ts';
@@ -123,7 +124,5 @@ export const testNode = createSuite({
             })
     ]
 });
-
-const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

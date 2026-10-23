@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import {
     createSuite,
     createTestCase,
@@ -95,5 +96,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

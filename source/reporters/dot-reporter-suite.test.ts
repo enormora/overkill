@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as dotReporterInterruptedSummaryTestNode } from './dot-reporter-interrupted-summary.test.ts';
 import { testNode as dotReporterOrderingTestNode } from './dot-reporter-ordering.test.ts';
@@ -21,6 +22,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defineResource } from './resources.ts';
 import { resourceScenarioOwners } from './resource-scenario-binding.ts';
@@ -128,6 +129,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

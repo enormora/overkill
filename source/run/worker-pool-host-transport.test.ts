@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { runInNewContext } from 'node:vm';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { observeHostTransport } from './worker-pool-host-transport.ts';
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
@@ -203,5 +204,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

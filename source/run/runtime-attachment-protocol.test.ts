@@ -1,5 +1,6 @@
 import { connect, createServer, type Server, type Socket } from 'node:net';
 import { once } from 'node:events';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -336,5 +337,4 @@ export const testNode = createSuite({
             })
         ])
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

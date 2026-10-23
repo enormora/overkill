@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as benchmarkHtmlTestNode } from './benchmark-html-suite.test.ts';
 import { testNode as nullReporterTestNode } from './null-reporter.test.ts';
@@ -19,6 +20,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createDeterministicClock } from '@enormora/clock';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { observeChildShutdown, startChildShutdown } from './child-process-shutdown.ts';
@@ -173,5 +174,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

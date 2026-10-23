@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig } from '../packages/run/config.entry-point.ts';
 import {
@@ -134,5 +135,4 @@ export const testNode = suite('frozen policy transport', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

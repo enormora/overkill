@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { ConfigError, normalizeConfig, type NormalizedConfig } from '../packages/run/config.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -206,5 +207,4 @@ export const testNode = suite('benchmark profile command boundaries', [
     )
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

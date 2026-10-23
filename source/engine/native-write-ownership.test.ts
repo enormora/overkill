@@ -1,4 +1,5 @@
 import { AsyncResource } from 'node:async_hooks';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createNativeWriteProbe, type NativeWriteProbe } from '../test-support/native-write-probe.ts';
 import { activeResourceLeakError, createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
@@ -134,5 +135,4 @@ export const testNode = suite('native write ownership', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

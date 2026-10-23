@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from './packages/engine/engine.entry-point.ts';
 import { testNode as assertAndRunTestNode } from './test-support/unit-suite-groups/assert-and-run.ts';
 import { testNode as compareTestNode } from './test-support/unit-suite-groups/compare.ts';
@@ -25,6 +26,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

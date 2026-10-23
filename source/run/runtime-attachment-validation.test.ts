@@ -1,4 +1,5 @@
 import { writeFile, readFile } from 'node:fs/promises';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     defaultAttachmentLimits,
@@ -363,5 +364,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createFactory } from '@enormora/objectory';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { doubleUsage, testDouble } from '../packages/doubles/doubles.entry-point.ts';
@@ -205,6 +206,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

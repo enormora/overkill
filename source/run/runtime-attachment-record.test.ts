@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { z } from 'zod/v4';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { attachmentRunFixture } from '../test-support/attachment-run-fixture.ts';
@@ -77,5 +78,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

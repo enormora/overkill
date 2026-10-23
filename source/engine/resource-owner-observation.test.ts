@@ -1,5 +1,6 @@
 import { AsyncResource } from 'node:async_hooks';
 import { createServer } from 'node:net';
+import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { testNode as nativeWriteOwnershipTestNode } from './native-write-ownership.test.ts';
 import { createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
@@ -129,5 +130,4 @@ export const testNode = suite('resource owner observation', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

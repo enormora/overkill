@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { MutantRunStatus, type MutantRunResult } from '@stryker-mutator/api/test-runner';
 import { suite, test } from '../test/test.entry-point.ts';
 import {
@@ -273,5 +274,4 @@ export const testNode = suite('mutation result precedence', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

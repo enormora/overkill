@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { createTestCase } from '../packages/engine/engine.entry-point.ts';
 
 const durationCase = `
@@ -68,5 +69,4 @@ export const testNode = createTestCase({
     }
 });
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

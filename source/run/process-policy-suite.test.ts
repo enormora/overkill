@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as hostTestNode } from './worker-pool-host-transport.test.ts';
 import { testNode as exitTestNode } from './node-process-exit.test.ts';
@@ -14,5 +15,4 @@ export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     children: [ hostTestNode, exitTestNode, transportTestNode, observation, schemas, attachmentSchemas, shutdown ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

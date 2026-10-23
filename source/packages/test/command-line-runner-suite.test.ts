@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../engine/engine.entry-point.ts';
 import { testNode as commandLineRunnerCaptureTestNode } from './command-line-runner-capture.test.ts';
 import { testNode as commandLineRunnerCoverageTestNode } from './command-line-runner-coverage.test.ts';
@@ -25,6 +26,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

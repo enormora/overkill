@@ -1,6 +1,7 @@
 import diagnosticsChannel from 'node:diagnostics_channel';
 import { createServer, request as createRequest, type ServerResponse } from 'node:http';
 import { connect } from 'node:net';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import {
     httpTranscriptBodyByteLimit,
@@ -448,6 +449,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

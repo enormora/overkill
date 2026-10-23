@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as attachmentRecordTestNode } from './runtime-attachment-record.test.ts';
 import { testNode as attachmentSession } from './runtime-attachment-session.test.ts';
@@ -24,5 +25,4 @@ export const testNode = createSuite({
         storageTestNode
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

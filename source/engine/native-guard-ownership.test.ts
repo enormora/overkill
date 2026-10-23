@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { guardOwnershipTestNode, nativeGuardProbeUrl } from '../test-support/native-guard-probe.ts';
 
@@ -35,5 +36,4 @@ export const testNode = suite(guardOwnershipTestNode.title, [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

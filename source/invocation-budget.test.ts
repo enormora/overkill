@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
 import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
 import {
@@ -63,5 +64,4 @@ export const testNode = suite('invocation budgets', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

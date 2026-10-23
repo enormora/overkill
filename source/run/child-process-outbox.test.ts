@@ -1,4 +1,5 @@
 import { setImmediate as yieldToNextTurn } from 'node:timers/promises';
+import { runIfMain } from '#test-runner';
 import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
 import { createRoot, createSuite, createTestCase, createTestPlan } from '../packages/engine/engine.entry-point.ts';
 import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
@@ -144,7 +145,5 @@ export const testNode = createSuite({
         })
     ]
 });
-
-const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

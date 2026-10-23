@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { withExecutionObservation } from '../engine/execution-observation.ts';
 import {
     createSuite as createOverkillSuite,
@@ -135,6 +136,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

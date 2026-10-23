@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import {
     normalizeConfig,
@@ -236,5 +237,4 @@ export const testNode = suite(
     })
 );
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

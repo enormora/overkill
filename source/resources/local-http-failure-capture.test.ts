@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -131,5 +132,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

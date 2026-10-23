@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { runIfMain } from '#test-runner';
 import { INSTRUMENTER_CONSTANTS, type InstrumenterContext, type MutantCoverage } from '@stryker-mutator/api/core';
 import { suite, test } from '../test/test.entry-point.ts';
 import type { TestScope } from '../engine/engine.entry-point.ts';
@@ -278,5 +279,4 @@ export const testNode = suite('invocation instrumentation ownership', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

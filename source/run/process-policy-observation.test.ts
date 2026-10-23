@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type RunnerError } from '../packages/engine/engine.entry-point.ts';
 import { createRuntimeCapabilityPolicy, type RuntimeCapabilityPolicy } from './capability-policy.ts';
 import { observeProcessExit, observeProcessIpcListeners } from './node-process-policy-observation.ts';
@@ -153,5 +154,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

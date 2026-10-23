@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { runIfMain } from '#test-runner';
 import { z } from 'zod/v4';
 import {
     createSuite as createOverkillSuite,
@@ -345,6 +346,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

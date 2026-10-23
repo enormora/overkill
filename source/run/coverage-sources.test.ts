@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as runtimeSourceTestNode } from './coverage-runtime-source.test.ts';
 import { testNode as typeOnlyTestNode } from './coverage-type-only.test.ts';
@@ -24,7 +25,5 @@ export const testNode = createSuite({
         methodRangesTestNode
     ]
 });
-
-const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

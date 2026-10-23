@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as workerPoolDynamicHedgingTestNode } from './worker-pool-dynamic-hedging.test.ts';
 import { testNode as workerPoolHedgeDispatchTestNode } from './worker-pool-hedge-dispatch.test.ts';
@@ -21,6 +22,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

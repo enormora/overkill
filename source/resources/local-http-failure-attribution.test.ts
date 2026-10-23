@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
+import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createLocalHttpServiceResource, startResources } from '../packages/resources/resources.entry-point.ts';
 import { observeTranscriptEntries } from '../packages/simulation/transcript.entry-point.ts';
@@ -122,5 +123,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as streams } from '../attachments/failure-artifact-stream.test.ts';
 import { testNode as collectors } from './resource-failure-capture.test.ts';
@@ -13,5 +14,4 @@ export const testNode = createSuite({
     title: 'integration failure artifacts',
     children: [ streams, collectors, resources, sharing, preparation, processes ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

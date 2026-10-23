@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { extname } from 'node:path';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -223,5 +224,4 @@ export const testNode = suite('native error ownership', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

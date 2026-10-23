@@ -1,4 +1,5 @@
 import { AsyncResource } from 'node:async_hooks';
+import { runIfMain } from '#test-runner';
 import { createDeterministicClock } from '@enormora/clock';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import {
@@ -145,5 +146,4 @@ export const testNode = suite('resource owner completion', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

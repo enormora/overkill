@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { testNode as jsonFramesTestNode } from '../bounded-json-frames.test.ts';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
@@ -557,6 +558,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

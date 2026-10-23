@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as permissionDenialRuntimePolicyTestNode } from './permission-denial-runtime-policy.test.ts';
 import { testNode as runCapabilityPolicyTestNode } from './run-capability-policy.test.ts';
@@ -25,6 +26,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

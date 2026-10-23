@@ -1,5 +1,6 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { runIfMain } from '#test-runner';
 import { CoverageReport } from 'monocart-coverage-reports';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { collectCoverageScript, withCoverageSources } from '../test-support/coverage-source-fixture.ts';
@@ -142,7 +143,5 @@ export const testNode = createSuite({
         })
     ]
 });
-
-const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

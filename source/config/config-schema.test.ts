@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { safeParse } from '@schema-hub/zod-error-formatter';
 import type { $ZodType } from 'zod/v4/core';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
@@ -537,6 +538,4 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

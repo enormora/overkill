@@ -1,5 +1,6 @@
 import { Transform } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
 import { boundedJsonFrames } from './packages/resources/attachment-context.entry-point.ts';
 import { createJsonFrameLimiter } from './json-frame-limiter.ts';
@@ -64,5 +65,4 @@ export const testNode = suite('bounded JSON frames', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

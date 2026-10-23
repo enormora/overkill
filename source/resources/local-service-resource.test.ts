@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { setTimeout as wait } from 'node:timers/promises';
+import { runIfMain } from '#test-runner';
 import { resourceAttachments } from '../attachments/attachment-context.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { ResourceLifecycleError, startResources } from '../packages/resources/resources.entry-point.ts';
@@ -474,6 +475,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

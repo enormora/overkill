@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createDeterministicClock } from '@enormora/clock';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
@@ -246,5 +247,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

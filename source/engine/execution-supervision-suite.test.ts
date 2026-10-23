@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
 import { testNode as globalErrorObserverTestNode } from './execution-global-error-observer.test.ts';
 import { testNode as nativeGuardOwnershipTestNode } from './native-guard-ownership.test.ts';
@@ -20,5 +21,4 @@ export const testNode = createSuite({
         interruptedCleanupTestNode
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

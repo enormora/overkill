@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { defaultRunRequest, defaultIntegrationProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import type { RunCommand } from '../run/run-types.ts';
@@ -76,5 +77,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

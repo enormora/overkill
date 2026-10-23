@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
@@ -239,7 +240,5 @@ export const testNode = createOverkillSuite({
         })
     ]
 });
-
-const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

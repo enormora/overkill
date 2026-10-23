@@ -1,5 +1,6 @@
 import { setTimeout as scheduleTimer, clearTimeout as cancelTimer } from 'node:timers';
 import { AsyncResource } from 'node:async_hooks';
+import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { activeResourceLeakError, createAsyncLeakMonitor } from './async-leak-diagnostics.ts';
@@ -189,5 +190,4 @@ export const testNode = suite('native infrastructure resources', [
     })
 ]);
 
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

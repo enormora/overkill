@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { safeParse } from '@schema-hub/zod-error-formatter';
 import {
     createSuite,
@@ -71,6 +72,4 @@ export const testNode = createSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

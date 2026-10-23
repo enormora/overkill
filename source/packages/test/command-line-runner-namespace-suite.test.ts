@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createSuite } from '../engine/engine.entry-point.ts';
 import { testNode as commandLineRunnerBenchTestNode } from './command-line-runner-bench.test.ts';
 import { testNode as commandLineRunnerHelpTestNode } from './command-line-runner-help.test.ts';
@@ -10,6 +11,4 @@ export const testNode = createSuite({
     children: [ commandLineRunnerBenchTestNode, commandLineRunnerHelpTestNode ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('#test-runner');
-
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

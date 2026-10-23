@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import { createRoot, createTestCase, createTestPlan, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
@@ -46,7 +47,5 @@ export const testNode = createTestCase({
         return scope.assert.collect();
     }
 });
-
-const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

@@ -1,3 +1,4 @@
+import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
 import {
@@ -176,5 +177,4 @@ export const testNode = createSuite({
         })
     ]
 });
-const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);
