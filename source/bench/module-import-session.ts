@@ -3,7 +3,7 @@ import { createServer, type Server, type Socket } from 'node:net';
 import { createInterface } from 'node:readline';
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod/v4';
-import { createJsonFrameLimiter } from '../packages/resources/attachment-context.entry-point.ts';
+import { createJsonFrameLimiter } from '../json-frame-limiter.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { microsecondsPerMillisecond, nanosecondsPerMicrosecond } from './measurement-units.ts';
 

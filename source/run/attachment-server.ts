@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createServer, type Server, type Socket } from 'node:net';
 import { createInterface, type Interface } from 'node:readline';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
-import { createJsonFrameLimiter } from '../packages/resources/attachment-context.entry-point.ts';
+import { createJsonFrameLimiter } from '../json-frame-limiter.ts';
 import { createStoredRunValue, type StoredRunValue } from './supervised-run-state.ts';
 import type { AttachmentStore } from './attachment-store.ts';
 import {

@@ -1,6 +1,7 @@
 import { buffer } from 'node:stream/consumers';
 import { suite, test, type TestScope } from './packages/test/test.entry-point.ts';
-import { boundedJsonFrames, createJsonFrameLimiter } from './bounded-json-frames.ts';
+import { boundedJsonFrames } from './bounded-json-frames.ts';
+import { createJsonFrameLimiter } from './json-frame-limiter.ts';
 
 async function assertRejectedWebFrame(scope: TestScope, chunks: readonly unknown[], message: string): Promise<void> {
     const frames = boundedJsonFrames(3, 'JSON');
