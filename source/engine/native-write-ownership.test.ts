@@ -40,10 +40,17 @@ async function assertOwnedWrite(scope: TestScope, probe: NativeWriteProbe, basel
     await writing;
 }
 
+const pendingWrites = [ true, false ].flatMap(function infrastructureOwners(infrastructure) {
+    return [ true, false ].map(function requestLayouts(initialized) {
+        return { infrastructure, initialized };
+    });
+});
+
 export const testNode = suite('native write ownership', [
-    ...([ true, false ] as const).map(function infrastructureWrite(infrastructure) {
+    ...pendingWrites.map(function infrastructureWrite(scenario) {
+        const { infrastructure, initialized } = scenario;
         return test(
-            infrastructure ? 'owns queued infrastructure writes' : 'retains test-owned writes as leaks',
+            `${initialized ? 'initialized' : 'legacy'} ${infrastructure ? 'infrastructure' : 'test-owned'} writes`,
             async function (scope) {
                 const monitor = createAsyncLeakMonitor();
                 scope.cleanup(monitor.stop);
@@ -52,7 +59,13 @@ export const testNode = suite('native write ownership', [
                     return resources;
                 }, async function allocateWriteRequest() {
                     const createRequest = function createWriteRequest(): AsyncResource {
-                        return Object.assign(new AsyncResource('WRITEWRAP'), { oncomplete: ignoreWriteCompletion });
+                        const request = Object.assign(new AsyncResource('WRITEWRAP'), {
+                            oncomplete: ignoreWriteCompletion
+                        });
+                        if (initialized) {
+                            Object.assign(request, { async: false, handle: null });
+                        }
+                        return request;
                     };
                     const request = infrastructure ? withRunnerInfrastructure(createRequest) : createRequest();
                     scope.cleanup(function closeWriteRequest() {
