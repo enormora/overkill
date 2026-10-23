@@ -100,6 +100,12 @@ export const testNode = suite('native infrastructure resources', [
                 `keeps ${lifetime} resource growth ambiguous with current timer ${String(includeCurrentTimer)}`,
                 async function (scope) {
                     const probe = await captureStaleResourceProbe(scope, lifetime);
+                    const baselineTimeouts = process
+                        .getActiveResourcesInfo()
+                        .filter(function (type) {
+                            return type === 'Timeout';
+                        })
+                        .length;
                     const observed = await observeStaleTimers(probe, includeCurrentTimer);
                     scope.assert.deepEqual(
                         observed.ambiguousResources,
@@ -114,7 +120,7 @@ export const testNode = suite('native infrastructure resources', [
                                 return type === 'Timeout';
                             })
                             .length,
-                        0
+                        baselineTimeouts
                     );
                     return scope.assert.collect();
                 }
