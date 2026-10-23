@@ -1,3 +1,4 @@
+import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
 import { childProcessEnvelope, type ChildProcessEnvelope } from './child-process-protocol.ts';
 
 export type ChildProcessOutbox = {
@@ -29,22 +30,24 @@ export function createChildProcessOutbox(correlationId: string, ipc: ChildProces
 
     return {
         send(message) {
-            const delivery = Promise.withResolvers<null>();
-            pending.add(delivery.promise);
-            function complete(error: Error | null): void {
-                failure = failure ?? error;
-                pending.delete(delivery.promise);
-                delivery.resolve(null);
-            }
-            if (ipc.send === null) {
-                complete(null);
-                return;
-            }
-            try {
-                ipc.send(childProcessEnvelope(correlationId, message), complete);
-            } catch (error: unknown) {
-                complete(error instanceof Error ? error : new Error('Child IPC send failed.', { cause: error }));
-            }
+            withRunnerInfrastructure(function sendInfrastructureMessage() {
+                const delivery = Promise.withResolvers<null>();
+                pending.add(delivery.promise);
+                function complete(error: Error | null): void {
+                    failure = failure ?? error;
+                    pending.delete(delivery.promise);
+                    delivery.resolve(null);
+                }
+                if (ipc.send === null) {
+                    complete(null);
+                    return;
+                }
+                try {
+                    ipc.send(childProcessEnvelope(correlationId, message), complete);
+                } catch (error: unknown) {
+                    complete(error instanceof Error ? error : new Error('Child IPC send failed.', { cause: error }));
+                }
+            });
         },
         flush,
         async disconnect() {

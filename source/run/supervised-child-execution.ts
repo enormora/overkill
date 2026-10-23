@@ -25,7 +25,6 @@ export function createSupervisedResourceLifecycleTiming(
 }
 
 type SupervisedChildReporterHost = {
-    readonly flush: () => Promise<void>;
     readonly send: (message: SupervisedChildMessage) => void;
 };
 
@@ -69,10 +68,9 @@ export function createSupervisedChildReporter(host: SupervisedChildReporterHost)
             dispose: null,
             kind: 'real-time',
             name: 'supervised-child-ipc',
-            async onEvent(event) {
+            onEvent(event) {
                 if (event.kind !== 'run-start' && event.kind !== 'run-end') {
                     host.send({ event, kind: 'event' });
-                    await host.flush();
                 }
             },
             onFinish: null,
