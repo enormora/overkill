@@ -32,17 +32,48 @@ function referencedTimer(reference: WeakRef<ReferencedTimer>): boolean {
     return reference.deref()?.hasRef() === true;
 }
 
+function nativeOwnership(confirmed: boolean): NativeResourceOwnership {
+    return observingInfrastructure()
+        ? { kind: 'infrastructure', confirmed }
+        : { kind: 'test', attempt: currentAttemptIdentity() };
+}
+
+function isWriteRequest(type: string, resource: unknown): resource is Readonly<Record<string, unknown>> {
+    return type === 'WRITEWRAP' && typeof resource === 'object' && resource !== null;
+}
+
+function recordWriteRequest(id: number, resource: Readonly<Record<string, unknown>>): void {
+    const reference = new WeakRef(resource);
+    resources.set(id, {
+        type: 'SimpleWriteWrap',
+        ownership: nativeOwnership(true),
+        active() {
+            const request = reference.deref();
+            return request !== undefined && typeof Reflect.get(request, 'oncomplete') === 'function' &&
+                Reflect.get(request, 'async') !== false;
+        }
+    });
+}
+
+export function completeNativeWriteRequest(id: number): void {
+    if (resources.get(id)?.type === 'SimpleWriteWrap') {
+        resources.delete(id);
+    }
+}
+
 export function recordNativeResource(id: number, type: string, resource: unknown): void {
     if (unreferencedResourceTypes.has(type)) {
+        return;
+    }
+    if (isWriteRequest(type, resource)) {
+        recordWriteRequest(id, resource);
         return;
     }
     if (type === 'Timeout' && isReferencedTimer(resource)) {
         const reference = new WeakRef(resource);
         resources.set(id, {
             type,
-            ownership: observingInfrastructure()
-                ? { kind: 'infrastructure', confirmed: true }
-                : { kind: 'test', attempt: currentAttemptIdentity() },
+            ownership: nativeOwnership(true),
             active() {
                 return referencedTimer(reference);
             }
@@ -51,9 +82,7 @@ export function recordNativeResource(id: number, type: string, resource: unknown
     }
     resources.set(id, {
         type,
-        ownership: observingInfrastructure()
-            ? { kind: 'infrastructure', confirmed: false }
-            : { kind: 'test', attempt: currentAttemptIdentity() },
+        ownership: nativeOwnership(false),
         active() {
             return true;
         }
