@@ -104,7 +104,9 @@ async function assertSharedTranscriptScopes(scope: TestScope): Promise<void> {
     await copy.runWithTranscriptScope(createTranscriptAttemptScope(work, { index: 1 }), async function separateRetry() {
         scope.assert.equal(recorder.transcript.entryCount, 0);
     });
-    scope.assert.equal(recorder.transcript.entryCount, 1);
+    await copy.runWithTranscriptScope(null, async function assertCopiedLifetimeEvidence() {
+        scope.assert.equal(recorder.transcript.entryCount, 1);
+    });
 }
 export const testNode = createSuite({
     ...metadata,

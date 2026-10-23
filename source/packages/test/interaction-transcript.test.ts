@@ -371,11 +371,13 @@ export const testNode = createSuite({
                     transcript.record('state', 2);
                     scope.assert.deepEqual(transcript.entries, [ [ 'state', 2 ] ]);
                 });
-                scope.assert.deepEqual(transcript.entries, [
-                    [ 'state', 0 ],
-                    [ 'state', 1 ],
-                    [ 'state', 2 ]
-                ]);
+                await runWithTranscriptScope(null, async function assertLifetimeEntries() {
+                    scope.assert.deepEqual(transcript.entries, [
+                        [ 'state', 0 ],
+                        [ 'state', 1 ],
+                        [ 'state', 2 ]
+                    ]);
+                });
 
                 return scope.assert.collect();
             },

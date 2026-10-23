@@ -1,3 +1,4 @@
+import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { attachmentFixture, attachmentWork as work } from '../test-support/attachment-fixture.ts';
@@ -122,7 +123,9 @@ export const testNode = createSuite({
                     recorder.recordCaptureError('custom', 'outside runner', null);
                     await capture.close();
                 });
-                scope.assert.equal(recorder.transcript.entryCount, 1);
+                await runWithTranscriptScope(null, async function assertUnmanagedEvidence() {
+                    scope.assert.equal(recorder.transcript.entryCount, 1);
+                });
                 return scope.assert.collect();
             }
         })

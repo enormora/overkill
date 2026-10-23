@@ -98,8 +98,10 @@ export const testNode = createSuite({
             title: 'HTTP transcript primitives expose immutable safe values',
             annotations: {},
             controls: {},
-            body(scope: TestScope) {
-                assertTranscriptPrimitives(scope);
+            async body(scope: TestScope) {
+                await runWithTranscriptScope(null, async function assertLifetimePrimitives() {
+                    assertTranscriptPrimitives(scope);
+                });
 
                 return scope.assert.collect();
             }
@@ -110,7 +112,9 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             async body(scope: TestScope) {
-                await assertScopedTranscriptStore(scope);
+                await runWithTranscriptScope(null, async function assertScopeRestoration() {
+                    await assertScopedTranscriptStore(scope);
+                });
 
                 return scope.assert.collect();
             }
