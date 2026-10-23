@@ -51,8 +51,8 @@ type SpawnOutput = {
     readonly stdout: string;
 };
 
-const packageSmokeFolder = fileURLToPath(new URL('.', import.meta.url));
-const packageSmokeNodeModules = path.join(packageSmokeFolder, 'node_modules');
+const packageSmokeFolder = fileURLToPath(new URL('./consumer/', import.meta.url));
+const packageSmokeNodeModules = fileURLToPath(new URL('./node_modules/', import.meta.url));
 const testPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/test');
 const runPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/run');
 const resourcesPackageFolder = path.join(packageSmokeNodeModules, '@overkill-dev/resources');
@@ -111,6 +111,7 @@ async function collectStream(stream: Readable): Promise<string> {
 }
 
 async function spawnCommand(command: string, args: readonly string[]): Promise<SpawnOutput> {
+    await fs.mkdir(packageSmokeFolder, { recursive: true });
     const child = spawn(command, Array.from(args), {
         cwd: packageSmokeFolder,
         stdio: [ 'ignore', 'pipe', 'pipe' ]
@@ -172,6 +173,7 @@ async function writeCustomAuthoringSmokeFiles(): Promise<void> {
 }
 
 async function writePackageSmokeProject(): Promise<void> {
+    await fs.mkdir(packageSmokeFolder, { recursive: true });
     await Promise.all([
         fs.writeFile(path.join(packageSmokeFolder, packageSmokeConfigFile), packageSmokeConfigScript),
         writeAuthoringSmokeFile(),
@@ -180,6 +182,7 @@ async function writePackageSmokeProject(): Promise<void> {
 }
 
 async function writeReporterPolicySmokeProject(): Promise<void> {
+    await fs.mkdir(packageSmokeFolder, { recursive: true });
     await Promise.all([
         fs.writeFile(path.join(packageSmokeFolder, lineReporterConfigFile), lineReporterConfigScript),
         fs.writeFile(path.join(packageSmokeFolder, finalOnlyReporterConfigFile), finalOnlyReporterConfigScript),
