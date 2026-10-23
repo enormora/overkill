@@ -68,7 +68,7 @@
         "@types/convert-source-map": "2.0.3",
         "@types/node": "26.6.5",
         "c8": "12.0.0",
-        "dependency-cruiser": "18.6.0",
+        "dependency-cruiser": "18.7.0",
         "eslint": "10.7.0",
         "jscpd": "5.4.1",
         "knip": "6.42.1",
