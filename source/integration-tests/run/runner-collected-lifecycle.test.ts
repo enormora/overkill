@@ -6,7 +6,7 @@ import { createPlainOutputRenderer, createSuite, createTestCase } from '../../pa
 import { normalizeConfig, orchestrator, type FrozenRunCommand } from '../../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const bootstrapKey = 'overkillLifecycleBootstrap';
@@ -116,4 +116,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

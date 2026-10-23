@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod/v4';
 import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
-import { runIfMain } from './direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
 function cliExitCode(error: Readonly<ExecException> | null): number | null {
@@ -245,4 +245,4 @@ export const testNode = createSuite({
         })
     ]
 });
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

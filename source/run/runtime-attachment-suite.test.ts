@@ -15,5 +15,5 @@ export const testNode = createSuite({
     title: 'runtime attachments',
     children: [ retention, results, worker, validation, protocol, attachments, ownership, failure ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

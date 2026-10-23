@@ -10,7 +10,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 import type { RunCommand, RunRequest } from '../../run/run-types.ts';
 import type { TimeoutPolicy } from '../../config/types.ts';
 
@@ -123,4 +123,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

@@ -183,5 +183,5 @@ export const testNode = suite('native infrastructure resources', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

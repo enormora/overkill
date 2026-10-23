@@ -22,7 +22,7 @@
     "dependencies": {
         "@enormora/clock": "0.0.3",
         "@jridgewell/trace-mapping": "0.3.31",
-        "@overkill-dev/reporter-line": "0.0.54",
+        "@overkill-dev/reporter-line": "0.0.60",
         "@schema-hub/zod-error-formatter": "0.0.19",
         "@stdlib/stats-base-dists-binomial-quantile": "0.2.3",
         "@stryker-mutator/api": "10.0.0",
@@ -57,9 +57,10 @@
         "@enormora/eslint-config-typescript": "0.0.58",
         "@enormora/objectory": "0.0.25",
         "@ls-lint/ls-lint": "2.3.2",
-        "@overkill-dev/assert": "0.0.53",
-        "@overkill-dev/doubles": "0.0.51",
-        "@overkill-dev/engine": "0.0.61",
+        "@overkill-dev/assert": "0.0.59",
+        "@overkill-dev/doubles": "0.0.57",
+        "@overkill-dev/engine": "0.0.67",
+        "@overkill-dev/run": "0.0.86",
         "@packtory/cli": "0.0.124",
         "@packtory/github-release-gate": "0.0.85",
         "@rspack/core": "2.2.9",
@@ -81,5 +82,8 @@
     },
     "allowScripts": {
         "node-pty@1.2.0-beta.15": true
+    },
+    "imports": {
+        "#test-runner": "@overkill-dev/run"
     }
 }

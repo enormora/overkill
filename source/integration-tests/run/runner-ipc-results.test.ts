@@ -6,7 +6,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const fixturePath = 'source/integration-tests/run/fixtures/large-ipc-results.test.ts';
 const caseCount = 32;
@@ -78,4 +78,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

@@ -14,7 +14,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const fixtureRoot = 'source/integration-tests/run/fixtures';
 const branchReportSchema = z.record(
@@ -112,4 +112,4 @@ export const testNode = createSuite({
     })
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

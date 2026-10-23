@@ -210,5 +210,5 @@ export const testNode = suite('benchmark profile configuration', [
     })
 ]);
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

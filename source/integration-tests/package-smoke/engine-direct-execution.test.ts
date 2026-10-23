@@ -27,7 +27,7 @@ import {
     type TestScope
 } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
-import { runIfMain } from './direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 type SmokeCaseDefinition = {
     readonly name: string;
@@ -260,7 +260,7 @@ export const testNode = createSuite({
                     title: 'passes'
                 });
 
-                await runIfMain({ main: false } as ImportMeta, testCase, []);
+                await runIfMain({ main: false } as ImportMeta, testCase, { reporters: [] });
                 scope.assert.true(true, { message: 'runIfMain returned' });
 
                 return scope.assert.collect();
@@ -369,4 +369,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

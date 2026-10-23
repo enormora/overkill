@@ -18,7 +18,7 @@ import {
     assertTestStandardSubpathExports,
     importPackagedFilters
 } from './package-export-assertions.test.ts';
-import { runIfMain } from './direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 import {
     authoringSmokeScript,
     customAuthoringFacadeScript,
@@ -504,4 +504,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

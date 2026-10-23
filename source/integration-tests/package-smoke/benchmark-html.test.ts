@@ -4,7 +4,7 @@ import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engin
 import type { createBenchmarkHtmlReporter } from '@overkill-dev/reporter-benchmark-html';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 import { benchmarkHtmlTimelineFixture } from '../../test-support/benchmark-html-fixture.ts';
-import { runIfMain } from './direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 async function outputPath(scope: TestScope): Promise<string> {
     const directory = await mkdtemp('target/installed-benchmark-html-');
@@ -61,4 +61,4 @@ export const testNode = createSuite({
         })
     ]
 });
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

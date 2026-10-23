@@ -46,7 +46,7 @@ export default [
     },
     {
         ...nodeConfigFileConfig,
-        files: [ 'dependency-cruiser.config.js', 'eslint.config.js' ]
+        files: [ 'dependency-cruiser.config.js', 'eslint.config.js', 'overkill.config.js' ]
     },
     {
         ...nodeEntryPointFileConfig,

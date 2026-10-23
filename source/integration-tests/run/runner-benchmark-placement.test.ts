@@ -10,7 +10,7 @@ import {
 import { placementRunner } from '../../test-support/benchmark-placement-fixture.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 import { readBenchmarkRunMetadata } from '../../bench/benchmark-run-report.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const fixture = 'source/integration-tests/run/fixtures/placement.bench.test.ts';
 const workerExecution: BenchmarkExecution = {
@@ -148,4 +148,4 @@ export const testNode = suite('adaptive benchmark worker execution', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

@@ -18,7 +18,7 @@ import {
     defaultRunRequest
 } from '../../test-support/run-command-factory.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const coverageFile = 'source/integration-tests/run/fixtures/coverage.test.ts';
 type MicrotestProcessModel = MicrotestExecution['processModel'];
@@ -175,4 +175,4 @@ export const testNode = createSuite({
         ];
     })
 });
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

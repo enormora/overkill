@@ -1,48 +1,13 @@
-import { setTimeout as wait } from 'node:timers/promises';
 import { defineNarrowingCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
-    type DefinedReporter,
-    type ReporterEvent,
-    type TestBody,
-    type TestNode,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { createTestSupportRunIfMain, runIfMain } from './run-if-main.ts';
-import { defineFixedOutputRenderer, defineFixedReporter } from './reporter-definition.ts';
+import { testNode as publishedRunnerTestNode } from './published-runner.test.ts';
 import { runResultFactory } from './run-result-factory.ts';
-
-type CapturedRoot = {
-    readonly tags: readonly string[];
-    readonly title: string;
-};
-
-type ExitCodeFixture = {
-    readonly exitCode: () => number | string | null | undefined;
-    readonly runIfMain: typeof runIfMain;
-};
-
-function createExitCodeFixture(initialExitCode: number | string | null | undefined): ExitCodeFixture {
-    let exitCode = initialExitCode;
-
-    return {
-        exitCode() {
-            return exitCode;
-        },
-        runIfMain: createTestSupportRunIfMain({
-            nodeVersion: '26.1.1',
-            readExitCode() {
-                return exitCode;
-            },
-            setExitCode(nextExitCode) {
-                exitCode = nextExitCode;
-            }
-        })
-    };
-}
 
 function defaultFailure(): unknown {
     return {
@@ -107,64 +72,13 @@ function assertExplicitFailureFields(scope: OverkillScope, runResult: RunResult)
     });
 }
 
-function importMeta(main: boolean): Readonly<ImportMeta> {
-    return {
-        dirname: '/workspace',
-        filename: '/workspace/direct.test.ts',
-        main,
-        resolve(specifier: string) {
-            return import.meta.resolve(specifier);
-        },
-        url: 'file:///workspace/direct.test.ts'
-    };
-}
-
-function passingBody(scope: OverkillScope): ReturnType<TestBody> {
-    scope.assert.true(true);
-
-    return scope.assert.collect();
-}
-
-function failingBody(scope: OverkillScope): ReturnType<TestBody> {
-    scope.assert.true(false);
-
-    return scope.assert.collect();
-}
-
-function supportTestCase(body: TestBody): TestNode {
-    return createOverkillTestCase({
-        body,
-        definitionLocations: [ { kind: 'unknown' as const } ],
-        annotations: {},
-        controls: {},
-        title: 'case'
-    });
-}
-
-function captureRoot(recordRoot: (root: CapturedRoot) => void): DefinedReporter {
-    return defineFixedReporter({
-        dispose: null,
-        kind: 'real-time',
-        name: 'capture-root',
-        onEvent(event: ReporterEvent) {
-            if (event.kind === 'run-start') {
-                recordRoot({
-                    tags: event.root.annotations.tags,
-                    title: event.root.title
-                });
-            }
-        },
-        onFinish: null,
-        sinks: []
-    });
-}
-
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/test-support/run-result-factory.test.ts',
     annotations: {},
     controls: {},
     children: [
+        publishedRunnerTestNode,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'runResultFactory builds nested result data',
@@ -322,111 +236,10 @@ export const testNode = createOverkillSuite({
 
                 return scope.assert.collect();
             }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'test support runIfMain() returns without running imported modules',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createExitCodeFixture(undefined);
-
-                await fixture.runIfMain(importMeta(false), supportTestCase(failingBody), { reporters: [] });
-                scope.assert.equal(fixture.exitCode(), undefined);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'test support runIfMain() runs direct files with explicit root options',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const roots: CapturedRoot[] = [];
-
-                await runIfMain(importMeta(true), supportTestCase(passingBody), {
-                    outputRenderer: defineFixedOutputRenderer({
-                        render(intent) {
-                            return intent.text;
-                        }
-                    }),
-                    reporters: [
-                        captureRoot(function recordRoot(root) {
-                            roots.push(root);
-                        })
-                    ],
-                    root: {
-                        annotations: { tags: [ 'support' ] },
-                        controls: {},
-                        title: 'support-root'
-                    }
-                });
-
-                scope.assert.deepEqual(roots, [
-                    {
-                        tags: [ 'support' ],
-                        title: 'support-root'
-                    }
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'test support runIfMain() measures elapsed time for direct files',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const results: RunResult[] = [];
-
-                await runIfMain(
-                    importMeta(true),
-                    supportTestCase(async function delayedPass(testScope) {
-                        await wait(10);
-                        return passingBody(testScope);
-                    }),
-                    {
-                        reporters: [ defineFixedReporter({
-                            dispose: null,
-                            kind: 'final-result',
-                            name: 'capture-timings',
-                            onResult(result) {
-                                results.push(result);
-                            },
-                            sinks: []
-                        }) ]
-                    }
-                );
-
-                scope.assert.equal(results.length, 1);
-                const result = results[0];
-                scope.require.defined(result);
-                scope.assert.true((result.perTest[0]?.durationMicroseconds ?? 0) > 0);
-                scope.assert.true(result.timings.summary.testExecutionWallTimeMicroseconds > 0);
-                scope.assert.true(result.timings.summary.totalWallTimeMicroseconds > 0);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'test support runIfMain() sets a failure exit code for failing direct files',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const fixture = createExitCodeFixture(undefined);
-
-                await fixture.runIfMain(importMeta(true), supportTestCase(failingBody), { reporters: [] });
-                scope.assert.equal(fixture.exitCode(), 1);
-
-                return scope.assert.collect();
-            }
         })
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('./run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 
-await runTestFileIfMain(import.meta, testNode);
+await runIfMain(import.meta, testNode);

@@ -5,6 +5,7 @@
             "@overkill-dev/assert": ["./packages/assert/assert.entry-point.ts"],
             "@overkill-dev/doubles": ["./packages/doubles/doubles.entry-point.ts"],
             "@overkill-dev/engine": ["./packages/engine/engine.entry-point.ts"],
+            "@overkill-dev/engine/*": ["./*"],
             "@overkill-dev/reporter-line": ["./packages/reporter-line/reporter-line.entry-point.ts"]
         },
         "tsBuildInfoFile": "../target/buildcache/unit-tests.tsbuildinfo",

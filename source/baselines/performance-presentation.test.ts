@@ -134,5 +134,5 @@ export const testNode = suite('performance chart presentation', [
         return scope.assert.collect();
     })
 ]);
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

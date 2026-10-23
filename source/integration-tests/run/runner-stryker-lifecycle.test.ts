@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 import { strykerCampaignScript, strykerHitLimitScript } from './stryker-campaign-scripts.test.ts';
 import { strykerCoverageScript } from './stryker-coverage-scripts.test.ts';
 import { strykerIdentityScript } from './stryker-identity-scripts.test.ts';
@@ -151,4 +151,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

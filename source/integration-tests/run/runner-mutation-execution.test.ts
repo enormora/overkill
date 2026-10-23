@@ -5,7 +5,7 @@ import { createSuite, createTestCase, type TestScope } from '../../packages/engi
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { normalizeConfig, orchestrator } from '../../packages/run/run.entry-point.ts';
 import { createMutationRunCommand } from '../../packages/stryker-runner/mutation-execution-policy.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 import { createMutationExecution, type MutationExecution } from './mutation-execution.test.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -295,4 +295,4 @@ export const testNode = createTestCase({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

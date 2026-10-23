@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createSuite, createTestCase } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
-import { runIfMain } from './direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 import { strykerRunnerScript } from './stryker-runner-scripts.test.ts';
 
 type ScriptOutput = {
@@ -44,4 +44,4 @@ export const testNode = createSuite({
     title: 'source/integration-tests/package-smoke/stryker-runner.test.ts'
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

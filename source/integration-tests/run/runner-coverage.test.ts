@@ -23,7 +23,7 @@ import { generateCoverageReports } from '../../run/coverage-reporting.ts';
 import { defaultCoveragePolicy } from '../../config/defaults.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 import { loadCoverageFixtures } from './fixtures/coverage-files.ts';
 
 const coverageFixturePath = 'source/integration-tests/run/fixtures/coverage.test.ts';
@@ -410,4 +410,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

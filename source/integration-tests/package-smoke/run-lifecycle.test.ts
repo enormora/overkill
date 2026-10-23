@@ -4,7 +4,7 @@ import path from 'node:path';
 import { createProgram, getPreEmitDiagnostics, ModuleKind, ScriptTarget } from 'typescript';
 import { createSuite, createTestCase } from '@overkill-dev/engine';
 import { createLineReporter } from '@overkill-dev/reporter-line';
-import { runIfMain } from './direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const lifecycleScript = `
 import assert from 'node:assert/strict';
@@ -177,4 +177,4 @@ export const testNode = createSuite({
     ]
 });
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

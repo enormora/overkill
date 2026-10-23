@@ -16,5 +16,5 @@ export const testNode = createSuite({
     children: [ collection, execution, policy, coverage, boundaries, executionSession, executionFailure, budgets ]
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

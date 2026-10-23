@@ -3,7 +3,7 @@ import { testNode as catalogExecutionTestNode } from '../../integration-tests/ru
 import { suite, test } from '../test/test.entry-point.ts';
 import { workIdentityKey, type CollectedRunPlan, type WorkId } from '../run/run.entry-point.ts';
 import { collectedMutationPlan } from '../../test-support/mutation-plan-fixture.ts';
-import { runIfMain } from '../../test-support/run-if-main.ts';
+import { runIfMain } from '#test-runner';
 import { testNode as admissionTestNode } from './mutation-lifecycle.test.ts';
 import { testNode as observationTestNode } from './mutation-observation.test.ts';
 import {

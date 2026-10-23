@@ -311,6 +311,6 @@ export const testNode = createSuite({
     title: 'source/run/direct-entrypoint-collection.test.ts'
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

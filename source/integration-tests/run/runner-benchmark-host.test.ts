@@ -4,7 +4,7 @@ import { benchmarkHostSnapshotSchema } from '../../bench/benchmark-host-snapshot
 import { collectBenchmarkHost } from '../../run/benchmark-host.ts';
 import { collectPlatformPressure } from '../../run/benchmark-host-platform.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 export const testNode = suite('benchmark host observer integration', [
     test('records no platform-specific pressure on unsupported platforms', async function (scope: TestScope) {
@@ -36,4 +36,4 @@ export const testNode = suite('benchmark host observer integration', [
     )
 ]);
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

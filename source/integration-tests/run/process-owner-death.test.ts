@@ -6,7 +6,7 @@ import { Worker } from 'node:worker_threads';
 import { fork } from 'node:child_process';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runIfMain } from '../direct-launcher.test.ts';
+import { runIfMain } from '#test-runner';
 
 const pollMilliseconds = 25;
 const maximumPolls = 200;
@@ -112,4 +112,4 @@ export const testNode = suite('process helper ownership', [
     })
 ]);
 
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

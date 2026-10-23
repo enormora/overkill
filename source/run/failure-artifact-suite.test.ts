@@ -13,5 +13,5 @@ export const testNode = createSuite({
     title: 'integration failure artifacts',
     children: [ streams, collectors, resources, sharing, preparation, processes ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

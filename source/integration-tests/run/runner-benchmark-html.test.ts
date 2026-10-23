@@ -164,6 +164,6 @@ export const testNode = suite('benchmark HTML runner integration', [
         return scope.assert.collect();
     })
 ]);
-const { runIfMain } = await import('../direct-launcher.test.ts');
+const { runIfMain } = await import('#test-runner');
 const { createLineReporter } = await import('../../packages/reporter-line/reporter-line.entry-point.ts');
-await runIfMain(import.meta, testNode, [ createLineReporter() ]);
+await runIfMain(import.meta, testNode, { reporters: [ createLineReporter() ] });

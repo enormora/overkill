@@ -57,6 +57,6 @@ export const testNode = createTestCase({
     title: 'direct entrypoint collection accepts decoded sibling cases and rejects changed case data'
 });
 
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 
 await runIfMain(import.meta, testNode);

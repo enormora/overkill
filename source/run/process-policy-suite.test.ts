@@ -14,5 +14,5 @@ export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     children: [ hostTestNode, exitTestNode, transportTestNode, observation, schemas, attachmentSchemas, shutdown ]
 });
-const { runIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain } = await import('#test-runner');
 await runIfMain(import.meta, testNode);

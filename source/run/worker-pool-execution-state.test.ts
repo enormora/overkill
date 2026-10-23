@@ -475,5 +475,5 @@ export const testNode = createOverkillSuite({
     ]
 });
 
-const { runIfMain: runTestFileIfMain } = await import('../test-support/run-if-main.ts');
+const { runIfMain: runTestFileIfMain } = await import('#test-runner');
 await runTestFileIfMain(import.meta, testNode);
