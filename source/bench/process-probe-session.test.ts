@@ -10,6 +10,7 @@ type ProbePeer = {
     readonly socket: Socket;
     readonly token: string;
     readonly reportPath: string;
+    readonly exited: Promise<void>;
 };
 type RejectedIdentity = { readonly title: string; readonly token: (valid: string) => string; readonly pid: number; };
 
@@ -25,6 +26,10 @@ function probeReport(): NodeProbeReport {
 async function probePeer(scope: TestScope): Promise<ProbePeer> {
     const probe = await createProcessProbe();
     scope.cleanup(probe.dispose);
+    const exited = Promise.withResolvers<undefined>();
+    scope.cleanup(function finishProbeChild() {
+        exited.resolve(undefined);
+    });
     probe.identify(process.pid);
     const socket = connect({ host: '127.0.0.1', port: Number(probe.environment.OVERKILL_BENCH_PROBE_PORT) });
     scope.cleanup(function closePeer() {
@@ -38,7 +43,8 @@ async function probePeer(scope: TestScope): Promise<ProbePeer> {
         probe,
         socket,
         token: String(probe.environment.OVERKILL_BENCH_PROBE_TOKEN),
-        reportPath: String(probe.environment.OVERKILL_BENCH_PROBE_REPORT)
+        reportPath: String(probe.environment.OVERKILL_BENCH_PROBE_REPORT),
+        exited: exited.promise
     };
 }
 
@@ -54,9 +60,8 @@ async function replyToSnapshot(peer: ProbePeer, report: NodeProbeReport): Promis
 }
 
 async function rejectActiveProbe(scope: TestScope, peer: ProbePeer, frame: string): Promise<void> {
-    const activeChild = Promise.withResolvers<never>();
     const checked = scope.assert.rejects(async function rejectedSnapshot() {
-        return await peer.probe.checkpointSnapshot(activeChild.promise);
+        return await peer.probe.checkpointSnapshot(peer.exited);
     }, { message: 'Node probe disconnected while its child remained active.' });
     peer.socket.write(frame);
     await checked;
@@ -84,7 +89,7 @@ export const testNode = suite('Node probe control protocol', [
         const peer = await probePeer(scope);
         const report = probeReport();
         const response = replyToSnapshot(peer, report);
-        const snapshot = await peer.probe.checkpointSnapshot(Promise.withResolvers<never>().promise);
+        const snapshot = await peer.probe.checkpointSnapshot(peer.exited);
         await response;
         scope.assert.deepEqual(snapshot, report);
         return scope.assert.collect();
