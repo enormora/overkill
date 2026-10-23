@@ -44,6 +44,7 @@ async function assertScenarioResponses(
     scope.assert.equal(failureResponse.status, 500);
     scope.assert.deepEqual(await failureResponse.json(), { key: 'payments-500', status: 500 });
     scope.assert.equal(unknownResponse.status, 400);
+    await unknownResponse.arrayBuffer();
 }
 
 function assertScenarioTranscript(
@@ -148,9 +149,11 @@ async function completionOrderedEntries(
     await slowStarted.promise;
     const fastRequest = fetch(`${server.baseUrl}/fast`);
 
-    await fastRequest;
+    const fastResponse = await fastRequest;
+    await fastResponse.arrayBuffer();
     releaseSlowResponse.resolve(undefined);
-    await slowRequest;
+    const slowResponse = await slowRequest;
+    await slowResponse.arrayBuffer();
 
     return server.transcript.entries.filter(function isHttpEntry(
         entry
@@ -195,6 +198,7 @@ async function assertDisposalClosesServer(scope: TestScope): Promise<void> {
     const response = await fetch(baseUrl);
 
     scope.assert.equal(response.status, 200);
+    await response.arrayBuffer();
     await server.dispose();
     scope.assert.equal(await rejectedValue(fetch(baseUrl, { signal: testSignal() })) instanceof Error, true);
 }
@@ -210,6 +214,7 @@ async function assertHandlerErrorsFailDisposal(scope: TestScope): Promise<void> 
     });
     const server = await startSimulatedHttpServer({ simulation });
     const response = await fetch(server.baseUrl);
+    await response.arrayBuffer();
     const disposalError = await rejectedValue(server.dispose());
 
     scope.assert.equal(response.status, 500);
@@ -232,7 +237,8 @@ async function assertNonErrorHandlerFailuresFailDisposal(scope: TestScope): Prom
     });
     const server = await startSimulatedHttpServer({ simulation });
 
-    await fetch(server.baseUrl);
+    const response = await fetch(server.baseUrl);
+    await response.arrayBuffer();
 
     const disposalError = await rejectedValue(server.dispose());
 

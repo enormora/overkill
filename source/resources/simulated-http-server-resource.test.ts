@@ -107,6 +107,7 @@ async function assertHandlerErrorsFailResourceDisposal(scope: TestScope): Promis
     });
     const session = await startResources({ resources: { api: resource }, signal: testSignal() });
     const response = await fetch(session.context.api.baseUrl);
+    await response.arrayBuffer();
     const disposalError = await rejectedValue(session.disposeOnce({ signal: testSignal() }));
 
     scope.assert.equal(response.status, 500);

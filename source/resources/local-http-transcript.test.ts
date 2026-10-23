@@ -169,7 +169,8 @@ async function assertRawRequest(scope: TestScope): Promise<void> {
 async function transcriptEntryCount(policy: DisabledTranscriptPolicy): Promise<number> {
     const session = await startResources({ resources: { app: localHttpResource(policy) }, signal: testSignal });
 
-    await fetch(session.context.app.baseUrl);
+    const response = await fetch(session.context.app.baseUrl);
+    await response.arrayBuffer();
     const { entryCount } = session.context.app.transcript;
 
     await session.disposeOnce({ signal: testSignal });
@@ -190,7 +191,8 @@ async function captureFailureEntries(): Promise<HttpTranscript<unknown>['entries
         signal: testSignal
     });
 
-    await fetch(session.context.app.baseUrl);
+    const response = await fetch(session.context.app.baseUrl);
+    await response.arrayBuffer();
     const { entries } = session.context.app.transcript;
 
     await session.disposeOnce({ signal: testSignal });
