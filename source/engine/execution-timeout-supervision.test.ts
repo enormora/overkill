@@ -115,11 +115,11 @@ async function finishSoftTimedCase(
 async function executeHardTimedCase(
     wallClock: DeterministicClock,
     supervision: ExecutionSupervision,
-    timeoutPolicy: ExecuteTimeoutPolicy
+    timeoutPolicy: ExecuteTimeoutPolicy,
+    bodyGate: Promise<void>
 ): ReturnType<typeof executeCaseBody> {
-    const bodyGate = Promise.withResolvers<never>();
     const testCase = createPlannedCase('hard timeout', async function hardTimeoutBody(testScope) {
-        await bodyGate.promise;
+        await bodyGate;
 
         return testScope.assert.collect();
     });
@@ -167,7 +167,11 @@ export const testNode = createOverkillSuite({
                 async body(scope: OverkillScope) {
                     const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
                     const supervision = createExecutionSupervision();
-                    const execution = executeHardTimedCase(wallClock, supervision, timeoutPolicy);
+                    const bodyGate = Promise.withResolvers<undefined>();
+                    scope.cleanup(function releaseTimedOutBody() {
+                        bodyGate.resolve(undefined);
+                    });
+                    const execution = executeHardTimedCase(wallClock, supervision, timeoutPolicy, bodyGate.promise);
 
                     wallClock.advanceByMilliseconds(timeoutPolicy.hardTimeoutMilliseconds);
                     const executedCase = await execution;
