@@ -4,7 +4,7 @@ import { createServer, type Server, type Socket } from 'node:net';
 import { createInterface } from 'node:readline';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { processNodeProbeEntryPointUrl } from '../packages/bench/process-node-probe.entry-point.ts';
-import { createJsonFrameLimiter } from '../packages/resources/attachment-context.entry-point.ts';
+import { createJsonFrameLimiter } from '../json-frame-limiter.ts';
 import {
     nodeProbeIdentitySchema,
     nodeProbeMaximumReportBytes,
