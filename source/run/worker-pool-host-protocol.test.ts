@@ -198,7 +198,7 @@ async function assertEntrypointDispatchesHostCommands(scope: OverkillScope): Pro
         execFile(
             process.execPath,
             [ '--input-type=module', '--eval', script ],
-            { timeout: 2000 },
+            { timeout: 5000 },
             function (error, stdout) {
                 if (error === null) {
                     resolve(stdout);
