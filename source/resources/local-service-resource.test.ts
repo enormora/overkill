@@ -352,6 +352,10 @@ async function assertLocalProcessService(scope: TestScope): Promise<void> {
 }
 
 async function assertProcessEarlyExit(scope: TestScope): Promise<void> {
+    const readiness = Promise.withResolvers<undefined>();
+    scope.cleanup(function finishReadinessProbe() {
+        readiness.resolve(undefined);
+    });
     const service = createLocalProcessServiceResource({
         name: 'daemon',
         scope: 'per-case',
@@ -373,7 +377,7 @@ async function assertProcessEarlyExit(scope: TestScope): Promise<void> {
             };
         },
         async ready(owner) {
-            await waitForOutput(owner, 'never');
+            await readiness.promise;
 
             return Object.freeze({ output: owner.output.stderr.text() });
         }
