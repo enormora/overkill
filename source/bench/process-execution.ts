@@ -52,6 +52,7 @@ async function withProcessCancellation<Value>(signal: AbortSignal, operation: Pr
         return await Promise.race([ operation, cancelled.promise ]);
     } finally {
         signal.removeEventListener('abort', abort);
+        cancelled.reject(new Error('Process cancellation observation ended.'));
     }
 }
 
