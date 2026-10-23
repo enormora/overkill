@@ -50,7 +50,7 @@ function recordWriteRequest(id: number, resource: Readonly<Record<string, unknow
         active() {
             const request = reference.deref();
             return request !== undefined && typeof Reflect.get(request, 'oncomplete') === 'function' &&
-                Reflect.get(request, 'async') !== false;
+                (Reflect.get(request, 'async') !== false || Reflect.get(request, 'handle') === null);
         }
     });
 }
