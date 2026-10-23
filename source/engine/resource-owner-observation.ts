@@ -3,6 +3,7 @@ import { createStoredValue } from '../stored-value.ts';
 import { registerExecutionDisposal } from './execution-observation.ts';
 import {
     recordNativeResource,
+    completeNativeWriteRequest,
     forgetNativeResource,
     clearNativeResources,
     observeNativeResources,
@@ -79,6 +80,9 @@ export function observeResourceOwnerAllocations(): () => void {
             init(id, type, _trigger, resource: unknown) {
                 recordResourceOwnerAllocation(type);
                 recordNativeResource(id, type, resource);
+            },
+            before(id) {
+                completeNativeWriteRequest(id);
             },
             destroy(id) {
                 forgetNativeResource(id);
