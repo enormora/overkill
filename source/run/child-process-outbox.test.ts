@@ -1,57 +1,43 @@
 import { setImmediate as yieldToNextTurn } from 'node:timers/promises';
-import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
+import { createAsyncLeakMonitor } from '../engine/async-leak-diagnostics.ts';
+import { createRoot, createSuite, createTestCase, createTestPlan } from '../packages/engine/engine.entry-point.ts';
 import { testDouble } from '../packages/doubles/doubles.entry-point.ts';
+import { delayedOutbox } from '../test-support/child-process-outbox-fixture.ts';
 import {
     createChildProcessOutbox,
-    type ChildProcessOutbox,
     type SendChildProcessMessage
 } from './child-process-outbox.ts';
-import { childProcessEnvelope, type ChildProcessEnvelope } from './child-process-protocol.ts';
+import { childProcessEnvelope } from './child-process-protocol.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
-type OutboxFixture = {
-    readonly outbox: ChildProcessOutbox;
-    readonly complete: (message: unknown, error: Error | null) => void;
-    readonly disconnected: () => boolean;
-    readonly messages: readonly ChildProcessEnvelope<unknown>[];
-};
-
-function delayedOutbox(queued: readonly string[]): OutboxFixture {
-    const messages: ChildProcessEnvelope<unknown>[] = [];
-    const deliveries = new Map<unknown, (error: Error | null) => void>();
-    let disconnected = false;
-
-    const fixture: OutboxFixture = {
-        outbox: createChildProcessOutbox('test', {
-            disconnect() {
-                disconnected = true;
-            },
-            send(message, complete) {
-                messages.push(message);
-                deliveries.set(message.message, complete);
-                return false;
-            }
-        }),
-        complete(message, error) {
-            const complete = deliveries.get(message);
-            if (complete === undefined) {
-                throw new Error('Message was not sent.');
-            }
-            complete(error);
-        },
-        disconnected() {
-            return disconnected;
-        },
-        messages
-    };
-    queued.forEach(fixture.outbox.send);
-    return fixture;
-}
-
 export const testNode = createSuite({
     ...metadata,
     title: 'source/run/child-process-outbox.test.ts',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'pending IPC deliveries belong to runner infrastructure',
+            async body(scope) {
+                const monitor = createAsyncLeakMonitor();
+                scope.cleanup(monitor.stop);
+                const testCase = createTestPlan(createRoot({
+                    ...metadata,
+                    title: 'IPC observation',
+                    children: [ testNode ]
+                }))
+                    .cases[0];
+                const fixture = delayedOutbox([]);
+                await monitor.runCase(testCase, async function queuePendingDelivery() {
+                    fixture.outbox.send('event');
+                    await yieldToNextTurn();
+                });
+                const leak = monitor.casePromiseLeakError(testCase);
+                fixture.complete('event', null);
+                await fixture.outbox.disconnect();
+                scope.assert.equal(leak, null);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'disconnect waits for every delivery even when callbacks finish out of order',
