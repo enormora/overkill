@@ -23,6 +23,7 @@ Rules:
 - Shared feature folders are the source of truth.
 - Published packages are assembled by `packtory` from facade entry points in `source/packages/**`.
 - `just compile` separates production package output (`target/package-build/source`) from compiled tests (`target/build/source`). Package analysis uses only production output.
+- `just test-mutation-integration` checks source mutation integration. `just test-mutation-package-smoke` checks packed Stryker packages. The full integration and package smoke recipes include the same scenarios.
 - Production and browser builds skip dependency declaration checks while retaining strict checks for project code.
 - Register dynamically loaded runner modules as private roots in `packtory.config.js` to preserve their runtime exports.
 - Adding a package should usually mean adding a small facade first, not creating a new isolated source tree.
