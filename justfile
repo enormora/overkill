@@ -1,5 +1,6 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
 package-smoke-packages := '@overkill-dev/reporter-benchmark-html,@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+mutation-smoke-packages := '@overkill-dev/engine,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/reporter-line'
 
 default:
     @just --list
@@ -35,8 +36,23 @@ lint-fix: eslint-fix
 test-unit: benchmark-html-browser
     node source/overkill.test.ts
 
-test-runner-integration: benchmark-html-browser
+test-mutation-integration: benchmark-html-browser
     node source/integration-tests/run/runner-mutation-boundaries.test.ts
+    node source/integration-tests/run/runner-mutation-execution.test.ts
+    node source/integration-tests/run/runner-mutation-policy.test.ts
+    node source/integration-tests/run/runner-frozen-policy.test.ts
+    node source/integration-tests/run/runner-frozen-policy-activation.test.ts
+    node source/integration-tests/run/runner-stryker-lifecycle.test.ts
+    node source/integration-tests/run/runner-stryker-worker-reuse.test.ts
+    node source/integration-tests/run/runner-stryker-catalog.test.ts
+    node source/integration-tests/run/runner-stryker-dry-run.test.ts
+    node source/integration-tests/run/runner-stryker-classification.test.ts
+    node source/integration-tests/run/runner-stryker-timeouts.test.ts
+    node source/integration-tests/run/runner-stryker-termination.test.ts
+    node source/integration-tests/run/runner-stryker-ownership.test.ts
+    node source/integration-tests/run/runner-stryker-persistence.test.ts
+
+test-runner-integration: test-mutation-integration
     node source/integration-tests/run/process-owner-death.test.ts
     node source/integration-tests/run/process-lifetime.test.ts
     node source/integration-tests/run/process-execution.test.ts
@@ -50,22 +66,11 @@ test-runner-integration: benchmark-html-browser
     node source/integration-tests/run/runner-benchmark-html.test.ts
     node source/integration-tests/run/runner-measurements.test.ts
     node source/integration-tests/run/runner-supervised-cancellation.test.ts
-    node source/integration-tests/run/runner-mutation-execution.test.ts
-    node source/integration-tests/run/runner-stryker-lifecycle.test.ts
-    node source/integration-tests/run/runner-stryker-worker-reuse.test.ts
-    node source/integration-tests/run/runner-stryker-catalog.test.ts
-    node source/integration-tests/run/runner-stryker-dry-run.test.ts
-    node source/integration-tests/run/runner-stryker-classification.test.ts
-    node source/integration-tests/run/runner-stryker-timeouts.test.ts
-    node source/integration-tests/run/runner-stryker-persistence.test.ts
     node source/integration-tests/run/runner-collected-lifecycle.test.ts
     node source/integration-tests/run/runner-workloads.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-cli.test.ts
     node source/integration-tests/run/runner-benchmark-baseline-failures.test.ts
     node source/integration-tests/run/runner-benchmark-baselines.test.ts
-    node source/integration-tests/run/runner-mutation-policy.test.ts
-    node source/integration-tests/run/runner-frozen-policy.test.ts
-    node source/integration-tests/run/runner-frozen-policy-activation.test.ts
     node source/integration-tests/run/runner-benchmarks.test.ts
     node source/integration-tests/run/runner-attachments.test.ts
     node source/integration-tests/run/runner-attachment-retention.test.ts
@@ -88,13 +93,20 @@ test-unit-with-coverage:
 test-types:
     tstyche
 
-test-package-smoke: compile
+_pack-smoke-packages packages: compile
     rm -rf target/build/source/node_modules
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     rm -rf target/package-smoke
     mkdir -p target/package-smoke/node_modules
-    PACKTORY_INCLUDED_PACKAGES={{package-smoke-packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
+    PACKTORY_INCLUDED_PACKAGES={{packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
+
+test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
+    node target/build/source/integration-tests/package-smoke/stryker-interruptions.test.js
+    node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
+
+test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
     node target/build/source/integration-tests/package-smoke/run-lifecycle.test.js
     node target/build/source/integration-tests/package-smoke/benchmark-html.test.js
