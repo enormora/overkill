@@ -3,43 +3,15 @@ import { strykerCatalogScript } from '../run/stryker-catalog-scripts.test.ts';
 import { strykerCoverageScript } from '../run/stryker-coverage-scripts.test.ts';
 import { strykerDryRunScript } from '../run/stryker-dry-run-scripts.test.ts';
 import { strykerTimeoutScript } from '../run/stryker-timeout-scripts.test.ts';
-import { strykerProfileScript } from './stryker-profile-scripts.test.ts';
-import { strykerSandboxScript } from './stryker-sandbox-scripts.test.ts';
-import { strykerFreshStateScript } from './stryker-fresh-state-scripts.test.ts';
-import { strykerRunnerScript } from './stryker-runner-scripts.test.ts';
-
-export type StrykerPackageScenario = {
-    readonly title: string;
-    readonly script: string;
-};
+import { packagedScenario, type StrykerPackageScenario } from './stryker-package-scenario.test.ts';
+import { strykerInitializationScenarios } from './stryker-initialization-scenarios.test.ts';
+import { strykerInterruptionScenarios } from './stryker-interruption-scenarios.test.ts';
 
 const adapter = '@overkill-dev/stryker-runner';
 const engine = '@overkill-dev/engine';
 const config = '@overkill-dev/run/config';
 const runnerApi = '@stryker-mutator/api/test-runner';
 const coverageModes = [ 'perTest', 'all', 'off' ] as const;
-
-function packagedScenario(title: string, script: string, scriptArguments: readonly string[]): StrykerPackageScenario {
-    return {
-        title,
-        script: `
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-const cwd = mkdtempSync(join(tmpdir(), 'overkill-stryker-packaged-'));
-const scriptArguments = ${JSON.stringify(scriptArguments)};
-const resolvedArguments = scriptArguments.map(value => value.startsWith('@') ? import.meta.resolve(value) : value);
-try {
-    execFileSync(process.execPath, ['--input-type=module', '--eval', ${JSON.stringify(script)}, ...resolvedArguments],
-        {cwd, stdio:'pipe'});
-} finally {
-    rmSync(cwd, {recursive:true, force:true});
-}
-console.log('stryker profile initialization passed');
-`
-    };
-}
 
 function executionScenarios(processModel: string, freshState: string): readonly StrykerPackageScenario[] {
     const title = `packaged Stryker ${processModel} freshState ${freshState}`;
@@ -92,14 +64,8 @@ function executionScenarios(processModel: string, freshState: string): readonly 
 }
 
 export const strykerPackageScenarios: readonly StrykerPackageScenario[] = [
-    { title: 'packaged Stryker exposes the plugin and isolates its dependencies', script: strykerRunnerScript },
-    packagedScenario('packaged Stryker validates profiles before imports', strykerProfileScript, [ adapter, config ]),
-    packagedScenario('packaged Stryker resolves sandbox files', strykerSandboxScript, [ adapter ]),
-    packagedScenario('packaged Stryker supports fresh state', strykerFreshStateScript, [
-        '@overkill-dev/run',
-        engine,
-        adapter
-    ]),
+    ...strykerInitializationScenarios,
+    ...strykerInterruptionScenarios,
     ...[ 'in-process', 'supervised-process' ].flatMap(function processModes(processModel) {
         return [ 'false', 'true' ].flatMap(function stateModes(freshState) {
             return executionScenarios(processModel, freshState);
