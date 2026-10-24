@@ -1156,6 +1156,11 @@ for custom classes and aliasing; reconstruction belongs to the generator.
 Custom generators must satisfy the same validity, reconstruction, and bounded
 shrinking contract. Provenance need not have one prescribed representation.
 
+Callbacks allocate fresh mutable outputs or derive them from reconstructed
+source inputs. Returning an externally shared mutable instance violates this
+contract; deterministic return values alone do not establish reconstruction.
+Runtime detection of shared mutable outputs is not promised.
+
 Fresh reconstruction also applies to corpus replay, explicit examples,
 automatic edges, direct witness replay, and failure confirmations. Stored
 payloads and retained generation state stay untouched; every execution receives

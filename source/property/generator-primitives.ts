@@ -60,26 +60,31 @@ export function string(...bounds: readonly [] | readonly [LengthBounds]): Proper
     const constraints = bounds.length === 0 ? null : lengthBounds(bounds[0]);
     const unit = integer({ min: 0, max: 65_535 });
     return createGenerator(function (context) {
-        return backend.array(prepareGenerator(unit, context), effectiveLength(constraints, context)).map(
-            function stringFromUnits(units) {
-                context.consumeWork();
-                return units
-                    .map(function codeUnit(value) {
-                        return String.fromCodePoint(value);
-                    })
-                    .join('');
-            },
-            function unitsFromString(value) {
-                if (typeof value !== 'string') {
-                    throw new TypeError('String generators require string values.');
-                }
-                return Array.from({ length: value.length }, function codeUnitAt(_value, index) {
+        return backend
+            .array(
+                prepareGenerator(unit, context),
+                { ...effectiveLength(constraints, context), size: 'small' }
+            )
+            .map(
+                function stringFromUnits(units) {
                     context.consumeWork();
-                    // eslint-disable-next-line unicorn/prefer-code-point -- String bounds count UTF-16 code units, including lone surrogates.
-                    return value.charCodeAt(index);
-                });
-            }
-        );
+                    return units
+                        .map(function codeUnit(value) {
+                            return String.fromCodePoint(value);
+                        })
+                        .join('');
+                },
+                function unitsFromString(value) {
+                    if (typeof value !== 'string') {
+                        throw new TypeError('String generators require string values.');
+                    }
+                    return Array.from({ length: value.length }, function codeUnitAt(_value, index) {
+                        context.consumeWork();
+                        // eslint-disable-next-line unicorn/prefer-code-point -- String bounds count UTF-16 code units, including lone surrogates.
+                        return value.charCodeAt(index);
+                    });
+                }
+            );
     }, null);
 }
 
@@ -90,7 +95,7 @@ export function bytes(...bounds: readonly [] | readonly [LengthBounds]): Propert
         return backend
             .array(
                 prepareGenerator(byte, context),
-                effectiveLength(constraints, context)
+                { ...effectiveLength(constraints, context), size: 'small' }
             )
             .map(function ownedBytes(values) {
                 context.consumeWork();

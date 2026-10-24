@@ -30,7 +30,7 @@ export function array<Value>(
     return createGenerator(function (context) {
         return backend.array(
             prepareGenerator(element, context),
-            effectiveLength(constraints, context)
+            { ...effectiveLength(constraints, context), size: 'small' }
         );
     }, null);
 }
@@ -95,10 +95,13 @@ export function choice(...alternatives: readonly unknown[]): unknown {
     }
     const components = alternatives.map(requireGenerator);
     return createGenerator(function (context) {
-        return backend.oneof(...components.map(function alternativeDomain(component) {
-            context.consumeWork();
-            return prepareGenerator(component, context);
-        }));
+        return backend.oneof(
+            { depthSize: 'small' },
+            ...components.map(function alternativeDomain(component) {
+                context.consumeWork();
+                return prepareGenerator(component, context);
+            })
+        );
     }, null);
 }
 
@@ -132,7 +135,7 @@ export function recursive<Value>(definition: RecursiveGeneratorDefinition<Value>
             return value;
         });
         return backend.oneof(
-            { withCrossShrink: true },
+            { withCrossShrink: true, depthSize: 'small' },
             leafDomain,
             prepareGenerator(expandedDomain, { ...context, maxDepth: remaining - 1 })
         );
