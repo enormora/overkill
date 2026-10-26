@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { generatorContext } from '../test-support/generator-execution.ts';
 import { readGeneratorEdges, type Generator as PropertyGenerator } from './generator.ts';
@@ -12,6 +13,56 @@ function edgeValues<Value>(generator: PropertyGenerator<Value>): Value[] {
 }
 
 export const testNode = suite('automatic generator edges', [
+    test('keeps bounded numeric and empty string representatives in their domains', function (scope) {
+        scope.assert.deepEqual(edgeValues(gen.number({ min: -0.5, max: 0.5 })), [ -0.5, 0.5, 0, -0 ]);
+        const strings = edgeValues(gen.string());
+        scope.assert.equal(strings[0], '');
+        scope.assert.true(strings.every(function withinActiveSize(value) {
+            return value.length <= 8;
+        }));
+        return scope.assert.collect();
+    }),
+    test('omits structural edges whose components have no representatives', function (scope) {
+        const unavailable = gen.constant(1).filter(function () {
+            return false;
+        });
+        scope.assert.deepEqual(edgeValues(gen.tuple(unavailable)), []);
+        scope.assert.deepEqual(edgeValues(gen.record({ value: unavailable })), []);
+        scope.assert.deepEqual(edgeValues(gen.array(unavailable)), [ [] ]);
+        return scope.assert.collect();
+    }),
+    test('rejects unbranded automatic-edge sources', function (scope) {
+        scope.assert.throws(function () {
+            Reflect.apply(readGeneratorEdges, undefined, [ {} ]);
+        }, { message: 'Property requires an Overkill generator.' });
+        return scope.assert.collect();
+    }),
+    test('rejects a dependent domain that changes during edge reconstruction', function (scope: TestScope) {
+        let resolutions = 0;
+        const generator = gen.constant(1).flatMap(function changingDomain() {
+            resolutions += 1;
+            return resolutions === 1 ? gen.constant(1) : gen.constant(1).filter(function () {
+                return false;
+            });
+        });
+        const [ recipe ] = Iterator.from(readGeneratorEdges(generator)(generatorContext(8, 3, 1000))).take(1).toArray();
+        scope.require.defined(recipe);
+        scope.assert.throws(recipe, { message: 'Dependent edge could not be reconstructed.' });
+        return scope.assert.collect();
+    }),
+    test('rejects a structural component that disappears during edge reconstruction', function (scope: TestScope) {
+        let evaluations = 0;
+        const generator = gen.tuple(
+            gen.constant(1).filter(function changingDomain() {
+                evaluations += 1;
+                return evaluations === 1;
+            })
+        );
+        const [ recipe ] = Iterator.from(readGeneratorEdges(generator)(generatorContext(8, 3, 1000))).take(1).toArray();
+        scope.require.defined(recipe);
+        scope.assert.throws(recipe, { message: 'Automatic edge could not be reconstructed.' });
+        return scope.assert.collect();
+    }),
     test('includes primitive extrema and special values deterministically', function (scope) {
         scope.assert.deepEqual(edgeValues(gen.boolean()), [ false, true ]);
         scope.assert.deepEqual(edgeValues(gen.integer({ min: -2, max: 4 })), [ -2, 4, 0, -1, 1 ]);

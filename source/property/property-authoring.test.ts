@@ -182,6 +182,19 @@ export const testNode = suite('property authoring', [
         });
         return scope.assert.collect();
     }),
+    test('rejects malformed example factories before execution', function (scope) {
+        for (const examples of [ null, {}, [ 1 ] ]) {
+            scope.assert.throws(function () {
+                Reflect.apply(property, undefined, [ {
+                    title: 'invalid examples',
+                    generator: leaf.gen.constant(1),
+                    examples,
+                    test: unexpectedPropertyBody
+                } ]);
+            }, { message: 'Property examples must be synchronous fresh-input factories.' });
+        }
+        return scope.assert.collect();
+    }),
     test('property macros retain application and definition locations', function (scope) {
         const macro = defineMacro(function () {
             return property({

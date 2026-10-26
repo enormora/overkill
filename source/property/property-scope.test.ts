@@ -1,13 +1,163 @@
 import { once } from 'node:events';
 import { runIfMain } from '#test-runner';
-import type { AssertionResult } from '../packages/engine/engine.entry-point.ts';
+import { defineCompositeAssertion } from '../packages/assert/assert.entry-point.ts';
+import type { AssertionResult, TestScope } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
-import type { PropertySampleScope } from './property-definition.ts';
+import type { PropertyForall, PropertySampleScope } from './property-definition.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
 export const testNode = suite('property trial scopes', [
+    test('stops at a sample assertion-plan mismatch', async function (scope) {
+        const values: number[] = [];
+        const node = property({
+            title: 'sample plan',
+            generator: gen.constant(1),
+            test(value, sample) {
+                values.push(value);
+                sample.plan(2);
+                sample.assert.equal(value, 1);
+                return sample.assert.collect();
+            }
+        });
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.includes(JSON.stringify(result.perTest), 'plan-mismatch');
+        scope.assert.deepEqual(values, [ 1 ]);
+        return scope.assert.collect();
+    }),
+    test('rejects malformed nested invocation definitions', async function (scope) {
+        for (const definition of [ gen.constant(1), { generator: gen.constant(1), test: null } ]) {
+            const node = test(
+                'invalid nested invocation',
+                withProperties(async function (parent) {
+                    await Reflect.apply(parent.forall, parent, [ definition ]);
+                    return parent.assert.collect();
+                })
+            );
+            const result = await executePropertyNode(node, propertyExecutionDefaults);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.includes(JSON.stringify(result.perTest), 'Property invocation requires a test body.');
+        }
+        return scope.assert.collect();
+    }),
+    test('rejects unavailable targeting and coverage before the next input', async function (scope) {
+        for (const observation of [ 'target', 'cover' ] as const) {
+            const values: number[] = [];
+            const node = property({
+                title: observation,
+                generator: gen.constant(1),
+                test(value, sample) {
+                    values.push(value);
+                    Reflect.apply(sample[observation], sample, [ 'label', 1 ]);
+                    return sample.assert.collect();
+                }
+            });
+            const result = await executePropertyNode(node, propertyExecutionDefaults);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.includes(
+                JSON.stringify(result.perTest),
+                'Property targeting and input coverage are not available yet.'
+            );
+            scope.assert.deepEqual(values, [ 1 ]);
+        }
+        return scope.assert.collect();
+    }),
+    test('retains the first failed composite child as the property boundary', async function (scope) {
+        const comparison = defineCompositeAssertion({
+            name: 'sample comparison',
+            assert(check, value: number) {
+                return check.group([
+                    check.true(true),
+                    check.equal(value, 0),
+                    check.equal(value, 2)
+                ]);
+            }
+        });
+        const node = property({
+            title: 'composite sample',
+            generator: gen.constant(1),
+            test(value, sample) {
+                sample.assert(comparison, value);
+                return sample.assert.collect();
+            }
+        });
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        scope.assert.equal(result.summary.failed, 1);
+        const outcome = result.perTest[0]?.outcome;
+        if (outcome?.kind !== 'fail' || outcome.failures[0].kind !== 'assertion') {
+            throw new TypeError('Expected a failed property assertion.');
+        }
+        scope.assert.deepEqual(
+            outcome.failures[0].checks.map(function primaryChildren(check) {
+                return check.kind === 'composite'
+                    ? check.children.map(function expected(child) {
+                        return child.expected;
+                    })
+                    : [];
+            }),
+            [ [ { kind: 'number', value: 0 } ] ]
+        );
+        return scope.assert.collect();
+    }),
+    test('stops failed requirements before admitting another sample', async function (scope) {
+        const values: number[] = [];
+        const node = property({
+            title: 'required sample',
+            generator: gen.constant(1),
+            test(value: number, sample: PropertySampleScope) {
+                values.push(value);
+                sample.plan(2);
+                sample.require.string(value);
+                return sample.assert.collect();
+            }
+        });
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.deepEqual(values, [ 1 ]);
+        scope.assert.equal(result.perTest[0]?.outcome?.kind, 'fail');
+        scope.assert.equal(JSON.stringify(result.perTest).includes('body-error'), false);
+        scope.assert.equal(JSON.stringify(result.perTest).includes('plan-mismatch'), false);
+        return scope.assert.collect();
+    }),
+    test('preserves deep-assertion operand contracts inside trials', async function (scope) {
+        const node = property({
+            title: 'invalid deep operand',
+            generator: gen.constant(1),
+            test(value, sample) {
+                const actual: unknown = value;
+                sample.assert.deepEqual(actual, { value });
+                return sample.assert.collect();
+            }
+        });
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.includes(JSON.stringify(result.perTest), 'invalid-deep-assertion-operand');
+        return scope.assert.collect();
+    }),
+    test('rejects invocations retained after their case scope closes', async function (scope: TestScope) {
+        const retained: PropertyForall[] = [];
+        const node = test(
+            'closed scope',
+            withProperties(function (parent) {
+                retained.push(parent.forall);
+                parent.assert.true(true);
+                return parent.assert.collect();
+            })
+        );
+        const result = await executePropertyNode(node, propertyExecutionDefaults);
+        scope.assert.equal(result.summary.passed, 1);
+        const forall = retained[0];
+        scope.require.defined(forall);
+        await scope.assert.rejects(async function () {
+            return await forall(gen.constant(1), function (value, sample) {
+                sample.assert.equal(value, 1);
+                return sample.assert.collect();
+            });
+        }, { message: 'Property invocation cannot start after its scope has closed.' });
+        return scope.assert.collect();
+    }),
     test('counts one boundary per nested invocation and preserves wrapper settings', async function (scope) {
         const values: number[] = [];
         const body = withProperties(async function (parent) {
