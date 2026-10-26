@@ -2,6 +2,7 @@ import { suite, test, type TestScope } from '../packages/test/test.entry-point.t
 import { benchmarkHtmlFixture } from '../test-support/benchmark-html-fixture.ts';
 import { runResultSchema } from '../run/run-result-schema.ts';
 import { readBenchmarkSamples } from '../bench/benchmark-sample-report.ts';
+import { createProcessEvidenceReader, processEvidenceMediaType } from '../bench/process-evidence-query.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { unavailableMetric, availableMetric } from '../bench/metric-reading.ts';
 import type { RunResult, PerTestResult } from '../engine/run-result.ts';
@@ -41,6 +42,27 @@ function replaceSamples(
 }
 
 export const testNode = suite('benchmark HTML retained evidence', [
+    test('keeps indexed process evidence scoped to its owning work', function (scope: TestScope) {
+        const { result, measured, artifact } = retainedFixture(scope);
+        const owned = { ...artifact, payload: { ...artifact.payload, mediaType: processEvidenceMediaType } };
+        const workload = { name: 'large', params: {} };
+        const foreign = { ...owned, id: { ...owned.id, workload } };
+        const readProcesses = createProcessEvidenceReader({ ...result, artifacts: [ artifact, owned, foreign ] });
+        scope.assert.deepEqual(readProcesses(measured.workId), [ owned ]);
+        scope.assert.deepEqual(readProcesses({ ...measured.workId, workload }), [ foreign ]);
+        scope.assert.deepEqual(
+            readProcesses({ ...measured.workId, case: { ...measured.id, title: 'another case' } }),
+            []
+        );
+        scope.assert.deepEqual(
+            readProcesses({
+                ...measured.workId,
+                runtimes: [ { name: 'node', variantId: null, dimensions: {}, scenarios: {} } ]
+            }),
+            []
+        );
+        return scope.assert.collect();
+    }),
     test('reads unavailable samples without requiring a matching metric summary', function (scope: TestScope) {
         const { result, measured, artifact, provenance } = retainedFixture(scope);
         const samples = replaceSamples(artifact, {

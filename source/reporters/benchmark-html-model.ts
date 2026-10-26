@@ -4,7 +4,7 @@ import type { PerformanceBaselineEvidence } from '../baselines/performance-prese
 import { readPerformanceBaselineReport, type PerformanceBaselineReport } from '../baselines/performance-report.ts';
 import { formatCaseId, workIdentityKey } from '../engine/identity.ts';
 import type { RunResult } from '../engine/run-result.ts';
-import { processEvidenceForWork } from '../bench/process-evidence-query.ts';
+import { createProcessEvidenceReader } from '../bench/process-evidence-query.ts';
 import { readBenchmarkTimeline } from '../bench/timeline-report.ts';
 import type { BenchmarkHtmlReport, BaselineChartRow } from './benchmark-html-data.ts';
 import { benchmarkMetricGroups, formatBenchmarkWorkload } from './benchmark-html-metrics.ts';
@@ -54,6 +54,7 @@ function baselineRows(baseline: PerformanceBaselineReport | null): readonly Base
     });
 }
 export function createBenchmarkHtmlReport(result: RunResult): BenchmarkHtmlReport {
+    const readProcesses = createProcessEvidenceReader(result);
     const metadata = readBenchmarkRunMetadata(result);
     const baseline = readPerformanceBaselineReport(result);
     if (
@@ -90,7 +91,7 @@ export function createBenchmarkHtmlReport(result: RunResult): BenchmarkHtmlRepor
                         benchmark: test.benchmark,
                         outcome: test.outcome,
                         attempts: test.attempts,
-                        processes: processEvidenceForWork(result, test.workId)
+                        processes: readProcesses(test.workId)
                     },
                     null,
                     jsonIndentation
