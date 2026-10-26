@@ -33,11 +33,11 @@ function availableSamples(value: unknown, test: PerTestResult): Readonly<Record<
     const parsed = samplesSchema.parse(value);
     const metrics = Object.fromEntries(
         Object.entries(parsed).map(function availableValues([ name, readings ]) {
-            const provenance = test.benchmark?.metrics[name]?.provenance;
+            const provenance = canonicalIdentityJson(test.benchmark?.metrics[name]?.provenance);
             for (const reading of readings) {
                 if (
                     reading.availability === 'available' &&
-                    canonicalIdentityJson(reading.provenance) !== canonicalIdentityJson(provenance)
+                    canonicalIdentityJson(reading.provenance) !== provenance
                 ) {
                     throw new Error(`Raw sample provenance differs from metric ${name}.`);
                 }
@@ -75,22 +75,32 @@ function sampleContent(artifact: RunArtifact, test: PerTestResult, partial: bool
     return { kind: 'available', metrics: availableSamples(payload.content.value, test), partial };
 }
 function referencedSamples(
-    result: RunResult,
+    artifacts: ReadonlyMap<string, RunArtifact>,
     test: PerTestResult,
     evidence: RetainedEvidence
 ): BenchmarkSampleEvidence {
     const reference: unknown = JSON.parse(evidence.reference);
     const key = canonicalIdentityJson(reference);
-    const artifact = result.artifacts.find(function referencedArtifact(candidate) {
-        return canonicalIdentityJson(candidate.id) === key;
-    });
+    const artifact = artifacts.get(key);
     if (artifact === undefined) {
         return { kind: 'unavailable', reason: 'Referenced raw sample artifact is unavailable.' };
     }
     assertSampleOwner(artifact, test);
     return sampleContent(artifact, test, evidence.partial);
 }
+export function createBenchmarkSampleReader(result: RunResult): (test: PerTestResult) => BenchmarkSampleEvidence {
+    const artifacts = new Map<string, RunArtifact>();
+    for (const artifact of result.artifacts) {
+        const key = canonicalIdentityJson(artifact.id);
+        if (!artifacts.has(key)) {
+            artifacts.set(key, artifact);
+        }
+    }
+    return function readSamples(test) {
+        const evidence = retainedEvidence(test);
+        return evidence.kind === 'unavailable' ? evidence : referencedSamples(artifacts, test, evidence);
+    };
+}
 export function readBenchmarkSamples(result: RunResult, test: PerTestResult): BenchmarkSampleEvidence {
-    const evidence = retainedEvidence(test);
-    return evidence.kind === 'unavailable' ? evidence : referencedSamples(result, test, evidence);
+    return createBenchmarkSampleReader(result)(test);
 }

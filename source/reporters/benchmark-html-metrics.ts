@@ -4,7 +4,7 @@ import type {
     BenchmarkExecutionResult
 } from '../engine/benchmark-result.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
-import { readBenchmarkSamples, type BenchmarkSampleEvidence } from '../bench/benchmark-sample-report.ts';
+import { createBenchmarkSampleReader, type BenchmarkSampleEvidence } from '../bench/benchmark-sample-report.ts';
 import { caseIdentityKey, formatCaseId, workIdentityKey } from '../engine/identity.ts';
 import type { PerTestResult, RunResult } from '../engine/run-result.ts';
 import { metricNormalizationEvidence } from '../bench/metric-normalization-evidence.ts';
@@ -88,8 +88,7 @@ function metricRowKey(row: MetricRow): string {
         : metricNormalizationEvidence(row.test.benchmark.normalization ?? null, row.name)?.reference;
     return canonicalIdentityJson([ caseIdentityKey(row.test.id), row.name, row.summary.provenance, reference ]);
 }
-function appendMetricRows(record: RecordMetricRow, result: RunResult, test: MeasuredTest): void {
-    const samples = readBenchmarkSamples(result, test);
+function appendMetricRows(record: RecordMetricRow, samples: BenchmarkSampleEvidence, test: MeasuredTest): void {
     for (const [ name, summary ] of Object.entries(test.benchmark.metrics)) {
         const row = rawMetricRow(test, name, summary, samples);
         record(metricRowKey(row), row);
@@ -103,6 +102,7 @@ function metricScaleLabel(row: MetricRow): string {
     return [ row.summary.provenance.collector, row.summary.provenance.scope, row.scale ].join(', ');
 }
 export function benchmarkMetricGroups(result: RunResult): readonly BenchmarkChartGroup[] {
+    const readSamples = createBenchmarkSampleReader(result);
     const groups = new Map<string, MetricRow[]>();
     const measuredTests = result.perTest.filter(function measured(test): test is MeasuredTest {
         return test.benchmark !== null;
@@ -113,7 +113,7 @@ export function benchmarkMetricGroups(result: RunResult): readonly BenchmarkChar
         groups.set(key, rows);
     }
     for (const test of measuredTests) {
-        appendMetricRows(recordRow, result, test);
+        appendMetricRows(recordRow, readSamples(test), test);
     }
     return Array.from(groups.values(), function chartGroup(rows) {
         const first = rows[0];

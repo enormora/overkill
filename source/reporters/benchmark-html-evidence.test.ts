@@ -41,6 +41,15 @@ function replaceSamples(
 }
 
 export const testNode = suite('benchmark HTML retained evidence', [
+    test('retains the first artifact when references have duplicate identities', function (scope: TestScope) {
+        const { result, measured, artifact } = retainedFixture(scope);
+        const duplicate = replaceSamples(artifact, { kind: 'json', byteLength: 0, value: {} });
+        scope.assert.deepEqual(
+            readBenchmarkSamples({ ...result, artifacts: [ artifact, duplicate ] }, measured),
+            readBenchmarkSamples(result, measured)
+        );
+        return scope.assert.collect();
+    }),
     test('explains omitted and unrecorded samples', function (scope: TestScope) {
         const { result, measured } = retainedFixture(scope);
         scope.assert.deepEqual(readBenchmarkSamples(result, { ...measured, benchmark: null }), {
