@@ -2390,14 +2390,18 @@ type PropertyInvocationBody<Value> = {
     readonly test: PropertyBody<Value>;
 };
 
-type PropertyInvocation<Value> = PropertyInvocationBody<Value> | (PropertyInvocationBody<Value> & {
-    readonly examples: ReadonlyArray<PropertyExample<Value>>;
-});
+type PropertyInvocation<Value> =
+    | PropertyInvocationBody<Value>
+    | (PropertyInvocationBody<Value> & {
+        readonly examples: ReadonlyArray<PropertyExample<Value>>;
+    });
 
 type PropertyDefinitionBody<Value> = PropertyInvocation<Value> & { readonly title: string; };
-type PropertyDefinition<Value> = PropertyDefinitionBody<Value> | (PropertyDefinitionBody<Value> & {
-    readonly settings: PropertySettings;
-});
+type PropertyDefinition<Value> =
+    | PropertyDefinitionBody<Value>
+    | (PropertyDefinitionBody<Value> & {
+        readonly settings: PropertySettings;
+    });
 
 type PropertyForall = {
     <Value>(generator: Generator<Value>, body: PropertyBody<Value>): Promise<AssertionResult>;
