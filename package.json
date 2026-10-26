@@ -37,7 +37,7 @@
         "is-interactive": "2.0.0",
         "js-tokens": "10.0.0",
         "monocart-coverage-reports": "2.13.1",
-        "node-pty": "1.2.0-beta.15",
+        "node-pty": "1.2.0-beta.17",
         "p-limit": "7.3.3",
         "pure-rand": "8.4.2",
         "simple-statistics": "7.12.1",
