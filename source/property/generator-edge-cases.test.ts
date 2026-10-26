@@ -78,6 +78,8 @@ export const testNode = suite('automatic generator edges', [
     }),
     test('reconstructs container edges within active length bounds', function (scope) {
         const strings = edgeValues(gen.string({ minLength: 1, maxLength: 2 }));
+        scope.assert.true(strings.includes('\u{D800}'));
+        scope.assert.true(strings.includes('\u{DC00}'));
         scope.assert.deepEqual(
             Array.from(
                 new Set(strings.map(function length(value) {

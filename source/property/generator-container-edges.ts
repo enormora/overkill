@@ -4,7 +4,7 @@ import type { GeneratorEdgeSource } from './generator-edges.ts';
 
 const maximumByte = 255;
 const highSurrogateCodeUnit = 55_296;
-const lowSurrogateCodeUnit = 56_319;
+const lowSurrogateCodeUnit = 56_320;
 const stringEdgeUnits = [
     '\0',
     'a',
