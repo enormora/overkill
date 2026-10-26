@@ -27,6 +27,7 @@ function supervisedCollectCommand(): SupervisedCollectCommand {
         retryPolicy: null,
         capabilityRestrictions: { mode: 'disabled' },
         capture: 'buffered',
+        propertySeed: '0',
         propertyPolicy: null,
         collectionTimeoutMilliseconds: 100,
         cwd: process.cwd(),

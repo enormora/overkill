@@ -89,6 +89,7 @@ export const testNode = suite('frozen microtest policy', [
         );
         const wire = JSON.stringify(supervised);
         const transported: unknown = JSON.parse(wire);
+        scope.assert.equal(supervised.propertySeed, '0');
         scope.assert.deepEqual(frozenSupervisedCommandSchema.parse(transported), transported);
         scope.assert.throws(function rejectWeakenedPermissions() {
             frozenSupervisedCommandSchema.parse({ ...supervised, capabilityRestrictions: { mode: 'disabled' } });

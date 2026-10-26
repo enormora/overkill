@@ -61,6 +61,7 @@ type TestContractFailureCodeByName = {
     readonly invalidTimeoutControl: 'invalid-timeout-control';
     readonly invalidRequireReference: 'invalid-require-reference';
     readonly noAssertions: 'no-assertions';
+    readonly propertyScope: 'property-scope';
     readonly pendingInFlightTask: 'pending-in-flight-task';
     readonly pendingAsyncAssertion: 'pending-async-assertion';
     readonly planMismatch: 'plan-mismatch';

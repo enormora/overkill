@@ -1,11 +1,11 @@
-import { property } from '../../../packages/test/property.entry-point.ts';
-import { unexecutedGenerator } from '../../../test-support/property-generator.ts';
+import { property, gen } from '../../../packages/test/property.entry-point.ts';
 
 export const testNode = property({
     title: 'declared law',
-    generator: unexecutedGenerator<number>(),
+    generator: gen.integer({ min: 0, max: 10 }),
     settings: { newTrials: 200 },
-    test() {
-        throw new Error('Property execution must remain unavailable.');
+    test(value, sample) {
+        sample.assert.equal(Number.isSafeInteger(value), true);
+        return sample.assert.collect();
     }
 });

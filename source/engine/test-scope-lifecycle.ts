@@ -13,7 +13,7 @@ import {
 import { createRecordingAssertFacade } from './assertion-facade.ts';
 import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 import type { TestContractFailure } from './run-result.ts';
-import type { TestScope } from './test-node.ts';
+import type { TestScope, ThrowingTestScope } from './test-node.ts';
 
 type FinishedScopeLifecycle = {
     readonly cleanupErrors: readonly unknown[];
@@ -98,5 +98,36 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder): TestScope
         async runBody(signal, body) {
             return await body(createScope(signal));
         }
+    };
+}
+
+export function createThrowingTestScope(recorder: AssertionRecorder, signal: AbortSignal): ThrowingTestScope {
+    return {
+        assert: createRecordingAssertFacade(
+            {
+                failContract(failure) {
+                    return recorder.failContract(failure);
+                },
+                recordAssert(assertion) {
+                    recorder.recordAssert(assertion);
+                },
+                recordPendingAssert() {
+                    return recorder.recordPendingAssert();
+                }
+            },
+            null
+        ),
+        require: createRecordingRequireFacade(
+            {
+                failContract(failure) {
+                    return recorder.failContract(failure);
+                },
+                recordRequire(assertion) {
+                    recorder.recordRequire(assertion);
+                }
+            },
+            null
+        ),
+        signal
     };
 }

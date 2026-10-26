@@ -106,6 +106,7 @@ export const testNode = suite('property authoring', [
         scope.require.defined(attachment);
         scope.assert.deepEqual(attachment.definition, {
             kind: 'property',
+            examples: [],
             settingsDeclarations: [ { kind: 'profile-default' } ],
             generator,
             test: unexpectedPropertyBody,
@@ -222,9 +223,9 @@ export const testNode = suite('property authoring', [
         });
         return scope.assert.collect();
     }),
-    test('direct engine execution reports unavailable property execution', async function (scope: TestScope) {
+    test('direct engine execution requires resolved property policy', async function (scope: TestScope) {
         const plan = planFor(property({
-            title: 'not executable yet',
+            title: 'unresolved policy',
             generator: unexecutedGenerator<number>(),
             test: unexpectedPropertyBody
         }));
@@ -233,7 +234,10 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.equal(result.summary.passed, 0);
         scope.assert.equal(result.perTest[0]?.outcome?.kind, 'fail');
-        scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'Property execution is not available.');
+        scope.assert.includes(
+            JSON.stringify(result.perTest[0]?.outcome),
+            'Property execution requires resolved collection policy.'
+        );
         scope.assert.equal(result.runnerErrors.length, 0);
         return scope.assert.collect();
     }),
@@ -241,7 +245,7 @@ export const testNode = suite('property authoring', [
         await scope.assert.rejects(async function () {
             return withProperties(unexpectedPropertyBody)(scope);
         }, {
-            message: 'Property execution is not available. Property policy and generator execution are required.'
+            message: 'Property execution requires an engine property scope and resolved collection policy.'
         });
         return scope.assert.collect();
     })

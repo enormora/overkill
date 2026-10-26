@@ -20,6 +20,32 @@ unbranded objects are not generators.
 Their private runtime symbol and shared declaration identity remain compatible
 across leaf and standard package copies.
 
+## Trial execution
+
+Supply required examples as pure synchronous factories that return fresh inputs:
+
+```ts
+property({
+    title: 'user names remain nonempty',
+    generator: user,
+    examples: [ () => ({ name: 'Ada', age: 37 }) ],
+    test(value, sample) {
+        sample.assert.true(value.name.length > 0);
+        return sample.assert.collect();
+    }
+});
+```
+
+Factories can reconstruct class instances and graphs with shared references.
+Nested examples use `scope.forall({ generator, examples, test })`.
+Await each invocation before starting another. Overlap and unfinished calls fail
+the scope contract after admitted work finishes cleanup.
+
+Each trial receives fresh assertions, assertion plans, cleanup registrations,
+and cancellation state. Cleanup completes before the next trial starts. Each
+invocation counts as one assertion in the enclosing case. Different property
+cases retain ordinary runner parallelism.
+
 ## Generators
 
 Import `gen` from either property entry point:
@@ -102,8 +128,18 @@ codec milestone.
 
 Construction and collection are supported. They retain generator and callback
 declarations without executing them. Property profiles resolve and validate policy during collection. Fluent generator
-constructors are supported. Trial execution is not implemented yet. Executing a property declaration
-fails explicitly before user callbacks or resource acquisition.
+constructors and trial execution are supported. Examples run before bounded
+automatic edges and new exploration. Only accepted exploration counts toward
+`newTrials`; repeated accepted values count. Required examples run unless an
+earlier failure stops the invocation. Work or generation exhaustion before
+required checks complete produces an inconclusive outcome.
+
+Disk-backed regression corpora, shrinking, codec execution, targeted exploration,
+input coverage, witness replay, and public phase diagnostics follow in their
+respective milestones. `sample.target` and `sample.cover` currently reject calls
+explicitly. Direct engine execution requires resolved property policy;
+`ExecuteOptions.propertyRun` supplies its run seed and project root; omitted
+context defaults to seed zero and an unknown project root. Configured runner execution supplies the resolved run seed automatically.
 
 The standard subpath exposes the same authoring functions and types as this
 package. Property modules stay outside the root test import and ordinary
@@ -157,5 +193,6 @@ Other limits permit zero. Exploration settings may exceed profile defaults;
 timeouts and process budgets remain profile-owned. The total work budget
 covers every phase, including generation, reconstruction, rejections,
 duplicate processing, confirmations, and body evaluations. Shrink work also
-consumes total work. This milestone collects the budgets; trial execution and
-shrink accounting follow in their execution milestones.
+consumes total work. Each invocation has its own total-work ledger; nested
+invocations share the enclosing case's timeout and supervision. Shrink accounting
+follows in its execution milestone.

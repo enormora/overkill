@@ -1161,6 +1161,14 @@ source inputs. Returning an externally shared mutable instance violates this
 contract; deterministic return values alone do not establish reconstruction.
 Runtime detection of shared mutable outputs is not promised.
 
+Explicit examples are pure synchronous input factories, typed as
+`PropertyExample<Value> = () => Value`. First-class declarations accept
+`property({ title, generator, examples, test })`. Nested declarations accept
+`scope.forall({ generator, examples, test })` alongside the existing positional
+form. Example factories return concrete inputs with fresh mutable graphs;
+they are not sampling generators. Construction snapshots the factory array
+without executing it. Nested examples do not override collected exploration policy.
+
 Fresh reconstruction also applies to corpus replay, explicit examples,
 automatic edges, direct witness replay, and failure confirmations. Stored
 payloads and retained generation state stay untouched; every execution receives
@@ -1185,6 +1193,10 @@ shrinking execute sequentially within a property invocation. Each trial's
 assertion, input, and cleanup state finishes before the next begins. Separate
 property cases may execute in parallel under the runner's ordinary scheduling
 and isolation policy; there is no initial within-property concurrency option.
+Within an enclosing case, each nested `scope.forall` invocation must be awaited
+before another begins. Overlapping calls and completion with an unfinished
+invocation are scope-contract failures. Stop admitting inputs and finish cleanup
+for admitted work before completing the case.
 
 Before shrinking, a fresh reconstruction must reproduce the original failure.
 If rechecking the same retained input passes or produces an unrelated failure,
@@ -1534,9 +1546,7 @@ generators cannot meet those constraints, or all evaluated backends exceed
 acceptable memory or runtime costs. An adapter for effectful property tests
 must define trial isolation before claiming the same guarantees.
 
-The runtime currently has property-family identity, structured inconclusive
-outcomes, and scope-owned assertion and cleanup state. It has no implemented
-property generator engine. The spike must demonstrate fresh trial state,
+Implementation acceptance requires fresh trial state,
 dependency-preserving array/index shrinking, changing dependent element bounds,
 non-injective mappings, impossible filters, recursive limits, mutation
 isolation, deterministic candidate sequences, and lossless witness replay.

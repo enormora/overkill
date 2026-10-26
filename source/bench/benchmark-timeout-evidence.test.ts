@@ -42,6 +42,7 @@ function createTimedBenchmark(): TimedBenchmark {
     const plan = createTestPlan(createRoot({ title: 'root', children: [ node ], annotations: {}, controls: {} }));
     const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
     const execution = executeCaseBody({
+        propertyRun: { seed: 0n, projectRoot: null },
         async onBenchmarkUpdate() {
             return undefined;
         },

@@ -25,7 +25,7 @@ export type RuntimeCapabilityPolicyDependencies = {
     readonly readStorage: (name: 'localStorage' | 'sessionStorage') => WebStorageLike | null;
 };
 
-export type RuntimeSnapshots = {
+type RuntimeSnapshots = {
     readonly environment: EnvironmentSnapshot;
     readonly localStorage: StorageSnapshot;
     readonly sessionStorage: StorageSnapshot;
@@ -125,25 +125,77 @@ function entriesChanged(
     });
 }
 
-export function environmentChanged(before: RuntimeSnapshots, after: RuntimeSnapshots): boolean {
+function environmentChanged(before: RuntimeSnapshots, after: RuntimeSnapshots): boolean {
     return before.environment.object !== after.environment.object ||
         entriesChanged(before.environment.entries, after.environment.entries);
 }
 
-export function localStorageChanged(before: RuntimeSnapshots, after: RuntimeSnapshots): boolean {
+function localStorageChanged(before: RuntimeSnapshots, after: RuntimeSnapshots): boolean {
     return before.localStorage.object !== after.localStorage.object ||
         entriesChanged(before.localStorage.entries, after.localStorage.entries);
 }
 
-export function sessionStorageChanged(before: RuntimeSnapshots, after: RuntimeSnapshots): boolean {
+function sessionStorageChanged(before: RuntimeSnapshots, after: RuntimeSnapshots): boolean {
     return before.sessionStorage.object !== after.sessionStorage.object ||
         entriesChanged(before.sessionStorage.entries, after.sessionStorage.entries);
 }
 
-export function takeSnapshots(dependencies: RuntimeCapabilityPolicyDependencies): RuntimeSnapshots {
+function takeSnapshots(dependencies: RuntimeCapabilityPolicyDependencies): RuntimeSnapshots {
     return {
         environment: environmentSnapshot(dependencies),
         localStorage: storageSnapshot(dependencies, 'localStorage'),
         sessionStorage: storageSnapshot(dependencies, 'sessionStorage')
+    };
+}
+
+export type RuntimeSnapshotChange = 'environment' | 'localStorage' | 'sessionStorage';
+
+export type RuntimeSnapshotCheckpoints = {
+    readonly observe: <Value>(key: string, run: () => Promise<Value>) => Promise<Value>;
+    readonly check: (key: string) => void;
+};
+
+type SnapshotComparison = readonly [
+    RuntimeSnapshotChange,
+    (before: RuntimeSnapshots, after: RuntimeSnapshots) => boolean
+];
+const snapshotComparisons: readonly SnapshotComparison[] = [
+    [ 'environment', environmentChanged ],
+    [ 'localStorage', localStorageChanged ],
+    [ 'sessionStorage', sessionStorageChanged ]
+];
+
+export function createSnapshotCheckpoints(
+    dependencies: RuntimeCapabilityPolicyDependencies,
+    record: (change: RuntimeSnapshotChange) => void
+): RuntimeSnapshotCheckpoints {
+    const snapshots = new Map<string, RuntimeSnapshots>();
+    function check(key: string): void {
+        const before = snapshots.get(key);
+        if (before === undefined) {
+            return;
+        }
+        const after = takeSnapshots(dependencies);
+        for (const [ change, changed ] of snapshotComparisons) {
+            if (changed(before, after)) {
+                record(change);
+            }
+        }
+        snapshots.set(key, after);
+    }
+    return {
+        check,
+        async observe(key, run) {
+            if (snapshots.has(key)) {
+                return await run();
+            }
+            snapshots.set(key, takeSnapshots(dependencies));
+            try {
+                return await run();
+            } finally {
+                check(key);
+                snapshots.delete(key);
+            }
+        }
     };
 }

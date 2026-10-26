@@ -37,7 +37,10 @@ async function assertUnavailableResourceProperty(scope: TestScope, body: TestBod
     const result = await createTestEngine().execute(plan);
     scope.require.defined(result.perTest);
     scope.assert.equal(result.summary.failed, 1);
-    scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'Property execution is not available.');
+    scope.assert.includes(
+        JSON.stringify(result.perTest[0]?.outcome),
+        'Property execution requires resolved collection policy.'
+    );
 }
 
 function assertNestedPropertyDeclaration(scope: TestScope, planned: TestPlanCase, body: TestBody): void {

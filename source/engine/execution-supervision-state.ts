@@ -20,6 +20,12 @@ export function scheduleSupervisionTimeout(
     });
 }
 
+export function clearSupervisionTimeout(wallClock: Clock, timer: ReturnType<Clock['setTimeout']> | null): void {
+    if (timer !== null) {
+        wallClock.clearTimeout(timer);
+    }
+}
+
 export type BenchmarkState = StoredValue<BenchmarkExecutionResult | null>;
 export function createBenchmarkState(): BenchmarkState {
     return createStoredValue<BenchmarkExecutionResult | null>(null);

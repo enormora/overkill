@@ -9,6 +9,7 @@ import type {
 } from './execution-supervision.ts';
 import type { ExecuteProcessBudgets } from './execution-process-budget-breach.ts';
 import { assertRetryPolicy, assertRetryFamily, type TestRetryPolicy } from './retry-policy.ts';
+import type { PropertyRunContext } from './property-execution-host.ts';
 import type { TestPlan } from './test-plan.ts';
 
 export type ExecuteExecution = {
@@ -20,7 +21,7 @@ export type ExecuteExecution = {
 
 export type ExecuteResultFinalizer = (result: RunResult) => Promise<RunResult>;
 
-export type ExecuteOptions = {
+type CommonExecuteOptions = {
     readonly retryPolicy: TestRetryPolicy | null;
     readonly execution: ExecuteExecution;
     readonly finalizeResult?: ExecuteResultFinalizer;
@@ -34,7 +35,18 @@ export type ExecuteOptions = {
     readonly timeoutPolicy?: ExecuteTimeoutPolicy | null;
 };
 
-type DefaultedExecuteOptions = ExecuteOptions & {
+type PropertyExecuteOptions = CommonExecuteOptions & { readonly propertyRun: PropertyRunContext; };
+export type ExecuteOptions = CommonExecuteOptions | PropertyExecuteOptions;
+
+function hasPropertyRun(options: ExecuteOptions): options is PropertyExecuteOptions {
+    return Object.hasOwn(options, 'propertyRun');
+}
+
+const defaultPropertySeed = 0n;
+const defaultPropertyRun: PropertyRunContext = { seed: defaultPropertySeed, projectRoot: null };
+
+type DefaultedExecuteOptions = CommonExecuteOptions & {
+    readonly propertyRun: PropertyRunContext;
     readonly finalizeResult: ExecuteResultFinalizer;
     readonly outputRenderer: DefinedOutputRenderer;
     readonly runtimePolicy: RuntimePolicy | null;
@@ -53,6 +65,7 @@ const keepResult: ExecuteResultFinalizer = async function keepResult(result) {
 
 function defaultExecuteOptions(): DefaultedExecuteOptions {
     return {
+        propertyRun: defaultPropertyRun,
         execution: { mode: 'serial-in-process' },
         finalizeResult: keepResult,
         outputRenderer: createPlainOutputRenderer(),
@@ -67,10 +80,15 @@ function defaultExecuteOptions(): DefaultedExecuteOptions {
     };
 }
 
+function propertyRun(options: ExecuteOptions): PropertyRunContext {
+    return hasPropertyRun(options) ? options.propertyRun : defaultPropertyRun;
+}
+
 function executeOptionsWithProvidedDefaults(options: ExecuteOptions): DefaultedExecuteOptions {
     assertRetryPolicy(options.retryPolicy);
     return {
         ...options,
+        propertyRun: propertyRun(options),
         finalizeResult: options.finalizeResult ?? keepResult,
         outputRenderer: options.outputRenderer ?? createPlainOutputRenderer(),
         processBudgets: options.processBudgets ?? null,

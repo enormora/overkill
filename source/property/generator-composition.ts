@@ -1,7 +1,10 @@
 import * as backend from 'fast-check';
+import { edgeLengths } from './generator-container-edges.ts';
+import { productEdges, interleavedEdges } from './generator-edges.ts';
 import {
     createGenerator,
     prepareGenerator,
+    readGeneratorEdges,
     ensureGenerator,
     isGenerator,
     type Generator as PropertyGenerator
@@ -27,12 +30,25 @@ export function array<Value>(
 ): PropertyGenerator<Value[]> {
     ensureGenerator(element);
     const constraints = bounds.length === 0 ? null : lengthBounds(bounds[0]);
-    return createGenerator(function (context) {
-        return backend.array(
-            prepareGenerator(element, context),
-            { ...effectiveLength(constraints, context), size: 'small' }
-        );
-    }, null);
+    return createGenerator(
+        function (context) {
+            return backend.array(
+                prepareGenerator(element, context),
+                { ...effectiveLength(constraints, context), size: 'small' }
+            );
+        },
+        null,
+        function* arrayEdges(context) {
+            const lengths = edgeLengths(constraints, context);
+            for (const length of lengths) {
+                const sources = Array.from({ length }, function elementEdges() {
+                    context.consumeWork();
+                    return readGeneratorEdges(element);
+                });
+                yield* productEdges<Value, Value[]>(sources, Array.from)(context);
+            }
+        }
+    );
 }
 
 export function tuple<Values extends unknown[]>(
@@ -40,12 +56,16 @@ export function tuple<Values extends unknown[]>(
 ): PropertyGenerator<Values>;
 export function tuple(...elements: readonly unknown[]): unknown {
     const components = elements.map(requireGenerator);
-    return createGenerator(function (context) {
-        return backend.tuple(...components.map(function componentDomain(component) {
-            context.consumeWork();
-            return prepareGenerator(component, context);
-        }));
-    }, null);
+    return createGenerator(
+        function (context) {
+            return backend.tuple(...components.map(function componentDomain(component) {
+                context.consumeWork();
+                return prepareGenerator(component, context);
+            }));
+        },
+        null,
+        productEdges(components.map(readGeneratorEdges), Array.from)
+    );
 }
 
 export function record<Values extends Record<string, unknown> = Record<PropertyKey, never>>(
@@ -82,7 +102,17 @@ export function record(fields: unknown): unknown {
                 { noNullPrototype: true }
             );
         },
-        null
+        null,
+        productEdges(
+            components.map(function fieldEdges([ , component ]) {
+                return readGeneratorEdges(component);
+            }),
+            function rebuildRecord(values) {
+                return Object.fromEntries(components.map(function fieldValue([ key ], index) {
+                    return [ key, values[index] ];
+                }));
+            }
+        )
     );
 }
 
@@ -94,15 +124,19 @@ export function choice(...alternatives: readonly unknown[]): unknown {
         throw new RangeError('Generator choices require at least one alternative.');
     }
     const components = alternatives.map(requireGenerator);
-    return createGenerator(function (context) {
-        return backend.oneof(
-            { depthSize: 'small' },
-            ...components.map(function alternativeDomain(component) {
-                context.consumeWork();
-                return prepareGenerator(component, context);
-            })
-        );
-    }, null);
+    return createGenerator(
+        function (context) {
+            return backend.oneof(
+                { depthSize: 'small' },
+                ...components.map(function alternativeDomain(component) {
+                    context.consumeWork();
+                    return prepareGenerator(component, context);
+                })
+            );
+        },
+        null,
+        interleavedEdges(components.map(readGeneratorEdges))
+    );
 }
 
 function ensureRecursiveDefinition(value: unknown): void {
@@ -119,25 +153,46 @@ export function recursive<Value>(definition: RecursiveGeneratorDefinition<Value>
         return value;
     });
     const maxDepth = nonnegativeLimit(definition.maxDepth);
-    return createGenerator(function recursiveDomain(context): backend.Arbitrary<Value> {
-        const remaining = Math.min(maxDepth, context.maxDepth);
-        const leafDomain = prepareGenerator(leaf, { ...context, maxDepth: remaining });
-        if (remaining === 0) {
-            return leafDomain;
+    return createGenerator(
+        function recursiveDomain(context): backend.Arbitrary<Value> {
+            const remaining = Math.min(maxDepth, context.maxDepth);
+            const leafDomain = prepareGenerator(leaf, { ...context, maxDepth: remaining });
+            if (remaining === 0) {
+                return leafDomain;
+            }
+            const child = createGenerator(
+                function childDomain(childContext) {
+                    return recursiveDomain({
+                        ...childContext,
+                        maxDepth: Math.min(remaining - 1, childContext.maxDepth)
+                    });
+                },
+                null,
+                readGeneratorEdges(recursive({ leaf, branch, maxDepth: remaining - 1 }))
+            );
+            context.consumeWork();
+            const expanded = branch(child);
+            ensureGenerator(expanded);
+            const expandedDomain = expanded.map<Value>(function recursiveValue(value) {
+                return value;
+            });
+            return backend.oneof(
+                { withCrossShrink: true, depthSize: 'small' },
+                leafDomain,
+                prepareGenerator(expandedDomain, { ...context, maxDepth: remaining - 1 })
+            );
+        },
+        null,
+        function* recursiveEdges(context) {
+            const remaining = Math.min(maxDepth, context.maxDepth);
+            yield* readGeneratorEdges(leaf)({ ...context, maxDepth: remaining });
+            if (remaining > 0) {
+                context.consumeWork();
+                const child = recursive({ leaf, branch, maxDepth: remaining - 1 });
+                const expanded = branch(child);
+                ensureGenerator(expanded);
+                yield* readGeneratorEdges(expanded)({ ...context, maxDepth: remaining - 1 });
+            }
         }
-        const child = createGenerator(function childDomain(childContext) {
-            return recursiveDomain({ ...childContext, maxDepth: Math.min(remaining - 1, childContext.maxDepth) });
-        }, null);
-        context.consumeWork();
-        const expanded = branch(child);
-        ensureGenerator(expanded);
-        const expandedDomain = expanded.map<Value>(function recursiveValue(value) {
-            return value;
-        });
-        return backend.oneof(
-            { withCrossShrink: true, depthSize: 'small' },
-            leafDomain,
-            prepareGenerator(expandedDomain, { ...context, maxDepth: remaining - 1 })
-        );
-    }, null);
+    );
 }

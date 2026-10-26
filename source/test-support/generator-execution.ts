@@ -11,6 +11,9 @@ export function generatorContext(maxSize: number, maxDepth: number, maxWork: num
     return {
         maxSize,
         maxDepth,
+        rejectInput() {
+            return undefined;
+        },
         consumeWork() {
             if (remaining === 0) {
                 throw new Error('Generator work exhausted.');
