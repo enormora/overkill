@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../../packages/test/test.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { adapterUrl, engineUrl, configUrl, executeMutationScript } from './stryker-lifecycle-fixture.test.ts';
+import { adapterUrl, engineUrl, configUrl } from './stryker-lifecycle-fixture.test.ts';
+import { executeMutationScript } from './stryker-script.test.ts';
 import { strykerCatalogScript } from './stryker-catalog-scripts.test.ts';
 
 const modes = ([ 'in-process', 'supervised-process' ] as const).flatMap(function processModes(processModel) {

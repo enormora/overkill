@@ -1,6 +1,3 @@
-import { mkdtemp, realpath, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
@@ -8,13 +5,13 @@ import { strykerCampaignScript, strykerHitLimitScript } from './stryker-campaign
 import { strykerCoverageScript } from './stryker-coverage-scripts.test.ts';
 import { strykerIdentityScript } from './stryker-identity-scripts.test.ts';
 import {
-    originalRoot,
+    createMutationProject,
     engineUrl,
     configUrl,
     adapterUrl,
-    executeMutationScript,
     verifyMutationLifecycle
 } from './stryker-lifecycle-fixture.test.ts';
+import { executeMutationScript } from './stryker-script.test.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const processModels = [ 'in-process', 'supervised-process' ] as const;
@@ -25,17 +22,8 @@ type CampaignMode = {
     readonly coverageAnalysis: 'all' | 'off' | 'perTest';
 };
 
-async function campaignProject(scope: TestScope, prefix: string): Promise<string> {
-    process.chdir(originalRoot);
-    const cwd = await realpath(await mkdtemp(join(tmpdir(), prefix)));
-    scope.cleanup(async function removeCampaignProject() {
-        await rm(cwd, { recursive: true, force: true });
-    });
-    return cwd;
-}
-
 async function verifyCampaign(scope: TestScope, mode: CampaignMode): Promise<void> {
-    const cwd = await campaignProject(scope, 'overkill-stryker-campaign-');
+    const cwd = await createMutationProject(scope, 'overkill-stryker-campaign-');
     const output = await executeMutationScript(strykerCampaignScript, [
         import.meta.resolve('@stryker-mutator/core'),
         adapterUrl,
@@ -58,7 +46,7 @@ export const testNode = createSuite({
             ...metadata,
             title: 'tracks swallowed hit limits, cleanup coverage, and counter reset',
             async body(scope) {
-                const cwd = await campaignProject(scope, 'overkill-stryker-hit-limit-');
+                const cwd = await createMutationProject(scope, 'overkill-stryker-hit-limit-');
                 const output = await executeMutationScript(strykerHitLimitScript, [
                     import.meta.resolve('@stryker-mutator/instrumenter'),
                     adapterUrl,
@@ -80,7 +68,7 @@ export const testNode = createSuite({
                         async body(scope) {
                             const outputs: string[] = [];
                             for (const prefix of [ 'overkill-stryker-identity-', 'overkill-stryker-replacement-' ]) {
-                                const cwd = await campaignProject(scope, prefix);
+                                const cwd = await createMutationProject(scope, prefix);
                                 outputs.push(
                                     await executeMutationScript(strykerIdentityScript, [
                                         import.meta.resolve('@stryker-mutator/instrumenter'),
@@ -111,7 +99,7 @@ export const testNode = createSuite({
                             ...metadata,
                             title: `${processModel} freshState ${String(freshState)} ${coverageAnalysis} coverage`,
                             async body(scope) {
-                                const cwd = await campaignProject(scope, 'overkill-stryker-coverage-');
+                                const cwd = await createMutationProject(scope, 'overkill-stryker-coverage-');
                                 const output = await executeMutationScript(strykerCoverageScript, [
                                     import.meta.resolve('@stryker-mutator/instrumenter'),
                                     adapterUrl,
