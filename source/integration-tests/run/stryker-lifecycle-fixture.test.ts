@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { mkdtemp, realpath, rm, writeFile, readdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
-import { execFile } from 'node:child_process';
 import {
     DryRunStatus,
     MutantRunStatus,
@@ -11,6 +10,7 @@ import {
 } from '@stryker-mutator/api/test-runner';
 import type { TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createOverkillTestRunner } from '../../packages/stryker-runner/overkill-test-runner.ts';
+import { executeMutationScript } from './stryker-script.test.ts';
 
 export const originalRoot = process.cwd();
 const extension = extname(import.meta.url);
@@ -30,27 +30,6 @@ type MutationFixture = {
 
 function quietLog(): void {
     return undefined;
-}
-
-export async function executeMutationScript(
-    script: string,
-    scriptArguments: readonly string[],
-    cwd: string
-): Promise<string> {
-    return await new Promise<string>(function receiveScriptOutput(resolve, reject) {
-        execFile(
-            process.execPath,
-            [ '--input-type=module', '--eval', script, ...scriptArguments ],
-            { cwd, timeout: 120_000 },
-            function completeScript(error, stdout, stderr) {
-                if (error === null) {
-                    resolve(stdout);
-                } else {
-                    reject(new Error([ stdout, stderr ].join('\n'), { cause: error }));
-                }
-            }
-        );
-    });
 }
 
 async function writeMutationModules(cwd: string): Promise<string> {
@@ -87,15 +66,21 @@ export const testNode = createSuite({ ...metadata, title: 'structural > suite / 
     return output.trim();
 }
 
-async function mutationProject(
-    scope: TestScope,
-    processModel: ProcessModel
-): Promise<Pick<MutationFixture, 'cwd' | 'mutantId'>> {
-    const cwd = await realpath(await mkdtemp(join(tmpdir(), 'overkill-stryker-lifecycle-')));
+export async function createMutationProject(scope: TestScope, prefix: string): Promise<string> {
+    process.chdir(originalRoot);
+    const cwd = await realpath(await mkdtemp(join(tmpdir(), prefix)));
     scope.cleanup(async function removeMutationProject() {
         process.chdir(originalRoot);
         await rm(cwd, { recursive: true, force: true });
     });
+    return cwd;
+}
+
+async function mutationProject(
+    scope: TestScope,
+    processModel: ProcessModel
+): Promise<Pick<MutationFixture, 'cwd' | 'mutantId'>> {
+    const cwd = await createMutationProject(scope, 'overkill-stryker-lifecycle-');
     await writeFile(join(cwd, 'package.json'), '{"type":"module"}');
     await writeFile(
         join(cwd, 'overkill.config.mjs'),
