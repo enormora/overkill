@@ -37,6 +37,8 @@ test-unit: benchmark-html-browser
     node source/overkill.test.ts
 
 test-mutation-integration: benchmark-html-browser
+    node source/integration-tests/run/runner-mutation-accuracy.test.ts
+    node source/integration-tests/run/runner-mutation-cost.test.ts
     node source/integration-tests/run/runner-mutation-boundaries.test.ts
     node source/integration-tests/run/runner-mutation-execution.test.ts
     node source/integration-tests/run/runner-mutation-policy.test.ts
@@ -102,6 +104,7 @@ _pack-smoke-packages packages: compile
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
 
 test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
+    node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
     node target/build/source/integration-tests/package-smoke/stryker-interruptions.test.js
     node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
@@ -113,6 +116,7 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/property.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
+    node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
     node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
@@ -123,3 +127,6 @@ publish-dry-run: compile
     rm -rf target/build/source/node_modules
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     packtory publish
+
+benchmark-mutation-cost: compile
+    node target/build/source/packages/test/overkill.entry-point.js bench run --profile mutation-cost --seed 42 --order lexical
