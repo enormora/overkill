@@ -33,11 +33,11 @@ function availableSamples(value: unknown, test: PerTestResult): Readonly<Record<
     const parsed = samplesSchema.parse(value);
     const metrics = Object.fromEntries(
         Object.entries(parsed).map(function availableValues([ name, readings ]) {
-            const provenance = canonicalIdentityJson(test.benchmark?.metrics[name]?.provenance);
+            const provenance = test.benchmark?.metrics[name]?.provenance;
             for (const reading of readings) {
                 if (
                     reading.availability === 'available' &&
-                    canonicalIdentityJson(reading.provenance) !== provenance
+                    canonicalIdentityJson(reading.provenance) !== canonicalIdentityJson(provenance)
                 ) {
                     throw new Error(`Raw sample provenance differs from metric ${name}.`);
                 }

@@ -41,6 +41,20 @@ function replaceSamples(
 }
 
 export const testNode = suite('benchmark HTML retained evidence', [
+    test('reads unavailable samples without requiring a matching metric summary', function (scope: TestScope) {
+        const { result, measured, artifact, provenance } = retainedFixture(scope);
+        const samples = replaceSamples(artifact, {
+            kind: 'json',
+            byteLength: 0,
+            value: { unrecorded: [ unavailableMetric('Collector unavailable.', provenance) ] }
+        });
+        scope.assert.deepEqual(readBenchmarkSamples({ ...result, artifacts: [ samples ] }, measured), {
+            kind: 'available',
+            partial: false,
+            metrics: { unrecorded: [] }
+        });
+        return scope.assert.collect();
+    }),
     test('retains the first artifact when references have duplicate identities', function (scope: TestScope) {
         const { result, measured, artifact } = retainedFixture(scope);
         const duplicate = replaceSamples(artifact, { kind: 'json', byteLength: 0, value: {} });
