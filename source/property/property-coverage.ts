@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { propertyObservationContractFailure } from '../packages/engine/engine.entry-point.ts';
 import type { PropertyCoverageRequirement } from './property-definition.ts';
 
 const percentScale = 100;
@@ -57,11 +58,10 @@ function trialCoverage(observe: (label: string) => void, commit: (hits: Readonly
     return {
         cover(label, condition) {
             if (!active) {
-                throw new TypeError('Property coverage observation outlived its trial.');
+                propertyObservationContractFailure('Property coverage observation outlived its trial.');
             }
-            labelSchema.parse(label);
-            z.boolean().parse(condition);
             observe(label);
+            z.boolean().parse(condition);
             if (condition) {
                 hits.add(label);
             }
@@ -88,24 +88,17 @@ function meetsPercentage(hits: number, denominator: number, percent: number): bo
 
 export function createCoverage(
     requirements: readonly PropertyCoverageRequirement[],
-    maxLabels: number
+    observeLabel: (label: string) => void
 ): PropertyCoverage {
-    const labels = new Set(requirements.map(function (entry) {
-        return entry.label;
-    }));
     const phases = new Map<string, Map<string, number>>();
     let denominator = 0;
-    function checkLimit(): void {
-        if (labels.size > maxLabels) {
-            throw new TypeError('Property coverage label limit exceeded.');
-        }
-    }
-    checkLimit();
+    requirements.forEach(function register(entry) {
+        observeLabel(entry.label);
+    });
     return {
         trial(phase) {
             return trialCoverage(function observe(label) {
-                labels.add(label);
-                checkLimit();
+                observeLabel(label);
             }, function commit(hits) {
                 if ([ 'exploration', 'exhaustive' ].includes(phase)) {
                     denominator += 1;

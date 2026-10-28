@@ -32,6 +32,16 @@ function propertyCommand(file: string, processModel: 'in-process' | 'supervised-
 export const testNode = suite('property runner policy', [
     ...([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
         return [
+            test(`${processModel} executes targeted exploration`, async function (scope) {
+                const result = await orchestrator.run(propertyCommand('property-targeted', processModel));
+                scope.assert.equal(result.summary.passed, 1);
+                return scope.assert.collect();
+            }),
+            test(`${processModel} transports invalid target contract failures`, async function (scope) {
+                const result = await orchestrator.run(propertyCommand('property-invalid-target', processModel));
+                scope.assert.includes(JSON.stringify(result.perTest), 'property-observation');
+                return scope.assert.collect();
+            }),
             test(`${processModel} collects policy and executes property trials`, async function (scope) {
                 const command = propertyCommand('property-declaration', processModel);
                 const resolved = await orchestrator.resolve(command);

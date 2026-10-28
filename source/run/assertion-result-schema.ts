@@ -56,6 +56,7 @@ const failureSchema = z.discriminatedUnion('kind', [
             'invalid-require-reference',
             'no-assertions',
             'property-scope',
+            'property-observation',
             'pending-in-flight-task',
             'pending-async-assertion',
             'plan-mismatch',

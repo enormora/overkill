@@ -17,6 +17,7 @@ function streamDriver(inputs: PropertyRegressionInputs<number>, recordValue: (va
                     examples: [],
                     test(value, sample) {
                         recordValue(value);
+                        sample.target('value', value);
                         sample.assert.equal(Number.isSafeInteger(value), true);
                         return sample.assert.collect();
                     }

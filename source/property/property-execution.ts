@@ -7,7 +7,8 @@ import {
     type CoverageSnapshot,
     type CoverageTrial
 } from './property-coverage.ts';
-import { generateInput } from './generator-input.ts';
+import { propertySearch, type PropertySearch } from './property-search.ts';
+import { trialTargets, propertyLabels } from './property-targets.ts';
 import { readGeneratorEdges } from './generator.ts';
 import type { InputRecipe } from './generator-edges.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
@@ -49,6 +50,8 @@ type PropertyExecution<Value> = PropertyInvocationContext & {
     readonly invocation: NormalizedPropertyInvocation<Value>;
     readonly work: PropertyWork;
     readonly coverage: PropertyCoverage;
+    readonly observeLabel: (label: string) => void;
+    readonly observeScores: (scores: ReadonlyMap<string, number>) => void;
     readonly phase: PropertyPhase;
     readonly exhaustive: number | null;
 };
@@ -58,10 +61,6 @@ type TrialPhase<Value> = {
     readonly inputs: Iterable<InputRecipe<Value>>;
     readonly limit: number;
 };
-
-function unavailableObservation(): never {
-    throw new TypeError('Property targeting is not available yet.');
-}
 
 function trialResult<Value>(
     execution: PropertyExecution<Value>,
@@ -86,13 +85,14 @@ async function evaluateObservedInput<Value>(
     value: Value,
     observations: CoverageTrial
 ): Promise<PropertyExecutionResult<Value> | null> {
+    const targets = trialTargets(execution.observeLabel);
     let passed = false;
     try {
         const trial = await execution.host.evaluateTrial(async function runPropertySample(scope) {
             execution.work.execute();
             return await execution.invocation.test(value, {
                 ...scope,
-                target: unavailableObservation,
+                target: targets.target,
                 cover: observations.cover
             });
         }, execution.signal);
@@ -100,6 +100,10 @@ async function evaluateObservedInput<Value>(
         return trialResult(execution, input, trial);
     } finally {
         observations.finish(passed);
+        const scores = targets.finish();
+        if (passed) {
+            execution.observeScores(scores);
+        }
     }
 }
 
@@ -151,12 +155,54 @@ async function executePhase<Value>(
     return null;
 }
 
-function* explorationInputs<Value>(execution: PropertyExecution<Value>): Generator<InputRecipe<Value>> {
-    const random = propertyRandom(execution.host, execution.identity);
-    for (let index = 0; index < execution.host.policy.newTrials; index += 1) {
-        const input = generateInput(execution.invocation.generator, random, undefined, execution.work.context);
-        yield input.reconstruct;
+function completedExecution<Value>(
+    execution: PropertyExecution<Value>,
+    exhaustive: number | null
+): PropertyExecutionResult<Value> {
+    return {
+        kind: execution.coverage.unmet().length === 0 ? 'completed' : 'coverage-unmet',
+        accounting: execution.work.snapshot(),
+        coverage: execution.coverage.snapshot(),
+        exhaustive
+    };
+}
+
+async function evaluateExploration<Value>(
+    execution: PropertyExecution<Value>,
+    search: PropertySearch<Value>,
+    last: boolean
+): Promise<PropertyExecutionResult<Value> | null> {
+    execution.signal.throwIfAborted();
+    const candidate = search.next();
+    let scores: ReadonlyMap<string, number> = new Map();
+    const failed = await evaluateInput({
+        ...execution,
+        phase: 'exploration',
+        observeScores(value) {
+            scores = value;
+        }
+    }, candidate.input.reconstruct);
+    if (failed === null && !last) {
+        search.accept(candidate, scores);
     }
+    return failed;
+}
+
+async function exploreInputs<Value>(execution: PropertyExecution<Value>): Promise<PropertyExecutionResult<Value>> {
+    const search = propertySearch(execution.invocation.generator, propertyRandom(execution.host, execution.identity), {
+        ...execution.work.context,
+        consumeWork() {
+            execution.signal.throwIfAborted();
+            execution.work.context.consumeWork();
+        }
+    }, execution.host.policy.maxRetainedInputs);
+    for (let index = 0; index < execution.host.policy.newTrials; index += 1) {
+        const failed = await evaluateExploration(execution, search, index + 1 === execution.host.policy.newTrials);
+        if (failed !== null) {
+            return failed;
+        }
+    }
+    return completedExecution(execution, null);
 }
 
 function trialPhases<Value>(
@@ -177,18 +223,6 @@ function trialPhases<Value>(
     ];
 }
 
-function completedExecution<Value>(
-    execution: PropertyExecution<Value>,
-    exhaustive: number | null
-): PropertyExecutionResult<Value> {
-    return {
-        kind: execution.coverage.unmet().length === 0 ? 'completed' : 'coverage-unmet',
-        accounting: execution.work.snapshot(),
-        coverage: execution.coverage.snapshot(),
-        exhaustive
-    };
-}
-
 async function executeExploration<Value>(execution: PropertyExecution<Value>): Promise<PropertyExecutionResult<Value>> {
     execution.work.enterPhase('exploration');
     const domain = enumerateDomain(
@@ -202,20 +236,20 @@ async function executeExploration<Value>(execution: PropertyExecution<Value>): P
         },
         execution.host.policy.maxExhaustiveValues
     );
-    const exhaustive = domain === null ? null : domain.length;
     if (domain?.length === 0) {
         execution.work.context.exhaustDomain();
     }
+    if (domain === null) {
+        return await exploreInputs(execution);
+    }
     const failed = await executePhase(
-        { ...execution, exhaustive },
-        domain === null
-            ? { name: 'exploration', inputs: explorationInputs(execution), limit: execution.host.policy.newTrials }
-            : { name: 'exhaustive', inputs: domain, limit: domain.length }
+        { ...execution, exhaustive: domain.length },
+        { name: 'exhaustive', inputs: domain, limit: domain.length }
     );
     if (failed !== null) {
         return failed;
     }
-    return completedExecution(execution, exhaustive);
+    return completedExecution(execution, domain.length);
 }
 
 async function executePhases<Value>(
@@ -238,15 +272,20 @@ export async function executeProperty<Value>(
     context: PropertyInvocationContext
 ): Promise<PropertyExecutionResult<Value>> {
     const work = createPropertyWork(context.host.policy);
+    const observeLabel = propertyLabels(context.host.policy.maxLabels);
     const coverage = createCoverage(
         coverageRequirements(Object.hasOwn(invocation, 'coverage') ? Reflect.get(invocation, 'coverage') : []),
-        context.host.policy.maxLabels
+        observeLabel
     );
     const execution: PropertyExecution<Value> = {
         ...context,
         invocation,
         work,
         coverage,
+        observeLabel,
+        observeScores() {
+            return undefined;
+        },
         phase: 'checked-in-corpus',
         exhaustive: null
     };

@@ -314,7 +314,6 @@ export type {
     SkipOutcome,
     SuiteRunCounts,
     TestContractFailure,
-    TestContractFailureCode,
     TestFailure,
     TestOutcome
 } from '../../engine/run-result.ts';
@@ -457,6 +456,8 @@ export type {
     PropertyTrialResult,
     PropertyRunContext
 } from '../../engine/property-execution-host.ts';
-export { propertyScopeContractFailure } from '../../engine/property-trial.ts';
+export { propertyScopeContractFailure, propertyObservationContractFailure } from '../../engine/property-trial.ts';
 
 export { createEngine } from '../../engine/standard-engine.ts';
+
+export type { TestContractFailureCode } from '../../engine/test-contract-failure-code.ts';

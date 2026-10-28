@@ -4,6 +4,7 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import type { TestContractFailureCode } from './test-contract-failure-code.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { CapturedOutputArtifact, RunArtifactId } from './run-artifact.ts';
 import type { RunTimings } from './run-timings.ts';
@@ -51,24 +52,6 @@ export type BodyErrorTestFailure = {
     };
     readonly kind: 'body-error';
 };
-
-type TestContractFailureCodeByName = {
-    readonly deadBuilderAssertion: 'dead-builder-assertion';
-    readonly invalidAssertionReference: 'invalid-assertion-reference';
-    readonly invalidCompositeResult: 'invalid-composite-result';
-    readonly invalidDeepAssertionOperand: 'invalid-deep-assertion-operand';
-    readonly invalidPlan: 'invalid-plan';
-    readonly invalidTimeoutControl: 'invalid-timeout-control';
-    readonly invalidRequireReference: 'invalid-require-reference';
-    readonly noAssertions: 'no-assertions';
-    readonly propertyScope: 'property-scope';
-    readonly pendingInFlightTask: 'pending-in-flight-task';
-    readonly pendingAsyncAssertion: 'pending-async-assertion';
-    readonly planMismatch: 'plan-mismatch';
-    readonly unobservedInFlightTask: 'unobserved-in-flight-task';
-};
-
-export type TestContractFailureCode = TestContractFailureCodeByName[keyof TestContractFailureCodeByName];
 
 export type TestContractFailure = {
     readonly actual: unknown;

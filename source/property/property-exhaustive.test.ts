@@ -5,11 +5,12 @@ import { property, withProperties } from './property-authoring.ts';
 import { createCoverage, coverageRequirements } from './property-coverage.ts';
 import { enumerateDomain } from './generator-enumeration.ts';
 import { createPropertyWork } from './property-work.ts';
+import { propertyLabels } from './property-targets.ts';
 import { gen } from './generators.ts';
 
 export const testNode = suite('exhaustive input coverage', [
     test('accepts exact percentage boundaries without rounding the observed ratio', function (scope) {
-        const coverage = createCoverage([ { label: 'hit', minimumPercent: 29 } ], 1);
+        const coverage = createCoverage([ { label: 'hit', minimumPercent: 29 } ], propertyLabels(1));
         for (let index = 0; index < 100; index += 1) {
             const trial = coverage.trial('exploration');
             trial.cover('hit', index < 29);
@@ -73,16 +74,16 @@ export const testNode = suite('exhaustive input coverage', [
         scope.assert.throws(function () {
             return coverageRequirements([ { label: 'invalid', minimumPercent: Number.POSITIVE_INFINITY } ]);
         }, { name: 'ZodError' });
-        const coverage = createCoverage([], 1);
+        const coverage = createCoverage([], propertyLabels(1));
         const trial = coverage.trial('exploration');
         trial.cover('first', true);
         scope.assert.throws(function () {
             trial.cover('second', true);
-        }, { name: 'TypeError' });
+        }, { name: 'TestContractSignalError', message: /label limit/ });
         trial.finish(true);
         scope.assert.throws(function () {
             trial.cover('first', true);
-        }, { name: 'TypeError' });
+        }, { name: 'TestContractSignalError', message: /outlived/ });
         return scope.assert.collect();
     }),
     test('enumerates exact numeric domains including both signed zeros', function (scope) {
