@@ -12,6 +12,7 @@ function streamDriver(inputs: PropertyRegressionInputs<number>, recordValue: (va
         withProperties(async function (scope) {
             const result = await executeProperty(
                 {
+                    coverage: [],
                     generator: gen.integer({ min: 0, max: 10_000 }),
                     examples: [],
                     test(value, sample) {

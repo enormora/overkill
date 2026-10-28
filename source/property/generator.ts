@@ -6,6 +6,7 @@ import type { PropertyInputCodec } from './property-codec.ts';
 const generatorBrand = Symbol.for('@overkill-dev/property/Generator');
 const generatorDomain = Symbol.for('@overkill-dev/property/Generator/domain/v1');
 const generatorEdges = Symbol.for('@overkill-dev/property/Generator/edges/v1');
+const generatorEnumeration = Symbol.for('@overkill-dev/property/Generator/enumeration/v1');
 const generatorCodec = Symbol.for('@overkill-dev/property/Generator/codec/v1');
 
 export type Generator<Value> = {
@@ -16,7 +17,11 @@ export type Generator<Value> = {
     readonly withCodec: (codec: PropertyInputCodec<Value>) => Generator<Value>;
 };
 
+export type EnumerationContext = GeneratorContext & { readonly discover: () => void; };
+export type EnumerationSource<Value> = (context: EnumerationContext) => Iterable<() => Value>;
+
 type GeneratorState<Value> = {
+    readonly [generatorEnumeration]: EnumerationSource<Value>;
     readonly [generatorEdges]: GeneratorEdgeSource<Value>;
     readonly [generatorDomain]: (context: GeneratorContext) => Arbitrary<Value>;
     readonly [generatorCodec]: PropertyInputCodec<Value> | null;
@@ -25,7 +30,7 @@ type GeneratorState<Value> = {
 function hasGeneratorState<Value>(value: unknown): value is Generator<Value> & GeneratorState<Value> {
     return typeof value === 'object' && value !== null &&
         Reflect.get(value, generatorBrand) === true &&
-        [ generatorDomain, generatorEdges ].every(function hasResolver(key) {
+        [ generatorDomain, generatorEdges, generatorEnumeration ].every(function hasResolver(key) {
             return typeof Reflect.get(value, key) === 'function';
         }) &&
         Object.hasOwn(value, generatorCodec) &&
@@ -65,6 +70,13 @@ export function readGeneratorEdges<Input>(generator: Generator<Input>): Generato
     return generator[generatorEdges];
 }
 
+export function readGeneratorEnumeration<Value>(generator: Generator<Value>): EnumerationSource<Value> {
+    if (!hasGeneratorState<Value>(generator)) {
+        throw new TypeError('Property requires an Overkill generator.');
+    }
+    return generator[generatorEnumeration];
+}
+
 function ensureCallback(callback: unknown): void {
     if (typeof callback !== 'function') {
         throw new TypeError('Generator composition requires a callback.');
@@ -74,10 +86,12 @@ function ensureCallback(callback: unknown): void {
 export function createGenerator<Value>(
     resolve: (context: GeneratorContext) => Arbitrary<Value>,
     codec: PropertyInputCodec<Value> | null,
-    edges: GeneratorEdgeSource<Value>
+    edges: GeneratorEdgeSource<Value>,
+    enumerate: EnumerationSource<Value>
 ): Generator<Value> {
     const generator: Generator<Value> & GeneratorState<Value> = {
         [generatorBrand]: true,
+        [generatorEnumeration]: enumerate,
         [generatorDomain]: resolve,
         [generatorEdges]: edges,
         [generatorCodec]: codec,
@@ -94,6 +108,14 @@ export function createGenerator<Value>(
                 function* mappedEdges(context) {
                     for (const source of edges(context)) {
                         yield function reconstructMappedEdge() {
+                            context.consumeWork();
+                            return transform(source());
+                        };
+                    }
+                },
+                function* mappedDomain(context) {
+                    for (const source of enumerate(context)) {
+                        yield function () {
                             context.consumeWork();
                             return transform(source());
                         };
@@ -125,6 +147,25 @@ export function createGenerator<Value>(
                                     throw new Error('Dependent edge could not be reconstructed.');
                                 }
                                 return input();
+                            };
+                        }
+                    }
+                },
+                function* dependentDomain(context) {
+                    for (const source of enumerate(context)) {
+                        context.consumeWork();
+                        const dependent = readGeneratorEnumeration(transform(source()));
+                        const candidates = indexedEdges(dependent(context));
+                        for (const [ retainedOrdinal ] of candidates) {
+                            const retained = retainedOrdinal;
+                            context.consumeWork();
+                            yield function () {
+                                const fresh = readGeneratorEnumeration(transform(source()));
+                                const recipe = Iterator.from(fresh(context)).drop(retained).next().value;
+                                if (recipe === undefined) {
+                                    throw new Error('Dependent domain changed.');
+                                }
+                                return recipe();
                             };
                         }
                     }
@@ -161,11 +202,25 @@ export function createGenerator<Value>(
                             context.rejectInput();
                         }
                     }
+                },
+                function* filteredDomain(context) {
+                    for (const input of enumerate(context)) {
+                        context.consumeWork();
+                        const accepted = predicate(input());
+                        if (typeof accepted !== 'boolean') {
+                            throw new TypeError('Generator filter predicates must return a boolean.');
+                        }
+                        if (accepted) {
+                            yield input;
+                        } else {
+                            context.rejectInput();
+                        }
+                    }
                 }
             );
         },
         withCodec(inputCodec: PropertyInputCodec<Value>): Generator<Value> {
-            return createGenerator(resolve, inputCodec, edges);
+            return createGenerator(resolve, inputCodec, edges, enumerate);
         }
     };
     return Object.freeze(generator);

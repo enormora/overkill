@@ -1,10 +1,13 @@
 import * as backend from 'fast-check';
+import { productDomain } from './generator-enumeration.ts';
+import { sequenceDomain } from './generator-primitives.ts';
 import { edgeLengths } from './generator-container-edges.ts';
 import { productEdges, interleavedEdges } from './generator-edges.ts';
 import {
     createGenerator,
     prepareGenerator,
     readGeneratorEdges,
+    readGeneratorEnumeration,
     ensureGenerator,
     isGenerator,
     type Generator as PropertyGenerator
@@ -47,7 +50,10 @@ export function array<Value>(
                 });
                 yield* productEdges<Value, Value[]>(sources, Array.from)(context);
             }
-        }
+        },
+        sequenceDomain<Value, Value[]>(constraints, readGeneratorEnumeration(element), function (values) {
+            return Array.from(values);
+        })
     );
 }
 
@@ -64,7 +70,8 @@ export function tuple(...elements: readonly unknown[]): unknown {
             }));
         },
         null,
-        productEdges(components.map(readGeneratorEdges), Array.from)
+        productEdges(components.map(readGeneratorEdges), Array.from),
+        productDomain(components.map(readGeneratorEnumeration), Array.from)
     );
 }
 
@@ -112,6 +119,16 @@ export function record(fields: unknown): unknown {
                     return [ key, values[index] ];
                 }));
             }
+        ),
+        productDomain(
+            components.map(function ([ , component ]) {
+                return readGeneratorEnumeration(component);
+            }),
+            function (values) {
+                return Object.fromEntries(components.map(function ([ key ], index) {
+                    return [ key, values[index] ];
+                }));
+            }
         )
     );
 }
@@ -135,7 +152,13 @@ export function choice(...alternatives: readonly unknown[]): unknown {
             );
         },
         null,
-        interleavedEdges(components.map(readGeneratorEdges))
+        interleavedEdges(components.map(readGeneratorEdges)),
+        function* enumerate(context) {
+            for (const component of components) {
+                context.consumeWork();
+                yield* readGeneratorEnumeration(component)(context);
+            }
+        }
     );
 }
 
@@ -168,7 +191,8 @@ export function recursive<Value>(definition: RecursiveGeneratorDefinition<Value>
                     });
                 },
                 null,
-                readGeneratorEdges(recursive({ leaf, branch, maxDepth: remaining - 1 }))
+                readGeneratorEdges(recursive({ leaf, branch, maxDepth: remaining - 1 })),
+                readGeneratorEnumeration(recursive({ leaf, branch, maxDepth: remaining - 1 }))
             );
             context.consumeWork();
             const expanded = branch(child);
@@ -192,6 +216,15 @@ export function recursive<Value>(definition: RecursiveGeneratorDefinition<Value>
                 const expanded = branch(child);
                 ensureGenerator(expanded);
                 yield* readGeneratorEdges(expanded)({ ...context, maxDepth: remaining - 1 });
+            }
+        },
+        function* enumerate(context) {
+            const remaining = Math.min(maxDepth, context.maxDepth);
+            yield* readGeneratorEnumeration(leaf)({ ...context, maxDepth: remaining });
+            if (remaining > 0) {
+                context.consumeWork();
+                const child = recursive({ leaf, branch, maxDepth: remaining - 1 });
+                yield* readGeneratorEnumeration(branch(child))({ ...context, maxDepth: remaining - 1 });
             }
         }
     );

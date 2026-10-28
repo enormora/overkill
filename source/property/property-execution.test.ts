@@ -3,10 +3,12 @@ import { readPropertyExecutionHost, type TestScope } from '../packages/engine/en
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
+import { testNode as exhaustive } from './property-exhaustive.test.ts';
 import { gen } from './generators.ts';
 import { executeProperty, type PropertyExecutionResult } from './property-execution.ts';
 
 export const testNode = suite('property trial execution', [
+    exhaustive,
     test('executes all five phases in order with independent accounting', async function (scope: TestScope) {
         const observed: number[] = [];
         const captured: PropertyExecutionResult<number>[] = [];
@@ -16,6 +18,7 @@ export const testNode = suite('property trial execution', [
                 const host = readPropertyExecutionHost(parent);
                 const result = await executeProperty(
                     {
+                        coverage: [],
                         generator: gen.integer({ min: 1, max: 2 }),
                         examples: [ function () {
                             return -3;
@@ -57,6 +60,7 @@ export const testNode = suite('property trial execution', [
                 'local-cache': { executed: 1, rejected: 0 },
                 examples: { executed: 1, rejected: 0 },
                 'automatic-edges': { executed: 2, rejected: 0 },
+                exhaustive: { executed: 0, rejected: 0 },
                 exploration: { executed: 3, rejected: 0 }
             } ]
         );

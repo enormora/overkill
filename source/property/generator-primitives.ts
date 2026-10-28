@@ -1,7 +1,13 @@
 import * as backend from 'fast-check';
+import { scalarDomain, integerDomain, doubleDomain, productDomain } from './generator-enumeration.ts';
 import { stringEdges, byteEdges } from './generator-container-edges.ts';
 import { scalarEdges } from './generator-edges.ts';
-import { createGenerator, prepareGenerator, type Generator as PropertyGenerator } from './generator.ts';
+import {
+    type EnumerationSource,
+    createGenerator,
+    prepareGenerator,
+    type Generator as PropertyGenerator
+} from './generator.ts';
 import {
     bigintBounds,
     effectiveLength,
@@ -13,13 +19,38 @@ import {
     type NumberBounds
 } from './generator-constraints.ts';
 
+const minimumCodeUnit = 0n;
+const maximumCodeUnit = 65_535n;
+const maximumByte = 255n;
+
+export function sequenceDomain<Component, Value>(
+    bounds: LengthBounds | null,
+    source: EnumerationSource<Component>,
+    build: (values: readonly Component[]) => Value
+): EnumerationSource<Value> {
+    return function* enumerate(context) {
+        const lengths = effectiveLength(bounds, context);
+        for (let length = lengths.minLength; length <= lengths.maxLength; length += 1) {
+            context.consumeWork();
+            const sources = Array.from({ length }, function () {
+                context.consumeWork();
+                return source;
+            });
+            yield* productDomain(sources, build)(context);
+        }
+    };
+}
+
 export function boolean(): PropertyGenerator<boolean> {
     return createGenerator(
         function () {
             return backend.boolean();
         },
         null,
-        scalarEdges([ false, true ])
+        scalarEdges([ false, true ]),
+        scalarDomain(function () {
+            return [ false, true ];
+        })
     );
 }
 
@@ -32,14 +63,20 @@ export function integer(bounds: NumberBounds): PropertyGenerator<number> {
         null,
         scalarEdges([ constraints.min, constraints.max, 0, -1, 1 ].filter(function inDomain(value) {
             return value >= constraints.min && value <= constraints.max;
-        }))
+        })),
+        scalarDomain(function () {
+            return Iterator.from(integerDomain(BigInt(constraints.min), BigInt(constraints.max))).map(Number);
+        })
     );
 }
 
 export function number(...bounds: readonly [] | readonly [NumberBounds]): PropertyGenerator<number> {
+    const limits = bounds.length === 0
+        ? { min: Number.NEGATIVE_INFINITY, max: Number.POSITIVE_INFINITY }
+        : numberBounds(bounds[0], false);
     const constraints = bounds.length === 0
         ? {}
-        : { ...numberBounds(bounds[0], false), noNaN: true, noDefaultInfinity: true };
+        : { ...limits, noNaN: true, noDefaultInfinity: true };
     return createGenerator(
         function () {
             return backend.double(constraints);
@@ -63,7 +100,10 @@ export function number(...bounds: readonly [] | readonly [NumberBounds]): Proper
                 : [ bounds[0].min, bounds[0].max, 0, -0, -1, 1 ].filter(function inDomain(value) {
                     return value >= bounds[0].min && value <= bounds[0].max;
                 })
-        )
+        ),
+        scalarDomain(function () {
+            return doubleDomain(limits.min, limits.max);
+        })
     );
 }
 
@@ -81,7 +121,10 @@ export function bigint(bounds: BigintBounds): PropertyGenerator<bigint> {
             [ constraints.min, constraints.max, bigintZero, -bigintUnit, bigintUnit ].filter(function inDomain(value) {
                 return value >= constraints.min && value <= constraints.max;
             })
-        )
+        ),
+        scalarDomain(function () {
+            return integerDomain(constraints.min, constraints.max);
+        })
     );
 }
 
@@ -101,7 +144,10 @@ export function constant<const Value extends GeneratorConstant>(value: Value): P
             return backend.constant(value);
         },
         null,
-        scalarEdges([ value ])
+        scalarEdges([ value ]),
+        scalarDomain(function () {
+            return [ value ];
+        })
     );
 }
 
@@ -137,7 +183,20 @@ export function string(...bounds: readonly [] | readonly [LengthBounds]): Proper
                 );
         },
         null,
-        stringEdges(constraints)
+        stringEdges(constraints),
+        sequenceDomain(
+            constraints,
+            scalarDomain(function () {
+                return Iterator.from(integerDomain(minimumCodeUnit, maximumCodeUnit)).map(Number);
+            }),
+            function (values) {
+                return values
+                    .map(function (value) {
+                        return String.fromCodePoint(value);
+                    })
+                    .join('');
+            }
+        )
     );
 }
 
@@ -157,6 +216,15 @@ export function bytes(...bounds: readonly [] | readonly [LengthBounds]): Propert
                 });
         },
         null,
-        byteEdges(constraints)
+        byteEdges(constraints),
+        sequenceDomain(
+            constraints,
+            scalarDomain(function () {
+                return Iterator.from(integerDomain(minimumCodeUnit, maximumByte)).map(Number);
+            }),
+            function (values) {
+                return Uint8Array.from(values);
+            }
+        )
     );
 }
