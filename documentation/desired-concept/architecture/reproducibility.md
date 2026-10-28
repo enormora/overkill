@@ -280,7 +280,16 @@ decimal run seed, and the canonical work identity key with SHA-256, taking the
 first 64 bits in big-endian order. Direct engine execution accepts an explicit
 `seed` and uses `0n` when no run context supplies one.
 
-The PRNG is SplitMix-based (see [Capability Handles § Splittable Random For Determinism Under Parallelism](../authoring/capability-handles.md#splittable-random-for-determinism-under-parallelism)).
+Use `pure-rand`'s xoroshiro128+ generator. Stream version `case-random-v1`
+hashes the JSON tuple of that version and the decimal case seed with SHA-256.
+The first 128 bits become four signed 32-bit state words in big-endian order;
+an all-zero state uses `1` for its first word.
+
+Splitting hashes the JSON tuple of `case-random-split-v1`, the parent state,
+and the child label (`first` or `second`) with the same state derivation.
+Advance the parent once per split. Child streams share no mutable state;
+recursive and repeated splits derive distinct child identities.
+See [Capability Handles § Splittable Random For Determinism Under Parallelism](../authoring/capability-handles.md#splittable-random-for-determinism-under-parallelism).
 
 ## Artifact Reproducibility
 

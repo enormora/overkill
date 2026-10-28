@@ -62,13 +62,13 @@ async function executeRandomCases(
 }
 
 export const testNode = suite('case random streams', [
-    test('matches SplitMix64 seed-zero reference words', function (scope) {
+    test('replays the version-one seed-zero stream', function (scope) {
         const random = createTestRandom(0n);
         scope.assert.deepEqual(draw(random).slice(0, 4), [
-            0xE2_20_A8_39,
-            0x6E_78_9E_6A,
-            0x06_C4_5D_18,
-            0xF8_8B_B8_A8
+            0x3F_E0_8F_EC,
+            0xB3_94_CD_C9,
+            0x44_CD_E6_99,
+            0x83_82_4E_28
         ]);
         return scope.assert.collect();
     }),
@@ -86,6 +86,19 @@ export const testNode = suite('case random streams', [
             parent: draw(replay)
         });
         scope.assert.notDeepEqual(firstValues, secondValues);
+        return scope.assert.collect();
+    }),
+    test('keeps nested and repeated child streams distinct', function (scope) {
+        const random = createTestRandom(42n);
+        const [ first, second ] = random.split();
+        const [ nestedFirst, nestedSecond ] = first.split();
+        const [ repeatedFirst, repeatedSecond ] = random.split();
+        const streams = [ second, nestedFirst, nestedSecond, repeatedFirst, repeatedSecond ];
+        const values = streams.map(function streamValues(stream) {
+            return JSON.stringify(draw(stream));
+        });
+        const uniqueStreams = new Set(values);
+        scope.assert.equal(uniqueStreams.size, streams.length);
         return scope.assert.collect();
     }),
     test('produces replayable bytes, UUIDs, and collection choices', function (scope) {

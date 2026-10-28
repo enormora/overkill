@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { uniformInt } from 'pure-rand/distribution/uniformInt';
+import type { RandomGenerator } from 'pure-rand/types/RandomGenerator';
 import { workIdentityKey, type WorkId } from './identity.ts';
-import { createSplitMix, type SplitMixGenerator } from './splitmix.ts';
+import { createRandomStream, splitRandomStream } from './random-stream.ts';
 import type { TestRandom } from './test-scope.ts';
 
 export type CaseRandomContext = { readonly seed: bigint; readonly work: WorkId; };
@@ -30,7 +31,7 @@ export function deriveCaseSeed(seed: bigint, work: WorkId): bigint {
     return createHash('sha256').update(identity).digest().readBigUInt64BE();
 }
 
-function randomHandle(generator: SplitMixGenerator): TestRandom {
+function randomHandle(generator: RandomGenerator): TestRandom {
     function integer(minimum: number, maximum: number): number {
         if (!Number.isSafeInteger(minimum) || !Number.isSafeInteger(maximum) || minimum > maximum) {
             throw new RangeError('Random integer bounds must be ordered safe integers.');
@@ -74,11 +75,12 @@ function randomHandle(generator: SplitMixGenerator): TestRandom {
                 .join('-');
         },
         split() {
-            return [ randomHandle(generator.split()), randomHandle(generator.split()) ];
+            const [ first, second ] = splitRandomStream(generator);
+            return [ randomHandle(first), randomHandle(second) ];
         }
     };
 }
 
 export function createTestRandom(seed: bigint): TestRandom {
-    return randomHandle(createSplitMix(seed));
+    return randomHandle(createRandomStream(seed));
 }
