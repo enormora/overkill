@@ -7,7 +7,8 @@ const [engine, configApi, processModel, freshState, coverageAnalysis] = process.
 const logger = { info() {}, debug() {}, isDebugEnabled: () => false };
 const instrumented = await new Instrumenter(logger).instrument([
     { name: process.cwd() + '/subject.mjs',
-      content: 'export function value() { return true; } export function untouched() { return true; }', mutate: true }
+      content: 'export function value() { return true; } ' +
+        'export function untouched() { return true; } export const initial = true;', mutate: true }
 ], { excludedMutations: ['BlockStatement'], ignorers: [], plugins: null });
 await writeFile('package.json', '{"type":"module"}');
 await writeFile('subject.mjs', instrumented.files[0].content);
@@ -36,17 +37,23 @@ try {
     assert.equal(dry.status, 'complete', JSON.stringify(dry));
     assert.equal(dry.tests.length, 3);
     const mutants = instrumented.mutants.filter(mutant => mutant.mutatorName === 'BooleanLiteral');
-    assert.equal(mutants.length, 2);
-    const [covered, uncovered] = mutants;
+    assert.equal(mutants.length, 3);
+    const [covered, uncovered, initial] = mutants;
     const ids = dry.tests.filter(test => !test.name.endsWith('unrelated')).map(test => test.id);
     if (coverageAnalysis === 'perTest') {
+        assert.deepEqual(dry.mutantCoverage.static, { [initial.id]: 1 });
         assert.deepEqual(Object.keys(dry.mutantCoverage.perTest).sort(), ids.toSorted());
         assert.deepEqual(Object.values(dry.mutantCoverage.perTest).map(counts => counts[covered.id]), [1, 1]);
     } else if (coverageAnalysis === 'all') {
-        assert.deepEqual(dry.mutantCoverage, { static: { [covered.id]: 2 }, perTest: {} });
+        assert.deepEqual(dry.mutantCoverage, { static: { [covered.id]: 2, [initial.id]: 1 }, perTest: {} });
     } else {
         assert.equal(Object.hasOwn(dry, 'mutantCoverage'), false);
     }
+    const originalCoverage = structuredClone(dry.mutantCoverage);
+    if (dry.mutantCoverage) dry.mutantCoverage.static[initial.id] = 999;
+    const repeated = await runner.dryRun({ coverageAnalysis, timeout: 30000, disableBail: true });
+    assert.equal(repeated.status, 'complete', JSON.stringify(repeated));
+    assert.deepEqual(repeated.mutantCoverage, originalCoverage);
     const options = { activeMutant: covered, mutantActivation: 'runtime', reloadEnvironment: false,
         sandboxFileName: process.cwd() + '/subject.mjs', timeout: 30000, disableBail: true };
     const narrowed = await runner.mutantRun({ ...options, testFilter: ids });
