@@ -17,7 +17,7 @@ type PropertyExecutionRequest = {
 };
 
 export const propertyExecutionDefaults: PropertyExecutionRequest = {
-    policy: { ...defaultPropertyPolicy, newTrials: 3, maxAutomaticEdges: 0 },
+    policy: { ...defaultPropertyPolicy, newTrials: 3, maxAutomaticEdges: 0, maxExhaustiveValues: 0 },
     execution: { mode: 'serial-in-process' },
     seed: 42n
 };

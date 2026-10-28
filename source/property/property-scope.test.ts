@@ -42,7 +42,7 @@ export const testNode = suite('property trial scopes', [
         }
         return scope.assert.collect();
     }),
-    test('rejects unavailable targeting and coverage before the next input', async function (scope) {
+    test('rejects unavailable targeting and invalid coverage before the next input', async function (scope) {
         for (const observation of [ 'target', 'cover' ] as const) {
             const values: number[] = [];
             const node = property({
@@ -58,7 +58,7 @@ export const testNode = suite('property trial scopes', [
             scope.assert.equal(result.summary.failed, 1);
             scope.assert.includes(
                 JSON.stringify(result.perTest),
-                'Property targeting and input coverage are not available yet.'
+                observation === 'target' ? 'Property targeting is not available yet.' : 'expected boolean'
             );
             scope.assert.deepEqual(values, [ 1 ]);
         }

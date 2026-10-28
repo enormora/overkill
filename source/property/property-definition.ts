@@ -7,6 +7,10 @@ import type {
 } from '../packages/engine/engine.entry-point.ts';
 import type { Generator as PropertyGenerator } from './generator.ts';
 
+export type PropertyCoverageRequirement = { readonly label: string; readonly minimumPercent: number; };
+type CoverageDeclaration = { readonly coverage: readonly PropertyCoverageRequirement[]; };
+type ExamplesDeclaration<Value> = { readonly examples: readonly PropertyExample<Value>[]; };
+
 export type PropertySampleScope = TestScope & {
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;
@@ -24,11 +28,12 @@ type PropertyInvocationBody<Value> = {
     readonly test: PropertyBody<Value>;
 };
 
-export type NormalizedPropertyInvocation<Value> = PropertyInvocationBody<Value> & {
-    readonly examples: readonly PropertyExample<Value>[];
-};
-
-export type PropertyInvocation<Value> = NormalizedPropertyInvocation<Value> | PropertyInvocationBody<Value>;
+type ExampleInvocation<Value> = ExamplesDeclaration<Value> & PropertyInvocationBody<Value>;
+type CoveredInvocation<Value> = CoverageDeclaration & PropertyInvocationBody<Value>;
+export type NormalizedPropertyInvocation<Value> = CoverageDeclaration & ExampleInvocation<Value>;
+type UncoveredInvocation<Value> = ExampleInvocation<Value> | PropertyInvocationBody<Value>;
+type RequiredCoverageInvocation<Value> = CoveredInvocation<Value> | NormalizedPropertyInvocation<Value>;
+export type PropertyInvocation<Value> = RequiredCoverageInvocation<Value> | UncoveredInvocation<Value>;
 
 type PropertyDefinitionBody<Value> = PropertyInvocation<Value> & { readonly title: string; };
 

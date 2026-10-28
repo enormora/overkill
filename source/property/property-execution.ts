@@ -1,4 +1,12 @@
 import type { PropertyExecutionHost, PropertyTrialResult } from '../packages/engine/engine.entry-point.ts';
+import { enumerateDomain } from './generator-enumeration.ts';
+import {
+    createCoverage,
+    coverageRequirements,
+    type PropertyCoverage,
+    type CoverageSnapshot,
+    type CoverageTrial
+} from './property-coverage.ts';
 import { generateInput } from './generator-input.ts';
 import { readGeneratorEdges } from './generator.ts';
 import type { InputRecipe } from './generator-edges.ts';
@@ -18,10 +26,14 @@ export type PropertyRegressionInputs<Value> = {
 };
 
 export type PropertyExecutionResult<Value> = {
-    readonly kind: 'completed' | 'generation-exhausted' | 'work-exhausted';
+    readonly kind: 'completed' | 'coverage-unmet' | 'generation-exhausted' | 'work-exhausted';
     readonly accounting: PropertyAccounting;
+    readonly exhaustive: number | null;
+    readonly coverage: CoverageSnapshot;
 } | {
     readonly kind: 'failed';
+    readonly exhaustive: number | null;
+    readonly coverage: CoverageSnapshot;
     readonly accounting: PropertyAccounting;
     readonly trial: Exclude<PropertyTrialResult, { readonly kind: 'passed'; }>;
     readonly input: InputRecipe<Value>;
@@ -36,6 +48,9 @@ export type PropertyInvocationContext = {
 type PropertyExecution<Value> = PropertyInvocationContext & {
     readonly invocation: NormalizedPropertyInvocation<Value>;
     readonly work: PropertyWork;
+    readonly coverage: PropertyCoverage;
+    readonly phase: PropertyPhase;
+    readonly exhaustive: number | null;
 };
 
 type TrialPhase<Value> = {
@@ -45,27 +60,60 @@ type TrialPhase<Value> = {
 };
 
 function unavailableObservation(): never {
-    throw new TypeError('Property targeting and input coverage are not available yet.');
+    throw new TypeError('Property targeting is not available yet.');
+}
+
+function trialResult<Value>(
+    execution: PropertyExecution<Value>,
+    input: InputRecipe<Value>,
+    trial: PropertyTrialResult
+): PropertyExecutionResult<Value> | null {
+    return trial.kind === 'passed'
+        ? null
+        : {
+            kind: 'failed',
+            accounting: execution.work.snapshot(),
+            trial,
+            input,
+            coverage: execution.coverage.snapshot(),
+            exhaustive: execution.exhaustive
+        };
+}
+
+async function evaluateObservedInput<Value>(
+    execution: PropertyExecution<Value>,
+    input: InputRecipe<Value>,
+    value: Value,
+    observations: CoverageTrial
+): Promise<PropertyExecutionResult<Value> | null> {
+    let passed = false;
+    try {
+        const trial = await execution.host.evaluateTrial(async function runPropertySample(scope) {
+            execution.work.execute();
+            return await execution.invocation.test(value, {
+                ...scope,
+                target: unavailableObservation,
+                cover: observations.cover
+            });
+        }, execution.signal);
+        passed = trial.kind === 'passed';
+        return trialResult(execution, input, trial);
+    } finally {
+        observations.finish(passed);
+    }
 }
 
 async function evaluateInput<Value>(
     execution: PropertyExecution<Value>,
     input: InputRecipe<Value>
 ): Promise<PropertyExecutionResult<Value> | null> {
-    const { host, invocation, signal, work } = execution;
+    const { signal, work } = execution;
     signal.throwIfAborted();
     work.context.consumeWork();
     const value = input();
     work.context.consumeWork();
-    const trial = await host.evaluateTrial(async function runPropertySample(scope) {
-        work.execute();
-        return await invocation.test(value, {
-            ...scope,
-            target: unavailableObservation,
-            cover: unavailableObservation
-        });
-    }, signal);
-    return trial.kind === 'passed' ? null : { kind: 'failed', accounting: work.snapshot(), trial, input };
+    const observations = execution.coverage.trial(execution.phase);
+    return await evaluateObservedInput(execution, input, value, observations);
 }
 
 function boundedInputs<Value>(
@@ -92,9 +140,10 @@ async function executePhase<Value>(
     phase: TrialPhase<Value>
 ): Promise<PropertyExecutionResult<Value> | null> {
     execution.work.enterPhase(phase.name);
+
     const inputs = boundedInputs(execution, phase);
     for (const input of inputs) {
-        const result = await evaluateInput(execution, input);
+        const result = await evaluateInput({ ...execution, phase: phase.name }, input);
         if (result !== null) {
             return result;
         }
@@ -124,9 +173,49 @@ function trialPhases<Value>(
             name: 'automatic-edges',
             inputs: readGeneratorEdges(invocation.generator)(work.context),
             limit: host.policy.maxAutomaticEdges
-        },
-        { name: 'exploration', inputs: explorationInputs(execution), limit: host.policy.newTrials }
+        }
     ];
+}
+
+function completedExecution<Value>(
+    execution: PropertyExecution<Value>,
+    exhaustive: number | null
+): PropertyExecutionResult<Value> {
+    return {
+        kind: execution.coverage.unmet().length === 0 ? 'completed' : 'coverage-unmet',
+        accounting: execution.work.snapshot(),
+        coverage: execution.coverage.snapshot(),
+        exhaustive
+    };
+}
+
+async function executeExploration<Value>(execution: PropertyExecution<Value>): Promise<PropertyExecutionResult<Value>> {
+    execution.work.enterPhase('exploration');
+    const domain = enumerateDomain(
+        execution.invocation.generator,
+        {
+            ...execution.work.context,
+            consumeWork() {
+                execution.signal.throwIfAborted();
+                execution.work.context.consumeWork();
+            }
+        },
+        execution.host.policy.maxExhaustiveValues
+    );
+    const exhaustive = domain === null ? null : domain.length;
+    if (domain?.length === 0) {
+        execution.work.context.exhaustDomain();
+    }
+    const failed = await executePhase(
+        { ...execution, exhaustive },
+        domain === null
+            ? { name: 'exploration', inputs: explorationInputs(execution), limit: execution.host.policy.newTrials }
+            : { name: 'exhaustive', inputs: domain, limit: domain.length }
+    );
+    if (failed !== null) {
+        return failed;
+    }
+    return completedExecution(execution, exhaustive);
 }
 
 async function executePhases<Value>(
@@ -140,7 +229,7 @@ async function executePhases<Value>(
             return failed;
         }
     }
-    return { kind: 'completed', accounting: execution.work.snapshot() };
+    return await executeExploration(execution);
 }
 
 export async function executeProperty<Value>(
@@ -149,13 +238,30 @@ export async function executeProperty<Value>(
     context: PropertyInvocationContext
 ): Promise<PropertyExecutionResult<Value>> {
     const work = createPropertyWork(context.host.policy);
+    const coverage = createCoverage(
+        coverageRequirements(Object.hasOwn(invocation, 'coverage') ? Reflect.get(invocation, 'coverage') : []),
+        context.host.policy.maxLabels
+    );
+    const execution: PropertyExecution<Value> = {
+        ...context,
+        invocation,
+        work,
+        coverage,
+        phase: 'checked-in-corpus',
+        exhaustive: null
+    };
     try {
-        return await executePhases({ ...context, invocation, work }, regressions);
+        return await executePhases(execution, regressions);
     } catch (error: unknown) {
         const exhaustion = propertyExhaustion(error);
         if (exhaustion === null) {
             throw error;
         }
-        return { kind: exhaustion, accounting: work.snapshot() };
+        return {
+            kind: exhaustion,
+            accounting: work.snapshot(),
+            coverage: coverage.snapshot(),
+            exhaustive: execution.exhaustive
+        };
     }
 }

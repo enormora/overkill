@@ -8,6 +8,7 @@ export type {
     RecursiveGeneratorDefinition,
     PropertyPolicy,
     PropertySettings,
+    PropertyCoverageRequirement,
     PropertyExample,
     PropertyInvocation,
     PropertyForall,

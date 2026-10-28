@@ -10,6 +10,7 @@ import {
     type DefinitionLocations,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
+import { coverageRequirements } from './property-coverage.ts';
 import { executeProperty, type PropertyExecutionResult } from './property-execution.ts';
 import type {
     NormalizedPropertyInvocation,
@@ -20,7 +21,9 @@ import type {
 import { ensureGenerator, type Generator as PropertyGenerator } from './generator.ts';
 
 function propertyExamples<Value>(invocation: PropertyInvocation<Value>): readonly (() => Value)[] {
-    function hasExamples(value: PropertyInvocation<Value>): value is NormalizedPropertyInvocation<Value> {
+    function hasExamples(
+        value: PropertyInvocation<Value>
+    ): value is PropertyInvocation<Value> & { readonly examples: readonly (() => Value)[]; } {
         return Object.hasOwn(value, 'examples');
     }
     return hasExamples(invocation) ? invocation.examples : [];
@@ -41,7 +44,10 @@ export function normalizePropertyInvocation<Value>(
     ) {
         throw new TypeError('Property examples must be synchronous fresh-input factories.');
     }
-    return Object.freeze({ ...invocation, examples: Object.freeze(Array.from(examples)) });
+    const coverage = coverageRequirements(
+        Object.hasOwn(invocation, 'coverage') ? Reflect.get(invocation, 'coverage') : []
+    );
+    return Object.freeze({ ...invocation, coverage, examples: Object.freeze(Array.from(examples)) });
 }
 
 type InvocationContext = {
@@ -50,6 +56,16 @@ type InvocationContext = {
     readonly identity: string;
     readonly locations: DefinitionLocations;
 };
+
+function propertyInconclusiveReason<Value>(result: PropertyExecutionResult<Value>): string {
+    if (result.kind === 'coverage-unmet') {
+        return `Property input coverage requirements remain unmet: ${JSON.stringify(result.coverage)}.`;
+    }
+    if (result.kind === 'work-exhausted') {
+        return 'Property total work budget exhausted before required checks completed.';
+    }
+    return 'Property generation exhausted before required exploration completed.';
+}
 
 function propertyBoundaryResult<Value>(
     result: PropertyExecutionResult<Value>,
@@ -66,9 +82,7 @@ function propertyBoundaryResult<Value>(
             bodyError: null,
             cleanupErrors: [],
             contractFailures: [],
-            inconclusiveReason: result.kind === 'work-exhausted'
-                ? 'Property total work budget exhausted before required checks completed.'
-                : 'Property generation exhausted before required exploration completed.',
+            inconclusiveReason: propertyInconclusiveReason(result),
             requireFailed: false,
             runnerErrors: [],
             returnedAssertions: []
@@ -77,7 +91,9 @@ function propertyBoundaryResult<Value>(
     return {
         check: 'true',
         actual: true,
-        message: 'Property completed its required checks.',
+        message: `Property completed its required checks${
+            result.exhaustive === null ? '' : ` exhaustively (${result.exhaustive} domain values)`
+        }. Coverage: ${JSON.stringify(result.coverage)}.`,
         source: 'assert',
         sourceLocations: locations
     };

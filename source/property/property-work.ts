@@ -1,7 +1,15 @@
 import type { PropertyPolicy } from '../packages/engine/engine.entry-point.ts';
 import type { GeneratorContext } from './generator-backend.ts';
 
-export type PropertyPhase = 'automatic-edges' | 'checked-in-corpus' | 'examples' | 'exploration' | 'local-cache';
+const initialPhaseCounts = {
+    'checked-in-corpus': { executed: 0, rejected: 0 },
+    'local-cache': { executed: 0, rejected: 0 },
+    examples: { executed: 0, rejected: 0 },
+    'automatic-edges': { executed: 0, rejected: 0 },
+    exhaustive: { executed: 0, rejected: 0 },
+    exploration: { executed: 0, rejected: 0 }
+};
+export type PropertyPhase = keyof typeof initialPhaseCounts;
 type PhaseCounts = { readonly executed: number; readonly rejected: number; };
 export type PropertyAccounting = {
     readonly phases: Readonly<Record<PropertyPhase, PhaseCounts>>;
@@ -28,13 +36,7 @@ export function propertyExhaustion(error: unknown): 'generation-exhausted' | 'wo
 export function createPropertyWork(policy: PropertyPolicy): PropertyWork {
     let phase: PropertyPhase = 'checked-in-corpus';
     let workConsumed = 0;
-    const phases: Record<PropertyPhase, { readonly executed: number; readonly rejected: number; }> = {
-        'checked-in-corpus': { executed: 0, rejected: 0 },
-        'local-cache': { executed: 0, rejected: 0 },
-        examples: { executed: 0, rejected: 0 },
-        'automatic-edges': { executed: 0, rejected: 0 },
-        exploration: { executed: 0, rejected: 0 }
-    };
+    const phases = { ...initialPhaseCounts };
     return {
         context: {
             maxSize: policy.maxSize,
@@ -65,6 +67,7 @@ export function createPropertyWork(policy: PropertyPolicy): PropertyWork {
                     'local-cache': Object.freeze({ ...phases['local-cache'] }),
                     examples: Object.freeze({ ...phases.examples }),
                     'automatic-edges': Object.freeze({ ...phases['automatic-edges'] }),
+                    exhaustive: Object.freeze({ ...phases.exhaustive }),
                     exploration: Object.freeze({ ...phases.exploration })
                 }),
                 workConsumed

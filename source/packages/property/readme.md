@@ -196,3 +196,23 @@ duplicate processing, confirmations, and body evaluations. Shrink work also
 consumes total work. Each invocation has its own total-work ledger; nested
 invocations share the enclosing case's timeout and supervision. Shrink accounting
 follows in its execution milestone.
+
+### Exhaustive domains and input coverage
+
+Small enumerable domains run exhaustively when discovery completes within
+`maxExhaustiveValues`. That limit bounds both candidate discovery and retained
+domain entries; `maxRetainedInputs` bounds retained search inputs. Partial
+discovery falls back to sampling without changing the sampling random stream.
+Discovery consumes total work. Empty domains remain inconclusive.
+
+Declare invocation-local `coverage: [{ label: 'positive', minimumPercent: 20 }]`
+on `property(...)` or object-form `scope.forall(...)`. Observe inputs with
+`sample.cover('positive', value > 0)`. Each label counts at most once per trial;
+repeated observations combine with OR and missing observations count as false.
+Percentages are finite values from 0 through 100. Labels are unique and nonblank.
+
+Coverage counts accepted exploration trials or distinct exhaustive values using
+Node deep strict equality. Examples, corpus inputs, and automatic edges have
+separate observations and cannot satisfy requirements. Unmet requirements stay
+inconclusive even after exhaustive completion. Trial observers expire after
+cleanup. Coverage labels are bounded by `maxLabels` per invocation.

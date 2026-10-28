@@ -12,6 +12,7 @@ describe('property authoring types', function () {
         const generator = namedGenerator;
         const node = leaf.property({
             title: 'typed input',
+            coverage: [ { label: 'empty', minimumPercent: 20 } ],
             generator,
             test(value, sample) {
                 expect(value).type.toBe<{ readonly name: string; }>();

@@ -2384,6 +2384,10 @@ type PropertyBody<Value> = (
 ) => AssertionResult | Promise<AssertionResult>;
 
 type PropertyExample<Value> = () => Value;
+type PropertyCoverageRequirement = {
+    readonly label: string;
+    readonly minimumPercent: number;
+};
 
 type PropertyInvocationBody<Value> = {
     readonly generator: Generator<Value>;
@@ -2394,6 +2398,13 @@ type PropertyInvocation<Value> =
     | PropertyInvocationBody<Value>
     | (PropertyInvocationBody<Value> & {
         readonly examples: ReadonlyArray<PropertyExample<Value>>;
+    })
+    | (PropertyInvocationBody<Value> & {
+        readonly coverage: ReadonlyArray<PropertyCoverageRequirement>;
+    })
+    | (PropertyInvocationBody<Value> & {
+        readonly examples: ReadonlyArray<PropertyExample<Value>>;
+        readonly coverage: ReadonlyArray<PropertyCoverageRequirement>;
     });
 
 type PropertyDefinitionBody<Value> = PropertyInvocation<Value> & { readonly title: string; };
@@ -2432,9 +2443,14 @@ declare function sampleGenerator<Value>(
 ): ReadonlyArray<Value>;
 ```
 
+Input-coverage requirements are invocation-local: both property declarations
+and object-form forall accept an independent coverage field containing readonly
+`{ label: string; minimumPercent: number }` requirements. Omission means no
+requirements.
+
 These are the primitive authoring forms. Examples are typed input factories on their
 own invocation, separate from collected policy. Collected property settings supply
-input-coverage requirements, failure-key overrides, and
+failure-key overrides and
 collected exploration defaults and overrides; timeout and process supervision remain profile-owned. Codec versions and standard payload shapes
 are validated at runtime; custom decoders validate external payloads before
 returning a reconstructed value.
