@@ -109,26 +109,17 @@ profile. Stryker reports mutant outcomes and logs the campaign seed for
 Adapter settings live under Stryker's `overkill` key. Unknown settings and
 invalid values are rejected.
 
-| Setting | Accepted Value | Default |
-| ------- | -------------- | ------- |
-| `configPath` | Nonblank string or `null` | `null`, normal config discovery |
-| `profile` | One profile name or `null` | `null`, infer the sole eligible profile |
-| `paths` | Array of nonblank file or directory paths | `[]`, use profile discovery |
-| `freshState` | Boolean | `false` |
-| `seed` | Nonnegative decimal integer string without leading zeros, except `'0'` | Generated and logged by Stryker initialization |
-| `artifactPersistence` | `'off'`, `'failures'`, or `'all'` | `'off'` |
+| Setting               | Accepted Value                                                         | Default                                        |
+| --------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| `configPath`          | Nonblank string or `null`                                              | `null`, normal config discovery                |
+| `profile`             | One profile name or `null`                                             | `null`, infer the sole eligible profile        |
+| `paths`               | Array of nonblank file or directory paths                              | `[]`, use profile discovery                    |
+| `freshState`          | Boolean                                                                | `false`                                        |
+| `seed`                | Nonnegative decimal integer string without leading zeros, except `'0'` | Generated and logged by Stryker initialization |
+| `artifactPersistence` | `'off'`, `'failures'`, or `'all'`                                      | `'off'`                                        |
 
-For example, to select an existing custom profile, add this property to the
-Stryker configuration:
-
-```js
-overkill: {
-    configPath: 'overkill.config.ts',
-    profile: 'unit-fast',
-    paths: [],
-    freshState: false
-}
-```
+To select an existing custom profile, add `overkill: { profile: 'unit-fast' }`
+to the Stryker configuration.
 
 ### Profile Inference And Discovery
 
@@ -164,11 +155,11 @@ Stryker, rather than Overkill, parallelizes mutants.
 
 Set Stryker's top-level `coverageAnalysis`, separately from `overkill`:
 
-| Mode | Returned Mutant Coverage | Case Selection |
-| ---- | ------------------------ | -------------- |
-| `'perTest'` | Per-case counters | Narrow when the requested cases include every recorded covering case |
-| `'all'` | Aggregate counters | Full eligible suite |
-| `'off'` | None | Full eligible suite |
+| Mode        | Returned Mutant Coverage | Case Selection                                                       |
+| ----------- | ------------------------ | -------------------------------------------------------------------- |
+| `'perTest'` | Per-case counters        | Narrow when the requested cases include every recorded covering case |
+| `'all'`     | Aggregate counters       | Full eligible suite                                                  |
+| `'off'`     | None                     | Full eligible suite                                                  |
 
 `perTest` is the normal optimized mode. These are Stryker counters, separate
 from ordinary V8 coverage, which remains disabled in every mode.
@@ -198,11 +189,8 @@ value explicitly to reproduce ordering. Multiple programmatic campaigns in one
 Node process may share the generated schema default. Worker settings require the
 coordinator-resolved seed and never substitute another seed when it is missing.
 
-To reproduce a campaign, add the logged value to the Stryker configuration:
-
-```js
-overkill: { seed: '42' }
-```
+To reproduce a campaign, add the logged value to the Stryker configuration,
+for example `overkill: { seed: '42' }`.
 
 Case seeds derive from the campaign seed and stable executable identity,
 independently of selection and scheduling. A number such as `42`, a negative
@@ -211,15 +199,15 @@ and derived case seeds; it does not reset external state or persistent caches.
 
 ## Results And Selection
 
-| Observation | Result |
-| ----------- | ------ |
-| Normal dry run | Individual successes, failures, and intentional skips, with stable IDs and durations in milliseconds |
-| Dry-run timeout or infrastructure failure | `Timeout` or `Error`; campaign stops without a mutation score |
-| Safely attributed eligible-case assertion, body, test-contract, or policy failure | `Killed`, with killing IDs and failure diagnostics |
-| All selected runnable cases pass | `Survived`, with the actual executed count |
-| Case timeout, invocation deadline, or verified hit-limit guard | `Timeout` |
-| Loading, collection, cleanup, infrastructure, transport, reporter, or persistence failure | `Error` |
-| Inconclusive outcome, uncertain attribution, catalog drift, unexpected skip, or incomplete delivery | `Error` |
+| Observation                                                                                         | Result                                                                                               |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Normal dry run                                                                                      | Individual successes, failures, and intentional skips, with stable IDs and durations in milliseconds |
+| Dry-run timeout or infrastructure failure                                                           | `Timeout` or `Error`; campaign stops without a mutation score                                        |
+| Safely attributed eligible-case assertion, body, test-contract, or policy failure                   | `Killed`, with killing IDs and failure diagnostics                                                   |
+| All selected runnable cases pass                                                                    | `Survived`, with the actual executed count                                                           |
+| Case timeout, invocation deadline, or verified hit-limit guard                                      | `Timeout`                                                                                            |
+| Loading, collection, cleanup, infrastructure, transport, reporter, or persistence failure           | `Error`                                                                                              |
+| Inconclusive outcome, uncertain attribution, catalog drift, unexpected skip, or incomplete delivery | `Error`                                                                                              |
 
 Result precedence is `Error > Timeout > Killed > Survived`. A cleanup timeout
 or a later timeout with `disableBail` overrides an earlier kill. Independent
@@ -293,23 +281,19 @@ or external services. In-process permission enforcement remains best effort.
 Supervised profiles already use one fresh restricted child per invocation;
 `freshState` adds no extra host or stronger permissions there.
 
-| Profile Process Model | `freshState` | Execution Boundary | `reloadEnvironment` |
-| --------------------- | ------------ | ------------------ | ------------------- |
-| `in-process` | `false` | Reused Stryker plugin worker | `false` |
-| `in-process` | `true` | Fresh invocation host | `true` |
-| `supervised-process` | Either | Fresh restricted test child, without an extra host | `true` |
+| Profile Process Model | `freshState` | Execution Boundary                                 | `reloadEnvironment` |
+| --------------------- | ------------ | -------------------------------------------------- | ------------------- |
+| `in-process`          | `false`      | Reused Stryker plugin worker                       | `false`             |
+| `in-process`          | `true`       | Fresh invocation host                              | `true`              |
+| `supervised-process`  | Either       | Fresh restricted test child, without an extra host | `true`              |
 
 Stryker replaces reused workers for requested reloads and static-mutant
 transitions. Direct reload requests against an already loaded native ESM graph
 return `Error`. Static activation precedes configuration revalidation and test
 imports; runtime activation follows unmutated collection.
 
-For an in-process profile with cache-dependent results, add this property to
-Stryker's configuration:
-
-```js
-overkill: { freshState: true }
-```
+For an in-process profile with cache-dependent results, add
+`overkill: { freshState: true }` to Stryker's configuration.
 
 For example, a singleton memoized during the dry run can return its cached
 answer without evaluating a mutated function. The mutant can survive in a
@@ -336,17 +320,14 @@ remain governed by Stryker's own configuration.
 
 Diagnostic persistence is opt-in through `overkill.artifactPersistence`:
 
-| Value | Available Evidence Retained |
-| ----- | --------------------------- |
-| `'off'` | None; the default |
+| Value        | Available Evidence Retained                                     |
+| ------------ | --------------------------------------------------------------- |
+| `'off'`      | None; the default                                               |
 | `'failures'` | Failed dry runs, killed mutants, timeouts, and execution errors |
-| `'all'` | Failed invocations, successful dry runs, and surviving mutants |
+| `'all'`      | Failed invocations, successful dry runs, and surviving mutants  |
 
-Add this property to the Stryker configuration:
-
-```js
-overkill: { artifactPersistence: 'failures' }
-```
+Add `overkill: { artifactPersistence: 'failures' }` to the Stryker configuration
+to retain available evidence from failed invocations.
 
 Evidence is retained from the whole invocation. Invocations without diagnostic
 evidence create no files.
