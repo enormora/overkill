@@ -120,6 +120,7 @@ async function runAssignment(
         'worker.assign-work',
         async function executeTimedWorkerAssignment() {
             return await execute(testPlan, {
+                seed: BigInt(task.command.seed),
                 execution: engineExecution(task.command.scheduling, task.command.maxConcurrency),
                 outputRenderer: createPlainOutputRenderer(),
                 reporters: [ createWorkerPoolReporter(task) ],

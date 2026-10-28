@@ -2,7 +2,7 @@ import type { AssertAssertionNode, AssertionResult } from '../assertion-protocol
 import type { ExecutedBody } from './body-result.ts';
 import type { WorkId } from './identity.ts';
 import type { PropertyPolicy } from './property-node.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 
 const propertyHost = Symbol.for('@overkill-dev/engine/PropertyExecutionHost/v1');
 const propertyTermination = Symbol.for('@overkill-dev/engine/PropertyTermination/v1');

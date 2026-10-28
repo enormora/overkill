@@ -1,4 +1,4 @@
-import type { TestScope } from '../engine/test-node.ts';
+import type { TestScope } from '../engine/test-scope.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import { orchestrator } from '../run/run-orchestrator.entry-point.ts';

@@ -10,7 +10,7 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from '../engine/run-result.ts';
-import type { TestBody, TestScope } from '../engine/test-node.ts';
+import type { TestBody, TestScope } from '../engine/test-scope.ts';
 import { doubleUsage } from './double-usage.ts';
 import { rule } from './double-rule.ts';
 import { createTestDoubleScope, testDouble } from './test-double.ts';

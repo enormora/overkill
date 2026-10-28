@@ -193,7 +193,9 @@ To reproduce a campaign, add the logged value to the Stryker configuration,
 for example `overkill: { seed: '42' }`.
 
 Case seeds derive from the campaign seed and stable executable identity,
-independently of selection and scheduling. A number such as `42`, a negative
+independently of selection and scheduling. Cases receive the derived seed through
+`scope.seed` and a fresh splittable `scope.random` handle on every invocation,
+including filtered execution and replacement workers. A number such as `42`, a negative
 string, or a string such as `'01'` is invalid. The seed reproduces ordering
 and derived case seeds; it does not reset external state or persistent caches.
 
@@ -248,8 +250,9 @@ including eligible files that initially contain no cases. Later cases in those
 files are catalog drift when execution collects again.
 
 Repeated dry runs validate the original file restriction, coverage mode, and
-catalog before case execution. They cannot replace the original campaign
-baseline. Intentional skips remain in dry-run results; a mutant selection with
+catalog before case execution. They return the original coverage counters and
+cannot replace the original campaign baseline, including when reused imports
+no longer emit their original static hits. Intentional skips remain in dry-run results; a mutant selection with
 no runnable cases after coverage fallback executes nothing and returns `Error`.
 
 ## Process Guarantees And Reused State

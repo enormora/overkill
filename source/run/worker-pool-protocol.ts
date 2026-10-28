@@ -33,6 +33,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly seed: string;
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly attachmentEndpoint: AttachmentEndpoint | null;

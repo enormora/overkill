@@ -55,6 +55,11 @@ Run the configured test files:
 npx overkill run
 ```
 
+Cases receive a deterministic `scope.seed` and `scope.random` handle. The random
+handle supports `integer(minimum, maximum)`, `bytes(length)`, `pick(values)`,
+`uuid()`, and `split()`. Each attempt starts from the same stream for the same
+run seed and work identity, independently of filtering and execution order.
+
 ## Package surface
 
 Current root runtime exports:

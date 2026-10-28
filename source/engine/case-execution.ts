@@ -24,6 +24,7 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
     const controller = new AbortController();
 
     return {
+        seed: 0n,
         async onBenchmarkUpdate() {
             return undefined;
         },

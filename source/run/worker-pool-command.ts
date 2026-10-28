@@ -78,6 +78,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
         scheduling: unit.scheduling,
         testFamily: runtime.resolvedRun.facts.execution.testFamily,
         retryPolicy: runtime.resolvedRun.facts.execution.retries,
+        seed: runtime.resolvedRun.facts.reproducibility.seed,
         timeoutMilliseconds: runtime.resolvedRun.facts.execution.timeoutPolicy.softMilliseconds,
         workerLifecycle: unit.workerLifecycle
     };

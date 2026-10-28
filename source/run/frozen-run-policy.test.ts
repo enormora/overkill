@@ -19,6 +19,25 @@ function command(): RunCommand {
 }
 
 export const testNode = suite('frozen microtest policy', [
+    test('transports the invocation seed independently of frozen policy', async function (scope) {
+        const policy = await orchestrator.freezePolicy({
+            moduleBoundary: null,
+            command: command(),
+            source: { kind: 'memory' }
+        });
+        const baseline = policyBaselineCommand(policy);
+        const invocation = { ...baseline, request: { ...baseline.request, seed: { value: 42n } } };
+        const input = createSupervisedRunCommand(
+            invocation,
+            { ...policy.profile, reporters: null },
+            policy.files,
+            { source: { kind: 'frozen-policy', policy }, normalization: null }
+        );
+        const validated = frozenSupervisedCommandSchema.parse(input);
+        scope.assert.equal(validated.seed, '42');
+        scope.assert.false(Object.hasOwn(policy.request, 'seed'));
+        return scope.assert.collect();
+    }),
     test('freezes discovery without importing tests or a custom engine', async function (scope) {
         const engineModule = new URL('./absent-engine.ts', import.meta.url);
         const input = {
@@ -89,7 +108,7 @@ export const testNode = suite('frozen microtest policy', [
         );
         const wire = JSON.stringify(supervised);
         const transported: unknown = JSON.parse(wire);
-        scope.assert.equal(supervised.propertySeed, '0');
+        scope.assert.equal(supervised.seed, '0');
         scope.assert.deepEqual(frozenSupervisedCommandSchema.parse(transported), transported);
         scope.assert.throws(function rejectWeakenedPermissions() {
             frozenSupervisedCommandSchema.parse({ ...supervised, capabilityRestrictions: { mode: 'disabled' } });

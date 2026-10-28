@@ -35,9 +35,9 @@ import {
     type Suite,
     type Table,
     type TableCase,
-    type TestBody,
     type TestCase,
     type TestCaseExecution,
+    type BuilderTestCaseExecution,
     type BodyTestCaseExecution,
     type SkippedTestCaseExecution,
     type TestNode,
@@ -45,7 +45,7 @@ import {
     type TestRoot
 } from './test-node.ts';
 
-export type TestPlanCaseBody = TestBody;
+export type TestPlanCaseBody = BuilderTestCaseExecution['body'];
 export type TestPlanCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution;
 
 export type TestPlanSuitePathEntry = {

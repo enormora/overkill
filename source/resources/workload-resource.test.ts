@@ -5,7 +5,7 @@ import { defineResource, defineRuntime, startRuntime, withResource } from '../pa
 import { startResources as startResourceSession } from '../packages/resources/resources.entry-point.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { Engine } from '../engine/engine.ts';
-import type { TestBody } from '../engine/test-node.ts';
+import type { TestBody } from '../engine/test-scope.ts';
 import type { WorkloadInput, WorkloadParameters } from '../engine/workload-input.ts';
 import { testNode as workloadResourceValidationTestNode } from './workload-resource-validation.test.ts';
 

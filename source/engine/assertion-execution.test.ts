@@ -14,7 +14,7 @@ import { unknownSourceLocation } from '../assertion-protocol/source-location.ts'
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from './run-result.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 
 function firstFailOutcome(result: RunResult): FailOutcome | null {
     const firstResult = result.perTest.at(0);

@@ -14,7 +14,7 @@ import { createEngine, type Engine } from './engine.ts';
 import { createExecute } from './execution.ts';
 import { createReporterDispatcher } from './reporter-dispatcher.ts';
 import type { RunResult } from './run-result.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 
 function ignoreOutputLine(): void {
     return undefined;

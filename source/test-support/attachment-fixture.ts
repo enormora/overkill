@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
-import type { TestScope } from '../engine/test-node.ts';
+import type { TestScope } from '../engine/test-scope.ts';
 import { createDefaultWorkId, type WorkId } from '../engine/identity.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createAttachmentStore, type AttachmentStore } from '../run/attachment-store.ts';

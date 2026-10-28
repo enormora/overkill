@@ -31,7 +31,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
-    readonly propertySeed: string;
+    readonly seed: string;
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly propertyPolicy: PropertyPolicy | null;

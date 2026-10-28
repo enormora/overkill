@@ -9,7 +9,8 @@ import type {
     Table,
     TestBody,
     TestCase,
-    TestScope
+    TestScope,
+    TestRandom
 } from '../engine/engine.entry-point.ts';
 import type { PerformanceBaselineAdapter } from '../baselines/baselines.entry-point.ts';
 import type {
@@ -204,6 +205,8 @@ describe('@overkill-dev/test standard subpaths', function () {
         expect<typeof throwingTest>().type.toBe<ThrowingTestAuthor>();
         expect<ThrowingTestBody>().type.toBe<(scope: ThrowingTestScope) => Promise<void> | void>();
         expect<ThrowingTestScope>().type.toBe<{
+            readonly seed: bigint;
+            readonly random: TestRandom;
             readonly assert: AssertAssertionFacade;
             readonly require: RequireAssertionFacade;
             readonly signal: AbortSignal;

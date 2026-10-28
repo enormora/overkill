@@ -7,7 +7,7 @@ import {
 import type { FailedCompositeCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { BodyErrorTestFailure, FailOutcome, RunResult } from './run-result.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 
 async function executeSingleBody(body: TestBody): Promise<RunResult> {
     const engine = createEngine();

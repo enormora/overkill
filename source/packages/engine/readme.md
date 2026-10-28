@@ -2,6 +2,13 @@
 
 Core Overkill primitives for defining executable test values and running an already-resolved test plan.
 
+Every case receives `scope.seed` and a fresh `scope.random` handle derived from
+the run seed and complete work identity. The handle provides inclusive safe
+integer sampling, bytes, collection choices, UUIDs, and independent child streams
+through `split()`. Filtering, ordering, process boundaries, and retries preserve
+the case stream. Direct `execute(plan, options)` accepts `seed: bigint`; without
+a supplied run context, the run seed defaults to `0n`.
+
 Top-level API:
 
 - `createTestCase(options)`

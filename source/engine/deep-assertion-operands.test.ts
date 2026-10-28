@@ -9,7 +9,7 @@ import { unknownSourceLocation } from '../assertion-protocol/source-location.ts'
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
 import type { FailOutcome, RunResult, TestOutcome } from './run-result.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 
 const failOutcome = defineNarrowingCompositeAssertion<TestOutcome, FailOutcome, readonly []>({
     name: 'fail outcome',

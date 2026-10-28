@@ -18,7 +18,7 @@ import type {
 import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult, TestContractFailure } from './run-result.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 
 type BooleanResult = { readonly ok: boolean; };
 type ValueResult = {

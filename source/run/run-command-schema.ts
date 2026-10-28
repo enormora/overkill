@@ -7,6 +7,7 @@ export const hostProcessSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
 export const executionCommandFields = {
+    seed: z.string().regex(/^\d+$/v),
     benchmarkNormalization: benchmarkNormalizationContextSchema.nullable().default(null),
     benchmarkGarbageCollection: z.enum([ 'off', 'after-sample' ]).nullable().default(null),
     propertyPolicy: propertyPolicySchema.nullable().default(null),
@@ -65,7 +66,6 @@ export const executionCommandFields = {
 };
 
 export const supervisedCommandFields = {
-    propertySeed: z.string().regex(/^\d+$/v).default('0'),
     ...executionCommandFields,
     capabilityRestrictions: z.strictObject({ mode: z.enum([ 'disabled', 'enabled' ]) }),
     capture: z.enum([ 'buffered', 'live' ])

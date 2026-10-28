@@ -5,6 +5,7 @@ import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type CaseExecutionOptions = {
+    readonly seed: bigint;
     readonly propertyRun: PropertyRunContext;
     readonly benchmarkEnvironment: BenchmarkAttempt['benchmarkEnvironment'];
     readonly onBenchmarkUpdate: BenchmarkAttempt['updateResult'];

@@ -1,7 +1,7 @@
 import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
 import type { CaseRunnerError, RunnerError } from './run-result.ts';
-import type { TestBody } from './test-node.ts';
+import type { TestBody } from './test-scope.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type BenchmarkAttempt = {

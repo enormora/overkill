@@ -4,7 +4,7 @@ import { classifyPropertyTrial, propertyTrialWithPolicyErrors } from './property
 import { createAssertionRecorder, TestContractSignalError, type AssertionRecorder } from './assertion-recorder.ts';
 import { bodyResultContext, completedBody, failedBody } from './case-body-execution.ts';
 import { propertyScope, type PropertyTrialResult, type PropertyRunContext } from './property-execution-host.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
@@ -37,10 +37,11 @@ async function resolvePropertyBoundary(
 async function evaluatePropertyTrial(
     testCase: TestPlanCase,
     signal: AbortSignal,
-    body: TestBody
+    body: TestBody,
+    seed: bigint
 ): Promise<PropertyTrialResult> {
     const recorder = createAssertionRecorder();
-    const lifecycle = createTestScopeLifecycle(recorder);
+    const lifecycle = createTestScopeLifecycle(recorder, { seed, work: testCase.workId });
     const controller = new AbortController();
     const trialSignal = AbortSignal.any([ signal, controller.signal ]);
     const completion = await (async function runTrialBody() {
@@ -92,7 +93,12 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
         ...context.run,
         workId: testCase.workId,
         async evaluateTrial(trial, signal) {
-            const result = await evaluatePropertyTrial(testCase, AbortSignal.any([ scope.signal, signal ]), trial);
+            const result = await evaluatePropertyTrial(
+                testCase,
+                AbortSignal.any([ scope.signal, signal ]),
+                trial,
+                context.run.seed
+            );
             await scope.yieldToNextTurn();
             return propertyTrialWithPolicyErrors(result, context.takeTrialErrors());
         },

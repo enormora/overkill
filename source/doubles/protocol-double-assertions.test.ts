@@ -6,7 +6,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import type { RunResult } from '../engine/run-result.ts';
-import type { TestBody, TestScope } from '../engine/test-node.ts';
+import type { TestBody, TestScope } from '../engine/test-scope.ts';
 import { doubleUsage } from './double-usage.ts';
 import { rule } from './double-rule.ts';
 import { createTestDoubleScope } from './test-double.ts';

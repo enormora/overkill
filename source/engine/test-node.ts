@@ -1,12 +1,9 @@
 import type {
-    AssertAssertionNode,
-    AssertionResult
-} from '../assertion-protocol/assertion-node.ts';
-import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { ensureDefinitionLocations } from '../assertion-protocol/source-location.ts';
+import type { TestBody, ThrowingTestBody } from './test-scope.ts';
 import type {
     BenchmarkScope as MeasurementScope,
     BenchmarkBody as MeasurementBody,
@@ -19,9 +16,6 @@ import {
     type FamilyBodyExecution,
     resolveTestBodyFamily
 } from './test-body.ts';
-import type { InFlightTask } from './async-control.ts';
-import type { AssertAssertionFacade } from './assertion-facade.ts';
-import type { RequireAssertionFacade } from './require-assertion-facade.ts';
 import {
     normalizeTestAnnotations,
     normalizeTestControls,
@@ -41,32 +35,6 @@ const testRootBrand = Symbol.for('@overkill-dev/engine/TestRoot');
 const testNodeOwnerBrand = Symbol.for('@overkill-dev/engine/TestNodeOwner');
 const testNodeOwnerIdentity = Symbol.for('@overkill-dev/engine/TestNodeOwnerIdentity');
 const defaultTestNodeOwnerKey = Symbol.for('@overkill-dev/engine/defaultTestNodeOwner');
-
-export type TestScopeAssertContext = AssertAssertionFacade & {
-    readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
-};
-
-export type TestScope = {
-    readonly assert: TestScopeAssertContext;
-    readonly cleanup: (callback: () => Promise<void> | void) => void;
-    readonly drainMicrotasks: () => Promise<void>;
-    readonly plan: (count: number) => void;
-    readonly require: RequireAssertionFacade;
-    readonly settleAsyncWork: () => Promise<void>;
-    readonly signal: AbortSignal;
-    readonly startInFlight: <Value>(operation: () => PromiseLike<Value>) => InFlightTask<Value>;
-    readonly yieldToNextTurn: () => Promise<void>;
-};
-
-export type TestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;
-
-export type ThrowingTestScope = {
-    readonly assert: AssertAssertionFacade;
-    readonly require: RequireAssertionFacade;
-    readonly signal: AbortSignal;
-};
-
-export type ThrowingTestBody = (scope: ThrowingTestScope) => Promise<void> | void;
 
 export type DefinitionLocations = NonEmptyReadonlyArray<ResolvableSourceLocation>;
 

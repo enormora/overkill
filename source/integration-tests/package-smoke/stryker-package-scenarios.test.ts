@@ -1,6 +1,7 @@
 import { strykerCampaignScript } from '../run/stryker-campaign-scripts.test.ts';
 import { strykerCatalogScript } from '../run/stryker-catalog-scripts.test.ts';
 import { strykerCoverageScript } from '../run/stryker-coverage-scripts.test.ts';
+import { strykerIdentityScript } from '../run/stryker-identity-scripts.test.ts';
 import { strykerDryRunScript } from '../run/stryker-dry-run-scripts.test.ts';
 import { strykerTimeoutScript } from '../run/stryker-timeout-scripts.test.ts';
 import { packagedScenario, type StrykerPackageScenario } from './stryker-package-scenario.test.ts';
@@ -16,6 +17,14 @@ const coverageModes = [ 'perTest', 'all', 'off' ] as const;
 function executionScenarios(processModel: string, freshState: string): readonly StrykerPackageScenario[] {
     const title = `packaged Stryker ${processModel} freshState ${freshState}`;
     return [
+        packagedScenario(`${title} case seeds and replacement workers`, strykerIdentityScript, [
+            '@stryker-mutator/instrumenter',
+            adapter,
+            engine,
+            config,
+            processModel,
+            freshState
+        ]),
         ...[ 'mixed', 'cleanup', 'timeout' ].map(function dryRun(scenario) {
             return packagedScenario(`${title} dry run ${scenario}`, strykerDryRunScript, [
                 adapter,

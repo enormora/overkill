@@ -7,6 +7,7 @@ import { testNode as executionTestNode } from './execution.test.ts';
 import { testNode as executionSupervisionTestNode } from './execution-supervision-suite.test.ts';
 import { testNode as skippedTestExecutionTestNode } from './skipped-test-execution.test.ts';
 import { testNode as throwingTestExecutionTestNode } from './throwing-test-execution.test.ts';
+import { testNode as randomTestNode } from './case-random.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -14,6 +15,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        randomTestNode,
         executionSupervisionTestNode,
         executionConcurrentReportingTestNode,
         executionReportingTestNode,

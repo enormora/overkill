@@ -49,6 +49,7 @@ import {
     type TestBodyResourceAttachments,
     type TestOutcome,
     type ThrowingTestBody,
+    type TestRandom,
     type ThrowingTestScope,
     type ThrownMatcher,
     type unknownSourceLocation
@@ -350,6 +351,8 @@ describe('Assertion protocol', function () {
 
     test('exposes first-class throwing test body types', function () {
         expect<ThrowingTestScope>().type.toBe<{
+            readonly seed: bigint;
+            readonly random: TestRandom;
             readonly assert: AssertAssertionFacade;
             readonly require: RequireAssertionFacade;
             readonly signal: AbortSignal;

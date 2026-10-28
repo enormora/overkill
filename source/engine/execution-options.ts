@@ -36,7 +36,8 @@ type CommonExecuteOptions = {
 };
 
 type PropertyExecuteOptions = CommonExecuteOptions & { readonly propertyRun: PropertyRunContext; };
-export type ExecuteOptions = CommonExecuteOptions | PropertyExecuteOptions;
+type SeededExecuteOptions = CommonExecuteOptions & { readonly seed: bigint; };
+export type ExecuteOptions = CommonExecuteOptions | PropertyExecuteOptions | SeededExecuteOptions;
 
 function hasPropertyRun(options: ExecuteOptions): options is PropertyExecuteOptions {
     return Object.hasOwn(options, 'propertyRun');
@@ -46,6 +47,7 @@ const defaultPropertySeed = 0n;
 const defaultPropertyRun: PropertyRunContext = { seed: defaultPropertySeed, projectRoot: null };
 
 type DefaultedExecuteOptions = CommonExecuteOptions & {
+    readonly seed: bigint;
     readonly propertyRun: PropertyRunContext;
     readonly finalizeResult: ExecuteResultFinalizer;
     readonly outputRenderer: DefinedOutputRenderer;
@@ -65,6 +67,7 @@ const keepResult: ExecuteResultFinalizer = async function keepResult(result) {
 
 function defaultExecuteOptions(): DefaultedExecuteOptions {
     return {
+        seed: 0n,
         propertyRun: defaultPropertyRun,
         execution: { mode: 'serial-in-process' },
         finalizeResult: keepResult,
@@ -84,11 +87,24 @@ function propertyRun(options: ExecuteOptions): PropertyRunContext {
     return hasPropertyRun(options) ? options.propertyRun : defaultPropertyRun;
 }
 
+function executionSeed(options: ExecuteOptions): bigint {
+    if (Object.hasOwn(options, 'seed')) {
+        const seed: unknown = Reflect.get(options, 'seed');
+        if (typeof seed !== 'bigint') {
+            throw new TypeError('Execution seed must be a bigint.');
+        }
+        return seed;
+    }
+    return propertyRun(options).seed;
+}
+
 function executeOptionsWithProvidedDefaults(options: ExecuteOptions): DefaultedExecuteOptions {
     assertRetryPolicy(options.retryPolicy);
+    const seed = executionSeed(options);
     return {
         ...options,
-        propertyRun: propertyRun(options),
+        seed,
+        propertyRun: { ...propertyRun(options), seed },
         finalizeResult: options.finalizeResult ?? keepResult,
         outputRenderer: options.outputRenderer ?? createPlainOutputRenderer(),
         processBudgets: options.processBudgets ?? null,

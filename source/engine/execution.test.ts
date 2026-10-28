@@ -10,7 +10,7 @@ import { unknownSourceLocation } from '../assertion-protocol/source-location.ts'
 import type { KnownSourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from './engine.ts';
 import type { FailOutcome, RunResult, RunnerError, TestOutcome } from './run-result.ts';
-import type { TestBody, TestScope } from './test-node.ts';
+import type { TestBody, TestScope } from './test-scope.ts';
 
 type SourceLocation = KnownSourceLocation;
 

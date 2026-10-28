@@ -1,5 +1,5 @@
 import { connect, createServer, type Server, type Socket } from 'node:net';
-import type { TestScope } from '../engine/test-node.ts';
+import type { TestScope } from '../engine/test-scope.ts';
 
 export type NativeWriteProbe = {
     readonly write: () => Promise<void>;
