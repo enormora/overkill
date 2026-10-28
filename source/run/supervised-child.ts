@@ -262,6 +262,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
                 input.wallClock
             ),
             runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
+            propertyRun: { seed: BigInt(input.command.propertySeed), projectRoot: input.command.cwd },
             runFacts: {},
             startedAt: startedAtIso(input.startedAtMs),
             timeoutPolicy: {

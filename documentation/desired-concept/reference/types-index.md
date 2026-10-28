@@ -2383,18 +2383,32 @@ type PropertyBody<Value> = (
     sample: PropertySampleScope
 ) => AssertionResult | Promise<AssertionResult>;
 
-type PropertyDefinitionBody<Value> = {
-    readonly title: string;
+type PropertyExample<Value> = () => Value;
+
+type PropertyInvocationBody<Value> = {
     readonly generator: Generator<Value>;
     readonly test: PropertyBody<Value>;
 };
 
-type PropertyCaseScope = TestScope & {
-    readonly forall: <Value>(
-        generator: Generator<Value>,
-        body: PropertyBody<Value>
-    ) => Promise<AssertionResult>;
+type PropertyInvocation<Value> =
+    | PropertyInvocationBody<Value>
+    | (PropertyInvocationBody<Value> & {
+        readonly examples: ReadonlyArray<PropertyExample<Value>>;
+    });
+
+type PropertyDefinitionBody<Value> = PropertyInvocation<Value> & { readonly title: string; };
+type PropertyDefinition<Value> =
+    | PropertyDefinitionBody<Value>
+    | (PropertyDefinitionBody<Value> & {
+        readonly settings: PropertySettings;
+    });
+
+type PropertyForall = {
+    <Value>(generator: Generator<Value>, body: PropertyBody<Value>): Promise<AssertionResult>;
+    <Value>(invocation: PropertyInvocation<Value>): Promise<AssertionResult>;
 };
+
+type PropertyCaseScope = TestScope & { readonly forall: PropertyForall; };
 
 type GeneratorSampleRequest = {
     readonly seed: bigint;
@@ -2418,8 +2432,9 @@ declare function sampleGenerator<Value>(
 ): ReadonlyArray<Value>;
 ```
 
-These are the primitive authoring forms. Collected property settings supply
-explicit examples, input-coverage requirements, failure-key overrides, and
+These are the primitive authoring forms. Examples are typed input factories on their
+own invocation, separate from collected policy. Collected property settings supply
+input-coverage requirements, failure-key overrides, and
 collected exploration defaults and overrides; timeout and process supervision remain profile-owned. Codec versions and standard payload shapes
 are validated at runtime; custom decoders validate external payloads before
 returning a reconstructed value.

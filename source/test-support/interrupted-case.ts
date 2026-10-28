@@ -2,7 +2,7 @@ import { createDeterministicClock, type DeterministicClock } from '@enormora/clo
 import type { TestBody } from '../packages/test/test.entry-point.ts';
 import { createExecutionSupervision, executeCaseBody, type ConcurrentCase } from '../engine/execution-supervision.ts';
 import { createExecutionGlobalErrorObserver } from '../engine/execution-global-error-observer.ts';
-import type { TestRuntimePolicy } from '../engine/case-execution.ts';
+import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import { createTestEngine } from './create-test-engine.ts';
 
 export type InterruptedCase = {
@@ -43,6 +43,7 @@ export function createInterruptedCase(body: TestBody, policy: TestRuntimePolicy 
             return await observer.runBoundary(async function observeInterruptedRun() {
                 return await observer.runCase(testCase, { index: 0 }, async function observeInterruptedCase() {
                     return await executeCaseBody({
+                        propertyRun: { seed: 0n, projectRoot: null },
                         testCase,
                         attempt: { index: 0 },
                         supervision,

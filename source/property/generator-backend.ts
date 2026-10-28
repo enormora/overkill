@@ -3,6 +3,7 @@ import { Arbitrary, Stream, type Random, type Value } from 'fast-check';
 export type GeneratorContext = {
     readonly maxSize: number;
     readonly maxDepth: number;
+    readonly rejectInput: () => void;
     readonly consumeWork: () => void;
     readonly exhaustDomain: () => never;
 };

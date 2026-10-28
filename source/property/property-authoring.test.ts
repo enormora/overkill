@@ -106,6 +106,7 @@ export const testNode = suite('property authoring', [
         scope.require.defined(attachment);
         scope.assert.deepEqual(attachment.definition, {
             kind: 'property',
+            examples: [],
             settingsDeclarations: [ { kind: 'profile-default' } ],
             generator,
             test: unexpectedPropertyBody,
@@ -181,6 +182,19 @@ export const testNode = suite('property authoring', [
         });
         return scope.assert.collect();
     }),
+    test('rejects malformed example factories before execution', function (scope) {
+        for (const examples of [ null, {}, [ 1 ] ]) {
+            scope.assert.throws(function () {
+                Reflect.apply(property, undefined, [ {
+                    title: 'invalid examples',
+                    generator: leaf.gen.constant(1),
+                    examples,
+                    test: unexpectedPropertyBody
+                } ]);
+            }, { message: 'Property examples must be synchronous fresh-input factories.' });
+        }
+        return scope.assert.collect();
+    }),
     test('property macros retain application and definition locations', function (scope) {
         const macro = defineMacro(function () {
             return property({
@@ -222,9 +236,9 @@ export const testNode = suite('property authoring', [
         });
         return scope.assert.collect();
     }),
-    test('direct engine execution reports unavailable property execution', async function (scope: TestScope) {
+    test('direct engine execution requires resolved property policy', async function (scope: TestScope) {
         const plan = planFor(property({
-            title: 'not executable yet',
+            title: 'unresolved policy',
             generator: unexecutedGenerator<number>(),
             test: unexpectedPropertyBody
         }));
@@ -233,7 +247,10 @@ export const testNode = suite('property authoring', [
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.equal(result.summary.passed, 0);
         scope.assert.equal(result.perTest[0]?.outcome?.kind, 'fail');
-        scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'Property execution is not available.');
+        scope.assert.includes(
+            JSON.stringify(result.perTest[0]?.outcome),
+            'Property execution requires resolved collection policy.'
+        );
         scope.assert.equal(result.runnerErrors.length, 0);
         return scope.assert.collect();
     }),
@@ -241,7 +258,7 @@ export const testNode = suite('property authoring', [
         await scope.assert.rejects(async function () {
             return withProperties(unexpectedPropertyBody)(scope);
         }, {
-            message: 'Property execution is not available. Property policy and generator execution are required.'
+            message: 'Property execution requires an engine property scope and resolved collection policy.'
         });
         return scope.assert.collect();
     })

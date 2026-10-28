@@ -8,7 +8,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
-import type { TestRuntimePolicy } from './case-execution.ts';
+import type { TestRuntimePolicy } from './case-execution-context.ts';
 import type { Engine } from './engine.ts';
 import type { RunResult } from './run-result.ts';
 

@@ -8,18 +8,14 @@ import {
 } from '../engine/execution-observation.ts';
 import { recordReporterConsoleDiagnostic } from '../engine/reporter-output-scope.ts';
 import type { RunnerError } from '../engine/run-result.ts';
-import type { TestRuntimePolicy } from '../engine/case-execution.ts';
+import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import {
     createPermissionDenialRuntimePolicy as createPermissionDenialRuntimePolicyCore,
     createPermissionDiagnosticsSubscriptions
 } from './permission-denial-runtime-policy.ts';
 import {
-    environmentChanged,
-    localStorageChanged,
-    sessionStorageChanged,
-    takeSnapshots,
-    type RuntimeCapabilityPolicyDependencies,
-    type RuntimeSnapshots
+    createSnapshotCheckpoints,
+    type RuntimeCapabilityPolicyDependencies
 } from './capability-policy-snapshots.ts';
 
 export type RuntimeCapabilityPolicy = TestRuntimePolicy & {
@@ -252,38 +248,6 @@ function createDiagnosticsSubscriptions(
     });
 }
 
-function recordSnapshotChanges(
-    before: RuntimeSnapshots,
-    dependencies: RuntimeCapabilityPolicyDependencies,
-    record: (violation: RuntimePolicyReport) => void
-): void {
-    const after = takeSnapshots(dependencies);
-
-    if (environmentChanged(before, after)) {
-        record({
-            capability: runtimePolicyCapabilities.processEnvironment,
-            message: 'Runtime policy violation: process.env changed.',
-            strictness: 'observed'
-        });
-    }
-
-    if (sessionStorageChanged(before, after)) {
-        record({
-            capability: runtimePolicyCapabilities.fileWrite,
-            message: 'Runtime policy violation: sessionStorage changed.',
-            strictness: 'observed'
-        });
-    }
-
-    if (localStorageChanged(before, after)) {
-        record({
-            capability: runtimePolicyCapabilities.fileWrite,
-            message: 'Runtime policy violation: localStorage changed.',
-            strictness: 'observed'
-        });
-    }
-}
-
 function observeRuntimeProcessEvents(
     dependencies: RuntimeCapabilityPolicyDependencies,
     record: (violation: RuntimePolicyReport) => RunnerError,
@@ -405,9 +369,16 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         return error;
     }
 
-    function recordWithoutReturning(violation: RuntimePolicyReport): void {
-        record(violation);
-    }
+    const snapshots = createSnapshotCheckpoints(options.dependencies, function snapshotChanged(change) {
+        const name = change === 'environment' ? 'process.env' : change;
+        record({
+            capability: change === 'environment'
+                ? runtimePolicyCapabilities.processEnvironment
+                : runtimePolicyCapabilities.fileWrite,
+            message: `Runtime policy violation: ${name} changed.`,
+            strictness: 'observed'
+        });
+    });
 
     startRuntimePolicyMonitoring(observation, record, options.dependencies);
     createPermissionDiagnosticsSubscriptions(
@@ -444,27 +415,21 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
         async runAttempt(testCase, attempt, run) {
             lifecycle.loadComplete = true;
             return await observation.runAttempt(testCase, attempt, async function observeCaseSnapshots() {
-                const before = takeSnapshots(options.dependencies);
-                try {
-                    return await run();
-                } finally {
-                    recordSnapshotChanges(before, options.dependencies, recordWithoutReturning);
-                }
+                return await snapshots.observe(`${workIdentityKey(testCase.workId)}:${attempt.index}`, run);
             });
         },
         async runLoad(run) {
             return await observation.run(async function observeLoadSnapshots() {
-                const before = takeSnapshots(options.dependencies);
                 try {
-                    return await run();
+                    return await snapshots.observe('load', run);
                 } finally {
-                    recordSnapshotChanges(before, options.dependencies, recordWithoutReturning);
                     lifecycle.loadComplete = true;
                 }
             });
         },
         takeAttemptErrors(testCase, attempt) {
             const key = `${workIdentityKey(testCase.workId)}:${attempt.index}`;
+            snapshots.check(key);
             const errors = caseErrors.get(key) ?? [];
             caseErrors.delete(key);
 

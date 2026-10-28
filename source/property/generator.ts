@@ -1,9 +1,11 @@
 import type { Arbitrary } from 'fast-check';
 import { DeferredArbitrary, type GeneratorContext } from './generator-backend.ts';
+import { edgeAt, indexedEdges, type GeneratorEdgeSource } from './generator-edges.ts';
 import type { PropertyInputCodec } from './property-codec.ts';
 
 const generatorBrand = Symbol.for('@overkill-dev/property/Generator');
 const generatorDomain = Symbol.for('@overkill-dev/property/Generator/domain/v1');
+const generatorEdges = Symbol.for('@overkill-dev/property/Generator/edges/v1');
 const generatorCodec = Symbol.for('@overkill-dev/property/Generator/codec/v1');
 
 export type Generator<Value> = {
@@ -15,6 +17,7 @@ export type Generator<Value> = {
 };
 
 type GeneratorState<Value> = {
+    readonly [generatorEdges]: GeneratorEdgeSource<Value>;
     readonly [generatorDomain]: (context: GeneratorContext) => Arbitrary<Value>;
     readonly [generatorCodec]: PropertyInputCodec<Value> | null;
 };
@@ -22,7 +25,9 @@ type GeneratorState<Value> = {
 function hasGeneratorState<Value>(value: unknown): value is Generator<Value> & GeneratorState<Value> {
     return typeof value === 'object' && value !== null &&
         Reflect.get(value, generatorBrand) === true &&
-        typeof Reflect.get(value, generatorDomain) === 'function' &&
+        [ generatorDomain, generatorEdges ].every(function hasResolver(key) {
+            return typeof Reflect.get(value, key) === 'function';
+        }) &&
         Object.hasOwn(value, generatorCodec) &&
         [ 'map', 'flatMap', 'filter', 'withCodec' ].every(function hasGeneratorMethod(method) {
             return typeof Reflect.get(value, method) === 'function';
@@ -53,6 +58,13 @@ export function readGeneratorCodec<Input>(generator: Generator<Input>): Property
     return generator[generatorCodec];
 }
 
+export function readGeneratorEdges<Input>(generator: Generator<Input>): GeneratorEdgeSource<Input> {
+    if (!hasGeneratorState<Input>(generator)) {
+        throw new TypeError('Property requires an Overkill generator.');
+    }
+    return generator[generatorEdges];
+}
+
 function ensureCallback(callback: unknown): void {
     if (typeof callback !== 'function') {
         throw new TypeError('Generator composition requires a callback.');
@@ -61,11 +73,13 @@ function ensureCallback(callback: unknown): void {
 
 export function createGenerator<Value>(
     resolve: (context: GeneratorContext) => Arbitrary<Value>,
-    codec: PropertyInputCodec<Value> | null
+    codec: PropertyInputCodec<Value> | null,
+    edges: GeneratorEdgeSource<Value>
 ): Generator<Value> {
     const generator: Generator<Value> & GeneratorState<Value> = {
         [generatorBrand]: true,
         [generatorDomain]: resolve,
+        [generatorEdges]: edges,
         [generatorCodec]: codec,
         map<Output>(transform: (value: Value) => Output): Generator<Output> {
             ensureCallback(transform);
@@ -76,7 +90,15 @@ export function createGenerator<Value>(
                         return transform(value);
                     });
                 },
-                null
+                null,
+                function* mappedEdges(context) {
+                    for (const source of edges(context)) {
+                        yield function reconstructMappedEdge() {
+                            context.consumeWork();
+                            return transform(source());
+                        };
+                    }
+                }
             );
         },
         flatMap<Output>(transform: (value: Value) => Generator<Output>): Generator<Output> {
@@ -88,7 +110,25 @@ export function createGenerator<Value>(
                         return prepareGenerator(transform(value), context);
                     });
                 },
-                null
+                null,
+                function* dependentEdges(context) {
+                    for (const source of edges(context)) {
+                        context.consumeWork();
+                        const dependent = transform(source());
+                        const candidates = indexedEdges(readGeneratorEdges(dependent)(context));
+                        for (const [ retainedOrdinal ] of candidates) {
+                            yield function reconstructDependentEdge() {
+                                context.consumeWork();
+                                const fresh = transform(source());
+                                const input = edgeAt(readGeneratorEdges(fresh), context, retainedOrdinal);
+                                if (input === null) {
+                                    throw new Error('Dependent edge could not be reconstructed.');
+                                }
+                                return input();
+                            };
+                        }
+                    }
+                }
             );
         },
         filter(predicate: (value: Value) => boolean): Generator<Value> {
@@ -101,14 +141,31 @@ export function createGenerator<Value>(
                         if (typeof accepted !== 'boolean') {
                             throw new TypeError('Generator filter predicates must return a boolean.');
                         }
+                        if (!accepted) {
+                            context.rejectInput();
+                        }
                         return accepted;
                     });
                 },
-                codec
+                codec,
+                function* filteredEdges(context) {
+                    for (const input of edges(context)) {
+                        context.consumeWork();
+                        const accepted = predicate(input());
+                        if (typeof accepted !== 'boolean') {
+                            throw new TypeError('Generator filter predicates must return a boolean.');
+                        }
+                        if (accepted) {
+                            yield input;
+                        } else {
+                            context.rejectInput();
+                        }
+                    }
+                }
             );
         },
         withCodec(inputCodec: PropertyInputCodec<Value>): Generator<Value> {
-            return createGenerator(resolve, inputCodec);
+            return createGenerator(resolve, inputCodec, edges);
         }
     };
     return Object.freeze(generator);

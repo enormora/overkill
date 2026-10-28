@@ -55,7 +55,41 @@ assert.equal(readTestBodyFamily(plan.cases[0].execution.body).definition.generat
 const result = await execute(plan);
 assert.equal(result.summary.failed, 3);
 assert.equal(result.summary.passed, 0);
-assert.match(JSON.stringify(result.perTest), /Property execution is not available/);
+assert.match(JSON.stringify(result.perTest), /Property execution requires resolved collection policy/);
+const observed = [];
+const executable = createTestPlan(createRoot({
+    title: 'executed properties', annotations: {}, controls: {}, children: [
+        leaf.property({
+            title: 'leaf execution', generator: standard.gen.constant(2), examples: [() => 1],
+            test(value, sample) {
+                observed.push(value);
+                sample.assert.true(value > 0);
+                return sample.assert.collect();
+            }
+        }),
+        test('nested execution', standard.withProperties(async scope => {
+            await scope.forall({generator: leaf.gen.constant(4), examples: [() => 3], test(value, sample) {
+                observed.push(value);
+                sample.assert.true(value > 0);
+                return sample.assert.collect();
+            }});
+            return scope.assert.collect();
+        }))
+    ]
+}));
+const policy = {
+    version: 1, newTrials: 2, maxSize: 10, maxDepth: 2, maxAutomaticEdges: 1,
+    maxExhaustiveValues: 0, maxWork: 1000, maxShrinkWork: 0, maxLabels: 10, maxRetainedInputs: 10
+};
+const resolveCases = cases => cases.map(selected => ({
+    ...selected, execution: {...selected.execution, policy: {kind: 'resolved', policy}}
+}));
+const executed = await execute({...executable,
+    cases: resolveCases(executable.cases), discoveredCases: resolveCases(executable.discoveredCases)
+});
+assert.equal(executed.summary.passed, 2, JSON.stringify(executed));
+assert.equal(executed.summary.failed, 0);
+assert.deepEqual(observed, [1, 2, 2, 2, 3, 4, 4, 4]);
 const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.resolve('@overkill-dev/test'))));
 assert.deepEqual(manifest.exports['./property'], {
     import: './packages/test/property.entry-point.js', types: './packages/test/property.entry-point.d.ts'

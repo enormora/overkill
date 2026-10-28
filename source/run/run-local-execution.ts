@@ -80,6 +80,10 @@ export async function executeLocalResolvedRun(
             options.runtimePolicy,
             resourceTiming
         ),
+        propertyRun: {
+            seed: BigInt(resolvedRun.facts.reproducibility.seed),
+            projectRoot: resolvedRun.facts.environment.projectRoot
+        },
         runFacts: resolvedRun.facts,
         startedAt: currentRunStartTime(dependencies),
         timeoutPolicy: {

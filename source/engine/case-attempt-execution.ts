@@ -122,6 +122,7 @@ async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnT
         async onBenchmarkUpdate(benchmark) {
             await reportBenchmarkProgress(input, benchmark);
         },
+        propertyRun: input.options.propertyRun,
         testCase: input.testCase,
         timeoutPolicy: input.options.timeoutPolicy,
         supervision: input.supervision,

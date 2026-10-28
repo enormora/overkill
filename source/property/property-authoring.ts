@@ -1,11 +1,13 @@
 import {
     attachTestBodyFamily,
+    readPropertyExecutionHost,
     createPropertyTestCase,
     type PropertySettings,
     type PropertySettingsDeclaration,
     type TestBodyFamilyAttachment,
     readTestBodyFamily,
     type TestBody,
+    type TestScope,
     type TestCase
 } from '../packages/engine/engine.entry-point.ts';
 import {
@@ -14,7 +16,11 @@ import {
 } from '../packages/test/authoring-source-locations.ts';
 import { mapComposedResourceBody } from '../packages/test/resource-wrapper-composition.ts';
 import { isPropertyBodyDefinition } from '../engine/property-node.ts';
-import { ensureGenerator } from './generator.ts';
+import {
+    normalizePropertyInvocation,
+    runPropertyInvocation,
+    createNestedPropertySession
+} from './property-invocation.ts';
 import type {
     NestedPropertyDeclaration,
     PropertyCaseBody,
@@ -43,7 +49,7 @@ function hasPropertySettings<Value>(
 
 export function property<Value>(definition: PropertyDefinition<Value>): TestCase {
     ensurePropertyDefinition(definition);
-    ensureGenerator(definition.generator);
+    const invocation = normalizePropertyInvocation(definition);
     const definitionLocations = definitionLocationsForAuthoringCall();
     const declaration: PropertyDeclaration<Value> = Object.freeze<PropertyDeclaration<Value>>({
         kind: 'property',
@@ -52,14 +58,18 @@ export function property<Value>(definition: PropertyDefinition<Value>): TestCase
                 ? propertySettingsDeclaration(definition.settings)
                 : { kind: 'profile-default' }
         ]),
-        generator: definition.generator,
+        examples: invocation.examples,
+        generator: invocation.generator,
         test: definition.test,
         definitionLocations
     });
-    const body = attachTestBodyFamily(function unavailablePropertyExecution() {
-        throw new TypeError(
-            'Property execution is not available. Property policy and generator execution are required.'
-        );
+    const body = attachTestBodyFamily(async function executeDeclaredProperty(scope: TestScope) {
+        return await runPropertyInvocation(invocation, {
+            scope,
+            signal: scope.signal,
+            identity: 'declared-property',
+            locations: definitionLocations
+        });
     }, { family: 'property', definition: declaration });
     return createPropertyTestCase({
         definition: declaration,
@@ -119,10 +129,15 @@ export function withProperties(
     }
     return mapComposedResourceBody(
         body,
-        async function rejectNestedPropertyExecution() {
-            throw new TypeError(
-                'Property execution is not available. Property policy and generator execution are required.'
-            );
+        async function executeNestedProperties(_underlying, scope) {
+            const host = readPropertyExecutionHost(scope);
+            const caseScope = { ...host.scope, ...scope };
+            const session = createNestedPropertySession(caseScope);
+            try {
+                return await body({ ...caseScope, forall: session.forall });
+            } finally {
+                await session.finish();
+            }
         },
         'withProperties',
         propertyFamilyAttachment(body, settings)

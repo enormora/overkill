@@ -15,6 +15,9 @@ export type {
     PropertyInputCodec
 } from '../../property/property-codec.ts';
 export type {
+    PropertyExample,
+    PropertyInvocation,
+    PropertyForall,
     PropertyBody,
     PropertyCaseScope,
     PropertyDefinition,

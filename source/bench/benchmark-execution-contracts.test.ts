@@ -7,7 +7,7 @@ import {
     type TestPlanCase
 } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
-import { builderBodyForAttempt, createBenchmarkAttempt } from '../engine/case-body-execution.ts';
+import { builderBodyForAttempt, createBenchmarkAttempt } from '../engine/benchmark-attempt.ts';
 import { testNode as runtimeHealthBoundaryTestNode } from './runtime-health-boundary.test.ts';
 import { benchmark } from './benchmark-authoring.ts';
 import { wallClockMeasurement } from './measurement-strategy.ts';

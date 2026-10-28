@@ -1,25 +1,17 @@
-import { createClock } from '@enormora/clock';
-import {
-    createEngineWithOwner,
-    type Engine,
-    type EngineDependencies
-} from '../../engine/engine.ts';
-import { createExecute } from '../../engine/execution.ts';
-import { createReporterDispatcher } from '../../engine/reporter-dispatcher.ts';
-import {
-    createTestNodeOwner,
-    defaultTestNodeOwner,
-    type PropertyTestCaseOptions,
-    type BenchmarkTestCaseOptions,
-    type RootOptions,
-    type SkippedTestCaseOptions,
-    type SuiteOptions,
-    type TableOptions,
-    type TestCaseOptions,
-    type TestNode,
-    type TestRoot,
-    type ThrowingTestCaseOptions,
-    type WorkloadTestCaseOptions
+import type { Engine } from '../../engine/engine.ts';
+import { defaultEngine } from '../../engine/standard-engine.ts';
+import type {
+    PropertyTestCaseOptions,
+    BenchmarkTestCaseOptions,
+    RootOptions,
+    SkippedTestCaseOptions,
+    SuiteOptions,
+    TableOptions,
+    TestCaseOptions,
+    TestNode,
+    TestRoot,
+    ThrowingTestCaseOptions,
+    WorkloadTestCaseOptions
 } from '../../engine/test-node.ts';
 
 export type {
@@ -31,80 +23,6 @@ export type {
 } from '../../engine/runtime-attachment.ts';
 export { attachTestBodyFamily, forwardTestBodyFamily, readTestBodyFamily } from '../../engine/test-body.ts';
 export type { TestBodyFamilyAttachment } from '../../engine/test-body.ts';
-
-function writeStdoutLine(line: string): void {
-    process.stdout.write(`${line}\n`);
-}
-
-function writeStderrLine(line: string): void {
-    process.stderr.write(`${line}\n`);
-}
-
-function readActiveResourceTypes(): readonly string[] {
-    return process.getActiveResourcesInfo();
-}
-
-function createEngineDependencies(): EngineDependencies {
-    const wallClock = createClock();
-
-    return {
-        execute: createExecute({
-            benchmarkEnvironment: null,
-            asyncLeakDiagnostics: 'enabled',
-            readActiveResourceTypes,
-            reporterDispatcher: createReporterDispatcher({
-                stderr: { writeLine: writeStderrLine },
-                stdout: { writeLine: writeStdoutLine },
-                wallClock
-            }),
-            wallClock
-        }),
-        wallClock
-    };
-}
-
-export function createEngine(): Engine {
-    return createEngineWithOwner(createEngineDependencies(), createTestNodeOwner());
-}
-
-const defaultEngineKey = Symbol.for('@overkill-dev/engine/defaultEngine');
-const engineMethods: readonly (keyof Engine)[] = [
-    'createPropertyTestCase',
-    'createBenchmarkTestCase',
-    'createRoot',
-    'createSuite',
-    'createSkippedTestCase',
-    'createTable',
-    'createTestCase',
-    'createThrowingTestCase',
-    'createWorkloadTestCase',
-    'createTestPlan',
-    'createTestPlanFromTestFiles',
-    'execute',
-    'formatCaseId',
-    'ownsTestNode'
-];
-
-function isEngine(value: unknown): value is Engine {
-    return typeof value === 'object' && value !== null && engineMethods.every(function (name) {
-        return typeof Reflect.get(value, name) === 'function';
-    });
-}
-
-function sharedDefaultEngine(): Engine {
-    const existing: unknown = Reflect.get(globalThis, defaultEngineKey);
-
-    if (isEngine(existing)) {
-        return existing;
-    }
-
-    const engine = createEngineWithOwner(createEngineDependencies(), defaultTestNodeOwner());
-    Reflect.set(globalThis, defaultEngineKey, engine);
-
-    return engine;
-}
-
-const defaultEngine = sharedDefaultEngine();
 
 export type {
     PropertyPolicy,
@@ -532,3 +450,13 @@ export type {
     BenchmarkTimelineEvidence,
     BenchmarkTimelineReport
 } from '../../engine/benchmark-timeline.ts';
+
+export { readPropertyExecutionHost, stopPropertyExecution } from '../../engine/property-execution-host.ts';
+export type {
+    PropertyExecutionHost,
+    PropertyTrialResult,
+    PropertyRunContext
+} from '../../engine/property-execution-host.ts';
+export { propertyScopeContractFailure } from '../../engine/property-trial.ts';
+
+export { createEngine } from '../../engine/standard-engine.ts';

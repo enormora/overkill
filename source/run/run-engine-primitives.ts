@@ -1,4 +1,4 @@
-import type { TestRuntimePolicy as TestRuntimePolicyDefinition } from '../engine/case-execution.ts';
+import type { TestRuntimePolicy as TestRuntimePolicyDefinition } from '../engine/case-execution-context.ts';
 import type { AttachmentLimits as AttachmentLimitsDefinition } from '../engine/runtime-attachment.ts';
 import type {
     AttemptId as AttemptIdDefinition,

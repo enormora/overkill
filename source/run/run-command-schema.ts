@@ -65,6 +65,7 @@ export const executionCommandFields = {
 };
 
 export const supervisedCommandFields = {
+    propertySeed: z.string().regex(/^\d+$/v).default('0'),
     ...executionCommandFields,
     capabilityRestrictions: z.strictObject({ mode: z.enum([ 'disabled', 'enabled' ]) }),
     capture: z.enum([ 'buffered', 'live' ])

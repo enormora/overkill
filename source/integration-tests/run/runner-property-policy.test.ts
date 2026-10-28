@@ -17,7 +17,7 @@ function propertyCommand(file: string, processModel: 'in-process' | 'supervised-
                         testFamily: 'property',
                         files: { include: [ path ] },
                         execution: { processModel, scheduling: 'serial' },
-                        timeouts: { collectionMilliseconds: 10_000, softMilliseconds: 1000, hardMilliseconds: 2000 }
+                        timeouts: { collectionMilliseconds: 10_000, softMilliseconds: 5000, hardMilliseconds: 10_000 }
                     }
                 }
             }),
@@ -32,15 +32,15 @@ function propertyCommand(file: string, processModel: 'in-process' | 'supervised-
 export const testNode = suite('property runner policy', [
     ...([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
         return [
-            test(`${processModel} collects policy and retains unavailable execution`, async function (scope) {
+            test(`${processModel} collects policy and executes property trials`, async function (scope) {
                 const command = propertyCommand('property-declaration', processModel);
                 const resolved = await orchestrator.resolve(command);
                 scope.assert.equal(resolved.facts.execution.testFamily, 'property');
                 scope.assert.equal(resolved.facts.cases[0]?.propertyPolicy?.newTrials, 200);
                 scope.assert.equal(resolved.facts.coveragePolicy, null);
                 const result = await orchestrator.run(command);
-                scope.assert.equal(result.summary.failed, 1);
-                scope.assert.includes(JSON.stringify(result.perTest), 'Property execution is not available.');
+                scope.assert.equal(result.summary.passed, 1);
+                scope.assert.equal(result.summary.failed, 0);
                 return scope.assert.collect();
             }),
             test(`${processModel} rejects invalid property settings before execution`, async function (scope) {
@@ -72,6 +72,17 @@ export const testNode = suite('property runner policy', [
                 return scope.assert.collect();
             })
         ];
+    }),
+    test('in-process stops new property inputs after a capability violation', async function (scope) {
+        const fixture = await import('./fixtures/property-console-trials.test.ts');
+        fixture.resetPropertyTrialCount();
+        const result = await orchestrator.run(propertyCommand('property-console-trials', 'in-process'));
+        scope.assert.equal(result.summary.runtimePolicy, 1);
+        scope.assert.equal(fixture.propertyTrialCount(), 1);
+        scope.assert.true(result.runnerErrors.some(function capabilityFailure(error) {
+            return error.subtype === 'runtime-policy';
+        }));
+        return scope.assert.collect();
     }),
     test('supervised property profile blocks filesystem effects with permission attribution', async function (scope) {
         const result = await orchestrator.run(propertyCommand('fs-write-policy', 'supervised-process'));

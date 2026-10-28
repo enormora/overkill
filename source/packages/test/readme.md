@@ -87,8 +87,9 @@ Standard subpaths:
 - `@overkill-dev/test/property` re-exports `gen`, `property`, `withProperties`, and
   property authoring types from [`@overkill-dev/property`](../property/readme.md),
   included in the standard distribution. Construction and collection are
-  supported; property profiles validate collected policy. Fluent generators are supported; trial execution is not implemented
-  yet. Property code loads through this subpath, outside ordinary root imports.
+  supported; property profiles validate collected policy. Trials run examples,
+  automatic edges, and new exploration sequentially within each property.
+  Property code loads through this subpath, outside ordinary root imports.
 - `@overkill-dev/test/config` exports `defineConfig`, `normalizeConfig`, `loadConfig`, `ConfigError`, and project config
   types.
 - `@overkill-dev/test/reporters` exports `createLineReporter`,

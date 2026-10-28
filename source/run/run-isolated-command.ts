@@ -15,11 +15,14 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 
 export type IsolatedRunCollectionSource = CollectionSource;
 
+const defaultPropertySeed = 0n;
+
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
 type SupervisedCommandBase = {
     readonly benchmarkNormalization: SupervisedRunCommand['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: SupervisedRunCommand['benchmarkGarbageCollection'];
+    readonly propertySeed: string;
     readonly propertyPolicy: SupervisedRunCommand['propertyPolicy'];
     readonly retryPolicy: SupervisedRunCommand['retryPolicy'];
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
@@ -116,6 +119,9 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
     return {
         benchmarkNormalization: input.benchmarkNormalization,
         benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,
+        propertySeed: input.profile.testFamily === 'property'
+            ? (input.command.request.seed.value ?? defaultPropertySeed).toString()
+            : defaultPropertySeed.toString(),
         propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
         capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
         capture: input.capture,

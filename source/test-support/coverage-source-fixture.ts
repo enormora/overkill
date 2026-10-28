@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -57,7 +57,7 @@ export async function withCoverageSources(
     sources: readonly CoverageFixtureSource[],
     body: (fixture: CoverageSourceFixture) => Promise<void>
 ): Promise<void> {
-    const projectRoot = await mkdtemp(path.join(tmpdir(), 'overkill-coverage-sources-'));
+    const projectRoot = await realpath(await mkdtemp(path.join(tmpdir(), 'overkill-coverage-sources-')));
 
     try {
         await body(await createCoverageFixture(projectRoot, sources));

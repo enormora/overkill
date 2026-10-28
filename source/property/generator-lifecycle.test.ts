@@ -6,7 +6,13 @@ import {
     shrinkCandidates
 } from '../test-support/generator-execution.ts';
 import { gen } from './generators.ts';
-import { prepareGenerator, readGeneratorCodec, isGenerator, type Generator as PropertyGenerator } from './generator.ts';
+import {
+    prepareGenerator,
+    readGeneratorCodec,
+    readGeneratorEdges,
+    isGenerator,
+    type Generator as PropertyGenerator
+} from './generator.ts';
 import type { PropertyInputCodec } from './property-codec.ts';
 
 function unexpectedCallback(): never {
@@ -35,6 +41,15 @@ function malformedComposition(method: 'filter' | 'flatMap', callback: () => unkn
 }
 
 export const testNode = suite('generator lifecycle', [
+    test('validates predicate results while selecting automatic edges', function (scope) {
+        const generator = malformedComposition('filter', function () {
+            return null;
+        });
+        scope.assert.throws(function () {
+            Array.from(readGeneratorEdges(generator)(generatorContext(10, 3, 100)));
+        }, { message: 'Generator filter predicates must return a boolean.' });
+        return scope.assert.collect();
+    }),
     test('defers transformations, predicates, and recursive branches', function (scope) {
         for (
             const value of [

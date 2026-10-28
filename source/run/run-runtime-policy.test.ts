@@ -1,6 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { runIfMain } from '#test-runner';
 import {
+    createRoot,
+    createTestPlan,
+    type RunnerError,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -15,6 +18,7 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 import type { NormalizedConfig } from '../config/types.ts';
+import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
@@ -49,6 +53,67 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            title: 'runtime capability checkpoints report mutations before attempt completion',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            async body(scope: OverkillScope) {
+                const environment = { VALUE: 'before' };
+                const during: RunnerError[] = [];
+                const observed = createTestPlan(createRoot({
+                    title: 'checkpoint root',
+                    annotations: {},
+                    controls: {},
+                    children: [ createOverkillTestCase({
+                        title: 'observed',
+                        annotations: {},
+                        controls: {},
+                        definitionLocations: [ { kind: 'unknown' } ],
+                        body() {
+                            throw new Error('Policy observation must not execute the case body.');
+                        }
+                    }) ]
+                }))
+                    .cases[0];
+                const policy = createRuntimeCapabilityPolicy({
+                    dependencies: {
+                        observeIpcListeners() {
+                            return function () {
+                                return undefined;
+                            };
+                        },
+                        observeProcessExit() {
+                            return function () {
+                                return undefined;
+                            };
+                        },
+                        readEnvironment() {
+                            return environment;
+                        },
+                        readStorage() {
+                            return null;
+                        }
+                    },
+                    observedStderr: false,
+                    observedStdout: false
+                });
+                await policy.runAttempt(observed, { index: 0 }, async function mutateBeforeCheckpoint() {
+                    environment.VALUE = 'after';
+                    during.push(...policy.takeAttemptErrors(observed, { index: 0 }));
+                });
+                const after = policy.takeAttemptErrors(observed, { index: 0 });
+                policy.takeRunErrors();
+                scope.assert.deepEqual(
+                    during.map(function violation(error) {
+                        return error.message;
+                    }),
+                    [ 'Runtime policy violation: process.env changed.' ]
+                );
+                scope.assert.deepEqual(after, []);
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() supports disabled capability restrictions for in-process runs',

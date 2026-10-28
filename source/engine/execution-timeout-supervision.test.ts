@@ -91,6 +91,7 @@ async function executeTimedCase(
     supervision = createExecutionSupervision()
 ): ReturnType<typeof executeCaseBody> {
     return executeCaseBody({
+        propertyRun: { seed: 0n, projectRoot: null },
         async onBenchmarkUpdate() {
             return undefined;
         },
@@ -126,6 +127,7 @@ async function executeHardTimedCase(
     });
 
     return executeCaseBody({
+        propertyRun: { seed: 0n, projectRoot: null },
         async onBenchmarkUpdate() {
             return undefined;
         },

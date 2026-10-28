@@ -4,8 +4,7 @@ import {
     invalidTimeoutControlFailure,
     runTestCase,
     timeoutFailure,
-    type RunTestCaseOptions,
-    type TestRuntimePolicy
+    type RunTestCaseOptions
 } from './case-execution.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from './identity.ts';
 import {
@@ -29,6 +28,7 @@ import {
     createBenchmarkState,
     createCaseCompletion,
     scheduleSupervisionTimeout,
+    clearSupervisionTimeout,
     type BenchmarkState,
     type ActiveCase as SupervisedActiveCase,
     type CaseCompletion,
@@ -46,7 +46,7 @@ export type ConcurrentCase = ExecutionConcurrentCase;
 export type ExecutionSupervisionDependencies = {
     readonly benchmarkEnvironment: BenchmarkExecutionEnvironment | null;
     readonly globalErrorObserver: ExecutionGlobalErrorObserver;
-    readonly runtimePolicy?: TestRuntimePolicy | null;
+    readonly runtimePolicy?: RunTestCaseOptions['runtimePolicy'];
     readonly wallClock: Clock;
 };
 type TestFailures = readonly [TestFailure, ...TestFailure[]];
@@ -77,6 +77,7 @@ type SoftTimeoutResolution = {
 };
 
 type ActiveCaseInput = {
+    readonly propertyRun: RunTestCaseOptions['propertyRun'];
     readonly benchmark: BenchmarkState;
     readonly onBenchmarkUpdate: RunTestCaseOptions['onBenchmarkUpdate'];
     readonly attempt: AttemptId;
@@ -212,20 +213,12 @@ function resultWithTimeoutFailure(
     };
 }
 
-function clearTimer(wallClock: Clock, timer: ReturnType<Clock['setTimeout']> | null): void {
-    if (timer !== null) {
-        wallClock.clearTimeout(timer);
-    }
-}
+function casePolicyResult(executedCase: ConcurrentCase, errors: readonly RunnerError[]): ConcurrentCase {
+    const hasCasePolicyError = executedCase.runnerErrors.some(function policyError(error) {
+        return isPermissionDeniedRunnerError(error) || error.subtype === 'runtime-policy';
+    });
 
-function policyCheckedCase(
-    input: ActiveCaseInput,
-    executedCase: ConcurrentCase
-): ConcurrentCase {
-    const errors = input.dependencies.runtimePolicy?.takeAttemptErrors(input.testCase, input.attempt) ?? [];
-    const hasCasePermissionError = executedCase.runnerErrors.some(isPermissionDeniedRunnerError);
-
-    if (errors.length === 0 && !hasCasePermissionError) {
+    if (errors.length === 0 && !hasCasePolicyError) {
         return executedCase;
     }
 
@@ -244,6 +237,7 @@ async function runTestCaseWithPolicy(
             input.benchmark.write(result);
             await input.onBenchmarkUpdate(result);
         },
+        propertyRun: input.propertyRun,
         benchmarkEnvironment: input.dependencies.benchmarkEnvironment,
         attempt: input.attempt,
         controller: input.controller,
@@ -251,7 +245,10 @@ async function runTestCaseWithPolicy(
         interruption: input.completion.promise
     });
 
-    return policyCheckedCase(input, executedCase);
+    return casePolicyResult(
+        executedCase,
+        input.dependencies.runtimePolicy?.takeAttemptErrors(input.testCase, input.attempt) ?? []
+    );
 }
 
 function activeCaseIds(activeCases: ReadonlyMap<string, SupervisedActiveCase>): readonly TestPlanCase['id'][] {
@@ -314,7 +311,7 @@ function completeActiveCasesAs(
     for (const [ key, activeCase ] of supervision.activeCases) {
         supervision.removeActiveCase(key);
         activeCase.abort();
-        clearTimer(dependencies.wallClock, activeCase.hardTimeout);
+        clearSupervisionTimeout(dependencies.wallClock, activeCase.hardTimeout);
         activeCase.completion.complete(createTerminalCase(
             activeCase.testCase,
             verdict,
@@ -398,7 +395,7 @@ async function runCaseWithSoftTimeout(
     }, input.timeoutMilliseconds);
     const executedCase = await runTestCaseWithPolicy(input);
 
-    clearTimer(input.dependencies.wallClock, softTimeout);
+    clearSupervisionTimeout(input.dependencies.wallClock, softTimeout);
 
     const deadlineMicroseconds = input.timeoutMilliseconds * microsecondsPerMillisecond;
 
@@ -454,7 +451,7 @@ function completeFinishedActiveCase(input: CaseBodyInput, executedCase: Concurre
 
     if (input.supervision.activeCases.get(key) === input.activeCase) {
         input.supervision.removeActiveCase(key);
-        clearTimer(input.dependencies.wallClock, input.activeCase.hardTimeout);
+        clearSupervisionTimeout(input.dependencies.wallClock, input.activeCase.hardTimeout);
         input.completion.complete(executedCase);
     }
 }
@@ -547,7 +544,7 @@ export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolea
 
 type CaseExecutionInput = Pick<
     ActiveCaseInput,
-    'attempt' | 'dependencies' | 'onBenchmarkUpdate' | 'supervision' | 'testCase' | 'timeoutPolicy'
+    'attempt' | 'dependencies' | 'onBenchmarkUpdate' | 'propertyRun' | 'supervision' | 'testCase' | 'timeoutPolicy'
 >;
 
 export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {

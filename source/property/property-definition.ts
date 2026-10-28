@@ -17,25 +17,37 @@ export type PropertyBody<Value> = (
     sample: PropertySampleScope
 ) => AssertionResult | Promise<AssertionResult>;
 
-type PropertyDefinitionBody<Value> = {
-    readonly title: string;
+export type PropertyExample<Value> = () => Value;
+
+type PropertyInvocationBody<Value> = {
     readonly generator: PropertyGenerator<Value>;
     readonly test: PropertyBody<Value>;
+};
+
+export type NormalizedPropertyInvocation<Value> = PropertyInvocationBody<Value> & {
+    readonly examples: readonly PropertyExample<Value>[];
+};
+
+export type PropertyInvocation<Value> = NormalizedPropertyInvocation<Value> | PropertyInvocationBody<Value>;
+
+type PropertyDefinitionBody<Value> = PropertyInvocation<Value> & { readonly title: string; };
+
+export type PropertyForall = {
+    <Value>(generator: PropertyGenerator<Value>, body: PropertyBody<Value>): Promise<AssertionResult>;
+    <Value>(invocation: PropertyInvocation<Value>): Promise<AssertionResult>;
 };
 
 type ConfiguredPropertyDefinition<Value> = PropertyDefinitionBody<Value> & { readonly settings: PropertySettings; };
 export type PropertyDefinition<Value> = ConfiguredPropertyDefinition<Value> | PropertyDefinitionBody<Value>;
 
 export type PropertyCaseScope = TestScope & {
-    readonly forall: <Value>(
-        generator: PropertyGenerator<Value>,
-        body: PropertyBody<Value>
-    ) => Promise<AssertionResult>;
+    readonly forall: PropertyForall;
 };
 
 export type PropertyCaseBody = (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>;
 
 export type PropertyDeclaration<Value> = PropertyBodyDefinition & {
+    readonly examples: readonly PropertyExample<Value>[];
     readonly kind: 'property';
     readonly generator: PropertyGenerator<Value>;
     readonly test: PropertyBody<Value>;
