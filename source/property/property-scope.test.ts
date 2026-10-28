@@ -42,7 +42,7 @@ export const testNode = suite('property trial scopes', [
         }
         return scope.assert.collect();
     }),
-    test('rejects unavailable targeting and invalid coverage before the next input', async function (scope) {
+    test('rejects invalid targeting and coverage before the next input', async function (scope) {
         for (const observation of [ 'target', 'cover' ] as const) {
             const values: number[] = [];
             const node = property({
@@ -50,7 +50,7 @@ export const testNode = suite('property trial scopes', [
                 generator: gen.constant(1),
                 test(value, sample) {
                     values.push(value);
-                    Reflect.apply(sample[observation], sample, [ 'label', 1 ]);
+                    Reflect.apply(sample[observation], sample, [ 'label', observation === 'target' ? Number.NaN : 1 ]);
                     return sample.assert.collect();
                 }
             });
@@ -58,7 +58,7 @@ export const testNode = suite('property trial scopes', [
             scope.assert.equal(result.summary.failed, 1);
             scope.assert.includes(
                 JSON.stringify(result.perTest),
-                observation === 'target' ? 'Property targeting is not available yet.' : 'expected boolean'
+                observation === 'target' ? 'Property target scores must be finite numbers.' : 'expected boolean'
             );
             scope.assert.deepEqual(values, [ 1 ]);
         }
