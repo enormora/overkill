@@ -1,9 +1,8 @@
 # Overkill Concept Documentation
 
-This folder captures the product concept for `overkill` before runtime
-implementation resumes. The documents in `documentation/desired-concept/` are the
-current product narrative; they will eventually be condensed into a
-project-level `README.md` and design RFCs.
+This folder defines the desired behavior, architecture, and product boundaries
+for `overkill`. It describes the concept independently of implementation status.
+Implementation milestones are tracked in [issue #194](https://github.com/enormora/overkill/issues/194).
 
 The documentation is organised into folders that mirror their role:
 

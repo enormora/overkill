@@ -329,7 +329,7 @@ The current concept is intentionally narrow:
 
 - Overkill documents capability handles as a valid and often good
   architecture pattern.
-- Overkill does **not** currently ship a first-class `@overkill-dev/world`
+- The concept excludes a first-class `@overkill-dev/world`
   package or first-party production-facing handle helpers.
 - `testDouble()` remains the main official first-party tool for
   dependency replacement in tests.

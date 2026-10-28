@@ -37,7 +37,7 @@ layer resolves the run in this order:
    [Tests As Values](../authoring/tests-as-values.md).
 4. **Test data propagation.** Parent annotations and controls cascade to
    children. Set-valued annotations merge by union. Controls replace.
-   Requirements will own capability and runtime needs once implemented. See
+   Requirements own capability and runtime needs. See
    [Test Data And Selection § Annotations](./test-data-and-selection.md#annotations)
    and [Test Data And Selection § Controls](./test-data-and-selection.md#controls).
 5. **Runtime and workload expansion.** Each selected logical `CaseId`

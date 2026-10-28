@@ -265,7 +265,7 @@ Artifact identity preserves the attempt so that "first failure" and
 ## Identity And Sharding
 
 Sharding partitions the executable work set by hashing `WorkUnitId`. The
-implemented hash contract is `xxh3-64-canonical-json-v1`: canonical JSON of
+hash contract is `xxh3-64-canonical-json-v1`: canonical JSON of
 the structured `WorkUnitId`, string values normalized to NFC, object keys
 sorted, then xxh3-64 with seed `0`. Two shards never share a work unit; the
 union covers everything. Reproducibility across CI machines depends on this
@@ -285,7 +285,7 @@ A run record includes the resolved set of identities. Replaying a run with
 
 - the same selection
 - the same seed (per-test seeds are derived from the run seed plus
-  `CaseId`)
+  `WorkId`)
 - the same work-unit identities and shard partition
 - the same baseline lookup decisions
 - the same workload parameters

@@ -570,7 +570,17 @@ type InFlightTask<Value> = {
     readonly wait: () => Promise<Value>;
 };
 
+type TestRandom = {
+    readonly integer: (minimum: number, maximum: number) => number;
+    readonly bytes: (length: number) => Uint8Array;
+    readonly pick: <Value>(values: readonly Value[]) => Value;
+    readonly uuid: () => string;
+    readonly split: () => readonly [TestRandom, TestRandom];
+};
+
 type TestScope = {
+    readonly seed: bigint;
+    readonly random: TestRandom;
     readonly assert: TestScopeAssertContext;
     readonly cleanup: (callback: () => Promise<void> | void) => void;
     readonly drainMicrotasks: () => Promise<void>;
@@ -585,6 +595,8 @@ type TestScope = {
 type BuilderTestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;
 
 type ThrowingTestScope = {
+    readonly seed: bigint;
+    readonly random: TestRandom;
     readonly assert: AssertAssertionFacade;
     readonly require: RequireAssertionFacade;
     readonly signal: AbortSignal;

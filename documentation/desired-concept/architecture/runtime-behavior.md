@@ -1251,7 +1251,7 @@ This document is the runtime counterpart to several others. Cross-links:
   should not independently recollect dynamic test trees on each shard and
   hope they match.
 
-## Current benchmark runner integration
+## Benchmark Runner Integration
 
 Benchmark profiles enter the same collection, placement, resource/runtime,
 execution, result, attachment, and reporter flow through `orchestrator.bench`.

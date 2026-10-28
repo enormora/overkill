@@ -294,9 +294,9 @@ the result:
 
 ### Replay
 
-Coverage replay and garbage collection depend on the replay and run-record
-retention workflows. Their implementation remains deferred; current coverage
-runs persist the paths and raw data needed by those workflows.
+Coverage replay and garbage collection use the replay and run-record
+retention workflows. Coverage runs persist the paths and raw data those
+workflows require.
 
 The path used for a run is recorded in the run record alongside the
 V8 output. `overkill replay` reads from that recorded path, not the

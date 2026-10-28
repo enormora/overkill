@@ -63,9 +63,9 @@ type Capability =
     | 'process-exit'; // calling process.exit
 ```
 
-This is the type requirements will use once capability requirements are part
-of the public model. New capabilities require an explicit addition to this
-enumeration; the runner does not recognise free-form strings.
+Capability requirements use this closed type. New capabilities require an
+explicit addition to the enumeration; the runner does not recognise free-form
+strings.
 
 Strict microtest mode denies, by default:
 
