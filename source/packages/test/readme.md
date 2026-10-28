@@ -604,3 +604,10 @@ Resource and runtime wrappers expose `scope.attachments` for text, JSON, binary
 streams, and copied files during runner-managed integration execution. See the
 [resource attachment API](../resources/readme.md) for ownership, closure, and
 retention behavior. The engine's base `TestScope` remains unchanged.
+
+## Mutation Testing
+
+Install the optional `@overkill-dev/stryker-runner` plugin and Stryker to mutate
+production code against an existing Node microtest profile. See the
+[mutation testing guide](https://github.com/enormora/overkill/blob/main/source/packages/stryker-runner/readme.md)
+for installation, configuration, coverage modes, and process guarantees.
