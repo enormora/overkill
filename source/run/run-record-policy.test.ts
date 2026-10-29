@@ -1,68 +1,14 @@
 import { runIfMain } from '#test-runner';
-import { createDeterministicClock } from '@enormora/clock';
-import { normalizeConfig } from '../config/config.ts';
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
-import { defaultRunRequest } from '../test-support/run-command-factory.ts';
+import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { executeRecordedRun, type RunRecordExecutionDependencies } from './recorded-run.ts';
-import type { ResolvedRunInput } from './run-input-resolution.ts';
-import type { RunRecord } from './run-record-types.ts';
+import { executeRecordedRun } from './recorded-run.ts';
 
 type RunResult = Awaited<ReturnType<typeof executeRecordedRun>>;
 
-type PolicyFixture = {
-    readonly input: ResolvedRunInput;
-    readonly writes: readonly RunRecord[];
-    readonly dependencies: RunRecordExecutionDependencies;
-};
-
-function policyFixture(persist: 'always' | 'on-demand', record: boolean): PolicyFixture {
-    const config = normalizeConfig({
-        profiles: {
-            microtest: {
-                testFamily: 'microtest',
-                runRecords: { persist }
-            }
-        }
-    });
-    const profile = config.profiles.microtest;
-    if (profile === undefined) {
-        throw new Error('Expected microtest profile.');
-    }
-    const writes: RunRecord[] = [];
-    const input: ResolvedRunInput = {
-        benchmarkPurpose: 'compare',
-        benchmarkHost: null,
-        benchmarkCalibration: null,
-        benchmarkNormalization: null,
-        config,
-        profile,
-        engine: { kind: 'default' },
-        files: [ { file: 'test.ts', fileSet: null, href: 'file:///project/test.ts', path: '/project/test.ts' } ],
-        projectRoot: '/project',
-        request: defaultRunRequest({ record })
-    };
-    return {
-        writes,
-        input,
-        dependencies: {
-            node: { arch: 'x64', platform: 'linux', version: '26.9.0' },
-            wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
-            runtimeStateStore: {
-                async read() {
-                    return null;
-                },
-                async write(_path: string, content: string) {
-                    writes.push(JSON.parse(content) as RunRecord);
-                }
-            }
-        }
-    };
-}
-
 async function assertPolicy(scope: TestScope, persist: 'always' | 'on-demand', record: boolean): Promise<void> {
-    const fixture = policyFixture(persist, record);
+    const fixture = runRecordPolicyFixture(persist, record);
     const enabled = persist === 'always' || record;
     const result = await executeRecordedRun(
         '/project',
@@ -91,7 +37,7 @@ export const testNode = suite('run record policy', [
             });
         }),
     test('repeated executions receive separate record identities', async function (scope: TestScope) {
-        const fixture = policyFixture('always', false);
+        const fixture = runRecordPolicyFixture('always', false);
         const execute = async function execute(): Promise<RunResult> {
             return runResultFactory.build({ status: 'passed' });
         };
@@ -102,7 +48,7 @@ export const testNode = suite('run record policy', [
         return scope.assert.collect();
     }),
     test('start write failure blocks execution and returns a runner error', async function (scope: TestScope) {
-        const fixture = policyFixture('always', false);
+        const fixture = runRecordPolicyFixture('always', false);
         let executions = 0;
         const delivery = await trackRunnerErrorDelivery(async function executeFailedRecording() {
             return await executeRecordedRun('/project', fixture.input, {
