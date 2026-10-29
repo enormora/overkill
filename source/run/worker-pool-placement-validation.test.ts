@@ -225,6 +225,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,
                 propertyPolicy: null,
                 attachments: null,

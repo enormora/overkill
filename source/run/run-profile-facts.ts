@@ -3,11 +3,13 @@ import type {
     ProcessBudgets,
     ProcessUsagePolicy,
     ProfileConfig,
+    RunRecordPersistenceFacts,
     Scheduling,
     TimingCollectionMode
 } from '../config/types.ts';
 import type { RunRequest } from './run-types.ts';
 import { invalidRequest } from './run-errors.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 
 export function resolveRunScheduling(request: RunRequest, profile: ProfileConfig): Scheduling {
     return request.execution.mode === 'serial' ? 'serial' : profile.execution.scheduling;
@@ -105,4 +107,16 @@ export function resolveTimingCollection(
     }
 
     return profile.timings.collection;
+}
+
+export function resolveRunRecordPersistence(request: RunRequest, profile: ProfileConfig): RunRecordPersistenceFacts {
+    if (currentExecutionSession() !== null) {
+        return { persist: false, reasons: [] };
+    }
+    const reasons = [
+        ...profile.runRecords.persist === 'always' ? [ 'profile' as const ] : [],
+        ...request.record ? [ 'request' as const ] : [],
+        ...request.coverage ? [ 'coverage' as const ] : []
+    ];
+    return { persist: reasons.length > 0, reasons };
 }

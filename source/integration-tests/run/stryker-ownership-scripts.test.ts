@@ -72,6 +72,7 @@ const normalized=normalizeConfig(config);
 const policy=await orchestrator.freezePolicy({moduleBoundary:null,source:{kind:'memory'},command:{
     config:normalized,cwd:process.cwd(),engine:{kind:'default'},request:{
         baselineUpdateMode:'none',capabilityRestrictions:{mode:'enabled'},capture:'buffered',coverage:false,
+        record:false,
         debug:{mode:'off',selectors:[]},execution:{mode:'serial'},measureProcessUsage:null,order:'seeded',
         paths:[],profile:'microtest',processBudgetOverrides:null,processUsageSamplingIntervalMilliseconds:null,
         seed:{value:42n},selection:{kind:'all'},shard:{index:1,total:1},timingCollection:'profile-default',

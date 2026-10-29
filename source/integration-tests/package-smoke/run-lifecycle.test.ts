@@ -8,7 +8,7 @@ import { runIfMain } from '#test-runner';
 
 const lifecycleScript = `
 import assert from 'node:assert/strict';
-import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { orchestrator, normalizeConfig, RunCollectionError } from '@overkill-dev/run';
 const cwd = await realpath(await mkdtemp(join(process.cwd(), 'collected-smoke-')));
@@ -32,13 +32,14 @@ try {
         cwd, engine: {kind: 'default'},
         config: normalizeConfig({profiles: {microtest: {
             testFamily: 'microtest',
+            runRecords: {persist: 'always'},
             timeouts: {collectionMilliseconds: 5000},
             files: {include: ['test.mjs']},
             execution: {processModel: 'in-process', scheduling: 'serial'}
         }}}),
         request: {
             baselineUpdateMode: 'none', capabilityRestrictions: {mode: 'enabled'}, capture: 'buffered',
-            coverage: false, debug: {mode: 'off', selectors: []}, execution: {mode: 'profile-default'},
+            coverage: false, record: false, debug: {mode: 'off', selectors: []}, execution: {mode: 'profile-default'},
             measureProcessUsage: null, order: 'plan', paths: [], profile: 'microtest',
             processBudgetOverrides: null, processUsageSamplingIntervalMilliseconds: null,
             seed: {value: 42n}, selection: {kind: 'all'}, shard: {index: 1, total: 1},
@@ -50,9 +51,19 @@ try {
     globalThis.bootstrapReady = true;
     const collected = await initialized.collect();
     assert.equal(await initialized.collect(), collected);
+    const recordsPath = join(cwd, '.overkill', 'runs');
+    await assert.rejects(readdir(recordsPath), {code: 'ENOENT'});
     const first = await collected.run({selection: {kind: 'all'}});
     const second = await collected.runWithReporterDelivery({selection: {kind: 'all'}});
     assert.deepEqual([first.status, second.result.status], ['passed', 'passed']);
+    const recordFiles = await readdir(recordsPath);
+    assert.equal(recordFiles.length, 2);
+    for (const file of recordFiles) {
+        const record = JSON.parse(await readFile(join(recordsPath, file), 'utf8'));
+        assert.equal(record.status, 'completed');
+        assert.equal(record.result.status, 'passed');
+        assert.deepEqual(record.facts.execution.runRecords, {persist: true, reasons: ['profile']});
+    }
     assert.equal(globalThis.importCount, 1);
     assert.equal(globalThis.scopes.length, 2);
     assert.notEqual(globalThis.scopes[0], globalThis.scopes[1]);

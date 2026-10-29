@@ -10,6 +10,21 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            title: 'overkill wrapper requests run records explicitly',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                const result = await runCommandLine([ 'run', '--record' ], passingResult());
+                scope.assert.equal(result.runRequests[0]?.runRequest.record, true);
+                scope.assert.equal(result.exitCode, 0);
+                const listed = await runCommandLine([ 'list', '--record' ], passingResult());
+                scope.assert.equal(listed.exitCode, 3);
+                scope.assert.equal(listed.runnerLoadCount, 0);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper activates coverage only when requested',
             annotations: {},
             controls: {},

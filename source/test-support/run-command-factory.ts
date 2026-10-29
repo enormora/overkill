@@ -142,6 +142,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: TestProfileC
         processUsagePolicy: profile.processUsage,
         scheduling: profile.execution.scheduling,
         testFamily: profile.testFamily,
+        runRecords: { persist: false, reasons: [] },
         timingCollection: resolveTimingCollection(command.request, profile),
         timeoutPolicy: profile.timeouts,
         verbose: command.request.verbose
@@ -285,6 +286,7 @@ export function defaultMicrotestProfile(
         reporters: overrides.reporters ?? null,
         processUsage: defaultRunProcessUsagePolicy(overrides.processUsage),
         testFamily: 'microtest',
+        runRecords: { persist: 'on-demand' },
         timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy(overrides.timeouts)
     };
@@ -304,6 +306,7 @@ export function defaultIntegrationProfile(
         reporters: overrides.reporters ?? null,
         processUsage: defaultRunProcessUsagePolicy(overrides.processUsage),
         testFamily: 'integration',
+        runRecords: { persist: 'on-demand' },
         timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy({
             collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,
@@ -340,6 +343,7 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         coverage: false,
+        record: false,
         debug: {
             mode: 'off',
             selectors: []

@@ -69,6 +69,7 @@ async function createResolvedRun(
     const resolvedCommand = { ...seededCommand, config: input.config, engine: input.engine, request: input.request };
     const isolatedRun = createIsolatedResolvedRun(resolvedCommand, dependencies, input, {
         baseline: null,
+        record: null,
         source,
         timing
     });

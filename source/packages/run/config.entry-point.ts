@@ -65,3 +65,5 @@ export type {
 
 export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
 export type { BenchmarkHostLimits, BenchmarkHostPolicy } from '../../config/benchmark-host.ts';
+
+export type { RunRecordPersistenceMode, RunRecordProfilePolicy } from '../../config/types.ts';

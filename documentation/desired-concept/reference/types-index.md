@@ -974,6 +974,7 @@ type BenchmarkProfileConfig = {
     readonly attachments: AttachmentLimits;
     readonly processUsage: ProcessUsagePolicy;
     readonly timeouts: TimeoutPolicy;
+    readonly runRecords: RunRecordProfilePolicy;
     readonly timings: TimingProfilePolicy;
 };
 

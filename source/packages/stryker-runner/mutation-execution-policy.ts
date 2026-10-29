@@ -11,6 +11,7 @@ export function createMutationRunCommand(
             baselineUpdateMode: 'none',
             capabilityRestrictions: { mode: 'enabled' },
             capture: 'buffered',
+            record: false,
             coverage: false,
             debug: { mode: 'off', selectors: [] },
             execution: { mode: 'serial' },

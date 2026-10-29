@@ -53,7 +53,8 @@ async function assertCompletedRecord(scope: TestScope): Promise<void> {
                 { ready: true }
             );
             return runResultFactory.build({ summary: { passed: 1, planned: 1, discovered: 1, defined: 1 } });
-        }
+        },
+        null
     );
     scope.assert.equal(result.status, 'passed');
     scope.assert.equal(result.artifacts.length, 1);
@@ -69,7 +70,7 @@ async function assertNoSelectedWork(scope: TestScope): Promise<void> {
     const expected = runResultFactory.build();
     const result = await executeWithAttachments(empty, dependencies, async function runEmptySelection() {
         return expected;
-    });
+    }, null);
     scope.assert.equal(result, expected);
     scope.assert.equal(writes.size, 0);
     const native = await runWithWorkerAttachments(null, null, async function runWithoutTransport() {

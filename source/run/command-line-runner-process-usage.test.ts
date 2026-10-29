@@ -217,6 +217,7 @@ function assertProcessUsageCommand(scope: OverkillScope, command: RunCommand): v
             samplingIntervalMilliseconds: 25
         },
         testFamily: 'microtest',
+        runRecords: { persist: 'on-demand' },
         timings: { collection: 'summary' },
         timeouts: {
             collectionMilliseconds: 1000,

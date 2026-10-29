@@ -24,6 +24,8 @@ type RunCommandParts = {
     readonly request: RunRequest;
 };
 
+const emptyTestData = { annotations: {}, controls: {} };
+
 const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const microtestCaptureControlsFixturePath = 'source/integration-tests/run/fixtures/microtest-capture-controls.test.ts';
 
@@ -110,14 +112,12 @@ function createRunCommand(overrides: RunCommandParts): RunCommand {
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run.test.ts',
-    annotations: {},
-    controls: {},
+    ...emptyTestData,
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects live capture for microtest profiles',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -139,8 +139,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects worker counts for non-worker-pool profiles',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -162,8 +161,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects capture controls for microtest profiles',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -184,8 +182,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() returns frozen run facts for explicit paths',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
@@ -236,6 +233,7 @@ export const testNode = createOverkillSuite({
                         },
                         scheduling: 'concurrent',
                         testFamily: 'microtest',
+                        runRecords: { persist: false, reasons: [] },
                         timingCollection: 'summary',
                         timeoutPolicy: {
                             collectionMilliseconds: 5000,
@@ -259,8 +257,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() generates a seed when the request does not provide one',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const resolvedRun = await runOrchestrator.resolve(createRunCommand({
@@ -281,8 +278,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects empty input without profile file discovery',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -306,8 +302,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects invalid negative seeds',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -331,8 +326,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects unknown profiles',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -356,8 +350,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects process budget overrides without measurement',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
 
@@ -387,8 +380,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() executes the resolved plan and reports run facts',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
                 const runOrchestrator = createDeterministicRunOrchestrator();
@@ -450,6 +442,7 @@ export const testNode = createOverkillSuite({
                         },
                         scheduling: 'concurrent',
                         testFamily: 'microtest',
+                        runRecords: { persist: false, reasons: [] },
                         timingCollection: 'summary',
                         timeoutPolicy: {
                             collectionMilliseconds: 1000,
@@ -485,8 +478,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.run() executes the supervised process profile in a child process',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const runOrchestrator = createDeterministicRunOrchestrator();
                 const result = await runOrchestrator.run(createRunCommand({
@@ -522,8 +514,7 @@ export const testNode = createOverkillSuite({
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'RunResolutionError exposes stable error codes',
-            annotations: {},
-            controls: {},
+            ...emptyTestData,
             async body(scope: OverkillScope) {
                 const error = new RunResolutionError('Unsupported.', undefined, 'unsupported-request');
 

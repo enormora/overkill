@@ -141,6 +141,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
                 runtimeStateDir: config.runtimeStateDir
             },
             execution: {
+                runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,
                 propertyPolicy: null,
                 attachments: null,

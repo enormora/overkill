@@ -31,7 +31,8 @@ type SupervisedExecution = SupervisedCoverageExecution & {
     readonly timing: RunTimingMeasurement | null;
     readonly signal: Readonly<AbortSignal> | null;
 };
-type StartedSupervisedExecution = {
+export type StartedSupervisedExecution = {
+    readonly record: SupervisedCoverageExecution['record'];
     readonly baseline: SupervisedCoverageExecution['baseline'];
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
@@ -154,6 +155,7 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
         },
         {
             coverage: coverageSession?.childProcess ?? null,
+            record,
             signal: execution.signal,
             async finalizeResult(resolvedRun, result) {
                 return await finalizeSupervisedResult(resolvedRun, result, execution);
@@ -172,7 +174,7 @@ async function runStartedSupervisedExecution(execution: StartedSupervisedExecuti
             coverageSession: null,
             dependencies,
             input,
-            record: null,
+            record: execution.record ?? null,
             signal: execution.signal,
             source,
             timing

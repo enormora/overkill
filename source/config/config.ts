@@ -31,21 +31,20 @@ import {
 import type {
     BenchmarkExecution,
     BenchmarkProfileConfig,
+    ConfigLoadRequest as ConfigLoaderRequest,
     IntegrationExecution,
     IntegrationProfileConfig,
     MicrotestProfileConfig,
-    PropertyProfileConfig,
-    ProfileConfig,
-    ProfilesConfig,
     NormalizedConfig,
-    ConfigLoadRequest as ConfigLoaderRequest,
     ProcessBudgets,
     ProcessUsagePolicy,
-    TimingProfilePolicy,
+    ProfileConfig,
+    ProfilesConfig,
+    PropertyProfileConfig,
     TimeoutPolicy,
+    WorkerLifecycle,
     WorkerPoolAssignmentPolicy,
-    WorkerPoolHedgingPolicy,
-    WorkerLifecycle
+    WorkerPoolHedgingPolicy
 } from './types.ts';
 import {
     assertValidProfileName,
@@ -53,6 +52,7 @@ import {
     normalizeCoveragePolicy,
     normalizeProfileFiles,
     normalizeRequiredProfileFiles,
+    normalizeTimings,
     normalizedWorkDistribution
 } from './profile-normalization.ts';
 import { ConfigError } from './config-error.ts';
@@ -64,16 +64,15 @@ import {
     defaultIntegrationScheduling,
     defaultIntegrationTimeoutPolicy,
     defaultLoader,
-    normalizeMicrotestExecution,
-    normalizedMaxConcurrency,
     defaultProcessUsagePolicy,
     defaultProcessUsageSamplingIntervalMilliseconds,
-    defaultTimingProfilePolicy,
     defaultTimeoutPolicy,
     defaultWorkerLifecycle,
     defaultWorkerPoolAssignmentPolicy,
     defaultWorkerPoolDispatchPolicy,
-    defaultWorkerPoolHedgingPolicy
+    defaultWorkerPoolHedgingPolicy,
+    normalizeMicrotestExecution,
+    normalizedMaxConcurrency
 } from './defaults.ts';
 
 type ParsedProfiles = NonNullable<ParsedProjectConfig['profiles']>;
@@ -95,6 +94,7 @@ export type ProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
     readonly reporters?: ParsedProjectIntegrationProfileConfig['reporters'];
     readonly processUsage?: ParsedProjectIntegrationProfileConfig['processUsage'];
     readonly testFamily: ParsedProjectIntegrationProfileConfig['testFamily'];
+    readonly runRecords?: ParsedProjectIntegrationProfileConfig['runRecords'];
     readonly timings?: ParsedProjectIntegrationProfileConfig['timings'];
     readonly timeouts?: ParsedProjectIntegrationProfileConfig['timeouts'];
 };
@@ -290,10 +290,6 @@ function normalizeProcessUsage(
     return normalizeMeasuredProcessUsage(profile);
 }
 
-function normalizeTimings(timings: ProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
-    return { collection: timings?.collection ?? defaultTimingProfilePolicy.collection };
-}
-
 function timeoutValue(value: number | undefined, fallback: number): number {
     return value ?? fallback;
 }
@@ -407,6 +403,7 @@ function normalizeMicrotestProfile(
         reporters: normalizeReporters(profile.reporters),
         processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'microtest',
+        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
         timings: normalizeTimings(profile.timings),
         timeouts
     };
@@ -432,6 +429,7 @@ function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): 
         },
         processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'integration',
+        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
         timings: normalizeTimings(profile.timings),
         timeouts
     };
@@ -470,6 +468,7 @@ function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkPr
         reporters: normalizeReporters(profile.reporters),
         processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'benchmark',
+        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
         timings: normalizeTimings(profile.timings),
         timeouts
     };
@@ -489,6 +488,7 @@ function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): Propert
         processUsage: normalizeProcessUsage(profile.processUsage),
         property: profile.property,
         testFamily: 'property',
+        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
         timings: normalizeTimings(profile.timings),
         timeouts
     };

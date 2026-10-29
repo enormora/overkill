@@ -1,70 +1,18 @@
 import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
 import {
-    createResultFromResolutionError,
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
-import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
-import {
-    type LocalRunCollectionSource as RunCollectionSource,
-    createLocalRunOrEmptySelectionResult
-} from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
-    observeRunRuntimePolicy,
     finalizeResultWithDurationHistory,
-    type RunResultSession,
+    observeRunRuntimePolicy,
     type RunRuntimePolicy
 } from './run-support.ts';
-import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
 import type { ResolvedRun, RunCommand } from './run-types.ts';
+import { createLocalRunResult, isRunResult, type LocalRunOptions } from './local-run-collection.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
-type LocalRunOptions = {
-    readonly baseline: RunResultSession | null;
-    readonly input: ResolvedRunInput;
-    readonly source: RunCollectionSource;
-    readonly timing: RunTimingMeasurement;
-};
-function isRunResult(value: ResolvedRun | RunResult): value is RunResult {
-    return Object.hasOwn(value, 'summary');
-}
-
-async function resolveRunWithRuntimePolicy<RunValue>(
-    resolveRun: () => Promise<RunValue>,
-    runtimePolicy: RunRuntimePolicy | null
-): Promise<RunValue> {
-    return runtimePolicy === null ? await resolveRun() : await runtimePolicy.runLoad(resolveRun);
-}
-
-async function createLocalRunResult(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    runtimePolicy: RunRuntimePolicy | null,
-    options: LocalRunOptions
-): Promise<ResolvedRun | RunResult> {
-    const resolveRun = async function resolveLocalRunInsidePolicy(): Promise<ResolvedRun | RunResult> {
-        return await options.timing.measureAsync(
-            'collection.resolve',
-            emptyTimingSpanMetadata(),
-            async function createTimedLocalRunOrEmptySelectionResult() {
-                return await createLocalRunOrEmptySelectionResult(command, dependencies, options.source, options.input);
-            }
-        );
-    };
-
-    try {
-        return await resolveRunWithRuntimePolicy(resolveRun, runtimePolicy);
-    } catch (error: unknown) {
-        try {
-            return createResultFromResolutionError(error, runtimePolicy);
-        } catch {
-            runtimePolicy?.takeRunErrors();
-            throw error;
-        }
-    }
-}
-
 async function executeResolvedRun(
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
@@ -74,7 +22,8 @@ async function executeResolvedRun(
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {
         async finalizeResult(run, result) {
             const finalized = await finalizeResultWithDurationHistory(dependencies, run, result, options.timing);
-            return options.baseline === null ? finalized : await options.baseline.finalize(finalized);
+            const checkpoint = options.record === null ? finalized : await options.record.checkpointResult(finalized);
+            return options.baseline === null ? checkpoint : await options.baseline.finalize(checkpoint);
         },
         runtimePolicy,
         timing: options.timing
@@ -90,15 +39,20 @@ async function runLocalWithPolicy(
     const resolvedRun = await createLocalRunResult(command, dependencies, runtimePolicy, options);
     if (isRunResult(resolvedRun)) {
         const errors = runtimePolicy?.takeRunErrors() ?? [];
-        return await reportCollectionErrorResult(command, dependencies, {
+        const result = {
             ...resolvedRun,
             runnerErrors: [ ...resolvedRun.runnerErrors, ...errors ],
-            status: errors.length > 0 ? 'failed' : resolvedRun.status
-        }, { timing: options.timing, benchmarkHost: null });
+            status: errors.length > 0 ? 'failed' as const : resolvedRun.status
+        };
+        const checkpoint = options.record === null ? result : await options.record.checkpointResult(result);
+        return await reportCollectionErrorResult(command, dependencies, checkpoint, {
+            timing: options.timing,
+            benchmarkHost: null
+        });
     }
     return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentRun() {
         return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, options);
-    });
+    }, options.record);
 }
 
 async function runOrdinaryLocalCommand(

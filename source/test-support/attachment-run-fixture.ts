@@ -9,7 +9,7 @@ import { attachmentFixture } from './attachment-fixture.ts';
 import { defaultIntegrationProfile, defaultRunConfig, defaultRunRequest } from './run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies } from './worker-pool-runtime-fixtures.ts';
 
-type AttachmentRunFixture = {
+export type AttachmentRunFixture = {
     readonly resolved: ResolvedRun;
     readonly dependencies: RunOrchestratorDependencies;
     readonly writes: ReadonlyMap<string, string>;

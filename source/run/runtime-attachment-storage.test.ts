@@ -13,7 +13,7 @@ const definition = { annotations: {}, controls: {}, definitionLocations: [ { kin
 
 async function assertMissingLimits(scope: TestScope): Promise<void> {
     const { resolved, dependencies } = await attachmentRunFixture(scope);
-    const record = await createAttachmentRecord(resolved, dependencies);
+    const record = await createAttachmentRecord(resolved, dependencies, null);
     await scope.assert.rejects(async function rejectInvalidStorage() {
         await createAttachmentStorageSession({
             ...resolved,
@@ -36,7 +36,7 @@ async function assertCheckpointFailure(scope: TestScope): Promise<void> {
                 await dependencies.runtimeStateStore.write(filePath, content);
             }
         }
-    });
+    }, null);
     writable = false;
     await scope.assert.rejects(async function rejectCheckpoint() {
         await record.checkpoint([]);
@@ -45,7 +45,7 @@ async function assertCheckpointFailure(scope: TestScope): Promise<void> {
 
 async function assertFinalization(scope: TestScope): Promise<void> {
     const { resolved, dependencies } = await attachmentRunFixture(scope);
-    const record = await createAttachmentRecord(resolved, dependencies);
+    const record = await createAttachmentRecord(resolved, dependencies, null);
     const coordinator = createAttachmentRunCoordinator(
         await createAttachmentStorageSession({
             ...resolved,

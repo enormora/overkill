@@ -27,6 +27,7 @@ import {
 } from './worker-pool-run.ts';
 import type { CollectedRunPlan, ResolvedRun, RunCommand, RunInvocationOptions } from './run-types.ts';
 import {
+    type StartedSupervisedExecution,
     createSupervisedResolvedRun,
     createSupervisedRunResult
 } from './run-supervised-process.ts';
@@ -39,6 +40,7 @@ type CollectedExecution = {
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
 };
 type IsolatedRunOptions = {
+    readonly record: StartedSupervisedExecution['record'];
     readonly baseline: BenchmarkBaselineSession | null;
     readonly source: RunCollectionSource;
     readonly timing: RunTimingMeasurement | null;
@@ -183,6 +185,7 @@ export function createIsolatedResolvedRun(
 }
 
 type WorkerPoolRunResultInput = {
+    readonly record: StartedSupervisedExecution['record'];
     readonly baseline: BenchmarkBaselineSession | null;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
@@ -209,7 +212,7 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
         }),
         dependencies,
         async function createResolvedRunAfterCollection(collection): Promise<ResolvedRun> {
-            return await createResolvedExecutionRun({
+            const resolved = await createResolvedExecutionRun({
                 allowEmptySelection: true,
                 collection,
                 command,
@@ -219,16 +222,23 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
                 input,
                 planKind: 'worker-pool'
             });
+            await options.record?.recordFacts(resolved.facts);
+            return resolved;
         },
         {
+            record: options.record,
             async finalizeResult(resolvedRun, completion) {
+                options.record?.retainPlacementTrace(completion.placementTrace);
                 const finalized = await finalizeResultWithDurationHistory(
                     dependencies,
                     resolvedRun,
                     completion.result,
                     timing
                 );
-                return options.baseline === null ? finalized : await options.baseline.finalize(finalized);
+                const checkpoint = options.record === null
+                    ? finalized
+                    : await options.record.checkpointResult(finalized);
+                return options.baseline === null ? checkpoint : await options.baseline.finalize(checkpoint);
             },
             timing
         }
@@ -249,6 +259,7 @@ async function createWorkerPoolRunResult(
     try {
         return await executeWorkerPoolRunResult({
             baseline: options.baseline,
+            record: options.record,
             command,
             dependencies,
             input,
@@ -274,6 +285,7 @@ export function runIsolatedProcessCommand(
     if (processModel === 'supervised-process') {
         return createSupervisedRunResult({
             baseline: options.baseline,
+            record: options.record,
             command,
             dependencies,
             input,

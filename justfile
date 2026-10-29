@@ -55,6 +55,7 @@ test-mutation-integration: benchmark-html-browser
     node source/integration-tests/run/runner-stryker-persistence.test.ts
 
 test-runner-integration: test-mutation-integration
+    node source/integration-tests/run/runner-record-policy.test.ts
     node source/integration-tests/run/process-owner-death.test.ts
     node source/integration-tests/run/process-lifetime.test.ts
     node source/integration-tests/run/process-execution.test.ts

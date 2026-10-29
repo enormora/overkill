@@ -238,7 +238,7 @@ import { commandLineRunner, createNodeCommandLineRunner } from '@overkill-dev/ru
 const cwd = process.argv[2];
 const runRequest = {
     baselineUpdateMode: 'none', capabilityRestrictions: { mode: 'enabled' }, capture: 'buffered',
-    coverage: false, debug: { mode: 'off', selectors: [] }, execution: { mode: 'profile-default' },
+    coverage: false, record: false, debug: { mode: 'off', selectors: [] }, execution: { mode: 'profile-default' },
     measureProcessUsage: null, order: 'lexical', paths: [], profile: null,
     processBudgetOverrides: null, processUsageSamplingIntervalMilliseconds: null,
     seed: { value: 42n }, selection: { kind: 'all' }, shard: { index: 1, total: 1 },

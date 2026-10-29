@@ -49,6 +49,7 @@ function directRunRequest(context: DirectRunContext): RunRequest {
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         coverage: false,
+        record: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
         measureProcessUsage: null,

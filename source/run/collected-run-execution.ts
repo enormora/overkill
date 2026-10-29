@@ -6,13 +6,14 @@ import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
 import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
 import {
     observeRunRuntimePolicy,
-    finalizeResultWithDurationHistory,
     type ResolvedRunResultFinalizer,
     type RunRuntimePolicy
 } from './run-support.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
+import type { RunRecordSession } from './run-record.ts';
 
 type CollectedPlanExecution = {
+    readonly record: RunRecordSession | null;
     readonly context: CollectedRunContext;
     readonly finalizeResult: ResolvedRunResultFinalizer;
     readonly plan: CollectedInvocationPlan;
@@ -44,54 +45,20 @@ async function executeObservedCollectedPlan(execution: CollectedPlanExecution): 
             runtimePolicy,
             timing
         });
-    });
+    }, execution.record);
 }
 
-async function executeCollectedPlan(
+export async function executeCollectedPlan(
     context: CollectedRunContext,
     plan: CollectedInvocationPlan,
     timing: RunTimingMeasurement,
-    finalizeResult: ResolvedRunResultFinalizer
+    options: Pick<CollectedPlanExecution, 'finalizeResult' | 'record'>
 ): Promise<RunResult> {
     return await observeRunRuntimePolicy(
         plan.resolved.request,
         context.dependencies,
         async function executeObservedInvocation(runtimePolicy) {
-            return await executeObservedCollectedPlan({ context, finalizeResult, plan, runtimePolicy, timing });
+            return await executeObservedCollectedPlan({ context, ...options, plan, runtimePolicy, timing });
         }
     );
-}
-
-export async function executeCollectedInvocation(
-    context: CollectedRunContext,
-    plan: CollectedInvocationPlan,
-    timing: RunTimingMeasurement
-): Promise<RunResult> {
-    const { dependencies } = context;
-    if (plan.resolved.request.coverage) {
-        const { runRecordedCoverage } = await import('./recorded-coverage-run.ts');
-        return await runRecordedCoverage({
-            command: { ...context.command, request: plan.resolved.request },
-            dependencies,
-            async execute({ record, session }) {
-                await record.recordFacts(plan.resolved.facts);
-                return await executeCollectedPlan(
-                    context,
-                    plan,
-                    timing,
-                    async function finalizeCoveredResult(run, result) {
-                        const covered = await session.finalize(result);
-                        return await record.checkpointResult(
-                            await finalizeResultWithDurationHistory(dependencies, run, covered, timing)
-                        );
-                    }
-                );
-            },
-            input: { ...context.input, request: plan.resolved.request },
-            timing
-        });
-    }
-    return await executeCollectedPlan(context, plan, timing, async function finalizeCollectedResult(run, result) {
-        return await finalizeResultWithDurationHistory(dependencies, run, result, timing);
-    });
 }

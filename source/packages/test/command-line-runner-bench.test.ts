@@ -375,7 +375,10 @@ export const testNode = createSuite({
                     async body(scope: TestScope) {
                         const unsupportedArguments: readonly (readonly [string, ...string[]])[] = [
                             [ '--coverage' ],
-                            [ '--record' ],
+                            ...(verb === 'list' ? [ [ '--record' ] ] : []) as readonly (readonly [
+                                string,
+                                ...string[]
+                            ])[],
                             [ '--debug' ],
                             [ '--measure-resource-usage' ],
                             [ '--resource-budget', 'residentSetBytes=1000' ],

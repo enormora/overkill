@@ -343,7 +343,7 @@ Records preserve the request, decimal seed, resolved facts, execution policy,
 project-relative coverage paths, and result artifacts. The started record
 precedes coverage setup and imports; early failures may have `facts: null`.
 Completion includes reporter and cleanup errors. Required persistence failures
-fail the run. Bare integration runs, microtest runs without coverage, and
+fail the run. Ordinary on-demand runs without coverage or attachment scopes and
 `orchestrator.resolve()` do not create records.
 
 Resolved runtime identities contain selected scenario bindings. They flow into
@@ -590,3 +590,19 @@ its values again.
 
 `createNodeFileStore` provides atomic runtime state writes and create-only
 publication, with temporary-file cleanup on failure.
+
+## Run recording
+
+Profiles accept `runRecords: { persist: 'on-demand' | 'always' }`, defaulting to
+`on-demand`. Use `overkill run --record` or `RunRequest.record: true` to persist
+one invocation. Coverage and resource attachment workflows require records
+independently of that default.
+
+Records live at `<runtimeStateDir>/runs/<id>.json`. Explicit recording starts
+before runner-owned imports. Artifact-only recording starts after collection
+identifies attachment scopes, before resources or cases execute. Reusable
+collection is read-only; each execution receives a fresh record ID.
+
+Required write failures fail the command. Completed records include reporter
+and cleanup errors; escaping exceptions leave interrupted records. History,
+retention, and replay commands are not yet available.

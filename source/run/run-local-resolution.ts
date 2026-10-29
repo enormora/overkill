@@ -70,14 +70,3 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
 
     return { facts: run.facts, run };
 }
-
-export async function createLocalRunOrEmptySelectionResult(
-    command: RunCommand,
-    dependencies: RunOrchestratorDependencies,
-    source: LocalTestPlanInput['source'],
-    input: ResolvedRunInput
-): Promise<ResolvedRun | RunResult> {
-    const resolved = await createLocalRunOrEmptySelectionResultFromInput(command, dependencies, input, source);
-
-    return resolved.run;
-}

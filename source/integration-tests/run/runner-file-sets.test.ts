@@ -50,6 +50,7 @@ function createDefaultMicrotestProfile(): NormalizedConfig['profiles'][string] {
             samplingIntervalMilliseconds: 100
         },
         testFamily: 'microtest',
+        runRecords: { persist: 'on-demand' },
         timings: { collection: 'summary' },
         timeouts: {
             collectionMilliseconds: 5000,
@@ -64,6 +65,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         baselineUpdateMode: 'none',
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
+        record: false,
         coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },

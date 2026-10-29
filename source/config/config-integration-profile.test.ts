@@ -66,6 +66,7 @@ export const testNode = createOverkillSuite({
                     reporters: null,
                     processUsage: defaultMicrotestProfile().processUsage,
                     testFamily: 'integration',
+                    runRecords: { persist: 'on-demand' },
                     timings: { collection: 'summary' },
                     timeouts: {
                         collectionMilliseconds: 5000,

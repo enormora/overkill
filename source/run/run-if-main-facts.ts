@@ -28,6 +28,7 @@ function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunReque
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         coverage: false,
+        record: false,
         debug: {
             mode: 'off',
             selectors: []
@@ -109,6 +110,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             scheduling: profile.execution.scheduling,
             testFamily: profile.testFamily,
             retries: profile.testFamily === 'integration' ? profile.retries : null,
+            runRecords: { persist: false, reasons: [] },
             timingCollection: resolveTimingCollection(request, profile),
             timeoutPolicy: profile.timeouts,
             verbose: request.verbose
