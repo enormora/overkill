@@ -146,6 +146,7 @@ async function assertCoverageRecord(
     scope.require.defined(record.facts);
     scope.assert.deepEqual({
         coverage: record.request.coverage,
+        record: record.request.record,
         id: record.id,
         maxConcurrency: record.facts.execution.maxConcurrency,
         processModel: record.facts.execution.processModel,
