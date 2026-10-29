@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -70,6 +71,7 @@ function listRunnerCase(
 
 async function loadDefaultConfig(): Promise<LoadedConfig> {
     return {
+        history: defaultHistoryPolicy,
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: plainOutputRenderer,

@@ -1,75 +1,18 @@
 import { runIfMain } from '#test-runner';
-import { createDeterministicClock } from '@enormora/clock';
+import {
+    type RecordSessionSnapshot,
+    recordFixture,
+    recordUnresolvedSeed,
+    recordId,
+    profile,
+    facts
+} from '../test-support/run-record-session-fixture.ts';
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { defaultMicrotestProfile, defaultRunConfig, defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { createRunFacts } from './run-facts.ts';
-import type { RunRecord } from './run-record-types.ts';
-import { createRunRecordSession, type RunRecordSession } from './run-record.ts';
 
-const recordId = '01K00000000000000000000000';
-const profile = defaultMicrotestProfile({ execution: { processModel: 'in-process', scheduling: 'serial' } });
-const input = {
-    config: defaultRunConfig({ profiles: { microtest: profile }, runtimeStateDir: 'state' }),
-    engine: { kind: 'default' as const },
-    files: [ { file: 'test.ts', fileSet: null, href: 'file:///project/test.ts', path: '/project/test.ts' } ] as const,
-    profile,
-    projectRoot: '/project',
-    request: defaultRunRequest({ coverage: true })
-};
-const node = { arch: 'x64', platform: 'linux', version: '26.10.0' };
-const facts = createRunFacts({
-    hostProcess: null,
-    benchmarkHost: null,
-    benchmarkCalibration: null,
-    benchmarkNormalization: null,
-    benchmarkPlacement: null,
-    cases: [],
-    config: input.config,
-    dependencies: {
-        createSeed() {
-            return 42n;
-        },
-        node
-    },
-    durationHistory: null,
-    engine: input.engine,
-    placementPlan: null,
-    projectRoot: input.projectRoot,
-    request: input.request,
-    scheduling: 'serial',
-    workerCount: null
-});
-
-type RecordFixture = { readonly session: RunRecordSession; readonly writes: readonly RunRecord[]; };
-
-function recordFixture(failedWrites: readonly number[]): RecordFixture {
-    const writes: RunRecord[] = [];
-    let attempts = 0;
-    const session = createRunRecordSession('/project/subdirectory', input, {
-        createId() {
-            return recordId;
-        },
-        node,
-        store: {
-            async write(filePath, content) {
-                attempts += 1;
-                if (failedWrites.includes(attempts)) {
-                    throw new Error(`Cannot write ${filePath}`);
-                }
-                writes.push(JSON.parse(content) as RunRecord);
-            }
-        },
-        versions: { engine: null, node: node.version, packages: { reporter: '1.2.3' } },
-        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
-    });
-
-    return { session, writes };
-}
-
-function assertStartedRecord(scope: TestScope, record: RunRecord | undefined, recordPath: string): void {
+function assertStartedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined, recordPath: string): void {
     scope.require.defined(record);
     scope.assert.deepEqual({
         facts: record.facts,
@@ -81,15 +24,15 @@ function assertStartedRecord(scope: TestScope, record: RunRecord | undefined, re
     scope.assert.equal(recordPath, `/project/state/runs/${recordId}.json`);
 }
 
-function assertCompletedRecord(scope: TestScope, record: RunRecord | undefined, result: RunResult): void {
+function assertCompletedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined, result: RunResult): void {
     scope.require.defined(record);
     scope.assert.equal(record.status, 'completed');
     scope.assert.deepEqual<unknown, unknown>(record.facts, facts);
-    scope.assert.deepEqual(record.execution, profile.execution);
+    scope.assert.deepEqual<unknown, unknown>(record.execution, profile.execution);
     scope.assert.deepEqual<unknown, unknown>(record.result, result);
 }
 
-function assertInterruptedRecord(scope: TestScope, record: RunRecord | undefined): void {
+function assertInterruptedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined): void {
     scope.require.defined(record);
     scope.require.defined(record.result);
     scope.assert.equal(record.status, 'interrupted');
@@ -111,24 +54,7 @@ export const testNode = createSuite({
             annotations: {},
             controls: {},
             body(scope) {
-                scope.assert.throws(function recordUnresolvedSeed() {
-                    createRunRecordSession('/project', {
-                        ...input,
-                        request: { ...input.request, seed: { value: null } }
-                    }, {
-                        createId() {
-                            return recordId;
-                        },
-                        node,
-                        store: {
-                            async write() {
-                                return undefined;
-                            }
-                        },
-                        versions: { engine: null, node: node.version, packages: {} },
-                        wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n })
-                    });
-                }, { message: 'Run recording requires a resolved seed.' });
+                scope.assert.throws(recordUnresolvedSeed, { message: 'Run recording requires a resolved seed.' });
                 return scope.assert.collect();
             }
         }),

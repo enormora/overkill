@@ -63,6 +63,7 @@ import {
     defaultIntegrationProcessModel,
     defaultIntegrationScheduling,
     defaultIntegrationTimeoutPolicy,
+    normalizeHistoryPolicy,
     defaultLoader,
     defaultProcessUsagePolicy,
     defaultProcessUsageSamplingIntervalMilliseconds,
@@ -537,6 +538,7 @@ function normalizeConfiguredProfiles(
 
 function normalizeConfigForOrigin(parsedConfig: ParsedProjectConfig, configPath: string | null): NormalizedConfig {
     return {
+        history: normalizeHistoryPolicy(parsedConfig.history ?? {}),
         loader: parsedConfig.loader ?? defaultLoader,
         outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
         profiles: normalizeConfiguredProfiles(parsedConfig.profiles, configPath),
@@ -547,9 +549,7 @@ function normalizeConfigForOrigin(parsedConfig: ParsedProjectConfig, configPath:
 
 function parseConfig(configValue: unknown, configPath: string | null): ParsedProjectConfig {
     try {
-        const parsedConfig: ParsedProjectConfig = parse(projectConfigSchema, configValue);
-
-        return parsedConfig;
+        return parse(projectConfigSchema, configValue);
     } catch (error: unknown) {
         const location = configPath === null ? 'Invalid config' : `Invalid config file "${configPath}"`;
 

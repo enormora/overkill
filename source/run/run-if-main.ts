@@ -71,6 +71,7 @@ async function directRunConfig(context: DirectRunContext): Promise<NormalizedCon
     const reporters = await selectedReporters(context.profile, context.config, context.options);
 
     return {
+        history: context.config.history,
         loader: context.config.loader,
         outputRenderer: selectedOutputRenderer(context.config, context.options),
         profiles: {

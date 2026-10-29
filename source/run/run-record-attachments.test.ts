@@ -27,6 +27,7 @@ function parentRecord(fixture: AttachmentRunFixture): RunRecordSession {
         projectRoot: resolved.facts.environment.projectRoot,
         request: { ...resolved.request, record: true }
     }, {
+        history: dependencies.createHistoryStorage(resolved.config.runtimeStateDir, resolved.config.history),
         createId() {
             return '01K00000000000000000000000';
         },

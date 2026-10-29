@@ -9,6 +9,7 @@ import {
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
+    defaultRunConfig,
     unexpectedBenchmarkOrchestrator,
     defaultMicrotestProfile,
     defaultRunRequest,
@@ -46,6 +47,7 @@ const defaultRequest: RunRequest = defaultRunRequest();
 
 function defaultLoadedConfig(): LoadedConfig {
     return {
+        history: defaultRunConfig().history,
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: plainOutputRenderer,

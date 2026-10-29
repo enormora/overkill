@@ -9,6 +9,7 @@ import {
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
+    defaultRunConfig,
     unexpectedBenchmarkOrchestrator,
     defaultMicrotestProfile,
     defaultRunRequest
@@ -68,6 +69,7 @@ function loadedConfig(
     profileReporters: readonly DefinedReporter[] | null
 ): LoadedConfig {
     return {
+        history: defaultRunConfig().history,
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: plainOutputRenderer,

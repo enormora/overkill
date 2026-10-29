@@ -1,6 +1,6 @@
 import { z } from 'zod';
+import { durationHistoryIndexVersion } from './duration-history-types.ts';
 
-export const durationHistoryIndexVersion = 2;
 const legacyDurationHistoryIndexVersion = 1;
 const microsecondsPerMillisecond = 1000;
 const stringRecordSchema = z.record(z.string(), z.string()).readonly();
@@ -127,3 +127,6 @@ const legacyIndexSchema = z
     });
 
 export const durationHistoryIndexSchema = z.union([ currentIndexSchema, legacyIndexSchema ]);
+
+export const durationObservationSchema = observationSchema;
+export const durationWorkIdSchema = workIdSchema;

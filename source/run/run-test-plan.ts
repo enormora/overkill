@@ -13,7 +13,7 @@ import type {
     RunCollectionSource,
     RunCollectionRoot,
     RunTestFamily,
-    PropertyPolicy
+    RunFacts
 } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
@@ -97,7 +97,7 @@ export async function createRunTestPlanFromFiles(input: RunTestPlanFromFilesInpu
 
 type TestPlanCollectionPolicy = {
     readonly testFamily: RunTestFamily;
-    readonly propertyPolicy: PropertyPolicy | null;
+    readonly propertyPolicy: RunFacts['execution']['propertyPolicy'];
     readonly timeoutMilliseconds: number;
 };
 

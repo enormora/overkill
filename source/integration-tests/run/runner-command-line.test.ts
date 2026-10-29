@@ -15,7 +15,7 @@ import {
 } from '../../run/command-line-runner.ts';
 import type { LoadedConfig } from '../../config/config.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import { defaultCoveragePolicy } from '../../config/defaults.ts';
+import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
 import type { RunRequest } from '../../run/run-types.ts';
 import type { NormalizedConfig, MicrotestProcessModel, MicrotestProfileConfig } from '../../config/types.ts';
 
@@ -71,6 +71,7 @@ function createDefaultMicrotestProfile(): MicrotestProfileConfig {
 }
 
 const defaultConfig: NormalizedConfig = {
+    history: normalizeHistoryPolicy({}),
     loader: { sourceMaps: false, stripMode: 'strip-only' },
     outputRenderer: defineOutputRenderer(function createOutputRenderer() {
         return {
@@ -112,6 +113,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
 
 function createLoadedRunConfig(config: NormalizedConfig): LoadedConfig {
     return {
+        history: normalizeHistoryPolicy({}),
         configPath: null,
         loader: config.loader,
         outputRenderer: config.outputRenderer,

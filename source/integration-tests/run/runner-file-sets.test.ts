@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
     createSuite,
     createTestCase,
@@ -86,6 +87,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
 
 function createRunConfig(): NormalizedConfig {
     return {
+        history: defaultHistoryPolicy,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: defineOutputRenderer(function createOutputRenderer() {
             return {

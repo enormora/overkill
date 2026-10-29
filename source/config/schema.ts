@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
+import { historyPolicySchema } from './history-policy.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
 import { defaultPropertyPolicy, resolvePropertySettings, propertySettingsSchema } from './property-policy.ts';
 import { performanceBaselinePolicySchema } from './performance-baselines.ts';
@@ -345,6 +346,7 @@ const profilesSchema = z.record(z.string(), profileSchema).readonly();
 
 export const projectConfigSchema = z
     .strictObject({
+        history: z.optional(historyPolicySchema.unwrap().partial()),
         loader: z.optional(loaderSchema),
         outputRenderer: z.optional(outputRendererSchema),
         profiles: z.optional(profilesSchema),

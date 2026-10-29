@@ -189,7 +189,11 @@ this precedence:
 5. `passed`
 
 Case and work histories keep the last 20 observations per identity plus
-aggregate counters. Entries that no longer receive updates are pruned after
+aggregate counters. Case observations aggregate all executed variants in one
+run: failure wins, then inconclusive, pass, and skip. Retries contribute their
+final verdict once. Work observations remain keyed by `WorkId`.
+
+Entries that no longer receive updates are pruned after
 90 days by default. Run summaries are kept for the last 500 persisted runs or
 90 days, whichever keeps fewer.
 
@@ -198,14 +202,23 @@ record. A run selected with `--last-failed` automatically persists its own
 result so the workflow stays fresh. `duration-history-balanced` placement reads
 compact work history rather than scanning retained detailed records. If a
 command needs compact history and the index is missing or corrupt, it fails
-with a repair hint to run `overkill history compact`.
+with a repair hint to run `overkill history compact`. Missing duration history
+is a normal cold start and uses case-count balancing.
 
 History state is schema-versioned. Older schemas may be rebuilt automatically
 from retained records with a 2 second budget. If that budget is exceeded, or
 if retained records are insufficient, the command fails with the same repair
 hint. `overkill history compact` keeps existing pruned run summaries when the
 index is readable; a rebuild from corrupted state may lose summaries whose
-detailed records were already pruned.
+detailed records were already pruned. Explicit repair reports this potential
+loss; automatic repair does not replace state when its inputs are insufficient.
+
+Run/case history lives in `history/index.json`; duration history retains its
+existing path. Both share one project history lock. Ingestion receipts prevent
+repeated completion or repair from increasing counters twice. Legacy duration
+samples without run identity survive migration; records started before the
+migration cutoff do not add duration samples during repair. Migrated counters
+start from the observations still available.
 
 ## Retention And Maintenance
 
@@ -222,8 +235,11 @@ Defaults:
 - stale case/work history entries: 90 days
 - compact history observations: last 20 per identity plus counters
 
-Required record and compact-history commits happen before final reporter
-output so persistence errors appear in the normal run summary. Automatic
+Required record and provisional compact-history writes happen before final
+reporter output so persistence errors appear in the normal run summary.
+Case and work observations become visible only after the record completes,
+including reporter delivery and coverage cleanup. Abandoned provisional
+contributions become interrupted summaries during repair. Automatic
 pruning is optional maintenance and happens after final reporter output.
 
 Automatic maintenance:

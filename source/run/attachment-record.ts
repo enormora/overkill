@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { ulid } from 'ulid';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { createStoredRunValue } from './supervised-run-state.ts';
@@ -59,6 +60,10 @@ export async function createAttachmentRecord(
         projectRoot: resolved.facts.environment.projectRoot,
         request: { ...resolved.request, seed: { value: BigInt(resolved.facts.reproducibility.seed) } }
     }, {
+        history: dependencies.createHistoryStorage(
+            path.resolve(resolved.facts.environment.projectRoot, resolved.config.runtimeStateDir),
+            resolved.config.history
+        ),
         createId: ulid,
         node: dependencies.node,
         store: dependencies.runtimeStateStore,

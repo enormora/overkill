@@ -1,9 +1,14 @@
+import path from 'node:path';
+import { ulid } from 'ulid';
+import { runRecordVersions } from './run-record-versions.ts';
+import type { HistoryStorage } from './history-storage-types.ts';
 import type { RunRecord, RunRecordVersions } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { runEngineFacts } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
 export type RunRecordDependencies = {
+    readonly history: HistoryStorage;
     readonly createId: () => string;
     readonly node: RunOrchestratorDependencies['node'];
     readonly store: Pick<RunOrchestratorDependencies['runtimeStateStore'], 'write'>;
@@ -47,5 +52,28 @@ export function initialRecord(
         status: 'started',
         version: 1,
         versions: dependencies.versions
+    };
+}
+
+export type RunRecordInput = Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>;
+export type RunRecordExecutionDependencies = Pick<
+    RunOrchestratorDependencies,
+    'createHistoryStorage' | 'node' | 'runtimeStateStore' | 'wallClock'
+>;
+
+export async function createRunRecordDependencies(
+    input: RunRecordInput,
+    dependencies: RunRecordExecutionDependencies
+): Promise<RunRecordDependencies> {
+    return {
+        history: dependencies.createHistoryStorage(
+            path.resolve(input.projectRoot, input.config.runtimeStateDir),
+            input.config.history
+        ),
+        createId: ulid,
+        node: dependencies.node,
+        store: dependencies.runtimeStateStore,
+        versions: await runRecordVersions(input.engine, dependencies.node.version),
+        wallClock: dependencies.wallClock
     };
 }

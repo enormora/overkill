@@ -18,8 +18,7 @@ import { withBenchmarkRunMetadata, withBenchmarkErrorMetadata } from './benchmar
 import {
     readDurationHistoryIndex,
     resultWithUpdatedDurationHistoryAndTiming,
-    type DurationHistoryTimingMeasurement,
-    type DurationHistoryIndex
+    type DurationHistoryTimingMeasurement
 } from './duration-history.ts';
 
 export type RunResultSession = {
@@ -54,7 +53,7 @@ export async function readRunDurationHistory(
     dependencies: RunOrchestratorDependencies,
     projectRoot: string,
     runtimeStateDir: string
-): Promise<DurationHistoryIndex | null> {
+): ReturnType<typeof readDurationHistoryIndex> {
     return await readDurationHistoryIndex(dependencies.runtimeStateStore, projectRoot, runtimeStateDir);
 }
 
@@ -73,6 +72,7 @@ export async function finalizeResultWithDurationHistory(
         );
     }
     return await resultWithUpdatedDurationHistoryAndTiming({
+        createHistoryStorage: dependencies.createHistoryStorage,
         completedAtMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
         resolvedRun,
         result: attachmentResult,

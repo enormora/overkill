@@ -57,6 +57,7 @@ export function runConfig(
     reporters: readonly DefinedReporter[]
 ): NormalizedConfig {
     return {
+        history: loadedConfig.history,
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
         profiles: loadedConfig.profiles,

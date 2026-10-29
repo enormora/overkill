@@ -3,6 +3,7 @@ import { z } from 'zod/v4';
 import { normalizeConfig } from '../config/config.ts';
 import type { ResolvedRunInput } from '../run/run-input-resolution.ts';
 import type { RunRecordExecutionDependencies } from '../run/recorded-run.ts';
+import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 import { defaultRunRequest } from './run-command-factory.ts';
 
 const recordSnapshot = z.object({
@@ -48,6 +49,7 @@ export function runRecordPolicyFixture(persist: 'always' | 'on-demand', record: 
         writes,
         input,
         dependencies: {
+            createHistoryStorage: createMemoryHistoryStorage,
             node: { arch: 'x64', platform: 'linux', version: '26.9.0' },
             wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
             runtimeStateStore: {

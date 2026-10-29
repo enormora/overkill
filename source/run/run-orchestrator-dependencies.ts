@@ -1,4 +1,5 @@
 import type { HostProcess, ProfileConfig } from '../config/types.ts';
+import type { HistoryStorageFactory, RuntimeStateStore } from './history-storage-types.ts';
 import type { RunHostObservations, ProcessUsageTrackerOptions } from './run-host-observations.ts';
 import type {
     Engine,
@@ -11,7 +12,6 @@ import type {
     RuntimeCapabilityPolicyDependencies,
     RuntimeCapabilityPolicyEnvironment
 } from './capability-policy-snapshots.ts';
-import type { DurationHistoryStore } from './duration-history.ts';
 import type { RunDiscovery } from './run-discovery-types.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
@@ -91,11 +91,12 @@ export function createHostRunnerErrors(): HostRunnerErrors {
 }
 
 export type RunOrchestratorDependencies = RunHostObservations & {
+    readonly createHistoryStorage: HistoryStorageFactory;
     readonly createSeed: () => bigint;
     readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;
     readonly defaultEngine: Engine;
     readonly discoverRunFilesWithProjectRoot: RunDiscovery['discoverRunFilesWithProjectRoot'];
-    readonly runtimeStateStore: DurationHistoryStore;
+    readonly runtimeStateStore: RuntimeStateStore;
     readonly execute: Execute;
     readonly loadRunEngineModule: RunEngineModuleLoader;
     readonly loadRunTestModules: RunTestModuleLoader;

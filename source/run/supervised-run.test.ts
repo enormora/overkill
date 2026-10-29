@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -77,6 +78,7 @@ function createConsoleReporter(): DefinedReporter {
 
 function createRunConfig(profile: MicrotestProfileConfig): NormalizedConfig {
     return {
+        history: defaultHistoryPolicy,
         loader: {
             sourceMaps: false,
             stripMode: 'strip-only'

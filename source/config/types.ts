@@ -5,6 +5,7 @@ import type { BenchmarkBaselinePolicy } from '../baselines/performance-adapter.t
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
+import type { HistoryPolicy } from './history-policy.ts';
 import type { BenchmarkHostPolicy } from './benchmark-host.ts';
 import type {
     IntegrationRetryPolicy as IntegrationRetryPolicyDefinition,
@@ -217,6 +218,7 @@ export type ProfileConfig = BenchmarkProfileConfig | TestProfileConfig;
 export type ProfilesConfig = Readonly<Record<string, ProfileConfig>>;
 
 export type NormalizedConfig = {
+    readonly history: HistoryPolicy;
     readonly loader: LoaderConfig;
     readonly outputRenderer: DefinedOutputRenderer;
     readonly profiles: ProfilesConfig;

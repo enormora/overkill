@@ -1,3 +1,4 @@
+import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
@@ -319,6 +320,7 @@ export function defaultIntegrationProfile(
 
 export function defaultRunConfig(overrides: Partial<NormalizedConfig> = {}): NormalizedConfig {
     const defaultConfig: NormalizedConfig = {
+        history: defaultHistoryPolicy,
         loader: {
             sourceMaps: false,
             stripMode: 'strip-only'

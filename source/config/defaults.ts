@@ -1,3 +1,4 @@
+import { historyPolicySchema, type HistoryPolicy, type ProjectHistoryPolicy } from './history-policy.ts';
 import type {
     CoveragePolicy,
     MaxConcurrency,
@@ -100,3 +101,7 @@ export const defaultWorkerPoolDispatchPolicy: WorkerPoolDispatchPolicy = 'dynami
 export const defaultWorkerPoolHedgingPolicy: WorkerPoolHedgingPolicy = { mode: 'off' };
 export const defaultWorkerLifecycle: WorkerLifecycle = 'reuse';
 export const defaultWorkDistribution = { mode: 'file' } as const;
+
+export function normalizeHistoryPolicy(value: ProjectHistoryPolicy): HistoryPolicy {
+    return historyPolicySchema.parse(value);
+}

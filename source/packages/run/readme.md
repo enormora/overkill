@@ -606,3 +606,20 @@ collection is read-only; each execution receives a fresh record ID.
 Required write failures fail the command. Completed records include reporter
 and cleanup errors; escaping exceptions leave interrupted records. History,
 retention, and replay commands are not yet available.
+
+## Compact history
+
+Persisted runs update run summaries and case outcomes under
+`runtimeStateDir/history/index.json`. Duration history remains under
+`duration-history/work-durations.json`; ordinary unrecorded runs can warm it.
+
+Top-level `history` config controls `observationsPerIdentity` (20),
+`runSummaryLimit` (500), `runSummaryRetentionDays` (90),
+`staleIdentityRetentionDays` (90), `lockTimeoutMilliseconds` (5000), and
+`staleLockMilliseconds` (120000). Summary count and age limits both apply.
+Placement still uses the latest eight duration samples within 30 days.
+
+History is derived state, not a replay source. Interrupted runs do not add
+case/work observations. Persistence failures fail the run. History CLI,
+last-failed selection, and automatic record/artifact pruning are separate
+features.
