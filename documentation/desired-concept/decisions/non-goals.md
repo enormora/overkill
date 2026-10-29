@@ -282,7 +282,7 @@ Overkill does not retry microtests as a normal mode.
 
 Why: an "exit ramp" from the contract - see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
-Where: [Test Data And Selection § Future Work](../architecture/test-data-and-selection.md#future-work),
+Where: [Test Data And Selection § Derived Data And Reasoned Skips](../architecture/test-data-and-selection.md#derived-data-and-reasoned-skips),
 [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
 Alternative: integration-style profiles may opt into retries with
@@ -295,8 +295,7 @@ mode.
 
 Why: an "exit ramp" from the contract - see [Principles § The Suite Is A Contract](./principles.md#the-suite-is-a-contract).
 
-Where: [Test Data And Selection § Future Work](../architecture/test-data-and-selection.md#future-work) (Quarantine
-glossary entry was removed in the same direction).
+Where: [Test Data And Selection § Derived Data And Reasoned Skips](../architecture/test-data-and-selection.md#derived-data-and-reasoned-skips).
 
 Alternative: stability markers as derived facts only; CI gates use
 verdict, not quarantine. A flaky test is fixed or deleted, not parked.
