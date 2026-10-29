@@ -2,6 +2,7 @@ import { runIfMain } from '#test-runner';
 import { readPropertyExecutionHost, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
+import { testNode as targeting } from './property-targets.test.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { testNode as exhaustive } from './property-exhaustive.test.ts';
 import { gen } from './generators.ts';
@@ -9,6 +10,7 @@ import { executeProperty, type PropertyExecutionResult } from './property-execut
 
 export const testNode = suite('property trial execution', [
     exhaustive,
+    targeting,
     test('executes all five phases in order with independent accounting', async function (scope: TestScope) {
         const observed: number[] = [];
         const captured: PropertyExecutionResult<number>[] = [];

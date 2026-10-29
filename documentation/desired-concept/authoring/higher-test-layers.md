@@ -1575,3 +1575,19 @@ Node deep strict equality. Examples, corpus inputs, and automatic edges have
 separate observations and cannot satisfy requirements. Unmet requirements stay
 inconclusive even after exhaustive completion. Trial observers expire after
 cleanup. Coverage labels are bounded by `maxLabels` per invocation.
+
+### Targeted exploration
+
+Call `sample.target('distance', -distance)` to guide subsequent exploration
+toward smaller distances. Scores must be finite numbers; larger scores win.
+Repeated calls for one label use the trial maximum. Missing observations
+supply no score. Labels must be nonblank strings. Targeting and coverage share
+`maxLabels`, including declared coverage labels. Observers expire after cleanup.
+
+Only passing new exploration trials supply guidance. Corpus inputs, examples,
+and automatic edges do not seed the search. Exhaustive traversal is unchanged.
+Search alternates fresh generation with mutations of retained generation choices,
+regenerating through the original generator to preserve its domain.
+`maxRetainedInputs` bounds per-label champions and `maxWork` bounds search work.
+Failing to improve a score never invalidates completed passing trials; required
+coverage remains a separate condition.

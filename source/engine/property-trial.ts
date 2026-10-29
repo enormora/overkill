@@ -62,6 +62,16 @@ async function evaluatePropertyTrial(
     return classifyPropertyTrial(checked);
 }
 
+export function propertyObservationContractFailure(summary: string): never {
+    throw new TestContractSignalError({
+        kind: 'test-contract',
+        code: 'property-observation',
+        summary,
+        actual: summary,
+        expected: 'finite scores and valid labels within an active property trial'
+    }, undefined);
+}
+
 export function propertyScopeContractFailure(summary: string): never {
     throw new TestContractSignalError({
         kind: 'test-contract',
