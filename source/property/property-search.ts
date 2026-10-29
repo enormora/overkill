@@ -1,6 +1,8 @@
 import { Random } from 'fast-check';
 import { xoroshiro128plusFromState } from 'pure-rand/generator/xoroshiro128plus';
 import type { RandomGenerator } from 'pure-rand/types/RandomGenerator';
+import type { PropertyExecutionHost } from '../packages/engine/engine.entry-point.ts';
+import { propertyRandom } from './property-random.ts';
 import { generateInput, type GeneratedInput } from './generator-input.ts';
 import type { GeneratorContext } from './generator-backend.ts';
 import type { Generator as PropertyGenerator } from './generator.ts';
@@ -165,4 +167,13 @@ export function propertySearch<Value>(
             }
         }
     };
+}
+
+export function invocationSearch<Value>(
+    generator: PropertyGenerator<Value>,
+    host: PropertyExecutionHost,
+    identity: string,
+    context: GeneratorContext
+): PropertySearch<Value> {
+    return propertySearch(generator, propertyRandom(host, identity), context, host.policy.maxRetainedInputs);
 }

@@ -98,6 +98,7 @@ function emitTestEnd(
 ): void {
     context.emitMessage({
         event: {
+            property: null,
             benchmark: null,
             completion: 'final',
             attempt: 1,

@@ -17,6 +17,7 @@ import { createPerformanceWorkflow, type PerformanceWorkflow } from './performan
 
 const calibration = { context: {}, kind: 'comparable', machineClass: 'test-host', metadata: {} } as const;
 const event: BenchmarkCaseEnd = {
+    property: null,
     benchmark: null,
     artifacts: [],
     attempt: 0,

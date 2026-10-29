@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
 import { propertyObservationContractFailure } from '../packages/engine/engine.entry-point.ts';
+import { propertyLabels } from './property-targets.ts';
 import type { PropertyCoverageRequirement } from './property-definition.ts';
 
 const percentScale = 100;
@@ -61,7 +62,10 @@ function trialCoverage(observe: (label: string) => void, commit: (hits: Readonly
                 propertyObservationContractFailure('Property coverage observation outlived its trial.');
             }
             observe(label);
-            z.boolean().parse(condition);
+            const parsed = z.boolean().safeParse(condition);
+            if (!parsed.success) {
+                propertyObservationContractFailure(parsed.error.message);
+            }
             if (condition) {
                 hits.add(label);
             }
@@ -126,4 +130,16 @@ export function createCoverage(
             });
         }
     };
+}
+
+type InvocationCoverage = PropertyCoverage & {
+    readonly observeLabel: (label: string) => void;
+};
+
+export function invocationCoverage(
+    requirements: readonly PropertyCoverageRequirement[],
+    maxLabels: number
+): InvocationCoverage {
+    const observeLabel = propertyLabels(maxLabels);
+    return { ...createCoverage(requirements, observeLabel), observeLabel };
 }

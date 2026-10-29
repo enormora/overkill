@@ -346,6 +346,7 @@ export const testNode = createOverkillSuite({
                             }
                         },
                         {
+                            property: null,
                             completion: 'final',
                             attempt: 0,
                             case: { file: null, title: 'passes', params: null, suite: [] },

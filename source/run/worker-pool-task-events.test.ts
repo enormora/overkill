@@ -50,8 +50,10 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
+        property: null,
         benchmark: null,
         attempts: [ {
+            property: null,
             benchmark: null,
             attempt: { index: 0 },
             durationMicroseconds: 0,
@@ -91,6 +93,7 @@ function startEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'tes
 
 function endEventWithoutWorkId(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
+        property: null,
         benchmark: null,
         completion: 'final',
         ...startEventWithoutWorkId(),

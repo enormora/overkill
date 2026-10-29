@@ -124,6 +124,9 @@ export async function runTestCase(
 
     return {
         result: singleAttemptResult({
+            property: testCase.execution.bodyMode === 'property'
+                ? { invocations: execution.recorder.propertyEvidence() }
+                : null,
             benchmark: execution.interruption.result()?.result.benchmark ?? execution.benchmark.result(),
             definitionLocations: testCase.definitionLocations,
             id: testCase.id,

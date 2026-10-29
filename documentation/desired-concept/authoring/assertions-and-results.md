@@ -834,6 +834,11 @@ Body errors and native lifecycle or supervision failures retain their own
 outcome kinds; they are not converted into assertion checks. Other failed
 checks remain diagnostics beside the primary assertion target.
 
+Case results, attempt results, and test-end events carry nullable `property`
+evidence. Each failing invocation retains original and current failure
+observations plus separate diagnostics. Inputs and failures use bounded
+diagnostic serialization; these previews are not replay payloads.
+
 The property body uses an injected property-local
 assertion context rather than importing a separate low-level assertion
 package. A typical shape is:

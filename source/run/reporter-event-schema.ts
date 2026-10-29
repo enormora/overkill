@@ -8,6 +8,7 @@ import {
     suitePathSchema,
     workIdSchema
 } from '../engine/identity-schema.ts';
+import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
 import { runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
@@ -36,6 +37,7 @@ const eventSchema = z.discriminatedUnion('kind', [
     z.strictObject({
         ...testFields,
         kind: z.literal('test-end'),
+        property: propertyEvidenceSchema.nullable().default(null),
         benchmark: benchmarkResultSchema.nullable().default(null),
         completion: z.enum([ 'final', 'retry' ]),
         artifacts: z.array(runArtifactSchema),

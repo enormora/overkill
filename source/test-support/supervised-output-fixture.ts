@@ -59,6 +59,7 @@ function runFakeIntegrationOutputChild(context: FakeSupervisedChildRunContext): 
     context.stderr.emit('case stderr\n');
     context.emitMessage({
         event: {
+            property: null,
             benchmark: null,
             completion: 'final',
             attempt: 0,

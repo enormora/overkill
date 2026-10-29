@@ -177,6 +177,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -206,6 +207,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithOptions(log, true);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -234,6 +236,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithOptions(log, true);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -262,6 +265,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,

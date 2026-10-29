@@ -78,6 +78,7 @@ async function reportTestEnd(
     outcome: RunResult['perTest'][number]['outcome']
 ): Promise<void> {
     await reporter.onEvent({
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,

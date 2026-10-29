@@ -108,8 +108,10 @@ function terminalResult(
     completedAtMicroseconds: number
 ): PerTestResult {
     return {
+        property: null,
         benchmark: testCase.benchmark === null ? null : { ...testCase.benchmark, status: 'incomplete' },
         attempts: [ {
+            property: null,
             benchmark: testCase.benchmark === null ? null : { ...testCase.benchmark, status: 'incomplete' },
             attempt: testCase.attempt,
             durationMicroseconds: Math.max(0, completedAtMicroseconds - testCase.startedAtMicroseconds),

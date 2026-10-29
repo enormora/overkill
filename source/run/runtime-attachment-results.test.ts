@@ -100,6 +100,7 @@ async function assertConflictRetention(scope: TestScope): Promise<void> {
         verdict: 'pass',
         attempts: [
             {
+                property: null,
                 benchmark: null,
                 attempt: { index: 0 },
                 durationMicroseconds: 0,
@@ -107,6 +108,7 @@ async function assertConflictRetention(scope: TestScope): Promise<void> {
                 verdict: 'fail'
             },
             {
+                property: null,
                 benchmark: null,
                 attempt: { index: 1 },
                 durationMicroseconds: 0,
@@ -114,6 +116,7 @@ async function assertConflictRetention(scope: TestScope): Promise<void> {
                 verdict: 'fail'
             },
             {
+                property: null,
                 benchmark: null,
                 attempt: { index: 2 },
                 durationMicroseconds: 0,

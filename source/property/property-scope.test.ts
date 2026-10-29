@@ -4,11 +4,13 @@ import { defineCompositeAssertion } from '../packages/assert/assert.entry-point.
 import type { AssertionResult, TestScope } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
+import { testNode as shrinking } from './property-shrinking.test.ts';
 import type { PropertyForall, PropertySampleScope } from './property-definition.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
 export const testNode = suite('property trial scopes', [
+    shrinking,
     test('stops at a sample assertion-plan mismatch', async function (scope) {
         const values: number[] = [];
         const node = property({
@@ -101,7 +103,7 @@ export const testNode = suite('property trial scopes', [
         );
         return scope.assert.collect();
     }),
-    test('stops failed requirements before admitting another sample', async function (scope) {
+    test('confirms failed requirements without admitting new generated samples', async function (scope) {
         const values: number[] = [];
         const node = property({
             title: 'required sample',
@@ -115,7 +117,7 @@ export const testNode = suite('property trial scopes', [
         });
         const result = await executePropertyNode(node, propertyExecutionDefaults);
         scope.assert.equal(result.summary.failed, 1);
-        scope.assert.deepEqual(values, [ 1 ]);
+        scope.assert.deepEqual(values, [ 1, 1 ]);
         scope.assert.equal(result.perTest[0]?.outcome?.kind, 'fail');
         scope.assert.equal(JSON.stringify(result.perTest).includes('body-error'), false);
         scope.assert.equal(JSON.stringify(result.perTest).includes('plan-mismatch'), false);

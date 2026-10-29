@@ -81,6 +81,7 @@ async function reportTestEnd(
 ): Promise<readonly RunnerError[]> {
     return await context.reporterDelivery.reportEvent({
         completion: input.completion,
+        property: input.result.property,
         benchmark: input.result.benchmark,
         attempt: input.attempt,
         artifacts: [],
@@ -201,6 +202,7 @@ async function executeAttempt(input: ExecuteCaseInput, started: boolean): Promis
         result: {
             ...leakCheckedCase.executedCase.result,
             attempts: [ {
+                property: leakCheckedCase.executedCase.result.property,
                 benchmark: leakCheckedCase.executedCase.result.benchmark,
                 attempt: { index: input.attempt },
                 durationMicroseconds: leakCheckedCase.executedCase.durationMicroseconds,

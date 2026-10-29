@@ -20,6 +20,7 @@ function createConflictEvidence(attachment: RuntimeAttachmentArtifact): HedgedCo
     const evidence: HedgedConflictArtifact['payload']['authoritative'] = {
         attachments: [ attachment ],
         attempts: [ {
+            property: null,
             benchmark: null,
             attempt: { index: 1 },
             durationMicroseconds: 0,

@@ -4,7 +4,8 @@ import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
-import { executeProperty, type PropertyRegressionInputs } from './property-execution.ts';
+import { executeProperty } from './property-execution.ts';
+import type { PropertyRegressionInputs } from './property-execution-result.ts';
 
 function streamDriver(inputs: PropertyRegressionInputs<number>, recordValue: (value: number) => void): TestNode {
     return test(

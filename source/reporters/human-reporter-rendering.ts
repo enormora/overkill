@@ -3,6 +3,7 @@ import { workIdentityKey, formatCaseId, type RuntimeId, type WorkloadId } from '
 import { workloadLabel } from '../engine/workload-label.ts';
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
+import { formatPropertyDiagnostics } from './failure-summary.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { formatTimingSummary as formatRunTimingSummary } from './run-summary-rendering.ts';
 
@@ -373,7 +374,10 @@ export function problemLines(
             return problemTestResult(testResult, options.verbose);
         })
         .flatMap(function formatProblem(testResult) {
-            return testProblemLines(result, testResult, context, options);
+            return [
+                ...testProblemLines(result, testResult, context, options),
+                ...formatPropertyDiagnostics(testResult.property)
+            ];
         });
     const runnerErrorLines = result.runnerErrors.flatMap(formatRunnerError);
     const runArtifactLines = result.status === 'failed'

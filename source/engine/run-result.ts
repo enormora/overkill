@@ -1,6 +1,6 @@
-import type { InvalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
 import type {
     FailedCheck,
+    SerializedValue,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
@@ -12,6 +12,52 @@ import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
+
+export type PropertyFailureObservation = {
+    readonly input: SerializedValue;
+    readonly failure: SerializedValue;
+};
+
+export type PropertyInvocationEvidence = {
+    readonly identity: string;
+    readonly original: PropertyFailureObservation;
+    readonly retained: PropertyFailureObservation;
+    readonly diagnostics: readonly {
+        readonly reason: string;
+        readonly observation: PropertyFailureObservation | null;
+    }[];
+};
+
+export type PropertyCaseEvidence = {
+    readonly invocations: readonly PropertyInvocationEvidence[];
+};
+
+export type TestAttemptResult = {
+    readonly property: PropertyCaseEvidence | null;
+    readonly benchmark: BenchmarkExecutionResult | null;
+    readonly attempt: AttemptId;
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
+    readonly durationMicroseconds: number;
+};
+
+export type RetrySummary = {
+    readonly attempts: number;
+    readonly finalVerdict: TestVerdict;
+};
+
+export type PerTestResult = {
+    readonly property: PropertyCaseEvidence | null;
+    readonly benchmark: BenchmarkExecutionResult | null;
+    readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
+    readonly retried: RetrySummary | null;
+    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
+    readonly id: CaseId;
+    readonly outcome: TestOutcome | null;
+    readonly verdict: TestVerdict;
+    readonly workId: WorkId;
+    readonly durationMicroseconds: number;
+};
 
 type RunnerErrorSubtypeByName = {
     readonly artifact: 'artifact';
@@ -93,16 +139,6 @@ type TestFailureTypes = readonly [
 ];
 
 export type TestFailure = TestFailureTypes[number];
-
-export function invalidDeepAssertionOperandFailure(actual: InvalidDeepAssertionOperand): TestContractFailure {
-    return {
-        actual,
-        code: 'invalid-deep-assertion-operand',
-        expected: 'non-primitive deep assertion operand',
-        kind: 'test-contract',
-        summary: 'Deep assertions require non-primitive operands.'
-    };
-}
 
 export type FailOutcome = {
     readonly failures: NonEmptyReadonlyArray<TestFailure>;
@@ -449,54 +485,33 @@ export function runStatusFromPlan(
     runnerErrors: readonly RunnerError[],
     planStatus: RunPlanStatus
 ): RunStatus {
-    if (runnerErrors.length === 0 && planStatus === 'empty-shard') {
-        return 'passed';
-    }
-
-    return runStatusFromSummary(summary, runnerErrors);
+    return runnerErrors.length === 0 && planStatus === 'empty-shard'
+        ? 'passed'
+        : runStatusFromSummary(summary, runnerErrors);
 }
 
-export type TestAttemptResult = {
-    readonly benchmark: BenchmarkExecutionResult | null;
-    readonly attempt: AttemptId;
-    readonly outcome: TestOutcome | null;
-    readonly verdict: TestVerdict;
-    readonly durationMicroseconds: number;
-};
-
-export type RetrySummary = {
-    readonly attempts: number;
-    readonly finalVerdict: TestVerdict;
-};
-
-export type PerTestResult = {
-    readonly benchmark: BenchmarkExecutionResult | null;
-    readonly attempts: NonEmptyReadonlyArray<TestAttemptResult>;
-    readonly retried: RetrySummary | null;
-    readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
-    readonly id: CaseId;
-    readonly outcome: TestOutcome | null;
-    readonly verdict: TestVerdict;
-    readonly workId: WorkId;
-    readonly durationMicroseconds: number;
-};
-
-type SingleResultKeys = Exclude<keyof PerTestResult, 'attempts' | 'benchmark' | 'retried'>;
+type SingleResultKeys = Exclude<keyof PerTestResult, 'attempts' | 'benchmark' | 'property' | 'retried'>;
 type SingleTestResult = Pick<PerTestResult, SingleResultKeys>;
 type SingleBenchmarkResult = Pick<PerTestResult, 'benchmark'> & SingleTestResult;
-function hasBenchmarkResult(result: SingleBenchmarkResult | SingleTestResult): result is SingleBenchmarkResult {
-    return Object.hasOwn(result, 'benchmark');
+type SinglePropertyResult = Pick<PerTestResult, 'property'> & (SingleBenchmarkResult | SingleTestResult);
+type SingleAttemptInput = SingleBenchmarkResult | SinglePropertyResult | SingleTestResult;
+
+function hasResultEvidence<Key extends 'benchmark' | 'property'>(
+    result: SingleAttemptInput,
+    key: Key
+): result is Pick<PerTestResult, Key> & SingleAttemptInput {
+    return Object.hasOwn(result, key);
 }
 
-export function singleAttemptResult(
-    result: SingleBenchmarkResult | SingleTestResult,
-    attempt: AttemptId
-): PerTestResult {
-    const benchmark = hasBenchmarkResult(result) ? result.benchmark : null;
+export function singleAttemptResult(result: SingleAttemptInput, attempt: AttemptId): PerTestResult {
+    const benchmark = hasResultEvidence(result, 'benchmark') ? result.benchmark : null;
+    const property: PerTestResult['property'] = hasResultEvidence(result, 'property') ? result.property : null;
     return {
         ...result,
+        property,
         benchmark,
         attempts: [ {
+            property,
             benchmark,
             attempt,
             durationMicroseconds: result.durationMicroseconds,

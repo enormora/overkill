@@ -87,6 +87,7 @@ function ignoredRunArtifact(): RunArtifact {
             authoritative: {
                 attachments: [],
                 attempts: [ {
+                    property: null,
                     benchmark: null,
                     attempt: { index: 0 },
                     durationMicroseconds: 0,
@@ -99,6 +100,7 @@ function ignoredRunArtifact(): RunArtifact {
             conflicting: {
                 attachments: [],
                 attempts: [ {
+                    property: null,
                     benchmark: null,
                     attempt: { index: 0 },
                     durationMicroseconds: 0,

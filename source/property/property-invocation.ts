@@ -11,7 +11,8 @@ import {
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
 import { coverageRequirements } from './property-coverage.ts';
-import { executeProperty, type PropertyExecutionResult } from './property-execution.ts';
+import { executeProperty } from './property-execution.ts';
+import type { PropertyExecutionResult } from './property-execution-result.ts';
 import type {
     NormalizedPropertyInvocation,
     PropertyForall,
@@ -72,7 +73,7 @@ function propertyBoundaryResult<Value>(
     locations: DefinitionLocations
 ): AssertAssertionNode {
     if (result.kind === 'failed') {
-        if (result.trial.kind === 'terminated') {
+        if (result.trial.kind === 'terminated' || result.trial.kind === 'body-error') {
             stopPropertyExecution(result.trial.result);
         }
         return result.trial.assertion;

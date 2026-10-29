@@ -70,6 +70,7 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
         startedAt: '2026-07-15T00:00:00.000Z'
     });
     await reporter.onEvent({
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,
@@ -83,6 +84,7 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
         verdict: 'pass'
     });
     await reporter.onEvent({
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,
