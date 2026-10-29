@@ -112,6 +112,15 @@ it is present, including after reporter validation failures and thrown
 execution paths. Cleanup uses the same 100 ms reporter callback timeout as
 event and result delivery.
 
+## Property Evidence Progress
+
+The engine emits awaited `property-progress` events carrying a complete
+`PropertyCaseEvidence` snapshot plus case, work, attempt, definition locations,
+and suite path. Events precede subsequent candidate evaluations and use normal
+reporter delivery and error handling. Supervisors retain received snapshots for
+native terminal results, marking active shrinking as interrupted. Delivery before
+hard process termination is best effort.
+
 ## Reporter Events
 
 ```ts

@@ -4,6 +4,7 @@ import {
     serializeValue,
     type PropertyFailureObservation,
     type PropertyInvocationEvidence,
+    type PropertyShrinkStatus,
     type PropertyTrialResult
 } from '../packages/engine/engine.entry-point.ts';
 import { propertyLabels } from './property-targets.ts';
@@ -26,6 +27,8 @@ type ShrinkSession<Value> = {
 };
 
 type ShrinkState<Value> = {
+    readonly status: () => PropertyShrinkStatus;
+    readonly stop: (status: PropertyShrinkStatus) => void;
     readonly retained: () => FailedExecution<Value>;
     readonly observation: () => PropertyFailureObservation;
     readonly diagnostics: () => readonly Diagnostic[];
@@ -34,10 +37,17 @@ type ShrinkState<Value> = {
 };
 
 function shrinkState<Value>(original: FailedExecution<Value>): ShrinkState<Value> {
+    let status: PropertyShrinkStatus = 'in-progress';
     let retained = original;
     let { observation } = original;
     const diagnostics: Diagnostic[] = [];
     return {
+        status() {
+            return status;
+        },
+        stop(value) {
+            status = value;
+        },
         retained() {
             return retained;
         },
@@ -51,14 +61,18 @@ function shrinkState<Value>(original: FailedExecution<Value>): ShrinkState<Value
             diagnostics.push(diagnostic);
         },
         replace(failure, observed) {
+            if (failure.trial.kind === 'terminated') {
+                status = 'interrupted';
+            }
             retained = failure;
             observation = observed;
         }
     };
 }
 
-function publish<Value>(session: ShrinkSession<Value>): void {
-    session.context.host.recordEvidence({
+async function publish<Value>(session: ShrinkSession<Value>): Promise<void> {
+    await session.context.host.recordEvidence({
+        shrinkStatus: session.state.status(),
         identity: session.context.identity,
         original: session.original.observation,
         retained: session.state.observation(),
@@ -66,13 +80,13 @@ function publish<Value>(session: ShrinkSession<Value>): void {
     });
 }
 
-function diagnose<Value>(
+async function diagnose<Value>(
     session: ShrinkSession<Value>,
     reason: string,
     observed: PropertyFailureObservation | null
-): void {
+): Promise<void> {
     session.state.diagnose({ reason, observation: observed });
-    publish(session);
+    await publish(session);
 }
 
 function matching<Value>(session: ShrinkSession<Value>, candidate: ObservedTrial): PropertyTrialResult | null {
@@ -102,48 +116,48 @@ async function evaluate<Value>(session: ShrinkSession<Value>, input: () => Value
     });
 }
 
-function diagnoseAdditional<Value>(
+async function diagnoseAdditional<Value>(
     session: ShrinkSession<Value>,
     trial: PropertyTrialResult,
     observation: PropertyFailureObservation
-): void {
+): Promise<void> {
     if (trial.kind === 'assertion-failed' && trial.hasAdditionalFailures) {
-        diagnose(session, 'additional-failures', observation);
+        await diagnose(session, 'additional-failures', observation);
     }
 }
 
-function replaceCounterexample<Value>(
+async function replaceCounterexample<Value>(
     session: ShrinkSession<Value>,
     candidate: GeneratedInput<Value>,
     matched: Exclude<PropertyTrialResult, { readonly kind: 'passed'; }>,
     observed: ObservedTrial
-): void {
-    diagnoseAdditional(session, matched, observed.observation);
+): Promise<void> {
+    await diagnoseAdditional(session, matched, observed.observation);
     session.state.replace({
         ...session.state.retained(),
         input: candidate.reconstruct,
         generated: candidate,
         trial: matched
     }, observed.observation);
-    publish(session);
+    await publish(session);
 }
 
-function acceptCandidate<Value>(
+async function acceptCandidate<Value>(
     session: ShrinkSession<Value>,
     candidate: GeneratedInput<Value>,
     observed: ObservedTrial
-): boolean {
+): Promise<boolean> {
     if (observed.trial.kind === 'terminated') {
         session.state.replace({ ...session.state.retained(), trial: observed.trial }, session.state.observation());
         return true;
     }
     const matched = matching(session, observed);
     if (matched !== null && matched.kind !== 'passed') {
-        replaceCounterexample(session, candidate, matched, observed);
+        await replaceCounterexample(session, candidate, matched, observed);
         return true;
     }
     if (observed.trial.kind !== 'passed') {
-        diagnose(session, 'unrelated-failure', observed.observation);
+        await diagnose(session, 'unrelated-failure', observed.observation);
     }
     return false;
 }
@@ -157,7 +171,7 @@ async function nextCounterexample<Value>(
         session.context.signal.throwIfAborted();
         session.work.context.consumeWork();
         const observed = await evaluate(session, candidate.reconstruct);
-        if (acceptCandidate(session, candidate, observed)) {
+        if (await acceptCandidate(session, candidate, observed)) {
             return candidate;
         }
     }
@@ -175,57 +189,92 @@ async function traverse<Value>(session: ShrinkSession<Value>, input: GeneratedIn
 async function confirm<Value>(session: ShrinkSession<Value>, input: GeneratedInput<Value>): Promise<void> {
     const confirmation = await evaluate(session, input.reconstruct);
     if (confirmation.trial.kind === 'terminated') {
+        session.state.stop('interrupted');
         session.state.replace({ ...session.state.retained(), trial: confirmation.trial }, session.state.observation());
         return;
     }
     if (matching(session, confirmation) === null) {
-        diagnose(session, 'non-reproducible', confirmation.observation);
+        session.state.stop('non-reproducible');
+        await diagnose(session, 'non-reproducible', confirmation.observation);
         return;
     }
-    diagnoseAdditional(session, confirmation.trial, confirmation.observation);
-    await traverse(session, input);
+    await diagnoseAdditional(session, confirmation.trial, confirmation.observation);
 }
 
-function canShrink<Value>(session: ShrinkSession<Value>): boolean {
+async function searchConfirmedFailure<Value>(
+    session: ShrinkSession<Value>,
+    input: GeneratedInput<Value>
+): Promise<void> {
+    if (session.state.status() !== 'in-progress') {
+        return;
+    }
+    await traverse(session, input);
+    if (session.state.status() === 'in-progress') {
+        session.state.stop('search-exhausted');
+        session.work.enterPhase('confirmation');
+        await confirm(session, session.state.retained().generated ?? input);
+    }
+}
+
+async function canShrink<Value>(session: ShrinkSession<Value>): Promise<boolean> {
     if (session.context.host.policy.maxShrinkWork === 0) {
-        diagnose(session, 'shrinking-disabled', null);
+        session.state.stop('shrinking-disabled');
+        await diagnose(session, 'shrinking-disabled', null);
         return false;
     }
     if (session.identity === null) {
-        diagnose(session, 'failure-identity-unavailable', null);
+        session.state.stop('failure-identity-unavailable');
+        await diagnose(session, 'failure-identity-unavailable', null);
         return false;
     }
     return true;
 }
 
 async function shrink<Value>(session: ShrinkSession<Value>): Promise<void> {
-    if (!canShrink(session)) {
+    if (!await canShrink(session)) {
         return;
     }
     session.work.enterPhase('confirmation');
     const input = session.original.generated ??
         recipeInput(session.invocation.generator, session.original.input, session.work.context);
     if (input === null) {
-        diagnose(session, 'shrink-state-unavailable', null);
+        session.state.stop('shrink-state-unavailable');
+        await diagnose(session, 'shrink-state-unavailable', null);
         return;
     }
     await confirm(session, input);
+    await searchConfirmedFailure(session, input);
+}
+
+async function failShrinkExecution<Value>(session: ShrinkSession<Value>, error: unknown): Promise<never> {
+    session.state.stop('execution-error');
+    await diagnose(session, 'execution-error', {
+        input: session.state.observation().input,
+        failure: serializeValue(error)
+    });
+    throw error;
+}
+
+async function recordShrinkError<Value>(session: ShrinkSession<Value>, error: unknown): Promise<void> {
+    if (session.context.signal.aborted) {
+        session.state.stop('interrupted');
+        throw error;
+    }
+    const exhaustion = propertyExhaustion(error);
+    if (exhaustion === null) {
+        await failShrinkExecution(session, error);
+    }
+    session.state.stop(exhaustion === 'work-exhausted' ? 'work-exhausted' : 'search-exhausted');
+    await diagnose(session, session.state.status(), null);
 }
 
 async function boundedShrink<Value>(session: ShrinkSession<Value>): Promise<FailedExecution<Value>> {
     try {
         await shrink(session);
     } catch (error: unknown) {
-        if (propertyExhaustion(error) === null) {
-            diagnose(session, 'execution-error', {
-                input: session.state.observation().input,
-                failure: serializeValue(error)
-            });
-            throw error;
-        }
-        diagnose(session, 'work-exhausted', null);
+        await recordShrinkError(session, error);
     } finally {
-        publish(session);
+        await publish(session);
     }
     return { ...session.state.retained(), accounting: session.work.snapshot() };
 }
@@ -247,7 +296,7 @@ export async function shrinkPropertyFailure<Value>(
         identity: original.failureKey ?? propertyFailureIdentity(original.trial),
         state: shrinkState(original)
     };
-    publish(session);
-    diagnoseAdditional(session, original.trial, original.observation);
+    await publish(session);
+    await diagnoseAdditional(session, original.trial, original.observation);
     return await boundedShrink(session);
 }

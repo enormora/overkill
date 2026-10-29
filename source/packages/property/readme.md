@@ -124,6 +124,23 @@ dependent composition, and structural constructors clear inherited attachments;
 attach the complete output's codec afterward. Codec execution follows in the
 codec milestone.
 
+## Failure confirmation and shrinking
+
+The first failure stops exploration. Shrinking confirms a fresh reconstruction
+before searching, and confirms the retained counterexample after search completes.
+A passing or unrelated confirmation leaves the property failed, reports
+non-reproducibility, and retains both observations. Such evidence is not a
+reliably reproducing witness.
+
+Total and shrink work limits include confirmation, candidate traversal, rejection,
+reconstruction, repeated outputs, and body evaluation. Exhaustion retains the last
+matching failure. Cleanup failures and supervision keep their native outcomes.
+Supervised termination retains evidence already received through property progress
+events; hard termination cannot guarantee child cleanup or undelivered evidence.
+
+Evidence distinguishes exhausted search, exhausted work, and interruption. A
+shrunk counterexample is not guaranteed to be globally minimal.
+
 ## Current availability
 
 Construction and collection are supported. They retain generator and callback
@@ -134,7 +151,7 @@ automatic edges and new exploration. Only accepted exploration counts toward
 earlier failure stops the invocation. Work or generation exhaustion before
 required checks complete produces an inconclusive outcome.
 
-Disk-backed regression corpora, shrinking, codec execution, witness replay,
+Disk-backed regression corpora, codec execution, witness replay,
 and public phase diagnostics follow in their respective milestones. Direct engine execution requires resolved property policy;
 `ExecuteOptions.propertyRun` supplies its run seed and project root; omitted
 context defaults to seed zero and an unknown project root. Configured runner execution supplies the resolved run seed automatically.

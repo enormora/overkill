@@ -1,9 +1,9 @@
 import type {
     FailedCheck,
-    SerializedValue,
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
+import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
 import type { TestContractFailureCode } from './test-contract-failure-code.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { CapturedOutputArtifact, RunArtifactId } from './run-artifact.ts';
@@ -12,21 +12,6 @@ import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from './runtime-attachment.ts';
 import type { BenchmarkExecutionResult } from './benchmark-result.ts';
-
-export type PropertyFailureObservation = {
-    readonly input: SerializedValue;
-    readonly failure: SerializedValue;
-};
-
-export type PropertyInvocationEvidence = {
-    readonly identity: string;
-    readonly original: PropertyFailureObservation;
-    readonly retained: PropertyFailureObservation;
-    readonly diagnostics: readonly {
-        readonly reason: string;
-        readonly observation: PropertyFailureObservation | null;
-    }[];
-};
 
 export type PropertyCaseEvidence = {
     readonly invocations: readonly PropertyInvocationEvidence[];

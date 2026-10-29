@@ -59,6 +59,7 @@ async function runBuilderCaseBody(
                     scope,
                     recorder,
                     run: options.propertyRun,
+                    onPropertyUpdate: options.onPropertyUpdate,
                     body: builderBodyForAttempt(testCase, benchmarkAttempt),
                     takeTrialErrors() {
                         return options.runtimePolicy?.takeAttemptErrors(testCase, options.attempt) ?? [];

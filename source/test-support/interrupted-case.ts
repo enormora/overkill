@@ -55,6 +55,7 @@ export function createInterruptedCase(body: TestBody, policy: TestRuntimePolicy 
                             benchmarkEnvironment: null,
                             runtimePolicy: policy
                         },
+                        onPropertyUpdate: ignoreBenchmarkUpdate,
                         onBenchmarkUpdate: ignoreBenchmarkUpdate
                     });
                 });

@@ -161,6 +161,15 @@ export const testNode = suite('property runner policy', [
         scope.assert.includes(JSON.stringify(result.perTest), '"kind":"timeout"');
         return scope.assert.collect();
     }),
+    test('supervision retains confirmed property evidence when shrinking hangs', async function (scope) {
+        const command = propertyCommand('property-shrink-hang', 'supervised-process');
+        const result = await orchestrator.run(command);
+        scope.assert.equal(result.summary.crashed, 1);
+        const evidence = result.perTest[0]?.property?.invocations[0];
+        scope.assert.equal(evidence?.shrinkStatus, 'interrupted');
+        scope.assert.includes(JSON.stringify(evidence), 'original failure before shrinking');
+        return scope.assert.collect();
+    }),
     test('supervised property profile terminates a CPU-bound body', async function (scope) {
         const command = propertyCommand('endless-loop', 'supervised-process');
         const profile = command.config.profiles.laws;

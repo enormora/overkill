@@ -48,7 +48,7 @@ export const testNode = suite('exhaustive input coverage', [
         return scope.assert.collect();
     }),
     test('enumerates bounded recursive composition', function (scope) {
-        const work = createPropertyWork(propertyExecutionDefaults.policy);
+        const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         const generator = gen.recursive<number>({
             leaf: gen.constant<number>(0),
             branch(child) {
@@ -87,7 +87,7 @@ export const testNode = suite('exhaustive input coverage', [
         return scope.assert.collect();
     }),
     test('enumerates exact numeric domains including both signed zeros', function (scope) {
-        const work = createPropertyWork(propertyExecutionDefaults.policy);
+        const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         const inputs = enumerateDomain(gen.number({ min: -0, max: 0 }), work.context, 2);
         scope.assert.deepEqual(
             (inputs ?? []).map(function (input) {
@@ -112,7 +112,7 @@ export const testNode = suite('exhaustive input coverage', [
         return scope.assert.collect();
     }),
     test('enumerates dependent domains under fresh source constraints', function (scope) {
-        const work = createPropertyWork(propertyExecutionDefaults.policy);
+        const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         const generator = gen.integer({ min: 0, max: 1 }).flatMap(function (length) {
             return gen.array(gen.boolean(), { minLength: length, maxLength: length });
         });
@@ -126,7 +126,7 @@ export const testNode = suite('exhaustive input coverage', [
         return scope.assert.collect();
     }),
     test('recognizes empty structural singleton domains', function (scope) {
-        const work = createPropertyWork(propertyExecutionDefaults.policy);
+        const work = createPropertyWork(propertyExecutionDefaults.policy, AbortSignal.any([]));
         scope.assert.deepEqual(
             (enumerateDomain(gen.record({}), work.context, 1) ?? []).map(function (input) {
                 return input();

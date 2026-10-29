@@ -79,6 +79,7 @@ type SoftTimeoutResolution = {
 type CaseExecutionInput = {
     readonly seed: bigint;
     readonly propertyRun: RunTestCaseOptions['propertyRun'];
+    readonly onPropertyUpdate: RunTestCaseOptions['onPropertyUpdate'];
     readonly onBenchmarkUpdate: RunTestCaseOptions['onBenchmarkUpdate'];
     readonly attempt: AttemptId;
     readonly dependencies: ExecutionSupervisionDependencies;
@@ -242,6 +243,7 @@ async function runTestCaseWithPolicy(
             input.benchmark.write(result);
             await input.onBenchmarkUpdate(result);
         },
+        onPropertyUpdate: input.onPropertyUpdate,
         propertyRun: input.propertyRun,
         benchmarkEnvironment: input.dependencies.benchmarkEnvironment,
         attempt: input.attempt,

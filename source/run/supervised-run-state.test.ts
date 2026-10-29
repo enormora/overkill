@@ -2,6 +2,8 @@ import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    serializeValue,
+    type PropertyCaseEvidence,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
@@ -98,12 +100,62 @@ function assertRunCapturedOutput(
     scope.assert.deepEqual(state.caseArtifacts({ case: testCase, runtimes: [], workload: null }, { index: 0 }), []);
 }
 
+function propertyCheckpoint(): PropertyCaseEvidence {
+    const observation = { input: serializeValue(100), failure: serializeValue('original failure') };
+    return {
+        invocations: [ {
+            identity: 'declared-property',
+            original: observation,
+            retained: observation,
+            diagnostics: [],
+            shrinkStatus: 'in-progress'
+        } ]
+    };
+}
+
+function assertInterruptedProperty(
+    scope: OverkillScope,
+    results: ReturnType<SupervisedRunState['perTestResults']>,
+    property: PropertyCaseEvidence
+): void {
+    const result = results[0];
+    scope.require.defined(result);
+    scope.require.defined(result.property);
+    const invocation = result.property.invocations[0];
+    scope.require.defined(invocation);
+    scope.assert.equal(result.verdict, 'crashed');
+    scope.assert.equal(invocation.shrinkStatus, 'interrupted');
+    scope.assert.equal(
+        JSON.stringify(invocation.retained),
+        JSON.stringify(property.invocations[0]?.retained)
+    );
+    scope.assert.equal(JSON.stringify(result.attempts[0].property), JSON.stringify(result.property));
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/supervised-run-state.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'retains property evidence on interruption and ignores stale attempts',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const state = createSupervisedRunState('first-failure-and-final');
+                const id = caseId('interrupted property');
+                const key = caseIdentityKey(id);
+                const property = propertyCheckpoint();
+                addActiveCase(state, id);
+                state.recordPropertyProgress(key, 0, property);
+                state.recordPropertyProgress(key, 1, { invocations: [] });
+                state.recordTerminalActiveCases('crashed', 10);
+                assertInterruptedProperty(scope, state.perTestResults(), property);
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'createSupervisedRunState() duplicates captured output across concurrent active cases',

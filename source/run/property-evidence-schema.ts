@@ -9,6 +9,20 @@ const observationSchema = z.strictObject({
 
 export const propertyEvidenceSchema: z.ZodType<PropertyCaseEvidence> = z.strictObject({
     invocations: z.array(z.strictObject({
+        shrinkStatus: z
+            .enum([
+                'in-progress',
+                'search-exhausted',
+                'work-exhausted',
+                'non-reproducible',
+                'interrupted',
+                'execution-error',
+                'shrinking-disabled',
+                'failure-identity-unavailable',
+                'shrink-state-unavailable'
+            ])
+            .nullable()
+            .default(null),
         identity: z.string(),
         original: observationSchema,
         retained: observationSchema,

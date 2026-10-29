@@ -11,7 +11,7 @@ import {
 } from './execution-test-plan-cases.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import type { TestPlan } from './test-plan.ts';
-import type { ExecutionCaseDependencies } from './case-attempt-execution.ts';
+import type { ExecutionCaseDependencies } from './case-attempt-context.ts';
 
 export async function executeTestPlanCasesAndMeasureProcessUsage(
     testPlan: TestPlan,

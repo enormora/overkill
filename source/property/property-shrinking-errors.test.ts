@@ -90,11 +90,34 @@ export const testNode = suite('shrink failure paths', [
         );
         scope.assert.deepEqual(formatPropertyDiagnostics(withAdapterDiagnostic(evidence)), [
             `Property declared-property: Unrelated failures observed during shrinking (${count})`,
-            'Property declared-property: adapter diagnostic (1)'
+            'Property declared-property: adapter diagnostic (1)',
+            'Property declared-property: Shrinking exhausted the candidate search (1)'
         ]);
         return scope.assert.collect();
     }),
 
+    test('reads historical evidence without inventing a termination status', async function (scope) {
+        const evidence = await observedUnrelatedFailure();
+        const historical = {
+            invocations: evidence.invocations.map(function legacy(invocation) {
+                return Object.fromEntries(
+                    Object.entries(invocation).filter(function historicalField([ key ]) {
+                        return key !== 'shrinkStatus';
+                    })
+                );
+            })
+        };
+        const decoded = propertyEvidenceSchema.parse(historical);
+        scope.assert.equal(decoded.invocations[0]?.shrinkStatus, null);
+        scope.assert.throws(function invalidStatus() {
+            propertyEvidenceSchema.parse({
+                invocations: evidence.invocations.map(function malformed(invocation) {
+                    return { ...invocation, shrinkStatus: 'unknown-status' };
+                })
+            });
+        }, { name: 'ZodError' });
+        return scope.assert.collect();
+    }),
     test('rejects nonstring and blank stable keys before admitting another input', async function (scope) {
         for (const key of [ undefined, 42, '', ' '.repeat(3) ]) {
             let calls = 0;

@@ -24,7 +24,7 @@ export async function executeProperty<Value>(
     regressions: PropertyRegressionInputs<Value>,
     context: PropertyInvocationContext
 ): Promise<PropertyExecutionResult<Value>> {
-    const work = createPropertyWork(context.host.policy);
+    const work = createPropertyWork(context.host.policy, context.signal);
     const coverage = invocationCoverage(
         coverageRequirements(Object.hasOwn(invocation, 'coverage') ? Reflect.get(invocation, 'coverage') : []),
         context.host.policy.maxLabels

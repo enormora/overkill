@@ -1,4 +1,5 @@
-import type { TestFailure, PropertyCaseEvidence, PropertyInvocationEvidence } from '../engine/run-result.ts';
+import type { PropertyInvocationEvidence } from '../engine/property-failure-evidence.ts';
+import type { TestFailure, PropertyCaseEvidence } from '../engine/run-result.ts';
 
 export function formatFailureSummary(failure: TestFailure): string {
     if (failure.kind === 'assertion') {
@@ -24,7 +25,9 @@ const propertyDiagnosticMessages: Readonly<Record<string, string>> = {
     'shrinking-disabled': 'Shrinking is disabled',
     'failure-identity-unavailable': 'Shrinking stopped because failure identity is unavailable',
     'shrink-state-unavailable': 'Shrinking stopped because generator state is unavailable',
-    'non-reproducible': 'The original failure did not reproduce',
+    'non-reproducible': 'The retained failure did not reproduce',
+    'search-exhausted': 'Shrinking exhausted the candidate search',
+    interrupted: 'Shrinking was interrupted',
     'work-exhausted': 'Shrinking stopped at the work budget',
     'unrelated-failure': 'Unrelated failures observed during shrinking',
     'additional-failures': 'Additional failures retained as diagnostics',
@@ -35,6 +38,12 @@ function propertyInvocationLines(invocation: PropertyInvocationEvidence): readon
     const reasons = new Map<string, number>();
     for (const diagnostic of invocation.diagnostics) {
         reasons.set(diagnostic.reason, (reasons.get(diagnostic.reason) ?? 0) + 1);
+    }
+    if (
+        invocation.shrinkStatus !== null && invocation.shrinkStatus !== 'in-progress' &&
+        !reasons.has(invocation.shrinkStatus)
+    ) {
+        reasons.set(invocation.shrinkStatus, 1);
     }
     return Array.from(reasons, function reasonLine([ reason, count ]) {
         const message = propertyDiagnosticMessages[reason] ?? reason;

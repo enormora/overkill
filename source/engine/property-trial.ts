@@ -5,7 +5,7 @@ import { createAssertionRecorder, TestContractSignalError, type AssertionRecorde
 import { bodyResultContext, completedBody, failedBody } from './case-body-execution.ts';
 import { propertyScope, type PropertyTrialResult, type PropertyRunContext } from './property-execution-host.ts';
 import type { TestBody, TestScope } from './test-scope.ts';
-import type { RunnerError } from './run-result.ts';
+import type { PropertyCaseEvidence, RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 
@@ -88,6 +88,7 @@ type PropertyCaseBody = {
     readonly scope: TestScope;
     readonly run: PropertyRunContext;
     readonly recorder: AssertionRecorder;
+    readonly onPropertyUpdate: (property: PropertyCaseEvidence) => Promise<void>;
     readonly takeTrialErrors: () => readonly RunnerError[];
 };
 
@@ -102,7 +103,10 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
         policy: execution.policy.policy,
         ...context.run,
         workId: testCase.workId,
-        recordEvidence: recorder.recordPropertyEvidence,
+        async recordEvidence(evidence) {
+            recorder.recordPropertyEvidence(evidence);
+            await context.onPropertyUpdate({ invocations: recorder.propertyEvidence() });
+        },
         async evaluateTrial(trial, signal) {
             const result = await evaluatePropertyTrial(
                 testCase,

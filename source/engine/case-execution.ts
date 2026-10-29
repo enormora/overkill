@@ -25,6 +25,9 @@ function defaultRunTestCaseOptions(): RunTestCaseOptions {
 
     return {
         seed: 0n,
+        async onPropertyUpdate() {
+            return undefined;
+        },
         async onBenchmarkUpdate() {
             return undefined;
         },

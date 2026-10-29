@@ -22,6 +22,7 @@ const testFields = {
     workId: workIdSchema.optional()
 };
 const eventSchema = z.discriminatedUnion('kind', [
+    z.strictObject({ ...testFields, kind: z.literal('property-progress'), property: propertyEvidenceSchema }),
     z.strictObject({ ...testFields, kind: z.literal('benchmark-progress'), benchmark: benchmarkResultSchema }),
     z.strictObject({
         kind: z.literal('run-start'),
