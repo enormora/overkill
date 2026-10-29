@@ -2,10 +2,10 @@ import { assertionPasses, evaluateAssertion } from '../assertion-protocol/evalua
 import type { AssertAssertionNode, AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { assertionFailure } from './recorded-assertion-failure.ts';
 import type { ExecutedBody } from './body-result.ts';
-import type { RunnerError } from './run-result.ts';
+import type { RunnerError, TestFailure } from './run-result.ts';
 import type { PropertyTrialResult } from './property-execution-host.ts';
 
-function propertyBoundary(assertion: AssertionNode): AssertAssertionNode {
+export function propertyBoundary(assertion: AssertionNode): AssertAssertionNode {
     if (assertion.check !== 'composite') {
         return { ...assertion, source: 'assert' };
     }
@@ -20,13 +20,22 @@ function propertyBoundary(assertion: AssertionNode): AssertAssertionNode {
 
 function hasNativeFailure(result: ExecutedBody): boolean {
     return [
-        result.bodyError !== null,
         result.cleanupErrors.length > 0,
         result.contractFailures.length > 0,
         result.runnerErrors.length > 0,
         result.inconclusiveReason !== null
     ]
         .includes(true);
+}
+
+function hasAdditionalFailures(result: ExecutedBody, failure: TestFailure | null): boolean {
+    if (failure?.kind !== 'assertion') {
+        return false;
+    }
+    return result.bodyError !== null || failure.checks.length > 1 ||
+        failure.checks.some(function multipleChildren(check) {
+            return check.kind === 'composite' && check.children.length > 1;
+        });
 }
 
 export function classifyPropertyTrial(result: ExecutedBody): PropertyTrialResult {
@@ -45,9 +54,15 @@ export function classifyPropertyTrial(result: ExecutedBody): PropertyTrialResult
     const primary = result.returnedAssertions.find(function failedAssertion(assertion) {
         return !assertionPasses(assertion);
     });
-    return primary === undefined
-        ? { kind: 'passed' }
-        : { kind: 'assertion-failed', assertion: propertyBoundary(primary), result };
+    if (primary !== undefined) {
+        return {
+            kind: 'assertion-failed',
+            assertion: propertyBoundary(primary),
+            result,
+            hasAdditionalFailures: hasAdditionalFailures(result, contract)
+        };
+    }
+    return result.bodyError === null ? { kind: 'passed' } : { kind: 'body-error', result };
 }
 
 export function propertyTrialWithPolicyErrors(

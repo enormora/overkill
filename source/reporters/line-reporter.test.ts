@@ -59,6 +59,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
 
     await reporter.onEvent({ kind: 'suite-start', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,
@@ -73,6 +74,7 @@ async function reportNestedSuiteRun(reporter: RealTimeReporter): Promise<void> {
     });
     await reporter.onEvent({ kind: 'suite-end', suitePath: suitePathFromTitles([ 'rows' ]) });
     await reporter.onEvent({
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,
@@ -161,6 +163,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -218,6 +221,7 @@ export const testNode = createOverkillSuite({
                 const [ composedName, decomposedName ] = [ 'Ad\u{00E4}le', 'Ada\u{0308}le' ];
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -283,6 +287,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -324,6 +329,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -366,6 +372,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -437,6 +444,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -466,6 +474,7 @@ export const testNode = createOverkillSuite({
                 const reporter = lineReporterWithLog(log);
 
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 0,
@@ -479,6 +488,7 @@ export const testNode = createOverkillSuite({
                     durationMicroseconds: 4000
                 });
                 await reporter.onEvent({
+                    property: null,
                     benchmark: null,
                     completion: 'final',
                     attempt: 1,

@@ -8,7 +8,8 @@ import type {
     RequireAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { TestContractFailure } from './run-result.ts';
+import { createPropertyEvidenceRecorder } from './property-evidence.ts';
+import type { TestContractFailure, PropertyInvocationEvidence } from './run-result.ts';
 
 type RecordedAssertion = {
     readonly assertion: AssertionNode | null;
@@ -25,6 +26,8 @@ type PendingRecordedAssert = {
 };
 
 export type AssertionRecorder = {
+    readonly recordPropertyEvidence: (evidence: PropertyInvocationEvidence) => void;
+    readonly propertyEvidence: () => readonly PropertyInvocationEvidence[];
     readonly activeRecordedAssertions: () => readonly AssertionNode[];
     readonly collect: () => NonEmptyReadonlyArray<AssertAssertionNode>;
     readonly completedThrowingAssertions: () => TestContractFailure | readonly AssertionNode[];
@@ -310,6 +313,7 @@ export function createAssertionRecorder(): AssertionRecorder {
     }
 
     return {
+        ...createPropertyEvidenceRecorder(),
         activeRecordedAssertions() {
             return recordedAssertionNodes(activeRecords());
         },

@@ -1973,13 +1973,34 @@ type RunnerError = {
 type TestRetryPolicy = { readonly maxAttempts: number; };
 type RetryArtifactPolicy = 'first-failure-and-final' | 'last-failure-and-final' | 'all';
 type IntegrationRetryPolicy = TestRetryPolicy & { readonly artifacts: RetryArtifactPolicy; };
+type PropertyFailureObservation = {
+    readonly input: SerializedValue;
+    readonly failure: SerializedValue;
+};
+
+type PropertyInvocationEvidence = {
+    readonly identity: string;
+    readonly original: PropertyFailureObservation;
+    readonly retained: PropertyFailureObservation;
+    readonly diagnostics: readonly {
+        readonly reason: string;
+        readonly observation: PropertyFailureObservation | null;
+    }[];
+};
+
+type PropertyCaseEvidence = {
+    readonly invocations: readonly PropertyInvocationEvidence[];
+};
+
 type TestAttemptResult = {
+    readonly property: PropertyCaseEvidence | null;
     readonly attempt: AttemptId;
     readonly outcome: TestOutcome | null;
     readonly verdict: TestVerdict;
     readonly durationMicroseconds: number;
 };
 type PerTestResult = {
+    readonly property: PropertyCaseEvidence | null;
     readonly id: CaseId;
     readonly workId: WorkId;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
@@ -2389,6 +2410,7 @@ declare const gen: {
 type PropertySampleScope = TestScope & {
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;
+    readonly failureKey: (key: string) => void;
 };
 
 type PropertyBody<Value> = (
@@ -2462,9 +2484,8 @@ and object-form forall accept an independent coverage field containing readonly
 requirements.
 
 These are the primitive authoring forms. Examples are typed input factories on their
-own invocation, separate from collected policy. Collected property settings supply
-failure-key overrides and
-collected exploration defaults and overrides; timeout and process supervision remain profile-owned. Codec versions and standard payload shapes
+own invocation, separate from collected policy. Trial-local `sample.failureKey(key)` supplies stable failure-key overrides.
+Collected property settings supply exploration defaults and overrides; timeout and process supervision remain profile-owned. Codec versions and standard payload shapes
 are validated at runtime; custom decoders validate external payloads before
 returning a reconstructed value.
 

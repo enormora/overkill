@@ -1,4 +1,5 @@
 import type { AssertAssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
+import type { PropertyInvocationEvidence } from './run-result.ts';
 import type { ExecutedBody } from './body-result.ts';
 import type { WorkId } from './identity.ts';
 import type { PropertyPolicy } from './property-node.ts';
@@ -9,7 +10,11 @@ const propertyTermination = Symbol.for('@overkill-dev/engine/PropertyTermination
 
 export type PropertyTrialResult = {
     readonly kind: 'assertion-failed';
+    readonly hasAdditionalFailures: boolean;
     readonly assertion: AssertAssertionNode;
+    readonly result: ExecutedBody;
+} | {
+    readonly kind: 'body-error';
     readonly result: ExecutedBody;
 } | {
     readonly kind: 'passed';
@@ -24,6 +29,7 @@ export type PropertyExecutionHost = PropertyRunContext & {
     readonly scope: TestScope;
     readonly policy: PropertyPolicy;
     readonly workId: WorkId;
+    readonly recordEvidence: (evidence: PropertyInvocationEvidence) => void;
     readonly evaluateTrial: (body: TestBody, signal: AbortSignal) => Promise<PropertyTrialResult>;
     readonly recordBoundary: (
         evaluate: () => Promise<AssertAssertionNode>,

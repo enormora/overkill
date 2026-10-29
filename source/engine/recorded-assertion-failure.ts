@@ -1,7 +1,21 @@
-import { evaluateAssertion, invalidDeepAssertionOperand } from '../assertion-protocol/evaluation.ts';
+import {
+    evaluateAssertion,
+    invalidDeepAssertionOperand,
+    type InvalidDeepAssertionOperand
+} from '../assertion-protocol/evaluation.ts';
 import type { AssertionNode } from '../assertion-protocol/assertion-node.ts';
 import { assertNonEmptyItems } from './assertion-recorder.ts';
-import { invalidDeepAssertionOperandFailure, type TestFailure, type TestContractFailure } from './run-result.ts';
+import type { TestFailure, TestContractFailure } from './run-result.ts';
+
+function invalidDeepAssertionOperandFailure(actual: InvalidDeepAssertionOperand): TestContractFailure {
+    return {
+        actual,
+        code: 'invalid-deep-assertion-operand',
+        expected: 'non-primitive deep assertion operand',
+        kind: 'test-contract',
+        summary: 'Deep assertions require non-primitive operands.'
+    };
+}
 
 function evaluatedAssertionFailure(assertions: readonly AssertionNode[]): TestFailure | null {
     const checks = assertions.flatMap(function evaluateRecordedAssertion(assertion, index) {

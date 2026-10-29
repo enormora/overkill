@@ -192,8 +192,7 @@ timeouts and process budgets remain profile-owned. The total work budget
 covers every phase, including generation, reconstruction, rejections,
 duplicate processing, confirmations, and body evaluations. Shrink work also
 consumes total work. Each invocation has its own total-work ledger; nested
-invocations share the enclosing case's timeout and supervision. Shrink accounting
-follows in its execution milestone.
+invocations share the enclosing case's timeout and supervision. Confirmation and shrinking have separate accounting and do not count as new trials.
 
 ### Exhaustive domains and input coverage
 
@@ -230,3 +229,26 @@ regenerating through the original generator to preserve its domain.
 `maxRetainedInputs` bounds per-label champions and `maxWork` bounds search work.
 Failing to improve a score never invalidates completed passing trials; required
 coverage remains a separate condition.
+
+### First-failure shrinking
+
+Generation stops at the first failure. Shrinking preserves the first failed
+assertion in recording order, or the body error when no assertion failed.
+Identity uses assertion kind and source location, or error type and throw
+location. Messages and input values do not affect matching.
+
+Call `sample.failureKey('round-trip')` to supply a semantic identity for a
+trial. Keys must be nonblank; repeated identical keys are allowed. Conflicting
+keys fail the trial contract. Assertion failures and body errors stay distinct.
+
+The original input is reconstructed and checked before shrinking. Disagreement
+keeps the original failure and reports non-reproducibility. Unrelated failures
+remain diagnostics. Recipe inputs shrink only when the generator supports
+context-free shrinking. Missing identity or shrink state retains the failure.
+
+Case results, attempt results, and completion events expose nullable
+`property` evidence with original and retained input previews and diagnostics.
+Previews use bounded diagnostic serialization and cannot serve as replay inputs.
+Cleanup and execution failures keep their native outcomes. Budget exhaustion
+retains established failures. Results describe shrunk counterexamples without
+claiming global minimality.

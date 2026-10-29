@@ -1206,7 +1206,10 @@ and must remain visible as errors.
 Failure identity is automatic by default: assertion kind and source location,
 or exception type and originating throw location. Input-dependent values and
 messages do not participate in matching. Authors can supply an explicit stable
-failure key when automatic identity is too broad. Assertion failures and body
+failure key through `sample.failureKey(key)` when automatic identity is too broad.
+Keys are nonblank trial-local strings; repeated identical keys are allowed,
+while conflicting keys are observation-contract failures. Keys preserve the
+assertion-versus-body-error distinction. Assertion failures and body
 errors remain distinct. If no reliable identity is available, shrinking stops
 and retains the original failure with a diagnostic explaining the limitation.
 

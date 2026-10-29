@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunArtifact } from '../engine/run-result.ts';
 import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { artifactIdentityFields, runArtifactIdSchema } from './run-artifact-id-schema.ts';
 import { runtimeAttachmentArtifactSchema } from './attachment-wire-schema.ts';
@@ -16,6 +17,7 @@ export const verdictSchema = z.enum([
     'runtime-policy'
 ]);
 export const testAttemptSchema = z.strictObject({
+    property: propertyEvidenceSchema.nullable().default(null),
     benchmark: benchmarkResultSchema.nullable().default(null),
     attempt: attemptIdSchema,
     durationMicroseconds: z.number(),

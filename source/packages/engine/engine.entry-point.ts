@@ -465,3 +465,10 @@ export { propertyScopeContractFailure, propertyObservationContractFailure } from
 export { createEngine } from '../../engine/standard-engine.ts';
 
 export type { TestContractFailureCode } from '../../engine/test-contract-failure-code.ts';
+
+export { propertyFailureIdentity, matchPropertyFailure, propertyTrialEvidence } from '../../engine/property-failure.ts';
+export type {
+    PropertyCaseEvidence,
+    PropertyInvocationEvidence,
+    PropertyFailureObservation
+} from '../../engine/run-result.ts';

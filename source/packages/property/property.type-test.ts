@@ -17,6 +17,7 @@ describe('property authoring types', function () {
             test(value, sample) {
                 expect(value).type.toBe<{ readonly name: string; }>();
                 expect(sample).type.toBe<leaf.PropertySampleScope>();
+                sample.failureKey('name');
                 sample.target('length', value.name.length);
                 sample.cover('empty', value.name === '');
                 sample.assert.equal(value.name, 'Ada');

@@ -102,6 +102,7 @@ export async function runPropertyCaseBody(testCase: TestPlanCase, context: Prope
         policy: execution.policy.policy,
         ...context.run,
         workId: testCase.workId,
+        recordEvidence: recorder.recordPropertyEvidence,
         async evaluateTrial(trial, signal) {
             const result = await evaluatePropertyTrial(
                 testCase,

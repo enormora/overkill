@@ -7,7 +7,9 @@ const initialPhaseCounts = {
     examples: { executed: 0, rejected: 0 },
     'automatic-edges': { executed: 0, rejected: 0 },
     exhaustive: { executed: 0, rejected: 0 },
-    exploration: { executed: 0, rejected: 0 }
+    exploration: { executed: 0, rejected: 0 },
+    confirmation: { executed: 0, rejected: 0 },
+    shrinking: { executed: 0, rejected: 0 }
 };
 export type PropertyPhase = keyof typeof initialPhaseCounts;
 type PhaseCounts = { readonly executed: number; readonly rejected: number; };
@@ -36,6 +38,7 @@ export function propertyExhaustion(error: unknown): 'generation-exhausted' | 'wo
 export function createPropertyWork(policy: PropertyPolicy): PropertyWork {
     let phase: PropertyPhase = 'checked-in-corpus';
     let workConsumed = 0;
+    let shrinkWork = 0;
     const phases = { ...initialPhaseCounts };
     return {
         context: {
@@ -44,6 +47,12 @@ export function createPropertyWork(policy: PropertyPolicy): PropertyWork {
             consumeWork() {
                 if (workConsumed === policy.maxWork) {
                     throw workExhausted;
+                }
+                if (phase === 'shrinking' || phase === 'confirmation') {
+                    if (shrinkWork === policy.maxShrinkWork) {
+                        throw workExhausted;
+                    }
+                    shrinkWork += 1;
                 }
                 workConsumed += 1;
             },
@@ -68,6 +77,8 @@ export function createPropertyWork(policy: PropertyPolicy): PropertyWork {
                     examples: Object.freeze({ ...phases.examples }),
                     'automatic-edges': Object.freeze({ ...phases['automatic-edges'] }),
                     exhaustive: Object.freeze({ ...phases.exhaustive }),
+                    confirmation: Object.freeze({ ...phases.confirmation }),
+                    shrinking: Object.freeze({ ...phases.shrinking }),
                     exploration: Object.freeze({ ...phases.exploration })
                 }),
                 workConsumed

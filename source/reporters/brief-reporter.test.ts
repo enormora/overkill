@@ -44,6 +44,7 @@ async function readOutput(output: unknown): Promise<readonly OutputLineIntent[]>
 
 function passEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,
@@ -60,6 +61,7 @@ function passEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
 
 function failEvent(): Extract<ReporterEvent, { readonly kind: 'test-end'; }> {
     return {
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,

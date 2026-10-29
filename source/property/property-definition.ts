@@ -12,6 +12,7 @@ type CoverageDeclaration = { readonly coverage: readonly PropertyCoverageRequire
 type ExamplesDeclaration<Value> = { readonly examples: readonly PropertyExample<Value>[]; };
 
 export type PropertySampleScope = TestScope & {
+    readonly failureKey: (key: string) => void;
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;
 };

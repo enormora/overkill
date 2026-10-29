@@ -157,8 +157,10 @@ function applyTestEndEvent(
     state.recordTestAttemptResult(
         key,
         {
+            property: event.property,
             benchmark: event.benchmark,
             attempts: [ {
+                property: event.property,
                 benchmark: event.benchmark,
                 attempt: { index: event.attempt },
                 durationMicroseconds: event.durationMicroseconds,

@@ -6,7 +6,8 @@ import { testNode as targeting } from './property-targets.test.ts';
 import { property, withProperties } from './property-authoring.ts';
 import { testNode as exhaustive } from './property-exhaustive.test.ts';
 import { gen } from './generators.ts';
-import { executeProperty, type PropertyExecutionResult } from './property-execution.ts';
+import { executeProperty } from './property-execution.ts';
+import type { PropertyExecutionResult } from './property-execution-result.ts';
 
 export const testNode = suite('property trial execution', [
     exhaustive,
@@ -63,7 +64,9 @@ export const testNode = suite('property trial execution', [
                 examples: { executed: 1, rejected: 0 },
                 'automatic-edges': { executed: 2, rejected: 0 },
                 exhaustive: { executed: 0, rejected: 0 },
-                exploration: { executed: 3, rejected: 0 }
+                exploration: { executed: 3, rejected: 0 },
+                confirmation: { executed: 0, rejected: 0 },
+                shrinking: { executed: 0, rejected: 0 }
             } ]
         );
         return scope.assert.collect();

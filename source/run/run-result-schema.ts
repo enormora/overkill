@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { attemptIdSchema, caseIdSchema, sourceLocationsSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { runArtifactSchema, testAttemptSchema, verdictSchema } from './run-artifact-schema.ts';
 import { processUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
@@ -33,6 +34,7 @@ export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
 const diagnosticFields = {
     artifacts: z.array(runArtifactSchema),
     perTest: z.array(z.strictObject({
+        property: propertyEvidenceSchema.nullable().default(null),
         benchmark: benchmarkResultSchema.nullable().default(null),
         attempts: z.tuple([ testAttemptSchema ]).rest(testAttemptSchema),
         retried: z.strictObject({ attempts: z.number(), finalVerdict: verdictSchema }).nullable(),

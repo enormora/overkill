@@ -10,7 +10,7 @@ import {
 import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
 import { primaryFailureSourceLocation } from './failure-location.ts';
-import { formatFailureSummary } from './failure-summary.ts';
+import { formatFailureSummary, formatPropertyDiagnostics } from './failure-summary.ts';
 import {
     formatCoverageSummaryLines,
     formatRunFactSummary,
@@ -179,6 +179,14 @@ function runStartIntent(event: Extract<ReporterEvent, { readonly kind: 'run-star
     return stdout(`run ${event.root.title}${details}`, null);
 }
 
+function propertyDiagnosticIntents(result: RunResult): readonly OutputLineIntent[] {
+    return result.perTest.flatMap(function propertyDiagnostics(testResult) {
+        return formatPropertyDiagnostics(testResult.property).map(function diagnosticIntent(line) {
+            return stdout(line, null);
+        });
+    });
+}
+
 export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefReporterSinks>> {
     return defineReporter(function createBriefRuntimeReporter(context) {
         let state: BriefReporterState = {
@@ -221,6 +229,7 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
             onFinish(result) {
                 return [
                     finishIntent(result),
+                    ...propertyDiagnosticIntents(result),
                     ...formatCoverageSummaryLines(result).map(function coverageIntent(line) {
                         return stdout(line, null);
                     }),

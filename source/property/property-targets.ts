@@ -1,6 +1,6 @@
 import { propertyObservationContractFailure } from '../packages/engine/engine.entry-point.ts';
 
-type TrialTargets = {
+export type TrialTargets = {
     readonly target: (label: string, score: number) => void;
     readonly finish: () => ReadonlyMap<string, number>;
 };

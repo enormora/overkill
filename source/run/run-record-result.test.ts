@@ -72,6 +72,7 @@ function resultWithOpaqueEvidence(): RunResult {
                 return { kind: 'known', file: 'case.test.ts', line: 1, column: 1 };
             } ],
             attempts: [ {
+                property: null,
                 benchmark: null,
                 attempt: { index: 0 },
                 durationMicroseconds: 1,
@@ -101,6 +102,7 @@ function resultWithOpaqueEvidence(): RunResult {
                 authoritative: {
                     attachments: [],
                     attempts: [ {
+                        property: null,
                         benchmark: null,
                         attempt: { index: 0 },
                         durationMicroseconds: 1,
@@ -113,6 +115,7 @@ function resultWithOpaqueEvidence(): RunResult {
                 conflicting: {
                     attachments: [],
                     attempts: [ {
+                        property: null,
                         benchmark: null,
                         attempt: { index: 0 },
                         durationMicroseconds: 1,

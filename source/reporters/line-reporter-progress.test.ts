@@ -74,6 +74,7 @@ async function reportLongCase(reporter: RealTimeReporter): Promise<void> {
     const id = longCaseId();
 
     await reporter.onEvent({
+        property: null,
         benchmark: null,
         completion: 'final',
         attempt: 0,

@@ -1,4 +1,4 @@
-import type { Arbitrary, Random, Value } from 'fast-check';
+import { Value, type Arbitrary, type Random } from 'fast-check';
 import { prepareGenerator, type Generator as PropertyGenerator } from './generator.ts';
 import type { GeneratorContext } from './generator-backend.ts';
 
@@ -71,4 +71,50 @@ export function generateInput<Input>(
     };
     const domain = prepareGenerator(generator, generation.context);
     return retainedInput(generation, { domain, value: domain.generate(random, bias), path: [] });
+}
+
+export function recipeInput<Input>(
+    generator: PropertyGenerator<Input>,
+    recipe: () => Input,
+    context: GeneratorContext
+): GeneratedInput<Input> | null {
+    const domain = prepareGenerator(generator, context);
+    const original = recipe();
+    if (!domain.canShrinkWithoutContext(original)) {
+        return null;
+    }
+    function reconstruct(path: readonly number[]): Value<Input> {
+        context.consumeWork();
+        const fresh = prepareGenerator(generator, context);
+        let value = new Value(recipe(), undefined);
+        for (const ordinal of path) {
+            context.consumeWork();
+            const child = fresh.shrink(value.value, value.context).drop(ordinal).next();
+            if (child.done === true) {
+                throw new Error('Recipe shrink path could not be reconstructed.');
+            }
+            value = child.value;
+        }
+        return value;
+    }
+    function retain(path: readonly number[]): GeneratedInput<Input> {
+        return {
+            reconstruct() {
+                return reconstruct(path).value;
+            },
+            shrink() {
+                return (function* candidates() {
+                    const value = reconstruct(path);
+                    const children = domain.shrink(value.value, value.context);
+                    let ordinal = 0;
+                    for (let child = children.next(); child.done !== true; child = children.next()) {
+                        context.consumeWork();
+                        yield retain([ ...path, ordinal ]);
+                        ordinal += 1;
+                    }
+                })();
+            }
+        };
+    }
+    return retain([]);
 }

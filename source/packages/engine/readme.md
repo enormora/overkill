@@ -32,6 +32,7 @@ Top-level API:
 - `CaseId`, `TestId`, `TestRoot`, `TestPlan`, `ExecuteOptions`, `NonEmptyReadonlyArray`, `DeepComparable`
 - `Reporter`, `DefinedReporter`, `ReporterEvent`, `RealTimeReporter`, `FinalResultReporter`, `RunFacts`, `SinkDeclaration`, `OutputLineIntent`, `OutputRenderer`, `DefinedOutputRenderer`, `ReportingContext`
 - `RunResult`, `TestOutcome`, `PassOutcome`, `FailOutcome`, `SkipOutcome`, `InconclusiveOutcome`
+- `PropertyCaseEvidence`, `PropertyInvocationEvidence`, and `PropertyFailureObservation` for bounded property failure diagnostics on case results, attempt results, and test-end events
 - `AssertionNode`, `AssertionResult`, `AssertAssertionFacade`, `InFlightTask`, `TestScopeAssertContext`
 - `ThrownMatcher`, `ErrorMatcher`, `ExactThrownMatcher`
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`

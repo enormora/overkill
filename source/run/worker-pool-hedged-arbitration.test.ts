@@ -44,8 +44,10 @@ function passResult(): PerTestResult {
     const id = firstCaseId();
 
     return {
+        property: null,
         benchmark: null,
         attempts: [ {
+            property: null,
             benchmark: null,
             attempt: { index: 0 },
             durationMicroseconds: 0,
