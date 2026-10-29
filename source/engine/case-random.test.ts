@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
+import { Hash } from 'node:crypto';
+import { mock } from 'node:test';
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import type { ExecuteExecution, TestRandom } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { createTestRandom } from './case-random.ts';
+import { testNode as scopeTestNode } from './case-scope.test.ts';
 
 type RandomEvidence = { readonly seed: string; readonly values: readonly number[]; };
 
@@ -61,7 +64,24 @@ async function executeRandomCases(
     return evidence;
 }
 
+function randomFromZeroDigest(): TestRandom {
+    const digest = mock.method(Hash.prototype, 'digest', function zeroDigest() {
+        return Buffer.alloc(32);
+    });
+    try {
+        return createTestRandom(0n);
+    } finally {
+        digest.mock.restore();
+    }
+}
+
 export const testNode = suite('case random streams', [
+    scopeTestNode,
+    test('recovers from an all-zero hashed generator state', function (scope) {
+        const random = randomFromZeroDigest();
+        scope.assert.notDeepEqual(draw(random), draw(random));
+        return scope.assert.collect();
+    }),
     test('replays the version-one seed-zero stream', function (scope) {
         const random = createTestRandom(0n);
         scope.assert.deepEqual(draw(random).slice(0, 4), [
