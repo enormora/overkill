@@ -140,6 +140,24 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            title: 'ignores property progress received after case termination',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const state = createSupervisedRunState('first-failure-and-final');
+                const id = caseId('late property progress');
+                const key = caseIdentityKey(id);
+                const property = propertyCheckpoint();
+                addActiveCase(state, id);
+                state.recordPropertyProgress(key, 0, property);
+                state.recordTerminalActiveCases('crashed', 10);
+                state.recordPropertyProgress(key, 0, { invocations: [] });
+                assertInterruptedProperty(scope, state.perTestResults(), property);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'retains property evidence on interruption and ignores stale attempts',
             annotations: {},
             controls: {},
