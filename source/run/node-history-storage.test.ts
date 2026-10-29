@@ -50,6 +50,18 @@ async function assertReleaseOnFailure(scope: TestScope, store: HistoryStorage): 
     );
 }
 
+async function assertRecordEnumeration(scope: TestScope, store: HistoryStorage, directory: string): Promise<void> {
+    const records = path.join(directory, 'runs');
+    const record = path.join(records, 'run.json');
+    scope.assert.deepEqual(await store.list(records), []);
+    await store.write(record, '{}');
+    await store.write(path.join(records, 'unrelated.txt'), 'ignored');
+    scope.assert.deepEqual(await store.list(records), [ record ]);
+    await scope.assert.rejects(async function invalidRecordDirectory() {
+        await store.list(record);
+    }, { code: 'ENOTDIR' });
+}
+
 export const testNode = suite('history locking', [
     test('independent stores serialize read-modify-write operations', async function (scope: TestScope) {
         const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
@@ -64,6 +76,19 @@ export const testNode = suite('history locking', [
         }
         return scope.assert.collect();
     }),
+    test(
+        'enumeration distinguishes absent directories, record files, and IO failures',
+        async function (scope: TestScope) {
+            const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
+            const store = createNodeHistoryStorage(directory, defaultHistoryPolicy);
+            try {
+                await assertRecordEnumeration(scope, store, directory);
+            } finally {
+                await rm(directory, { recursive: true, force: true });
+            }
+            return scope.assert.collect();
+        }
+    ),
     test('contention times out and a rejected operation releases its lock', async function (scope: TestScope) {
         const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
         const store = createNodeHistoryStorage(directory, { ...defaultHistoryPolicy, lockTimeoutMilliseconds: 0 });

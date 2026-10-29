@@ -1,5 +1,11 @@
 import type { HistoryRecord } from '../run/history-record.ts';
 
+export const historyWork = {
+    case: { file: 'test.ts', params: null, suite: [], title: 'example' },
+    runtimes: [],
+    workload: null
+} as const;
+
 export const historyTimestamp = '2026-10-29T00:00:00.000Z';
 
 export function completedHistoryRecord(id: string): Extract<HistoryRecord, { readonly status: 'completed'; }> {
@@ -19,11 +25,7 @@ export function completedHistoryRecord(id: string): Extract<HistoryRecord, { rea
             perTest: [ {
                 verdict: 'pass',
                 durationMicroseconds: 10,
-                workId: {
-                    case: { file: 'test.ts', params: null, suite: [], title: 'example' },
-                    runtimes: [],
-                    workload: null
-                }
+                workId: historyWork
             } ]
         }
     };
