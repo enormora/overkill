@@ -9,6 +9,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { testNode as failurePaths } from './property-shrinking-errors.test.ts';
+import { testNode as cancellation } from './property-cancellation.test.ts';
 import { testNode as lifecycle } from './property-shrinking-lifecycle.test.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
@@ -33,6 +34,7 @@ function assertOriginalTarget(scope: TestScope, outcome: TestOutcome | null): vo
 export const testNode = suite('first failure shrinking', [
     failurePaths,
     lifecycle,
+    cancellation,
     test('distinguishes exception classes with the same error name and throw site', async function (scope) {
         class OriginalFailureError extends Error {
             public constructor(message: string, options: Readonly<ErrorOptions> | undefined) {

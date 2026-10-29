@@ -6,11 +6,12 @@ import {
     type PropertyCaseEvidence,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { caseIdentityKey, type CaseId } from '../engine/identity.ts';
+import { caseIdentityKey, createDefaultWorkId, workIdentityKey, type CaseId } from '../engine/identity.ts';
 import {
     createSupervisedRunState,
     type SupervisedRunState
 } from './supervised-run-state.ts';
+import { applyEvent } from './supervised-run-runtime.ts';
 import { capturedOutputLimitBytes } from './supervised-output-capture.ts';
 
 type RunArtifact = ReturnType<SupervisedRunState['artifacts']>[number];
@@ -138,6 +139,37 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'retains property progress delivered through the supervised event boundary',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const state = createSupervisedRunState('first-failure-and-final');
+                const id = caseId('transported property progress');
+                const workId = createDefaultWorkId(id);
+                const key = workIdentityKey(workId);
+                const property = propertyCheckpoint();
+                state.addActiveCase(key, { capture: null, id, workId }, 0, { index: 0 });
+                applyEvent(
+                    {
+                        kind: 'property-progress',
+                        property,
+                        case: id,
+                        workId,
+                        attempt: 0,
+                        definitionLocations: [ { kind: 'unknown' } ],
+                        suitePath: []
+                    },
+                    state,
+                    new Map(),
+                    1
+                );
+                state.recordTerminalActiveCases('crashed', 10);
+                assertInterruptedProperty(scope, state.perTestResults(), property);
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'ignores property progress received after case termination',

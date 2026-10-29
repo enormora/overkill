@@ -1,4 +1,4 @@
-import { createDeterministicClock } from '@enormora/clock';
+import { createDeterministicClock, type Clock } from '@enormora/clock';
 import { createEngine, type Engine } from '../engine/engine.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -11,9 +11,7 @@ function readNoActiveResourceTypes(): readonly string[] {
     return [];
 }
 
-export function createTestEngine(): Engine {
-    const wallClock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
-
+export function createTimedTestEngine(wallClock: Clock): Engine {
     return createEngine({
         execute: createExecute({
             benchmarkEnvironment: null,
@@ -28,4 +26,8 @@ export function createTestEngine(): Engine {
         }),
         wallClock
     });
+}
+
+export function createTestEngine(): Engine {
+    return createTimedTestEngine(createDeterministicClock({ initialUnixEpochMicroseconds: 0n }));
 }
