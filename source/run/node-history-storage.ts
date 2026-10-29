@@ -1,6 +1,7 @@
 import { mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import lockfile from 'proper-lockfile';
 import { createNodeFileStore } from '../file-store.ts';
 import type { HistoryPolicy } from '../config/history-policy.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
@@ -46,7 +47,6 @@ async function acquireHistoryLock(
     policy: HistoryPolicy,
     state: LockState
 ): Promise<() => Promise<void>> {
-    const { default: lockfile } = await import('proper-lockfile');
     const options = {
         lockfilePath: path.join(directory, 'history.lock'),
         stale: policy.staleLockMilliseconds,
