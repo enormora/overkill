@@ -189,6 +189,7 @@ export const configuration = {
                 main: moduleRoot('packages/run/run.entry-point'),
                 nodeCommandLineRunner: moduleRoot('run/node-command-line-runner'),
                 recordedCoverage: { javaScript: 'run/recorded-coverage-run.js' },
+                recordedRun: { javaScript: 'run/recorded-run.js' },
                 resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
                 transcriptStore: moduleRoot('packages/run/transcript-store.entry-point'),
                 workerPoolWorker: { javaScript: 'run/worker-pool-worker.js' }
@@ -224,6 +225,7 @@ export const configuration = {
                     'localCoverage',
                     'nodeCommandLineRunner',
                     'recordedCoverage',
+                    'recordedRun',
                     'workerPoolWorker'
                 ]
             }
