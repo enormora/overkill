@@ -96,6 +96,7 @@ type RunRequestKeys = readonly [
     'order',
     'paths',
     'profile',
+    'record',
     'processBudgetOverrides',
     'processUsageSamplingIntervalMilliseconds',
     'seed',
@@ -485,6 +486,7 @@ describe('@overkill-dev/run config', function () {
             readonly reporters: null;
             readonly processUsage: ProcessUsagePolicy;
             readonly testFamily: 'integration';
+            readonly runRecords: { readonly persist: 'on-demand'; };
             readonly timings: TimingProfilePolicy;
             readonly timeouts: RunExecutionFacts['timeoutPolicy'];
         }>();

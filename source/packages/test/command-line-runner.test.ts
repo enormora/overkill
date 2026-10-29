@@ -31,6 +31,7 @@ export const testNode = createSuite({
                             capabilityRestrictions: { mode: 'enabled' },
                             capture: 'buffered',
                             coverage: false,
+                            record: false,
                             debug: {
                                 mode: 'off',
                                 selectors: []

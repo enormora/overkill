@@ -35,6 +35,7 @@ async function commandFor(
             profiles: {
                 bench: {
                     testFamily: 'benchmark',
+                    timeouts: { collectionMilliseconds: 30_000 },
                     garbageCollection,
                     files: { include: [ fixture ] },
                     execution: boundary === 'supervised-process'

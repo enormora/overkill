@@ -103,6 +103,7 @@ async function executeProtocolPhase(phase: Phase): Promise<RunResult> {
             return resolved;
         },
         {
+            record: null,
             coverage: null,
             signal: null,
             timing: null,

@@ -69,6 +69,7 @@ async function assertSupervisedAttempt(
         request: { ...fixture.request.command.request, paths: [ passingFile ] }
     };
     const result = await createSupervisedRunResult({
+        record: null,
         baseline: null,
         signal: null,
         command,

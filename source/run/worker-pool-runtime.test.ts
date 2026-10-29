@@ -131,6 +131,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): Resolved
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,
                 propertyPolicy: null,
                 attachments: null,

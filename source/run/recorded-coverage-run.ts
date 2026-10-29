@@ -3,18 +3,8 @@ import { createCoverageRunRecord, type CoverageRunRecord } from './coverage-run-
 import type { CoverageSession } from './coverage-session.ts';
 import { executeRecordedCoverageSession, reportCoverageError } from './recorded-coverage-session.ts';
 import { coverageExecutionCompleted, startCoverageSession } from './run-coverage.ts';
-import type { RecordedCoverageExecution, RecordedCoverageRequest } from './recorded-coverage-types.ts';
-
-async function interruptRecord(record: RecordedCoverageExecution['record'], error: unknown): Promise<never> {
-    try {
-        await record.interrupt(error);
-    } catch (recordError: unknown) {
-        throw new AggregateError([ error, recordError ], 'Execution and run record persistence failed.', {
-            cause: recordError
-        });
-    }
-    throw error;
-}
+import type { RecordedCoverageRequest } from './recorded-coverage-types.ts';
+import { interruptRunRecord } from './run-record.ts';
 
 async function runCoverageAttempt(request: RecordedCoverageRequest, attempt: CoverageRunRecord): Promise<RunResult> {
     let session: CoverageSession | null = null;
@@ -47,6 +37,6 @@ export async function runRecordedCoverage(request: RecordedCoverageRequest): Pro
         const result = await runCoverageAttempt(request, attempt);
         return await attempt.record.complete(result);
     } catch (error: unknown) {
-        return await interruptRecord(attempt.record, error);
+        return await interruptRunRecord(attempt.record, error);
     }
 }

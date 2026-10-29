@@ -1,9 +1,7 @@
 import { collectedRunPlanFromEntries, type CollectedRunCaseEntry } from './collected-run-plan.ts';
 import { collectedRunCaseFactsFromEntries } from './run-case-facts.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
-import {
-    createRunFacts
-} from './run-facts.ts';
+import { createRunFacts, resolveAttachmentPersistence } from './run-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -96,7 +94,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         workerCount
     }));
 
-    return freezeValue({
+    return freezeValue(resolveAttachmentPersistence({
         collectionRunnerErrors: input.collectionRunnerErrors,
         config: input.config,
         cwd: input.command.cwd,
@@ -108,7 +106,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         },
         reporters: resolveRunReporters(input.profile, input.config.reporters),
         request: input.request
-    });
+    }));
 }
 
 export async function createResolvedRunFromCollection(input: CollectionResolvedRunInput): Promise<ResolvedRun> {

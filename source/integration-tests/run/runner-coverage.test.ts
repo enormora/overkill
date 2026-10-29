@@ -19,11 +19,9 @@ import {
     type RunResult,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
-
 import { generateCoverageReports } from '../../run/coverage-reporting.ts';
 import { defaultCoveragePolicy } from '../../config/defaults.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-
 import { loadCoverageFixtures } from './fixtures/coverage-files.ts';
 
 const coverageFixturePath = 'source/integration-tests/run/fixtures/coverage.test.ts';
@@ -55,6 +53,7 @@ function coverageConfig(
                     samplingIntervalMilliseconds: 100
                 },
                 testFamily: 'microtest',
+                runRecords: { persist: 'on-demand' },
                 timings: { collection: 'summary' },
                 timeouts: {
                     collectionMilliseconds: 10_000,
@@ -73,6 +72,7 @@ function coverageRequest(): RunRequest {
         baselineUpdateMode: 'none',
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
+        record: false,
         coverage: true,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
@@ -153,6 +153,7 @@ async function assertCoverageRecord(
         seed: record.request.seed,
         status: record.status
     }, {
+        record: false,
         coverage: true,
         id: path.basename(recordPath, '.json'),
         maxConcurrency: 5,

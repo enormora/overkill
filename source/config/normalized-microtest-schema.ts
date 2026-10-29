@@ -41,6 +41,7 @@ export const normalizedMicrotestProfileSchema = z.strictObject({
         samplingIntervalMilliseconds: z.number().int().positive()
     }),
     testFamily: z.literal('microtest'),
+    runRecords: z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) }),
     timings: timingProfilePolicySchema,
     timeouts: timeoutSchema.unwrap().required()
 });

@@ -59,6 +59,7 @@ function directProfile(
     scheduling: 'concurrent' | 'serial'
 ): MicrotestProfileConfig {
     return {
+        runRecords: { persist: 'on-demand' },
         coverage: {
             outputDirectory: null,
             outputs: [ 'v8', 'lcov' ],

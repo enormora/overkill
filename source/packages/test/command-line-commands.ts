@@ -36,6 +36,7 @@ type RunShard = CommandLineRunTestsRequest['runRequest']['shard'];
 
 type RunCommandArguments<Profile extends string | null> = {
     readonly configPath: string | null;
+    readonly record: boolean;
     readonly coverage: boolean;
     readonly file: string | null;
     readonly filter: RunFilter | null;
@@ -145,6 +146,7 @@ function createRunTestsRequest<Profile extends string | null>(
             baselineUpdateMode: 'none',
             capabilityRestrictions: { mode: 'enabled' },
             capture: readCapture(args),
+            record: args.record,
             coverage: args.coverage,
             debug: {
                 mode: 'off',
@@ -272,6 +274,7 @@ const benchmarkCommandArguments = {
 };
 
 const runExecutionArguments = {
+    record: flag({ long: 'record' }),
     noCapture: flag({ long: 'no-capture' }),
     timings: flag({ long: 'timings' }),
     workers: option({

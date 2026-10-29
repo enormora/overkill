@@ -264,6 +264,7 @@ export const microtestProfileSchema = z
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
         processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('microtest'),
+        runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
@@ -290,6 +291,7 @@ export const integrationProfileSchema = z
         retries: z.optional(integrationRetryPolicySchema),
         processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('integration'),
+        runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
@@ -306,6 +308,7 @@ const benchmarkProfileSchema = z
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
         processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('benchmark'),
+        runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
@@ -323,6 +326,7 @@ export const propertyProfileSchema = z
             return resolvePropertySettings(defaultPropertyPolicy, settings);
         }),
         testFamily: z.literal('property'),
+        runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })

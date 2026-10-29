@@ -1,4 +1,9 @@
-import { executeWithRuntimeAttachments, activeRuntimeAttachments } from './runtime-attachment-boundary.ts';
+import {
+    type RunAttachmentRecord,
+    activeRuntimeAttachments,
+    executeWithRuntimeAttachments
+} from './runtime-attachment-boundary.ts';
+
 import { observeSupervisedTransport, sendSupervisedCommand } from './supervised-child-transport.ts';
 import type {
     CollectedRunPlan,
@@ -61,6 +66,7 @@ type CreateResolvedRunFromCollection = (
 ) => Promise<ResolvedRun>;
 
 type SupervisedExecutionOptions = {
+    readonly record: RunAttachmentRecord;
     readonly coverage: SupervisedChildCoverage | null;
     readonly finalizeResult: RunResultFinalizer;
     readonly timing: RunTimingMeasurement | null;
@@ -78,6 +84,7 @@ type Signal = {
 };
 
 type SupervisedLiveRun = {
+    readonly record: RunAttachmentRecord;
     readonly child: SupervisedChildProcess;
     readonly collected: StoredRunValue<SupervisedCollectionResult | null>;
     readonly collectedSignal: Signal;
@@ -169,6 +176,7 @@ async function createLiveRun(
         dependencies,
         finishedSignal: createSignal(),
         finalizeResult: options.finalizeResult,
+        record: options.record ?? null,
         previousSample: createStoredRunValue<ProcessUsageSnapshot | null>(null),
         runtime: createStoredRunValue<SupervisedRunRuntime | null>(null),
         state,
@@ -434,7 +442,8 @@ async function continueLiveRun(
         liveRun.dependencies,
         async function executeAttachmentChild() {
             return await executeCollectedLiveRun(liveRun, resolvedRun);
-        }
+        },
+        liveRun.record
     );
 }
 

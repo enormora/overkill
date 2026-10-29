@@ -37,3 +37,5 @@ export type {
     BenchmarkHostPolicy,
     TestProfileConfig
 } from '../run/config.entry-point.ts';
+
+export type { RunRecordPersistenceMode, RunRecordProfilePolicy } from '../run/config.entry-point.ts';

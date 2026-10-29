@@ -50,6 +50,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         baselineUpdateMode: 'none',
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
+        record: false,
         coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
@@ -106,6 +107,7 @@ function createRunConfig(
                     samplingIntervalMilliseconds: 100
                 },
                 testFamily: 'microtest',
+                runRecords: { persist: 'on-demand' },
                 timings: { collection: 'summary' },
                 timeouts: {
                     collectionMilliseconds: 5000,
@@ -154,6 +156,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): NormalizedConfig
                     samplingIntervalMilliseconds: 100
                 },
                 testFamily: 'integration',
+                runRecords: { persist: 'on-demand' },
                 timings: { collection: 'summary' },
                 timeouts: {
                     collectionMilliseconds: 5000,

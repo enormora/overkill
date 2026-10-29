@@ -37,6 +37,7 @@ const benchmarkPolicy = {
             residentSetGrowthBytesPerSecond: null
         }
     },
+    runRecords: { persist: 'on-demand' },
     timings: { collection: 'summary' },
     timeouts: { collectionMilliseconds: 5000, hardMilliseconds: 60_000, softMilliseconds: 40_000 }
 } as const;

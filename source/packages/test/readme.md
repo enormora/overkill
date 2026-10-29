@@ -616,3 +616,19 @@ Install the optional `@overkill-dev/stryker-runner` plugin and Stryker to mutate
 production code against an existing Node microtest profile. See the
 [mutation testing guide](https://github.com/enormora/overkill/blob/main/source/packages/stryker-runner/readme.md)
 for installation, configuration, coverage modes, and process guarantees.
+
+## Run recording
+
+Profiles accept `runRecords: { persist: 'on-demand' | 'always' }`, defaulting to
+`on-demand`. Use `overkill run --record` or `RunRequest.record: true` to persist
+one invocation. Coverage and resource attachment workflows require records
+independently of that default.
+
+Records live at `<runtimeStateDir>/runs/<id>.json`. Explicit recording starts
+before runner-owned imports. Artifact-only recording starts after collection
+identifies attachment scopes, before resources or cases execute. Reusable
+collection is read-only; each execution receives a fresh record ID.
+
+Required write failures fail the command. Completed records include reporter
+and cleanup errors; escaping exceptions leave interrupted records. History,
+retention, and replay commands are not yet available.

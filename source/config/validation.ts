@@ -146,5 +146,8 @@ export function validateNormalizedConfig(config: NormalizedConfig): void {
         } else {
             validateIntegrationProfile(profile);
         }
+        if (!z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) }).safeParse(profile.runRecords).success) {
+            throw new ConfigError('Invalid run record persistence policy.');
+        }
     }
 }

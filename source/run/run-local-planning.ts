@@ -1,5 +1,5 @@
 import { resolveRunScheduling } from './run-profile-facts.ts';
-import { createRunFacts } from './run-facts.ts';
+import { createRunFacts, resolveAttachmentPersistence } from './run-facts.ts';
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
 import { createRunResultFromCollectedPlan, collectedRunPlanFromTestPlanCases } from './collected-run-plan.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
@@ -54,7 +54,7 @@ export function createLocalResolvedRunFromTestPlan(
         workerCount: null
     }));
 
-    return freezeValue({
+    return freezeValue(resolveAttachmentPersistence({
         collectionRunnerErrors: [],
         config: input.config,
         cwd: command.cwd,
@@ -66,7 +66,7 @@ export function createLocalResolvedRunFromTestPlan(
         },
         reporters: resolveRunReporters(input.profile, input.config.reporters),
         request: input.request
-    });
+    }));
 }
 
 export function createEmptySelectionResult(
@@ -114,7 +114,7 @@ export function createEmptyShardResolvedRunFromTestPlan(
         workerCount: null
     }));
 
-    return freezeValue({
+    return freezeValue(resolveAttachmentPersistence({
         collectionRunnerErrors: [],
         config: input.config,
         cwd: command.cwd,
@@ -126,7 +126,7 @@ export function createEmptyShardResolvedRunFromTestPlan(
         },
         reporters: resolveRunReporters(input.profile, input.config.reporters),
         request: input.request
-    });
+    }));
 }
 
 export async function createShardedLocalResolvedRunFromTestPlan(

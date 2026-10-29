@@ -1,22 +1,29 @@
 import type { NormalizedConfig, ProfileConfig, Scheduling } from '../config/types.ts';
-import { resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
+import { workIdentityKey } from '../engine/identity.ts';
+import {
+    resolveProcessUsagePolicy,
+    resolveRunRecordPersistence,
+    resolveTimingCollection
+} from './run-profile-facts.ts';
 import { selectProfile } from './test-profile.ts';
-
 import { hostProcessFacts } from './run-host-process.ts';
 import { runShardHashAlgorithm } from './run-shard-hash-algorithm.ts';
 import { runEngineFacts } from './run-support.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
+    CollectedRunCase,
+    DurationHistoryInput,
+    PlacementPlan,
+    ResolvedRun,
     RunCaseFacts,
     RunCommand,
-    DurationHistoryInput,
-    RunFacts,
     RunExecutionFacts,
-    PlacementPlan,
+    RunFacts,
+    RunHostProcessFacts,
     RunRequest,
-    RunWorkerCountFacts,
-    RunHostProcessFacts
+    RunWorkerCountFacts
 } from './run-types.ts';
+import { collectedRunCaseEntries } from './collected-run-plan.ts';
 
 type RunFactsDependencies = Pick<RunOrchestratorDependencies, 'createSeed' | 'node'>;
 
@@ -76,6 +83,7 @@ function createRunExecutionFacts(
         baselineUpdateMode: input.request.baselineUpdateMode,
         capture: input.request.capture,
         coverage: input.request.coverage,
+        runRecords: resolveRunRecordPersistence(input.request, profile),
         debug: input.request.debug,
         engine: runEngineFacts(input.engine),
         maxConcurrency: profile.execution.maxConcurrency,
@@ -141,6 +149,67 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
             seed: resolvedSeed(input.request, input.dependencies).toString(),
             shard: input.request.shard,
             shardHashAlgorithm: runShardHashAlgorithm
+        }
+    };
+}
+
+type LocalCase = Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>['testPlan']['cases'][number];
+
+function isLocalCase(testCase: CollectedRunCase | LocalCase): testCase is LocalCase {
+    return Object.hasOwn(testCase, 'execution');
+}
+
+function benchmarkAttachments(definition: CollectedRunCase['benchmark']): boolean {
+    return definition !== null && (
+        definition.measurement.mode === 'process' || definition.measurement.mode === 'module' ||
+        definition.timeline !== null
+    );
+}
+
+function hasBenchmarkAttachments(testCase: CollectedRunCase | LocalCase): boolean {
+    if (isLocalCase(testCase)) {
+        const { execution } = testCase;
+        return execution.kind === 'body' && execution.bodyMode === 'benchmark' &&
+            benchmarkAttachments(execution.definition);
+    }
+    return benchmarkAttachments(testCase.benchmark);
+}
+
+export function runHasAttachmentScopes(resolved: ResolvedRun): boolean {
+    if (
+        resolved.facts.execution.testFamily === 'microtest' || resolved.facts.execution.testFamily === 'property' ||
+        resolved.facts.cases.length === 0
+    ) {
+        return false;
+    }
+    const selected = new Set(resolved.facts.cases.map(function selectedWork(entry) {
+        return workIdentityKey(entry.workId);
+    }));
+    const cases = resolved.plan.kind === 'local'
+        ? resolved.plan.testPlan.cases.map(function localCase(testCase) {
+            return { testCase, workId: testCase.workId };
+        })
+        : collectedRunCaseEntries(resolved.plan.collectedPlan);
+    return cases.some(function hasAttachmentScope(entry) {
+        return selected.has(workIdentityKey(entry.workId)) &&
+            (hasBenchmarkAttachments(entry.testCase) || entry.testCase.resourceAttachments.resourceGraph.length > 0 ||
+                entry.testCase.resourceAttachments.runtimeGraphs.length > 0);
+    });
+}
+
+export function resolveAttachmentPersistence(resolved: ResolvedRun): ResolvedRun {
+    if (!runHasAttachmentScopes(resolved)) {
+        return resolved;
+    }
+    const policy = resolved.facts.execution.runRecords;
+    return {
+        ...resolved,
+        facts: {
+            ...resolved.facts,
+            execution: {
+                ...resolved.facts.execution,
+                runRecords: { persist: true, reasons: [ ...policy.reasons, 'artifact' ] }
+            }
         }
     };
 }

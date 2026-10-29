@@ -49,9 +49,10 @@ function createAttachmentRecordCheckpoint(
 }
 export async function createAttachmentRecord(
     resolved: ResolvedRun,
-    dependencies: RunOrchestratorDependencies
+    dependencies: RunOrchestratorDependencies,
+    session: RunRecordSession | null
 ): Promise<AttachmentRecord> {
-    const record = createRunRecordSession(resolved.cwd, {
+    const record = session ?? createRunRecordSession(resolved.cwd, {
         config: resolved.config,
         engine: resolved.engine,
         profile: selectProfile(resolved.request.profile, resolved.config),
@@ -64,7 +65,9 @@ export async function createAttachmentRecord(
         versions: await runRecordVersions(resolved.engine, dependencies.node.version),
         wallClock: dependencies.wallClock
     });
-    await record.start(null);
+    if (session === null) {
+        await record.start(null);
+    }
     await record.recordFacts(resolved.facts);
     const checkpoints = createAttachmentRecordCheckpoint(record, resolved, dependencies);
     return {

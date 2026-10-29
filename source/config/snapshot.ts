@@ -205,6 +205,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
             processUsage: copyProcessUsagePolicy(profile.processUsage),
             property: { ...profile.property },
             testFamily: profile.testFamily,
+            runRecords: { ...profile.runRecords },
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
         };
@@ -220,6 +221,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
             reporters: copyReporters(profile.reporters),
             processUsage: copyProcessUsagePolicy(profile.processUsage),
             testFamily: profile.testFamily,
+            runRecords: { ...profile.runRecords },
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
         };
@@ -234,6 +236,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
             retries: profile.retries === null ? null : { ...profile.retries },
             processUsage: copyProcessUsagePolicy(profile.processUsage),
             testFamily: profile.testFamily,
+            runRecords: { ...profile.runRecords },
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
         };
@@ -246,6 +249,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
         reporters: copyReporters(profile.reporters),
         processUsage: copyProcessUsagePolicy(profile.processUsage),
         testFamily: profile.testFamily,
+        runRecords: { ...profile.runRecords },
         timings: copyTimingProfilePolicy(profile.timings),
         timeouts: copyTimeoutPolicy(profile.timeouts)
     };

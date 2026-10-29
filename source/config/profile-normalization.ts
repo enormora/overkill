@@ -10,11 +10,8 @@ import {
     invalidProfileFileSetNameMessage,
     invalidProfileNameMessage
 } from './profile-patterns.ts';
-import type {
-    ProjectIntegrationExecution,
-    ProjectProfileFiles
-} from './schema.ts';
-import { defaultCoveragePolicy, defaultWorkDistribution } from './defaults.ts';
+import type { ProjectIntegrationExecution, ProjectProfileFiles, ProjectTimingProfilePolicy } from './schema.ts';
+import { defaultCoveragePolicy, defaultTimingProfilePolicy, defaultWorkDistribution } from './defaults.ts';
 import { ConfigError } from './config-error.ts';
 import type {
     CoveragePolicy,
@@ -22,7 +19,8 @@ import type {
     CoverageThresholds,
     IntegrationExecution,
     ProfileFileSet,
-    ProfileFiles
+    ProfileFiles,
+    TimingProfilePolicy
 } from './types.ts';
 import {
     invalidWorkDistributionConfigMessage,
@@ -223,4 +221,8 @@ export function normalizedWorkDistribution(
     execution: ProjectIntegrationExecution | undefined
 ): Extract<IntegrationExecution, { readonly processModel: 'worker-pool'; }>['workDistribution'] {
     return normalizeWorkDistribution(execution, defaultWorkDistribution);
+}
+
+export function normalizeTimings(timings: ProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
+    return { collection: timings?.collection ?? defaultTimingProfilePolicy.collection };
 }

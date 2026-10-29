@@ -63,6 +63,7 @@ export async function createBenchmarkBaselineFixture(
         profiles: {
             startup: {
                 testFamily: 'benchmark',
+                timeouts: { collectionMilliseconds: 30_000 },
                 files: { include: [ fixture ] },
                 baselines: {
                     directory: path.join(directory, 'baselines'),

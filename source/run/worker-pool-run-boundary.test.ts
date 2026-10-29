@@ -135,6 +135,7 @@ export const testNode = createOverkillSuite({
                     workerPoolResolvedRun({ ...createCollectedPlan(), files: [] }),
                     fakeWorkerPoolRuntimeDependencies(),
                     {
+                        record: null,
                         async finalizeResult(_resolvedRun, completion) {
                             return completion.result;
                         },
@@ -163,6 +164,7 @@ export const testNode = createOverkillSuite({
                         return workerPoolResolvedRun(collectionResult.collectedPlan);
                     },
                     {
+                        record: null,
                         async finalizeResult(_resolvedRun, completion) {
                             return completion.result;
                         },
@@ -209,6 +211,7 @@ export const testNode = createOverkillSuite({
                         return workerPoolResolvedRun(collectionResult.collectedPlan);
                     },
                     {
+                        record: null,
                         async finalizeResult(_resolvedRun, completion) {
                             return completion.result;
                         },
@@ -239,6 +242,7 @@ export const testNode = createOverkillSuite({
                         return workerPoolResolvedRun(collectionResult.collectedPlan);
                     },
                     {
+                        record: null,
                         async finalizeResult(_resolvedRun, completion) {
                             return completion.result;
                         },

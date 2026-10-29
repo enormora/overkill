@@ -10,27 +10,28 @@ import type {
 } from '../baselines/performance-baseline.ts';
 import type {
     BenchmarkProfileConfig,
+    ConfigLoadRequest,
+    CoveragePolicy,
     IntegrationRetryPolicy,
     LoaderConfig,
+    MaxConcurrency,
+    MicrotestProcessModel,
+    MicrotestProfileConfig,
+    NormalizedConfig,
     ProcessBudgets,
+    ProcessModel,
+    ProcessUsagePolicy,
+    RunOrder,
+    RunRecordPersistenceFacts,
+    Scheduling,
+    TimeoutPolicy,
     TimingCollectionMode,
     TimingCollectionOverride,
-    CoveragePolicy,
-    ProcessModel,
-    MicrotestProcessModel,
-    MaxConcurrency,
-    Scheduling,
+    WorkDistribution,
     WorkerLifecycle,
     WorkerPoolAssignmentPolicy,
     WorkerPoolDispatchPolicy,
-    WorkerPoolHedgingPolicy,
-    WorkDistribution,
-    ProcessUsagePolicy,
-    TimeoutPolicy,
-    NormalizedConfig,
-    MicrotestProfileConfig,
-    ConfigLoadRequest,
-    RunOrder
+    WorkerPoolHedgingPolicy
 } from '../config/types.ts';
 import type {
     NonEmptyReadonlyArray,
@@ -208,6 +209,7 @@ export type ProfileRunRequest<Profile extends string | null> = {
     readonly seed: RunSeed;
     readonly selection: RunSelection;
     readonly shard: RunShard;
+    readonly record: boolean;
     readonly timingCollection: TimingCollectionOverride;
     readonly verbose: false;
     readonly workers: number | null;
@@ -256,6 +258,7 @@ export type RunEnvironmentFacts = {
 };
 
 type RunExecutionBaseFacts = {
+    readonly runRecords: RunRecordPersistenceFacts;
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly propertyPolicy: PropertyPolicy | null;
     readonly attachments: AttachmentLimits | null;

@@ -8,7 +8,11 @@ import type { RunRecord } from './run-record-types.ts';
 export type RunRecordStorage = {
     readonly current: () => RunRecord;
     readonly persist: (value: RunRecord, phase: RunRecordPhase) => Promise<void>;
-    readonly result: (result: RunResult, status: 'completed' | 'started') => Promise<RunResult>;
+    readonly result: (
+        result: RunResult,
+        status: 'completed' | 'started',
+        metadata: Pick<RunRecord, 'placementTrace'>
+    ) => Promise<RunResult>;
 };
 
 const jsonIndentation = 2;
@@ -54,11 +58,11 @@ export function createRunRecordStorage(
                 throw runRecordPersistenceError(filePath, phase, error);
             }
         },
-        async result(result, status) {
+        async result(result, status, metadata) {
             const phase = status === 'completed' ? 'complete' : 'checkpoint';
 
             try {
-                await storage.persist({ ...current, result: recordedRunResult(result), status }, phase);
+                await storage.persist({ ...current, ...metadata, result: recordedRunResult(result), status }, phase);
                 return result;
             } catch (error: unknown) {
                 const persistenceError = runRecordPersistenceError(filePath, phase, error);

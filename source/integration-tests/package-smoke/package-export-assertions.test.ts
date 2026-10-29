@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { readdir, readFile } from 'node:fs/promises';
 import type { TestScope } from '@overkill-dev/engine';
+import { z } from 'zod/v4';
 
 type PackagedFilters = {
     readonly all: (filters: readonly [unknown, ...(readonly unknown[])]) => unknown;
@@ -175,4 +177,24 @@ export function assertTestStandardSubpathExports(
         import: './packages/test/baselines.entry-point.js',
         types: './packages/test/baselines.entry-point.d.ts'
     });
+}
+
+const completedRecordSchema = z.object({
+    status: z.literal('completed'),
+    request: z.object({ record: z.literal(true), paths: z.array(z.string()) })
+});
+export async function assertCompletedRunRecord(scope: TestScope, directory: string, file: string): Promise<void> {
+    const folder = path.join(directory, '.overkill', 'runs');
+    const entries = await readdir(folder);
+    const names = entries.filter(function recordFile(name) {
+        return name.endsWith('.json');
+    });
+    const records: unknown[] = await Promise.all(names.map(async function readRecord(name) {
+        const value: unknown = JSON.parse(await readFile(path.join(folder, name), 'utf8'));
+        return value;
+    }));
+    scope.assert.true(records.some(function matchingRecord(value) {
+        const parsed = completedRecordSchema.safeParse(value);
+        return parsed.success && parsed.data.request.paths.includes(file);
+    }));
 }

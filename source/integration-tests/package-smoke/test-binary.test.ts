@@ -11,6 +11,7 @@ import {
 } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
 import {
+    assertCompletedRunRecord,
     assertPackagedFilters,
     assertResourcesPackageRootExport,
     assertRunConfigSubpathExport,
@@ -424,6 +425,7 @@ export const testNode = createSuite({
                 const result = await spawnNode([
                     overkillBinEntryPointPath,
                     'run',
+                    '--record',
                     authoringSmokeFile
                 ]);
 
@@ -431,6 +433,7 @@ export const testNode = createSuite({
                 scope.assert.equal(result.stderr, '');
                 scope.assert.equal(result.stdout, '');
 
+                await assertCompletedRunRecord(scope, packageSmokeFolder, authoringSmokeFile);
                 return scope.assert.collect();
             }
         }),

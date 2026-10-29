@@ -53,7 +53,7 @@ async function interruptRemoteWriter(): Promise<never> {
 async function assertInterruptedRecord(scope: TestScope): Promise<void> {
     const { resolved, dependencies, writes } = await attachmentRunFixture(scope);
     await scope.assert.rejects(async function runInterruptedSession() {
-        await executeWithAttachments(resolved, dependencies, interruptRemoteWriter);
+        await executeWithAttachments(resolved, dependencies, interruptRemoteWriter, null);
     }, { message: 'Run interrupted after its last attachment write.' });
     const content = Array.from(writes.values()).at(-1);
     scope.require.defined(content);

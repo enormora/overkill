@@ -24,6 +24,7 @@ export function copyRunRequest(request: RunRequest): RunRequest {
         capabilityRestrictions: { mode: request.capabilityRestrictions.mode },
         capture: request.capture,
         coverage: request.coverage,
+        record: request.record,
         debug: {
             mode: request.debug.mode,
             selectors: []

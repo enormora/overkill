@@ -37,7 +37,7 @@ const config = normalizeConfig({profiles:{microtest:{
     timeouts:{collectionMilliseconds:30000}
 }}});
 const request = {
-    baselineUpdateMode:'none',capabilityRestrictions:{mode:'enabled'},capture:'buffered',coverage:false,
+    baselineUpdateMode:'none',capabilityRestrictions:{mode:'enabled'},capture:'buffered',coverage:false,record:false,
     debug:{mode:'off',selectors:[]},execution:{mode:'serial'},measureProcessUsage:null,order:'seeded',
     paths:[],profile:'microtest',processBudgetOverrides:null,processUsageSamplingIntervalMilliseconds:null,
     seed:{value:BigInt(seed)},selection:{kind:'all'},shard:{index:1,total:1},timingCollection:'profile-default',

@@ -24,6 +24,9 @@ export type ProcessBudgets = {
     readonly residentSetGrowthBytesPerSecond: number | null;
 };
 
+export type RunRecordPersistenceMode = 'always' | 'on-demand';
+export type RunRecordProfilePolicy = { readonly persist: RunRecordPersistenceMode; };
+
 export type TimingCollectionMode = 'precise' | 'summary';
 export type TimingCollectionOverride = 'precise' | 'profile-default';
 export type TimingProfilePolicy = {
@@ -152,6 +155,7 @@ export type MicrotestProfileConfig = {
     readonly reporters: readonly DefinedReporter[] | null;
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'microtest';
+    readonly runRecords: RunRecordProfilePolicy;
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
@@ -164,6 +168,7 @@ export type IntegrationProfileConfig = {
     readonly reporters: readonly DefinedReporter[] | null;
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'integration';
+    readonly runRecords: RunRecordProfilePolicy;
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
@@ -189,6 +194,7 @@ export type BenchmarkProfileConfig = {
     readonly reporters: readonly DefinedReporter[] | null;
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'benchmark';
+    readonly runRecords: RunRecordProfilePolicy;
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
@@ -200,6 +206,7 @@ export type PropertyProfileConfig = {
     readonly processUsage: ProcessUsagePolicy;
     readonly property: PropertyPolicy;
     readonly testFamily: 'property';
+    readonly runRecords: RunRecordProfilePolicy;
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
@@ -223,4 +230,10 @@ export type IntegrationRetryPolicy = IntegrationRetryPolicyDefinition;
 export type ConfigLoadRequest = {
     readonly configPath: string | null;
     readonly cwd: string;
+};
+
+export type RunRecordPersistenceReason = 'artifact' | 'coverage' | 'debug' | 'last-failed' | 'profile' | 'request';
+export type RunRecordPersistenceFacts = {
+    readonly persist: boolean;
+    readonly reasons: readonly RunRecordPersistenceReason[];
 };

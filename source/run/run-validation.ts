@@ -5,7 +5,6 @@ import type { ProfileConfig, ProcessBudgets } from '../config/types.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
-
 import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
@@ -108,6 +107,9 @@ function assertValidRunProfileName(profileName: string): void {
 
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
+    if (typeof request.record !== 'boolean') {
+        invalidRequest('Record must be a boolean.');
+    }
 
     validatePositiveSafeInteger(request.workers, 'Worker count');
     validateRunShard(request);

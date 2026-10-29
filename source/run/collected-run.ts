@@ -1,11 +1,11 @@
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
-import { executeCollectedInvocation } from './collected-run-execution.ts';
 import { planCollectedInvocation, type CollectedRunContext } from './collected-run-planning.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
 import { invalidRequest } from './run-errors.ts';
 import { freezeValue } from './run-support.ts';
 import { createRunTimingMeasurement } from './run-timing-collection.ts';
 import type { CollectedRun, CollectedRunInvocation } from './run-types.ts';
+import { executeCollectedInvocation } from './collected-run-invocation.ts';
 
 type RunResult = Awaited<ReturnType<CollectedRun['run']>>;
 

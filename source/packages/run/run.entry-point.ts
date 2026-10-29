@@ -264,3 +264,10 @@ export type {
 } from '../../bench/benchmark-host-snapshot.ts';
 
 export type { BenchmarkGarbageCollectionPolicy } from '../../engine/benchmark-result.ts';
+
+export type {
+    RunRecordPersistenceFacts,
+    RunRecordPersistenceMode,
+    RunRecordPersistenceReason,
+    RunRecordProfilePolicy
+} from '../../config/types.ts';

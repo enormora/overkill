@@ -1,4 +1,9 @@
-import { activeRuntimeAttachments, executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
+import {
+    type RunAttachmentRecord,
+    activeRuntimeAttachments,
+    executeWithRuntimeAttachments
+} from './runtime-attachment-boundary.ts';
+
 import type {
     CreatedWorkerPool,
     RunOrchestratorDependencies
@@ -44,6 +49,7 @@ const emptyWorkerPoolTimingMetadata = Object.freeze({
 });
 
 type WorkerPoolExecutionOptions = {
+    readonly record: RunAttachmentRecord;
     readonly finalizeResult: RunResultFinalizer;
     readonly timing: RunTimingMeasurement | null;
 };
@@ -187,7 +193,7 @@ async function executeWorkerPoolRunWithState(
 ): Promise<RunResult> {
     return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentWorkers() {
         return await executeWorkerPoolRunWithoutAttachments(resolvedRun, dependencies, state);
-    });
+    }, state.record ?? null);
 }
 
 export async function executeWorkerPoolRun(

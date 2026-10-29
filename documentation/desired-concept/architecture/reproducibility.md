@@ -101,7 +101,12 @@ values and error causes through bounded diagnostic serialization.
 raw directories. Microtests without declared runtimes use `runtime: null`;
 unavailable engine versions use `null`.
 
-An attempt starts before coverage setup or module imports. Until full resolution,
+Explicitly requested, profile-required, and coverage-required attempts start
+before runner-owned coverage setup or module imports. Artifact-only attempts
+start when collection identifies attachment scopes, before resource acquisition
+or case execution. Reusable initialization and collection remain read-only;
+each execution invocation starts a fresh record after collection. Direct-file
+recording begins inside `runIfMain`, after the entry module has loaded. Until full resolution,
 `facts` is `null`, and that attempt cannot be replayed. Known empty selections
 have complete empty facts. The result is checkpointed before final reporting,
 then completed after reporters and coverage cleanup finish. An escaping exception

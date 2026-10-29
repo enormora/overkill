@@ -89,6 +89,7 @@ async function cancelAt(phase: Phase): ReturnType<RunOrchestrator['run']> {
             return resolved;
         },
         {
+            record: null,
             coverage: null,
             signal: controller.signal,
             timing: null,
