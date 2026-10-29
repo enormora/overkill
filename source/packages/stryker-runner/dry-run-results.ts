@@ -82,9 +82,9 @@ function dryRunDiagnostic(
     return message.length === 0 ? 'Dry run failed.' : message;
 }
 
-function fullSuiteCoverage(data: LifecycleData): LifecycleData['coverage'] {
-    const counts: Record<string, number> = { ...data.coverage.static };
-    for (const counters of Object.values(data.coverage.perTest)) {
+function fullSuiteCoverage(coverage: Readonly<LifecycleData['coverage']>): LifecycleData['coverage'] {
+    const counts: Record<string, number> = { ...coverage.static };
+    for (const counters of Object.values(coverage.perTest)) {
         for (const [ id, count ] of Object.entries(counters)) {
             counts[id] = (counts[id] ?? 0) + count;
         }
@@ -131,6 +131,18 @@ function interruptedDryRun(reply: ResultReply): DryRunResult {
         };
 }
 
+function reportedCoverage(
+    mode: DryRunOptions['coverageAnalysis'],
+    data: LifecycleData,
+    expectation: DryRunExpectation
+): Readonly<Record<string, never>> | { readonly mutantCoverage: LifecycleData['coverage']; } {
+    if (mode === 'off') {
+        return {};
+    }
+    const coverage = structuredClone(expectation.baseline?.coverage ?? data.coverage);
+    return { mutantCoverage: mode === 'all' ? fullSuiteCoverage(coverage) : coverage };
+}
+
 function completeDryRun(
     root: string,
     reply: ResultReply,
@@ -145,13 +157,12 @@ function completeDryRun(
         return { status: DryRunStatus.Timeout, reason: 'Dry run exceeded its deadline or test timeout.' };
     }
     const data = mutationLifecycleDataSchema.parse(reply.data);
-    const mutantCoverage = coverage === 'all' ? fullSuiteCoverage(data) : data.coverage;
     return {
         status: DryRunStatus.Complete,
         tests: reply.result.perTest.map(function (result) {
             return mutationTestResult(root, result);
         }),
-        ...coverage === 'off' ? {} : { mutantCoverage }
+        ...reportedCoverage(coverage, data, expectation)
     };
 }
 

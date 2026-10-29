@@ -88,20 +88,16 @@ facts.execution.testFamily;
 Low-level engine nodes are family-neutral unless a higher-layer authoring
 adapter stamps them.
 
-## Removed Fields
+## Excluded Authored Fields
 
-These fields are intentionally not part of current authored test data:
+These fields are not part of authored test data:
 
-- `kind`: replaced by the internal family marker and run execution facts.
-- `extra`: removed because it made first-party data boundaries vague.
-- `priority`: removed because no scheduling or reporting meaning was defined.
-- `debug`: future run/debug mechanism, not current authored test data.
-- `stability`: future derived fact from persisted run history.
-- `baselines`, `capabilities`, `runtimes`: deferred to requirements or
-  observed results when their consumers exist.
-
-Breaking changes are acceptable at this stage, so the old metadata names are
-not retained as aliases.
+- `kind`: family belongs to the internal family marker and run execution facts.
+- `extra`: an open-ended field makes first-party data boundaries vague.
+- `priority`: has no scheduling or reporting meaning.
+- `debug`: belongs to run/debug intent.
+- `stability`: is derived from persisted run history.
+- `baselines`, `capabilities`, `runtimes`: belong to requirements or observed results.
 
 ## Observed Results
 
@@ -211,16 +207,16 @@ The replacement for `.only`:
 
 None of these modify test source.
 
-## Future Work
+## Derived Data And Reasoned Skips
 
-`skippedTest(reason, ...)` should become an all-family helper for environment
+`skippedTest(reason, ...)` is an all-family helper for environment
 or capability conditions that are known during authoring or collection. It is
 different from `.skip`: it records a planned, reasoned skipped case instead of
 silently removing executable work from the plan.
 
 Historical flakiness should be derived from compact history. Baseline
 usage should come from runtime observations or baseline APIs. Capability and
-runtime needs should move into requirements once that concept is implemented.
+runtime needs belong to requirements.
 
 ## Sources
 

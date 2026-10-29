@@ -43,6 +43,7 @@ export function createInterruptedCase(body: TestBody, policy: TestRuntimePolicy 
             return await observer.runBoundary(async function observeInterruptedRun() {
                 return await observer.runCase(testCase, { index: 0 }, async function observeInterruptedCase() {
                     return await executeCaseBody({
+                        seed: 0n,
                         propertyRun: { seed: 0n, projectRoot: null },
                         testCase,
                         attempt: { index: 0 },

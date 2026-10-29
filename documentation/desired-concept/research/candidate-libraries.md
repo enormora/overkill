@@ -10,7 +10,7 @@ The goal is not to commit early. The goal is to keep a shortlist of plausible de
 - useful idea donors
 - options to reject as foundations
 
-This document is intentionally broader than the current codebase. It looks in all directions that matter for Overkill:
+This document explores candidates across the product concept. It looks in all directions that matter for Overkill:
 
 - assertions
 - deep comparison and diffs
@@ -66,18 +66,6 @@ Status labels used below:
 - secondary candidate
 - idea donor
 - reject for foundation use
-
-## Current Repository Note
-
-The current repository uses:
-
-- `figures`
-- `yoctocolors`
-
-Re-audit result:
-
-- `yoctocolors` is the current terminal-color choice
-- `figures` is acceptable, but not special enough to anchor a long-term direction
 
 ## Assertions
 

@@ -172,7 +172,7 @@ test.info().annotations.push({ type: 'issue', description: 'ABC-123' });
 
 `test.fail` is not a skip - it is xfail (test runs; flips verdict). Annotations are first-class metadata accessible to reporters via `testCase.annotations`.
 
-Overkill direction: verdict modifiers belong on the test descriptor as fields, not as imperative side-effecting calls. See [Test Data And Selection § Future Work](../architecture/test-data-and-selection.md#future-work) and [Glossary § Test Verdict](../reference/glossary.md#test-verdict).
+Overkill direction: verdict modifiers belong on the test descriptor as fields, not as imperative side-effecting calls. See [Test Data And Selection § Derived Data And Reasoned Skips](../architecture/test-data-and-selection.md#derived-data-and-reasoned-skips) and [Glossary § Test Verdict](../reference/glossary.md#test-verdict).
 
 #### `test.step` And Attachments
 

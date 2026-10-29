@@ -250,6 +250,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
         const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
         return await execute(resolvedTestPlanDefinitionLocations(testPlan), {
+            seed: BigInt(input.command.seed),
             execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
             outputRenderer: createPlainOutputRenderer(),
             reporters: [ createSupervisedChildReporter(input.host) ],
@@ -262,7 +263,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
                 input.wallClock
             ),
             runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
-            propertyRun: { seed: BigInt(input.command.propertySeed), projectRoot: input.command.cwd },
+            propertyRun: { seed: BigInt(input.command.seed), projectRoot: input.command.cwd },
             runFacts: {},
             startedAt: startedAtIso(input.startedAtMs),
             timeoutPolicy: {

@@ -110,6 +110,7 @@ export type {
     TestCase,
     TestFamily,
     TestNode,
+    TestRandom,
     TestScope,
     TestScopeAssertContext
 } from '../engine/engine.entry-point.ts';

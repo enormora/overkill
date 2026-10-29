@@ -1,6 +1,7 @@
 export const strykerIdentityScript = `
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 const { Instrumenter } = await import(process.argv[1]);
 const { strykerPlugins } = await import(process.argv[2]);
 const [engine, configApi, processModel, freshState] = process.argv.slice(3);
@@ -18,7 +19,10 @@ await writeFile('case.test.mjs',
     "definitionLocations: [{kind:'known',file:'case.test.mjs',line:10,column:2}] };" +
     "const pass = scope => { scope.assert.true(true); return scope.assert.collect(); };" +
     "const check = attachTestBodyResourceAttachments(scope => {" +
-    "scope.assert.equal(value(), true); return scope.assert.collect(); }, {" +
+    "const [child] = scope.random.split();" +
+    "const stamp = [scope.seed.toString(16),scope.random.integer(0,0xffffffff).toString(16)," +
+    "child.integer(0,0xffffffff).toString(16)].join(':');" +
+    "scope.assert.equal(value(), true, {message:'case-random:'+stamp}); return scope.assert.collect(); }, {" +
     "directResources: [], resourceGraph: [], runtimeGraphs: [{kind:'runtime-matrix',name:'node',resources:[]," +
     "variants: ['first','second'].map(id => ({id, runtime: {name:'node',dimensions:{node:'26'}," +
     "requirements:[],resources:[],scenarioBindings:[]}}))}]});" +
@@ -37,12 +41,20 @@ await writeFile('overkill.config.mjs',
         execution: { processModel, scheduling: 'concurrent' },
         timeouts: { collectionMilliseconds: 30000 }
     } } }) + ');');
-const runner = strykerPlugins[0].factory({ overkill: {
+const settings = { overkill: {
     configPath: 'overkill.config.mjs', freshState: freshState === 'true', seed: '42'
-} }, {
+} };
+const files = {
     [process.cwd() + '/subject.mjs']: { mutate: true },
     [process.cwd() + '/case.test.mjs']: { mutate: false }
-}, logger);
+};
+const runner = strykerPlugins[0].factory(settings, files, logger);
+const replacements = [];
+function randomStamps(result) {
+    assert.equal(result.status, 'killed', JSON.stringify(result));
+    const matches = [...result.failureMessage.matchAll(/case-random:([0-9a-f:]+)/g)];
+    return [...new Set(matches.map(match => match[1]))].toSorted();
+}
 try {
     const dry = await runner.dryRun({ coverageAnalysis: 'perTest', timeout: 30000, disableBail: true });
     assert.equal(dry.status, 'complete', JSON.stringify(dry));
@@ -65,12 +77,23 @@ try {
     assert.equal(narrowed.status, 'killed', JSON.stringify(narrowed));
     assert.equal(narrowed.nrOfTests, 2);
     assert.deepEqual(narrowed.killedBy.toSorted(), ids);
+    const stamps = randomStamps(narrowed);
+    assert.equal(stamps.length, 2);
+    const expectedSeeds = ids.map(id => createHash('sha256')
+        .update(JSON.stringify(['case-seed-v1', '42', id])).digest().readBigUInt64BE().toString(16)).toSorted();
+    assert.deepEqual(stamps.map(stamp => stamp.split(':')[0]).toSorted(), expectedSeeds);
     const fallback = await runner.mutantRun({ ...options, testFilter: [ids[0]] });
     assert.equal(fallback.status, 'killed', JSON.stringify(fallback));
     assert.equal(fallback.nrOfTests, 5);
     assert.deepEqual(fallback.killedBy.toSorted(), ids);
-    console.log(JSON.stringify(dry.tests.map(test => test.id).toSorted()));
+    assert.deepEqual(randomStamps(fallback), stamps);
+    const replacement = strykerPlugins[0].factory(settings, files, logger);
+    replacements.push(replacement);
+    const replaced = await replacement.mutantRun({...options, testFilter: ids});
+    assert.deepEqual(randomStamps(replaced), stamps);
+    console.log(JSON.stringify({ids:dry.tests.map(test => test.id).toSorted(), stamps}));
 } finally {
     await runner.dispose();
+    for (const replacement of replacements) await replacement.dispose();
 }
 `;

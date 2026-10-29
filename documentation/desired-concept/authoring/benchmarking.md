@@ -110,18 +110,16 @@ complete registry, independent of path operands. Zero or multiple benchmark
 profiles require an explicit selection; unknown names and other families are
 argument errors. There is no reserved or default benchmark profile name.
 
-Current runner integration executes workload benchmarks through the regular
+Benchmark orchestration executes workload benchmarks through the regular
 planning, placement, resource/runtime lifecycle, result, artifact, and reporter
 pipeline. `orchestrator.bench.list` returns the resolved plan without executing
 bodies or acquiring resources. `bench.run` and `bench.runWithReporterDelivery`
 use structured measurement summaries and generated budget assertions. Explicit
-measurement regions, native collectors, and adaptive metric budgets are
-implemented alongside automatic warmup, per-sample cleanup, and bounded runtime
-cooldown and external-process measurement. Browser collectors remain a later
-milestone. The dedicated HTML reporter consumes recorded benchmark evidence
+measurement regions, native collectors, and adaptive metric budgets compose with automatic warmup, per-sample cleanup, and bounded runtime
+cooldown and external-process measurement. The dedicated HTML reporter consumes recorded benchmark evidence
 through the final-result lifecycle.
 
-Current profiles keep serial execution within each worker, `maxConcurrency: 1`,
+Benchmark profiles keep serial execution within each worker, `maxConcurrency: 1`,
 and hedging off. Adaptive placement may use parallel worker lanes for eligible
 artifact-size measurements; all other measurements remain serial. Timeout
 defaults are collection 5000 ms, soft 40000 ms, and hard 60000 ms. Explicit
@@ -217,7 +215,7 @@ A benchmark definition should be able to describe:
 
 This is closer to BenchmarkTools benchmark groups and to real workflow benchmarking than to a simple timing loop.
 
-The implemented callback surface and sampling contracts are documented in the
+The callback surface and sampling contracts are documented in the
 [`@overkill-dev/bench` package guide](../../../source/packages/bench/readme.md).
 Each immutable JSON workload expands with runtime variants before selection.
 Resources wrap one sampling session; workload binding is an explicit resource
@@ -582,7 +580,7 @@ Platform probes such as POSIX or Darwin tools may add detail when they are
 available, but their source and unavailable state must be recorded explicitly
 so reports do not pretend every host supplied the same data.
 
-The implemented host pass runs once before collection and placement. It records
+The host pass runs once before collection and placement. It records
 its timestamp and duration in `RunFacts.benchmarkHost`, alongside configured
 limits and check results. It describes that observation window; collection and
 fixture startup may change host conditions afterward. There are no per-sample

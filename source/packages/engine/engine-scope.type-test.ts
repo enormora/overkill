@@ -6,6 +6,7 @@ import type {
     RequireAssertionFacade,
     TestScope,
     TestScopeAssertContext,
+    TestRandom,
     ThrownMatcher
 } from './engine.entry-point.ts';
 
@@ -51,6 +52,8 @@ type ExpectedAssertFacadeKeys = keyof {
 };
 type ExpectedTestScopeAssertContextKeys = ExpectedAssertFacadeKeys | 'collect';
 type ExpectedTestScopeKeys = keyof {
+    readonly seed: true;
+    readonly random: true;
     readonly assert: true;
     readonly cleanup: true;
     readonly drainMicrotasks: true;
@@ -77,6 +80,12 @@ type ExpectedRequireFacadeKeys = keyof {
 };
 
 describe('TestScope', function () {
+    test('exposes case seeds and splittable randomness', function () {
+        expect<TestScope['seed']>().type.toBe<bigint>();
+        expect<TestScope['random']>().type.toBe<TestRandom>();
+        expect<TestRandom['split']>().type.toBe<() => readonly [TestRandom, TestRandom]>();
+    });
+
     test('exposes the concept assert catalog without ok', function () {
         expect<keyof AssertAssertionFacade>().type.toBe<ExpectedAssertFacadeKeys>();
         expect<keyof AssertAssertionFacade>().type.not.toBeAssignableFrom<'collect'>();

@@ -13,7 +13,8 @@ import {
 import { createRecordingAssertFacade } from './assertion-facade.ts';
 import { createRecordingRequireFacade } from './require-assertion-facade.ts';
 import type { TestContractFailure } from './run-result.ts';
-import type { TestScope, ThrowingTestScope } from './test-node.ts';
+import type { TestScope, ThrowingTestScope } from './test-scope.ts';
+import { createTestRandom, deriveCaseSeed, type CaseRandomContext } from './case-random.ts';
 
 type FinishedScopeLifecycle = {
     readonly cleanupErrors: readonly unknown[];
@@ -29,7 +30,8 @@ export type TestScopeLifecycle = {
     ) => Promise<AssertionResult>;
 };
 
-export function createTestScopeLifecycle(recorder: AssertionRecorder): TestScopeLifecycle {
+export function createTestScopeLifecycle(recorder: AssertionRecorder, context: CaseRandomContext): TestScopeLifecycle {
+    const seed = deriveCaseSeed(context.seed, context.work);
     const state = createAsyncControlState();
     let finishing: Promise<FinishedScopeLifecycle> | null = null;
     async function finish(controller: AbortController): Promise<FinishedScopeLifecycle> {
@@ -61,6 +63,8 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder): TestScope
     );
     const createScope = function createScope(signal: AbortSignal): TestScope {
         return {
+            seed,
+            random: createTestRandom(seed),
             assert: assertContext,
             cleanup(callback) {
                 registerCleanup(state, callback);
@@ -101,8 +105,15 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder): TestScope
     };
 }
 
-export function createThrowingTestScope(recorder: AssertionRecorder, signal: AbortSignal): ThrowingTestScope {
+export function createThrowingTestScope(
+    recorder: AssertionRecorder,
+    signal: AbortSignal,
+    context: CaseRandomContext
+): ThrowingTestScope {
+    const seed = deriveCaseSeed(context.seed, context.work);
     return {
+        seed,
+        random: createTestRandom(seed),
         assert: createRecordingAssertFacade(
             {
                 failContract(failure) {

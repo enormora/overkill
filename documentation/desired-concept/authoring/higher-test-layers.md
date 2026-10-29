@@ -906,10 +906,9 @@ Resource allocations from closed or foreign attempts, and allocations without
 known ownership, remain ambiguous run errors. They do not become current-case
 failures based on serial timing or matching native resource types.
 
-The native-observation implementation merged in
-[PR #531](https://github.com/enormora/overkill/pull/531) removes process-method
-patches. It does not make diagnostics case-local: out-of-test console output and
-new IPC listeners can still produce run errors while observation is active.
+Native observations preserve process methods. Diagnostics are not inherently
+case-local: out-of-test console output and new IPC listeners can produce run
+errors while observation is active.
 Fresh-state and supervised execution separate those activities by process.
 Normal in-process execution must preserve their ownership within a shared worker.
 
@@ -920,6 +919,8 @@ Retain the original nullable file restriction, including eligible files with no
 cases. Do not reconstruct that restriction from files represented in the catalog.
 Repeated dry runs validate the original file restriction, coverage mode, and
 catalog before case execution; they cannot replace the original baseline.
+Return the original baseline counters after validating each repeated dry run,
+including when a reused graph no longer repeats its import-time reads.
 Normalize sandbox file origins to canonical project-relative paths. Encode
 `CaseId` structurally, including parameter identity; display names and source
 positions are presentation data. Use the complete executable identity when a
@@ -1038,37 +1039,26 @@ maintenance or timely issue resolution. The
 [plugin API](https://github.com/stryker-mutator/stryker-js/tree/v10.0.0/packages/api/src/test-runner)
 is the compatibility contract, ahead of simplified documentation examples.
 
-### Assumptions And Release Gates
+### Compatibility And Validation
 
 This resolution preserves the concept's microtest-only scope, API-first
 boundary, stable identity model, and aggregate V8 coverage policy. Mutation
 execution is a separate, explicitly reported orchestration policy.
 
-Current code has exact `case-id` filters, structured outcomes, awaited local case
-events, and supervised processes. The public in-process lifecycle now supports
-initialization before user imports and repeated execution of a collected plan.
-Child-local attribution, counter transport, and adapter integration remain
-release gates for the complete mutation runner lifecycle.
 Each invocation needs fresh scopes, observers, and result collection even when
 it reuses an already collected plan and module graph. Selection applies to the
 frozen eligible catalog without reimporting modules merely to rerun cases.
 Keep Stryker types, globals, and score semantics inside the adapter package.
 
-Before release, demonstrate sandbox-relative and parameterized IDs, runtime and
+Compatibility validation covers sandbox-relative and parameterized IDs, runtime and
 static activation, exact filtered execution, worker reuse, opt-in state reset,
 capability enforcement, counter delivery, and complete timeout termination on
 the repository's pinned Node version. Compare optimized results against full
 suite results on repeatable representative suites. Measure worker-reuse and
 fresh-state costs separately, including startup, collection, and test execution.
 
-Probes with the published Stryker 10 instrumenter confirmed counter attribution,
-activation timing, and transitive ESM cache behavior. On Node 26.10, a covered
-arithmetic mutant remained hidden by a cache in a reused graph and became
-observable in a fresh process. Current Overkill policy also preserved native
-process methods and removed its observation listeners after completion. These
-are focused probes, not end-to-end adapter validation. Release validation must
-also exercise native early exit, abort, and result-less termination, preserving
-the configured process model's documented observation gaps.
+Validation also covers native early exit, abort, and result-less termination,
+preserving the configured process model's documented observation gaps.
 
 Revisit this answer if those checks show incorrect selection, if maintaining
 restrictions requires private engine imports, if process startup removes the
@@ -1522,21 +1512,13 @@ clear inherited attachments. Attach the resulting input's codec afterward.
   shrinking and input reconstruction. Excluded from the initial custom API;
   concrete regression examples remain distinct from generators.
 
-The initial implementation uses `fast-check` behind Overkill's generator API.
+Use `fast-check` behind Overkill's generator API.
 Its public [`Arbitrary`](https://fast-check.dev/docs/api/classes/Arbitrary/)
 generation and contextual shrinking operations supply the backend; its runner
 does not own property execution. Overkill owns trial reconstruction, failure
 identity, traversal budgets, finite-domain metadata, edge cases, targeted
 search, corpus persistence, codecs, and reporting. Backend-specific types and
 shrink state do not become the public generator or durable replay contract.
-
-Focused probes with `fast-check` 4.10.2 preserved dependent-input validity.
-Dependent shrinking retained a larger input than an available smaller failure,
-which is permitted by the contract. Raw mapped-value mutation corrupted the
-reported counterexample; trial reconstruction around the contextual shrink
-driver preserved a custom class input and its clean witness. Counting filter
-predicate invocations bounded an impossible filter. These probes establish
-feasibility, not complete engine integration or composition-wide budget safety.
 
 ### Assumptions And Invalidation
 
@@ -1546,15 +1528,11 @@ generators cannot meet those constraints, or all evaluated backends exceed
 acceptable memory or runtime costs. An adapter for effectful property tests
 must define trial isolation before claiming the same guarantees.
 
-Implementation acceptance requires fresh trial state,
+Compatibility validation requires fresh trial state,
 dependency-preserving array/index shrinking, changing dependent element bounds,
 non-injective mappings, impossible filters, recursive limits, mutation
 isolation, deterministic candidate sequences, and lossless witness replay.
 Measure candidate evaluations and peak retained memory on the same workloads.
-
-No unresolved behavioral choices remain in this resolution. Implementation
-must still satisfy the integration and compatibility acceptance criteria;
-the focused probes are not proof of every edge case.
 
 ### Exhaustive domains and input coverage
 

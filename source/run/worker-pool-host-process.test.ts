@@ -65,6 +65,7 @@ function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): 
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         attachmentEndpoint: null,

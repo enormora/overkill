@@ -119,6 +119,7 @@ async function reportBenchmarkProgress(
 
 async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnType<typeof executeCaseBody>>> {
     return await executeCaseBody({
+        seed: input.options.seed,
         async onBenchmarkUpdate(benchmark) {
             await reportBenchmarkProgress(input, benchmark);
         },

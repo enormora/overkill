@@ -63,6 +63,7 @@ export async function executeLocalResolvedRun(
         });
 
     return await dependencies.execute(resolvedRun.plan.testPlan, {
+        seed: BigInt(resolvedRun.facts.reproducibility.seed),
         execution: engineExecution(
             resolvedRun.facts.execution.scheduling,
             resolvedRun.facts.execution.maxConcurrency

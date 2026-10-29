@@ -54,6 +54,7 @@ function createChildProcess(): SupervisedChildProcess {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         attachmentEndpoint: null,

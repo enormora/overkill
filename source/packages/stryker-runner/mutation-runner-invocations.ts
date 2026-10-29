@@ -47,7 +47,7 @@ export function createMutationRunnerInvocations(
         const coverage = input.coverageAnalysis;
         const result = dryMutationResult(runner.root, reply, coverage, expectation);
         await invocation.persist(result);
-        if (result.status === DryRunStatus.Complete && !budget.expired()) {
+        if (result.status === DryRunStatus.Complete && expectation.baseline === null && !budget.expired()) {
             await baseline.publish(runner.client, reply, {
                 coverageAnalysis: coverage,
                 testFiles: expectation.testFiles,

@@ -50,7 +50,7 @@ async function runBuilderCaseBody(
     options: CaseBodyOptions,
     benchmarkAttempt: BenchmarkAttempt
 ): Promise<ExecutedBody> {
-    const lifecycle = createTestScopeLifecycle(recorder);
+    const lifecycle = createTestScopeLifecycle(recorder, { seed: options.seed, work: testCase.workId });
     const runBody = async function runUserBody(): Promise<AssertionResult> {
         return await lifecycle.runBody(
             options.controller.signal,
@@ -99,7 +99,11 @@ async function runThrowingCaseBody(
             throw new TypeError('Non-throwing test cases do not have throwing bodies.');
         }
 
-        await testCase.execution.body(createThrowingTestScope(recorder, options.controller.signal));
+        await testCase.execution.body(createThrowingTestScope(
+            recorder,
+            options.controller.signal,
+            { seed: options.seed, work: testCase.workId }
+        ));
     };
     const runAndPrepare = async function runThrowingBodyAndPreparation(): Promise<ExecutedBody> {
         const completion = await options.interruption.run(runBody);

@@ -205,7 +205,10 @@ export const testNode = suite('interrupted case cleanup', [
     }),
     test('concurrent finalization waits for the same cleanup and retains its failures', async function (scope) {
         const state = { gate: Promise.withResolvers<undefined>(), controller: new AbortController(), cleanups: 0 };
-        const lifecycle = createTestScopeLifecycle(createAssertionRecorder());
+        const lifecycle = createTestScopeLifecycle(createAssertionRecorder(), {
+            seed: 0n,
+            work: { case: { file: null, suite: [], title: 'case', params: null }, runtimes: [], workload: null }
+        });
         lifecycle.createScope(state.controller.signal).cleanup(async function pendingCleanup() {
             state.cleanups += 1;
             await state.gate.promise;

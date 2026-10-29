@@ -214,10 +214,13 @@ type Random = {
 };
 ```
 
-Each test receives a child generator split from the run seed. Failures report
-the root seed; replays reproduce bit-for-bit even under parallel execution.
-SplitMix is small, well understood, and has a TypeScript implementation in
-under 200 lines.
+Each test receives a generator derived from the run seed and executable
+identity. Failures report the root seed; replays reproduce bit-for-bit even
+under parallel execution.
+Use `pure-rand` for generation and sampling. Derive child streams from
+domain-separated hashes of the parent state and distinct child labels, advancing
+the parent once per split. The runner owns stream identity and lifecycle;
+the library owns the PRNG algorithm.
 
 This becomes the foundation for the property-testing package family later.
 
@@ -329,7 +332,7 @@ The current concept is intentionally narrow:
 
 - Overkill documents capability handles as a valid and often good
   architecture pattern.
-- Overkill does **not** currently ship a first-class `@overkill-dev/world`
+- The concept excludes a first-class `@overkill-dev/world`
   package or first-party production-facing handle helpers.
 - `testDouble()` remains the main official first-party tool for
   dependency replacement in tests.

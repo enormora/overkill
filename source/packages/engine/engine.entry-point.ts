@@ -14,6 +14,8 @@ import type {
     WorkloadTestCaseOptions
 } from '../../engine/test-node.ts';
 
+export type { TestRandom } from '../../engine/test-scope.ts';
+
 export type {
     AttachmentMetadata,
     AttachmentWriter,
@@ -357,7 +359,6 @@ export type {
 } from '../../assertion-protocol/assertion-node.ts';
 export type {
     BuilderTestCaseExecution,
-    TestScopeAssertContext,
     RootOptions,
     BodyTestCaseExecution,
     Suite,
@@ -368,7 +369,6 @@ export type {
     TableCase,
     TableCaseOptions,
     TableOptions,
-    TestBody,
     TestCase,
     TestCaseDefinition,
     TestCaseExecution,
@@ -378,13 +378,17 @@ export type {
     TestCaseOptions,
     DefinitionLocations,
     TestRoot,
-    TestScope,
     TestNode,
-    ThrowingTestBody,
     ThrowingTestCaseExecution,
-    ThrowingTestCaseOptions,
-    ThrowingTestScope
+    ThrowingTestCaseOptions
 } from '../../engine/test-node.ts';
+export type {
+    TestScopeAssertContext,
+    TestBody,
+    TestScope,
+    ThrowingTestBody,
+    ThrowingTestScope
+} from '../../engine/test-scope.ts';
 export { stampTestNodeFamily, testNodeFamily } from '../../engine/test-node.ts';
 export {
     attachTestBodyResourceAttachments,

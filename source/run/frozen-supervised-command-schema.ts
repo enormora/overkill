@@ -15,7 +15,8 @@ export const frozenSupervisedCommandSchema: z.ZodType<SupervisedChildCommand> = 
     })
     .transform(function validateFrozenCommand(command) {
         const policy = parseFrozenMicrotestPolicy(command.policy);
-        const baseline = policyBaselineCommand(policy);
+        const original = policyBaselineCommand(policy);
+        const baseline = { ...original, request: { ...original.request, seed: { value: BigInt(command.seed) } } };
         const profile = { ...policy.profile, reporters: null };
         const source = { kind: 'frozen-policy' as const, policy };
         const expected = command.kind === 'collect-frozen'

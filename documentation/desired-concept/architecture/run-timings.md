@@ -215,7 +215,7 @@ would create false precision and perturb the thing being measured.
 Ambient noise is a precise timing diagnostic, not part of the stable default
 summary.
 
-When implemented, it should be best-effort and explicit:
+Its classification is best-effort and explicit:
 
 - `low`
 - `medium`

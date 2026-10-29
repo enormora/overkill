@@ -76,17 +76,21 @@ type SoftTimeoutResolution = {
     readonly milliseconds: number | null;
 };
 
-type ActiveCaseInput = {
+type CaseExecutionInput = {
+    readonly seed: bigint;
     readonly propertyRun: RunTestCaseOptions['propertyRun'];
-    readonly benchmark: BenchmarkState;
     readonly onBenchmarkUpdate: RunTestCaseOptions['onBenchmarkUpdate'];
     readonly attempt: AttemptId;
-    readonly completion: CaseCompletion;
-    readonly controller: AbortController;
     readonly dependencies: ExecutionSupervisionDependencies;
     readonly supervision: ExecutionSupervision;
     readonly testCase: TestPlanCase;
     readonly timeoutPolicy: ExecuteTimeoutPolicy | null | undefined;
+};
+
+type ActiveCaseInput = CaseExecutionInput & {
+    readonly benchmark: BenchmarkState;
+    readonly completion: CaseCompletion;
+    readonly controller: AbortController;
 };
 
 type CaseBodyInput = ActiveCaseInput & {
@@ -233,6 +237,7 @@ async function runTestCaseWithPolicy(
     input: ActiveCaseInput
 ): Promise<ConcurrentCase> {
     const executedCase = await runTestCase(input.testCase, input.dependencies.wallClock, {
+        seed: input.seed,
         async onBenchmarkUpdate(result) {
             input.benchmark.write(result);
             await input.onBenchmarkUpdate(result);
@@ -541,11 +546,6 @@ export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolea
 
     return true;
 }
-
-type CaseExecutionInput = Pick<
-    ActiveCaseInput,
-    'attempt' | 'dependencies' | 'onBenchmarkUpdate' | 'propertyRun' | 'supervision' | 'testCase' | 'timeoutPolicy'
->;
 
 export async function executeCaseBody(input: CaseExecutionInput): Promise<ConcurrentCase> {
     if (input.dependencies.globalErrorObserver.hasFatalError() || !input.supervision.acceptsNewCases()) {

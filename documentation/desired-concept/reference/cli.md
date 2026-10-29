@@ -298,12 +298,10 @@ An explicitly configured `@overkill-dev/reporter-dot` still streams compact
 progress marks in non-interactive output. Non-interactive mode disables
 cursor-control reflow only; it does not silence dot progress.
 
-Current `bench run` and `bench list` share `--file`, `--title`, `--filter`,
+`bench run` and `bench list` share `--file`, `--title`, `--filter`,
 `--runtime`, `--order`, `--seed`, and `--shard` with ordinary commands.
 Use `--filter 'workload=small'` to select a resolved workload name. Workload
 names also support the existing substring and glob filter operators.
 `bench run` also supports `--no-capture`, `--timings`, and `--workers`;
 `bench list` supports `--with-locations` and `--with-orphans`.
 `--coverage` remains microtest-only.
-Benchmark measurement, calibration, and performance baseline commands are implemented.
-Debug and explicit record surfaces remain later work.

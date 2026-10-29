@@ -246,7 +246,7 @@ If ordering is randomized, the ordering must be replayable.
 That implies:
 
 - reproducible seed handling (single run seed; per-test seeds derived
-  deterministically from `(runSeed, CaseId)`)
+  deterministically from `(runSeed, WorkId)`)
 - stable test identities ([Artifact Identity](./artifact-identity.md))
 - deterministic expansion of parameterized and runtime-driven cases
 - deterministic work-unit construction and initial placement
@@ -262,7 +262,11 @@ lane-local execution order recorded in the placement plan.
 ## Per-Test Seeds
 
 Every test gets its own splittable PRNG derived from
-`(runSeed, hash(CaseId))`. This means:
+`(runSeed, WorkId)`. `scope.seed` exposes the derived seed and `scope.random`
+exposes its splittable random handle on both builder and throwing scopes.
+The complete executable identity includes parameter, runtime, and workload
+identity; attempt, worker, scheduling, and selection do not change the stream.
+Every attempt starts a fresh stream. This means:
 
 - reproducing a single failed test requires only the run seed and the
   test identity, not the full run record
@@ -271,7 +275,21 @@ Every test gets its own splittable PRNG derived from
 - rerunning one test under an integration retry policy produces identical inputs to the
   failing run
 
-The PRNG is SplitMix-based (see [Capability Handles § Splittable Random For Determinism Under Parallelism](../authoring/capability-handles.md#splittable-random-for-determinism-under-parallelism)).
+Case-seed version `case-seed-v1` hashes the JSON tuple of that version, the
+decimal run seed, and the canonical work identity key with SHA-256, taking the
+first 64 bits in big-endian order. Direct engine execution accepts an explicit
+`seed` and uses `0n` when no run context supplies one.
+
+Use `pure-rand`'s xoroshiro128+ generator. Stream version `case-random-v1`
+hashes the JSON tuple of that version and the decimal case seed with SHA-256.
+The first 128 bits become four signed 32-bit state words in big-endian order;
+an all-zero state uses `1` for its first word.
+
+Splitting hashes the JSON tuple of `case-random-split-v1`, the parent state,
+and the child label (`first` or `second`) with the same state derivation.
+Advance the parent once per split. Child streams share no mutable state;
+recursive and repeated splits derive distinct child identities.
+See [Capability Handles § Splittable Random For Determinism Under Parallelism](../authoring/capability-handles.md#splittable-random-for-determinism-under-parallelism).
 
 ## Artifact Reproducibility
 
