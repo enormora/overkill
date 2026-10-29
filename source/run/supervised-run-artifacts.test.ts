@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { startFakeIntegrationOutputChild } from '../test-support/supervised-output-fixture.ts';
 import {
     createSuite as createOverkillSuite,
@@ -41,6 +42,7 @@ type CapturedProcessOutput = {
 
 function createRunConfig(profileName: string, profile: NormalizedConfig['profiles'][string]): NormalizedConfig {
     return {
+        history: defaultHistoryPolicy,
         loader: {
             sourceMaps: false,
             stripMode: 'strip-only'

@@ -1,17 +1,16 @@
-import { ulid } from 'ulid';
 import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-tracking.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { createRunRecordDependencies } from './run-record-input.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
 import { createResultFromResolutionError } from './run-collection-error-result.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { RunRecordError } from './run-record-error.ts';
-import { runRecordVersions } from './run-record-versions.ts';
 import { createRunRecordSession, interruptRunRecord, type RunRecordSession } from './run-record.ts';
 
 export type RunRecordExecutionDependencies = Pick<
     RunOrchestratorDependencies,
-    'node' | 'runtimeStateStore' | 'wallClock'
+    'createHistoryStorage' | 'node' | 'runtimeStateStore' | 'wallClock'
 >;
 
 function recordingEnabled(input: ResolvedRunInput): boolean {
@@ -34,13 +33,7 @@ export async function executeRecordedRun(
     if (!recordingEnabled(input)) {
         return await execute(null);
     }
-    const record = createRunRecordSession(cwd, input, {
-        createId: ulid,
-        node: dependencies.node,
-        store: dependencies.runtimeStateStore,
-        versions: await runRecordVersions(input.engine, dependencies.node.version),
-        wallClock: dependencies.wallClock
-    });
+    const record = createRunRecordSession(cwd, input, await createRunRecordDependencies(input, dependencies));
     try {
         await record.start(null);
         return await record.complete(await execute(record));

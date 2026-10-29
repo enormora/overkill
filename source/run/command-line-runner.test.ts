@@ -63,6 +63,7 @@ function defaultLoadedConfig(reporters: LoadedConfig['reporters']): LoadedConfig
     const config = defaultRunConfig();
 
     return {
+        history: defaultRunConfig().history,
         configPath: null,
         loader: config.loader,
         outputRenderer: config.outputRenderer,

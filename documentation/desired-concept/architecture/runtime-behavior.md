@@ -913,8 +913,8 @@ pool implementation:
 
 - `duration-history-balanced` is a plan-time assignment policy that uses
   compact `WorkId` duration history as explicit placement input, falling back
-  to case counts when history is stale or inapplicable and failing with a
-  repair hint when required history is missing or corrupt
+  to case counts when history is missing, stale, or inapplicable and failing
+  with a repair hint when history is corrupt
 - `dynamic-lease` is an execution-time dispatch policy layered on top of the
   frozen initial placement plan
 - resource-aware placement lowers resource scopes into serial keys,

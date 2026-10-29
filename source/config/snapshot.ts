@@ -265,6 +265,7 @@ function copyProfilesConfig(profiles: ProfilesConfig): ProfilesConfig {
 
 export function copyConfig(config: NormalizedConfig): NormalizedConfig {
     return {
+        history: { ...config.history },
         loader: copyLoaderConfig(config.loader),
         outputRenderer: config.outputRenderer,
         profiles: copyProfilesConfig(config.profiles),

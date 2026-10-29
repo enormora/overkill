@@ -10,6 +10,7 @@ import { testDouble } from '../doubles/test-double.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
 import {
+    defaultRunConfig,
     unexpectedBenchmarkOrchestrator,
     defaultMicrotestProfile,
     defaultRunRequest,
@@ -35,6 +36,7 @@ const defaultRequest: RunRequest = defaultRunRequest();
 
 async function loadDefaultRunConfig(): Promise<LoadedConfig> {
     return {
+        history: defaultRunConfig().history,
         configPath: null,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: defineFixedOutputRenderer({

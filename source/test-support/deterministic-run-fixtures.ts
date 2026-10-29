@@ -1,3 +1,4 @@
+import type { RunOrchestratorDependencies } from '../run/run-orchestrator-dependencies.ts';
 import type {
     RunProcessUsage,
     ProcessUsageSnapshot,
@@ -19,6 +20,7 @@ import type {
     WorkId
 } from '../run/run-types.ts';
 import type { SupervisedChildCommand } from '../run/supervised-protocol.ts';
+import { createMemoryHistoryStorage } from './memory-history-storage.ts';
 
 const deterministicRunFixturePaths = {
     emptySuite: 'source/integration-tests/run/fixtures/empty-suite.test.ts',
@@ -391,4 +393,11 @@ export function createDeterministicProcessUsageTracker(): RunProcessUsageTracker
             return undefined;
         }
     };
+}
+
+export function deterministicRuntimeState(): Pick<
+    RunOrchestratorDependencies,
+    'createHistoryStorage' | 'runtimeStateStore'
+> {
+    return { createHistoryStorage: createMemoryHistoryStorage, runtimeStateStore: createMemoryHistoryStorage() };
 }

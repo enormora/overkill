@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { historyPolicySchema, defaultHistoryPolicy } from '../config/history-policy.ts';
 import { loaderSchema } from '../config/schema.ts';
 import {
     normalizedMicrotestProfileSchema,
@@ -55,5 +56,6 @@ export const frozenMicrotestPolicySchema: z.ZodType<FrozenMicrotestPolicy> = z.s
         workers: z.null()
     }),
     engine: executionCommandFields.engine,
+    history: historyPolicySchema.default(defaultHistoryPolicy),
     runtimeStateDir: z.string().min(1)
 });

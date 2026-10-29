@@ -1,12 +1,11 @@
 import path from 'node:path';
-import { ulid } from 'ulid';
+import { createRunRecordDependencies } from './run-record-input.ts';
 import { resolveCoveragePaths } from './coverage-paths.ts';
 import type { CoverageSessionRequest } from './coverage-session.ts';
 import { microtestCoveragePolicy } from './run-coverage.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { createRunRecordSession, type RunRecordSession } from './run-record.ts';
-import { runRecordVersions } from './run-record-versions.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 
 export type CoverageRunRecord = {
@@ -25,13 +24,7 @@ export async function createCoverageRunRecord(
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement | null
 ): Promise<CoverageRunRecord> {
-    const record = createRunRecordSession(cwd, input, {
-        createId: ulid,
-        node: dependencies.node,
-        store: dependencies.runtimeStateStore,
-        versions: await runRecordVersions(input.engine, dependencies.node.version),
-        wallClock: dependencies.wallClock
-    });
+    const record = createRunRecordSession(cwd, input, await createRunRecordDependencies(input, dependencies));
     const coverage = microtestCoveragePolicy(input.profile);
     const paths = resolveCoveragePaths({
         coverage,

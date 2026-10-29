@@ -11,7 +11,7 @@ import {
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import type { DefinedReporter, Reporter } from '../../engine/reporter.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
-import { defaultCoveragePolicy } from '../../config/defaults.ts';
+import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
 import type { RunCommand, RunRequest } from '../../run/run-types.ts';
 import type { NormalizedConfig, MicrotestProcessModel, Scheduling } from '../../config/types.ts';
 
@@ -82,6 +82,7 @@ function createRunConfig(
     reporter: DefinedReporter
 ): NormalizedConfig {
     return {
+        history: normalizeHistoryPolicy({}),
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: defineOutputRenderer(function createOutputRenderer() {
             return {
@@ -123,6 +124,7 @@ function createRunConfig(
 
 function createIntegrationRunConfig(reporter: DefinedReporter): NormalizedConfig {
     return {
+        history: normalizeHistoryPolicy({}),
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: defineOutputRenderer(function createOutputRenderer() {
             return {

@@ -6,11 +6,8 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import type { DurationHistoryIndex, DurationHistoryPlacement, DurationHistoryStore } from './duration-history-types.ts';
 import {
-    type DurationHistoryIndex,
-    type DurationHistoryPlacement,
-    type DurationHistoryStore,
-    mergeDurationHistoryIndex,
     readDurationHistoryIndex,
     resultWithUpdatedDurationHistory,
     selectDurationHistoryPlacement
@@ -29,6 +26,10 @@ import {
     workerPoolLanes,
     workerPoolPlacementAssignments
 } from './worker-pool-lanes.ts';
+
+function historyIndex(entries: DurationHistoryIndex['entries'], updatedAt: string): DurationHistoryIndex {
+    return { entries, updatedAt, version: 2 };
+}
 
 const now = Date.parse('2026-09-17T00:00:00.000Z');
 
@@ -147,7 +148,7 @@ function durationLaneAssignments(
 }
 
 function balancedDurationIndex(slow: WorkUnit, fastA: WorkUnit, fastB: WorkUnit): DurationHistoryIndex {
-    return mergeDurationHistoryIndex(null, [
+    return historyIndex([
         {
             observations: [ observation(100, now) ],
             work: slow.work[0]
@@ -176,10 +177,6 @@ async function readHistoryFailure(
     }
 }
 
-function expectedReadErrorMessage(): string {
-    return `Failed to read duration history at ${process.cwd()}/.overkill/duration-history/work-durations.json.`;
-}
-
 function assertMigratedHistory(scope: OverkillScope, migrated: DurationHistoryIndex): void {
     const migratedRuntime = migrated.entries[0]?.work.runtimes[0];
 
@@ -196,25 +193,25 @@ function fallbackPlacements(): FallbackPlacements {
     const sampledWork = work('sampled');
     const unsampledWork = work('unsampled');
     const mixedUnit = unit('mixed', [ sampledWork, unsampledWork ]);
-    const sampledIndex = mergeDurationHistoryIndex(null, [
+    const sampledIndex = historyIndex([
         {
             observations: [ observation(100, now) ],
             work: sampledWork
         }
     ], observedAt(now));
-    const staleIndex = mergeDurationHistoryIndex(null, [
+    const staleIndex = historyIndex([
         {
             observations: [ observation(100, now - 31 * 24 * 60 * 60 * 1000) ],
             work: sampledWork
         }
     ], observedAt(now));
-    const futureIndex = mergeDurationHistoryIndex(null, [
+    const futureIndex = historyIndex([
         {
             observations: [ observation(100, now + 1) ],
             work: sampledWork
         }
     ], observedAt(now));
-    const invalidDurationIndex = mergeDurationHistoryIndex(null, [
+    const invalidDurationIndex = historyIndex([
         {
             observations: [ observation(Number.NaN, now) ],
             work: sampledWork
@@ -384,11 +381,11 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(requestedPath, `${absoluteRuntimeStateDir}/duration-history/work-durations.json`);
                 scope.assert.equal(
                     invalidShapeMessage,
-                    `Duration history at ${requestedPath} has an unsupported shape.`
+                    'History state is unavailable. Run overkill history compact to repair it.'
                 );
                 scope.assert.equal(
                     readErrorMessage,
-                    expectedReadErrorMessage()
+                    'History state is unavailable. Run overkill history compact to repair it.'
                 );
 
                 return scope.assert.collect();
@@ -402,7 +399,7 @@ export const testNode = createOverkillSuite({
             body(scope: OverkillScope) {
                 const selectedWork = work('selected');
                 const selectedUnit = unit('selected', [ selectedWork ]);
-                const index = mergeDurationHistoryIndex(null, [
+                const index = historyIndex([
                     {
                         observations: [
                             observation(10, now),
@@ -501,7 +498,7 @@ export const testNode = createOverkillSuite({
 
                 const sparsePlacement = selectDurationHistoryPlacement(
                     units,
-                    mergeDurationHistoryIndex(null, [
+                    historyIndex([
                         {
                             observations: [ observation(100, now) ],
                             work: slow.work[0]

@@ -104,6 +104,7 @@ function createTestRunner(): CommandLineRunner {
         },
         async loadConfig() {
             return {
+                history: defaultRunConfig().history,
                 configPath: null,
                 loader: config.loader,
                 outputRenderer: config.outputRenderer,

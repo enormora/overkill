@@ -20,7 +20,8 @@ import {
     createDeterministicRunTestModuleLoader,
     deterministicCollectedRunPlan,
     deterministicRunCollection,
-    deterministicRunEngine
+    deterministicRunEngine,
+    deterministicRuntimeState
 } from './deterministic-run-fixtures.ts';
 
 type RunOrchestrator = RunCoordinator['orchestrator'];
@@ -277,20 +278,13 @@ function createDeterministicRunCoordinatorWithDependencies(
     });
 
     const dependencies: RunOrchestratorDependencies = {
+        ...deterministicRuntimeState(),
         collectBenchmarkHost: benchmarkHostSnapshot,
         availableParallelism: 4,
         createProcessUsageTracker: createDeterministicProcessUsageTracker,
         createSeed,
         createWorkerPool,
         defaultEngine: deterministicRunEngine(),
-        runtimeStateStore: {
-            async read() {
-                return null;
-            },
-            async write() {
-                return undefined;
-            }
-        },
         async discoverRunFilesWithProjectRoot(request) {
             if (request.paths.length === 0 && request.profileFiles === null) {
                 throw new Error('No run paths were provided and the selected profile has no file discovery policy.');

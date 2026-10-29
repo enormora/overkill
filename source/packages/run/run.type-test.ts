@@ -403,7 +403,7 @@ describe('@overkill-dev/run config', function () {
 
     test('exposes config and resolution errors', function () {
         expect<keyof NormalizedConfig>().type.toBe<
-            'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
+            'history' | 'loader' | 'outputRenderer' | 'profiles' | 'reporters' | 'runtimeStateDir'
         >();
         expect<NormalizedConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<NormalizedConfig['profiles'][string]>().type.toBe<ProfileConfig>();

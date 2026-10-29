@@ -30,6 +30,7 @@ export async function createCommandLineConfig(
     const reporterFallback = selectCommandLineReporterFallback(loadedConfig, request.runRequest.profile);
 
     return {
+        history: loadedConfig.history,
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
         profiles: loadedConfig.profiles,
@@ -66,6 +67,7 @@ function listProfiles(profiles: NormalizedConfig['profiles']): NormalizedConfig[
 export function createCommandLineListConfig(loadedConfig: LoadedConfig, profileName: string): NormalizedConfig {
     selectProfile(profileName, loadedConfig);
     return {
+        history: loadedConfig.history,
         loader: loadedConfig.loader,
         outputRenderer: loadedConfig.outputRenderer,
         profiles: listProfiles(loadedConfig.profiles),

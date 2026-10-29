@@ -40,7 +40,7 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
-    PropertyPolicy as PropertyPolicyDefinition,
+    PropertyPolicy,
     PropertyBodyDefinition,
     AttachmentLimits,
     PerTestResult,
@@ -504,6 +504,7 @@ export type FileModuleBoundary = {
 };
 
 export type FrozenMicrotestPolicy = {
+    readonly history: NormalizedConfig['history'];
     readonly moduleBoundary: FileModuleBoundary | null;
     readonly source: RunPolicySource;
     readonly cwd: string;
@@ -564,4 +565,3 @@ export type RunExecutionSessionOptions = {
     readonly lifecycle: RunExecutionLifecycleReference;
     readonly environment: 'fresh-invocation' | 'profile-default';
 };
-export type PropertyPolicy = PropertyPolicyDefinition;

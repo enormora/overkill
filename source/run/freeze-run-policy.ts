@@ -35,6 +35,7 @@ export async function freezeRunPolicy(
         cwd: input.command.cwd,
         projectRoot: resolved.projectRoot,
         files: resolved.files,
+        history: resolved.config.history,
         loader: resolved.config.loader,
         profile,
         request,

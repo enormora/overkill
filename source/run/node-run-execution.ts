@@ -1,5 +1,6 @@
 import { createExecute } from '../engine/execution.ts';
 import { createNodeFileStore } from '../file-store.ts';
+import { createNodeHistoryStorage } from './node-history-storage.ts';
 import { createWorkerPoolWithHostProcess } from './node-worker-pool-factory.ts';
 import { createNodeProcessUsageTracker } from './process-usage.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -13,7 +14,7 @@ type NodeExecutionInput = NodeExecutionCallbacks & {
 };
 type NodeExecutionDependencies = Pick<
     RunOrchestratorDependencies,
-    'createProcessUsageTracker' | 'createWorkerPool' | 'execute' | 'runtimeStateStore'
+    'createHistoryStorage' | 'createProcessUsageTracker' | 'createWorkerPool' | 'execute' | 'runtimeStateStore'
 >;
 
 function readActiveResourceTypes(): readonly string[] {
@@ -22,6 +23,7 @@ function readActiveResourceTypes(): readonly string[] {
 
 export function createNodeExecutionDependencies(input: NodeExecutionInput): NodeExecutionDependencies {
     return {
+        createHistoryStorage: createNodeHistoryStorage,
         createProcessUsageTracker(options) {
             return createNodeProcessUsageTracker(input.wallClock, options);
         },

@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
+import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
     orchestrator,
     type RunRecord,
@@ -34,6 +35,7 @@ function coverageConfig(
     scheduling: Scheduling
 ): NormalizedConfig {
     return {
+        history: defaultHistoryPolicy,
         loader: { sourceMaps: false, stripMode: 'strip-only' },
         outputRenderer: createPlainOutputRenderer(),
         profiles: {

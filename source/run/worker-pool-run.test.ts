@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -42,6 +43,7 @@ function createOutputRenderer(): DefinedOutputRenderer {
 
 function createRunConfig(profileName: string, profile: NormalizedConfig['profiles'][string]): NormalizedConfig {
     return {
+        history: defaultHistoryPolicy,
         loader: {
             sourceMaps: false,
             stripMode: 'strip-only'

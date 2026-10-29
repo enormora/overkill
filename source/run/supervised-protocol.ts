@@ -9,7 +9,6 @@ import type {
 } from '../config/types.ts';
 import { assertFrozenAssignmentInputs } from './workload-input-validation.ts';
 import type {
-    PropertyPolicy,
     FrozenWorkloadInput,
     RunFacts,
     FrozenMicrotestPolicy,
@@ -20,7 +19,13 @@ import type {
     RunTestFamily
 } from './run-types.ts';
 import type { RunExecutionTransport } from './execution-session-context.ts';
-import type { ReporterEvent, RunResult, ProcessUsageSnapshot, TestPlan } from './run-engine-primitives.ts';
+import type {
+    PropertyPolicy,
+    ReporterEvent,
+    RunResult,
+    ProcessUsageSnapshot,
+    TestPlan
+} from './run-engine-primitives.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import {

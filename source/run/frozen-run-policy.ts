@@ -29,6 +29,7 @@ export function frozenPolicyCommand(input: FrozenRunCommand): RunCommand {
     return {
         config: {
             ...reporting,
+            history: policy.history,
             loader: policy.loader,
             profiles: { [policy.request.profile]: { ...policy.profile, reporters: null } },
             runtimeStateDir: policy.runtimeStateDir

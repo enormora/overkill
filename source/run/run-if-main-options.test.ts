@@ -14,7 +14,7 @@ import {
     defineFixedReporter,
     type FixedDefinedReporter
 } from '../test-support/reporter-definition.ts';
-import type { LoadedConfig } from '../config/config.ts';
+import { normalizeConfig, type LoadedConfig } from '../config/config.ts';
 import type { MicrotestProfileConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {
@@ -95,6 +95,7 @@ function directProfile(
 
 function loadedConfig(reporters: LoadedConfig['reporters']): LoadedConfig {
     return {
+        history: normalizeConfig({}).history,
         configPath: null,
         loader: {
             sourceMaps: false,

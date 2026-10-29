@@ -44,6 +44,7 @@ function policyFacts(policy: FrozenMicrotestPolicy): Readonly<Record<string, unk
             debug: policy.request.debug
         },
         processUsage: resolveProcessUsagePolicy(command.request, profile),
+        history: policy.history,
         runtimeStateDir: policy.runtimeStateDir
     };
 }

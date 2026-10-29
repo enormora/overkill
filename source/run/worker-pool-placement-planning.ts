@@ -11,6 +11,7 @@ import {
 } from './collected-run-plan.ts';
 import type {
     CollectedRunPlan,
+    RunFacts,
     PlacementPlan,
     RunSeed,
     RunShard,
@@ -19,9 +20,7 @@ import type {
     WorkUnit
 } from './run-types.ts';
 import {
-    selectDurationHistoryPlacement,
-    type DurationHistoryIndex,
-    type DurationHistoryPlacement
+    selectDurationHistoryPlacement
 } from './duration-history.ts';
 import {
     workUnitsFromCollectedPlan
@@ -71,12 +70,12 @@ type WorkerPoolPlacementCapacityInput = Pick<
 export type WorkerPoolPlacementResolutionInput = WorkerPoolPlacementCapacityInput & {
     readonly units: readonly WorkUnit[];
     readonly maximumWorkers: number | null;
-    readonly durationHistoryIndex: DurationHistoryIndex | null;
+    readonly durationHistoryIndex: Parameters<typeof selectDurationHistoryPlacement>[1];
     readonly nowMilliseconds: number;
 };
 
 export type WorkerPoolPlacementResolution = {
-    readonly durationHistory: DurationHistoryPlacement['facts'];
+    readonly durationHistory: RunFacts['durationHistory'];
     readonly placementPlan: PlacementPlan;
     readonly workerCount: RunWorkerCountFacts;
 };

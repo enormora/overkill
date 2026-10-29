@@ -1,11 +1,14 @@
 import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-tracking.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { createResultFromResolutionError } from './run-collection-error-result.ts';
+import { RunCollectionError } from './run-errors.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { runRecordPersistenceError, type RunRecordError, type RunRecordPhase } from './run-record-error.ts';
 import { recordedRunResult } from './run-record-result.ts';
 import type { RunRecord } from './run-record-types.ts';
 
 export type RunRecordStorage = {
+    readonly interrupt: (error: unknown, placementTrace: RunRecord['placementTrace']) => Promise<void>;
     readonly current: () => RunRecord;
     readonly persist: (value: RunRecord, phase: RunRecordPhase) => Promise<void>;
     readonly result: (
@@ -47,6 +50,20 @@ export function createRunRecordStorage(
 ): RunRecordStorage {
     let current = initial;
     const storage: RunRecordStorage = {
+        async interrupt(error, placementTrace) {
+            const crash = new RunCollectionError('Run interrupted before completion.', { cause: error }, 'crash');
+            const result = recordedRunResult(createResultFromResolutionError(crash, null));
+            const previousResult = current.result;
+            const interruptedResult = previousResult === null ? result : {
+                ...previousResult,
+                runnerErrors: [ ...previousResult.runnerErrors, ...result.runnerErrors ],
+                status: 'failed' as const
+            };
+            await storage.persist(
+                { ...current, result: interruptedResult, placementTrace, status: 'interrupted' },
+                'interrupt'
+            );
+        },
         current() {
             return current;
         },
