@@ -1,4 +1,6 @@
+import type { ConfigLoader } from '../config/config.ts';
 import type {
+    HistoryCommands,
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
     CommandLineCommand,
@@ -6,11 +8,13 @@ import type {
 } from './command-line-command.ts';
 
 export type CommandLineCommandLoaders = {
+    readonly loadConfig: ConfigLoader;
     readonly loadBaselineCommands: () => Promise<CommandLineBaselineCommands>;
     readonly loadBenchmarkCommands: () => Promise<CommandLineBenchmarkCommands>;
 };
 
 export type CommandLineCommandNamespace = {
+    readonly history: HistoryCommands;
     readonly baseline: CommandLineBaselineCommands;
     readonly bench: CommandLineBenchmarkCommands;
 };
@@ -41,8 +45,34 @@ function routeBenchmarkCommand<Request>(
     };
 }
 
+async function loadHistoryCommands(loadConfig: ConfigLoader): Promise<HistoryCommands> {
+    const { createHistoryCommands } = await import('./history-commands.ts');
+    return createHistoryCommands(loadConfig);
+}
+function createHistoryRoutes(loadConfig: ConfigLoader): HistoryCommands {
+    return {
+        async list(request) {
+            const commands = await loadHistoryCommands(loadConfig);
+            return await commands.list(request);
+        },
+        async prune(request) {
+            const commands = await loadHistoryCommands(loadConfig);
+            return await commands.prune(request);
+        },
+        async compact(request) {
+            const commands = await loadHistoryCommands(loadConfig);
+            return await commands.compact(request);
+        },
+        async clear(request) {
+            const commands = await loadHistoryCommands(loadConfig);
+            return await commands.clear(request);
+        }
+    };
+}
+
 export function createCommandLineCommandNamespace(loaders: CommandLineCommandLoaders): CommandLineCommandNamespace {
     return {
+        history: createHistoryRoutes(loaders.loadConfig),
         baseline: {
             apply: routeBaselineCommand(loaders.loadBaselineCommands, function selectApplyCommand(commands) {
                 return commands.apply;

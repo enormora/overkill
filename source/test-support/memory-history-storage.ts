@@ -4,6 +4,11 @@ export function createMemoryHistoryStorage(): HistoryStorage {
     const files = new Map<string, string>();
     let previous: Promise<undefined> = Promise.resolve(undefined);
     return {
+        async beginRun() {
+            return async function releaseRun() {
+                await Promise.resolve();
+            };
+        },
         async read(filePath) {
             return files.get(filePath) ?? null;
         },

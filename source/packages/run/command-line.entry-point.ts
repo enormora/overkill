@@ -18,6 +18,7 @@ export {
 } from './config.entry-point.ts';
 
 const commandLoaders = {
+    loadConfig,
     loadBaselineCommands: loadUnimplementedBaselineCommands,
     async loadBenchmarkCommands() {
         const { createBenchmarkCommands } = await import('../../run/benchmark-commands.ts');
@@ -69,6 +70,7 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
     };
 
     return {
+        history: nodeCommandNamespace.history,
         baseline: nodeCommandNamespace.baseline,
         bench: {
             async calibrate(request) {
@@ -129,6 +131,7 @@ async function loadDefaultRunner(): Promise<CommandLineRunner> {
 const commandNamespace = createCommandLineCommandNamespace(commandLoaders);
 
 export const commandLineRunner: CommandLineRunner = {
+    history: commandNamespace.history,
     baseline: commandNamespace.baseline,
     bench: commandNamespace.bench,
     replayRun: createUnimplementedCommand('replay'),
@@ -146,6 +149,8 @@ export const commandLineRunner: CommandLineRunner = {
 };
 
 export type {
+    HistoryCommands,
+    HistoryCommandRequest,
     CommandLineBaselineCommands,
     CommandLineBenchmarkCommands,
     CommandLineBenchmarkBaselineCommands,

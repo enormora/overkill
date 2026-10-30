@@ -271,3 +271,8 @@ export function createCommandLineErrorResultFromUnknown(error: unknown): Command
 
     return createCommandLineErrorResult(commandLineExitCodes.internalCrash, 'internal error', error);
 }
+
+export type HistoryCommandRequest = ConfigLoadRequest & { readonly dryRun: boolean; readonly yes: boolean; };
+export type HistoryCommands = Readonly<
+    Record<'clear' | 'compact' | 'list' | 'prune', (request: HistoryCommandRequest) => Promise<CommandLineRunnerResult>>
+>;

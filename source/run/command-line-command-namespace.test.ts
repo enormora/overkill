@@ -99,6 +99,9 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const loaders = {
+                    async loadConfig() {
+                        throw new Error('Unexpected history config loading.');
+                    },
                     loadBaselineCommands: testDouble.resolves<LoadBaselineCommands>(baselineCommandsFactory.build()),
                     loadBenchmarkCommands: testDouble.resolves<LoadBenchmarkCommands>(benchmarkCommandsFactory.build())
                 };
@@ -134,6 +137,9 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const loaders = {
+                    async loadConfig() {
+                        throw new Error('Unexpected history config loading.');
+                    },
                     loadBaselineCommands: testDouble.resolves<LoadBaselineCommands>(baselineCommandsFactory.build()),
                     loadBenchmarkCommands: testDouble.resolves<LoadBenchmarkCommands>(benchmarkCommandsFactory.build())
                 };

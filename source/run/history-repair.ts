@@ -117,6 +117,7 @@ function missingRecordFamily(state: RepairState, record: HistoryRecord, context:
     }
     return {
         ...state,
+        index: ingestCompactRecord(state.index, record, { ...context, testFamily: null }),
         dataLoss: true,
         diagnostics: [
             ...state.diagnostics,
@@ -130,9 +131,6 @@ function recoverRecord(state: RepairState, record: HistoryRecord, context: Repai
         return value.id === record.id;
     });
     const testFamily = record.facts?.execution.testFamily ?? previous?.testFamily;
-    if (testFamily === undefined) {
-        return missingRecordFamily(state, record, context);
-    }
     const durations = record.status === 'completed'
         ? ingestDurationState(state.durations, recordDurationContributions(record), {
             run: { id: record.id, startedAt: record.startedAt },
@@ -141,6 +139,9 @@ function recoverRecord(state: RepairState, record: HistoryRecord, context: Repai
             now: context.now
         })
         : state.durations;
+    if (testFamily === undefined) {
+        return missingRecordFamily({ ...state, durations }, record, context);
+    }
     return { ...state, durations, index: ingestCompactRecord(state.index, record, { ...context, testFamily }) };
 }
 

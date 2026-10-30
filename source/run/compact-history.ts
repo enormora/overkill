@@ -49,7 +49,7 @@ export function retainCompactHistory(index: CompactHistory, policy: HistoryPolic
     };
 }
 
-type IngestionContext = { readonly policy: HistoryPolicy; readonly now: string; readonly testFamily: string; };
+type IngestionContext = { readonly policy: HistoryPolicy; readonly now: string; readonly testFamily: string | null; };
 
 function shouldIngestCases(index: CompactHistory, record: HistoryRecord, context: IngestionContext): boolean {
     const existingReceipt = index.receipts.find(function sameRun(value) {
@@ -59,6 +59,21 @@ function shouldIngestCases(index: CompactHistory, record: HistoryRecord, context
         recent(record.startedAt, context.now, context.policy.staleIdentityRetentionDays);
 }
 
+function summariesWithRecord(
+    index: CompactHistory,
+    record: HistoryRecord,
+    testFamily: string | null
+): CompactHistory['summaries'] {
+    if (testFamily === null) {
+        return index.summaries;
+    }
+    return [
+        ...index.summaries.filter(function (value) {
+            return value.id !== record.id;
+        }),
+        historyRunSummary(record, testFamily)
+    ];
+}
 export function ingestCompactRecord(
     index: CompactHistory,
     record: HistoryRecord,
@@ -90,12 +105,7 @@ export function ingestCompactRecord(
         {
             ...index,
             cases: Array.from(cases.values()),
-            summaries: [
-                ...index.summaries.filter(function otherRun(value) {
-                    return value.id !== record.id;
-                }),
-                historyRunSummary(record, testFamily)
-            ],
+            summaries: summariesWithRecord(index, record, testFamily),
             receipts: [
                 ...index.receipts.filter(function otherRun(value) {
                     return value.id !== record.id;

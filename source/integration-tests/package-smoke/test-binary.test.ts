@@ -194,12 +194,49 @@ async function writeReporterPolicySmokeProject(): Promise<void> {
     ]);
 }
 
+const historySmokeConfig = 'history-overkill.config.js';
+async function writeHistorySmokeConfig(): Promise<void> {
+    await fs.mkdir(packageSmokeFolder, { recursive: true });
+    await fs.writeFile(
+        path.join(packageSmokeFolder, historySmokeConfig),
+        "export const config = { runtimeStateDir: 'history-state' };\n"
+    );
+}
+async function assertHistoryCommand(scope: TestScope, args: readonly string[], expected: string): Promise<void> {
+    const result = await spawnNode([ overkillBinEntryPointPath, 'history', ...args, '--config', historySmokeConfig ]);
+    scope.assert.equal(result.code, 0);
+    scope.assert.includes(result.stdout, expected);
+}
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/integration-tests/package-smoke/test-binary.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'packaged history commands support maintenance and clear confirmation',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                await writeHistorySmokeConfig();
+                await assertHistoryCommand(scope, [ 'compact' ], 'Compacted');
+                await assertHistoryCommand(scope, [ 'list' ], 'REPLAY');
+                await assertHistoryCommand(scope, [ 'prune', '--dry-run' ], 'Would remove');
+                const unconfirmed = await spawnNode([
+                    overkillBinEntryPointPath,
+                    'history',
+                    'clear',
+                    '--config',
+                    historySmokeConfig
+                ]);
+                scope.assert.equal(unconfirmed.code, 3);
+                scope.assert.includes(unconfirmed.stderr, 'requires --yes');
+                await assertHistoryCommand(scope, [ 'clear', '--yes' ], 'History cleared.');
+                return scope.assert.collect();
+            }
+        }),
+
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: '@overkill-dev/test package owns the overkill binary',

@@ -11,6 +11,7 @@ import type { ConfiguredRunOrchestrator } from './run-types.ts';
 
 import {
     createCommandLineErrorResultFromUnknown,
+    type HistoryCommands,
     type CommandLineListTestsRequest,
     type CommandLineBaselineCommands,
     type CommandLineBenchmarkCommands,
@@ -36,6 +37,7 @@ import {
 } from './run-timing-collection.ts';
 
 export type CommandLineRunner = {
+    readonly history: HistoryCommands;
     readonly baseline: CommandLineBaselineCommands;
     readonly bench: CommandLineBenchmarkCommands;
     readonly listTests: (request: CommandLineListTestsRequest) => Promise<CommandLineRunnerResult>;
@@ -55,6 +57,7 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
     const commandNamespace = createCommandLineCommandNamespace(dependencies);
 
     return {
+        history: commandNamespace.history,
         baseline: commandNamespace.baseline,
         bench: commandNamespace.bench,
         async listTests(request) {
