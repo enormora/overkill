@@ -46,9 +46,7 @@ export function defineCodec<Value>(definition: PropertyInputCodec<Value>): Prope
     const previousDecoders = definition.previousDecoders.map(
         function snapshotDecoder(decoder: PropertyCodecDecoder<Value>) {
             if (
-                !Number.isSafeInteger(decoder.version) || decoder.version <= 0 ||
-                decoder.version >= definition.version || versions.has(decoder.version) ||
-                typeof decoder.decode !== 'function'
+                decoder.version >= definition.version || versions.has(decoder.version)
             ) {
                 throw new TypeError('Invalid property input codec decoder.');
             }

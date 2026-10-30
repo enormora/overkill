@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { suite, test } from '../packages/test/test.entry-point.ts';
+import { testNode as validation } from './property-codec-validation.test.ts';
 import { testNode as execution } from './property-codec-execution.test.ts';
 import { capturePropertyInput, decodePropertyInput } from './property-graph.ts';
 import { defineCodec } from './property-codec.ts';
@@ -62,6 +63,7 @@ function expressionState(value: unknown): unknown {
 }
 
 export const testNode = suite('property graph codecs', [
+    validation,
     test('round trips every supported standard value family', function (scope) {
         const values: readonly unknown[] = [
             null,

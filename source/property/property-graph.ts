@@ -310,16 +310,7 @@ function restoreGraph(payload: JsonValue, consume: () => void): unknown {
     validateTable(payload);
     const document: unknown = unflatten(payload, {}, {
         operations: {
-            box() {
-                throw new TypeError('Unsupported boxed value.');
-            },
-            fromStringValue() {
-                throw new TypeError('Unsupported native value.');
-            },
             set(target: Readonly<Record<string, unknown>>, key: number | string, value: unknown) {
-                if (!Array.isArray(target) && !String(key).startsWith('$')) {
-                    throw new TypeError('Invalid escaped property key.');
-                }
                 const original = Array.isArray(target) ? key : String(key).slice(1);
                 Object.defineProperty(target, original, {
                     value,
