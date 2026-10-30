@@ -22,6 +22,23 @@ function numericCodec(): PropertyInputCodec<number> {
 }
 
 export const testNode = suite('property codec validation', [
+    test('rejects hidden native state after prototype replacement', function (scope) {
+        for (
+            const value of [
+                new Map([ [ 'key', 1 ] ]),
+                new Set([ 1 ]),
+                new WeakMap(),
+                Promise.resolve(1),
+                new URL('https://example.com')
+            ]
+        ) {
+            Object.setPrototypeOf(value, Object.prototype);
+            scope.assert.throws(function alteredNativeValue() {
+                capturePropertyInput(value, null, consume);
+            }, { name: 'PropertyCodecError' });
+        }
+        return scope.assert.collect();
+    }),
     test('snapshots historical decoder metadata without invoking callbacks', function (scope) {
         let calls = 0;
         const definition = {

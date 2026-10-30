@@ -59,6 +59,13 @@ function graphKind(value: unknown): GraphKind {
     if (kind === undefined || !Object.isExtensible(value)) {
         throw new TypeError('Unsupported property input brand or object state.');
     }
+    if (
+        kind === 'record' && Object.values(types).some(function nativeState(isNative) {
+            return isNative(value);
+        })
+    ) {
+        throw new TypeError('Native values with altered prototypes require a custom codec.');
+    }
     return kind;
 }
 
@@ -166,7 +173,9 @@ function inspectGraph(root: unknown, consume: () => void): readonly RegexState[]
 
 function graphPayload(value: unknown, consume: () => void): JsonValue {
     const expressions = inspectGraph(value, consume);
-    return z.json().parse(JSON.parse(stringify({ value, expressions }, {}, {
+    const document = { value, expressions };
+    structuredClone(document);
+    return z.json().parse(JSON.parse(stringify(document, {}, {
         operations: {
             isThenable() {
                 return false;
