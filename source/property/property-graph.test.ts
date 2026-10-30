@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { suite, test } from '../packages/test/test.entry-point.ts';
+import { testNode as compatibility } from './property-compatibility.test.ts';
 import { testNode as validation } from './property-codec-validation.test.ts';
 import { testNode as execution } from './property-codec-execution.test.ts';
 import { capturePropertyInput, decodePropertyInput } from './property-graph.ts';
@@ -64,7 +65,8 @@ function expressionState(value: unknown): unknown {
 
 export const testNode = suite('property graph codecs', [
     validation,
-    test('round trips every supported standard value family', function (scope) {
+    compatibility,
+    test('round trips every supported standard value family', async function (scope) {
         const values: readonly unknown[] = [
             null,
             undefined,
@@ -94,7 +96,14 @@ export const testNode = suite('property graph codecs', [
             new BigInt64Array([ -1n, 2n ]),
             new BigUint64Array([ 1n, 2n ])
         ];
-        for (const value of values) {
+        const fixtures: unknown = JSON.parse(
+            await readFile(new URL('./fixtures/property-values-v1.json', import.meta.url), 'utf8')
+        );
+        if (!Array.isArray(fixtures) || fixtures.length !== values.length) {
+            throw new TypeError('Expected one fixture per standard value.');
+        }
+        for (const [ index, value ] of values.entries()) {
+            scope.assert.true(isDeepStrictEqual(decodePropertyInput(fixtures[index], null, consume), value));
             const encoded = capturePropertyInput(value, null, consume);
             scope.assert.true(isDeepStrictEqual(decodePropertyInput(encoded, null, consume), value));
         }
@@ -131,7 +140,7 @@ export const testNode = suite('property graph codecs', [
             await readFile(new URL('./fixtures/property-graph-v1.json', import.meta.url), 'utf8')
         );
         const value = decodePropertyInput(input, null, consume);
-        scope.assert.deepEqual(capturePropertyInput(value, null, consume), input);
+        scope.assert.equal(expressionState(value), 2);
         if (typeof value !== 'object' || value === null) {
             throw new TypeError('Expected a fixture graph.');
         }

@@ -135,7 +135,15 @@ values, bigint, plain and null-prototype records, dates, regex state, maps, sets
 and fixed binary buffers and views. Functions, symbols, proxies, accessors,
 nonstandard descriptors, extra built-in properties, Buffer, and shared,
 resizable, or detached buffers require an explicit custom codec. Each capture
-records separate transport and input-codec versions.
+records separate transport and input-codec versions. Reads select the exact stored
+transport and codec version. Custom codecs support their current version and
+versions declared in `previousDecoders`. Unsupported identities and decoder
+failures are errors, without fallback. Captures always write the current format
+and codec version. Reading never re-encodes an input.
+
+Internal explicit migration decodes the stored input, re-encodes with the current
+writer, and validates the result without modifying the source. File migration
+and corpus commands remain unavailable until their runner milestone.
 
 ## Failure confirmation and shrinking
 
@@ -164,7 +172,7 @@ automatic edges and new exploration. Only accepted exploration counts toward
 earlier failure stops the invocation. Work or generation exhaustion before
 required checks complete produces an inconclusive outcome.
 
-Disk-backed regression corpora, codec execution, witness replay,
+Disk-backed regression corpora, witness replay,
 and public phase diagnostics follow in their respective milestones. Direct engine execution requires resolved property policy;
 `ExecuteOptions.propertyRun` supplies its run seed and project root; omitted
 context defaults to seed zero and an unknown project root. Configured runner execution supplies the resolved run seed automatically.
