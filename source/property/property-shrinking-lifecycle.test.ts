@@ -1,11 +1,122 @@
+import { createDeterministicClock } from '@enormora/clock';
 import { runIfMain } from '#test-runner';
+import { createTimedTestEngine } from '../test-support/create-test-engine.ts';
+import { resolveTestPlanCollectionPolicy } from '../run/run-test-plan.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
-import { serializeValue } from '../packages/engine/engine.entry-point.ts';
+import {
+    createRoot,
+    createTestPlan,
+    serializeValue,
+    type ExecuteOptions,
+    type RunResult,
+    type TestScope
+} from '../packages/engine/engine.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
+async function executeShrinkDeadline(timeoutPolicy: NonNullable<ExecuteOptions['timeoutPolicy']>): Promise<RunResult> {
+    const clock = createDeterministicClock({ initialUnixEpochMicroseconds: 0n });
+    const engine = createTimedTestEngine(clock);
+    const node = property({
+        title: 'deadline during shrinking',
+        generator: gen.integer({ min: 0, max: 100 }),
+        examples: [ function () {
+            return 100;
+        } ],
+        test(value, sample) {
+            if (value === 0) {
+                clock.advanceByMilliseconds(
+                    Math.min(timeoutPolicy.timeoutMilliseconds, timeoutPolicy.hardTimeoutMilliseconds)
+                );
+            }
+            sample.assert.fail({ message: 'original failure before deadline' });
+            return sample.assert.collect();
+        }
+    });
+    const plan = resolveTestPlanCollectionPolicy(
+        createTestPlan(createRoot({
+            title: 'deadline',
+            annotations: {},
+            controls: {},
+            children: [ node ]
+        })),
+        {
+            testFamily: 'property',
+            propertyPolicy: propertyExecutionDefaults.policy,
+            timeoutMilliseconds: timeoutPolicy.timeoutMilliseconds
+        }
+    );
+    return await engine.execute(plan, {
+        execution: propertyExecutionDefaults.execution,
+        propertyRun: { seed: 42n, projectRoot: process.cwd() },
+        reporters: [],
+        retryPolicy: null,
+        runFacts: {},
+        startedAt: '2026-10-29T00:00:00.000Z',
+        timeoutPolicy
+    });
+}
+
+function assertDeadlineEvidence(scope: TestScope, result: RunResult): void {
+    const evidence = result.perTest[0]?.property?.invocations[0];
+    scope.require.defined(evidence);
+    scope.assert.equal(evidence.shrinkStatus, 'interrupted');
+    scope.assert.equal(JSON.stringify(evidence.original.input), JSON.stringify(serializeValue(100)));
+    scope.assert.includes(JSON.stringify(evidence.retained.failure), 'original failure before deadline');
+}
+
 export const testNode = suite('shrink lifecycle', [
+    test('retains confirmed evidence when an engine deadline interrupts shrinking', async function (scope) {
+        const result = await executeShrinkDeadline({ timeoutMilliseconds: 100, hardTimeoutMilliseconds: 10 });
+        scope.assert.equal(result.summary.crashed, 1);
+        assertDeadlineEvidence(scope, result);
+        scope.assert.equal(
+            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained.input),
+            JSON.stringify(serializeValue(100))
+        );
+        scope.assert.includes(JSON.stringify(result.runnerErrors), 'hard-timeout');
+        return scope.assert.collect();
+    }),
+    test('retains matching evidence alongside the native soft timeout', async function (scope) {
+        const result = await executeShrinkDeadline({ timeoutMilliseconds: 10, hardTimeoutMilliseconds: 100 });
+        scope.assert.equal(result.summary.failed, 1);
+        assertDeadlineEvidence(scope, result);
+        scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'timeout');
+        return scope.assert.collect();
+    }),
+    test(
+        'retains the confirmed failure when a dependent shrink domain is exhausted',
+        async function (scope: TestScope) {
+            let calls = 0;
+            const result = await executePropertyNode(
+                property({
+                    title: 'dependent shrink domain exhaustion',
+                    settings: { maxSize: 1 },
+                    generator: gen.boolean().flatMap(function bounded(flag) {
+                        return gen.array(gen.constant(1), { minLength: flag ? 1 : 2, maxLength: flag ? 1 : 2 });
+                    }),
+                    test(_value, sample) {
+                        calls += 1;
+                        sample.assert.fail({ message: 'retained dependent failure' });
+                        return sample.assert.collect();
+                    }
+                }),
+                { ...propertyExecutionDefaults, seed: 43n }
+            );
+            const evidence = result.perTest[0]?.property?.invocations[0];
+            scope.require.defined(evidence);
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.equal(result.summary.inconclusive, 0);
+            scope.assert.equal(calls, 2);
+            scope.assert.equal(evidence.shrinkStatus, 'search-exhausted');
+            scope.assert.equal(
+                JSON.stringify(evidence.retained.input),
+                JSON.stringify(serializeValue([ 1 ]))
+            );
+            return scope.assert.collect();
+        }
+    ),
     test('reconstructs mutable mapped inputs for confirmation and every candidate', async function (scope) {
         const seen: number[] = [];
         const result = await executePropertyNode(

@@ -191,6 +191,8 @@ export function applyEvent(
         applyTestStartEvent(event, state, cases, observedAtMicroseconds);
     } else if (event.kind === 'test-end') {
         applyTestEndEvent(event, state, observedAtMicroseconds);
+    } else if (event.kind === 'property-progress') {
+        state.recordPropertyProgress(workIdentityKey(event.workId), event.attempt, event.property);
     } else if (event.kind === 'benchmark-progress') {
         state.recordBenchmarkProgress(workIdentityKey(event.workId), event.benchmark);
     } else if (event.kind === 'runner-error') {

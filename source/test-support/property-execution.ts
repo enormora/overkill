@@ -2,6 +2,7 @@ import {
     createRoot,
     createTestPlan,
     type TestNode,
+    type DefinedReporter,
     type PropertyPolicy,
     type ExecuteExecution,
     type RunResult
@@ -11,12 +12,14 @@ import { resolveTestPlanCollectionPolicy } from '../run/run-test-plan.ts';
 import { createTestEngine } from './create-test-engine.ts';
 
 type PropertyExecutionRequest = {
+    readonly reporters: readonly DefinedReporter[];
     readonly policy: PropertyPolicy;
     readonly execution: ExecuteExecution;
     readonly seed: bigint;
 };
 
 export const propertyExecutionDefaults: PropertyExecutionRequest = {
+    reporters: [],
     policy: { ...defaultPropertyPolicy, newTrials: 3, maxAutomaticEdges: 0, maxExhaustiveValues: 0 },
     execution: { mode: 'serial-in-process' },
     seed: 42n
@@ -35,7 +38,7 @@ export async function executePropertyNode(node: TestNode, request: PropertyExecu
     return await createTestEngine().execute(plan, {
         execution: request.execution,
         propertyRun: { seed: request.seed, projectRoot: process.cwd() },
-        reporters: [],
+        reporters: request.reporters,
         retryPolicy: null,
         runFacts: {},
         startedAt: '2026-10-26T00:00:00.000Z'

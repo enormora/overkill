@@ -1,17 +1,9 @@
-import { observeCaseResourceOwners } from './resource-owner-observation.ts';
+import type { CaseReportingContext, ExecuteCaseInput } from './case-attempt-context.ts';
+import { executeTimedLeakCheckedCase } from './case-body-observation.ts';
 import {
-    caseWithAsyncLeakPolicy,
     hasCasePolicyErrors,
-    completeCaseWithAsyncLeakPolicy,
-    type AsyncLeakCheckedCase,
-    type AsyncLeakDependencies
+    completeCaseWithAsyncLeakPolicy
 } from './execution-async-leak-policy.ts';
-import type { NormalizedExecuteOptions } from './execution-options.ts';
-import {
-    executeCaseBody,
-    type ExecutionSupervision,
-    type ExecutionSupervisionDependencies
-} from './execution-supervision.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import { reportRunnerErrorEvents } from './runner-error-reporting.ts';
 import type { PerTestResult, RunnerError } from './run-result.ts';
@@ -19,7 +11,7 @@ import { retryPolicyAllowsAttempt } from './retry-policy.ts';
 import { caseAttemptHistory, resultWithAttemptHistory } from './test-attempt-history.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
-export type ExecutionCaseDependencies = AsyncLeakDependencies & ExecutionSupervisionDependencies;
+export type ExecutionCaseDependencies = CaseReportingContext['dependencies'];
 
 export type ReportedCase = {
     readonly executionWindow: TimingWindow;
@@ -39,25 +31,6 @@ type ReportTestEndInput = {
     readonly result: PerTestResult;
     readonly testCase: TestPlanCase;
     readonly durationMicroseconds: number;
-};
-
-type CaseReportingContext = {
-    readonly dependencies: ExecutionCaseDependencies;
-    readonly reporterDelivery: Pick<ReporterDelivery, 'reportEvent'>;
-};
-
-export type ExecuteCaseInput = {
-    readonly attempt: number;
-    readonly context: CaseReportingContext;
-    readonly options: NormalizedExecuteOptions;
-    readonly supervision: ExecutionSupervision;
-    readonly testCase: TestPlanCase;
-};
-
-type TimedLeakCheckedCase = {
-    readonly endedAtMicroseconds: number;
-    readonly leakCheckedCase: AsyncLeakCheckedCase;
-    readonly startedAtMicroseconds: number;
 };
 
 export async function reportTestStart(
@@ -94,76 +67,6 @@ async function reportTestEnd(
         durationMicroseconds: input.durationMicroseconds,
         workId: input.testCase.workId
     });
-}
-
-async function reportBenchmarkProgress(
-    input: ExecuteCaseInput,
-    benchmark: NonNullable<PerTestResult['benchmark']>
-): Promise<void> {
-    const errors = await input.context.dependencies.asyncLeakMonitor.runOutsideCase(
-        async function deliverCheckpoint() {
-            return input.context.reporterDelivery.reportEvent({
-                kind: 'benchmark-progress',
-                benchmark,
-                attempt: input.attempt,
-                case: input.testCase.id,
-                definitionLocations: input.testCase.definitionLocations,
-                suitePath: input.testCase.suitePath,
-                workId: input.testCase.workId
-            });
-        }
-    );
-    for (const error of errors) {
-        input.supervision.recordRunnerError(error);
-    }
-}
-
-async function runObservedCase(input: ExecuteCaseInput): Promise<Awaited<ReturnType<typeof executeCaseBody>>> {
-    return await executeCaseBody({
-        seed: input.options.seed,
-        async onBenchmarkUpdate(benchmark) {
-            await reportBenchmarkProgress(input, benchmark);
-        },
-        propertyRun: input.options.propertyRun,
-        testCase: input.testCase,
-        timeoutPolicy: input.options.timeoutPolicy,
-        supervision: input.supervision,
-        dependencies: input.context.dependencies,
-        attempt: { index: input.attempt }
-    });
-}
-
-async function executeTimedLeakCheckedCase(input: ExecuteCaseInput): Promise<TimedLeakCheckedCase> {
-    const startedAtMicroseconds = Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds);
-    const observedCase = await observeCaseResourceOwners(
-        input.context.dependencies.readActiveResourceTypes,
-        async function observeOwners() {
-            return await input.context.dependencies.asyncLeakMonitor.runCase(
-                input.testCase,
-                async function runCase() {
-                    return await runObservedCase(input);
-                }
-            );
-        }
-    );
-    const leakCheckedCase = await caseWithAsyncLeakPolicy({
-        readResourceBaseline() {
-            return observedCase.baseline;
-        },
-        ambiguousResources() {
-            return observedCase.ambiguousResources;
-        },
-        dependencies: input.context.dependencies,
-        executedCase: observedCase.result,
-        includeActiveResourceLeaks: input.options.execution.mode === 'serial-in-process',
-        testCase: input.testCase
-    });
-
-    return {
-        endedAtMicroseconds: Number(input.context.dependencies.wallClock.currentMonotonicMicroseconds),
-        leakCheckedCase,
-        startedAtMicroseconds
-    };
 }
 
 function attributeCaseAttempt(input: ExecuteCaseInput, errors: readonly RunnerError[]): readonly RunnerError[] {

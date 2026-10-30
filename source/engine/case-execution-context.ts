@@ -1,13 +1,14 @@
 import type { PropertyRunContext } from './property-execution-host.ts';
 import type { BenchmarkAttempt } from './benchmark-attempt.ts';
 import type { AttemptId } from './identity.ts';
-import type { RunnerError } from './run-result.ts';
+import type { PropertyCaseEvidence, RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
 export type CaseExecutionOptions = {
     readonly seed: bigint;
     readonly propertyRun: PropertyRunContext;
     readonly benchmarkEnvironment: BenchmarkAttempt['benchmarkEnvironment'];
+    readonly onPropertyUpdate: (property: PropertyCaseEvidence) => Promise<void>;
     readonly onBenchmarkUpdate: BenchmarkAttempt['updateResult'];
     readonly attempt: AttemptId;
     readonly controller: AbortController;

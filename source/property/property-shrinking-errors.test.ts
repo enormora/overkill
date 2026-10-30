@@ -1,7 +1,11 @@
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
-import { serializeValue, type PropertyCaseEvidence } from '../packages/engine/engine.entry-point.ts';
+import {
+    serializeValue,
+    defineReporter,
+    type PropertyCaseEvidence
+} from '../packages/engine/engine.entry-point.ts';
 import { propertyEvidenceSchema } from '../run/property-evidence-schema.ts';
 import { formatPropertyDiagnostics } from '../reporters/failure-summary.ts';
 import { gen } from './generators.ts';
@@ -40,7 +44,66 @@ function withAdapterDiagnostic(evidence: PropertyCaseEvidence): PropertyCaseEvid
     };
 }
 
+const rejectPropertyProgress = defineReporter(function rejectCheckpoints() {
+    return {
+        kind: 'real-time',
+        name: 'reject property checkpoints',
+        sinks: [],
+        dispose: null,
+        onFinish: null,
+        onEvent(event) {
+            if (event.kind === 'property-progress') {
+                throw new Error('Property checkpoint delivery failed.');
+            }
+        }
+    };
+});
+
 export const testNode = suite('shrink failure paths', [
+    test('retains an example when compatible shrink state is unavailable', async function (scope) {
+        let calls = 0;
+        const result = await executePropertyNode(
+            property({
+                title: 'mapped example without provenance',
+                generator: gen.integer({ min: 0, max: 100 }).map(function fresh(value) {
+                    return { value };
+                }),
+                examples: [ function () {
+                    return { value: 100 };
+                } ],
+                test(_value, sample) {
+                    calls += 1;
+                    sample.assert.fail({ message: 'original example failure' });
+                    return sample.assert.collect();
+                }
+            }),
+            propertyExecutionDefaults
+        );
+        scope.assert.equal(calls, 1);
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.shrinkStatus, 'shrink-state-unavailable');
+        scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'original example failure');
+        return scope.assert.collect();
+    }),
+    test('reports checkpoint delivery errors without losing failure evidence', async function (scope) {
+        const node = property({
+            title: 'failed checkpoint delivery',
+            generator: gen.constant(1),
+            test(_value, sample) {
+                sample.assert.fail({ message: 'retained assertion failure' });
+                return sample.assert.collect();
+            }
+        });
+        const result = await executePropertyNode(node, {
+            ...propertyExecutionDefaults,
+            reporters: [ rejectPropertyProgress ]
+        });
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.includes(JSON.stringify(result.runnerErrors), 'Property checkpoint delivery failed.');
+        scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'retained assertion failure');
+        scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.shrinkStatus, 'search-exhausted');
+        return scope.assert.collect();
+    }),
     test('explicit keys distinguish failures at the same assertion location', async function (scope) {
         const result = await executePropertyNode(
             property({
@@ -90,11 +153,34 @@ export const testNode = suite('shrink failure paths', [
         );
         scope.assert.deepEqual(formatPropertyDiagnostics(withAdapterDiagnostic(evidence)), [
             `Property declared-property: Unrelated failures observed during shrinking (${count})`,
-            'Property declared-property: adapter diagnostic (1)'
+            'Property declared-property: adapter diagnostic (1)',
+            'Property declared-property: Shrinking exhausted the candidate search (1)'
         ]);
         return scope.assert.collect();
     }),
 
+    test('reads historical evidence without inventing a termination status', async function (scope) {
+        const evidence = await observedUnrelatedFailure();
+        const historical = {
+            invocations: evidence.invocations.map(function legacy(invocation) {
+                return Object.fromEntries(
+                    Object.entries(invocation).filter(function historicalField([ key ]) {
+                        return key !== 'shrinkStatus';
+                    })
+                );
+            })
+        };
+        const decoded = propertyEvidenceSchema.parse(historical);
+        scope.assert.equal(decoded.invocations[0]?.shrinkStatus, null);
+        scope.assert.throws(function invalidStatus() {
+            propertyEvidenceSchema.parse({
+                invocations: evidence.invocations.map(function malformed(invocation) {
+                    return { ...invocation, shrinkStatus: 'unknown-status' };
+                })
+            });
+        }, { name: 'ZodError' });
+        return scope.assert.collect();
+    }),
     test('rejects nonstring and blank stable keys before admitting another input', async function (scope) {
         for (const key of [ undefined, 42, '', ' '.repeat(3) ]) {
             let calls = 0;

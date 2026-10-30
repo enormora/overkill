@@ -9,7 +9,8 @@ import type {
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createPropertyEvidenceRecorder } from './property-evidence.ts';
-import type { TestContractFailure, PropertyInvocationEvidence } from './run-result.ts';
+import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
+import type { TestContractFailure } from './run-result.ts';
 
 type RecordedAssertion = {
     readonly assertion: AssertionNode | null;

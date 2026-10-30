@@ -183,9 +183,20 @@ type BenchmarkProgressReporterEvent = {
     readonly workId: WorkId;
 };
 
+type PropertyProgressReporterEvent = {
+    readonly attempt: number;
+    readonly case: CaseId;
+    readonly definitionLocations: TestPlanCase['definitionLocations'];
+    readonly suitePath: TestPlanCase['suitePath'];
+    readonly workId: WorkId;
+    readonly kind: 'property-progress';
+    readonly property: PropertyCaseEvidence;
+};
+
 type RunReporterEvent = RunEndReporterEvent | RunnerErrorReporterEvent | RunStartReporterEvent;
 type SuiteReporterEvent = SuiteEndReporterEvent | SuiteStartReporterEvent;
 type TestReporterEvents = {
+    readonly property: PropertyProgressReporterEvent;
     readonly benchmark: BenchmarkProgressReporterEvent;
     readonly end: TestEndReporterEvent;
     readonly progress: TestProgressReporterEvent;

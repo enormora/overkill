@@ -44,6 +44,9 @@ function createTimedBenchmark(): TimedBenchmark {
     const execution = executeCaseBody({
         seed: 0n,
         propertyRun: { seed: 0n, projectRoot: null },
+        async onPropertyUpdate() {
+            return undefined;
+        },
         async onBenchmarkUpdate() {
             return undefined;
         },

@@ -1189,6 +1189,9 @@ invocation are scope-contract failures. Stop admitting inputs and finish cleanup
 for admitted work before completing the case.
 
 Before shrinking, a fresh reconstruction must reproduce the original failure.
+After candidate search completes, confirm the retained counterexample again.
+Both confirmations use the existing total and shrink work budgets; no extra
+confirmation budget is reserved.
 If rechecking the same retained input passes or produces an unrelated failure,
 the run stays failed, reports a non-reproducible failure, retains both observed
 outcomes, and stops shrinking. The same rule applies if a later confirmation

@@ -117,7 +117,8 @@ export const testNode = suite('property trial scopes', [
         });
         const result = await executePropertyNode(node, propertyExecutionDefaults);
         scope.assert.equal(result.summary.failed, 1);
-        scope.assert.deepEqual(values, [ 1, 1 ]);
+        scope.assert.deepEqual(values, [ 1, 1, 1 ]);
+        scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.shrinkStatus, 'search-exhausted');
         scope.assert.equal(result.perTest[0]?.outcome?.kind, 'fail');
         scope.assert.equal(JSON.stringify(result.perTest).includes('body-error'), false);
         scope.assert.equal(JSON.stringify(result.perTest).includes('plan-mismatch'), false);
