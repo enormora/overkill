@@ -260,6 +260,28 @@ corpus.
 History lock acquisition waits up to 5 seconds by default. A lock older than
 2 minutes may be treated as stale, broken, and reported as a diagnostic.
 
+Per-run artifact retention is independent of detailed-record and summary
+retention. Before pruning a record whose artifacts survive, maintenance writes
+versioned retention metadata beside its artifacts. Unknown artifact ownership
+or invalid metadata fails pruning before deletion.
+
+Successful runs retain their place in the artifact retention window even when
+they produced no artifacts and their detailed records and summaries expire.
+
+Successful runs retain their place in the artifact retention window even when
+they produced no artifacts and their detailed records and summaries expire.
+
+Pruning preserves detailed records needed to repair incomplete history commits.
+Run `overkill history compact` before retrying when pruning reports a repair
+requirement. Repair preserves known case outcomes even when a run summary
+cannot be recovered.
+
+Persisted runs register ownership before their first record write and release
+it after completion or interruption. Explicit prune, compact, and clear reject
+live owners while holding the shared project lock. Abandoned local owners can
+be recovered after their process exits. Maintenance must not overlap older
+runner versions that lack ownership registration.
+
 ## Ordering
 
 If ordering is randomized, the ordering must be replayable.

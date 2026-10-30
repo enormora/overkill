@@ -118,6 +118,7 @@ export type ProjectProcessUsageConfig = ParsedProjectProcessUsageConfig;
 export type ProjectTimingProfilePolicy = ParsedProjectTimingProfilePolicy;
 export type ProjectTimeoutConfig = ParsedProjectTimeoutConfig;
 export type Config = {
+    readonly history?: ParsedProjectConfig['history'];
     readonly loader?: ParsedProjectConfig['loader'];
     readonly outputRenderer?: ParsedProjectConfig['outputRenderer'];
     readonly profiles?: ProjectProfilesConfig | undefined;
@@ -513,10 +514,6 @@ function normalizeProfile(
     return normalizeMicrotestProfile(profile, configPath);
 }
 
-function defaultMicrotestProfile(): MicrotestProfileConfig {
-    return normalizeMicrotestProfile({ testFamily: 'microtest' }, null);
-}
-
 function normalizeConfiguredProfiles(
     profiles: ParsedProjectConfig['profiles'],
     configPath: string | null
@@ -530,7 +527,7 @@ function normalizeConfiguredProfiles(
     }
 
     if (normalizedProfiles.microtest === undefined) {
-        normalizedProfiles.microtest = defaultMicrotestProfile();
+        normalizedProfiles.microtest = normalizeMicrotestProfile({ testFamily: 'microtest' }, null);
     }
 
     return normalizedProfiles;

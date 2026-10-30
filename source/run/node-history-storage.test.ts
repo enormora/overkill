@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -63,6 +63,21 @@ async function assertRecordEnumeration(scope: TestScope, store: HistoryStorage, 
 }
 
 export const testNode = suite('history locking', [
+    test('failed lease acquisition removes its provisional ownership metadata', async function (scope: TestScope) {
+        const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
+        const store = createNodeHistoryStorage(directory, defaultHistoryPolicy);
+        try {
+            await mkdir(path.join(directory, 'active-runs', 'collision.json.lease'), { recursive: true });
+            await scope.assert.rejects(async function () {
+                return store.beginRun('collision');
+            }, { message: 'Lock file is already being held' });
+            scope.assert.equal(await store.read(path.join(directory, 'active-runs', 'collision.json')), null);
+        } finally {
+            await rm(directory, { recursive: true, force: true });
+        }
+        return scope.assert.collect();
+    }),
+
     test('independent stores serialize read-modify-write operations', async function (scope: TestScope) {
         const directory = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-'));
         const first = createNodeHistoryStorage(directory, defaultHistoryPolicy);

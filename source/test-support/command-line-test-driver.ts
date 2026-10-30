@@ -118,6 +118,12 @@ function createRunner(
     result: CommandLineRunnerResult | Error
 ): CommandLineRunner {
     return {
+        history: {
+            list: unexpectedCommand,
+            prune: unexpectedCommand,
+            compact: unexpectedCommand,
+            clear: unexpectedCommand
+        },
         baseline: {
             apply: unexpectedCommand,
             bootstrap: unexpectedCommand,

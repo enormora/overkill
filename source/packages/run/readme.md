@@ -623,3 +623,48 @@ History is derived state, not a replay source. Interrupted runs do not add
 case/work observations. Persistence failures fail the run. History CLI,
 last-failed selection, and automatic record/artifact pruning are separate
 features.
+
+### History
+
+`overkill history list` displays persisted run summaries, including summaries
+whose detailed records have been pruned. `overkill history compact` rebuilds
+history from retained records and reports potential recovery losses.
+
+Use `overkill history prune --dry-run` to preview retention, then
+`overkill history prune` to apply it. Global `history.detailedRunLimit`,
+`successfulArtifactRunLimit`, and `failingArtifactRetentionDays` default to
+20 records, 5 successful artifact runs, and 7 days of unsuccessful artifacts.
+Artifacts can survive their detailed record and summary through per-run
+retention metadata.
+
+`overkill history clear` asks for confirmation in a terminal; scripts require
+`--yes`. It preserves baselines, witnesses, corpus, and unrelated runtime files.
+All four commands accept `--config <path>` and operate relative to the current
+working directory without discovering or executing tests.
+
+Programmatic callers can use explicit configuration without config loading:
+
+```ts
+import { createHistory, normalizeConfig } from '@overkill-dev/run';
+
+const history = createHistory({
+    projectRoot: process.cwd(),
+    config: normalizeConfig({})
+});
+await history.list();
+await history.prune({ dryRun: true });
+await history.compact();
+await history.clear({ confirmed: true });
+```
+
+Prune, compact, and clear reject active persisted runs. Ownership is registered
+before persistence and released after completion or interruption. Do not run
+maintenance concurrently with older runner versions lacking ownership tracking.
+
+Successful runs retain their place in the artifact retention window even when
+they produced no artifacts and their detailed records and summaries expire.
+
+Pruning preserves detailed records needed to repair incomplete history commits.
+Run `overkill history compact` before retrying when pruning reports a repair
+requirement. Repair preserves known case outcomes even when a run summary
+cannot be recovered.

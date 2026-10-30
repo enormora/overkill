@@ -39,17 +39,30 @@ export function createRunRecordSession(
         }
     });
 
+    let releaseOwner: (() => Promise<void>) | null = null;
     let placementTrace: RunRecord['placementTrace'] = null;
     return {
         async checkpointResult(result) {
             return await storage.result(result, 'started', { placementTrace });
         },
         async complete(result) {
-            return await storage.result(result, 'completed', { placementTrace });
+            try {
+                return await storage.result(result, 'completed', { placementTrace });
+            } finally {
+                const release = releaseOwner;
+                releaseOwner = null;
+                await release?.();
+            }
         },
         id: value.id,
         async interrupt(error) {
-            await storage.interrupt(error, placementTrace);
+            try {
+                await storage.interrupt(error, placementTrace);
+            } finally {
+                const release = releaseOwner;
+                releaseOwner = null;
+                await release?.();
+            }
         },
         path: filePath,
         retainPlacementTrace(trace) {
@@ -65,7 +78,15 @@ export function createRunRecordSession(
             }, 'facts');
         },
         async start(coverage) {
-            await storage.persist({ ...storage.current(), coverage }, 'start');
+            releaseOwner = await dependencies.history.beginRun(value.id);
+            try {
+                await storage.persist({ ...storage.current(), coverage }, 'start');
+            } catch (error: unknown) {
+                const release = releaseOwner;
+                releaseOwner = null;
+                await release();
+                throw error;
+            }
         }
     };
 }

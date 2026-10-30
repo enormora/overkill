@@ -324,6 +324,23 @@ async function benchmarkCommandResult(
     return parsed.command === 'baseline' ? await parsed.value.value : await parsed.value;
 }
 
+type ParsedHistory = {
+    readonly command: 'history';
+    readonly value: { readonly value: Promise<CommandLineRunnerResult>; };
+};
+type ParsedRoot = ParsedHistory | {
+    readonly command: 'bench';
+    readonly value: ParsedBenchmarkBaseline | ParsedBenchmarkRun;
+} | { readonly command: 'list' | 'run'; readonly value: Promise<CommandLineRunnerResult>; };
+async function resolvedCommandResult(parsed: ParsedRoot): Promise<CommandLineRunnerResult> {
+    if (parsed.command === 'bench') {
+        return await benchmarkCommandResult(parsed.value);
+    }
+    if (parsed.command === 'history') {
+        return await parsed.value.value;
+    }
+    return await parsed.value;
+}
 export async function dispatchOverkillCommand(
     commandArguments: readonly string[],
     loadRunner: () => Promise<CommandLineRunner>,
@@ -427,20 +444,66 @@ export async function dispatchOverkillCommand(
         }
     });
 
+    const historyCommand = subcommands({
+        name: 'history',
+        cmds: {
+            list: command({
+                name: 'list',
+                args: { configPath: configPathArgument },
+                async handler(args) {
+                    const runner = await loadRunner();
+                    return await runner.history.list({ cwd, configPath: args.configPath, dryRun: false, yes: false });
+                }
+            }),
+            prune: command({
+                name: 'prune',
+                args: { configPath: configPathArgument, dryRun: flag({ long: 'dry-run' }) },
+                async handler(args) {
+                    const runner = await loadRunner();
+                    return await runner.history.prune({
+                        cwd,
+                        configPath: args.configPath,
+                        dryRun: args.dryRun,
+                        yes: false
+                    });
+                }
+            }),
+            compact: command({
+                name: 'compact',
+                args: { configPath: configPathArgument },
+                async handler(args) {
+                    const runner = await loadRunner();
+                    return await runner.history.compact({
+                        cwd,
+                        configPath: args.configPath,
+                        dryRun: false,
+                        yes: false
+                    });
+                }
+            }),
+            clear: command({
+                name: 'clear',
+                args: { configPath: configPathArgument, yes: flag({ long: 'yes' }) },
+                async handler(args) {
+                    const runner = await loadRunner();
+                    return await runner.history.clear({
+                        cwd,
+                        configPath: args.configPath,
+                        dryRun: false,
+                        yes: args.yes
+                    });
+                }
+            })
+        }
+    });
     const commandLine = subcommands({
         name: 'overkill',
-        cmds: { bench: benchmarkCommand, list: listCommand, run: runCommand }
+        cmds: { history: historyCommand, bench: benchmarkCommand, list: listCommand, run: runCommand }
     });
     const result = await runSafely(commandLine, Array.from(commandArguments));
     const { _tag: parserStatus } = result;
     if (parserStatus === 'error') {
         return { kind: 'parser-exit', exit: result.error.config };
     }
-
-    return {
-        kind: 'command-result',
-        result: result.value.command === 'bench'
-            ? await benchmarkCommandResult(result.value.value)
-            : await result.value.value
-    };
+    return { kind: 'command-result', result: await resolvedCommandResult(result.value) };
 }

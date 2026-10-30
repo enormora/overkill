@@ -26,13 +26,16 @@ function completedRunStatus(result: NonNullable<HistoryRecord['result']>): Histo
     return counts.inconclusive > 0 ? 'inconclusive' : 'passed';
 }
 
+export function historyRunStatus(record: HistoryRecord): HistoryRunSummary['status'] {
+    return record.status === 'completed' ? completedRunStatus(record.result) : 'interrupted';
+}
 export function historyRunSummary(record: HistoryRecord, testFamily: string): HistoryRunSummary {
     return {
         id: record.id,
         startedAt: record.startedAt,
         profile: record.request.profile,
         testFamily,
-        status: record.status === 'completed' ? completedRunStatus(record.result) : 'interrupted',
+        status: historyRunStatus(record),
         durationMicroseconds: record.result?.timings.summary.totalWallTimeMicroseconds ?? null,
         replayable: record.facts !== null
     };

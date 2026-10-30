@@ -271,3 +271,14 @@ export type {
     RunRecordPersistenceReason,
     RunRecordProfilePolicy
 } from '../../config/types.ts';
+
+export { createHistory } from '../../run/history.ts';
+export type {
+    History,
+    HistoryOptions,
+    HistoryRunSummary,
+    HistoryPruneResult,
+    HistoryClearResult,
+    HistoryPruneRequest,
+    HistoryClearRequest
+} from '../../run/history-types.ts';
