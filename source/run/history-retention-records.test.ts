@@ -22,6 +22,12 @@ const catalog = {
     }))
 };
 export const testNode = suite('record and artifact retention', [
+    test('unclassified artifact directories cannot be selected for deletion', function (scope: TestScope) {
+        scope.assert.throws(function () {
+            return selectHistoryRemovals({ ...catalog, metadata: new Map() }, '/state/runs', defaultHistoryPolicy, now);
+        }, { message: /Missing metadata/u });
+        return scope.assert.collect();
+    }),
     test('record count and artifact count and age policies apply independently', function (scope: TestScope) {
         const result = selectHistoryRemovals(catalog, '/state/runs', {
             ...defaultHistoryPolicy,

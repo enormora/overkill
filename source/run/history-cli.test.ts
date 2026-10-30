@@ -1,10 +1,11 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
 
 type CommandOptions = { readonly cwd: string; };
 type CommandOutput = { readonly stdout: string; readonly stderr: string; readonly code: number; };
@@ -22,14 +23,53 @@ async function execute(command: string, args: readonly string[], options: Comman
 }
 const binary = fileURLToPath(new URL('../packages/test/overkill.entry-point.ts', import.meta.url));
 async function inProject(operation: (cwd: string) => Promise<void>): Promise<void> {
-    const cwd = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-command-'));
+    const temporary = await mkdtemp(path.join(os.tmpdir(), 'overkill-history-command-'));
+    const cwd = await realpath(temporary);
     try {
         await operation(cwd);
     } finally {
         await rm(cwd, { recursive: true, force: true });
     }
 }
+async function prepareRuns(cwd: string): Promise<string> {
+    const now = new Date();
+    const record = { ...completedHistoryRecord('completed'), startedAt: now.toISOString() };
+    const runs = path.join(cwd, '.overkill/runs');
+    await mkdir(runs, { recursive: true });
+    await writeFile(
+        path.join(cwd, 'overkill.config.js'),
+        'export const config = { history: { detailedRunLimit: 0 } };'
+    );
+    await writeFile(path.join(runs, 'completed.json'), JSON.stringify(record));
+    await writeFile(
+        path.join(runs, 'interrupted.json'),
+        JSON.stringify({
+            ...record,
+            id: 'interrupted',
+            status: 'interrupted',
+            result: null
+        })
+    );
+    return record.startedAt;
+}
 export const testNode = suite('history CLI', [
+    test('list renders persisted outcomes and prune reports applied removals', async function (scope: TestScope) {
+        await inProject(async function recordedCommands(cwd) {
+            const startedAt = await prepareRuns(cwd);
+            const compact = await execute(process.execPath, [ binary, 'history', 'compact' ], { cwd });
+            scope.assert.equal(compact.code, 0);
+            const list = await execute(process.execPath, [ binary, 'history', 'list' ], { cwd });
+            scope.assert.includes(list.stdout, `completed\t${startedAt}\tunit\tmicrotest\tpassed\t100\tavailable`);
+            scope.assert.includes(
+                list.stdout,
+                `interrupted\t${startedAt}\tunit\tmicrotest\tinterrupted\t\tavailable-interrupted`
+            );
+            const prune = await execute(process.execPath, [ binary, 'history', 'prune' ], { cwd });
+            scope.assert.equal(prune.code, 0);
+            scope.assert.includes(prune.stdout, `Removed ${path.join(cwd, '.overkill/runs/completed.json')}`);
+        });
+        return scope.assert.collect();
+    }),
     test(
         'binary dispatches compact, list, dry-run and confirmed clear without test profiles',
         async function (scope: TestScope) {
