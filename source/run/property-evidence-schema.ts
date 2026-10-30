@@ -3,6 +3,20 @@ import type { PropertyCaseEvidence } from '../engine/run-result.ts';
 import { serializedValueSchema } from './serialized-value-schema.ts';
 
 const observationSchema = z.strictObject({
+    capture: z
+        .discriminatedUnion('kind', [
+            z.strictObject({ kind: z.literal('unavailable') }),
+            z.strictObject({ kind: z.literal('codec-error'), reason: z.string() }),
+            z.strictObject({
+                kind: z.literal('encoded'),
+                input: z.strictObject({
+                    format: z.strictObject({ name: z.string(), version: z.number().int().positive() }),
+                    codec: z.strictObject({ name: z.string(), version: z.number().int().positive() }),
+                    payload: z.json()
+                })
+            })
+        ])
+        .default({ kind: 'unavailable' }),
     input: serializedValueSchema,
     failure: serializedValueSchema
 });

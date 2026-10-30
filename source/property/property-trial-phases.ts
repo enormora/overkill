@@ -1,4 +1,3 @@
-import { serializeValue } from '../packages/engine/engine.entry-point.ts';
 import { observePropertyTrial, type ObservedTrial } from './property-trial-observation.ts';
 import { enumerateDomain } from './generator-enumeration.ts';
 import type { PropertyCoverage } from './property-coverage.ts';
@@ -60,7 +59,7 @@ async function evaluateInput<Value>(
     const value = input();
     work.context.consumeWork();
     const observations = execution.coverage.trial(execution.phase);
-    const observed = await observePropertyTrial(value, serializeValue(value), execution.invocation, {
+    const observed = await observePropertyTrial(value, execution.invocation, {
         ...execution,
         observations
     });

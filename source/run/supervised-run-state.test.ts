@@ -4,6 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     serializeValue,
     type PropertyCaseEvidence,
+    type PropertyFailureObservation,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey, createDefaultWorkId, workIdentityKey, type CaseId } from '../engine/identity.ts';
@@ -102,7 +103,11 @@ function assertRunCapturedOutput(
 }
 
 function propertyCheckpoint(): PropertyCaseEvidence {
-    const observation = { input: serializeValue(100), failure: serializeValue('original failure') };
+    const observation: PropertyFailureObservation = {
+        capture: { kind: 'unavailable' },
+        input: serializeValue(100),
+        failure: serializeValue('original failure')
+    };
     return {
         invocations: [ {
             identity: 'declared-property',

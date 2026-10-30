@@ -1,17 +1,16 @@
 import { runIfMain } from '#test-runner';
+import { propertyErrorInputCodec } from '../test-support/property-error-input.ts';
 import { readPropertyExecutionHost, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
-import { testNode as targeting } from './property-targets.test.ts';
 import { property, withProperties } from './property-authoring.ts';
-import { testNode as exhaustive } from './property-exhaustive.test.ts';
+import { testNode as exploration } from './property-exploration.test.ts';
 import { gen } from './generators.ts';
 import { executeProperty } from './property-execution.ts';
 import type { PropertyExecutionResult } from './property-execution-result.ts';
 
 export const testNode = suite('property trial execution', [
-    exhaustive,
-    targeting,
+    exploration,
     test('executes all five phases in order with independent accounting', async function (scope: TestScope) {
         const observed: number[] = [];
         const captured: PropertyExecutionResult<number>[] = [];
@@ -75,9 +74,12 @@ export const testNode = suite('property trial execution', [
         const log: string[] = [];
         const node = property({
             title: 'fresh graphs',
-            generator: gen.constant(null).map(function () {
-                return { values: [ 1 ], owner: new TypeError('owned') };
-            }),
+            generator: gen
+                .constant(null)
+                .map(function () {
+                    return { values: [ 1 ], owner: new TypeError('owned') };
+                })
+                .withCodec(propertyErrorInputCodec),
             examples: [ function () {
                 return { values: [ 1 ], owner: new TypeError('owned') };
             } ],
@@ -131,7 +133,7 @@ export const testNode = suite('property trial execution', [
             }, function () {
                 return 2;
             } ],
-            settings: { maxWork: 5 },
+            settings: { maxWork: 7 },
             test(value, sample) {
                 seen.push(value);
                 sample.assert.true(value > 0);
@@ -168,7 +170,7 @@ export const testNode = suite('property trial execution', [
         const node = property({
             title: 'exact budget',
             generator: gen.constant(1),
-            settings: { newTrials: 1, maxWork: 9 },
+            settings: { newTrials: 1, maxWork: 11 },
             test(value, sample) {
                 evaluations += 1;
                 sample.assert.equal(value, 1);

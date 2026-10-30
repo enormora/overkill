@@ -8,6 +8,19 @@ declare const numberGenerator: leaf.Generator<number>;
 declare const booleanGenerator: leaf.Generator<boolean>;
 
 describe('property authoring types', function () {
+    test('infers custom codec values on both entry points', function () {
+        const codec = leaf.defineCodec({
+            name: 'numeric',
+            version: 1,
+            previousDecoders: [],
+            encode(value: number) {
+                return value;
+            },
+            decode: Number
+        });
+        expect(codec).type.toBe<leaf.PropertyInputCodec<number>>();
+        expect<typeof standard.defineCodec>().type.toBe<typeof leaf.defineCodec>();
+    });
     test('infers property inputs and injected sample scope', function () {
         const generator = namedGenerator;
         const node = leaf.property({

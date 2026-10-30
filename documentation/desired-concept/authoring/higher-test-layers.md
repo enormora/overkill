@@ -1403,7 +1403,11 @@ replayable when a failure has already been established; before that point they
 are execution errors, never rejected or passing trials. `defineCodec(...)`
 constructs an ordinary versioned codec value;
 `generator.withCodec(codec)` attaches it to the complete generated input.
-Codec callbacks are pure, execute within the supervised property boundary,
+Every trial captures and decodes its input before executing the body, including
+passing trials, shrink candidates, and confirmations. The body receives its
+original generated input; the validation reconstruction is discarded. Captures
+precede body mutation and consume the existing work budget.
+Codec callbacks are pure, synchronous, execute within the supervised property boundary,
 and reconstruct the full input graph, including cross-component aliases.
 
 A corpus entry containing only a decoded value can replay as a regression

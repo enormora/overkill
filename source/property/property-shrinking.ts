@@ -7,6 +7,7 @@ import {
     type PropertyShrinkStatus,
     type PropertyTrialResult
 } from '../packages/engine/engine.entry-point.ts';
+import { PropertyCodecError } from './property-graph.ts';
 import { propertyLabels } from './property-targets.ts';
 import { createCoverage } from './property-coverage.ts';
 import { recipeInput, type GeneratedInput } from './generator-input.ts';
@@ -64,7 +65,7 @@ function shrinkState<Value>(original: FailedExecution<Value>): ShrinkState<Value
             if (failure.trial.kind === 'terminated') {
                 status = 'interrupted';
             }
-            retained = failure;
+            retained = { ...failure, observation: observed };
             observation = observed;
         }
     };
@@ -102,9 +103,8 @@ async function evaluate<Value>(session: ShrinkSession<Value>, input: () => Value
     session.context.signal.throwIfAborted();
     session.work.context.consumeWork();
     const value = input();
-    const preview = serializeValue(value);
     session.work.context.consumeWork();
-    return await observePropertyTrial(value, preview, session.invocation, {
+    return await observePropertyTrial(value, session.invocation, {
         host: session.context.host,
         signal: session.context.signal,
         work: session.work,
@@ -249,10 +249,34 @@ async function shrink<Value>(session: ShrinkSession<Value>): Promise<void> {
 async function failShrinkExecution<Value>(session: ShrinkSession<Value>, error: unknown): Promise<never> {
     session.state.stop('execution-error');
     await diagnose(session, 'execution-error', {
+        capture: { kind: 'unavailable' },
         input: session.state.observation().input,
         failure: serializeValue(error)
     });
     throw error;
+}
+
+async function recordCodecError<Value>(session: ShrinkSession<Value>, error: PropertyCodecError): Promise<void> {
+    session.state.stop('execution-error');
+    const retained = session.state.retained();
+    session.state.replace(retained, {
+        ...session.state.observation(),
+        capture: { kind: 'codec-error', reason: error.message }
+    });
+    await diagnose(session, 'codec-error', {
+        capture: { kind: 'unavailable' },
+        input: retained.observation.input,
+        failure: serializeValue(error)
+    });
+}
+
+async function recordShrinkExhaustion<Value>(session: ShrinkSession<Value>, error: unknown): Promise<void> {
+    const exhaustion = propertyExhaustion(error);
+    if (exhaustion === null) {
+        await failShrinkExecution(session, error);
+    }
+    session.state.stop(exhaustion === 'work-exhausted' ? 'work-exhausted' : 'search-exhausted');
+    await diagnose(session, session.state.status(), null);
 }
 
 async function recordShrinkError<Value>(session: ShrinkSession<Value>, error: unknown): Promise<void> {
@@ -260,12 +284,11 @@ async function recordShrinkError<Value>(session: ShrinkSession<Value>, error: un
         session.state.stop('interrupted');
         throw error;
     }
-    const exhaustion = propertyExhaustion(error);
-    if (exhaustion === null) {
-        await failShrinkExecution(session, error);
+    if (error instanceof PropertyCodecError) {
+        await recordCodecError(session, error);
+        return;
     }
-    session.state.stop(exhaustion === 'work-exhausted' ? 'work-exhausted' : 'search-exhausted');
-    await diagnose(session, session.state.status(), null);
+    await recordShrinkExhaustion(session, error);
 }
 
 async function boundedShrink<Value>(session: ShrinkSession<Value>): Promise<FailedExecution<Value>> {

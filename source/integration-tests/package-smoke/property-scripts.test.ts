@@ -10,8 +10,8 @@ import * as standard from '@overkill-dev/test/property';
 
 function rejectExecution() { throw new Error('Authoring evaluated a callback.'); }
 const generator = leaf.gen.constant(null).map(rejectExecution);
-assert.deepEqual(Object.keys(leaf).sort(), ['gen', 'property', 'withProperties']);
-assert.deepEqual(Object.keys(standard).sort(), ['gen', 'property', 'withProperties']);
+assert.deepEqual(Object.keys(leaf).sort(), ['defineCodec', 'gen', 'property', 'withProperties']);
+assert.deepEqual(Object.keys(standard).sort(), ['defineCodec', 'gen', 'property', 'withProperties']);
 const leafBackend = new URL('../../property/generator.js', import.meta.resolve('@overkill-dev/property'));
 const { prepareGenerator: leafCompiler } = await import(leafBackend);
 const standardManifest = findPackageJSON('@overkill-dev/property', import.meta.resolve('@overkill-dev/test/property'));
@@ -103,7 +103,7 @@ const property = await import('@overkill-dev/test/property');
 const { test } = await import('@overkill-dev/test');
 const node = test('nested', property.withProperties(() => { throw new Error('Body executed during authoring.'); }));
 assert.equal(node.kind, 'test');
-assert.deepEqual(Object.keys(property).sort(), ['gen', 'property', 'withProperties']);
+assert.deepEqual(Object.keys(property).sort(), ['defineCodec', 'gen', 'property', 'withProperties']);
 const real = property.gen.record({ name: property.gen.string(), active: property.gen.boolean() });
 const declared = property.property({
     title: 'real generator', generator: real, test() { throw new Error('Body executed.'); }
