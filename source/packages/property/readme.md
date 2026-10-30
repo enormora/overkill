@@ -121,8 +121,21 @@ deferred until execution.
 `withCodec(codec)` attaches codec metadata to the complete generated input
 without running its callbacks. Filtering preserves the attachment. Mapping,
 dependent composition, and structural constructors clear inherited attachments;
-attach the complete output's codec afterward. Codec execution follows in the
-codec milestone.
+attach the complete output's codec afterward. Inputs are encoded and decoded before each trial body. The body receives the
+original generated input. Codec failures stop execution before a property failure;
+after failure they preserve the failure and mark its capture as unavailable.
+
+Use `defineCodec({ name, version, previousDecoders, encode, decode })` for custom
+inputs. Callbacks must be synchronous and pure. Encode the complete input into
+supported graph data; decode must validate that data and restore its behavior and
+promised aliases. Attaching a codec never invokes callbacks.
+
+Built-in graph JSON preserves cycles, aliases, sparse arrays, numeric special
+values, bigint, plain and null-prototype records, dates, regex state, maps, sets,
+and fixed binary buffers and views. Functions, symbols, proxies, accessors,
+nonstandard descriptors, extra built-in properties, Buffer, and shared,
+resizable, or detached buffers require an explicit custom codec. Each capture
+records separate transport and input-codec versions.
 
 ## Failure confirmation and shrinking
 

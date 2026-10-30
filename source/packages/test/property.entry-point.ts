@@ -1,4 +1,4 @@
-export { gen, property, withProperties } from '../property/property.entry-point.ts';
+export { defineCodec, gen, property, withProperties } from '../property/property.entry-point.ts';
 export type {
     Generator,
     BigintBounds,

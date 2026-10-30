@@ -1,0 +1,44 @@
+{
+    "format": {
+        "name": "overkill-property-graph",
+        "version": 1
+    },
+    "codec": {
+        "name": "overkill-standard-input",
+        "version": 1
+    },
+    "payload": [
+        {
+            "$value": 1,
+            "$expressions": 5
+        },
+        {
+            "$expression": 2,
+            "$shared": 3,
+            "$sparse": 4,
+            "$again": 3,
+            "$self": 1
+        },
+        [
+            "RegExp",
+            "a",
+            "gu"
+        ],
+        {
+            "$value": -6
+        },
+        [
+            -2,
+            -1,
+            -2
+        ],
+        [
+            6
+        ],
+        {
+            "$expression": 2,
+            "$lastIndex": 7
+        },
+        2
+    ]
+}

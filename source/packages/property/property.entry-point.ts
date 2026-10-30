@@ -24,3 +24,5 @@ export type {
     PropertyDefinition,
     PropertySampleScope
 } from '../../property/property-definition.ts';
+
+export { defineCodec } from '../../property/property-codec.ts';

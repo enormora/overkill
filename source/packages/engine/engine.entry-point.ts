@@ -471,6 +471,7 @@ export type { PropertyCaseEvidence } from '../../engine/run-result.ts';
 
 export type {
     PropertyInvocationEvidence,
+    EncodedPropertyInput,
     PropertyFailureObservation,
     PropertyShrinkStatus
 } from '../../engine/property-failure-evidence.ts';

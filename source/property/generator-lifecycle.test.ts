@@ -5,6 +5,7 @@ import {
     generatorContext,
     shrinkCandidates
 } from '../test-support/generator-execution.ts';
+import { testNode as codecs } from './property-graph.test.ts';
 import { gen } from './generators.ts';
 import {
     prepareGenerator,
@@ -41,6 +42,7 @@ function malformedComposition(method: 'filter' | 'flatMap', callback: () => unkn
 }
 
 export const testNode = suite('generator lifecycle', [
+    codecs,
     test('validates predicate results while selecting automatic edges', function (scope) {
         const generator = malformedComposition('filter', function () {
             return null;

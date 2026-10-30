@@ -60,7 +60,7 @@ export const testNode = suite('property authoring', [
             Object.keys(leaf).toSorted(function compareExportNames(left, right) {
                 return left.localeCompare(right);
             }),
-            [ 'gen', 'property', 'withProperties' ]
+            [ 'defineCodec', 'gen', 'property', 'withProperties' ]
         );
         scope.assert.equal(leaf.property, standard.property);
         scope.assert.equal(leaf.withProperties, standard.withProperties);
