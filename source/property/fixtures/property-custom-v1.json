@@ -1,0 +1,18 @@
+{
+    "format": {
+        "name": "overkill-property-graph",
+        "version": 1
+    },
+    "codec": {
+        "name": "date",
+        "version": 1
+    },
+    "payload": [
+        {
+            "$value": 1,
+            "$expressions": 2
+        },
+        "42",
+        []
+    ]
+}

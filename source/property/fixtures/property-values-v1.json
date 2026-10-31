@@ -1,0 +1,597 @@
+[
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 2
+            },
+            null,
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": -1,
+                "$expressions": 1
+            },
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 2
+            },
+            true,
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 2
+            },
+            false,
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 2
+            },
+            "text",
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": -3,
+                "$expressions": 1
+            },
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": -4,
+                "$expressions": 1
+            },
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": -5,
+                "$expressions": 1
+            },
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": -6,
+                "$expressions": 1
+            },
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 2
+            },
+            [
+                "BigInt",
+                "42"
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 2
+            },
+            [
+                "Date",
+                ""
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 2
+            },
+            [
+                "Date",
+                "1970-01-01T00:00:00.042Z"
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "null",
+                "$value",
+                2
+            ],
+            1,
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 4
+            },
+            [
+                "Set",
+                2,
+                3
+            ],
+            "first",
+            "second",
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 6
+            },
+            [
+                "Map",
+                2,
+                3,
+                4,
+                5
+            ],
+            "first",
+            1,
+            "second",
+            2,
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Int8Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "/wI="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Uint8Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AQI="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Uint8ClampedArray",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AQI="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Int16Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "//8CAA=="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Uint16Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AQACAA=="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Int32Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "/////wIAAAA="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Uint32Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AQAAAAIAAAA="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Float16Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AD4AQA=="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Float32Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AADAPwAAAEA="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "Float64Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AAAAAAAA+D8AAAAAAAAAQA=="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "BigInt64Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "//////////8CAAAAAAAAAA=="
+            ],
+            []
+        ]
+    },
+    {
+        "format": {
+            "name": "overkill-property-graph",
+            "version": 1
+        },
+        "codec": {
+            "name": "overkill-standard-input",
+            "version": 1
+        },
+        "payload": [
+            {
+                "$value": 1,
+                "$expressions": 3
+            },
+            [
+                "BigUint64Array",
+                2
+            ],
+            [
+                "ArrayBuffer",
+                "AQAAAAAAAAACAAAAAAAAAA=="
+            ],
+            []
+        ]
+    }
+]
