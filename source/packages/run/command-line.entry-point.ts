@@ -92,7 +92,7 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
 
             return await loadedRunner.listTests(request);
         },
-        replayRun: createUnimplementedCommand('replay'),
+        replayRun: nodeCommandNamespace.replayRun,
         replayWitness: createUnimplementedCommand('replay-witness'),
         async runTests(request) {
             const loadedRunner = await loadRunner();
@@ -134,7 +134,7 @@ export const commandLineRunner: CommandLineRunner = {
     history: commandNamespace.history,
     baseline: commandNamespace.baseline,
     bench: commandNamespace.bench,
-    replayRun: createUnimplementedCommand('replay'),
+    replayRun: commandNamespace.replayRun,
     replayWitness: createUnimplementedCommand('replay-witness'),
     async listTests(request) {
         const runner = await loadDefaultRunner();

@@ -630,5 +630,21 @@ identifies attachment scopes, before resources or cases execute. Reusable
 collection is read-only; each execution receives a fresh record ID.
 
 Required write failures fail the command. Completed records include reporter
-and cleanup errors; escaping exceptions leave interrupted records. History,
-retention, and replay commands are not yet available.
+and cleanup errors; escaping exceptions leave interrupted records. History
+commands and interactive replay selection are available. Recorded-run execution
+is not yet implemented.
+
+## Replay selection
+
+`overkill replay` opens an arrow-key picker over retained replayable records,
+including interrupted records with complete facts. Use Enter to select or
+choose Cancel. Ctrl+C and EOF also cancel successfully. A dumb terminal uses
+a numbered prompt; blank input or `q` cancels.
+
+Without an ID, stdin, stdout, and stderr must be terminals. In scripts, use
+`overkill history list` to find an ID and pass `overkill replay <run-id>`.
+The picker supports `--config` and uses the configured `runtimeStateDir`.
+
+Selection delegates to the explicit-ID replay command. Recorded-run execution
+is not implemented yet, so selecting or supplying an ID currently reports
+that limitation.

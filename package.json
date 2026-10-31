@@ -21,6 +21,7 @@
     "homepage": "https://github.com/enormora/overkill#readme",
     "dependencies": {
         "@enormora/clock": "0.0.3",
+        "@inquirer/select": "5.2.8",
         "@jridgewell/trace-mapping": "0.3.31",
         "@overkill-dev/reporter-line": "0.0.63",
         "@schema-hub/zod-error-formatter": "0.0.19",
