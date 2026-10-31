@@ -60,6 +60,11 @@ picker over replayable retained records, including interrupted records whose
 `RunFacts` are complete. Outside a TTY it is an argument error and points the
 user to `overkill history list`.
 
+The picker lists newest records first and uses arrow keys and Enter, with an
+explicit Cancel choice. `TERM=dumb` uses a numbered prompt instead. Cancellation,
+Ctrl+C, and EOF exit successfully. The interactive path requires terminal input,
+stdout, and stderr; picker output goes to stderr.
+
 `overkill list` prints a plain plan tree: file, suite path, and case title,
 with parameterized cases rendered as `case title [params]`. By default it lists
 only executable planned cases. `--with-orphans` appends orphaned constructed
