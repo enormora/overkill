@@ -20,6 +20,7 @@ import type {
 } from './run-types.ts';
 import type { RunExecutionTransport } from './execution-session-context.ts';
 import type {
+    PropertyCorpusSnapshot,
     PropertyPolicy,
     ReporterEvent,
     RunResult,
@@ -82,6 +83,7 @@ export type SupervisedChildCommand = SupervisedCollectCommand | SupervisedRunCom
 export const supervisedChildCorrelationId = 'supervised-run';
 
 type WorkAssignmentCommand = {
+    readonly corpus: PropertyCorpusSnapshot;
     readonly propertyPolicies: readonly { readonly work: WorkId; readonly policy: PropertyPolicy; }[];
     readonly workloadInputs: readonly FrozenWorkloadInput[];
     readonly attachmentEndpoint: AttachmentEndpoint | null;
@@ -99,6 +101,10 @@ export type SupervisedAssignmentCommand = LegacyCaseAssignmentCommand | WorkAssi
 
 function hasAssignedWork(assignment: SupervisedAssignmentCommand): assignment is WorkAssignmentCommand {
     return Object.hasOwn(assignment, 'assignedWork');
+}
+
+export function assignedPropertyCorpus(assignment: SupervisedAssignmentCommand): PropertyCorpusSnapshot {
+    return hasAssignedWork(assignment) ? assignment.corpus : { checkedIn: [], localCache: [], diagnostics: [] };
 }
 
 export function supervisedAssignedWork(assignment: SupervisedAssignmentCommand): readonly WorkId[] {

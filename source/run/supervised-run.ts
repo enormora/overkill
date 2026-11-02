@@ -4,7 +4,11 @@ import {
     executeWithRuntimeAttachments
 } from './runtime-attachment-boundary.ts';
 
-import { observeSupervisedTransport, sendSupervisedCommand } from './supervised-child-transport.ts';
+import {
+    observeSupervisedTransport,
+    sendSupervisedCommand,
+    sendAssignmentForPlan
+} from './supervised-child-transport.ts';
 import type {
     CollectedRunPlan,
     ResolvedRun
@@ -36,7 +40,6 @@ import {
     handleCollectionSample,
     reportRunStart,
     supervisedCollectedPlan,
-    supervisedWorkloadInputs,
     type SupervisedCollectionRuntime,
     type SupervisedRunRuntime
 } from './supervised-run-runtime.ts';
@@ -388,22 +391,6 @@ async function createLiveRunRuntime(
     };
 }
 
-function sendAssignmentForPlan(runtime: SupervisedRunRuntime): void {
-    sendSupervisedCommand(runtime.child, {
-        assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
-            return testCase.workId;
-        }),
-        propertyPolicies: runtime.resolvedRun.facts.cases.flatMap(function propertyAssignment(testCase) {
-            return testCase.propertyPolicy === null
-                ? []
-                : [ { work: testCase.workId, policy: testCase.propertyPolicy } ];
-        }),
-        workloadInputs: supervisedWorkloadInputs(runtime.resolvedRun),
-        kind: 'assign',
-        attachmentEndpoint: runtime.attachments?.endpoint ?? null
-    });
-}
-
 async function reportRunStartForPlannedCases(
     runtime: SupervisedRunRuntime,
     collectedPlan: CollectedRunPlan,
@@ -424,7 +411,7 @@ async function executeCollectedLiveRun(liveRun: SupervisedLiveRun, resolvedRun: 
     runtime.state.recordRunnerErrors(resolvedRun.collectionRunnerErrors);
     await reportRunStartForPlannedCases(runtime, collectedPlan, startedAt.epochMilliseconds);
     if (!liveRun.terminalFailure.read()) {
-        sendAssignmentForPlan(runtime);
+        await sendAssignmentForPlan(runtime);
     }
     await liveRun.finishedSignal.promise;
 

@@ -7,14 +7,16 @@ import {
     type PropertyShrinkStatus,
     type PropertyTrialResult
 } from '../packages/engine/engine.entry-point.ts';
-import { PropertyCodecError } from './property-graph.ts';
-import { propertyLabels } from './property-targets.ts';
-import { createCoverage } from './property-coverage.ts';
-import { recipeInput, type GeneratedInput } from './generator-input.ts';
 import type { PropertyExecutionResult, PropertyInvocationContext } from './property-execution-result.ts';
+import { confirmedPropertyWitness } from './property-witness.ts';
+import { PropertyCodecError } from './property-graph.ts';
+import { shrinkCoverage } from './property-coverage.ts';
+import { recipeInput, type GeneratedInput } from './generator-input.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
 import { propertyExhaustion, type PropertyWork } from './property-work.ts';
 import { observePropertyTrial, type ObservedTrial } from './property-trial-observation.ts';
+
+type PropertyWitnessFile = NonNullable<PropertyInvocationEvidence['confirmedWitness']>;
 
 type FailedExecution<Value> = Extract<PropertyExecutionResult<Value>, { readonly kind: 'failed'; }>;
 type Diagnostic = PropertyInvocationEvidence['diagnostics'][number];
@@ -28,6 +30,8 @@ type ShrinkSession<Value> = {
 };
 
 type ShrinkState<Value> = {
+    readonly confirmed: () => PropertyWitnessFile | null;
+    readonly confirm: (witness: PropertyWitnessFile | null) => void;
     readonly status: () => PropertyShrinkStatus;
     readonly stop: (status: PropertyShrinkStatus) => void;
     readonly retained: () => FailedExecution<Value>;
@@ -39,10 +43,17 @@ type ShrinkState<Value> = {
 
 function shrinkState<Value>(original: FailedExecution<Value>): ShrinkState<Value> {
     let status: PropertyShrinkStatus = 'in-progress';
+    let confirmed: PropertyWitnessFile | null = null;
     let retained = original;
     let { observation } = original;
     const diagnostics: Diagnostic[] = [];
     return {
+        confirmed() {
+            return confirmed;
+        },
+        confirm(witness) {
+            confirmed = witness;
+        },
         status() {
             return status;
         },
@@ -73,6 +84,7 @@ function shrinkState<Value>(original: FailedExecution<Value>): ShrinkState<Value
 
 async function publish<Value>(session: ShrinkSession<Value>): Promise<void> {
     await session.context.host.recordEvidence({
+        confirmedWitness: session.state.confirmed(),
         shrinkStatus: session.state.status(),
         identity: session.context.identity,
         original: session.original.observation,
@@ -105,14 +117,14 @@ async function evaluate<Value>(session: ShrinkSession<Value>, input: () => Value
     const value = input();
     session.work.context.consumeWork();
     return await observePropertyTrial(value, session.invocation, {
+        reconstruct: input,
         host: session.context.host,
         signal: session.context.signal,
         work: session.work,
-        observeLabel: propertyLabels(session.context.host.policy.maxLabels),
+        ...shrinkCoverage(session.context.host.policy.maxLabels),
         observeScores() {
             return undefined;
-        },
-        observations: createCoverage([], propertyLabels(session.context.host.policy.maxLabels)).trial('shrinking')
+        }
     });
 }
 
@@ -186,19 +198,29 @@ async function traverse<Value>(session: ShrinkSession<Value>, input: GeneratedIn
     }
 }
 
-async function confirm<Value>(session: ShrinkSession<Value>, input: GeneratedInput<Value>): Promise<void> {
-    const confirmation = await evaluate(session, input.reconstruct);
+async function recordConfirmedInput<Value>(session: ShrinkSession<Value>, confirmation: ObservedTrial): Promise<void> {
+    session.state.confirm(confirmedPropertyWitness(session.context, session.state.observation(), session.identity));
+    await publish(session);
+    await diagnoseAdditional(session, confirmation.trial, confirmation.observation);
+}
+
+async function applyConfirmation<Value>(session: ShrinkSession<Value>, confirmation: ObservedTrial): Promise<void> {
     if (confirmation.trial.kind === 'terminated') {
         session.state.stop('interrupted');
         session.state.replace({ ...session.state.retained(), trial: confirmation.trial }, session.state.observation());
         return;
     }
-    if (matching(session, confirmation) === null) {
-        session.state.stop('non-reproducible');
-        await diagnose(session, 'non-reproducible', confirmation.observation);
+    if (matching(session, confirmation) !== null) {
+        await recordConfirmedInput(session, confirmation);
         return;
     }
-    await diagnoseAdditional(session, confirmation.trial, confirmation.observation);
+    session.state.confirm(null);
+    session.state.stop('non-reproducible');
+    await diagnose(session, 'non-reproducible', confirmation.observation);
+}
+
+async function confirm<Value>(session: ShrinkSession<Value>, input: () => Value): Promise<void> {
+    await applyConfirmation(session, await evaluate(session, input));
 }
 
 async function searchConfirmedFailure<Value>(
@@ -212,7 +234,7 @@ async function searchConfirmedFailure<Value>(
     if (session.state.status() === 'in-progress') {
         session.state.stop('search-exhausted');
         session.work.enterPhase('confirmation');
-        await confirm(session, session.state.retained().generated ?? input);
+        await confirm(session, (session.state.retained().generated ?? input).reconstruct);
     }
 }
 
@@ -230,11 +252,7 @@ async function canShrink<Value>(session: ShrinkSession<Value>): Promise<boolean>
     return true;
 }
 
-async function shrink<Value>(session: ShrinkSession<Value>): Promise<void> {
-    if (!await canShrink(session)) {
-        return;
-    }
-    session.work.enterPhase('confirmation');
+async function shrinkGeneratedFailure<Value>(session: ShrinkSession<Value>): Promise<void> {
     const input = session.original.generated ??
         recipeInput(session.invocation.generator, session.original.input, session.work.context);
     if (input === null) {
@@ -242,8 +260,23 @@ async function shrink<Value>(session: ShrinkSession<Value>): Promise<void> {
         await diagnose(session, 'shrink-state-unavailable', null);
         return;
     }
-    await confirm(session, input);
+    await confirm(session, input.reconstruct);
     await searchConfirmedFailure(session, input);
+}
+
+async function shrink<Value>(session: ShrinkSession<Value>): Promise<void> {
+    if (!await canShrink(session)) {
+        return;
+    }
+    session.work.enterPhase('confirmation');
+    if (!session.original.regression) {
+        await shrinkGeneratedFailure(session);
+        return;
+    }
+    await confirm(session, session.original.input);
+    if (session.state.status() === 'in-progress') {
+        session.state.stop('shrink-state-unavailable');
+    }
 }
 
 async function failShrinkExecution<Value>(session: ShrinkSession<Value>, error: unknown): Promise<never> {

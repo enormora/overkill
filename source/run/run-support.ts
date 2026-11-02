@@ -1,7 +1,6 @@
 import type { NormalizedConfig, MaxConcurrency, ProfileConfig, Scheduling } from '../config/types.ts';
 import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
 import type { TestRuntimePolicy, RunResult, TestPlanCase, ReporterDispatcher } from './run-engine-primitives.ts';
-import { finalizeRuntimeAttachments } from './attachment-coordinator-context.ts';
 import {
     createResourceLifecycleRuntimePolicy,
     type ManagedResourceLifecycleTiming
@@ -13,13 +12,7 @@ import {
 } from './capability-policy.ts';
 import type { RunCommand, RunEngineFacts, RunRequest, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { withBenchmarkRunMetadata, withBenchmarkErrorMetadata } from './benchmark-report-metadata.ts';
-
-import {
-    readDurationHistoryIndex,
-    resultWithUpdatedDurationHistoryAndTiming,
-    type DurationHistoryTimingMeasurement
-} from './duration-history.ts';
+import { withBenchmarkErrorMetadata } from './benchmark-report-metadata.ts';
 
 export type RunResultSession = {
     readonly finalize: (result: RunResult) => Promise<RunResult>;
@@ -48,38 +41,6 @@ export function engineExecution(
 export type ResolvedRunResultFinalizer = (resolvedRun: ResolvedRun, result: RunResult) => Promise<RunResult>;
 
 export const createRunPermissionRuntimePolicy: () => TestRuntimePolicy = createPermissionDenialRuntimePolicy;
-
-export async function readRunDurationHistory(
-    dependencies: RunOrchestratorDependencies,
-    projectRoot: string,
-    runtimeStateDir: string
-): ReturnType<typeof readDurationHistoryIndex> {
-    return await readDurationHistoryIndex(dependencies.runtimeStateStore, projectRoot, runtimeStateDir);
-}
-
-export async function finalizeResultWithDurationHistory(
-    dependencies: RunOrchestratorDependencies,
-    resolvedRun: ResolvedRun,
-    result: RunResult,
-    timing: DurationHistoryTimingMeasurement | null = null
-): Promise<RunResult> {
-    let attachmentResult = await finalizeRuntimeAttachments(result);
-    if (resolvedRun.facts.execution.testFamily === 'benchmark') {
-        attachmentResult = withBenchmarkRunMetadata(
-            attachmentResult,
-            resolvedRun.facts,
-            Number(dependencies.wallClock.currentMonotonicMicroseconds)
-        );
-    }
-    return await resultWithUpdatedDurationHistoryAndTiming({
-        createHistoryStorage: dependencies.createHistoryStorage,
-        completedAtMilliseconds: dependencies.wallClock.currentUnixEpochMilliseconds,
-        resolvedRun,
-        result: attachmentResult,
-        store: dependencies.runtimeStateStore,
-        timing
-    });
-}
 
 export function composeRunRuntimePolicies(
     firstPolicy: TestRuntimePolicy | null,

@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { propertyWitnessSchema } from '../engine/property-corpus.ts';
 import type { PropertyCaseEvidence } from '../engine/run-result.ts';
 import { serializedValueSchema } from './serialized-value-schema.ts';
 
@@ -23,6 +24,7 @@ const observationSchema = z.strictObject({
 
 export const propertyEvidenceSchema: z.ZodType<PropertyCaseEvidence> = z.strictObject({
     invocations: z.array(z.strictObject({
+        confirmedWitness: propertyWitnessSchema.nullable().default(null),
         shrinkStatus: z
             .enum([
                 'in-progress',

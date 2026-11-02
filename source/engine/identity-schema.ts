@@ -19,7 +19,7 @@ export const workIdSchema = z.strictObject({
     workload: workloadIdSchema.nullable()
 });
 export const attemptIdSchema = z.strictObject({ index: z.number().int().nonnegative() });
-const sourceLocationSchema = z.discriminatedUnion('kind', [
+export const sourceLocationSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('unknown') }),
     z.strictObject({
         column: z.number().nullable(),

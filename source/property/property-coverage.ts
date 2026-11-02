@@ -143,3 +143,9 @@ export function invocationCoverage(
     const observeLabel = propertyLabels(maxLabels);
     return { ...createCoverage(requirements, observeLabel), observeLabel };
 }
+
+type ShrinkCoverage = { readonly observeLabel: (label: string) => void; readonly observations: CoverageTrial; };
+export function shrinkCoverage(maximumLabels: number): ShrinkCoverage {
+    const observeLabel = propertyLabels(maximumLabels);
+    return { observeLabel, observations: createCoverage([], observeLabel).trial('shrinking') };
+}

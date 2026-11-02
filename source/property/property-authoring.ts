@@ -2,6 +2,7 @@ import {
     attachTestBodyFamily,
     readPropertyExecutionHost,
     createPropertyTestCase,
+    type AssertionResult,
     type PropertySettings,
     type PropertySettingsDeclaration,
     type TestBodyFamilyAttachment,
@@ -19,7 +20,8 @@ import { isPropertyBodyDefinition } from '../engine/property-node.ts';
 import {
     normalizePropertyInvocation,
     runPropertyInvocation,
-    createNestedPropertySession
+    createNestedPropertySession,
+    type NestedPropertySession
 } from './property-invocation.ts';
 import type {
     NestedPropertyDeclaration,
@@ -120,6 +122,24 @@ function propertyFamilyAttachment(
     };
 }
 
+async function runNestedPropertyBody(
+    body: PropertyCaseBody,
+    scope: TestScope,
+    session: NestedPropertySession
+): Promise<AssertionResult> {
+    let completed = false;
+    try {
+        const result = await body({ ...scope, forall: session.forall });
+        completed = true;
+        return result;
+    } finally {
+        await session.finish();
+        if (completed) {
+            await session.validateTargets();
+        }
+    }
+}
+
 export function withProperties(
     body: PropertyCaseBody,
     ...settings: readonly [] | readonly [PropertySettings]
@@ -133,11 +153,7 @@ export function withProperties(
             const host = readPropertyExecutionHost(scope);
             const caseScope = { ...host.scope, ...scope };
             const session = createNestedPropertySession(caseScope);
-            try {
-                return await body({ ...caseScope, forall: session.forall });
-            } finally {
-                await session.finish();
-            }
+            return await runNestedPropertyBody(body, caseScope, session);
         },
         'withProperties',
         propertyFamilyAttachment(body, settings)

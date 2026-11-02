@@ -1,4 +1,3 @@
-import type { TestRuntimePolicy as TestRuntimePolicyDefinition } from '../engine/case-execution-context.ts';
 import type { AttachmentLimits as AttachmentLimitsDefinition } from '../engine/runtime-attachment.ts';
 import type {
     AttemptId as AttemptIdDefinition,
@@ -37,6 +36,10 @@ import type {
     TestPlanCase as TestPlanCaseDefinition
 } from '../engine/test-plan.ts';
 
+import type { PropertyCorpusSnapshot as PropertyCorpusSnapshotDefinition } from '../engine/property-corpus.ts';
+
+export type PropertyCorpusSnapshot = PropertyCorpusSnapshotDefinition;
+
 export type Engine = EngineDefinition;
 export type Execute = ExecuteDefinition;
 export type DefinedReporter = DefinedReporterDefinition;
@@ -53,7 +56,7 @@ export type RunnerError = RunnerErrorDefinition;
 export type TestPlan = TestPlanDefinition;
 export type TestPlanCase = TestPlanCaseDefinition;
 
-export type TestRuntimePolicy = TestRuntimePolicyDefinition;
+export type TestRuntimePolicy = NonNullable<NonNullable<Parameters<ExecuteDefinition>[1]>['runtimePolicy']>;
 export type AttachmentLimits = AttachmentLimitsDefinition;
 export type AttemptId = AttemptIdDefinition;
 export type WorkId = WorkIdDefinition;

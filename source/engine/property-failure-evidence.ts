@@ -1,5 +1,6 @@
 import type { JsonValue } from 'type-fest';
 import type { SerializedValue } from '../assertion-protocol/assertion-node-shape.ts';
+import type { PropertyWitnessFile } from './property-corpus.ts';
 
 export type EncodedPropertyInput = {
     readonly format: { readonly name: string; readonly version: number; };
@@ -23,6 +24,7 @@ type ShrinkInterruption = 'execution-error' | 'interrupted';
 export type PropertyShrinkStatus = ShrinkCompletion | ShrinkInterruption | ShrinkUnavailableReason | 'in-progress';
 
 export type PropertyInvocationEvidence = {
+    readonly confirmedWitness: PropertyWitnessFile | null;
     readonly shrinkStatus: PropertyShrinkStatus | null;
     readonly identity: string;
     readonly original: PropertyFailureObservation;

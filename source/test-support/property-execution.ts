@@ -1,3 +1,4 @@
+import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from '../engine/property-corpus.ts';
 import {
     createRoot,
     createTestPlan,
@@ -12,6 +13,7 @@ import { resolveTestPlanCollectionPolicy } from '../run/run-test-plan.ts';
 import { createTestEngine } from './create-test-engine.ts';
 
 type PropertyExecutionRequest = {
+    readonly corpus: PropertyCorpusSnapshot;
     readonly reporters: readonly DefinedReporter[];
     readonly policy: PropertyPolicy;
     readonly execution: ExecuteExecution;
@@ -19,6 +21,7 @@ type PropertyExecutionRequest = {
 };
 
 export const propertyExecutionDefaults: PropertyExecutionRequest = {
+    corpus: emptyPropertyCorpus,
     reporters: [],
     policy: { ...defaultPropertyPolicy, newTrials: 3, maxAutomaticEdges: 0, maxExhaustiveValues: 0 },
     execution: { mode: 'serial-in-process' },
@@ -37,7 +40,11 @@ export async function executePropertyNode(node: TestNode, request: PropertyExecu
     );
     return await createTestEngine().execute(plan, {
         execution: request.execution,
-        propertyRun: { seed: request.seed, projectRoot: process.cwd() },
+        propertyRun: {
+            corpus: request.corpus,
+            seed: request.seed,
+            projectRoot: process.cwd()
+        },
         reporters: request.reporters,
         retryPolicy: null,
         runFacts: {},

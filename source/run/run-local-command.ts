@@ -1,3 +1,4 @@
+import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
 import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
 import {
     reportCollectionErrorResult
@@ -5,7 +6,6 @@ import {
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
-    finalizeResultWithDurationHistory,
     observeRunRuntimePolicy,
     type RunRuntimePolicy
 } from './run-support.ts';

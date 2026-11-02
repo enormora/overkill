@@ -1,3 +1,4 @@
+import { finalizeResultWithDurationHistory, readRunDurationHistory } from './run-state-finalization.ts';
 import {
     createResultFromResolutionError,
     reportCollectionErrorResult
@@ -18,10 +19,6 @@ import {
 } from './run-isolated-command.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
-    finalizeResultWithDurationHistory,
-    readRunDurationHistory
-} from './run-support.ts';
-import {
     collectWorkerPoolRun,
     runWorkerPoolCommand
 } from './worker-pool-run.ts';
@@ -33,7 +30,7 @@ import {
 } from './run-supervised-process.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
-export type RunCollectionSource = IsolatedRunCollectionSource;
+type RunCollectionSource = IsolatedRunCollectionSource;
 type RunTimingMeasurement = NonNullable<RunInvocationOptions['timing']>;
 type CollectedExecution = {
     readonly collectedPlan: CollectedRunPlan;

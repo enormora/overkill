@@ -488,6 +488,7 @@ function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): Propert
         files: normalizeRequiredProfileFiles(profile.files),
         reporters: normalizeReporters(profile.reporters),
         processUsage: normalizeProcessUsage(profile.processUsage),
+        corpus: profile.corpus,
         property: profile.property,
         testFamily: 'property',
         runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },

@@ -1,4 +1,5 @@
 import type { AssertAssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
+import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from './property-corpus.ts';
 import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
 import type { ExecutedBody } from './body-result.ts';
 import type { WorkId } from './identity.ts';
@@ -23,7 +24,16 @@ export type PropertyTrialResult = {
     readonly result: ExecutedBody;
 };
 
-export type PropertyRunContext = { readonly seed: bigint; readonly projectRoot: string | null; };
+type PropertyRunSeed = { readonly seed: bigint; readonly projectRoot: string | null; };
+export type PropertyRunContext = PropertyRunSeed | PropertyRunSeed & { readonly corpus: PropertyCorpusSnapshot; };
+function hasPropertyCorpus(
+    context: PropertyRunContext
+): context is PropertyRunSeed & { readonly corpus: PropertyCorpusSnapshot; } {
+    return Object.hasOwn(context, 'corpus');
+}
+export function propertyCorpusSnapshot(context: PropertyRunContext): PropertyCorpusSnapshot {
+    return hasPropertyCorpus(context) ? context.corpus : emptyPropertyCorpus;
+}
 
 export type PropertyExecutionHost = PropertyRunContext & {
     readonly scope: TestScope;

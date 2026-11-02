@@ -7,6 +7,7 @@ import type { InputRecipe } from './generator-edges.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
 import type { PropertyPhase, PropertyWork } from './property-work.ts';
 import type {
+    PropertyRegressionDiagnostic,
     PropertyExecutionResult,
     PropertyRegressionInputs,
     PropertyInvocationContext
@@ -18,6 +19,8 @@ export type PropertyExecution<Value> = PropertyInvocationContext & {
     readonly coverage: PropertyCoverage;
     readonly observeLabel: (label: string) => void;
     readonly observeScores: (scores: ReadonlyMap<string, number>) => void;
+    readonly regressionDiagnostics: () => readonly PropertyRegressionDiagnostic[];
+    readonly diagnoseRegression: (diagnostic: PropertyRegressionDiagnostic) => void;
     readonly phase: PropertyPhase;
     readonly exhaustive: number | null;
 };
@@ -38,6 +41,7 @@ function trialResult<Value>(
         ? null
         : {
             kind: 'failed',
+            regression: execution.phase === 'checked-in-corpus' || execution.phase === 'local-cache',
             accounting: execution.work.snapshot(),
             trial,
             input,
@@ -61,6 +65,7 @@ async function evaluateInput<Value>(
     const observations = execution.coverage.trial(execution.phase);
     const observed = await observePropertyTrial(value, execution.invocation, {
         ...execution,
+        reconstruct: input,
         observations
     });
     return trialResult(execution, input, observed);

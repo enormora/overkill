@@ -1,7 +1,8 @@
 import type { RunResult } from '../engine/run-result.ts';
+import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
 import type { RecordedCoverageExecution } from './recorded-coverage-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { finalizeResultWithDurationHistory, type RunResultSession } from './run-support.ts';
+import type { RunResultSession } from './run-support.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import type { ResolvedRun } from './run-types.ts';
 

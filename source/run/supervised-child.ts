@@ -39,6 +39,7 @@ import {
 } from './supervised-child-execution.ts';
 import {
     supervisedAssignedPlan,
+    assignedPropertyCorpus,
     supervisedAssignedWork,
     type SupervisedAssignmentCommand,
     type SupervisedChildCommand,
@@ -263,7 +264,11 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
                 input.wallClock
             ),
             runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
-            propertyRun: { seed: BigInt(input.command.seed), projectRoot: input.command.cwd },
+            propertyRun: {
+                corpus: assignedPropertyCorpus(input.assignment),
+                seed: BigInt(input.command.seed),
+                projectRoot: input.command.cwd
+            },
             runFacts: {},
             startedAt: startedAtIso(input.startedAtMs),
             timeoutPolicy: {

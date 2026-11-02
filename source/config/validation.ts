@@ -107,6 +107,7 @@ function validatePropertyProfile(profile: PropertyProfileConfig): void {
     normalizeRequiredProfileFiles(profile.files);
     microtestExecutionSchema.parse(profile.execution);
     propertyPolicySchema.parse(profile.property);
+    propertyProfileSchema.unwrap().shape.corpus.parse(profile.corpus);
     const permittedFields = propertyProfileSchema.unwrap().shape;
     if (
         Object.keys(profile).some(function unsupportedPropertyField(name) {

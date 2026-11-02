@@ -2,6 +2,7 @@ import { z } from 'zod/v4';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
 import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
+import { propertyCorpusPolicySchema } from './property-corpus.ts';
 import { historyPolicySchema } from './history-policy.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
 import { defaultPropertyPolicy, resolvePropertySettings, propertySettingsSchema } from './property-policy.ts';
@@ -319,6 +320,7 @@ export type ProjectBenchmarkProfileConfig = z.input<typeof benchmarkProfileSchem
 
 export const propertyProfileSchema = z
     .strictObject({
+        corpus: propertyCorpusPolicySchema,
         execution: z.optional(microtestExecutionSchema),
         files: profileFilesSchema,
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),

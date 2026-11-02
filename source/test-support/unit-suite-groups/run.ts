@@ -1,3 +1,5 @@
+import { testNode as corpusExecutionTestNode } from '../../run/property-corpus-execution.test.ts';
+import { testNode as corpusTestNode } from '../../run/property-corpus-storage.test.ts';
 import { testNode as diagnosticTestNode } from '../../packages/stryker-runner/mutation-diagnostic-persistence.test.ts';
 import { testNode as observationTestNode } from '../../run/execution-session-observation.test.ts';
 import { testNode as historyTestNode } from '../../run/history-suite.test.ts';
@@ -13,6 +15,8 @@ export const testNode = createSuite({
     controls: {},
     children: [
         historyTestNode,
+        corpusTestNode,
+        corpusExecutionTestNode,
         runTestNode,
         mutationTestNode,
         diagnosticTestNode,
