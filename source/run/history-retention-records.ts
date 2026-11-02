@@ -1,90 +1,30 @@
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
-import { z } from 'zod';
-import type { HistoryPolicy } from '../config/history-policy.ts';
-import { historyStateError } from './history-state-error.ts';
-import type { CompactHistory } from './compact-history-schema.ts';
-import type { HistoryStorage } from './history-storage-types.ts';
-import { historyRecordSchema, type HistoryRecord } from './history-record.ts';
-import { historyRunStatus } from './history-outcomes.ts';
+import type { HistoryOptions } from './history-types.ts';
+import { checkHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
 import { historyDirectoryNames, compareHistoryRuns, assertHistoryRunId } from './history-state-access.ts';
+import {
+    manifestSchema,
+    recordMetadata,
+    artifactMetadata,
+    type Metadata,
+    type RecordCatalogInput
+} from './history-retention-metadata.ts';
 
 const millisecondsPerDay = 86_400_000;
-const manifestSchema = z.object({
-    version: z.literal(1),
-    id: z.string(),
-    startedAt: z.iso.datetime({ offset: true }),
-    status: z.enum([ 'passed', 'failed', 'runner-error', 'interrupted', 'inconclusive' ])
-});
-
-type Metadata = Readonly<z.output<typeof manifestSchema>>;
 type Catalog = {
     readonly records: readonly string[];
     readonly artifactDirectories: readonly string[];
     readonly metadata: ReadonlyMap<string, Metadata>;
 };
 type RetainMetadata = (key: string, value: Metadata) => void;
-type RecordCatalogInput = {
-    readonly store: HistoryStorage;
-    readonly runs: string;
-    readonly index: CompactHistory;
-    readonly policy: HistoryPolicy;
-    readonly now: string;
-};
-async function artifactMetadata(
-    store: HistoryStorage,
-    target: string,
-    fallback: Metadata | undefined,
-    name: string
-): Promise<Metadata> {
-    const source = await store.read(path.join(target, 'retention.json'));
-    const value: unknown = source === null ? fallback : JSON.parse(source);
-    if (value === undefined) {
-        throw new Error(`Missing artifact retention metadata: ${target}`);
-    }
-    const parsed = manifestSchema.parse(value);
-    if (parsed.id !== name) {
-        throw new Error(`Artifact identity does not match path: ${target}`);
-    }
-
-    return parsed;
-}
-
-function assertRecordCommitted(record: HistoryRecord, input: RecordCatalogInput): void {
-    if (record.status !== 'completed') {
-        return;
-    }
-    const cutoff = Date.parse(input.now) - input.policy.staleIdentityRetentionDays * millisecondsPerDay;
-    if (Date.parse(record.startedAt) < cutoff) {
-        return;
-    }
-    const receipt = input.index.receipts.find(function (value) {
-        return value.id === record.id;
-    });
-    if (receipt?.state !== 'completed') {
-        throw historyStateError(`Run ${record.id} has an incomplete history commit.`);
-    }
-}
-async function recordMetadata(input: RecordCatalogInput, recordPath: string): Promise<Metadata> {
-    const { store } = input;
-    const record = historyRecordSchema.parse(JSON.parse(await store.read(recordPath) ?? 'null'));
-    if (path.basename(recordPath) !== `${record.id}.json`) {
-        throw new Error(`Record identity does not match path: ${recordPath}`);
-    }
-    assertRecordCommitted(record, input);
-    return manifestSchema.parse({
-        version: 1,
-        id: record.id,
-        startedAt: record.startedAt,
-        status: historyRunStatus(record)
-    });
-}
 async function readRecords(
     input: RecordCatalogInput,
     records: readonly string[],
     retain: RetainMetadata
 ): Promise<void> {
     for (const recordPath of records) {
+        checkHistoryMaintenanceBudget();
         const record = await recordMetadata(input, recordPath);
         retain(record.id, record);
     }
@@ -112,9 +52,11 @@ async function readArtifacts(
     retain: RetainMetadata
 ): Promise<readonly string[]> {
     const names = await historyDirectoryNames(input.runs);
-    const directories = await Promise.all(names.map(async function inspectArtifact(name) {
-        return await artifactDirectory(input, metadata, retain, name);
-    }));
+    const directories: (string | null)[] = [];
+    for (const name of names) {
+        checkHistoryMaintenanceBudget();
+        directories.push(await artifactDirectory(input, metadata, retain, name));
+    }
     return directories.filter(function existingDirectory(directory) {
         return directory !== null;
     });
@@ -138,7 +80,13 @@ type Removals = {
     readonly removedRecords: readonly string[];
     readonly removedArtifacts: readonly string[];
 };
-export function selectHistoryRemovals(catalog: Catalog, runs: string, policy: HistoryPolicy, now: string): Removals {
+export function selectHistoryRemovals(
+    catalog: Catalog,
+    runs: string,
+    policy: HistoryOptions['config']['history'],
+    now: string
+): Removals {
+    checkHistoryMaintenanceBudget();
     const { metadata, records, artifactDirectories } = catalog;
     const ordered = Array.from(metadata.values()).toSorted(compareHistoryRuns);
     const retainedRecords = new Set(

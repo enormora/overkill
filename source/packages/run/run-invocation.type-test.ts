@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'tstyche';
-import type { RunResult } from '../engine/engine.entry-point.ts';
 import type {
     orchestrator,
     BenchmarkOrchestrator,
@@ -11,7 +10,8 @@ import type {
     RunInvocationOptions,
     RunInvocationTimingOptions,
     RunOrchestrator,
-    RunReporterDeliveryResult
+    RunReporterDeliveryResult,
+    RunnerResult
 } from './run.entry-point.ts';
 
 describe('public runner invocation', function () {
@@ -27,7 +27,7 @@ describe('public runner invocation', function () {
             (
                 command: FrozenRunCommand | RunCommand,
                 options?: RunInvocationOptions | RunInvocationTimingOptions
-            ) => Promise<RunResult>
+            ) => Promise<RunnerResult>
         >();
         expect<RunInvocationOptions>().type.toBe<
             RunInvocationTimingOptions & { readonly signal: AbortSignal | null; }
@@ -39,7 +39,7 @@ describe('public runner invocation', function () {
             (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>
         >();
         expect<typeof orchestrator.bench.run>().type.toBe<
-            (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunResult>
+            (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunnerResult>
         >();
         expect<typeof orchestrator.bench.runWithReporterDelivery>().type.toBe<
             (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunReporterDeliveryResult>

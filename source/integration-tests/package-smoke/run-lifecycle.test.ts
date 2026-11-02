@@ -30,7 +30,9 @@ try {
     \`);
     const command = {
         cwd, engine: {kind: 'default'},
-        config: normalizeConfig({profiles: {microtest: {
+        config: normalizeConfig({history: {
+            detailedRunLimit: 2, automaticMaintenanceBudgetMilliseconds: 5000
+        }, profiles: {microtest: {
             testFamily: 'microtest',
             runRecords: {persist: 'always'},
             timeouts: {collectionMilliseconds: 5000},
@@ -56,7 +58,9 @@ try {
     const first = await collected.run({selection: {kind: 'all'}});
     const second = await collected.runWithReporterDelivery({selection: {kind: 'all'}});
     assert.deepEqual([first.status, second.result.status], ['passed', 'passed']);
-    const recordFiles = await readdir(recordsPath);
+    assert.deepEqual(first.maintenanceDiagnostics, []);
+    assert.deepEqual(second.result.maintenanceDiagnostics, []);
+    const recordFiles = (await readdir(recordsPath)).filter(file => file.endsWith('.json'));
     assert.equal(recordFiles.length, 2);
     for (const file of recordFiles) {
         const record = JSON.parse(await readFile(join(recordsPath, file), 'utf8'));
@@ -67,6 +71,12 @@ try {
     assert.equal(globalThis.importCount, 1);
     assert.equal(globalThis.scopes.length, 2);
     assert.notEqual(globalThis.scopes[0], globalThis.scopes[1]);
+    const third = await collected.run({selection: {kind: 'all'}});
+    assert.equal(third.status, 'passed');
+    assert.deepEqual(third.maintenanceDiagnostics, []);
+    const retainedRecords = (await readdir(recordsPath)).filter(file => file.endsWith('.json'));
+    assert.equal(retainedRecords.length, 2);
+    assert.equal(retainedRecords.some(file => !recordFiles.includes(file)), true);
     assert.deepEqual(second.undeliveredRunnerErrors, []);
     assert.equal(typeof RunCollectionError, 'function');
     const controller = new AbortController();

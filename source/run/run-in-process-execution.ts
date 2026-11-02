@@ -9,9 +9,8 @@ import {
 } from './run-local-execution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
-import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type LocalResolvedRun = ResolvedRun & {
     readonly plan: {
         readonly kind: 'local';

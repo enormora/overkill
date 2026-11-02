@@ -1,11 +1,15 @@
 import type { Except } from 'type-fest';
 import type { NormalizedConfig } from '../config/types.ts';
-import type { HistoryRepairResult } from './history-repair.ts';
 import type { HistoryRunSummary as StoredSummary } from './compact-history-schema.ts';
 
 export type HistoryOptions = {
     readonly projectRoot: string;
     readonly config: Pick<NormalizedConfig, 'history' | 'runtimeStateDir'>;
+};
+export type HistoryRepairResult = {
+    readonly rebuiltRunCount: number;
+    readonly diagnostics: readonly string[];
+    readonly dataLoss: boolean;
 };
 export type HistoryRunSummary = Except<StoredSummary, 'replayable'> & {
     readonly replay: 'available' | 'available-interrupted' | 'pruned' | 'unavailable';

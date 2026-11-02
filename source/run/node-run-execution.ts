@@ -12,10 +12,15 @@ type NodeExecutionCallbacks = Pick<
 type NodeExecutionInput = NodeExecutionCallbacks & {
     readonly readEnvironment: RunOrchestratorDependencies['runtimeCapabilityPolicy']['readEnvironment'];
 };
-type NodeExecutionDependencies = Pick<
+type RuntimeStateDependencies = Pick<
     RunOrchestratorDependencies,
-    'createHistoryStorage' | 'createProcessUsageTracker' | 'createWorkerPool' | 'execute' | 'runtimeStateStore'
+    'createHistoryStorage' | 'maintainHistory' | 'runtimeStateStore'
 >;
+type ExecutionDependencies = Pick<
+    RunOrchestratorDependencies,
+    'createProcessUsageTracker' | 'createWorkerPool' | 'execute'
+>;
+type NodeExecutionDependencies = ExecutionDependencies & RuntimeStateDependencies;
 
 function readActiveResourceTypes(): readonly string[] {
     return process.getActiveResourcesInfo();
@@ -24,6 +29,10 @@ function readActiveResourceTypes(): readonly string[] {
 export function createNodeExecutionDependencies(input: NodeExecutionInput): NodeExecutionDependencies {
     return {
         createHistoryStorage: createNodeHistoryStorage,
+        async maintainHistory(options) {
+            const { maintainHistory } = await import('./history-maintenance.ts');
+            return await maintainHistory(options);
+        },
         createProcessUsageTracker(options) {
             return createNodeProcessUsageTracker(input.wallClock, options);
         },

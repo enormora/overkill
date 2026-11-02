@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { attemptIdSchema, caseIdSchema, sourceLocationsSchema, workIdSchema } from '../engine/identity-schema.ts';
+import type { RunnerResult } from './run-types.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { runArtifactSchema, testAttemptSchema, verdictSchema } from './run-artifact-schema.ts';
@@ -83,6 +84,15 @@ export const runResultSchema: z.ZodType<RunResult> = z.strictObject({
 
 export function parseRunResult(value: unknown): RunResult {
     return runResultSchema.parse(value);
+}
+
+export function parseRunnerResult(value: unknown): RunnerResult {
+    const { maintenanceDiagnostics, ...result } = z
+        .looseObject({
+            maintenanceDiagnostics: z.array(z.string())
+        })
+        .parse(value);
+    return { ...parseRunResult(result), maintenanceDiagnostics };
 }
 
 export function parseRunnerError(value: unknown): RunnerError {

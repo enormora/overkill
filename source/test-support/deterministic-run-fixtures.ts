@@ -397,7 +397,13 @@ export function createDeterministicProcessUsageTracker(): RunProcessUsageTracker
 
 export function deterministicRuntimeState(): Pick<
     RunOrchestratorDependencies,
-    'createHistoryStorage' | 'runtimeStateStore'
+    'createHistoryStorage' | 'maintainHistory' | 'runtimeStateStore'
 > {
-    return { createHistoryStorage: createMemoryHistoryStorage, runtimeStateStore: createMemoryHistoryStorage() };
+    return {
+        createHistoryStorage: createMemoryHistoryStorage,
+        async maintainHistory() {
+            return [];
+        },
+        runtimeStateStore: createMemoryHistoryStorage()
+    };
 }

@@ -7,7 +7,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
-import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
 import {
     defaultRunConfig,
     unexpectedBenchmarkOrchestrator,
@@ -171,7 +171,7 @@ async function runScenario(
 }
 
 async function passingRun(): ReturnType<ConfiguredRunOrchestrator['run']> {
-    return runResultFactory.build({
+    return runnerResultFactory.build({
         perTest: [ { outcome: { kind: 'pass' } } ],
         summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
     });
@@ -182,7 +182,7 @@ async function unknownProfileRun(): ReturnType<ConfiguredRunOrchestrator['run']>
 }
 
 async function runWithRunnerErrors(): ReturnType<ConfiguredRunOrchestrator['run']> {
-    return runResultFactory.build({
+    return runnerResultFactory.build({
         runnerErrors: [
             { message: 'Loader failed.', subtype: 'loader' },
             { message: 'Dispose failed.', subtype: 'reporter' }

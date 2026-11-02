@@ -1698,10 +1698,14 @@ declare const orchestrator: {
     readonly createExecutionSession: (options: RunExecutionSessionOptions) => RunExecutionSession;
 };
 
+type RunnerResult = RunResult & {
+    readonly maintenanceDiagnostics: readonly string[];
+};
+
 type CollectedRun = {
     readonly facts: RunFacts;
     readonly plan: CollectedRunPlan;
-    readonly run: (invocation: CollectedRunInvocation) => Promise<RunResult>;
+    readonly run: (invocation: CollectedRunInvocation) => Promise<RunnerResult>;
     readonly runWithReporterDelivery: (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>;
 };
 

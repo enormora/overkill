@@ -9,6 +9,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 
 export type RunRecordDependencies = {
     readonly history: HistoryStorage;
+    readonly maintainHistory: () => Promise<readonly string[]>;
     readonly createId: () => string;
     readonly node: RunOrchestratorDependencies['node'];
     readonly store: Pick<RunOrchestratorDependencies['runtimeStateStore'], 'write'>;
@@ -58,7 +59,7 @@ export function initialRecord(
 export type RunRecordInput = Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>;
 export type RunRecordExecutionDependencies = Pick<
     RunOrchestratorDependencies,
-    'createHistoryStorage' | 'node' | 'runtimeStateStore' | 'wallClock'
+    'createHistoryStorage' | 'maintainHistory' | 'node' | 'runtimeStateStore' | 'wallClock'
 >;
 
 export async function createRunRecordDependencies(
@@ -66,6 +67,13 @@ export async function createRunRecordDependencies(
     dependencies: RunRecordExecutionDependencies
 ): Promise<RunRecordDependencies> {
     return {
+        async maintainHistory() {
+            try {
+                return await dependencies.maintainHistory({ projectRoot: input.projectRoot, config: input.config });
+            } catch (error: unknown) {
+                return [ `History maintenance failed: ${error instanceof Error ? error.message : String(error)}` ];
+            }
+        },
         history: dependencies.createHistoryStorage(
             path.resolve(input.projectRoot, input.config.runtimeStateDir),
             input.config.history

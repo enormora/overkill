@@ -247,9 +247,20 @@ Automatic maintenance:
 - runs only after persisted runs
 - is lock-protected
 - is best-effort
-- has a default 100 ms budget
+- has a default 100 ms cooperative budget, including lock waiting and scanning;
+  zero disables automatic maintenance
+- stops starting operations at the deadline and awaits in-flight operations
+  before releasing the lock
 - may leave retention temporarily exceeded
 - reports pruning failures as diagnostics without changing the test verdict
+
+Automatic maintenance follows completed attempts, including failed tests.
+Escaping exceptions preserve their original failure; later maintenance handles
+the interrupted records. Budget exhaustion, contention, and live owners defer
+maintenance quietly. Other failures and ownership recovery are returned through
+runner-owned `maintenanceDiagnostics`, also printed by the CLI. These diagnostics
+are not engine errors or persisted record fields. Large scans can consume the
+entire budget without deleting anything; explicit prune completes such backlogs.
 
 Explicit maintenance commands use the same lock. `overkill history prune`
 fails when it cannot apply retention. `overkill history compact` fails when it

@@ -1,3 +1,4 @@
+import { runnerResult } from './runner-result.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { planCollectedInvocation, type CollectedRunContext } from './collected-run-planning.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
@@ -19,7 +20,9 @@ export function createCollectedRun(context: CollectedRunContext): CollectedRun {
         try {
             return await withFileModuleBoundary(context.moduleBoundary, async function executeBoundedPlan() {
                 const timing = createRunTimingMeasurement(context.dependencies.wallClock);
-                return await executeCollectedInvocation(context, planCollectedInvocation(context, invocation), timing);
+                return runnerResult(
+                    await executeCollectedInvocation(context, planCollectedInvocation(context, invocation), timing)
+                );
             });
         } finally {
             activeInvocations.delete(invocation);
@@ -41,7 +44,7 @@ export function createCollectedRun(context: CollectedRunContext): CollectedRun {
             );
             return {
                 deliveredRunnerErrors: delivery.deliveredRunnerErrors,
-                result: delivery.result,
+                result: runnerResult(delivery.result),
                 undeliveredRunnerErrors: delivery.undeliveredRunnerErrors
             };
         }

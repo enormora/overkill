@@ -99,7 +99,10 @@ export async function runTestsWithLoadedConfig(
 
     return {
         exitCode: readExitCodeFromRunResult(runResult.result),
-        fallbackDiagnostics: formatRunnerErrorDiagnostics(runResult.undeliveredRunnerErrors),
+        fallbackDiagnostics: [
+            ...formatRunnerErrorDiagnostics(runResult.undeliveredRunnerErrors),
+            ...runResult.result.maintenanceDiagnostics
+        ],
         runResult: runResult.result,
         stdoutLines: []
     };

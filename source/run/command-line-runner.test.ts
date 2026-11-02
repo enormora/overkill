@@ -16,7 +16,7 @@ import {
     defaultRunRequest,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
-import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
 
 import {
     createCommandLineRunner,
@@ -163,7 +163,7 @@ function createRunnerDependencies(
     overrides: Partial<CommandLineRunnerDependencies>
 ): CommandLineRunnerDependencies {
     const runPassing = async function runPassingTests(): ReturnType<ConfiguredRunOrchestrator['run']> {
-        return runResultFactory.build({
+        return runnerResultFactory.build({
             perTest: [ { outcome: { kind: 'pass' } } ],
             summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
         });
@@ -215,7 +215,7 @@ export const testNode = createOverkillSuite({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand(command) {
                             receivedCommands.push(command);
-                            return runResultFactory.build({
+                            return runnerResultFactory.build({
                                 perTest: [ { outcome: { kind: 'pass' } } ],
                                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
                             });
@@ -250,7 +250,7 @@ export const testNode = createOverkillSuite({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand(command) {
                             receivedCommands.push(command);
-                            return runResultFactory.build({
+                            return runnerResultFactory.build({
                                 perTest: [ { outcome: { kind: 'pass' } } ],
                                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
                             });
@@ -276,7 +276,7 @@ export const testNode = createOverkillSuite({
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
-                            return runResultFactory.build({
+                            return runnerResultFactory.build({
                                 perTest: [ { outcome: { kind: 'fail' } } ],
                                 summary: { defined: 1, discovered: 1, failed: 1, planned: 1 }
                             });
@@ -297,7 +297,7 @@ export const testNode = createOverkillSuite({
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
-                            return runResultFactory.build({
+                            return runnerResultFactory.build({
                                 perTest: [ { outcome: { kind: 'skip', reason: 'unsupported platform' } } ],
                                 summary: { defined: 1, discovered: 1, planned: 1, skipped: 1 }
                             });
@@ -318,7 +318,7 @@ export const testNode = createOverkillSuite({
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
-                            return runResultFactory.build({
+                            return runnerResultFactory.build({
                                 planStatus: 'empty-selection',
                                 summary: { defined: 0, discovered: 0, planned: 0 }
                             });
@@ -339,7 +339,7 @@ export const testNode = createOverkillSuite({
                 const result = await runTests(createRunnerDependencies({
                     orchestrator: createRunOnlyOrchestrator(
                         async function runCommand() {
-                            return runResultFactory.build({
+                            return runnerResultFactory.build({
                                 runnerErrors: [ { message: 'Loader failed.', subtype: 'loader' } ],
                                 summary: { defined: 1, discovered: 1, planned: 1 }
                             });

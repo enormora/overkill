@@ -254,7 +254,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
 
         return {
             deliveredRunnerErrors: [],
-            result,
+            result: { ...result, maintenanceDiagnostics: [] },
             undeliveredRunnerErrors
         };
     };

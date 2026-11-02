@@ -75,7 +75,7 @@ export const testNode = createSuite({
                 await session.recordFacts(facts);
                 const result = runResultFactory.build();
                 await session.checkpointResult(result);
-                scope.assert.equal(await session.complete(result), result);
+                scope.assert.deepEqual(await session.complete(result), { ...result, maintenanceDiagnostics: [] });
                 assertCompletedRecord(scope, writes[3], result);
                 return scope.assert.collect();
             }

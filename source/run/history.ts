@@ -10,10 +10,11 @@ import {
 } from './history-state-access.ts';
 import { readCompactHistory } from './history-storage.ts';
 import { historyStateError, historySchemaVersion } from './history-state-error.ts';
-import { repairHistory, type HistoryRepairResult } from './history-repair.ts';
+import { repairHistory } from './history-repair.ts';
 import { pruneHistory } from './history-pruning.ts';
 import type {
     HistoryOptions,
+    HistoryRepairResult,
     HistoryRunSummary,
     HistoryPruneRequest,
     HistoryPruneResult,

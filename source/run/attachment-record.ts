@@ -1,10 +1,8 @@
-import path from 'node:path';
-import { ulid } from 'ulid';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
+import { createRunRecordDependencies } from './run-record-input.ts';
 import { createStoredRunValue } from './supervised-run-state.ts';
 import { collectedRunPlanFromTestPlan, createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import { createRunRecordSession, type RunRecordSession } from './run-record.ts';
-import { runRecordVersions } from './run-record-versions.ts';
 import { selectProfile } from './test-profile.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
@@ -53,23 +51,23 @@ export async function createAttachmentRecord(
     dependencies: RunOrchestratorDependencies,
     session: RunRecordSession | null
 ): Promise<AttachmentRecord> {
-    const record = session ?? createRunRecordSession(resolved.cwd, {
-        config: resolved.config,
-        engine: resolved.engine,
-        profile: selectProfile(resolved.request.profile, resolved.config),
-        projectRoot: resolved.facts.environment.projectRoot,
-        request: { ...resolved.request, seed: { value: BigInt(resolved.facts.reproducibility.seed) } }
-    }, {
-        history: dependencies.createHistoryStorage(
-            path.resolve(resolved.facts.environment.projectRoot, resolved.config.runtimeStateDir),
-            resolved.config.history
-        ),
-        createId: ulid,
-        node: dependencies.node,
-        store: dependencies.runtimeStateStore,
-        versions: await runRecordVersions(resolved.engine, dependencies.node.version),
-        wallClock: dependencies.wallClock
-    });
+    const record = session ?? createRunRecordSession(
+        resolved.cwd,
+        {
+            config: resolved.config,
+            engine: resolved.engine,
+            profile: selectProfile(resolved.request.profile, resolved.config),
+            projectRoot: resolved.facts.environment.projectRoot,
+            request: { ...resolved.request, seed: { value: BigInt(resolved.facts.reproducibility.seed) } }
+        },
+        await createRunRecordDependencies({
+            config: resolved.config,
+            engine: resolved.engine,
+            profile: selectProfile(resolved.request.profile, resolved.config),
+            projectRoot: resolved.facts.environment.projectRoot,
+            request: resolved.request
+        }, dependencies)
+    );
     if (session === null) {
         await record.start(null);
     }

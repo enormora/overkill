@@ -3,6 +3,7 @@ import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-trac
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { runnerResult } from './runner-result.ts';
 import { executeRecordedRun } from './recorded-run.ts';
 
 type RunResult = Awaited<ReturnType<typeof executeRecordedRun>>;
@@ -29,6 +30,44 @@ async function assertPolicy(scope: TestScope, persist: 'always' | 'on-demand', r
 }
 
 export const testNode = suite('run record policy', [
+    test('maintenance startup failures remain non-fatal', async function (scope: TestScope) {
+        const fixture = runRecordPolicyFixture('always', false);
+        const result = runnerResult(
+            await executeRecordedRun('/project', fixture.input, {
+                ...fixture.dependencies,
+                async maintainHistory() {
+                    throw new Error('Maintenance module unavailable');
+                }
+            }, async function execute() {
+                return runResultFactory.build({ status: 'passed' });
+            })
+        );
+        scope.assert.equal(result.status, 'passed');
+        scope.assert.deepEqual(result.runnerErrors, []);
+        scope.assert.deepEqual(result.maintenanceDiagnostics, [
+            'History maintenance failed: Maintenance module unavailable'
+        ]);
+        return scope.assert.collect();
+    }),
+    test('maintenance follows completion without changing the verdict', async function (scope: TestScope) {
+        const fixture = runRecordPolicyFixture('always', false);
+        const diagnostics = [ 'History maintenance failed: permission denied' ];
+        const result = runnerResult(
+            await executeRecordedRun('/project', fixture.input, {
+                ...fixture.dependencies,
+                async maintainHistory() {
+                    scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
+                    return diagnostics;
+                }
+            }, async function execute() {
+                return runResultFactory.build({ status: 'passed' });
+            })
+        );
+        scope.assert.equal(result.status, 'passed');
+        scope.assert.deepEqual(result.runnerErrors, []);
+        scope.assert.deepEqual(result.maintenanceDiagnostics, diagnostics);
+        return scope.assert.collect();
+    }),
     ...([ [ 'on-demand', false ], [ 'on-demand', true ], [ 'always', false ], [ 'always', true ] ] as const)
         .map(function policyCase([ persist, record ]) {
             return test(`${persist}, record ${String(record)}`, async function (scope: TestScope) {

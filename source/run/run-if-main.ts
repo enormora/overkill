@@ -122,6 +122,9 @@ async function executeDirectRun(context: DirectRunContext, dependencies: RunIfMa
     );
 
     writeUndeliveredErrors(delivery.undeliveredRunnerErrors, dependencies);
+    for (const diagnostic of delivery.result.maintenanceDiagnostics) {
+        dependencies.stderr.write(`${diagnostic}\n`);
+    }
 
     if (hasFailure(delivery.result) && shouldSetFailureExitCode(dependencies.readExitCode())) {
         dependencies.setExitCode(1);

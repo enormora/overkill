@@ -5,11 +5,10 @@ import {
     createReporterDelivery
 } from './supervised-run-runtime.ts';
 import type { CollectedRunPlan, ResolvedRun } from './run-types.ts';
-import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRunResultFinalizer, RunRuntimePolicy } from './run-support.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 function currentRunStartTime(dependencies: RunOrchestratorDependencies): string {
     const startedAt = new Date(dependencies.wallClock.currentUnixEpochMilliseconds);

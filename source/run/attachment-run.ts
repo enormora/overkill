@@ -9,11 +9,21 @@ import type { ResolvedRun } from './run-types.ts';
 import { runHasAttachmentScopes } from './run-facts.ts';
 import type { RunRecordSession } from './run-record.ts';
 
+type AttachmentCompletion = {
+    readonly complete: (result: RunResult) => Promise<RunResult>;
+    readonly interrupt: RunRecordSession['interrupt'];
+};
+async function finalizeAttachmentSession(coordinator: AttachmentRunCoordinator, result: RunResult): Promise<RunResult> {
+    const finalized = await coordinator.finalize(result);
+    await coordinator.close();
+    return finalized;
+}
+
 async function executeAttachmentSession(
     record: AttachmentRecord,
     coordinator: AttachmentRunCoordinator,
     run: () => Promise<RunResult>,
-    completion: Pick<RunRecordSession, 'complete' | 'interrupt'>
+    completion: AttachmentCompletion
 ): Promise<RunResult> {
     try {
         const result = await runWithAttachmentCoordinator(
@@ -22,8 +32,7 @@ async function executeAttachmentSession(
                 return runWithAttachmentExecution(coordinator.execution, run);
             }
         );
-        const finalized = await coordinator.finalize(result);
-        return await completion.complete(finalized);
+        return await completion.complete(await finalizeAttachmentSession(coordinator, result));
     } catch (error: unknown) {
         await coordinator.close();
         try {

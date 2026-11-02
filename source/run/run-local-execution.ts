@@ -10,11 +10,10 @@ import {
     type RunRuntimePolicy
 } from './run-support.ts';
 import type { ResolvedRun } from './run-types.ts';
-import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import { createResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type RunProcessUsageTracker = ReturnType<RunOrchestratorDependencies['createProcessUsageTracker']>;
 type LocalResolvedRun = ResolvedRun & {
     readonly plan: {

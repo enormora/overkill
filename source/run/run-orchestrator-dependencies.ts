@@ -1,5 +1,5 @@
 import type { HostProcess, ProfileConfig } from '../config/types.ts';
-import type { HistoryStorageFactory, RuntimeStateStore } from './history-storage-types.ts';
+import type { HistoryMaintenance, HistoryStorageFactory, RuntimeStateStore } from './history-storage-types.ts';
 import type { RunHostObservations, ProcessUsageTrackerOptions } from './run-host-observations.ts';
 import type {
     Engine,
@@ -92,6 +92,7 @@ export function createHostRunnerErrors(): HostRunnerErrors {
 
 export type RunOrchestratorDependencies = RunHostObservations & {
     readonly createHistoryStorage: HistoryStorageFactory;
+    readonly maintainHistory: HistoryMaintenance;
     readonly createSeed: () => bigint;
     readonly createWorkerPool: (options: WorkerPoolCreationOptions) => CreatedWorkerPool;
     readonly defaultEngine: Engine;

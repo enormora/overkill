@@ -50,6 +50,9 @@ export function runRecordPolicyFixture(persist: 'always' | 'on-demand', record: 
         input,
         dependencies: {
             createHistoryStorage: createMemoryHistoryStorage,
+            async maintainHistory() {
+                return [];
+            },
             node: { arch: 'x64', platform: 'linux', version: '26.9.0' },
             wallClock: createDeterministicClock({ initialUnixEpochMicroseconds: 0n }),
             runtimeStateStore: {

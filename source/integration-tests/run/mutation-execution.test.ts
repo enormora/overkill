@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import type { RunResult as EngineRunResult } from '../../run/run-engine-primitives.ts';
 import {
     normalizeConfig,
     orchestrator,
@@ -13,7 +14,7 @@ import {
     createMutationSelectionLifecycle
 } from './mutation-selection-lifecycle.test.ts';
 
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = EngineRunResult;
 type MutationExecutionInput = {
     readonly policy: FrozenMicrotestPolicy;
     readonly seed: { readonly value: bigint; };
