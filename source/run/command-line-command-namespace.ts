@@ -15,6 +15,7 @@ export type CommandLineCommandLoaders = {
 
 export type CommandLineCommandNamespace = {
     readonly history: HistoryCommands;
+    readonly replayRun: CommandLineCommand;
     readonly baseline: CommandLineBaselineCommands;
     readonly bench: CommandLineBenchmarkCommands;
 };
@@ -73,6 +74,16 @@ function createHistoryRoutes(loadConfig: ConfigLoader): HistoryCommands {
 export function createCommandLineCommandNamespace(loaders: CommandLineCommandLoaders): CommandLineCommandNamespace {
     return {
         history: createHistoryRoutes(loaders.loadConfig),
+        async replayRun(context) {
+            const { createReplayCommand, replayTerminal } = await import('./replay-command.ts');
+            const { createUnimplementedCommand } = await import('./command-line-unimplemented-commands.ts');
+            return await createReplayCommand({
+                loadConfig: loaders.loadConfig,
+                isTerminal: replayTerminal.isTerminal,
+                pickRun: replayTerminal.pickRun,
+                replayRecordedRun: createUnimplementedCommand('replay')
+            })(context);
+        },
         baseline: {
             apply: routeBaselineCommand(loaders.loadBaselineCommands, function selectApplyCommand(commands) {
                 return commands.apply;

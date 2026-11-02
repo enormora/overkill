@@ -69,7 +69,7 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
                 return createCommandLineErrorResultFromUnknown(error);
             }
         },
-        replayRun: createUnimplementedCommand('replay'),
+        replayRun: commandNamespace.replayRun,
         replayWitness: createUnimplementedCommand('replay-witness'),
         async runTests(request) {
             const timing = createSystemRunTimingMeasurement();

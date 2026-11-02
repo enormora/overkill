@@ -53,6 +53,23 @@ async function prepareRuns(cwd: string): Promise<string> {
     return record.startedAt;
 }
 export const testNode = suite('history CLI', [
+    test('replay dispatch rejects nonterminals and forwards explicit ids', async function (scope: TestScope) {
+        await inProject(async function replayCommands(cwd) {
+            const missing = await execute(process.execPath, [ binary, 'replay' ], { cwd });
+            scope.assert.equal(missing.code, 3);
+            scope.assert.includes(missing.stderr, 'overkill history list');
+            const explicit = await execute(process.execPath, [ binary, 'replay', 'chosen', '--config', 'custom.js' ], {
+                cwd
+            });
+            scope.assert.equal(explicit.code, 3);
+            scope.assert.includes(explicit.stderr, 'with 1 arguments is not implemented yet');
+            const extra = await execute(process.execPath, [ binary, 'replay', 'a', 'b' ], { cwd });
+            scope.assert.equal(extra.code, 3);
+            const invalid = await execute(process.execPath, [ binary, 'replay', '--yes' ], { cwd });
+            scope.assert.notEqual(invalid.code, 0);
+        });
+        return scope.assert.collect();
+    }),
     test('list renders persisted outcomes and prune reports applied removals', async function (scope: TestScope) {
         await inProject(async function recordedCommands(cwd) {
             const startedAt = await prepareRuns(cwd);
