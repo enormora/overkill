@@ -1,0 +1,105 @@
+{
+    "format": {
+        "name": "overkill-property-graph",
+        "version": 1
+    },
+    "codec": {
+        "name": "overkill-standard-input",
+        "version": 1
+    },
+    "payload": [
+        {
+            "$value": 1,
+            "$expressions": 19
+        },
+        {
+            "$numbers": 2,
+            "$date": 4,
+            "$record": 5,
+            "$regex": 7,
+            "$buffer": 8,
+            "$views": 9,
+            "$map": 12,
+            "$set": 16,
+            "$sparse": 18,
+            "$self": 1,
+            "$key": 13
+        },
+        [
+            -3,
+            -4,
+            -5,
+            -6,
+            3,
+            -1
+        ],
+        [
+            "BigInt",
+            "42"
+        ],
+        [
+            "Date",
+            ""
+        ],
+        [
+            "null",
+            "$x",
+            6
+        ],
+        1,
+        [
+            "RegExp",
+            "a",
+            "gu"
+        ],
+        [
+            "ArrayBuffer",
+            "AQIDBAAAAAAAAAAAAAAAAA=="
+        ],
+        [
+            10,
+            11
+        ],
+        [
+            "DataView",
+            8,
+            4,
+            8
+        ],
+        [
+            "Uint8Array",
+            8,
+            1,
+            3
+        ],
+        [
+            "Map",
+            13,
+            14,
+            15,
+            13
+        ],
+        {},
+        "first",
+        "second",
+        [
+            "Set",
+            13,
+            17
+        ],
+        "last",
+        [
+            -2,
+            -1,
+            -2
+        ],
+        [
+            20
+        ],
+        {
+            "$expression": 7,
+            "$lastIndex": 21
+        },
+        2
+    ]
+}
