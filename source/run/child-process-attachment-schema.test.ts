@@ -84,7 +84,10 @@ export const testNode = createSuite({
                         limits: defaultAttachmentLimits
                     }
                 };
-                scope.assert.deepEqual(supervisedParentMessageSchema.parse(assignment), assignment);
+                scope.assert.deepEqual(supervisedParentMessageSchema.parse(assignment), {
+                    ...assignment,
+                    corpus: { checkedIn: [], localCache: [], diagnostics: [] }
+                });
                 scope.assert.false(
                     supervisedParentMessageSchema
                         .safeParse({
