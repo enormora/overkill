@@ -1,4 +1,7 @@
 import type { HistoryPolicy } from '../config/history-policy.ts';
+import type { HistoryOptions } from './history-types.ts';
+
+export type HistoryMaintenance = (options: HistoryOptions) => Promise<readonly string[]>;
 
 export type HistoryStorage = {
     readonly beginRun: (id: string) => Promise<() => Promise<void>>;

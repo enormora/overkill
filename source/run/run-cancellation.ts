@@ -38,7 +38,7 @@ export async function cancelledRunResult(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement | null
-): ReturnType<RunOrchestrator['run']> {
+): ReturnType<RunOrchestratorDependencies['execute']> {
     return await reportCollectionErrorResult(
         command,
         dependencies,

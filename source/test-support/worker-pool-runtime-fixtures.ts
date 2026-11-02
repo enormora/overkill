@@ -37,6 +37,9 @@ const createFakeWorkerPool: RunOrchestratorDependencies['createWorkerPool'] = fu
 export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['dependencies'] {
     return {
         createHistoryStorage: createMemoryHistoryStorage,
+        async maintainHistory() {
+            return [];
+        },
         collectBenchmarkHost: benchmarkHostSnapshot,
         availableParallelism: 2,
         createProcessUsageTracker: testOnlyDependency,

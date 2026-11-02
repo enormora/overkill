@@ -15,7 +15,7 @@ import {
     defaultRunRequest,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
-import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
 import type { LoadedConfig } from '../config/config.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
@@ -140,7 +140,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
         async run(command) {
             recordedCommands.record(command);
 
-            return runResultFactory.build({
+            return runnerResultFactory.build({
                 perTest: [ { outcome: { kind: 'pass' } } ],
                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
             });
@@ -150,7 +150,7 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
 
             return {
                 deliveredRunnerErrors: [],
-                result: runResultFactory.build({
+                result: runnerResultFactory.build({
                     perTest: [ { outcome: { kind: 'pass' } } ],
                     summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
                 }),

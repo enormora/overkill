@@ -10,7 +10,7 @@ import { createRunRecordSession, interruptRunRecord, type RunRecordSession } fro
 
 export type RunRecordExecutionDependencies = Pick<
     RunOrchestratorDependencies,
-    'createHistoryStorage' | 'node' | 'runtimeStateStore' | 'wallClock'
+    'createHistoryStorage' | 'maintainHistory' | 'node' | 'runtimeStateStore' | 'wallClock'
 >;
 
 function recordingEnabled(input: ResolvedRunInput): boolean {

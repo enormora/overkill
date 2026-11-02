@@ -7,11 +7,10 @@ import {
     createShardedLocalResolvedRunFromTestPlan
 } from './run-local-planning.ts';
 import type { ResolvedRun, RunCommand, RunFacts } from './run-types.ts';
-import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
 export type LocalRunCollectionSource = LocalTestPlanInput['source'];
-type RunResult = Awaited<ReturnType<RunOrchestrator['run']>>;
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 export async function createLocalResolvedRun(
     command: RunCommand,

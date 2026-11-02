@@ -390,9 +390,10 @@ export type ResolvedRun = {
     readonly request: RunRequest;
 };
 
+export type RunnerResult = RunResult & { readonly maintenanceDiagnostics: readonly string[]; };
 export type RunReporterDeliveryResult = {
     readonly deliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
-    readonly result: RunResult;
+    readonly result: RunnerResult;
     readonly undeliveredRunnerErrors: readonly RunResult['runnerErrors'][number][];
 };
 
@@ -437,24 +438,22 @@ export type BenchmarkOrchestrator = {
     ) => Promise<RunReporterDeliveryResult>;
     readonly baseline: BenchmarkBaselineOrchestrator;
     readonly list: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>;
-    readonly run: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunResult>;
+    readonly run: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunnerResult>;
     readonly runWithReporterDelivery: (
         command: RunCommand,
         options: RunInvocationTimingOptions
     ) => Promise<RunReporterDeliveryResult>;
 };
 
-export type RunInvocationOptions = RunInvocationTimingOptions & {
-    readonly signal: AbortSignal | null;
-};
-
+export type RunInvocationOptions = RunInvocationTimingOptions & { readonly signal: AbortSignal | null; };
+type RunOperation<Command, Result> = (
+    command: Command,
+    options?: RunInvocationOptions | RunInvocationTimingOptions
+) => Promise<Result>;
 export type RunOperations<Command> = {
     readonly resolve: (command: Command, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>;
-    readonly run: (command: Command, options?: RunInvocationOptions | RunInvocationTimingOptions) => Promise<RunResult>;
-    readonly runWithReporterDelivery: (
-        command: Command,
-        options?: RunInvocationOptions | RunInvocationTimingOptions
-    ) => Promise<RunReporterDeliveryResult>;
+    readonly run: RunOperation<Command, RunnerResult>;
+    readonly runWithReporterDelivery: RunOperation<Command, RunReporterDeliveryResult>;
 };
 
 export type ConfiguredRunOrchestrator = RunOperations<RunCommand> & {
@@ -472,7 +471,7 @@ export type CollectedRunInvocation = {
 export type CollectedRun = {
     readonly facts: RunFacts;
     readonly plan: CollectedRunPlan;
-    readonly run: (invocation: CollectedRunInvocation) => Promise<RunResult>;
+    readonly run: (invocation: CollectedRunInvocation) => Promise<RunnerResult>;
     readonly runWithReporterDelivery: (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>;
 };
 

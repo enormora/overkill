@@ -7,7 +7,7 @@ import {
 import type { DefinedReporter, Reporter } from '../engine/reporter.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { defineFixedOutputRenderer, defineFixedReporter } from '../test-support/reporter-definition.ts';
-import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
 import {
     defaultRunConfig,
     unexpectedBenchmarkOrchestrator,
@@ -20,7 +20,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import type { RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';
+import type { RunRequest, ConfiguredRunOrchestrator, RunnerResult } from './run-types.ts';
 
 const plainOutputRenderer = defineFixedOutputRenderer({
     render(intent): string {
@@ -93,8 +93,8 @@ function defaultLoadedConfig(reporters: LoadedConfig['reporters']): LoadedConfig
     };
 }
 
-function createRunResult(runnerErrors: RunResult['runnerErrors']): RunResult {
-    return runResultFactory.build({
+function createRunResult(runnerErrors: RunResult['runnerErrors']): RunnerResult {
+    return runnerResultFactory.build({
         runnerErrors,
         summary: { defined: 1, discovered: 1, planned: 1 }
     });
@@ -171,12 +171,33 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'maintenance diagnostics reach stderr without failing a passing command',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const diagnostics = [ 'History maintenance failed: permission denied' ];
+                const result = await runTests(memoryReporter, async function runCommand() {
+                    return {
+                        ...runnerResultFactory.build({
+                            perTest: [ { outcome: { kind: 'pass' } } ],
+                            summary: { defined: 1, discovered: 1, planned: 1, passed: 1 }
+                        }),
+                        maintenanceDiagnostics: diagnostics
+                    };
+                }, []);
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.deepEqual(result.fallbackDiagnostics, diagnostics);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() maps process exhaustion to exit code 5',
             annotations: {},
             controls: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(memoryReporter, async function runCommand() {
-                    return runResultFactory.build({
+                    return runnerResultFactory.build({
                         runnerErrors: [
                             runnerError('Process budget exceeded.', 'process-exhaustion')
                         ],
@@ -196,7 +217,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const result = await runTests(memoryReporter, async function runCommand() {
-                    return runResultFactory.build({
+                    return runnerResultFactory.build({
                         runnerErrors: [
                             runnerError('Loader failed.', 'loader'),
                             runnerError('Process budget exceeded.', 'process-exhaustion')

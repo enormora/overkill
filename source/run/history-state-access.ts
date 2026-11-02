@@ -3,6 +3,12 @@ import path from 'node:path';
 import { hostname } from 'node:os';
 import lockfile from 'proper-lockfile';
 import { z } from 'zod';
+import {
+    checkHistoryMaintenanceBudget,
+    historyMaintenanceDiagnostics,
+    historyMaintenanceDeadline,
+    HistoryMaintenanceDeferredError
+} from './history-maintenance-budget.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { createNodeHistoryStorage } from './node-history-storage.ts';
@@ -19,6 +25,13 @@ function ownerAlive(pid: number): boolean {
         throw error;
     }
 }
+function rejectActiveOwner(message: string): never {
+    if (Number.isFinite(historyMaintenanceDeadline())) {
+        throw new HistoryMaintenanceDeferredError();
+    }
+    throw new Error(message);
+}
+
 async function assertOwnerInactive(
     store: HistoryStorage,
     ownerPath: string,
@@ -33,15 +46,16 @@ async function assertOwnerInactive(
             stale: options.config.history.staleLockMilliseconds
         });
         if (live) {
-            throw new Error('History is owned by a run on another host.');
+            rejectActiveOwner('History is owned by a run on another host.');
         }
         return;
     }
     if (ownerAlive(owner.pid)) {
-        throw new Error('Persisted runs are active. Finish them before history maintenance.');
+        rejectActiveOwner('Persisted runs are active. Finish them before history maintenance.');
     }
 }
 async function existingStatus(target: string): Promise<Awaited<ReturnType<typeof lstat>> | null> {
+    checkHistoryMaintenanceBudget();
     try {
         return await lstat(target);
     } catch (error: unknown) {
@@ -67,6 +81,7 @@ async function assertNotLinked(target: string): Promise<void> {
 }
 
 export async function historyDirectoryNames(directory: string): Promise<readonly string[]> {
+    checkHistoryMaintenanceBudget();
     try {
         return await readdir(directory);
     } catch (error: unknown) {
@@ -103,7 +118,7 @@ export function createHistoryAccess(options: HistoryOptions): HistoryAccess {
         try {
             return await store.withLock(operation);
         } catch (error: unknown) {
-            if (error instanceof RunCollectionError) {
+            if (error instanceof RunCollectionError || error instanceof HistoryMaintenanceDeferredError) {
                 throw error;
             }
             throw new RunCollectionError(
@@ -120,6 +135,7 @@ export function createHistoryAccess(options: HistoryOptions): HistoryAccess {
             return name.endsWith('.json');
         });
         for (const name of names) {
+            checkHistoryMaintenanceBudget();
             await assertOwnerInactive(store, path.join(directory, 'active-runs', name), options);
             abandonedOwners.add(name);
         }
@@ -143,6 +159,7 @@ export function createHistoryAccess(options: HistoryOptions): HistoryAccess {
         assertIdle,
         async removeAbandonedOwners() {
             for (const name of abandonedOwners) {
+                checkHistoryMaintenanceBudget();
                 const ownerPath = path.join(directory, 'active-runs', name);
                 await rm(`${ownerPath}.lease`, { recursive: true, force: true });
                 await rm(ownerPath, { force: true });
@@ -150,9 +167,12 @@ export function createHistoryAccess(options: HistoryOptions): HistoryAccess {
         },
         assertOwnedLocation,
         diagnostics() {
-            return Array.from(abandonedOwners, function (name) {
-                return `Abandoned run ownership: ${name}`;
-            });
+            return [
+                ...historyMaintenanceDiagnostics(),
+                ...Array.from(abandonedOwners, function (name) {
+                    return `Abandoned run ownership: ${name}`;
+                })
+            ];
         }
     };
 }

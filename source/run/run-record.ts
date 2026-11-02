@@ -5,10 +5,10 @@ import { createRunRecordStorage } from './run-record-storage.ts';
 import type { RunRecord, RunRecordCoverage } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { initialRecord, type RunRecordDependencies } from './run-record-input.ts';
-import type { RunFacts } from './run-types.ts';
+import type { RunFacts, RunnerResult } from './run-types.ts';
 
 export type RunRecordSession = {
-    readonly complete: (result: RunResult) => Promise<RunResult>;
+    readonly complete: (result: RunResult) => Promise<RunnerResult>;
     readonly checkpointResult: (result: RunResult) => Promise<RunResult>;
     readonly id: string;
     readonly interrupt: (error: unknown) => Promise<void>;
@@ -41,18 +41,27 @@ export function createRunRecordSession(
 
     let releaseOwner: (() => Promise<void>) | null = null;
     let placementTrace: RunRecord['placementTrace'] = null;
+    let maintenance: Promise<readonly string[]> | null = null;
+    async function completeRecord(result: RunResult): Promise<RunResult> {
+        try {
+            return await storage.result(result, 'completed', { placementTrace });
+        } finally {
+            const release = releaseOwner;
+            releaseOwner = null;
+            await release?.();
+        }
+    }
     return {
         async checkpointResult(result) {
             return await storage.result(result, 'started', { placementTrace });
         },
         async complete(result) {
-            try {
-                return await storage.result(result, 'completed', { placementTrace });
-            } finally {
-                const release = releaseOwner;
-                releaseOwner = null;
-                await release?.();
-            }
+            const completed = await completeRecord(result);
+            maintenance = maintenance ?? dependencies.maintainHistory();
+            return {
+                ...completed,
+                maintenanceDiagnostics: await maintenance
+            };
         },
         id: value.id,
         async interrupt(error) {

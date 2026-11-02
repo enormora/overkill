@@ -1,13 +1,13 @@
 import { mkdir, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { hostname } from 'node:os';
-import { setTimeout as delay } from 'node:timers/promises';
 import lockfile from 'proper-lockfile';
 import { createNodeFileStore } from '../file-store.ts';
 import type { HistoryPolicy } from '../config/history-policy.ts';
+import { checkHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
+import { acquireHistoryLock } from './history-lock-acquisition.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 
-const retryIntervalMilliseconds = 25;
 type LockState = { readonly error: () => Error | null; readonly record: (error: Error) => void; };
 function createLockState(): LockState {
     let error: Error | null = null;
@@ -41,31 +41,6 @@ async function historyFiles(directory: string): Promise<readonly string[]> {
         .map(function recordPath(name) {
             return path.join(directory, name);
         });
-}
-
-async function acquireHistoryLock(
-    directory: string,
-    policy: HistoryPolicy,
-    state: LockState
-): Promise<() => Promise<void>> {
-    const options = {
-        lockfilePath: path.join(directory, 'history.lock'),
-        stale: policy.staleLockMilliseconds,
-        onCompromised(error: Error) {
-            state.record(error);
-        }
-    };
-    const deadline = performance.now() + policy.lockTimeoutMilliseconds;
-    for (;;) {
-        try {
-            return await lockfile.lock(directory, options);
-        } catch (error: unknown) {
-            if (performance.now() >= deadline || !await lockfile.check(directory, options)) {
-                throw error;
-            }
-            await delay(Math.min(retryIntervalMilliseconds, Math.max(0, deadline - performance.now())));
-        }
-    }
 }
 
 async function guardedHistoryOperation<T>(operation: () => Promise<T>, state: LockState): Promise<T> {
@@ -112,13 +87,23 @@ export function createNodeHistoryStorage(directory: string, policy: HistoryPolic
                 }
             };
         },
-        read: store.read,
-        write: store.write,
-        list: historyFiles,
+        async read(target) {
+            checkHistoryMaintenanceBudget();
+            return await store.read(target);
+        },
+        async write(target, content) {
+            checkHistoryMaintenanceBudget();
+            await store.write(target, content);
+        },
+        async list(target) {
+            checkHistoryMaintenanceBudget();
+            return await historyFiles(target);
+        },
         async withLock(operation) {
+            checkHistoryMaintenanceBudget();
             await mkdir(directory, { recursive: true });
             const state = createLockState();
-            const release = await acquireHistoryLock(directory, policy, state);
+            const release = await acquireHistoryLock(directory, policy, state.record);
             try {
                 return await guardedHistoryOperation(operation, state);
             } finally {

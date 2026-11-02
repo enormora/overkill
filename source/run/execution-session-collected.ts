@@ -33,7 +33,7 @@ async function executeCollectedInvocation(
     const collected = await collecting;
     const selection = await lifecycle.select(collected.plan);
     await lifecycle.beforeCases();
-    const result = await collected.run({ selection });
+    const { maintenanceDiagnostics, ...result } = await collected.run({ selection });
     execution.artifacts.write(result.artifacts);
     return { kind: 'result', result, data: lifecycle.snapshot(), deadlineExceeded: false };
 }

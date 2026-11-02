@@ -11,7 +11,7 @@ import {
     defaultRunConfig,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunner
@@ -63,7 +63,7 @@ function createPassingOrchestrator(): ConfiguredRunOrchestrator {
             throw new Error('List resolution is not used.');
         },
         async run() {
-            return runResultFactory.build({
+            return runnerResultFactory.build({
                 perTest: [ { outcome: { kind: 'pass' } } ],
                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
             });
@@ -71,7 +71,7 @@ function createPassingOrchestrator(): ConfiguredRunOrchestrator {
         async runWithReporterDelivery() {
             return {
                 deliveredRunnerErrors: [],
-                result: runResultFactory.build({
+                result: runnerResultFactory.build({
                     perTest: [ { outcome: { kind: 'pass' } } ],
                     summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
                 }),

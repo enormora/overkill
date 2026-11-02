@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+const defaultMaintenanceBudget = 100;
 const defaultDetailedRunLimit = 20;
 const defaultSuccessfulArtifactRunLimit = 5;
 const defaultFailingArtifactRetentionDays = 7;
@@ -10,6 +11,7 @@ const defaultRetentionDays = 90;
 const defaultStaleLock = 120_000;
 export const historyPolicySchema = z
     .strictObject({
+        automaticMaintenanceBudgetMilliseconds: z.number().int().nonnegative().default(defaultMaintenanceBudget),
         detailedRunLimit: z.number().int().nonnegative().default(defaultDetailedRunLimit),
         successfulArtifactRunLimit: z.number().int().nonnegative().default(defaultSuccessfulArtifactRunLimit),
         failingArtifactRetentionDays: z.number().nonnegative().default(defaultFailingArtifactRetentionDays),

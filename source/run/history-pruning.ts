@@ -1,15 +1,19 @@
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
-import type { HistoryPolicy } from '../config/history-policy.ts';
+import { checkHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import { readCompactHistory } from './history-storage.ts';
 import { historyStateError } from './history-state-error.ts';
 import { retainCompactHistory } from './compact-history.ts';
 import { readDurationState, durationStatePath, ingestDurationState } from './duration-history-storage.ts';
 import { readRetentionCatalog, selectHistoryRemovals } from './history-retention-records.ts';
-import type { HistoryPruneRequest, HistoryPruneResult } from './history-types.ts';
+import type { HistoryOptions, HistoryPruneRequest, HistoryPruneResult } from './history-types.ts';
 
-type PruneContext = { readonly directory: string; readonly policy: HistoryPolicy; readonly store: HistoryStorage; };
+type PruneContext = {
+    readonly directory: string;
+    readonly policy: HistoryOptions['config']['history'];
+    readonly store: HistoryStorage;
+};
 type RetentionWrite = Pick<PruneContext, 'directory' | 'store'> & {
     readonly next: ReturnType<typeof retainCompactHistory>;
     readonly nextDurations: Awaited<ReturnType<typeof readDurationState>>;
@@ -17,18 +21,21 @@ type RetentionWrite = Pick<PruneContext, 'directory' | 'store'> & {
     readonly metadata: Awaited<ReturnType<typeof readRetentionCatalog>>['metadata'];
     readonly artifactDirectories: readonly string[];
 };
-async function applyRetention(input: RetentionWrite): Promise<void> {
-    const { store, directory, next, nextDurations, result, metadata, artifactDirectories } = input;
-    const retainedArtifacts = artifactDirectories.filter(function (value) {
+async function writeArtifactRetention(input: RetentionWrite): Promise<void> {
+    const { store, metadata, artifactDirectories, result } = input;
+    const retainedArtifacts = artifactDirectories.filter(function retainedArtifact(value) {
         return !result.paths.includes(value);
     });
     for (const target of retainedArtifacts) {
-        await store.write(
-            path.join(target, 'retention.json'),
-            JSON.stringify(metadata.get(path.basename(target)))
-        );
+        checkHistoryMaintenanceBudget();
+        await store.write(path.join(target, 'retention.json'), JSON.stringify(metadata.get(path.basename(target))));
     }
+}
+async function applyRetention(input: RetentionWrite): Promise<void> {
+    const { store, directory, next, nextDurations, result } = input;
+    await writeArtifactRetention(input);
     for (const target of result.paths) {
+        checkHistoryMaintenanceBudget();
         await rm(target, { recursive: true, force: true });
     }
     if (nextDurations !== null) {

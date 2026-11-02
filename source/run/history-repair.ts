@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { z } from 'zod';
-import type { HistoryPolicy } from '../config/history-policy.ts';
+import type { HistoryOptions, HistoryRepairResult } from './history-types.ts';
 import { emptyCompactHistory, ingestCompactRecord, retainCompactHistory } from './compact-history.ts';
 import { compactHistorySchema, type CompactHistory } from './compact-history-schema.ts';
 import { historyRecordSchema, type HistoryRecord } from './history-record.ts';
@@ -20,14 +20,9 @@ import {
     type DurationHistoryState
 } from './duration-history-storage.ts';
 
-export type HistoryRepairResult = {
-    readonly rebuiltRunCount: number;
-    readonly diagnostics: readonly string[];
-    readonly dataLoss: boolean;
-};
 type RepairContext = {
     readonly directory: string;
-    readonly policy: HistoryPolicy;
+    readonly policy: HistoryOptions['config']['history'];
     readonly mode: 'automatic' | 'explicit';
     readonly now: string;
 };

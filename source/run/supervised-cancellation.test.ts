@@ -4,10 +4,10 @@ import { createFakeSupervisedChildProcess } from '../test-support/fake-supervise
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import { defaultRunConfig, defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import type { RunResult as EngineRunResult } from './run-engine-primitives.ts';
 import { createSupervisedRunCommand } from './run-isolated-command.ts';
 import { runSupervisedCommand } from './supervised-run.ts';
 import { SupervisedCollectionError, supervisedCancellationMessage } from './run-errors.ts';
-import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const file = 'source/integration-tests/run/fixtures/passing.test.ts';
@@ -20,7 +20,7 @@ const command = {
 const phases = [ 'startup', 'collection', 'resolution', 'active', 'draining', 'completed' ] as const;
 type Phase = typeof phases[number];
 
-async function cancelAt(phase: Phase): ReturnType<RunOrchestrator['run']> {
+async function cancelAt(phase: Phase): Promise<EngineRunResult> {
     const controller = new AbortController();
     const resolved = await createDeterministicRunOrchestrator().resolve(command);
     if (resolved.plan.kind !== 'supervised') {

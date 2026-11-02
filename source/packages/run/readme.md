@@ -621,8 +621,25 @@ Placement still uses the latest eight duration samples within 30 days.
 
 History is derived state, not a replay source. Interrupted runs do not add
 case/work observations. Persistence failures fail the run. History CLI,
-last-failed selection, and automatic record/artifact pruning are separate
-features.
+last-failed selection remains a separate feature.
+
+### Automatic maintenance
+
+Completed persisted attempts apply retention after reporting, cleanup, and
+ownership release. `history.automaticMaintenanceBudgetMilliseconds` defaults to
+100; set it to zero to disable automatic maintenance. Explicit commands do not
+use this budget. Unrecorded runs do not start maintenance.
+
+The cooperative budget includes lock waiting and scanning. No new operation
+starts after the deadline; in-flight filesystem operations finish before the
+lock is released and can exceed the budget. Large backlogs may require explicit
+`overkill history prune`. Interrupted attempts wait for later maintenance.
+
+Runner returns extend the engine result with `maintenanceDiagnostics`, an array
+of messages also printed by the CLI after reporting. These messages never
+change verdicts or exit codes. Budget exhaustion, contention, and active runs
+quietly defer maintenance. Use `parseRunnerResult` for the extended result;
+`parseRunResult` continues to accept the engine-only shape.
 
 ### History
 

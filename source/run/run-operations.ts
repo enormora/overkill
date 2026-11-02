@@ -21,6 +21,7 @@ import {
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
 import type {
+    RunnerResult,
     ResolvedRun,
     RunCommand,
     FrozenRunCommand,
@@ -30,7 +31,6 @@ import type {
 
 type RunCollectionSource = CollectionSource;
 type DirectEntrypointRunCollectionSource = DirectEntrypointCollectionSource;
-type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 export type DirectEntrypointRunner = (
     command: RunCommand,
@@ -99,7 +99,7 @@ async function runCommand(
     dependencies: RunOrchestratorDependencies,
     timing: RunTimingMeasurement,
     source: RunCollectionSource
-): Promise<RunResult> {
+): Promise<RunnerResult> {
     return await executeRunCommand(
         {
             ...invocation,
