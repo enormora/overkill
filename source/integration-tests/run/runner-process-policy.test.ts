@@ -3,7 +3,7 @@ import { z } from 'zod/v4';
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../../packages/engine/engine.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
-import { runResultSchema } from '../../run/run-result-schema.ts';
+import { parseRunnerResult } from '../../packages/run/run.entry-point.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const processTimeoutMilliseconds = 15_000;
@@ -45,7 +45,7 @@ export const testNode = createSuite({
                 async body(scope: TestScope) {
                     const processResult = await runProcess(operation, 'supervised-process');
                     scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
-                    const result = runResultSchema.parse(JSON.parse(processResult.stdout));
+                    const result = parseRunnerResult(JSON.parse(processResult.stdout));
                     scope.assert.equal(result.status, 'failed');
                     scope.assert.equal(result.summary.crashed, 1);
                     scope.assert.true(result.runnerErrors.some(function reportsCrash(error) {
@@ -62,7 +62,7 @@ export const testNode = createSuite({
                 async body(scope: TestScope) {
                     const processResult = await runProcess(operation, 'supervised-process');
                     scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
-                    const result = runResultSchema.parse(JSON.parse(processResult.stdout));
+                    const result = parseRunnerResult(JSON.parse(processResult.stdout));
                     scope.assert.equal(result.status, 'failed');
                     scope.assert.true(result.runnerErrors.some(function reportsCrash(error) {
                         return error.subtype === 'crash';
@@ -78,7 +78,7 @@ export const testNode = createSuite({
                 async body(scope: TestScope) {
                     const processResult = await runProcess(operation, 'supervised-process');
                     scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
-                    const result = runResultSchema.parse(JSON.parse(processResult.stdout));
+                    const result = parseRunnerResult(JSON.parse(processResult.stdout));
                     const error = result.runnerErrors.find(function reportsPolicy(candidate) {
                         return candidate.subtype === 'runtime-policy';
                     });
@@ -110,7 +110,7 @@ export const testNode = createSuite({
             async body(scope: TestScope) {
                 const processResult = await runProcess('caught-execution', 'supervised-process');
                 scope.assert.equal(processResult.code, 0, { message: processResult.stderr });
-                const result = runResultSchema.parse(JSON.parse(processResult.stdout));
+                const result = parseRunnerResult(JSON.parse(processResult.stdout));
                 scope.assert.equal(result.summary.runtimePolicy, 1);
                 return scope.assert.collect();
             }

@@ -10,15 +10,19 @@ import type {
     RunSelection,
     RunCollectionError,
     parseRunResult,
+    parseRunnerResult,
     parseRunSelection,
     parseRunnerError,
     createRandomRunSeed,
-    RunReporterDeliveryResult
+    RunReporterDeliveryResult,
+    RunnerResult
 } from './run.entry-point.ts';
 
 describe('public runner lifecycle', function () {
     test('exposes typed transport parsers and seed generation', function () {
         expect<typeof parseRunResult>().type.toBe<(value: unknown) => RunResult>();
+        expect<typeof parseRunnerResult>().type.toBe<(value: unknown) => RunnerResult>();
+        expect<RunnerResult>().type.toBe<RunResult & { readonly maintenanceDiagnostics: readonly string[]; }>();
         expect<typeof parseRunSelection>().type.toBe<(value: unknown) => RunSelection>();
         expect<typeof parseRunnerError>().type.toBe<(value: unknown) => RunResult['runnerErrors'][number]>();
         expect<typeof createRandomRunSeed>().type.toBe<() => bigint>();
@@ -29,7 +33,7 @@ describe('public runner lifecycle', function () {
         >();
         expect<InitializedRun['collect']>().type.toBe<() => Promise<CollectedRun>>();
         expect<CollectedRunInvocation>().type.toBe<{ readonly selection: RunSelection; }>();
-        expect<CollectedRun['run']>().type.toBe<(invocation: CollectedRunInvocation) => Promise<RunResult>>();
+        expect<CollectedRun['run']>().type.toBe<(invocation: CollectedRunInvocation) => Promise<RunnerResult>>();
         expect<CollectedRun['runWithReporterDelivery']>().type.toBe<
             (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>
         >();
