@@ -203,6 +203,7 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
             files: copyProfileFiles(profile.files),
             reporters: copyReporters(profile.reporters),
             processUsage: copyProcessUsagePolicy(profile.processUsage),
+            corpus: { checkedIn: Array.from(profile.corpus.checkedIn), localCache: { ...profile.corpus.localCache } },
             property: { ...profile.property },
             testFamily: profile.testFamily,
             runRecords: { ...profile.runRecords },

@@ -1,10 +1,13 @@
+import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
 import type { RecordedCoverageExecution, RecordedCoverageRequest } from './recorded-coverage-types.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
-import type { RunCollectionSource } from './run-isolated-process.ts';
-import { createLocalRunOrEmptySelectionResultFromInput } from './run-local-resolution.ts';
+import {
+    createLocalRunOrEmptySelectionResultFromInput,
+    type LocalRunCollectionSource as RunCollectionSource
+} from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { observeRunRuntimePolicy, finalizeResultWithDurationHistory, type RunRuntimePolicy } from './run-support.ts';
+import { observeRunRuntimePolicy, type RunRuntimePolicy } from './run-support.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
 import type { ResolvedRun, RunCommand } from './run-types.ts';
 

@@ -10,6 +10,7 @@ import {
     type DefinitionLocations,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
+import { explicitPropertyKey, completePropertyTargets } from './property-witness.ts';
 import { coverageRequirements } from './property-coverage.ts';
 import { executeProperty } from './property-execution.ts';
 import type { PropertyExecutionResult } from './property-execution-result.ts';
@@ -106,6 +107,9 @@ export async function runPropertyInvocation<Value>(
 ): Promise<AssertionResult> {
     const { scope, signal, identity, locations } = context;
     const host = readPropertyExecutionHost(scope);
+    if (identity === 'declared-property') {
+        await completePropertyTargets(host, new Set([ identity ]));
+    }
     return await host.recordBoundary(async function evaluateInvocation() {
         const result = await executeProperty(invocation, { checkedIn: [], localCache: [] }, { host, signal, identity });
         return propertyBoundaryResult(result, locations);
@@ -115,6 +119,7 @@ export async function runPropertyInvocation<Value>(
 export type NestedPropertySession = {
     readonly forall: PropertyForall;
     readonly finish: () => Promise<void>;
+    readonly validateTargets: () => Promise<void>;
 };
 
 type InvocationScope = {
@@ -193,9 +198,15 @@ function invocationLocationKey(location: DefinitionLocations[number], scope: Tes
     );
 }
 
+function nestedPropertyIdentity(definition: unknown, key: string, occurrence: number): string {
+    const explicit = explicitPropertyKey(definition);
+    return explicit === null ? JSON.stringify([ key, occurrence ]) : JSON.stringify([ 'key', explicit ]);
+}
+
 export function createNestedPropertySession(scope: TestScope): NestedPropertySession {
     const session = createInvocationScope(scope);
     const occurrences = new Map<string, number>();
+    const seen = new Set<string>();
     function forall<Value>(generator: PropertyGenerator<Value>, body: PropertyBody<Value>): Promise<AssertionResult>;
     function forall<Value>(invocation: PropertyInvocation<Value>): Promise<AssertionResult>;
     async function forall<Value>(
@@ -207,14 +218,25 @@ export function createNestedPropertySession(scope: TestScope): NestedPropertySes
         const occurrence = occurrences.get(key) ?? 0;
         occurrences.set(key, occurrence + 1);
         const invocation = normalizeForall(definition, body);
+        const identity = nestedPropertyIdentity(definition, key, occurrence);
+        if (seen.has(identity)) {
+            propertyScopeContractFailure('Nested property keys must be unique within the case.');
+        }
+        seen.add(identity);
         return session.run(async function executeNestedInvocation(signal) {
             return await runPropertyInvocation(invocation, {
                 scope,
                 signal,
-                identity: JSON.stringify([ key, occurrence ]),
+                identity,
                 locations: [ location ]
             });
         });
     }
-    return { forall, finish: session.finish };
+    return {
+        forall,
+        finish: session.finish,
+        async validateTargets() {
+            await completePropertyTargets(readPropertyExecutionHost(scope), seen);
+        }
+    };
 }

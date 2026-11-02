@@ -1421,6 +1421,13 @@ changes repository files automatically. Fresh CI runs replay the checked-in
 corpus without depending on a restored local cache. Both corpora replay before
 novel generation, and promotion preserves the input and its codec version.
 The runner owns persistence outside the restricted property-body scope.
+Property profiles name checked-in files or directories with `corpus.checkedIn`
+(default `[]`). The local cache is partitioned by profile. Its default limits
+are 1,000 entries, 64 MiB total, and 1 MiB per entry, configurable through
+`corpus.localCache.maxEntries`, `maxBytes`, and `maxEntryBytes`.
+Eviction retains the newest entries within both limits. Oversized entries are
+diagnosed without caching; write failures are runner errors. Confirmation stays
+within the existing shrink-work budget, including when shrinking is disabled.
 
 Incompatible checked-in entries fail the run until explicitly migrated or
 removed. Incompatible local cache entries are skipped with diagnostics.

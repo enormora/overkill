@@ -6,7 +6,7 @@ import {
     serializeValue,
     propertyTrialEvidence
 } from '../packages/engine/engine.entry-point.ts';
-import { capturePropertyInput } from './property-graph.ts';
+import { capturePropertyInput, regressionCapture } from './property-graph.ts';
 import { readGeneratorCodec } from './generator.ts';
 import { trialFailureKey, type TrialFailureKey } from './property-failure-key.ts';
 import { trialTargets, type TrialTargets } from './property-targets.ts';
@@ -20,6 +20,7 @@ export type ObservedTrial = {
     readonly observation: PropertyFailureObservation;
 };
 type TrialContext = {
+    readonly reconstruct: (() => unknown) | null;
     readonly host: PropertyExecutionHost;
     readonly signal: AbortSignal;
     readonly work: PropertyWork;
@@ -51,10 +52,11 @@ export async function observePropertyTrial<Value>(
     invocation: NormalizedPropertyInvocation<Value>,
     context: TrialContext
 ): Promise<ObservedTrial> {
-    const capture = capturePropertyInput(value, readGeneratorCodec(invocation.generator), function consumeCodecWork() {
-        context.signal.throwIfAborted();
-        context.work.context.consumeWork();
-    });
+    const capture = regressionCapture(context.reconstruct) ??
+        capturePropertyInput(value, readGeneratorCodec(invocation.generator), function consumeCodecWork() {
+            context.signal.throwIfAborted();
+            context.work.context.consumeWork();
+        });
     const preview = serializeValue(value);
     const tracking = { key: trialFailureKey(), targets: trialTargets(context.observeLabel), passed: false };
     try {

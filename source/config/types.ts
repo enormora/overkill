@@ -200,7 +200,12 @@ export type BenchmarkProfileConfig = {
     readonly timeouts: TimeoutPolicy;
 };
 
+export type PropertyCorpusPolicy = {
+    readonly checkedIn: readonly string[];
+    readonly localCache: { readonly maxEntries: number; readonly maxBytes: number; readonly maxEntryBytes: number; };
+};
 export type PropertyProfileConfig = {
+    readonly corpus: PropertyCorpusPolicy;
     readonly execution: MicrotestExecution;
     readonly files: ProfileFiles;
     readonly reporters: readonly DefinedReporter[] | null;

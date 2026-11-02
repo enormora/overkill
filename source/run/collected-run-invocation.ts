@@ -1,7 +1,7 @@
+import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
 import { executeCollectedPlan } from './collected-run-execution.ts';
 import type { CollectedInvocationPlan, CollectedRunContext } from './collected-run-planning.ts';
 import type { RunResult } from './run-engine-primitives.ts';
-import { finalizeResultWithDurationHistory } from './run-support.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 
 export async function executeCollectedInvocation(

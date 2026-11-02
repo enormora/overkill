@@ -1,5 +1,6 @@
 import type { TestPlan } from '../engine/test-plan.ts';
 import type { ProcessUsagePolicy } from '../config/types.ts';
+import { resolvedPropertyCorpus } from './property-corpus-execution.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -62,6 +63,7 @@ export async function executeLocalResolvedRun(
             workerId: null
         });
 
+    const corpus = await resolvedPropertyCorpus(resolvedRun);
     return await dependencies.execute(resolvedRun.plan.testPlan, {
         seed: BigInt(resolvedRun.facts.reproducibility.seed),
         execution: engineExecution(
@@ -82,6 +84,7 @@ export async function executeLocalResolvedRun(
             resourceTiming
         ),
         propertyRun: {
+            corpus,
             seed: BigInt(resolvedRun.facts.reproducibility.seed),
             projectRoot: resolvedRun.facts.environment.projectRoot
         },

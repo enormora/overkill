@@ -475,3 +475,5 @@ export type {
     PropertyFailureObservation,
     PropertyShrinkStatus
 } from '../../engine/property-failure-evidence.ts';
+
+export type { PropertyWitnessFile, PropertyCorpusSnapshot } from '../../engine/property-corpus.ts';

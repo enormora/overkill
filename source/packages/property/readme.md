@@ -172,8 +172,8 @@ automatic edges and new exploration. Only accepted exploration counts toward
 earlier failure stops the invocation. Work or generation exhaustion before
 required checks complete produces an inconclusive outcome.
 
-Disk-backed regression corpora, witness replay,
-and public phase diagnostics follow in their respective milestones. Direct engine execution requires resolved property policy;
+Disk-backed regression corpora are supported. Standalone witness replay and
+public phase diagnostics follow in their respective milestones. Direct engine execution requires resolved property policy;
 `ExecuteOptions.propertyRun` supplies its run seed and project root; omitted
 context defaults to seed zero and an unknown project root. Configured runner execution supplies the resolved run seed automatically.
 
@@ -290,3 +290,31 @@ Previews use bounded diagnostic serialization and cannot serve as replay inputs.
 Cleanup and execution failures keep their native outcomes. Budget exhaustion
 retains established failures. Results describe shrunk counterexamples without
 claiming global minimality.
+
+## Regression corpora
+
+Property profiles accept `corpus.checkedIn`, an array of project-relative JSON
+files or directories. Checked-in entries replay before the local cache, examples,
+automatic edges, and new exploration. Entries use the versioned property witness
+envelope. Test execution never changes checked-in entries. Inspection, promotion,
+and migration commands are not yet available.
+
+Confirmed replayable failures are saved automatically beneath
+`runtimeStateDir/corpus`, separately for each profile. `corpus.localCache`
+defaults to `maxEntries: 1000`, `maxBytes: 67108864`, and
+`maxEntryBytes: 1048576`. Old entries are evicted to satisfy both count and byte
+limits. Oversized inputs are diagnosed instead of cached. Cache write failures
+are runner errors; malformed or incompatible local entries are diagnosed and
+skipped. Incompatible checked-in entries fail the run.
+
+Decoded regressions run even after generator bounds change. Total-work limits
+and normal supervision still apply. Input-only entries are confirmed without
+shrinking; changing a generator never silently retires a checked-in entry.
+Confirmation uses existing shrink-work limits, so `maxShrinkWork: 0` prevents
+automatic caching of new failures.
+
+Nested object-form `scope.forall({ key, generator, test })` accepts a nonblank
+key, unique within its enclosing case, to retain target identity when source
+locations change. Without a key, identity uses location and occurrence.
+Missing checked-in targets fail the enclosing case. Local target mismatches
+produce diagnostics.

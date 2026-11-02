@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { propertyWitnessSchema } from '../engine/property-corpus.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { propertyPolicySchema } from '../config/property-policy.ts';
 
@@ -70,3 +71,11 @@ export const supervisedCommandFields = {
     capabilityRestrictions: z.strictObject({ mode: z.enum([ 'disabled', 'enabled' ]) }),
     capture: z.enum([ 'buffered', 'live' ])
 };
+
+export const propertyCorpusSnapshotSchema = z
+    .strictObject({
+        checkedIn: z.array(propertyWitnessSchema),
+        localCache: z.array(propertyWitnessSchema),
+        diagnostics: z.array(z.strictObject({ path: z.string(), reason: z.string() }))
+    })
+    .default({ checkedIn: [], localCache: [], diagnostics: [] });

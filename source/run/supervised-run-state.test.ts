@@ -114,6 +114,7 @@ function propertyCheckpoint(): PropertyCaseEvidence {
             original: observation,
             retained: observation,
             diagnostics: [],
+            confirmedWitness: null,
             shrinkStatus: 'in-progress'
         } ]
     };

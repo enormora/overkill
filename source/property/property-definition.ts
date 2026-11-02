@@ -34,7 +34,9 @@ type CoveredInvocation<Value> = CoverageDeclaration & PropertyInvocationBody<Val
 export type NormalizedPropertyInvocation<Value> = CoverageDeclaration & ExampleInvocation<Value>;
 type UncoveredInvocation<Value> = ExampleInvocation<Value> | PropertyInvocationBody<Value>;
 type RequiredCoverageInvocation<Value> = CoveredInvocation<Value> | NormalizedPropertyInvocation<Value>;
-export type PropertyInvocation<Value> = RequiredCoverageInvocation<Value> | UncoveredInvocation<Value>;
+type BasicPropertyInvocation<Value> = RequiredCoverageInvocation<Value> | UncoveredInvocation<Value>;
+type KeyedPropertyInvocation<Value> = BasicPropertyInvocation<Value> & { readonly key: string; };
+export type PropertyInvocation<Value> = BasicPropertyInvocation<Value> | KeyedPropertyInvocation<Value>;
 
 type PropertyDefinitionBody<Value> = PropertyInvocation<Value> & { readonly title: string; };
 

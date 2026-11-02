@@ -116,3 +116,11 @@ export function migratePropertyInput<Value>(
         return capturePropertyInput(decodePropertyInput(input, selected, consume), selected, consume);
     });
 }
+
+const capturedRegressions = new WeakMap<() => unknown, EncodedPropertyInput>();
+export function retainRegressionCapture(recipe: () => unknown, input: EncodedPropertyInput): void {
+    capturedRegressions.set(recipe, input);
+}
+export function regressionCapture(recipe: (() => unknown) | null): EncodedPropertyInput | null {
+    return recipe === null ? null : capturedRegressions.get(recipe) ?? null;
+}

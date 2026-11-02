@@ -1,4 +1,6 @@
 import type { Clock } from '@enormora/clock';
+import { resolvedPropertyCorpus } from './property-corpus-execution.ts';
+import { supervisedWorkloadInputs, type SupervisedRunRuntime } from './supervised-run-runtime.ts';
 import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
 import { observeChildShutdown, startChildShutdown } from './child-process-shutdown.ts';
 import { recordChildProtocolFailure, recordPrematureChildExit } from './supervised-child-failure.ts';
@@ -166,4 +168,22 @@ export function sendSupervisedCommand(
     command: SupervisedAssignmentCommand | SupervisedChildCommand
 ): void {
     child.send(childProcessEnvelope(supervisedChildCorrelationId, command));
+}
+
+export async function sendAssignmentForPlan(runtime: SupervisedRunRuntime): Promise<void> {
+    const corpus = await resolvedPropertyCorpus(runtime.resolvedRun);
+    sendSupervisedCommand(runtime.child, {
+        corpus,
+        assignedWork: runtime.resolvedRun.facts.cases.map(function toWorkId(testCase) {
+            return testCase.workId;
+        }),
+        propertyPolicies: runtime.resolvedRun.facts.cases.flatMap(function propertyAssignment(testCase) {
+            return testCase.propertyPolicy === null
+                ? []
+                : [ { work: testCase.workId, policy: testCase.propertyPolicy } ];
+        }),
+        workloadInputs: supervisedWorkloadInputs(runtime.resolvedRun),
+        kind: 'assign',
+        attachmentEndpoint: runtime.attachments?.endpoint ?? null
+    });
 }

@@ -683,3 +683,12 @@ The picker supports `--config` and uses the configured `runtimeStateDir`.
 Selection delegates to the explicit-ID replay command. Recorded-run execution
 is not implemented yet, so selecting or supplying an ID currently reports
 that limitation.
+
+## Property corpus storage
+
+Property profiles replay JSON entries named by `corpus.checkedIn`. Paths are
+relative to the project root; directories are searched recursively. Missing
+paths and incompatible checked-in entries fail. Test execution only writes the
+bounded local cache under `runtimeStateDir/corpus`; it never promotes or
+migrates repository entries. See the property package's regression corpus
+documentation for limits, confirmation, and nested target identity.

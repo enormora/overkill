@@ -20,6 +20,7 @@ export type PropertyExecutionResult<Value> = {
     readonly coverage: CoverageSnapshot;
 } | {
     readonly kind: 'failed';
+    readonly regression: boolean;
     readonly exhaustive: number | null;
     readonly coverage: CoverageSnapshot;
     readonly accounting: PropertyAccounting;
@@ -34,4 +35,9 @@ export type PropertyInvocationContext = {
     readonly host: PropertyExecutionHost;
     readonly signal: AbortSignal;
     readonly identity: string;
+};
+
+export type PropertyRegressionDiagnostic = {
+    readonly reason: string;
+    readonly observation: PropertyFailureObservation | null;
 };

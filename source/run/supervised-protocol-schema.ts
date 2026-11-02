@@ -6,7 +6,7 @@ import type {
     SupervisedAssignmentCommand,
     SupervisedChildMessage
 } from './supervised-protocol.ts';
-import { supervisedCommandFields } from './run-command-schema.ts';
+import { supervisedCommandFields, propertyCorpusSnapshotSchema } from './run-command-schema.ts';
 import {
     assignedPropertyPoliciesSchema,
     collectedRunPlanSchema,
@@ -25,6 +25,7 @@ const commandSchema: z.ZodType<SupervisedChildCommand> = z.union([
 const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
     z.strictObject({
         kind: z.literal('assign'),
+        corpus: propertyCorpusSnapshotSchema,
         assignedWork: z.array(workIdSchema),
         propertyPolicies: assignedPropertyPoliciesSchema.default([]),
         workloadInputs: workloadInputsSchema.default([]),
