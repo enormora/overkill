@@ -1,21 +1,33 @@
+import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { runIfMain } from '#test-runner';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
-import { suite, test } from '../../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 
 const fixtureDirectory = 'source/integration-tests/run/fixtures/';
 
-function propertyCommand(file: string, processModel: 'in-process' | 'supervised-process'): RunCommand {
-    const path = `${fixtureDirectory}${file}.test.ts`;
+function propertyCommand(
+    scope: TestScope,
+    file: string,
+    processModel: 'in-process' | 'supervised-process'
+): RunCommand {
+    const runtimeStateDir = path.join(os.tmpdir(), `overkill-property-policy-${randomUUID()}`);
+    scope.cleanup(async function removePropertyState() {
+        await rm(runtimeStateDir, { recursive: true, force: true });
+    });
+    const fixture = `${fixtureDirectory}${file}.test.ts`;
     return {
         config: {
             ...normalizeConfig({
-                runtimeStateDir: 'target/property-policy-state',
+                runtimeStateDir,
                 profiles: {
                     laws: {
                         testFamily: 'property',
-                        files: { include: [ path ] },
+                        files: { include: [ fixture ] },
                         execution: { processModel, scheduling: 'serial' },
                         timeouts: { collectionMilliseconds: 10_000, softMilliseconds: 5000, hardMilliseconds: 10_000 }
                     }
@@ -25,7 +37,7 @@ function propertyCommand(file: string, processModel: 'in-process' | 'supervised-
         },
         cwd: process.cwd(),
         engine: { kind: 'default' },
-        request: defaultRunRequest({ profile: 'laws', paths: [ path ], order: 'plan' })
+        request: defaultRunRequest({ profile: 'laws', paths: [ fixture ], order: 'plan' })
     };
 }
 
@@ -33,17 +45,17 @@ export const testNode = suite('property runner policy', [
     ...([ 'in-process', 'supervised-process' ] as const).flatMap(function processPolicy(processModel) {
         return [
             test(`${processModel} executes targeted exploration`, async function (scope) {
-                const result = await orchestrator.run(propertyCommand('property-targeted', processModel));
+                const result = await orchestrator.run(propertyCommand(scope, 'property-targeted', processModel));
                 scope.assert.equal(result.summary.passed, 1);
                 return scope.assert.collect();
             }),
             test(`${processModel} transports invalid target contract failures`, async function (scope) {
-                const result = await orchestrator.run(propertyCommand('property-invalid-target', processModel));
+                const result = await orchestrator.run(propertyCommand(scope, 'property-invalid-target', processModel));
                 scope.assert.includes(JSON.stringify(result.perTest), 'property-observation');
                 return scope.assert.collect();
             }),
             test(`${processModel} collects policy and executes property trials`, async function (scope) {
-                const command = propertyCommand('property-declaration', processModel);
+                const command = propertyCommand(scope, 'property-declaration', processModel);
                 const resolved = await orchestrator.resolve(command);
                 scope.assert.equal(resolved.facts.execution.testFamily, 'property');
                 scope.assert.equal(resolved.facts.cases[0]?.propertyPolicy?.newTrials, 200);
@@ -55,12 +67,12 @@ export const testNode = suite('property runner policy', [
             }),
             test(`${processModel} rejects invalid property settings before execution`, async function (scope) {
                 await scope.assert.rejects(async function collectInvalidProperty() {
-                    await orchestrator.resolve(propertyCommand('property-invalid-settings', processModel));
+                    await orchestrator.resolve(propertyCommand(scope, 'property-invalid-settings', processModel));
                 }, { message: /Invalid property policy/ });
                 return scope.assert.collect();
             }),
             test(`${processModel} applies restricted policy to ordinary cases`, async function (scope) {
-                const result = await orchestrator.run(propertyCommand('console-policy', processModel));
+                const result = await orchestrator.run(propertyCommand(scope, 'console-policy', processModel));
                 scope.assert.equal(result.summary.runtimePolicy, 1);
                 scope.assert.true(result.runnerErrors.some(function consoleViolation(error) {
                     return error.subtype === 'runtime-policy';
@@ -68,14 +80,14 @@ export const testNode = suite('property runner policy', [
                 return scope.assert.collect();
             }),
             test(`${processModel} rejects live capture before importing test files`, async function (scope) {
-                const command = propertyCommand('throws-on-import', processModel);
+                const command = propertyCommand(scope, 'throws-on-import', processModel);
                 await scope.assert.rejects(async function collectLiveCapture() {
                     await orchestrator.resolve({ ...command, request: { ...command.request, capture: 'live' } });
                 }, { message: 'Property profiles do not support live capture.' });
                 return scope.assert.collect();
             }),
             test(`${processModel} rejects coverage before importing test files`, async function (scope) {
-                const command = propertyCommand('throws-on-import', processModel);
+                const command = propertyCommand(scope, 'throws-on-import', processModel);
                 await scope.assert.rejects(async function collectCoverage() {
                     await orchestrator.resolve({ ...command, request: { ...command.request, coverage: true } });
                 }, { message: 'Coverage can only be requested for microtest profiles.' });
@@ -86,7 +98,7 @@ export const testNode = suite('property runner policy', [
     test('in-process stops new property inputs after a capability violation', async function (scope) {
         const fixture = await import('./fixtures/property-console-trials.test.ts');
         fixture.resetPropertyTrialCount();
-        const result = await orchestrator.run(propertyCommand('property-console-trials', 'in-process'));
+        const result = await orchestrator.run(propertyCommand(scope, 'property-console-trials', 'in-process'));
         scope.assert.equal(result.summary.runtimePolicy, 1);
         scope.assert.equal(fixture.propertyTrialCount(), 1);
         scope.assert.true(result.runnerErrors.some(function capabilityFailure(error) {
@@ -95,7 +107,7 @@ export const testNode = suite('property runner policy', [
         return scope.assert.collect();
     }),
     test('supervised property profile blocks filesystem effects with permission attribution', async function (scope) {
-        const result = await orchestrator.run(propertyCommand('fs-write-policy', 'supervised-process'));
+        const result = await orchestrator.run(propertyCommand(scope, 'fs-write-policy', 'supervised-process'));
         scope.assert.equal(result.summary.runtimePolicy, 1);
         scope.assert.true(result.runnerErrors.some(function permissionDenied(error) {
             return error.subtype === 'permission';
@@ -103,7 +115,7 @@ export const testNode = suite('property runner policy', [
         return scope.assert.collect();
     }),
     test('supervised property profile attributes process budget exhaustion to the active case', async function (scope) {
-        const command = propertyCommand('property-heap-pressure', 'supervised-process');
+        const command = propertyCommand(scope, 'property-heap-pressure', 'supervised-process');
         const profile = command.config.profiles.laws;
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
@@ -139,7 +151,7 @@ export const testNode = suite('property runner policy', [
         return scope.assert.collect();
     }),
     test('supervised property profile aborts a cooperative body at its soft deadline', async function (scope) {
-        const command = propertyCommand('property-wait-for-abort', 'supervised-process');
+        const command = propertyCommand(scope, 'property-wait-for-abort', 'supervised-process');
         const profile = command.config.profiles.laws;
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
@@ -162,7 +174,7 @@ export const testNode = suite('property runner policy', [
         return scope.assert.collect();
     }),
     test('supervision retains confirmed property evidence when shrinking hangs', async function (scope) {
-        const command = propertyCommand('property-shrink-hang', 'supervised-process');
+        const command = propertyCommand(scope, 'property-shrink-hang', 'supervised-process');
         const result = await orchestrator.run(command);
         scope.assert.equal(result.summary.crashed, 1);
         const evidence = result.perTest[0]?.property?.invocations[0];
@@ -171,7 +183,7 @@ export const testNode = suite('property runner policy', [
         return scope.assert.collect();
     }),
     test('supervised property profile terminates a CPU-bound body', async function (scope) {
-        const command = propertyCommand('endless-loop', 'supervised-process');
+        const command = propertyCommand(scope, 'endless-loop', 'supervised-process');
         const profile = command.config.profiles.laws;
         if (profile?.testFamily !== 'property') {
             throw new TypeError('Expected a property profile.');
