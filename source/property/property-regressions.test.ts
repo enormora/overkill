@@ -2,6 +2,7 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import { emptyPropertyCorpus, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import { testNode as invocationTargets } from './property-corpus-targets.test.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
@@ -28,6 +29,7 @@ async function witness(): Promise<PropertyWitnessFile> {
 }
 
 export const testNode = suite('stored property regressions', [
+    invocationTargets,
     test('replays confirmed inputs outside the current generation domain', async function (scope) {
         const saved = await witness();
         const inputs: number[] = [];

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
@@ -39,19 +39,36 @@ function shrinkStatus(result: Awaited<ReturnType<typeof orchestrator.run>>): str
 
 export const testNode = suite(
     'runner property corpus',
-    ([ 'in-process', 'supervised-process' ] as const).map(function processExecution(processModel) {
-        return test(`${processModel} saves and replays confirmed failures`, async function (scope) {
-            const command = await corpusCommand(scope, processModel);
-            const first = await orchestrator.run(command);
-            const replay = await orchestrator.run(command);
-            scope.assert.deepEqual(first.runnerErrors, []);
-            scope.assert.deepEqual(replay.runnerErrors, []);
-            scope.assert.equal(first.summary.failed, 1);
-            scope.assert.equal(replay.summary.failed, 1);
-            scope.assert.equal(shrinkStatus(first), 'search-exhausted');
-            scope.assert.equal(shrinkStatus(replay), 'shrink-state-unavailable');
+    [
+        ...([ 'in-process', 'supervised-process' ] as const).map(function processExecution(processModel) {
+            return test(`${processModel} saves and replays confirmed failures`, async function (scope) {
+                const command = await corpusCommand(scope, processModel);
+                const first = await orchestrator.run(command);
+                const replay = await orchestrator.run(command);
+                scope.assert.deepEqual(first.runnerErrors, []);
+                scope.assert.deepEqual(replay.runnerErrors, []);
+                scope.assert.equal(first.summary.failed, 1);
+                scope.assert.equal(replay.summary.failed, 1);
+                scope.assert.equal(shrinkStatus(first), 'search-exhausted');
+                scope.assert.equal(shrinkStatus(replay), 'shrink-state-unavailable');
+                return scope.assert.collect();
+            });
+        }),
+        test('retains confirmed failures when local persistence fails', async function (scope) {
+            const command = await corpusCommand(scope, 'in-process');
+            const blocked = path.join(command.config.runtimeStateDir, 'blocked');
+            await writeFile(blocked, 'not a directory');
+            const result = await orchestrator.run({
+                ...command,
+                config: { ...command.config, runtimeStateDir: blocked }
+            });
+            scope.assert.equal(result.summary.failed, 1);
+            scope.assert.true(result.runnerErrors.some(function corpusWriteFailure(error) {
+                return error.subtype === 'runtime-state' && error.message === 'Failed to write property corpus.';
+            }));
+            scope.assert.true(Boolean(result.perTest[0]?.property?.invocations[0]?.confirmedWitness));
             return scope.assert.collect();
-        });
-    })
+        })
+    ]
 );
 await runIfMain(import.meta, testNode);
