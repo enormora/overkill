@@ -43,7 +43,7 @@
         "p-limit": "7.3.3",
         "proper-lockfile": "4.1.2",
         "pure-rand": "8.4.2",
-        "simple-statistics": "7.12.1",
+        "simple-statistics": "8.0.0",
         "string-width": "8.3.0",
         "tinypool": "2.2.0",
         "tslib": "2.8.1",
