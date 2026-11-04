@@ -35,6 +35,7 @@ const filterSchema: z.ZodType<RunFilter> = z.lazy(function recursiveFilter() {
 
 export const runSelectionSchema: z.ZodType<RunSelection> = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('all') }),
+    z.strictObject({ kind: z.literal('none') }),
     z.strictObject({ kind: z.literal('filter'), filter: filterSchema })
 ]);
 

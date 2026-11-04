@@ -13,6 +13,13 @@ export function normalizeExecutionSessionOptions(
     supplied: RunExecutionSessionOptions,
     createSeed: () => bigint
 ): RunExecutionSessionOptions {
+    if (supplied.command.policy.request.lastFailed) {
+        throw new RunResolutionError(
+            'Memory execution sessions do not support last-failed recording.',
+            undefined,
+            'unsupported-request'
+        );
+    }
     if (supplied.command.policy.request.coverage || supplied.command.policy.request.baselineUpdateMode !== 'none') {
         throw new RunResolutionError(
             'Memory execution sessions do not support recorded coverage or baseline updates.',

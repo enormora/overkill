@@ -5,7 +5,7 @@ import type {
     RunResult
 } from './run-engine-primitives.ts';
 import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
-import { createRunResultFromCollectedPlan, collectedWorkloadInputs } from './collected-run-plan.ts';
+import { createRunResultFromCollectedPlan, emptyRunPlanStatus, collectedWorkloadInputs } from './collected-run-plan.ts';
 import type { RunRuntimeAttachments, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -200,6 +200,17 @@ export function applyEvent(
     }
 }
 
+function partialRunPlanStatus(input: PartialRunResultInput): RunResult['planStatus'] {
+    const { resolvedRun, collectedPlan } = input;
+    if (resolvedRun.facts.cases.length > 0) {
+        return 'planned';
+    }
+    if (!resolvedRun.request.lastFailed && resolvedRun.request.shard.total === 1) {
+        return 'planned';
+    }
+    return emptyRunPlanStatus(resolvedRun, collectedPlan);
+}
+
 function createPartialRunResult(input: PartialRunResultInput): RunResult {
     return createRunResultFromCollectedPlan(
         input.collectedPlan,
@@ -207,9 +218,7 @@ function createPartialRunResult(input: PartialRunResultInput): RunResult {
         input.state.runnerErrors(),
         {
             completedAtMicroseconds: Number(input.dependencies.wallClock.currentMonotonicMicroseconds),
-            planStatus: input.resolvedRun.facts.cases.length === 0 && input.resolvedRun.request.shard.total > 1
-                ? 'empty-shard'
-                : 'planned',
+            planStatus: partialRunPlanStatus(input),
             processUsage: null,
             startedAtMicroseconds: input.startedAtMicroseconds,
             testExecutionWallTimeMicroseconds: input.state.testExecutionWallTimeMicroseconds()

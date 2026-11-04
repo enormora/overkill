@@ -41,7 +41,8 @@ try {
         }}}),
         request: {
             baselineUpdateMode: 'none', capabilityRestrictions: {mode: 'enabled'}, capture: 'buffered',
-            coverage: false, record: false, debug: {mode: 'off', selectors: []}, execution: {mode: 'profile-default'},
+            coverage: false, record: false, lastFailed: false,
+    debug: {mode: 'off', selectors: []}, execution: {mode: 'profile-default'},
             measureProcessUsage: null, order: 'plan', paths: [], profile: 'microtest',
             processBudgetOverrides: null, processUsageSamplingIntervalMilliseconds: null,
             seed: {value: 42n}, selection: {kind: 'all'}, shard: {index: 1, total: 1},

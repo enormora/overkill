@@ -36,6 +36,7 @@ type CommandLineListRequest<Profile extends string | null> = {
     readonly seed: RunRequest['seed'];
     readonly selection: RunRequest['selection'];
     readonly shard: RunRequest['shard'];
+    readonly lastFailed: boolean;
     readonly withLocations: boolean;
     readonly withOrphans: boolean;
 };

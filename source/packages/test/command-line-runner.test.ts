@@ -32,6 +32,7 @@ export const testNode = createSuite({
                             capture: 'buffered',
                             coverage: false,
                             record: false,
+                            lastFailed: false,
                             debug: {
                                 mode: 'off',
                                 selectors: []
@@ -82,6 +83,7 @@ export const testNode = createSuite({
                         configPath: 'overkill.config.ts',
                         cwd: '/project',
                         listRequest: {
+                            lastFailed: false,
                             order: 'seeded',
                             paths: [ 'source/a.test.ts', 'source/b.test.ts' ],
                             profile: 'backend-http',

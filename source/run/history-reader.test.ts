@@ -5,7 +5,7 @@ import { completedHistoryRecord, historyTimestamp } from '../test-support/histor
 import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import { updateCompactHistory } from './history-storage.ts';
-import { readDurationProjection } from './history-reader.ts';
+import { readDurationProjection, readRequiredCompactHistory } from './history-reader.ts';
 
 const directory = '/project/state';
 const context = { directory, policy: defaultHistoryPolicy, now: historyTimestamp, testFamily: 'microtest' };
@@ -34,6 +34,38 @@ async function leavePendingCompletion(scope: TestScope, store: HistoryStorage): 
 }
 
 export const testNode = suite('history reader', [
+    test('required history repairs an older index before reading outcomes', async function (scope: TestScope) {
+        const store = await committedStore();
+        const indexPath = `${directory}/history/index.json`;
+        const current = await store.read(indexPath);
+        scope.require.defined(current);
+        await store.write(indexPath, current.replace('"version":1', '"version":0'));
+        let repairs = 0;
+        const index = await readRequiredCompactHistory(store, directory, async function repairLegacyIndex() {
+            repairs += 1;
+            await store.write(indexPath, current);
+        });
+        scope.assert.equal(repairs, 1);
+        scope.assert.equal(index.summaries[0]?.id, 'completed');
+        return scope.assert.collect();
+    }),
+    test(
+        'required selection history rejects missing and corrupt state without rebuilding it',
+        async function (scope: TestScope) {
+            const store = createMemoryHistoryStorage();
+            const repair = async function unexpectedRepair(): Promise<never> {
+                throw new Error('Unexpected automatic repair.');
+            };
+            await scope.assert.rejects(async function missingHistory() {
+                await readRequiredCompactHistory(store, directory, repair);
+            }, { message: /overkill history compact/ });
+            await store.write(`${directory}/history/index.json`, '{');
+            await scope.assert.rejects(async function corruptHistory() {
+                await readRequiredCompactHistory(store, directory, repair);
+            }, { message: /overkill history compact/ });
+            return scope.assert.collect();
+        }
+    ),
     test(
         'placement reads completed observations and excludes provisional completions',
         async function (scope: TestScope) {

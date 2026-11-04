@@ -26,6 +26,10 @@ export async function createLocalResolvedRun(
         profile: input.profile,
         source
     });
+    const cases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
+    if (cases === null && input.request.lastFailed) {
+        return createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, testPlan);
+    }
     const selectedPlan = selectedTestPlan(testPlan, input.request.selection);
 
     return await createShardedLocalResolvedRunFromTestPlan(

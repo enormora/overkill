@@ -67,6 +67,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         record: false,
+        lastFailed: false,
         coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },

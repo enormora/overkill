@@ -111,6 +111,7 @@ export const testNode = createOverkillSuite({
                     configPath: null,
                     cwd: '/project',
                     listRequest: {
+                        lastFailed: false,
                         order: 'seeded',
                         paths: [],
                         profile: null,
@@ -160,7 +161,13 @@ export const testNode = createOverkillSuite({
                         runRequest: { ...defaultRunRequest(), profile: null }
                     }),
                     commands.bench.baseline.diff({ ...context, runRequest: { ...defaultRunRequest(), profile: null } }),
-                    commands.bench.baseline.list({ ...context, listRequest: { paths: [], profile: null } }),
+                    commands.bench.baseline.list({
+                        ...context,
+                        listRequest: {
+                            paths: [],
+                            profile: null
+                        }
+                    }),
                     commands.bench.baseline.update({
                         ...context,
                         runRequest: { ...defaultRunRequest(), profile: null }
@@ -169,6 +176,7 @@ export const testNode = createOverkillSuite({
                         configPath: null,
                         cwd: '/project',
                         listRequest: {
+                            lastFailed: false,
                             order: 'seeded',
                             paths: [],
                             profile: null,

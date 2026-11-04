@@ -1,6 +1,7 @@
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
+import { createNodeHistoryStorage } from './node-history-storage.ts';
 import {
     createHistoryAccess,
     compareHistoryRuns,
@@ -8,8 +9,8 @@ import {
     detailedRecordState,
     type DetailedRecordState
 } from './history-state-access.ts';
-import { readCompactHistory } from './history-storage.ts';
-import { historyStateError, historySchemaVersion } from './history-state-error.ts';
+import { readRequiredCompactHistory } from './history-reader.ts';
+
 import { repairHistory } from './history-repair.ts';
 import { pruneHistory } from './history-pruning.ts';
 import type {
@@ -53,7 +54,7 @@ export function createHistory(options: HistoryOptions): History {
         assertOwnedLocation,
         diagnostics,
         removeAbandonedOwners
-    } = createHistoryAccess(options);
+    } = createHistoryAccess(options, createNodeHistoryStorage);
     async function repair(mode: 'automatic' | 'explicit'): Promise<HistoryRepairResult> {
         const result = await repairHistory({
             ...store,
@@ -73,17 +74,10 @@ export function createHistory(options: HistoryOptions): History {
     }
     return {
         async list(): Promise<readonly HistoryRunSummary[]> {
-            const source = await guarded(async function readHistorySource() {
-                return await store.read(path.join(directory, 'history', 'index.json'));
+            const index = await readRequiredCompactHistory(store, directory, async function repairAutomatically() {
+                return await repair('automatic');
             });
-            if (source !== null && historySchemaVersion(source) === 0) {
-                await repair('automatic');
-            }
             return await guarded(async function listHistory() {
-                const index = await readCompactHistory(store, directory);
-                if (index === null) {
-                    throw historyStateError('Compact history is missing.');
-                }
                 return await Promise.all(
                     index
                         .summaries

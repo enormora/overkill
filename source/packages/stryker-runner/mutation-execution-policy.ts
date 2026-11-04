@@ -12,6 +12,7 @@ export function createMutationRunCommand(
             capabilityRestrictions: { mode: 'enabled' },
             capture: 'buffered',
             record: false,
+            lastFailed: false,
             coverage: false,
             debug: { mode: 'off', selectors: [] },
             execution: { mode: 'serial' },

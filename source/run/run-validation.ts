@@ -105,11 +105,18 @@ function assertValidRunProfileName(profileName: string): void {
     }
 }
 
-function validateRunRequest(request: RunRequest): void {
-    assertValidRunProfileName(request.profile);
+function validateRunRecordingRequest(request: RunRequest): void {
+    if (typeof request.lastFailed !== 'boolean') {
+        invalidRequest('Run lastFailed must be a boolean.');
+    }
     if (typeof request.record !== 'boolean') {
         invalidRequest('Record must be a boolean.');
     }
+}
+
+function validateRunRequest(request: RunRequest): void {
+    assertValidRunProfileName(request.profile);
+    validateRunRecordingRequest(request);
 
     validatePositiveSafeInteger(request.workers, 'Worker count');
     validateRunShard(request);

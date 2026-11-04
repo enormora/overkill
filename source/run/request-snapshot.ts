@@ -25,6 +25,7 @@ export function copyRunRequest(request: RunRequest): RunRequest {
         capture: request.capture,
         coverage: request.coverage,
         record: request.record,
+        lastFailed: request.lastFailed,
         debug: {
             mode: request.debug.mode,
             selectors: []

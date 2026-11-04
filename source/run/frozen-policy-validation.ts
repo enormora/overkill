@@ -2,10 +2,10 @@ import { isDeepStrictEqual } from 'node:util';
 import { ConfigError, loadConfig } from '../packages/run/config.entry-point.ts';
 import { runExecutionFailure } from './execution-failure.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
-import { freezeRunPolicy } from './freeze-run-policy.ts';
+import { freezeResolvedRunPolicy } from './freeze-run-policy.ts';
 import type { FrozenMicrotestPolicy } from './run-types.ts';
 import { policyBaselineCommand } from './frozen-run-policy.ts';
-import type { RunInputResolutionDependencies } from './run-input-resolution.ts';
+import { readRunPolicyInput, type RunInputResolutionDependencies } from './run-input-resolution.ts';
 import { resolveProcessUsagePolicy, resolveRunScheduling, resolveTimingCollection } from './run-profile-facts.ts';
 import { RunResolutionError } from './run-errors.ts';
 
@@ -57,18 +57,24 @@ function revalidationFailure(error: unknown): string {
 
 async function reevaluatePolicy(
     policy: FrozenMicrotestPolicy,
-    dependencies: RunInputResolutionDependencies
+    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>
 ): Promise<FrozenMicrotestPolicy> {
     if (policy.source.kind === 'memory') {
         return policy;
     }
     try {
         const config = await loadConfig(policy.source.request);
-        return await freezeRunPolicy({
+        const input = {
             moduleBoundary: policy.moduleBoundary,
             command: { ...policyBaselineCommand(policy), config },
             source: { ...policy.source, resolvedPath: config.configPath }
-        }, dependencies);
+        };
+        const resolved = await readRunPolicyInput(
+            { command: input.command, namespace: 'test' },
+            dependencies,
+            { kind: 'configured-files' }
+        );
+        return freezeResolvedRunPolicy(input, resolved);
     } catch (error: unknown) {
         throw new RunResolutionError(
             `Frozen policy revalidation failed: ${revalidationFailure(error)}`,
@@ -84,7 +90,7 @@ async function reevaluatePolicy(
 
 export async function validateFrozenPolicySource(
     policy: FrozenMicrotestPolicy,
-    dependencies: RunInputResolutionDependencies
+    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>
 ): Promise<void> {
     const actual = await reevaluatePolicy(policy, dependencies);
     if (actual === policy) {

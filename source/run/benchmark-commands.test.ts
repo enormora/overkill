@@ -128,6 +128,7 @@ async function invokeBenchmark(
         : await commands.listBenchmarks({
             ...context,
             listRequest: {
+                lastFailed: false,
                 order: 'seeded',
                 paths: request.paths,
                 profile,

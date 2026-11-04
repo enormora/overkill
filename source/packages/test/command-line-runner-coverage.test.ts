@@ -10,6 +10,26 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            title: 'overkill wrapper carries last-failed through run and list requests',
+            annotations: {},
+            controls: {},
+            async body(scope: TestScope) {
+                const run = await runCommandLine([ 'run', '--last-failed', '--title', 'login' ], passingResult());
+                const list = await runCommandLine([ 'list', '--last-failed' ], passingResult());
+                const request = run.runRequests[0];
+                scope.require.defined(request);
+                scope.assert.equal(run.runRequests[0]?.runRequest.lastFailed, true);
+                scope.assert.deepEqual(request.runRequest.selection, {
+                    kind: 'filter',
+                    filter: { kind: 'contains', field: 'title', value: 'login' }
+                });
+                scope.assert.equal(run.runRequests[0]?.runRequest.record, false);
+                scope.assert.equal(list.listRequests[0]?.listRequest.lastFailed, true);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'overkill wrapper requests run records explicitly',
             annotations: {},
             controls: {},

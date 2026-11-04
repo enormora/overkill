@@ -85,6 +85,7 @@ describe('@overkill-dev/run/command-line', function () {
         expect<CommandLineCommandContext['cwd']>().type.toBe<string>();
         expect<keyof CommandLineListTestsRequest>().type.toBe<'configPath' | 'cwd' | 'listRequest'>();
         expect<CommandLineListTestsRequest['listRequest']>().type.toBe<{
+            readonly lastFailed: boolean;
             readonly order: Exclude<RunRequest['order'], 'plan'>;
             readonly paths: readonly string[];
             readonly profile: string;

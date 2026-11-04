@@ -121,7 +121,7 @@ export async function createSupervisedResolvedRun(
     ));
 
     return await resolvedSupervisedExecution({
-        allowEmptySelection: false,
+        allowEmptySelection: input.request.lastFailed,
         collection,
         command,
         dependencies,

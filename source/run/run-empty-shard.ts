@@ -1,5 +1,6 @@
 import {
-    createRunResultFromCollectedPlan
+    createRunResultFromCollectedPlan,
+    emptyRunPlanStatus
 } from './collected-run-plan.ts';
 import {
     createReporterDelivery
@@ -50,7 +51,7 @@ export async function executeEmptyShardRun(
             [ ...resolvedRun.collectionRunnerErrors, ...runStartErrors, ...runtimePolicy?.takeRunErrors() ?? [] ],
             {
                 completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
-                planStatus: 'empty-shard',
+                planStatus: emptyRunPlanStatus(resolvedRun, collectedPlan),
                 processUsage: null,
                 startedAtMicroseconds,
                 testExecutionWallTimeMicroseconds: 0

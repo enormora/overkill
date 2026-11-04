@@ -103,4 +103,11 @@ export type RunSelection = {
     readonly kind: 'filter';
 } | {
     readonly kind: 'all';
+} | {
+    readonly kind: 'none';
+};
+
+export type RunHistoryRequest = {
+    readonly record: boolean;
+    readonly lastFailed: boolean;
 };

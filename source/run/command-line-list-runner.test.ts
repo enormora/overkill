@@ -266,6 +266,7 @@ export async function listTests(
         configPath: null,
         cwd: process.cwd(),
         listRequest: {
+            lastFailed: false,
             order: 'seeded',
             paths: [ 'source/a.test.ts' ],
             profile: 'microtest',
@@ -356,6 +357,7 @@ export const testNode = createOverkillSuite({
                     configPath: null,
                     cwd: process.cwd(),
                     listRequest: {
+                        lastFailed: false,
                         order: 'seeded',
                         paths: [ 'source/integration.test.ts' ],
                         profile: 'integration',

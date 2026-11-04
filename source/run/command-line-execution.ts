@@ -1,3 +1,4 @@
+import type { RunResult } from '../engine/run-result.ts';
 import type { LoadedConfig } from '../config/config.ts';
 import { selectTestProfile } from './test-profile.ts';
 import {
@@ -13,6 +14,7 @@ import {
     readExitCodeFromRunResult,
     type CommandLineListTestsRequest,
     type CommandLineRunTestsRequest,
+    type CommandLineExitCode,
     type CommandLineRunnerResult
 } from './command-line-command.ts';
 import { renderResolvedRunList } from './run-list-renderer.ts';
@@ -67,6 +69,7 @@ function createCommandFromListRequest(
             capture: 'buffered',
             coverage: false,
             record: false,
+            lastFailed: request.listRequest.lastFailed,
             debug: {
                 mode: 'off',
                 selectors: []
@@ -88,6 +91,11 @@ function createCommandFromListRequest(
     };
 }
 
+function runRequestExitCode(request: RunCommand['request'], result: RunResult): CommandLineExitCode {
+    const code = readExitCodeFromRunResult(result);
+    return request.lastFailed && code === commandLineExitCodes.noTestsCollected ? commandLineExitCodes.pass : code;
+}
+
 export async function runTestsWithLoadedConfig(
     request: CommandLineRunTestsRequest,
     dependencies: CommandLineExecutionDependencies,
@@ -98,7 +106,7 @@ export async function runTestsWithLoadedConfig(
     const runResult = await dependencies.orchestrator.runWithReporterDelivery(command, options);
 
     return {
-        exitCode: readExitCodeFromRunResult(runResult.result),
+        exitCode: runRequestExitCode(command.request, runResult.result),
         fallbackDiagnostics: [
             ...formatRunnerErrorDiagnostics(runResult.undeliveredRunnerErrors),
             ...runResult.result.maintenanceDiagnostics

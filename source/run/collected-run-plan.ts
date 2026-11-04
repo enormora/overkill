@@ -10,9 +10,9 @@ import {
     type RunResult,
     type RunnerError
 } from '../engine/run-result.ts';
-import type { RunProcessUsage } from '../engine/process-usage.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+import type { RunProcessUsage, TestPlan } from './run-engine-primitives.ts';
+import { selectedCollectedRunPlan } from './run-selection.ts';
 import { testCasePropertySummary } from './property-collection.ts';
 import { caseDataFacts } from './run-case-facts.ts';
 import type {
@@ -22,6 +22,7 @@ import type {
     CollectedOrphanedNode,
     CollectedRunPlan,
     ResolvedRunPlan,
+    ResolvedRun,
     RunCollectionRoot
 } from './run-types.ts';
 
@@ -351,4 +352,9 @@ export function collectedWorkloadInputs(plan: CollectedRunPlan): readonly Frozen
     return collectedRunCaseEntries(plan).map(function workloadInput(entry) {
         return { work: entry.workId, parameters: entry.testCase.workloadParameters };
     });
+}
+
+export function emptyRunPlanStatus(run: ResolvedRun, plan: CollectedRunPlan): 'empty-selection' | 'empty-shard' {
+    const selection = selectedCollectedRunPlan(plan, run.request.selection);
+    return run.request.lastFailed && selection.files.length === 0 ? 'empty-selection' : 'empty-shard';
 }
