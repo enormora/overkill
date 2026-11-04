@@ -1,4 +1,4 @@
-import type { PropertyWitnessFile } from '../engine/property-corpus.ts';
+import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 
 const failingInput = 42;
 

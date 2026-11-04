@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod/v4';
-import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import { serializedValueSchema } from './serialized-value-schema.ts';
 import { childProcessEntryPointUrl } from './child-process.entry-point.ts';
 import { CorpusOperationError, type CorpusRequest } from './corpus-types.ts';

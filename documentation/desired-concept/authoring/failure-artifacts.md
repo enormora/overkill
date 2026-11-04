@@ -316,8 +316,8 @@ type SimulationWitnessFile = WitnessHeader & {
 type WitnessFile = PropertyWitnessFile | SimulationWitnessFile;
 ```
 
-Persisted seeds are decimal strings, matching the existing simulation
-producer; loaders restore numeric seed values internally. Property input
+Persisted seeds are decimal strings. Property seeds are unsigned; simulation
+seeds may be signed, matching the existing simulation producer; loaders restore numeric seed values internally. Property input
 payloads carry separate transport-format and application-codec versions.
 The `payload` is lossless graph JSON, not a truncated assertion value.
 `shrinkPath` is nullable diagnostic provenance and is not needed for direct

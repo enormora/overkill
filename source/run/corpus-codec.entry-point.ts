@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod/v4';
 import { serializeValue } from '../compare/serialized-value.ts';
-import { propertyWitnessSchema } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { decodePropertyInput, migratePropertyInput } from '../property/property-graph.ts';
 import { defineCodec, type PropertyCodecPayload } from '../property/property-codec.ts';
 

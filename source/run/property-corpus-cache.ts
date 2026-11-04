@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod/v4';
-import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import type { PropertyCorpusPolicy } from '../config/types.ts';
 
 export const cachedEntrySchema = z.strictObject({

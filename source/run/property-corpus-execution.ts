@@ -1,9 +1,6 @@
 import path from 'node:path';
-import {
-    emptyPropertyCorpus,
-    type PropertyCorpusSnapshot,
-    type PropertyWitnessFile
-} from '../engine/property-corpus.ts';
+import type { PropertyWitnessFile } from '../engine/witness-file.ts';
+import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from '../engine/property-corpus.ts';
 import { runStatusFromSummary, type RunResult } from '../engine/run-result.ts';
 import { readPropertyCorpus, savePropertyCorpus } from './property-corpus-storage.ts';
 import type { ResolvedRun } from './run-types.ts';

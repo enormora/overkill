@@ -2,7 +2,8 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 import type { PropertyInvocation } from '../packages/property/property.entry-point.ts';
-import { emptyPropertyCorpus, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import type { PropertyWitnessFile } from '../engine/witness-file.ts';
+import { emptyPropertyCorpus } from '../engine/property-corpus.ts';
 import { withProperties } from './property-authoring.ts';
 import { gen } from './generators.ts';
 

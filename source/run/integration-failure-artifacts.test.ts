@@ -1,7 +1,12 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { setTimeout as wait } from 'node:timers/promises';
 import { runIfMain } from '#test-runner';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import {
+    createSuite,
+    createTestCase,
+    parseWitnessFile,
+    type TestScope
+} from '../packages/engine/engine.entry-point.ts';
 import {
     defineResource,
     withFailureArtifacts,
@@ -77,7 +82,7 @@ async function assertNativeEvidence(scope: TestScope, fixture: AttachmentFixture
     if (witness?.payload.content.kind !== 'file') {
         throw new Error('Expected native witness file.');
     }
-    const value: unknown = JSON.parse(await readFile(witness.payload.content.path, 'utf8'));
+    const value = parseWitnessFile(JSON.parse(await readFile(witness.payload.content.path, 'utf8')));
     scope.assert.partialDeepEqual(value, {
         version: 1,
         seed: null,
@@ -165,7 +170,7 @@ export const testNode = createSuite({
                 if (witness?.payload.content.kind !== 'file') {
                     throw new Error('Expected seeded witness file.');
                 }
-                const value: unknown = JSON.parse(await readFile(witness.payload.content.path, 'utf8'));
+                const value = parseWitnessFile(JSON.parse(await readFile(witness.payload.content.path, 'utf8')));
                 scope.assert.partialDeepEqual(value, {
                     seed: '9007199254740993',
                     scenario: 'fault',

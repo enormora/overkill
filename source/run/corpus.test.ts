@@ -5,7 +5,7 @@ import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { capturePropertyInput } from '../property/property-graph.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
-import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import { inspectCorpus, promoteWitness, migrateCorpus, type CorpusRequest } from '../packages/run/run.entry-point.ts';
 
 type CorpusFixture = { readonly cwd: string; readonly witness: PropertyWitnessFile; readonly request: CorpusRequest; };

@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { propertyWitnessSchema } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { propertyPolicySchema } from '../config/property-policy.ts';
 

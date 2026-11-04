@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { propertyWitnessSchema } from '../engine/property-corpus.ts';
+import { encodedPropertyInputSchema, propertyWitnessSchema } from '../engine/witness-file.ts';
 import type { PropertyCaseEvidence } from '../engine/run-result.ts';
 import { serializedValueSchema } from './serialized-value-schema.ts';
 
@@ -10,11 +10,7 @@ const observationSchema = z.strictObject({
             z.strictObject({ kind: z.literal('codec-error'), reason: z.string() }),
             z.strictObject({
                 kind: z.literal('encoded'),
-                input: z.strictObject({
-                    format: z.strictObject({ name: z.string(), version: z.number().int().positive() }),
-                    codec: z.strictObject({ name: z.string(), version: z.number().int().positive() }),
-                    payload: z.json()
-                })
+                input: encodedPropertyInputSchema
             })
         ])
         .default({ kind: 'unavailable' }),

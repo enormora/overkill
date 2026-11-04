@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import { cacheSchema, cachedEntrySchema as entrySchema } from './property-corpus-cache.ts';
 import { CorpusOperationError, type CorpusRequest } from './corpus-types.ts';
 
