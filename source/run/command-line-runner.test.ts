@@ -207,6 +207,29 @@ export const testNode = createOverkillSuite({
     children: [
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
+            title: 'commandLineRunner.runTests() accepts empty last-failed selections',
+            ...emptyTestData,
+            async body(scope: OverkillScope) {
+                const dependencies = createRunnerDependencies({
+                    orchestrator: createRunOnlyOrchestrator(async function emptyRun() {
+                        return runnerResultFactory.build({
+                            planStatus: 'empty-selection',
+                            summary: { defined: 0, discovered: 0, planned: 0 }
+                        });
+                    })
+                });
+                const result = await createCommandLineRunner(dependencies).runTests({
+                    configPath: null,
+                    cwd: process.cwd(),
+                    runRequest: { ...defaultRequest, lastFailed: true }
+                });
+                scope.assert.equal(result.exitCode, 0);
+                scope.assert.equal(result.runResult?.planStatus, 'empty-selection');
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner.runTests() injects the default reporter when config omits reporters',
             ...emptyTestData,
             async body(scope: OverkillScope) {
