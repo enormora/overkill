@@ -717,3 +717,8 @@ current encoding. Both await preview delivery, create a new destination atomical
 and reject existing destinations. Programmatic writers require an asynchronous
 `beforeWrite` callback receiving source and output inspections. Previews are bounded
 diagnostics; each inspection also retains the complete lossless witness payload.
+
+`@overkill-dev/run/property-codec` exposes `defineCodec`, `capturePropertyInput`,
+`decodePropertyInput`, `migratePropertyInput`, and `PropertyCodecError` for shared
+lossless input serialization. Property authoring continues to expose `defineCodec`
+through `@overkill-dev/property`.

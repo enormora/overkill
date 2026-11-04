@@ -173,6 +173,7 @@ export const configuration = {
                 benchmarkBaselineRun: { javaScript: 'run/benchmark-baseline-run.js' },
                 benchmarkBaselineSession: { javaScript: 'run/benchmark-baseline-session.js' },
                 benchmarkCalibration: { javaScript: 'run/benchmark-calibration.js' },
+                propertyCodec: moduleRoot('packages/run/property-codec.entry-point'),
                 corpusCodecChild: { javaScript: 'run/corpus-codec.entry-point.js' },
                 corpusCommands: moduleRoot('run/corpus-commands'),
                 benchmarkCalibrationChild: { javaScript: 'run/benchmark-calibration.entry-point.js' },
@@ -204,6 +205,7 @@ export const configuration = {
                     './command-line': 'commandLine',
                     './config': 'config',
                     './filters': 'filters',
+                    './property-codec': 'propertyCodec',
                     './resource-lifecycle': 'resourceLifecycle',
                     './transcript-store': 'transcriptStore'
                 }),
@@ -280,11 +282,11 @@ export const configuration = {
             name: 'property',
             description: 'Generator-driven property test authoring for Overkill.',
             packageInterface: { modules: packageModules({ '.': 'main' }) },
-            bundleDependencies: [ '@overkill-dev/run' ],
             bundlePeerDependencies: [
                 '@overkill-dev/engine',
                 '@overkill-dev/simulation',
-                '@overkill-dev/resources'
+                '@overkill-dev/resources',
+                '@overkill-dev/run'
             ]
         },
         {

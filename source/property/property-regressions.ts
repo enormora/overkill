@@ -5,7 +5,8 @@ import {
     serializeValue,
     type PropertyFailureObservation
 } from '../packages/engine/engine.entry-point.ts';
-import { decodePropertyInput, PropertyCodecError, retainRegressionCapture } from './property-graph.ts';
+import { retainRegressionCapture } from './property-regression-capture.ts';
+import { decodePropertyInput, PropertyCodecError } from './property-graph.ts';
 import { readGeneratorCodec } from './generator.ts';
 import type { PropertyInvocationContext, PropertyRegressionInputs } from './property-execution-result.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';

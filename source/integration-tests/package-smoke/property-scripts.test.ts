@@ -169,3 +169,20 @@ process.on('exit', () => {
     assert.equal(loaded.some(url => /fast-check/.test(url)), false);
 });
 `;
+
+export const propertyCodecScript = `
+import assert from 'node:assert/strict';
+import { capturePropertyInput, decodePropertyInput, migratePropertyInput, defineCodec } from '@overkill-dev/run/property-codec';
+const consume = () => {};
+const historical = defineCodec({ name: 'counter', version: 1, previousDecoders: [],
+    encode: value => value.toString(), decode: value => BigInt(value) });
+const current = defineCodec({ name: 'counter', version: 2,
+    previousDecoders: [{ version: 1, decode: value => BigInt(value) }],
+    encode: value => ({ decimal: value.toString() }), decode: value => BigInt(value.decimal) });
+const original = capturePropertyInput(42n, historical, consume);
+const migrated = migratePropertyInput(original, current, consume);
+assert.equal(original.codec.version, 1);
+assert.equal(migrated.codec.version, 2);
+assert.equal(decodePropertyInput(migrated, current, consume), 42n);
+console.log('property codecs passed');
+`;

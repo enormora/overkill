@@ -6,7 +6,8 @@ import {
     serializeValue,
     propertyTrialEvidence
 } from '../packages/engine/engine.entry-point.ts';
-import { capturePropertyInput, regressionCapture } from './property-graph.ts';
+import { regressionCapture } from './property-regression-capture.ts';
+import { capturePropertyInput } from './property-graph.ts';
 import { readGeneratorCodec } from './generator.ts';
 import { trialFailureKey, type TrialFailureKey } from './property-failure-key.ts';
 import { trialTargets, type TrialTargets } from './property-targets.ts';

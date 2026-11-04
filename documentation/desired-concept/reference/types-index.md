@@ -3046,3 +3046,8 @@ file and its inspected entry. `CorpusOperationError.code()` distinguishes source
 selection, codec, preview-delivery, destination, and filesystem failures.
 
 Canonical: [Property Corpus](./cli.md#property-corpus).
+
+`@overkill-dev/run/property-codec` exposes `defineCodec`, `capturePropertyInput`,
+`decodePropertyInput`, `migratePropertyInput`, and `PropertyCodecError` for shared
+lossless input serialization. Property authoring continues to expose `defineCodec`
+through `@overkill-dev/property`.
