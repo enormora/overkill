@@ -34,6 +34,21 @@ async function leavePendingCompletion(scope: TestScope, store: HistoryStorage): 
 }
 
 export const testNode = suite('history reader', [
+    test('required history repairs an older index before reading outcomes', async function (scope: TestScope) {
+        const store = await committedStore();
+        const indexPath = `${directory}/history/index.json`;
+        const current = await store.read(indexPath);
+        scope.require.defined(current);
+        await store.write(indexPath, current.replace('"version":1', '"version":0'));
+        let repairs = 0;
+        const index = await readRequiredCompactHistory(store, directory, async function repairLegacyIndex() {
+            repairs += 1;
+            await store.write(indexPath, current);
+        });
+        scope.assert.equal(repairs, 1);
+        scope.assert.equal(index.summaries[0]?.id, 'completed');
+        return scope.assert.collect();
+    }),
     test(
         'required selection history rejects missing and corrupt state without rebuilding it',
         async function (scope: TestScope) {
