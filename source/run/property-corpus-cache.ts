@@ -3,8 +3,12 @@ import { z } from 'zod/v4';
 import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/property-corpus.ts';
 import type { PropertyCorpusPolicy } from '../config/types.ts';
 
-const cachedEntrySchema = z.strictObject({ id: z.string(), savedAt: z.string(), entry: propertyWitnessSchema });
-const cacheSchema = z.strictObject({ version: z.literal(1), entries: z.array(z.unknown()) });
+export const cachedEntrySchema = z.strictObject({
+    id: z.string().min(1),
+    savedAt: z.string(),
+    entry: propertyWitnessSchema
+});
+export const cacheSchema = z.strictObject({ version: z.literal(1), entries: z.array(z.unknown()) });
 type CachedEntry = Readonly<z.output<typeof cachedEntrySchema>>;
 export type CorpusDiagnostic = { readonly path: string; readonly reason: string; };
 type CacheUpdate = { readonly file: string; readonly policy: PropertyCorpusPolicy; readonly now: string; };

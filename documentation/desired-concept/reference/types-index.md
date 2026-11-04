@@ -3035,3 +3035,25 @@ markers and spans that preserve callback return types. `BenchmarkTimelineEvent`,
 `readBenchmarkTimeline(result, test)` reads an owned timeline attachment.
 
 Canonical usage: [Benchmarking](../authoring/benchmarking.md#cold-imports-and-timelines).
+
+## Corpus Operations
+
+The runner exports `inspectCorpus(request: CorpusRequest)`,
+`promoteWitness(request: CorpusWriteRequest)`, and
+`migrateCorpus(request: CorpusWriteRequest)`.
+
+`CorpusSource` selects a witness path or a cache entry by path and entry ID.
+`CorpusCodec` selects built-in decoding or an explicit codec module and export.
+Requests supply `cwd` explicitly. `CorpusInspection` contains decoded diagnostic
+previews, complete witness payloads, and cache compatibility diagnostics.
+`CorpusWriteRequest` adds a destination and an awaited `beforeWrite` callback
+receiving source and output inspections. `CorpusWriteResult` identifies the created
+file and its inspected entry. `CorpusOperationError.code()` distinguishes source,
+selection, codec, preview-delivery, destination, and filesystem failures.
+
+Canonical: [Property Corpus](./cli.md#property-corpus).
+
+`@overkill-dev/run/property-codec` exposes `defineCodec`, `capturePropertyInput`,
+`decodePropertyInput`, `migratePropertyInput`, and `PropertyCodecError` for shared
+lossless input serialization. Property authoring continues to expose `defineCodec`
+through `@overkill-dev/property`.

@@ -1464,6 +1464,13 @@ case/runtime identity, and stable invocation identity; witnesses record the
 resolved property seed. Backends and collected policies are versioned so
 identical context reproduces the same candidate sequence.
 
+Corpus operations accept standalone witness files or a local cache index.
+Inspection lists cache entry IDs; promotion and migration require `--entry <id>`
+when reading an index. They create a new destination and reject existing files.
+Custom codecs are selected explicitly with `--codec <module>` and optional
+`--codec-export <name>` (default `default`), without collecting or executing tests.
+Runner writers await a required `beforeWrite` preview callback before publication.
+
 Profiles own default new-trial counts, growth/depth limits, edge and exhaustive
 limits, traversal and shrink budgets, and existing timeout and process usage policies.
 Explicit per-property settings are resolved and validated during collection;

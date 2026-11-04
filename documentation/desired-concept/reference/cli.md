@@ -113,6 +113,13 @@ test execution never rewrites checked-in entries.
 Semantics and compatibility policy:
 [Property-Based Testing Resolution](../authoring/higher-test-layers.md#property-based-testing-resolution).
 
+Corpus operations accept standalone witness files or a local cache index.
+Inspection lists cache entry IDs; promotion and migration require `--entry <id>`
+when reading an index. They create a new destination and reject existing files.
+Custom codecs are selected explicitly with `--codec <module>` and optional
+`--codec-export <name>` (default `default`), without collecting or executing tests.
+Runner writers await a required `beforeWrite` preview callback before publication.
+
 ### History
 
 The `history` namespace operates on runtime-owned run history under

@@ -713,3 +713,33 @@ paths and incompatible checked-in entries fail. Test execution only writes the
 bounded local cache under `runtimeStateDir/corpus`; it never promotes or
 migrates repository entries. See the property package's regression corpus
 documentation for limits, confirmation, and nested target identity.
+
+### Property corpus
+
+`inspectCorpus`, `promoteWitness`, and `migrateCorpus` operate on versioned property
+witness files. Inspection also accepts a local corpus cache index; use a
+`cache-entry` source with its entry ID to promote or migrate one cached witness.
+
+```text
+overkill corpus inspect witness.json
+overkill corpus promote witness.json --to test-corpus/regression.json
+overkill corpus inspect .overkill/corpus/<profile-hash>/index.json
+overkill corpus promote .overkill/corpus/<profile-hash>/index.json --entry <id> --to test-corpus/regression.json
+overkill corpus migrate old.json --to migrated.json
+```
+
+Custom inputs require `--codec ./codec.ts`, with a default-exported versioned
+codec, or `--codec-export <name>` for a named export. Codec modules run in a
+restricted child with a two-second deadline. Operations do not collect or execute
+tests and do not discover project configuration.
+
+Promotion preserves input and codec versions. Migration explicitly writes the
+current encoding. Both await preview delivery, create a new destination atomically,
+and reject existing destinations. Programmatic writers require an asynchronous
+`beforeWrite` callback receiving source and output inspections. Previews are bounded
+diagnostics; each inspection also retains the complete lossless witness payload.
+
+`@overkill-dev/run/property-codec` exposes `defineCodec`, `capturePropertyInput`,
+`decodePropertyInput`, `migratePropertyInput`, and `PropertyCodecError` for shared
+lossless input serialization. Property authoring continues to expose `defineCodec`
+through `@overkill-dev/property`.

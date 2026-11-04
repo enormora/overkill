@@ -21,6 +21,7 @@ import {
     parseRunFilterExpression,
     type RunFilter
 } from '../run/filters.entry-point.ts';
+import { createCorpusCommand } from './corpus-command.ts';
 import { benchmarkProfileType } from './benchmark-profile-parser.ts';
 import {
     createCommandLineSelection,
@@ -333,15 +334,21 @@ type ParsedHistory = {
     readonly command: 'history';
     readonly value: { readonly value: Promise<CommandLineRunnerResult>; };
 };
-type ParsedRoot = ParsedHistory | {
-    readonly command: 'bench';
-    readonly value: ParsedBenchmarkBaseline | ParsedBenchmarkRun;
-} | { readonly command: 'list' | 'replay' | 'run'; readonly value: Promise<CommandLineRunnerResult>; };
+type ParsedCorpus = {
+    readonly command: 'corpus';
+    readonly value: { readonly value: Promise<CommandLineRunnerResult>; };
+};
+type ParsedBenchmark = { readonly command: 'bench'; readonly value: ParsedBenchmarkBaseline | ParsedBenchmarkRun; };
+type ParsedOrdinary = {
+    readonly command: 'list' | 'replay' | 'run';
+    readonly value: Promise<CommandLineRunnerResult>;
+};
+type ParsedRoot = ParsedBenchmark | ParsedCorpus | ParsedHistory | ParsedOrdinary;
 async function resolvedCommandResult(parsed: ParsedRoot): Promise<CommandLineRunnerResult> {
     if (parsed.command === 'bench') {
         return await benchmarkCommandResult(parsed.value);
     }
-    if (parsed.command === 'history') {
+    if (parsed.command === 'history' || parsed.command === 'corpus') {
         return await parsed.value.value;
     }
     return await parsed.value;
@@ -349,7 +356,8 @@ async function resolvedCommandResult(parsed: ParsedRoot): Promise<CommandLineRun
 export async function dispatchOverkillCommand(
     commandArguments: readonly string[],
     loadRunner: () => Promise<CommandLineRunner>,
-    cwd: string
+    cwd: string,
+    writePreview: (lines: readonly string[]) => Promise<void>
 ): Promise<CommandLineDispatchResult> {
     const runCommand = command({
         name: 'run',
@@ -512,6 +520,7 @@ export async function dispatchOverkillCommand(
                     return await runner.replayRun({ cwd, configPath: args.configPath, arguments: args.arguments });
                 }
             }),
+            corpus: createCorpusCommand(loadRunner, cwd, writePreview),
             history: historyCommand,
             bench: benchmarkCommand,
             list: listCommand,

@@ -9,6 +9,7 @@ import { runIfMain } from '#test-runner';
 import {
     microtestLoadBoundaryScript,
     propertyAuthoringScript,
+    propertyCodecScript,
     propertyLoadBoundaryScript,
     propertySubpathScript,
     propertyTypeScript
@@ -54,6 +55,20 @@ export const testNode = createSuite({
     ...metadata,
     title: 'packaged property authoring',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'runner codec boundary preserves historical decoding in published packages',
+            async body(scope) {
+                const result = await runNode(
+                    [ '--input-type=module', '--eval', propertyCodecScript ],
+                    import.meta.dirname
+                );
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.equal(result.stdout, 'property codecs passed\n');
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'packaged leaf and standard declarations share nominal generator types',

@@ -1,7 +1,6 @@
 import { types } from 'node:util';
 import { z } from 'zod/v4';
 import type { EncodedPropertyInput } from '../packages/engine/engine.entry-point.ts';
-import { propertyExhaustion } from './property-work.ts';
 import { defineCodec, type PropertyCodecDecoder, type PropertyInputCodec } from './property-codec.ts';
 import { decodeGraph, encodeGraph } from './property-graph-v1.ts';
 
@@ -17,11 +16,20 @@ export class PropertyCodecError extends Error {
     }
 }
 
-function codecOperation<Value>(operation: string, execute: () => Value): Value {
+function codecOperation<Value>(operation: string, consume: () => void, execute: (visit: () => void) => Value): Value {
+    const controlFailures = new Set<unknown>();
+    function visit(): void {
+        try {
+            consume();
+        } catch (error: unknown) {
+            controlFailures.add(error);
+            throw error;
+        }
+    }
     try {
-        return execute();
+        return execute(visit);
     } catch (error: unknown) {
-        if (propertyExhaustion(error) !== null || error instanceof Error && error.name === 'AbortError') {
+        if (controlFailures.has(error) || error instanceof Error && error.name === 'AbortError') {
             throw error;
         }
         throw new PropertyCodecError(operation, { cause: error });
@@ -72,7 +80,7 @@ export function decodePropertyInput<Value>(
     codec: PropertyInputCodec<Value> | null,
     consume: () => void
 ): unknown {
-    return codecOperation('decode', function decodeStoredInput() {
+    return codecOperation('decode', consume, function decodeStoredInput(visit) {
         const envelope = envelopeSchema.parse(input);
         if (!matchesIdentity(envelope.format, format)) {
             throw new TypeError('Unsupported property input format.');
@@ -81,7 +89,7 @@ export function decodePropertyInput<Value>(
             throw new TypeError('Unsupported property input format or codec version.');
         }
         const decoder = codec === null ? null : selectDecoder(envelope.codec, codec);
-        const payload = decodeGraph(envelope.payload, consume);
+        const payload = decodeGraph(envelope.payload, visit);
         return decodePayload(payload, decoder);
     });
 }
@@ -91,14 +99,14 @@ export function capturePropertyInput<Value>(
     codec: PropertyInputCodec<Value> | null,
     consume: () => void
 ): EncodedPropertyInput {
-    return codecOperation('capture', function captureCurrentInput() {
+    return codecOperation('capture', consume, function captureCurrentInput(visit) {
         const selected = codec === null ? null : defineCodec(codec);
         const encoded = {
             format,
             codec: selected === null ? standard : { name: selected.name, version: selected.version },
-            payload: encodeGraph(selected === null ? value : selected.encode(value), consume)
+            payload: encodeGraph(selected === null ? value : selected.encode(value), visit)
         };
-        decodePropertyInput(encoded, selected, consume);
+        decodePropertyInput(encoded, selected, visit);
         return encoded;
     });
 }
@@ -108,19 +116,11 @@ export function migratePropertyInput<Value>(
     codec: PropertyInputCodec<Value> | null,
     consume: () => void
 ): EncodedPropertyInput {
-    return codecOperation('migration', function migrateStoredInput() {
+    return codecOperation('migration', consume, function migrateStoredInput(visit) {
         if (codec === null) {
-            return capturePropertyInput(decodePropertyInput(input, null, consume), null, consume);
+            return capturePropertyInput(decodePropertyInput(input, null, visit), null, visit);
         }
         const selected = defineCodec(codec);
-        return capturePropertyInput(decodePropertyInput(input, selected, consume), selected, consume);
+        return capturePropertyInput(decodePropertyInput(input, selected, visit), selected, visit);
     });
-}
-
-const capturedRegressions = new WeakMap<() => unknown, EncodedPropertyInput>();
-export function retainRegressionCapture(recipe: () => unknown, input: EncodedPropertyInput): void {
-    capturedRegressions.set(recipe, input);
-}
-export function regressionCapture(recipe: (() => unknown) | null): EncodedPropertyInput | null {
-    return recipe === null ? null : capturedRegressions.get(recipe) ?? null;
 }

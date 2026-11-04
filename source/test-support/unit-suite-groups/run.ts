@@ -1,3 +1,4 @@
+import { testNode as corpusApiTestNode } from '../../run/corpus-suite.test.ts';
 import { testNode as corpusExecutionTestNode } from '../../run/property-corpus-execution.test.ts';
 import { testNode as corpusTestNode } from '../../run/property-corpus-storage.test.ts';
 import { testNode as diagnosticTestNode } from '../../packages/stryker-runner/mutation-diagnostic-persistence.test.ts';
@@ -16,6 +17,7 @@ export const testNode = createSuite({
     children: [
         historyTestNode,
         corpusTestNode,
+        corpusApiTestNode,
         corpusExecutionTestNode,
         runTestNode,
         mutationTestNode,
