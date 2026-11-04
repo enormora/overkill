@@ -114,7 +114,7 @@ jobs:
     process-benchmarks:
         strategy:
             matrix:
-                os: [ubuntu-latest, macos-latest]
+                os: [ubuntu-latest, macos-26-intel]
         runs-on: ${{ matrix.os }}
         name: Process benchmarks (${{ matrix.os }})
         permissions:
