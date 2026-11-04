@@ -4,7 +4,7 @@ import { propertyCorpusSnapshot, type PropertyExecutionHost } from '../engine/pr
 import { serializeValue } from '../packages/engine/engine.entry-point.ts';
 import { sourceLocationSchema } from '../engine/identity-schema.ts';
 import { caseIdentityKey, runtimeIdentitiesKey, workIdentityKey } from '../engine/identity.ts';
-import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import type { PropertyFailureObservation } from '../engine/property-failure-evidence.ts';
 import type { PropertyInvocationContext } from './property-execution-result.ts';
 

@@ -2,12 +2,12 @@ import { createHash } from 'node:crypto';
 import { mkdir, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import lockfile from 'proper-lockfile';
+import type { PropertyCorpusSnapshot } from '../engine/property-corpus.ts';
 import { createNodeFileStore } from '../file-store.ts';
 import {
     propertyWitnessSchema,
-    type PropertyCorpusSnapshot,
     type PropertyWitnessFile
-} from '../engine/property-corpus.ts';
+} from '../engine/witness-file.ts';
 import type { PropertyCorpusPolicy } from '../config/types.ts';
 import {
     parseCorpusCache,

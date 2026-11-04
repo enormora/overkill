@@ -274,3 +274,9 @@ Benchmark integrations can attach a calibration-only execution body with
 The runner uses that body to acquire calibration dependencies during capture while
 preserving ordinary benchmark execution. Calibration evidence and reference-context
 types are exported alongside benchmark result types.
+
+Witness files use the engine-owned version-1 envelope.
+`parseWitnessFile(value)` from `@overkill-dev/engine` validates parsed JSON and
+returns a property or simulation witness, throwing `ZodError` for invalid
+envelopes or unsupported envelope versions. It does not decode inputs or execute
+replay. Producer-specific payload compatibility is validated separately.

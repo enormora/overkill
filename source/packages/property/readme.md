@@ -318,3 +318,9 @@ key, unique within its enclosing case, to retain target identity when source
 locations change. Without a key, identity uses location and occurrence.
 Missing checked-in targets fail the enclosing case. Local target mismatches
 produce diagnostics.
+
+Witness files use the engine-owned version-1 envelope.
+`parseWitnessFile(value)` from `@overkill-dev/engine` validates parsed JSON and
+returns a property or simulation witness, throwing `ZodError` for invalid
+envelopes or unsupported envelope versions. It does not decode inputs or execute
+replay. Producer-specific payload compatibility is validated separately.

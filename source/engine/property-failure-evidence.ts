@@ -1,12 +1,6 @@
-import type { JsonValue } from 'type-fest';
 import type { SerializedValue } from '../assertion-protocol/assertion-node-shape.ts';
-import type { PropertyWitnessFile } from './property-corpus.ts';
+import type { EncodedPropertyInput, PropertyWitnessFile } from './witness-file.ts';
 
-export type EncodedPropertyInput = {
-    readonly format: { readonly name: string; readonly version: number; };
-    readonly codec: { readonly name: string; readonly version: number; };
-    readonly payload: JsonValue;
-};
 type CodecErrorCapture = { readonly kind: 'codec-error'; readonly reason: string; };
 type EncodedCapture = { readonly kind: 'encoded'; readonly input: EncodedPropertyInput; };
 type UnavailableCapture = { readonly kind: 'unavailable'; };

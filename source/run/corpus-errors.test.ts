@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { capturePropertyInput } from '../property/property-graph.ts';

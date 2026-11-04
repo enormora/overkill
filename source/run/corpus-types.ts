@@ -1,5 +1,5 @@
 import type { SerializedValue } from '../compare/serialized-value.ts';
-import type { PropertyWitnessFile } from '../engine/property-corpus.ts';
+import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 
 export type CorpusSource = {
     readonly kind: 'cache-entry';

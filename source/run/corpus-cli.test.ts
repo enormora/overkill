@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile, readFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { propertyWitnessSchema } from '../engine/property-corpus.ts';
+import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { commandLineRunner } from '../packages/run/command-line.entry-point.ts';
 import { dispatchOverkillCommand } from '../packages/test/command-line-commands.ts';

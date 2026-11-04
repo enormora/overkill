@@ -1,6 +1,6 @@
 import { propertyCorpusSnapshot } from '../engine/property-execution-host.ts';
 import { caseIdentityKey, runtimeIdentitiesKey } from '../engine/identity.ts';
-import type { PropertyWitnessFile } from '../engine/property-corpus.ts';
+import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 import {
     serializeValue,
     type PropertyFailureObservation

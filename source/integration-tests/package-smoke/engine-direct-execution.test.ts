@@ -3,6 +3,7 @@ import { defineCompositeAssertion } from '@overkill-dev/assert';
 import * as doublesPackage from '@overkill-dev/doubles';
 import {
     createEngine,
+    parseWitnessFile,
     createPropertyTestCase,
     createBenchmarkTestCase,
     createRoot,
@@ -215,6 +216,28 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            title: 'packaged engine parses simulation witnesses',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            body(scope) {
+                const witness = parseWitnessFile({
+                    version: 1,
+                    kind: 'simulation',
+                    producedBy: { library: 'simulator', libraryVersion: '1' },
+                    case: { file: null, params: null, suite: [], title: 'scenario' },
+                    seed: null,
+                    simulation: { name: 'backend', payload: {} },
+                    resource: null,
+                    scenario: null,
+                    runtimeSnapshot: null,
+                    faultConfiguration: null
+                });
+                scope.assert.equal(witness.kind, 'simulation');
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'consumer imports top-level @overkill-dev/engine exports and executes a TestPlan',

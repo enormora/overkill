@@ -471,9 +471,18 @@ export type { PropertyCaseEvidence } from '../../engine/run-result.ts';
 
 export type {
     PropertyInvocationEvidence,
-    EncodedPropertyInput,
     PropertyFailureObservation,
     PropertyShrinkStatus
 } from '../../engine/property-failure-evidence.ts';
 
-export type { PropertyWitnessFile, PropertyCorpusSnapshot } from '../../engine/property-corpus.ts';
+export type { PropertyWitnessFile } from '../../engine/witness-file.ts';
+export type { PropertyCorpusSnapshot } from '../../engine/property-corpus.ts';
+
+export { parseWitnessFile } from '../../engine/witness-file.ts';
+export type {
+    EncodedPropertyInput,
+    WitnessHeader,
+    PropertyWitnessTarget,
+    SimulationWitnessFile,
+    WitnessFile
+} from '../../engine/witness-file.ts';
