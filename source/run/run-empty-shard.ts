@@ -1,5 +1,6 @@
 import {
-    createRunResultFromCollectedPlan, emptyRunPlanStatus
+    createRunResultFromCollectedPlan,
+    emptyRunPlanStatus
 } from './collected-run-plan.ts';
 import {
     createReporterDelivery

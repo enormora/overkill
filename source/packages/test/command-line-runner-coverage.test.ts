@@ -20,7 +20,8 @@ export const testNode = createSuite({
                 scope.require.defined(request);
                 scope.assert.equal(run.runRequests[0]?.runRequest.lastFailed, true);
                 scope.assert.deepEqual(request.runRequest.selection, {
-                    kind: 'filter', filter: { kind: 'contains', field: 'title', value: 'login' }
+                    kind: 'filter',
+                    filter: { kind: 'contains', field: 'title', value: 'login' }
                 });
                 scope.assert.equal(run.runRequests[0]?.runRequest.record, false);
                 scope.assert.equal(list.listRequests[0]?.listRequest.lastFailed, true);

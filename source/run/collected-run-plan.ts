@@ -1,4 +1,3 @@
-import { selectedCollectedRunPlan } from './run-selection.ts';
 import type {
     NonEmptyReadonlyArray
 } from '../assertion-protocol/assertion-node-shape.ts';
@@ -11,9 +10,9 @@ import {
     type RunResult,
     type RunnerError
 } from '../engine/run-result.ts';
-import type { RunProcessUsage } from '../engine/process-usage.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+import type { RunProcessUsage, TestPlan } from './run-engine-primitives.ts';
+import { selectedCollectedRunPlan } from './run-selection.ts';
 import { testCasePropertySummary } from './property-collection.ts';
 import { caseDataFacts } from './run-case-facts.ts';
 import type {
