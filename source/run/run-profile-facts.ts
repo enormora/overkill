@@ -116,6 +116,7 @@ export function resolveRunRecordPersistence(request: RunRequest, profile: Profil
     const reasons = [
         ...profile.runRecords.persist === 'always' ? [ 'profile' as const ] : [],
         ...request.record ? [ 'request' as const ] : [],
+        ...request.lastFailed ? [ 'last-failed' as const ] : [],
         ...request.coverage ? [ 'coverage' as const ] : []
     ];
     return { persist: reasons.length > 0, reasons };

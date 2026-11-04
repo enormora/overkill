@@ -38,6 +38,7 @@ type RunCommandArguments<Profile extends string | null> = {
     readonly configPath: string | null;
     readonly record: boolean;
     readonly coverage: boolean;
+    readonly lastFailed: boolean;
     readonly file: string | null;
     readonly filter: RunFilter | null;
     readonly noCapture: boolean;
@@ -54,6 +55,7 @@ type RunCommandArguments<Profile extends string | null> = {
 
 type ListCommandArguments<Profile extends string | null> = {
     readonly configPath: string | null;
+    readonly lastFailed: boolean;
     readonly file: string | null;
     readonly filter: RunFilter | null;
     readonly order: RunOrder;
@@ -161,6 +163,7 @@ function createRunTestsRequest<Profile extends string | null>(
             processUsageSamplingIntervalMilliseconds: null,
             seed: args.seed,
             selection: createCommandLineSelection(args),
+            lastFailed: args.lastFailed,
             shard: args.shard,
             timingCollection: args.timings ? 'precise' : 'profile-default',
             verbose: false,
@@ -187,6 +190,7 @@ function createListTestsRequest<Profile extends string | null>(
             seed: args.seed,
             shard: args.shard,
             selection: createCommandLineSelection(args),
+            lastFailed: args.lastFailed,
             withLocations: args.withLocations,
             withOrphans: args.withOrphans
         }
@@ -202,6 +206,7 @@ const configPathArgument = multioption({
 });
 
 const sharedCommandArguments = {
+    lastFailed: flag({ long: 'last-failed' }),
     configPath: configPathArgument,
     file: option({
         long: 'file',

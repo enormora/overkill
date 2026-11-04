@@ -50,6 +50,7 @@ function directRunRequest(context: DirectRunContext): RunRequest {
         capture: 'buffered',
         coverage: false,
         record: false,
+        lastFailed: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
         measureProcessUsage: null,

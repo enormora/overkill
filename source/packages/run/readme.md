@@ -281,7 +281,7 @@ same `RunFilter` tree. Runs use seeded ordering by default. Pass
 `RunRequest.order: 'plan'` for programmatic callers that need an already
 materialized order. `RunRequest.shard` uses one-based `{ index, total }`
 values and partitions the filtered work-unit set by stable identity hash.
-General recording, replay, and `--last-failed` are separate runner milestones. Direct
+Replay execution remains a separate runner milestone. Direct
 prebuilt `TestPlan` execution belongs to `@overkill-dev/engine` through
 `execute(testPlan)`.
 The command methods other than `runTests` and `listTests` are fixed first-party
@@ -621,7 +621,11 @@ Placement still uses the latest eight duration samples within 30 days.
 
 History is derived state, not a replay source. Interrupted runs do not add
 case/work observations. Persistence failures fail the run. History CLI,
-last-failed selection remains a separate feature.
+`--last-failed` selects the newest failed case outcomes from compact history and
+automatically records the run. Combine it with ordinary filters. Valid history
+with no matches succeeds without executing cases; missing or corrupt history
+requires `overkill history compact`. Programmatic requests use `lastFailed: true`;
+ordinary requests use `lastFailed: false`.
 
 ### Automatic maintenance
 

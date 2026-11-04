@@ -9,9 +9,9 @@ import {
     historyMaintenanceDeadline,
     HistoryMaintenanceDeferredError
 } from './history-maintenance-budget.ts';
-import type { HistoryStorage } from './history-storage-types.ts';
+import type { HistoryStorageFactory, HistoryStorage } from './history-storage-types.ts';
 import { RunCollectionError } from './run-errors.ts';
-import { createNodeHistoryStorage } from './node-history-storage.ts';
+
 import type { HistoryOptions } from './history-types.ts';
 
 function ownerAlive(pid: number): boolean {
@@ -108,10 +108,10 @@ function containsProject(directory: string, projectRoot: string): boolean {
     return relative === '' ||
         relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
 }
-export function createHistoryAccess(options: HistoryOptions): HistoryAccess {
+export function createHistoryAccess(options: HistoryOptions, createStorage: HistoryStorageFactory): HistoryAccess {
     const directory = path.resolve(options.projectRoot, options.config.runtimeStateDir);
     const policy = options.config.history;
-    const store = createNodeHistoryStorage(directory, policy);
+    const store = createStorage(directory, policy);
     const runs = path.join(directory, 'runs');
     const abandonedOwners = new Set<string>();
     async function guarded<T>(operation: () => Promise<T>): Promise<T> {

@@ -51,6 +51,7 @@ export const frozenMicrotestPolicySchema: z.ZodType<FrozenMicrotestPolicy> = z.s
         selection: runSelectionSchema,
         shard: z.strictObject({ index: z.number().int().positive(), total: z.number().int().positive() }),
         record: z.boolean(),
+        lastFailed: z.boolean(),
         timingCollection: z.enum([ 'precise', 'profile-default' ]),
         verbose: z.literal(false),
         workers: z.null()

@@ -197,6 +197,12 @@ Entries that no longer receive updates are pruned after
 90 days by default. Run summaries are kept for the last 500 persisted runs or
 90 days, whichever keeps fewer.
 
+`--last-failed` selects cases whose newest completed compact observation is failed.
+A later pass, skip, or inconclusive result clears selection. History is project-wide;
+current discovery and filters bound eligible cases. A readable history with no
+matches produces a successful recorded empty selection. Reusable collected plans
+retain their history snapshot until initialized again.
+
 `--last-failed` reads compact case history rather than the previous detailed
 record. A run selected with `--last-failed` automatically persists its own
 result so the workflow stays fresh. `duration-history-balanced` placement reads

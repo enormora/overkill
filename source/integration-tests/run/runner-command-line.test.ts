@@ -93,6 +93,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         record: false,
+        lastFailed: false,
         coverage: false,
         debug: { mode: 'off', selectors: [] },
         execution: { mode: 'profile-default' },
@@ -208,6 +209,7 @@ async function listCommandLine(
         configPath: null,
         cwd: process.cwd(),
         listRequest: {
+            lastFailed: false,
             order: 'seeded',
             paths,
             profile: 'microtest',
@@ -227,6 +229,7 @@ async function listDiscoveryCommandLine(processModel: MicrotestProcessModel): Pr
         configPath: null,
         cwd: process.cwd(),
         listRequest: {
+            lastFailed: false,
             order: 'seeded',
             paths: [],
             profile: 'microtest',

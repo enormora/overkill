@@ -147,7 +147,7 @@ async function createWorkerPoolResolvedRun(
     const durationHistoryIndex = await readWorkerPoolDurationHistory(input, dependencies);
 
     return await createResolvedExecutionRun({
-        allowEmptySelection: false,
+        allowEmptySelection: input.request.lastFailed,
         collection,
         command,
         dependencies,

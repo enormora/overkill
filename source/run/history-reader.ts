@@ -1,6 +1,9 @@
+import path from 'node:path';
+import type { HistoryStorage } from './history-storage-types.ts';
+import type { CompactHistory } from './compact-history-schema.ts';
+import { historySchemaVersion, historyStateError } from './history-state-error.ts';
 import { readCompactHistory } from './history-storage.ts';
 import { readDurationState, durationIndexProjection } from './duration-history-storage.ts';
-import { historyStateError } from './history-state-error.ts';
 import type { DurationHistoryIndex, DurationHistoryStore } from './duration-history-types.ts';
 
 async function completedRuns(store: DurationHistoryStore, directory: string): Promise<ReadonlySet<string>> {
@@ -36,4 +39,32 @@ export async function readDurationProjection(
     });
     const completed = hasRecordedObservations ? await completedRuns(store, directory) : new Set<string>();
     return durationIndexProjection(state, completed);
+}
+
+async function requiredCompactHistory(
+    store: Pick<HistoryStorage, 'read'>,
+    directory: string,
+    repair: () => Promise<unknown>
+): Promise<CompactHistory> {
+    const source = await store.read(path.join(directory, 'history', 'index.json'));
+    if (source !== null && historySchemaVersion(source) === 0) {
+        await repair();
+    }
+    const index = await readCompactHistory(store, directory);
+    if (index === null) {
+        throw historyStateError('Compact history is missing.');
+    }
+    return index;
+}
+
+export async function readRequiredCompactHistory(
+    store: Pick<HistoryStorage, 'read'>,
+    directory: string,
+    repair: () => Promise<unknown>
+): Promise<CompactHistory> {
+    try {
+        return await requiredCompactHistory(store, directory, repair);
+    } catch (error: unknown) {
+        throw historyStateError(error);
+    }
 }

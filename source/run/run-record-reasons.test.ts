@@ -19,6 +19,20 @@ const reasons = [
 ] as const;
 
 export const testNode = suite('recording requirements and failures', [
+    test('last-failed requires recording without explicit record', async function (scope: TestScope) {
+        const fixture = runRecordPolicyFixture('on-demand', false);
+        const input = { ...fixture.input, request: { ...fixture.input.request, lastFailed: true } };
+        scope.assert.deepEqual(resolveRunRecordPersistence(input.request, input.profile), {
+            persist: true,
+            reasons: [ 'last-failed' ]
+        });
+        await executeRecordedRun('/project', input, fixture.dependencies, async function execute(record) {
+            scope.assert.equal(record !== null, true);
+            return runResultFactory.build({ status: 'passed' });
+        });
+        scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
+        return scope.assert.collect();
+    }),
     ...reasons.map(function persistenceReasons([ persist, record, coverage, expected ]) {
         return test(`${persist}, request ${String(record)}, coverage ${String(coverage)}`, function (scope: TestScope) {
             const fixture = runRecordPolicyFixture(persist, record);

@@ -69,6 +69,7 @@ export const testNode = createOverkillSuite({
                     configPath: null,
                     cwd: process.cwd(),
                     listRequest: {
+                        lastFailed: false,
                         order: 'seeded',
                         paths: [ 'source/a.test.ts' ],
                         profile: 'microtest',

@@ -1,3 +1,4 @@
+import { selectedCollectedRunPlan } from './run-selection.ts';
 import type {
     NonEmptyReadonlyArray
 } from '../assertion-protocol/assertion-node-shape.ts';
@@ -22,6 +23,7 @@ import type {
     CollectedOrphanedNode,
     CollectedRunPlan,
     ResolvedRunPlan,
+    ResolvedRun,
     RunCollectionRoot
 } from './run-types.ts';
 
@@ -351,4 +353,9 @@ export function collectedWorkloadInputs(plan: CollectedRunPlan): readonly Frozen
     return collectedRunCaseEntries(plan).map(function workloadInput(entry) {
         return { work: entry.workId, parameters: entry.testCase.workloadParameters };
     });
+}
+
+export function emptyRunPlanStatus(run: ResolvedRun, plan: CollectedRunPlan): 'empty-selection' | 'empty-shard' {
+    const selection = selectedCollectedRunPlan(plan, run.request.selection);
+    return run.request.lastFailed && selection.files.length === 0 ? 'empty-selection' : 'empty-shard';
 }

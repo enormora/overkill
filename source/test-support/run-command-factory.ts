@@ -346,6 +346,7 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         capture: 'buffered',
         coverage: false,
         record: false,
+        lastFailed: false,
         debug: {
             mode: 'off',
             selectors: []

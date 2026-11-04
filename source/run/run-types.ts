@@ -38,6 +38,12 @@ import type {
     SourceLocation,
     SerializedValue as SerializedValueShape
 } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    RunHistoryRequest,
+    RunEngineSelection,
+    RunSelection as SelectedCases,
+    RunExecutionLifecycleReference
+} from './run-request-types.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
     PropertyPolicy,
@@ -57,11 +63,6 @@ import type {
     RuntimeId,
     WorkloadId
 } from './run-engine-primitives.ts';
-import type {
-    RunEngineSelection,
-    RunSelection as SelectedCases,
-    RunExecutionLifecycleReference
-} from './run-request-types.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
@@ -193,7 +194,7 @@ export type DurationHistoryInput = {
     readonly source: 'runtime-state-index';
 };
 
-export type ProfileRunRequest<Profile extends string | null> = {
+export type ProfileRunRequest<Profile extends string | null> = RunHistoryRequest & {
     readonly baselineUpdateMode: BaselineUpdateMode;
     readonly capabilityRestrictions: RunCapabilityRestrictionsRequest;
     readonly capture: 'buffered' | 'live';
@@ -209,7 +210,6 @@ export type ProfileRunRequest<Profile extends string | null> = {
     readonly seed: RunSeed;
     readonly selection: RunSelection;
     readonly shard: RunShard;
-    readonly record: boolean;
     readonly timingCollection: TimingCollectionOverride;
     readonly verbose: false;
     readonly workers: number | null;

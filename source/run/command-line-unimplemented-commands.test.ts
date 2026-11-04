@@ -174,6 +174,7 @@ export const testNode = createOverkillSuite({
                     configPath: null,
                     cwd: fixtureCwd,
                     listRequest: {
+                        lastFailed: false,
                         order: 'seeded',
                         paths: [],
                         profile: null,

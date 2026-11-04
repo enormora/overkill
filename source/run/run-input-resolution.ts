@@ -12,7 +12,10 @@ import {
 } from './run-validation.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 
-export type RunInputResolutionDependencies = Pick<RunOrchestratorDependencies, 'discoverRunFilesWithProjectRoot'>;
+export type RunInputResolutionDependencies = Pick<
+    RunOrchestratorDependencies,
+    'createHistoryStorage' | 'discoverRunFilesWithProjectRoot' | 'wallClock'
+>;
 
 export type RunInvocation = {
     readonly command: RunCommand;
@@ -85,9 +88,9 @@ function assertProfileRequestSupported(
     assertProfileReportersSupported(profile, reporters);
 }
 
-export async function readResolvedRunInput(
+export async function readRunPolicyInput(
     invocation: RunInvocation,
-    dependencies: RunInputResolutionDependencies,
+    dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>,
     source: RunCollectionSource
 ): Promise<ResolvedRunInput> {
     const { command, namespace } = invocation;
@@ -124,4 +127,18 @@ export async function readResolvedRunInput(
         projectRoot: discovery.projectRoot,
         request
     };
+}
+
+export async function readResolvedRunInput(
+    invocation: RunInvocation,
+    dependencies: RunInputResolutionDependencies,
+    source: RunCollectionSource
+): Promise<ResolvedRunInput> {
+    const input = await readRunPolicyInput(invocation, dependencies, source);
+    if (!input.request.lastFailed || source.kind === 'frozen-policy') {
+        return input;
+    }
+    const { readLastFailedSelection } = await import('./last-failed-selection.ts');
+    const selection = await readLastFailedSelection(input.request.selection, input, dependencies);
+    return { ...input, request: freezeValue({ ...input.request, selection }) };
 }

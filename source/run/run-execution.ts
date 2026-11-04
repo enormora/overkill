@@ -14,6 +14,10 @@ export type RunExecutionInvocation = RunInvocation & {
     readonly signal: Readonly<AbortSignal> | null;
 };
 
+function requestedRunRecording(input: Awaited<ReturnType<typeof readResolvedRunInput>>): boolean {
+    return input.request.record || input.request.lastFailed || input.profile.runRecords.persist === 'always';
+}
+
 async function executeCommand(
     invocation: RunExecutionInvocation,
     dependencies: RunOrchestratorDependencies,
@@ -36,8 +40,8 @@ async function executeCommand(
         engine: resolvedInput.engine,
         request: resolvedInput.request
     };
-    const shouldRecord = !resolvedInput.request.coverage && (resolvedInput.request.record ||
-        resolvedInput.profile.runRecords.persist === 'always');
+    const shouldRecord = !resolvedInput.request.coverage &&
+        requestedRunRecording(resolvedInput);
     const executeAttempt = async function executeAttempt(record: RunRecordSession | null): Promise<RunResult> {
         return await executePreparedInvocation(invocation, {
             command: resolvedCommand,

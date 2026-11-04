@@ -6,6 +6,7 @@ import { assertCollectedPropertyPolicies } from './property-collection.ts';
 import type {
     ResolvedRun,
     RunRequest,
+    RunSelection,
     CollectedRunCase,
     CollectedRunFile,
     CollectedRunPlan,
@@ -14,7 +15,7 @@ import type {
 } from './run-types.ts';
 import { noTestsCollected, RunCollectionError } from './run-errors.ts';
 import { orderedRunItems } from './run-ordering.ts';
-import { matchesRunFilter } from './run-selection-filters.ts';
+import { matchesRunFilter, any, all, caseId } from './run-selection-filters.ts';
 import { createRandomRunSeed } from './run-seed.ts';
 
 type TestPlan = Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>['testPlan'];
@@ -203,7 +204,7 @@ function matchesTestPlanCase(selection: RunRequest['selection']): (testCase: Tes
     }
 
     return function testPlanCaseMatches(testCase) {
-        return matchesRunFilter(selection.filter, {
+        return selection.kind !== 'none' && matchesRunFilter(selection.filter, {
             annotations: testCase.annotations,
             id: testCase.id,
             workId: testCase.workId
@@ -270,7 +271,7 @@ function matchesCollectedCase(selection: RunRequest['selection']): (input: Colle
     return function collectedCaseMatches(input) {
         const id = collectedCaseId(input.file, input.testCase);
 
-        return matchesRunFilter(selection.filter, {
+        return selection.kind !== 'none' && matchesRunFilter(selection.filter, {
             annotations: input.testCase.annotations,
             id,
             workId: input.testCase.workId ?? createDefaultWorkId(id)
@@ -323,4 +324,13 @@ export function assertCollectedRunPlanHasCases(plan: CollectedRunPlan): void {
     ) {
         noTestsCollected('Run selection matched no test cases.');
     }
+}
+
+export function resolveLastFailedSelection(selection: RunSelection, failedCases: readonly CaseId[]): RunSelection {
+    const [ first, ...rest ] = failedCases.map(caseId);
+    if (first === undefined || selection.kind === 'none') {
+        return { kind: 'none' };
+    }
+    const failed = any([ first, ...rest ]);
+    return { kind: 'filter', filter: selection.kind === 'all' ? failed : all([ selection.filter, failed ]) };
 }

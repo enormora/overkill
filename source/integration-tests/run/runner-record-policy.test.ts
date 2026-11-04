@@ -3,6 +3,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
 import { runIfMain } from '#test-runner';
 import type { RunRecord } from '../../packages/run/run.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
@@ -109,11 +110,84 @@ async function assertRecordedExecution(scope: TestScope, processModel: Execution
     assertCompletedRecord(scope, record);
 }
 
+async function executeLastFailedCommand(directory: string, args: readonly string[]): Promise<number> {
+    return await new Promise<number>(function execute(resolve, reject) {
+        execFile(process.execPath, [ binary, ...args, '--profile', 'tests' ], {
+            cwd: directory,
+            timeout: 60_000
+        }, function completed(error) {
+            if (error === null) {
+                resolve(0);
+            } else if (typeof error.code === 'number') {
+                resolve(error.code);
+            } else {
+                reject(new Error('Command execution failed.', { cause: error }));
+            }
+        });
+    });
+}
+
+async function writeLastFailedCase(directory: string, passing: boolean): Promise<void> {
+    await writeFile(
+        path.join(directory, 'case.test.ts'),
+        `
+import { test } from ${JSON.stringify(authoringUrl.href)};
+export const testNode = test('persisted case', (scope) => {
+    scope.assert.equal(${String(passing)}, true);
+    return scope.assert.collect();
+});
+`
+    );
+}
+
+async function assertLastFailedRecords(scope: TestScope, directory: string): Promise<void> {
+    const folder = path.join(directory, '.overkill', 'runs');
+    const entries = await readdir(folder);
+    const names = entries.filter(function recordFile(name) {
+        return name.endsWith('.json');
+    });
+    const records = await Promise.all(names.map(async function readRecord(name) {
+        return z
+            .object({ result: z.object({ planStatus: z.string(), summary: z.object({ planned: z.number() }) }) })
+            .parse(JSON.parse(await readFile(path.join(folder, name), 'utf8')));
+    }));
+    scope.assert.equal(records.length, 3);
+    scope.assert.equal(
+        records
+            .filter(function empty(record) {
+                return record.result.planStatus === 'empty-selection';
+            })
+            .length,
+        1
+    );
+    scope.assert.deepEqual(
+        records
+            .map(function planned(record) {
+                return record.result.summary.planned;
+            })
+            .toSorted(function ascending(left, right) {
+                return left - right;
+            }),
+        [ 0, 1, 1 ]
+    );
+}
+
+async function assertLastFailedExecution(scope: TestScope, mode: ExecutionMode): Promise<void> {
+    const directory = await createRecordedProject(scope, mode);
+    await writeLastFailedCase(directory, false);
+    scope.assert.equal(await executeLastFailedCommand(directory, [ 'run', '--record' ]), 1);
+    await writeLastFailedCase(directory, true);
+    scope.assert.equal(await executeLastFailedCommand(directory, [ 'run', '--last-failed' ]), 0);
+    scope.assert.equal(await executeLastFailedCommand(directory, [ 'run', '--last-failed' ]), 0);
+    await assertLastFailedRecords(scope, directory);
+}
+
 export const testNode = suite(
     'run recording across execution boundaries',
     ([ 'in-process', 'supervised-process', 'worker-pool' ] as const).map(function executionMode(mode) {
         return test(mode, async function (scope: TestScope) {
             await assertRecordedExecution(scope, mode);
+            await assertLastFailedExecution(scope, mode);
             return scope.assert.collect();
         });
     })

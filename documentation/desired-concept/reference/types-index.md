@@ -1150,9 +1150,11 @@ declare function runtimeScenario(runtime: string, scenario: string, value: strin
 
 type RunSelection =
     | { readonly kind: 'all'; }
+    | { readonly kind: 'none'; }
     | { readonly filter: RunFilter; readonly kind: 'filter'; };
 
 type RunRequest = {
+    readonly lastFailed: boolean;
     readonly paths: ReadonlyArray<string>;
     readonly selection: RunSelection;
     readonly shard: { readonly index: number; readonly total: number; };

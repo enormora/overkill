@@ -361,7 +361,7 @@ export function invalidRunSelectionMessage(selection: unknown): string | null {
         return 'Run selection must be an object.';
     }
 
-    if (selection.kind === 'all') {
+    if (selection.kind === 'all' || selection.kind === 'none') {
         return null;
     }
 
@@ -446,8 +446,8 @@ function copyRunFilter(filter: RunFilter): RunFilter {
 }
 
 export function copyRunSelection(selection: RunSelection): RunSelection {
-    if (selection.kind === 'all') {
-        return { kind: 'all' };
+    if (selection.kind === 'all' || selection.kind === 'none') {
+        return { kind: selection.kind };
     }
 
     return {

@@ -29,6 +29,7 @@ function defaultRunRequest(profileName: string, seed: ResolvedRunSeed): RunReque
         capture: 'buffered',
         coverage: false,
         record: false,
+        lastFailed: false,
         debug: {
             mode: 'off',
             selectors: []
