@@ -280,11 +280,11 @@ export const configuration = {
             name: 'property',
             description: 'Generator-driven property test authoring for Overkill.',
             packageInterface: { modules: packageModules({ '.': 'main' }) },
+            bundleDependencies: [ '@overkill-dev/run' ],
             bundlePeerDependencies: [
                 '@overkill-dev/engine',
                 '@overkill-dev/simulation',
-                '@overkill-dev/resources',
-                '@overkill-dev/run'
+                '@overkill-dev/resources'
             ]
         },
         {
