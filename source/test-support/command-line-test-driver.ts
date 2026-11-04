@@ -118,6 +118,7 @@ function createRunner(
     result: CommandLineRunnerResult | Error
 ): CommandLineRunner {
     return {
+        corpus: { inspect: unexpectedCommand, promote: unexpectedCommand, migrate: unexpectedCommand },
         history: {
             list: unexpectedCommand,
             prune: unexpectedCommand,
@@ -234,6 +235,11 @@ export async function runCommandLine(
     let runnerLoadCount = 0;
 
     const exitCode = await runOverkillCommandLine({
+        async writePreview(lines) {
+            for (const line of lines) {
+                stdout.output.write(`${line}\n`);
+            }
+        },
         arguments: args,
         applyExitCode: exitCodes.apply,
         cwd: '/project',

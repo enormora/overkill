@@ -1,4 +1,5 @@
 import type { ConfigLoader } from '../config/config.ts';
+import type { CorpusCommands } from './corpus-commands.ts';
 import type {
     HistoryCommands,
     CommandLineBaselineCommands,
@@ -14,6 +15,7 @@ export type CommandLineCommandLoaders = {
 };
 
 export type CommandLineCommandNamespace = {
+    readonly corpus: CorpusCommands;
     readonly history: HistoryCommands;
     readonly replayRun: CommandLineCommand;
     readonly baseline: CommandLineBaselineCommands;
@@ -73,6 +75,20 @@ function createHistoryRoutes(loadConfig: ConfigLoader): HistoryCommands {
 
 export function createCommandLineCommandNamespace(loaders: CommandLineCommandLoaders): CommandLineCommandNamespace {
     return {
+        corpus: {
+            async inspect(request) {
+                const { corpusCommands } = await import('./corpus-commands.ts');
+                return await corpusCommands.inspect(request);
+            },
+            async promote(request) {
+                const { corpusCommands } = await import('./corpus-commands.ts');
+                return await corpusCommands.promote(request);
+            },
+            async migrate(request) {
+                const { corpusCommands } = await import('./corpus-commands.ts');
+                return await corpusCommands.migrate(request);
+            }
+        },
         history: createHistoryRoutes(loaders.loadConfig),
         async replayRun(context) {
             const { createReplayCommand, replayTerminal } = await import('./replay-command.ts');

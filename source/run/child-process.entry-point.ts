@@ -9,7 +9,9 @@ import {
 export const childProcessEntryPointUrl = import.meta.url;
 
 async function runChildProcessRole(role: string | null): Promise<void> {
-    if (role === benchmarkCalibrationRole) {
+    if (role === 'corpus-codec') {
+        await import('./corpus-codec.entry-point.ts');
+    } else if (role === benchmarkCalibrationRole) {
         await import('./benchmark-calibration.entry-point.ts');
         return;
     }

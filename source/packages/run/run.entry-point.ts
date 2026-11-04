@@ -282,3 +282,17 @@ export type {
     HistoryPruneRequest,
     HistoryClearRequest
 } from '../../run/history-types.ts';
+
+export { inspectCorpus, promoteWitness, migrateCorpus } from '../../run/corpus.ts';
+export { CorpusOperationError } from '../../run/corpus-types.ts';
+export type {
+    CorpusSource,
+    CorpusCodec,
+    CorpusRequest,
+    CorpusEntryInspection,
+    CorpusInspection,
+    CorpusWritePreview,
+    CorpusWriteRequest,
+    CorpusWriteResult,
+    CorpusOperationErrorCode
+} from '../../run/corpus-types.ts';

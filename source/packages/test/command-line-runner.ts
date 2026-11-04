@@ -10,6 +10,7 @@ type WritableOutput = {
 };
 
 export type OverkillCommandLineRunRequest = {
+    readonly writePreview: (lines: readonly string[]) => Promise<void>;
     readonly arguments: readonly string[];
     readonly cwd: string;
     readonly loadRunner: () => Promise<CommandLineRunner>;
@@ -81,7 +82,12 @@ function applyRunResultExit(
 }
 
 async function dispatchCommandLine(request: OverkillCommandLineRunRequest): Promise<CommandLineExitCode> {
-    const result = await dispatchOverkillCommand(request.arguments, request.loadRunner, request.cwd);
+    const result = await dispatchOverkillCommand(
+        request.arguments,
+        request.loadRunner,
+        request.cwd,
+        request.writePreview
+    );
 
     if (result.kind === 'parser-exit') {
         return readParserExitCode(request, result.exit);

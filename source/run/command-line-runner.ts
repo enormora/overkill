@@ -21,6 +21,7 @@ import {
 } from './command-line-command.ts';
 import {
     createCommandLineCommandNamespace,
+    type CommandLineCommandNamespace,
     type CommandLineCommandLoaders
 } from './command-line-command-namespace.ts';
 import { createUnimplementedCommand } from './command-line-unimplemented-commands.ts';
@@ -37,6 +38,7 @@ import {
 } from './run-timing-collection.ts';
 
 export type CommandLineRunner = {
+    readonly corpus: CommandLineCommandNamespace['corpus'];
     readonly history: HistoryCommands;
     readonly baseline: CommandLineBaselineCommands;
     readonly bench: CommandLineBenchmarkCommands;
@@ -57,6 +59,7 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
     const commandNamespace = createCommandLineCommandNamespace(dependencies);
 
     return {
+        corpus: commandNamespace.corpus,
         history: commandNamespace.history,
         baseline: commandNamespace.baseline,
         bench: commandNamespace.bench,

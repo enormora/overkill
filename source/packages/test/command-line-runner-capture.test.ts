@@ -49,6 +49,7 @@ function createCapturedOutput(): CapturedOutput {
 
 function createRunner(requestRecorder: RequestRecorder): CommandLineRunner {
     return {
+        corpus: { inspect: unexpectedCommand, promote: unexpectedCommand, migrate: unexpectedCommand },
         history: {
             list: unexpectedCommand,
             prune: unexpectedCommand,
@@ -103,6 +104,11 @@ async function runCommandLine(args: readonly string[]): Promise<{
     const runRequests: CommandLineRunTestsRequest[] = [];
 
     await runOverkillCommandLine({
+        async writePreview(lines) {
+            for (const line of lines) {
+                stdout.output.write(`${line}\n`);
+            }
+        },
         arguments: args,
         applyExitCode(exitCode) {
             exitCodes.push(exitCode);
