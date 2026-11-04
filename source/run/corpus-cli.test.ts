@@ -50,6 +50,53 @@ export const testNode = suite('corpus CLI', [
         );
         return scope.assert.collect();
     }),
+    test('inspection and migration expose their results through the corpus namespace', async function (scope) {
+        const cwd = await directory(scope);
+        for (const verb of [ 'inspect', 'migrate' ]) {
+            const args = [ 'corpus', verb, 'witness.json', ...verb === 'migrate' ? [ '--to', 'migrated.json' ] : [] ];
+            const result = await dispatchOverkillCommand(
+                args,
+                async function () {
+                    return commandLineRunner;
+                },
+                cwd,
+                async function () {
+                    return undefined;
+                }
+            );
+            if (result.kind !== 'command-result') {
+                throw new Error('Expected a corpus result.');
+            }
+            scope.assert.equal(result.result.exitCode, 0);
+            scope.assert.true(result.result.stdoutLines.length > 0);
+        }
+        scope.assert.deepEqual(
+            propertyWitnessSchema.parse(JSON.parse(await readFile(path.join(cwd, 'migrated.json'), 'utf8'))),
+            propertyWitnessSchema.parse(JSON.parse(await readFile(path.join(cwd, 'witness.json'), 'utf8')))
+        );
+        return scope.assert.collect();
+    }),
+    test('preview delivery failures return runner errors without publishing files', async function (scope) {
+        const cwd = await directory(scope);
+        const result = await dispatchOverkillCommand(
+            [ 'corpus', 'promote', 'witness.json', '--to', 'failed.json' ],
+            async function () {
+                return commandLineRunner;
+            },
+            cwd,
+            async function failedSink() {
+                throw new Error('output unavailable');
+            }
+        );
+        if (result.kind !== 'command-result') {
+            throw new Error('Expected a corpus error result.');
+        }
+        scope.assert.equal(result.result.exitCode, 2);
+        await scope.assert.rejects(async function unpublished() {
+            await access(path.join(cwd, 'failed.json'));
+        }, { message: /ENOENT/v });
+        return scope.assert.collect();
+    }),
     test('missing destinations and codec modules produce argument errors', async function (scope) {
         const cwd = await directory(scope);
         const results = await Promise.all([
