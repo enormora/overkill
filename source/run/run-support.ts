@@ -1,6 +1,13 @@
 import type { NormalizedConfig, MaxConcurrency, ProfileConfig, Scheduling } from '../config/types.ts';
+import { RunCollectionError } from './run-errors.ts';
 import { runWithWorkerAttachments as executeWorkerAttachments } from './attachment-worker-context.ts';
-import type { TestRuntimePolicy, RunResult, TestPlanCase, ReporterDispatcher } from './run-engine-primitives.ts';
+import type {
+    TestRuntimePolicy,
+    RunResult,
+    TestPlanCase,
+    ReporterDispatcher,
+    PropertyCorpusSnapshot
+} from './run-engine-primitives.ts';
 import {
     createResourceLifecycleRuntimePolicy,
     type ManagedResourceLifecycleTiming
@@ -191,4 +198,25 @@ export async function withRunErrorMetadata(
         return result;
     }
     return withBenchmarkErrorMetadata(result, command, host);
+}
+
+export function hasPropertyReplay(
+    value: Record<string, unknown>
+): value is { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; } {
+    return Object.hasOwn(value, 'propertyReplay');
+}
+
+export function assertReplaySelection(command: RunCommand, valid: boolean): void {
+    if (hasPropertyReplay(command) && !valid) {
+        throw new RunCollectionError(
+            'Witness replay requires exactly one executable property case.',
+            { cause: null },
+            'witness-replay'
+        );
+    }
+}
+export function propertyReplayContext(
+    command: RunCommand
+): Record<PropertyKey, never> | { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; } {
+    return hasPropertyReplay(command) ? { propertyReplay: command.propertyReplay } : {};
 }

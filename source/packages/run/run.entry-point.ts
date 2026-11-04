@@ -297,3 +297,5 @@ export type {
     CorpusWriteResult,
     CorpusOperationErrorCode
 } from '../../run/corpus-types.ts';
+
+export type { ReplayWitnessRequest, ReplayWitnessCommand } from '../../run/witness-replay-request.ts';

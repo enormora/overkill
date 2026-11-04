@@ -20,6 +20,7 @@ import {
     type CapabilityPolicyOptions
 } from './capability-policy.ts';
 import {
+    hasPropertyReplay,
     createRunResourceRuntimePolicy,
     engineExecution,
     type RunRuntimePolicy,
@@ -265,6 +266,7 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
             ),
             runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
             propertyRun: {
+                ...hasPropertyReplay(input.command) ? { replay: input.command.propertyReplay } : {},
                 corpus: assignedPropertyCorpus(input.assignment),
                 seed: BigInt(input.command.seed),
                 projectRoot: input.command.cwd

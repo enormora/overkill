@@ -1,7 +1,8 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
+import { parseWitnessFile } from '../packages/engine/engine.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -37,6 +38,17 @@ function shrinkStatus(result: Awaited<ReturnType<typeof orchestrator.run>>): str
     return result.perTest[0]?.property?.invocations[0]?.shrinkStatus ?? null;
 }
 
+async function saveReplayWitness(command: RunCommand): Promise<string> {
+    const first = await orchestrator.run(command);
+    const witness = first.perTest[0]?.property?.invocations[0]?.confirmedWitness;
+    if (witness === null || witness === undefined) {
+        throw new Error('Expected a confirmed witness.');
+    }
+    const file = path.join(command.config.runtimeStateDir, 'replay.witness.json');
+    await writeFile(file, JSON.stringify(witness));
+    return file;
+}
+
 export const testNode = suite(
     'runner property corpus',
     [
@@ -51,6 +63,53 @@ export const testNode = suite(
                 scope.assert.equal(replay.summary.failed, 1);
                 scope.assert.equal(shrinkStatus(first), 'search-exhausted');
                 scope.assert.equal(shrinkStatus(replay), 'shrink-state-unavailable');
+                return scope.assert.collect();
+            });
+        }),
+        ...([ 'in-process', 'supervised-process' ] as const).map(function directReplay(processModel) {
+            return test(`${processModel} directly replays a witness through normal execution`, async function (scope) {
+                const command = await corpusCommand(scope, processModel);
+                const file = await saveReplayWitness(command);
+                const replay = await orchestrator.replayWitness({
+                    ...command,
+                    request: {
+                        path: file,
+                        profile: 'laws',
+                        seed: { value: 42n },
+                        capture: 'buffered',
+                        record: true,
+                        timingCollection: 'profile-default'
+                    }
+                }, { signal: null, timing: null });
+                scope.assert.deepEqual(replay.runnerErrors, []);
+                scope.assert.equal(replay.summary.failed, 1);
+                scope.assert.equal(replay.perTest.length, 1);
+                scope.assert.equal(replay.perTest[0]?.property?.invocations[0]?.confirmedWitness, null);
+                scope.assert.equal(shrinkStatus(replay), null);
+                return scope.assert.collect();
+            });
+        }),
+        ...([ 'in-process', 'supervised-process' ] as const).map(function missingReplay(processModel) {
+            return test(`${processModel} rejects a witness whose case is missing`, async function (scope) {
+                const command = await corpusCommand(scope, processModel);
+                const file = await saveReplayWitness(command);
+                const saved = parseWitnessFile(JSON.parse(await readFile(file, 'utf8')));
+                await writeFile(file, JSON.stringify({ ...saved, case: { ...saved.case, title: 'missing property' } }));
+                const replay = await orchestrator.replayWitness({
+                    ...command,
+                    request: {
+                        path: file,
+                        profile: 'laws',
+                        seed: { value: 42n },
+                        capture: 'buffered',
+                        record: false,
+                        timingCollection: 'profile-default'
+                    }
+                }, { signal: null, timing: null });
+                scope.assert.true(replay.runnerErrors.some(function replayError(error) {
+                    return error.subtype === 'witness-replay';
+                }));
+                scope.assert.equal(replay.summary.passed, 0);
                 return scope.assert.collect();
             });
         }),

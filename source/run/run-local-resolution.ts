@@ -1,3 +1,4 @@
+import { assertReplaySelection } from './run-support.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { createLocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
 import { selectedNonEmptyTestPlanCases, selectedTestPlan } from './run-selection.ts';
@@ -60,6 +61,7 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
     });
     const plannedCases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
 
+    assertReplaySelection(command, plannedCases !== null);
     if (plannedCases === null) {
         const resolvedRun = createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, testPlan);
 
