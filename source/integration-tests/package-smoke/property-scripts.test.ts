@@ -172,7 +172,9 @@ process.on('exit', () => {
 
 export const propertyCodecScript = `
 import assert from 'node:assert/strict';
-import { capturePropertyInput, decodePropertyInput, migratePropertyInput, defineCodec } from '@overkill-dev/run/property-codec';
+import {
+    capturePropertyInput, decodePropertyInput, migratePropertyInput, defineCodec
+} from '@overkill-dev/run/property-codec';
 const consume = () => {};
 const historical = defineCodec({ name: 'counter', version: 1, previousDecoders: [],
     encode: value => value.toString(), decode: value => BigInt(value) });
