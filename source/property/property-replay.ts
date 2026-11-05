@@ -21,13 +21,15 @@ export function propertyReplayError(message: string, cause: unknown): CaseRunner
 }
 
 async function recordReplayResult<Value>(execution: PropertyExecution<Value>, observed: ObservedTrial): Promise<void> {
+    const observations = observed.trial.kind === 'passed'
+        ? { original: null, retained: null }
+        : { original: observed.observation, retained: observed.observation };
     await execution.host.recordEvidence({
         summary: null,
         identity: execution.identity,
         confirmedWitness: null,
         shrinkStatus: null,
-        original: observed.observation,
-        retained: observed.observation,
+        ...observations,
         diagnostics: []
     });
     const failure = observed.trial.kind === 'terminated' ? 'interrupted' : 'failed';

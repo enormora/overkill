@@ -15,12 +15,12 @@ function casePropertyEvidence(result: RunResult): PropertyCaseEvidence {
     return evidence;
 }
 
-function failingProperty(): TestNode {
+function diagnosticProperty(expected: number): TestNode {
     return property({
         title: 'diagnostic failure',
         generator: gen.constant(1),
         test(value, sample) {
-            sample.assert.equal(value, 0);
+            sample.assert.equal(value, expected);
             return sample.assert.collect();
         }
     });
@@ -73,7 +73,7 @@ export const testNode = suite('property diagnostic rendering', [
         return scope.assert.collect();
     }),
     test('renders the original witness seed separately during direct replay', async function (scope: TestScope) {
-        const node = failingProperty();
+        const node = diagnosticProperty(0);
         const failure = casePropertyEvidence(await executePropertyNode(node, propertyExecutionDefaults));
         const witness = failure.invocations[0]?.confirmedWitness;
         scope.require.defined(witness);
@@ -84,8 +84,30 @@ export const testNode = suite('property diagnostic rendering', [
         scope.assert.equal(evidence.invocations[0]?.summary?.accounting.phases.witness.executed, 1);
         return scope.assert.collect();
     }),
+    test(
+        'successful witness replay has no failure observations or counterexample diagnostic',
+        async function (scope: TestScope) {
+            const failure = casePropertyEvidence(
+                await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
+            );
+            const witness = failure.invocations[0]?.confirmedWitness;
+            scope.require.defined(witness);
+            const replay = await executePropertyNode(diagnosticProperty(1), {
+                ...propertyExecutionDefaults,
+                replay: witness
+            });
+            const evidence = casePropertyEvidence(replay);
+            scope.assert.equal(replay.summary.passed, 1);
+            scope.assert.equal(evidence.invocations[0]?.original, null);
+            scope.assert.equal(evidence.invocations[0]?.retained, null);
+            scope.assert.false(formatPropertyDiagnostics(evidence).join('\n').includes('Shrunk counterexample'));
+            return scope.assert.collect();
+        }
+    ),
     test('rejects evidence with only one failure observation', async function (scope: TestScope) {
-        const evidence = casePropertyEvidence(await executePropertyNode(failingProperty(), propertyExecutionDefaults));
+        const evidence = casePropertyEvidence(
+            await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
+        );
         for (const field of [ 'original', 'retained' ]) {
             const invalid = {
                 invocations: evidence.invocations.map(function removeObservation(invocation) {
