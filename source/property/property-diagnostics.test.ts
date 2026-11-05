@@ -72,6 +72,48 @@ export const testNode = suite('property diagnostic rendering', [
         scope.assert.includes(lines, 'Required input coverage positive: 1/2 (50%), minimum 50%');
         return scope.assert.collect();
     }),
+    test('exhaustive completion does not hide unmet input coverage', async function (scope: TestScope) {
+        const result = await executePropertyNode(
+            property({
+                title: 'unmet exhaustive coverage',
+                generator: gen.constant<number>(0),
+                coverage: [ { label: 'positive', minimumPercent: 100 } ],
+                test(value, sample) {
+                    sample.cover('positive', value > 0);
+                    sample.assert.equal(value, 0);
+                    return sample.assert.collect();
+                }
+            }),
+            { ...propertyExecutionDefaults, policy: { ...propertyExecutionDefaults.policy, maxExhaustiveValues: 10 } }
+        );
+        const evidence = propertyEvidenceSchema.parse(casePropertyEvidence(result));
+        const lines = formatPropertyDiagnostics(evidence).join('\n');
+        scope.assert.equal(result.summary.inconclusive, 1);
+        scope.assert.includes(lines, 'coverage-unmet');
+        scope.assert.includes(lines, 'Exhaustive traversal complete: 1/1');
+        scope.assert.includes(lines, 'Required input coverage positive: 0/1 (0%), minimum 100%');
+        return scope.assert.collect();
+    }),
+    test('historical evidence renders diagnostics without inventing a summary', async function (scope: TestScope) {
+        const evidence = casePropertyEvidence(
+            await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
+        );
+        const historical = {
+            invocations: evidence.invocations.map(function legacy(invocation) {
+                return Object.fromEntries(
+                    Object.entries(invocation).filter(function historicalField([ field ]) {
+                        return field !== 'summary';
+                    })
+                );
+            })
+        };
+        const decoded = propertyEvidenceSchema.parse(historical);
+        const lines = formatPropertyDiagnostics(decoded).join('\n');
+        scope.assert.equal(decoded.invocations[0]?.summary, null);
+        scope.assert.includes(lines, 'Shrinking exhausted the candidate search');
+        scope.assert.false(lines.includes('run seed='));
+        return scope.assert.collect();
+    }),
     test('renders the original witness seed separately during direct replay', async function (scope: TestScope) {
         const node = diagnosticProperty(0);
         const failure = casePropertyEvidence(await executePropertyNode(node, propertyExecutionDefaults));
@@ -101,6 +143,60 @@ export const testNode = suite('property diagnostic rendering', [
             scope.assert.equal(evidence.invocations[0]?.original, null);
             scope.assert.equal(evidence.invocations[0]?.retained, null);
             scope.assert.false(formatPropertyDiagnostics(evidence).join('\n').includes('Shrunk counterexample'));
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'replay keeps cleanup failures native and marks the invocation interrupted',
+        async function (scope: TestScope) {
+            let cleanupFailure: Error | null = null;
+            const node = property({
+                title: 'cleanup replay',
+                generator: gen.constant(1),
+                test(value, sample) {
+                    sample.cleanup(function failReplayCleanup() {
+                        if (cleanupFailure !== null) {
+                            throw cleanupFailure;
+                        }
+                    });
+                    sample.assert.equal(value, 0);
+                    return sample.assert.collect();
+                }
+            });
+            const witness = casePropertyEvidence(await executePropertyNode(node, propertyExecutionDefaults))
+                .invocations[0]
+                ?.confirmedWitness;
+            scope.require.defined(witness);
+            cleanupFailure = new Error('Replay cleanup failed.');
+            const replay = await executePropertyNode(node, { ...propertyExecutionDefaults, replay: witness });
+            scope.assert.equal(replay.summary.failed, 1);
+            scope.assert.includes(JSON.stringify(replay.perTest[0]?.outcome), 'cleanup-error');
+            scope.assert.equal(casePropertyEvidence(replay).invocations[0]?.summary?.status, 'interrupted');
+            return scope.assert.collect();
+        }
+    ),
+    test(
+        'incompatible replay input records an execution error without evaluating a trial',
+        async function (scope: TestScope) {
+            const failure = casePropertyEvidence(
+                await executePropertyNode(diagnosticProperty(0), propertyExecutionDefaults)
+            );
+            const witness = failure.invocations[0]?.confirmedWitness;
+            scope.require.defined(witness);
+            const incompatible = {
+                ...witness,
+                counterexample: { ...witness.counterexample, format: { name: 'unknown-property-format', version: 1 } }
+            };
+            const replay = await executePropertyNode(diagnosticProperty(0), {
+                ...propertyExecutionDefaults,
+                replay: incompatible
+            });
+            const summary = casePropertyEvidence(replay).invocations[0]?.summary;
+            scope.assert.equal(summary?.status, 'execution-error');
+            scope.assert.equal(summary?.accounting.phases.witness.executed, 0);
+            scope.assert.true(replay.runnerErrors.some(function replayError(error) {
+                return error.subtype === 'witness-replay';
+            }));
             return scope.assert.collect();
         }
     ),
