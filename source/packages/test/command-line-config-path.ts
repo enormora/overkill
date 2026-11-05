@@ -1,6 +1,6 @@
 import { multioption, type Type } from 'cmd-ts';
 
-const configPathType: Type<string[], string | null> = {
+export const configPathType: Type<readonly string[], string | null> = {
     displayName: 'path',
     async from([ configPath, ...remainingPaths ]) {
         if (remainingPaths.length > 0) {

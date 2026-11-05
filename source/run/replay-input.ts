@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { RunResolutionError } from './run-errors.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
@@ -24,5 +25,13 @@ export function decodeReplayInput<Value>(input: unknown, decode: (value: unknown
             { cause: error },
             'unsupported-request'
         );
+    }
+}
+
+export async function readWitnessReplayFile(file: string): Promise<unknown> {
+    try {
+        return JSON.parse(await readFile(file, 'utf8')) as unknown;
+    } catch (error: unknown) {
+        throw new RunResolutionError(`Cannot read replay input: ${file}`, { cause: error }, 'invalid-request');
     }
 }

@@ -724,7 +724,9 @@ delivery. Pass `signal: null` when cancellation is unnecessary.
 `overkill replay-witness <path> --profile <name>` replays one property or
 simulation witness. The corresponding APIs are
 `orchestrator.replayWitness({ cwd, config, signal, path, profile })` and
-`replayWitnessWithReporterDelivery(...)`. The profile is required.
+`replayWitnessWithReporterDelivery(...)`. This convenience form requires a profile
+and uses a fresh module graph. The request-based form below preserves the selected
+profile's process boundaries and supports CLI execution controls.
 
 Property witnesses evaluate the retained input once, bypassing generation,
 corpus phases, shrinking, and confirmation. Nested witnesses run the enclosing
@@ -771,3 +773,22 @@ diagnostics; each inspection also retains the complete lossless witness payload.
 `decodePropertyInput`, `migratePropertyInput`, and `PropertyCodecError` for shared
 lossless input serialization. Property authoring continues to expose `defineCodec`
 through `@overkill-dev/property`.
+
+## Witness replay options
+
+`orchestrator.replayWitness(command, { signal: null, timing: null })` accepts a
+`ReplayWitnessCommand`. Its `request` contains `path`, `profile` (a name or `null`
+for unique property-profile inference), `seed`, `capture`, `record`, and
+`timingCollection`. Configuration, working directory, and engine selection use
+the same fields as `RunCommand`.
+
+`replayWitnessWithReporterDelivery` additionally reports delivered and undelivered
+runner errors. Both operations retain the selected profile's execution boundaries.
+Runtime input compatibility and target errors use runner-error subtype
+`witness-replay`; ordinary assertions and lifecycle failures retain their outcomes.
+Recorded replay facts retain the witness in `propertyReplay`.
+
+The CLI equivalent is `overkill replay-witness <path>` with `--config`, `--profile`,
+`--seed`, `--record`, and `--timings`. Property profiles require buffered capture;
+`--no-capture` is rejected consistently with ordinary property runs. Simulation
+witnesses require an explicit profile and a resource restoration callback.

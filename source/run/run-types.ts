@@ -41,6 +41,7 @@ import type {
 import type {
     RecordedRunSource,
     RunHistoryRequest,
+    RunHostProcessReason as RunHostProcessReasonDefinition,
     RunEngineSelection,
     RunSelection as SelectedCases,
     RunExecutionLifecycleReference
@@ -48,6 +49,7 @@ import type {
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
     PropertyPolicy,
+    PropertyCorpusSnapshot,
     PropertyBodyDefinition,
     AttachmentLimits,
     PerTestResult,
@@ -97,16 +99,7 @@ export type RunDebugRequest = {
 };
 
 export type RunTestFamily = 'benchmark' | 'integration' | 'microtest' | 'property';
-type RunHostProcessReasonKey = {
-    readonly 'benchmark-isolation': true;
-    readonly debugging: true;
-    readonly 'forced-garbage-collection': true;
-    readonly 'host-isolation': true;
-    readonly 'node-arguments': true;
-    readonly profiling: true;
-};
-
-export type RunHostProcessReason = keyof RunHostProcessReasonKey;
+export type RunHostProcessReason = RunHostProcessReasonDefinition;
 
 export type WorkUnitMode = 'case' | 'file' | 'group';
 
@@ -218,14 +211,18 @@ export type ProfileRunRequest<Profile extends string | null> = RunHistoryRequest
 
 export type RunRequest = ProfileRunRequest<string>;
 
-export type RunCommand = {
+type OrdinaryRunCommand = {
     readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunEngineSelection;
     readonly request: RunRequest;
 };
+type WitnessRunCommand = OrdinaryRunCommand & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
+export type RunCommand = OrdinaryRunCommand | WitnessRunCommand;
+type ReplayRunFacts = OrdinaryRunFacts & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
+export type RunFacts = OrdinaryRunFacts | ReplayRunFacts;
 
-export type RunFacts = {
+type OrdinaryRunFacts = {
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;

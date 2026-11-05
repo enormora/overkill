@@ -2,14 +2,21 @@ import path from 'node:path';
 import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from '../engine/property-corpus.ts';
 import { runStatusFromSummary, type RunResult } from '../engine/run-result.ts';
+import { hasPropertyReplay } from './run-support.ts';
 import { currentReplayWitness } from './replay-context.ts';
 import { readPropertyCorpus, savePropertyCorpus } from './property-corpus-storage.ts';
 import type { ResolvedRun } from './run-types.ts';
 
-export async function resolvedPropertyCorpus(run: ResolvedRun): Promise<PropertyCorpusSnapshot> {
+function selectedPropertyWitness(run: ResolvedRun): PropertyWitnessFile | null {
     const witness = currentReplayWitness();
     if (witness?.kind === 'property') {
-        return { ...emptyPropertyCorpus, replay: witness };
+        return witness;
+    }
+    return hasPropertyReplay(run.facts) ? run.facts.propertyReplay : null;
+}
+export async function resolvedPropertyCorpus(run: ResolvedRun): Promise<PropertyCorpusSnapshot> {
+    if (selectedPropertyWitness(run)?.target.kind === 'property-value') {
+        return emptyPropertyCorpus;
     }
     const profile = run.config.profiles[run.request.profile];
     if (profile?.testFamily !== 'property') {

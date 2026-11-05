@@ -120,4 +120,15 @@ export type RecordedRunSource<Plan> = {
 } | {
     readonly kind: 'witness';
     readonly witness: WitnessFile;
+    readonly moduleGraph: 'current' | 'fresh';
 };
+type RunHostProcessReasonKey = {
+    readonly 'benchmark-isolation': true;
+    readonly debugging: true;
+    readonly 'forced-garbage-collection': true;
+    readonly 'host-isolation': true;
+    readonly 'node-arguments': true;
+    readonly profiling: true;
+};
+
+export type RunHostProcessReason = keyof RunHostProcessReasonKey;

@@ -53,7 +53,7 @@ current concept.
 | `overkill list [paths...]`          | Print the resolved test plan without running it.             | [Tests As Values](../authoring/tests-as-values.md)                                                                     |
 | `overkill replay <run-id>`          | Replay a recorded run from `.overkill/runs/<id>.json`.       | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
 | `overkill merge-results <paths...>` | Merge completed shard run records into one aggregate result. | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                            |
-| `overkill replay-witness <path> --profile <name>`    | Replay a single property/simulation failure from a witness.  | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
+| `overkill replay-witness <path>`    | Replay a single property/simulation failure from a witness.  | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
 
 `overkill replay` without a run id is interactive only. In a TTY it opens a
 picker over replayable retained records, including interrupted records whose
@@ -317,3 +317,17 @@ names also support the existing substring and glob filter operators.
 `bench run` also supports `--no-capture`, `--timings`, and `--workers`;
 `bench list` supports `--with-locations` and `--with-orphans`.
 `--coverage` remains microtest-only.
+
+### Witness replay options
+
+`overkill replay-witness <path>` accepts `--config`, `--profile`, `--seed`,
+`--record`, and `--timings`. Omit `--profile` only when exactly one property
+profile is configured. Simulation replay requires an explicit profile. The
+selected profile supplies loaders,
+capability restrictions, and execution supervision. Property profiles require
+buffered capture, so `--no-capture` is rejected.
+
+Replay restores only the target input. Nested witnesses run the enclosing case
+under current seed and corpus policy. The witness's property seed is provenance,
+not a substitute for the enclosing run seed. Simulation replay restores the
+witness through a fresh resource owner before running current handlers.

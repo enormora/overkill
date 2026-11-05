@@ -54,3 +54,14 @@ export function createCommandLineSelection(args: CommandLineSelectionArguments):
 
     return selectionFromFilters(filters);
 }
+
+export const profileSelectionType: Type<string[], string | null> = {
+    displayName: 'name',
+    async from([ profile, ...remainingProfiles ]) {
+        if (remainingProfiles.length > 0) {
+            throw new TypeError('--profile may only be provided once.');
+        }
+
+        return profile ?? null;
+    }
+};

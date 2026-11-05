@@ -271,6 +271,13 @@ async function createWorkerPoolRunResult(
     }
 }
 
+function requiresFreshModules(source: RunCollectionSource): boolean {
+    if (source.kind !== 'replay') {
+        return false;
+    }
+    return source.replay.kind === 'record' || source.replay.moduleGraph === 'fresh';
+}
+
 export function runIsolatedProcessCommand(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -279,7 +286,9 @@ export function runIsolatedProcessCommand(
 ): Promise<RunResult> | null {
     const { processModel } = input.profile.execution;
 
-    if (processModel === 'supervised-process' || processModel === 'in-process' && options.source.kind === 'replay') {
+    if (
+        processModel === 'supervised-process' || processModel === 'in-process' && requiresFreshModules(options.source)
+    ) {
         return createSupervisedRunResult({
             baseline: options.baseline,
             record: options.record,

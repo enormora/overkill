@@ -31,25 +31,70 @@ async function witness(): Promise<PropertyWitnessFile> {
 
 export const testNode = suite('stored property regressions', [
     invocationTargets,
-    test('direct replay evaluates one saved input without generation or shrinking', async function (scope) {
+    test('replays a witness once without exploring or confirming it', async function (scope) {
         const saved = await witness();
         const inputs: number[] = [];
         const result = await executePropertyNode(
             property({
                 title: 'stored regression',
-                generator: gen.constant(0).map(function generationMustNotRun(): number {
-                    throw new Error('Replay generated a new input.');
+                generator: gen.constant(0).map(function forbidGeneration() {
+                    throw new Error('Replay must not generate inputs.');
                 }),
                 test(value, sample) {
                     inputs.push(value);
-                    sample.assert.equal(value, 0);
+                    sample.assert.equal(value, 42);
                     return sample.assert.collect();
                 }
             }),
-            { ...propertyExecutionDefaults, corpus: { ...emptyPropertyCorpus, replay: saved } }
+            { ...propertyExecutionDefaults, replay: saved }
         );
-        scope.assert.equal(result.summary.failed, 1);
         scope.assert.deepEqual(inputs, [ 42 ]);
+        scope.assert.equal(result.summary.passed, 1);
+        return scope.assert.collect();
+    }),
+    test('rejects an incompatible direct replay without executing the body', async function (scope) {
+        const saved = await witness();
+        const inputs: number[] = [];
+        const result = await executePropertyNode(
+            property({
+                title: 'stored regression',
+                generator: gen.constant(0),
+                test(value, sample) {
+                    inputs.push(value);
+                    sample.assert.true(true);
+                    return sample.assert.collect();
+                }
+            }),
+            {
+                ...propertyExecutionDefaults,
+                replay: {
+                    ...saved,
+                    counterexample: { ...saved.counterexample, format: { name: 'future', version: 99 } }
+                }
+            }
+        );
+        scope.assert.deepEqual(inputs, []);
+        scope.assert.true(result.runnerErrors.some(function replayError(error) {
+            return error.subtype === 'witness-replay';
+        }));
+        scope.assert.equal(result.summary.passed, 0);
+        return scope.assert.collect();
+    }),
+    test('rejects replay when the selected declaration is no longer a property', async function (scope) {
+        const saved = await witness();
+        const inputs: string[] = [];
+        const result = await executePropertyNode(
+            test('stored regression', function (parent) {
+                inputs.push('executed');
+                parent.assert.true(true);
+                return parent.assert.collect();
+            }),
+            { ...propertyExecutionDefaults, replay: saved }
+        );
+        scope.assert.deepEqual(inputs, []);
+        scope.assert.true(result.runnerErrors.some(function replayError(error) {
+            return error.subtype === 'witness-replay';
+        }));
         return scope.assert.collect();
     }),
     test('replays confirmed inputs outside the current generation domain', async function (scope) {

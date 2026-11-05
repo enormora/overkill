@@ -1,6 +1,7 @@
+import { propertyReplayContext } from './run-support.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
-import { createLocalTestPlan, type LocalTestPlan } from './run-local-test-plan.ts';
+import { createLocalTestPlan, type LocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
 import { resolveProcessUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunCommand, CollectedRunPlan, RunRequest } from './run-types.ts';
@@ -11,7 +12,8 @@ import type {
 } from './supervised-protocol.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
 import { runCollectionContext, type CollectionSource } from './run-collection-source.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+
+type RunOrchestratorDependencies = LocalTestPlanInput['dependencies'];
 
 export type IsolatedRunCollectionSource = CollectionSource;
 
@@ -195,7 +197,8 @@ export function createSupervisedRunCommand(
             profile,
             source
         }),
-        ...supervisedExecutionMode(source)
+        ...supervisedExecutionMode(source),
+        ...propertyReplayContext(command)
     };
 }
 

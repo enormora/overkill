@@ -1702,13 +1702,13 @@ type ReplayContext = {
     readonly signal: Readonly<AbortSignal> | null;
 };
 type ReplayRunCommand = ReplayContext & { readonly runId: string; };
-type ReplayWitnessCommand = ReplayContext & { readonly path: string; readonly profile: string; };
+type ReplayWitnessInput = ReplayContext & { readonly path: string; readonly profile: string; };
 
 declare const orchestrator: {
     readonly replay: (command: ReplayRunCommand) => Promise<RunnerResult>;
     readonly replayWithReporterDelivery: (command: ReplayRunCommand) => Promise<RunReporterDeliveryResult>;
-    readonly replayWitness: (command: ReplayWitnessCommand) => Promise<RunnerResult>;
-    readonly replayWitnessWithReporterDelivery: (command: ReplayWitnessCommand) => Promise<RunReporterDeliveryResult>;
+    readonly replayWitness: (command: ReplayWitnessInput) => Promise<RunnerResult>;
+    readonly replayWitnessWithReporterDelivery: (command: ReplayWitnessInput) => Promise<RunReporterDeliveryResult>;
     readonly createExecutionSession: (options: RunExecutionSessionOptions) => RunExecutionSession;
 };
 
@@ -3069,3 +3069,15 @@ Canonical: [Property Corpus](./cli.md#property-corpus).
 `decodePropertyInput`, `migratePropertyInput`, and `PropertyCodecError` for shared
 lossless input serialization. Property authoring continues to expose `defineCodec`
 through `@overkill-dev/property`.
+
+### Property witness replay requests
+
+`ReplayWitnessRequest` and `ReplayWitnessCommand` are exported by
+`@overkill-dev/run`. The request contains a witness `path`, nullable `profile`
+for unique-profile inference, `seed`, `capture`, `record`, and `timingCollection`.
+The command combines that request with `RunCommand`'s `config`, `cwd`, and `engine`.
+`orchestrator.replayWitness(command, options)` returns `RunnerResult`;
+`replayWitnessWithReporterDelivery` returns `RunReporterDeliveryResult`.
+Both accept explicit `RunInvocationOptions`, including `signal` and `timing`.
+Replay facts carry `propertyReplay: PropertyWitnessFile`; historical ordinary
+facts omit it. Runtime replay errors use runner-error subtype `witness-replay`.

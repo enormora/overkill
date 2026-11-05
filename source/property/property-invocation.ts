@@ -1,3 +1,4 @@
+import { propertyReplayWitness } from '../engine/property-execution-host.ts';
 import {
     readPropertyExecutionHost,
     stopPropertyExecution,
@@ -10,7 +11,13 @@ import {
     type DefinitionLocations,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
-import { explicitPropertyKey, completePropertyTargets } from './property-witness.ts';
+import { replayPropertyInvocation, propertyReplayError } from './property-replay.ts';
+import {
+    propertyWitnessTarget,
+    samePropertyTarget,
+    explicitPropertyKey,
+    completePropertyTargets
+} from './property-witness.ts';
 import { coverageRequirements } from './property-coverage.ts';
 import { executeProperty } from './property-execution.ts';
 import type { PropertyExecutionResult } from './property-execution-result.ts';
@@ -107,6 +114,10 @@ export async function runPropertyInvocation<Value>(
 ): Promise<AssertionResult> {
     const { scope, signal, identity, locations } = context;
     const host = readPropertyExecutionHost(scope);
+    const witness = propertyReplayWitness(host);
+    if (witness !== null && samePropertyTarget(witness.target, propertyWitnessTarget(identity))) {
+        return await replayPropertyInvocation(invocation, { ...context, host }, witness);
+    }
     if (identity === 'declared-property') {
         await completePropertyTargets(host, new Set([ identity ]));
     }
@@ -203,10 +214,44 @@ function nestedPropertyIdentity(definition: unknown, key: string, occurrence: nu
     return explicit === null ? JSON.stringify([ key, occurrence ]) : JSON.stringify([ 'key', explicit ]);
 }
 
+function trackReplayTarget(scope: TestScope, seen: ReadonlySet<string>): ReturnType<typeof propertyReplayWitness> {
+    const witness = propertyReplayWitness(readPropertyExecutionHost(scope));
+    if (witness === null) {
+        return null;
+    }
+    if (witness.target.kind === 'forall' && witness.target.key === null && witness.target.location.kind === 'unknown') {
+        throw propertyReplayError('Witness replay without a key requires a known invocation source location.', null);
+    }
+    scope.cleanup(function validateReplayTarget() {
+        if (
+            Array.from(seen).every(function missing(identity) {
+                return !samePropertyTarget(witness.target, propertyWitnessTarget(identity));
+            })
+        ) {
+            throw propertyReplayError('Property witness invocation target was not reached.', null);
+        }
+    });
+    return witness;
+}
+
+function recordInvocationIdentity(
+    witness: ReturnType<typeof propertyReplayWitness>,
+    seen: ReadonlySet<string>,
+    identity: string
+): void {
+    if (seen.has(identity)) {
+        if (witness !== null && samePropertyTarget(witness.target, propertyWitnessTarget(identity))) {
+            throw propertyReplayError('Property witness replay encountered a duplicate invocation target.', null);
+        }
+        propertyScopeContractFailure('Nested property keys must be unique within the case.');
+    }
+}
+
 export function createNestedPropertySession(scope: TestScope): NestedPropertySession {
     const session = createInvocationScope(scope);
     const occurrences = new Map<string, number>();
     const seen = new Set<string>();
+    const witness = trackReplayTarget(scope, seen);
     function forall<Value>(generator: PropertyGenerator<Value>, body: PropertyBody<Value>): Promise<AssertionResult>;
     function forall<Value>(invocation: PropertyInvocation<Value>): Promise<AssertionResult>;
     async function forall<Value>(
@@ -219,9 +264,7 @@ export function createNestedPropertySession(scope: TestScope): NestedPropertySes
         occurrences.set(key, occurrence + 1);
         const invocation = normalizeForall(definition, body);
         const identity = nestedPropertyIdentity(definition, key, occurrence);
-        if (seen.has(identity)) {
-            propertyScopeContractFailure('Nested property keys must be unique within the case.');
-        }
+        recordInvocationIdentity(witness, seen, identity);
         seen.add(identity);
         return session.run(async function executeNestedInvocation(signal) {
             return await runPropertyInvocation(invocation, {

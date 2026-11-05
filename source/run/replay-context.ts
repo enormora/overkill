@@ -21,6 +21,7 @@ export type ReplayExecution = {
     readonly kind: 'witness';
     readonly witness: WitnessFile;
     readonly sourceRunId: string | null;
+    readonly moduleGraph: 'current' | 'fresh';
 };
 type ReplayExecutionPlan = {
     readonly recordedFacts: ReplayPlanningFacts;

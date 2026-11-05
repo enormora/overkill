@@ -10,6 +10,7 @@ import {
     microtestLoadBoundaryScript,
     propertyAuthoringScript,
     propertyCodecScript,
+    propertyReplayScript,
     propertyLoadBoundaryScript,
     propertySubpathScript,
     propertyTypeScript
@@ -55,6 +56,20 @@ export const testNode = createSuite({
     ...metadata,
     title: 'packaged property authoring',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'packaged witness replay preserves lifecycle and input graphs',
+            async body(scope) {
+                const result = await runNode(
+                    [ '--input-type=module', '--eval', propertyReplayScript ],
+                    import.meta.dirname
+                );
+                scope.assert.equal(result.code, 0);
+                scope.assert.equal(result.stderr, '');
+                scope.assert.includes(result.stdout, 'Packaged witness replay passed');
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'runner codec boundary preserves historical decoding in published packages',

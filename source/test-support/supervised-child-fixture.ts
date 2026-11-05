@@ -134,7 +134,7 @@ export function supervisedChildCommand(kind: 'collect' | 'run', path: string): S
         engine: { kind: 'default' },
         hardTimeoutMilliseconds: 2000,
         maxConcurrency: 5,
-        kind,
+        ...kind === 'collect' ? { kind: 'collect' as const } : { kind: 'run' as const },
         paths: [ path ],
         processBudgets: {
             activeResourceCount: null,

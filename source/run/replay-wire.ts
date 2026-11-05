@@ -13,7 +13,11 @@ export const replayWireSchema: z.ZodType<ReplayWire> = z.union([
         plan: collectedRunPlanSchema,
         witness: witnessFileSchema.nullable().default(null)
     }),
-    z.strictObject({ kind: z.literal('witness'), witness: witnessFileSchema })
+    z.strictObject({
+        kind: z.literal('witness'),
+        witness: witnessFileSchema,
+        moduleGraph: z.enum([ 'current', 'fresh' ]).default('fresh')
+    })
 ]);
 export function currentReplayWire(): ReplayWire | null {
     const replay = currentReplay();
@@ -22,7 +26,7 @@ export function currentReplayWire(): ReplayWire | null {
     }
     return replay.kind === 'record'
         ? { kind: 'record', plan: replay.record.replayPlan, witness: replay.record.replayWitness }
-        : { kind: 'witness', witness: replay.witness };
+        : { kind: 'witness', witness: replay.witness, moduleGraph: replay.moduleGraph };
 }
 export function bindWireReplayPlan(plan: TestPlan, replay: ReplayWire | null): TestPlan {
     return replay?.kind === 'record'
@@ -34,7 +38,7 @@ export async function withReplayWire<Value>(replay: ReplayWire | null, execute: 
     const witness = replay?.witness ?? null;
     return witness === null
         ? await execute()
-        : await withReplay({ kind: 'witness', witness, sourceRunId: null }, null, execute);
+        : await withReplay({ kind: 'witness', witness, sourceRunId: null, moduleGraph: 'fresh' }, null, execute);
 }
 export function wirePropertyCorpus(replay: ReplayWire | null): PropertyCorpusSnapshot {
     return replay?.witness?.kind === 'property'

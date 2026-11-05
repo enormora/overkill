@@ -1,5 +1,16 @@
+import {
+    assertReplaySelection,
+    propertyReplayContext,
+    hasPropertyReplay,
+    freezeValue,
+    resolveRunReporters
+} from './run-support.ts';
 import type { CollectedExecutionPlanInput } from './collected-placement.ts';
-import { collectedRunPlanFromEntries, type CollectedRunCaseEntry } from './collected-run-plan.ts';
+import {
+    collectedRunPlanFromEntries,
+    collectedRunCaseEntries,
+    type CollectedRunCaseEntry
+} from './collected-run-plan.ts';
 import { collectedRunCaseFactsFromEntries } from './run-case-facts.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
 import { createRunFacts, resolveAttachmentPersistence } from './run-facts.ts';
@@ -11,10 +22,6 @@ import {
     assertCollectedRunPlanCasesMatchProfilePolicy,
     assertCollectedRunPlanMatchesTestFamily
 } from './run-selection.ts';
-import {
-    freezeValue,
-    resolveRunReporters
-} from './run-support.ts';
 import type { CollectedRunPlan, ResolvedRun, RunCommand } from './run-types.ts';
 
 type RunnerError = ResolvedRun['collectionRunnerErrors'][number];
@@ -65,7 +72,21 @@ function selectedNormalization(
     });
     return input.benchmarkPurpose === 'capture' || normalized ? input.benchmarkNormalization : null;
 }
+function hasValidReplaySelection(command: RunCommand, plan: CollectedRunPlan): boolean {
+    if (!hasPropertyReplay(command)) {
+        return true;
+    }
+    const cases = collectedRunCaseEntries(plan);
+    const [ entry ] = cases;
+    if (entry === undefined || cases.length !== 1) {
+        return false;
+    }
+    const { testCase } = entry;
+    return testCase.skipReason === null && testCase.property !== null;
+}
+
 async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): Promise<ResolvedRun> {
+    assertReplaySelection(input.command, hasValidReplaySelection(input.command, input.collectedPlan));
     assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
     assertCollectedRunPlanCasesMatchProfilePolicy(input.collectedPlan, input.profile);
 
@@ -85,6 +106,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
     } = await createCollectedExecutionPlan(input);
     const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
     const facts = freezeValue({
+        ...propertyReplayContext(input.command),
         ...createRunFacts({
             hostProcess,
             benchmarkHost: input.benchmarkHost,

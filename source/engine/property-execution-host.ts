@@ -1,5 +1,10 @@
 import type { AssertAssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
-import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from './property-corpus.ts';
+import type { PropertyWitnessFile } from './witness-file.ts';
+import {
+    emptyPropertyCorpus,
+    propertyReplayWitness as corpusReplayWitness,
+    type PropertyCorpusSnapshot
+} from './property-corpus.ts';
 import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
 import type { ExecutedBody } from './body-result.ts';
 import type { WorkId } from './identity.ts';
@@ -24,8 +29,17 @@ export type PropertyTrialResult = {
     readonly result: ExecutedBody;
 };
 
+function hasPropertyReplay(context: PropertyRunContext): context is PropertyRunSeed & {
+    readonly corpus: PropertyCorpusSnapshot;
+    readonly replay: PropertyWitnessFile;
+} {
+    return Object.hasOwn(context, 'replay');
+}
+
 type PropertyRunSeed = { readonly seed: bigint; readonly projectRoot: string | null; };
-export type PropertyRunContext = PropertyRunSeed | PropertyRunSeed & { readonly corpus: PropertyCorpusSnapshot; };
+type StoredPropertyRun = PropertyRunSeed & { readonly corpus: PropertyCorpusSnapshot; };
+type ReplayPropertyRun = StoredPropertyRun & { readonly replay: PropertyWitnessFile; };
+export type PropertyRunContext = PropertyRunSeed | ReplayPropertyRun | StoredPropertyRun;
 function hasPropertyCorpus(
     context: PropertyRunContext
 ): context is PropertyRunSeed & { readonly corpus: PropertyCorpusSnapshot; } {
@@ -33,6 +47,10 @@ function hasPropertyCorpus(
 }
 export function propertyCorpusSnapshot(context: PropertyRunContext): PropertyCorpusSnapshot {
     return hasPropertyCorpus(context) ? context.corpus : emptyPropertyCorpus;
+}
+
+export function propertyReplayWitness(context: PropertyRunContext): PropertyWitnessFile | null {
+    return hasPropertyReplay(context) ? context.replay : corpusReplayWitness(propertyCorpusSnapshot(context));
 }
 
 export type PropertyExecutionHost = PropertyRunContext & {

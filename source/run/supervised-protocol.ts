@@ -66,7 +66,7 @@ type SupervisedCommandBase = {
 type SupervisedCollectionMode = {
     readonly kind: 'collect';
 } | { readonly kind: 'collect-frozen'; readonly policy: FrozenMicrotestPolicy; };
-export type SupervisedExecutionMode = {
+type OrdinarySupervisedExecution = {
     readonly kind: 'run';
 } | {
     readonly kind: 'run-frozen';
@@ -76,6 +76,11 @@ export type SupervisedExecutionMode = {
     readonly policy: FrozenMicrotestPolicy;
     readonly session: RunExecutionTransport;
 };
+type WitnessSupervisedExecution = {
+    readonly kind: 'run';
+    readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number];
+};
+export type SupervisedExecutionMode = OrdinarySupervisedExecution | WitnessSupervisedExecution;
 
 export type SupervisedCollectCommand = SupervisedCollectionMode & SupervisedCommandBase;
 export type SupervisedRunCommand = SupervisedCommandBase & SupervisedExecutionMode;

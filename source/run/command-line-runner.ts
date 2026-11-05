@@ -4,6 +4,7 @@ import type {
     LoadedConfig,
     ConfigLoadRequest
 } from '../config/config.ts';
+import type { WitnessReplayHandler } from './witness-replay-cli.ts';
 import type {
     CommandLineConfigDependencies
 } from './command-line-config.ts';
@@ -43,7 +44,7 @@ export type CommandLineRunner = {
     readonly bench: CommandLineBenchmarkCommands;
     readonly listTests: (request: CommandLineListTestsRequest) => Promise<CommandLineRunnerResult>;
     readonly replayRun: CommandLineCommand;
-    readonly replayWitness: CommandLineCommand;
+    readonly replayWitness: WitnessReplayHandler;
     readonly runTests: (request: CommandLineRunTestsRequest) => Promise<CommandLineRunnerResult>;
 };
 
@@ -72,7 +73,10 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
             }
         },
         replayRun: commandNamespace.replayRun,
-        replayWitness: commandNamespace.replayWitness,
+        async replayWitness(request) {
+            const { replayWitnessFromCommandLine } = await import('./witness-replay-cli.ts');
+            return await replayWitnessFromCommandLine(request, dependencies);
+        },
         async runTests(request) {
             const timing = createSystemRunTimingMeasurement();
 

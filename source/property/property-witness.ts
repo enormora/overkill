@@ -1,8 +1,7 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod/v4';
-import { propertyReplayWitness } from '../engine/property-corpus.ts';
 import { propertyCorpusSnapshot, type PropertyExecutionHost } from '../engine/property-execution-host.ts';
-import { CaseRunnerError, serializeValue } from '../packages/engine/engine.entry-point.ts';
+import { serializeValue } from '../packages/engine/engine.entry-point.ts';
 import { sourceLocationSchema } from '../engine/identity-schema.ts';
 import { caseIdentityKey, runtimeIdentitiesKey, workIdentityKey } from '../engine/identity.ts';
 import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
@@ -77,13 +76,6 @@ export async function completePropertyTargets(host: PropertyExecutionHost, seen:
         const identity = witnessTargetIdentity(target);
         return caseIdentityKey(entry.case) === caseIdentityKey(host.workId.case) &&
             runtimeIdentitiesKey(entry.runtimes) === runtimeIdentitiesKey(host.workId.runtimes) && !seen.has(identity);
-    }
-    const replay = propertyReplayWitness(corpus);
-    if (replay !== null && absent(replay)) {
-        throw new CaseRunnerError('Property witness replay target was not reached.', {
-            cause: null,
-            subtype: 'runtime-policy'
-        });
     }
     if (corpus.checkedIn.some(absent)) {
         throw new Error('Checked-in corpus invocation target was not reached.');

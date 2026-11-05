@@ -301,6 +301,8 @@ export type {
 export type {
     ReplayContext,
     ReplayRunCommand,
-    ReplayWitnessCommand,
+    ReplayWitnessInput,
     ReplayOperations
 } from '../../run/replay-types.ts';
+
+export type { ReplayWitnessRequest, ReplayWitnessCommand } from '../../run/witness-replay-request.ts';

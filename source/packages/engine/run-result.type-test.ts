@@ -46,6 +46,7 @@ type ExpectedRunnerErrorSubtypeByName = {
     readonly processExhaustion: 'process-exhaustion';
     readonly runtimePolicy: 'runtime-policy';
     readonly runtimeState: 'runtime-state';
+    readonly witnessReplay: 'witness-replay';
     readonly uncaughtException: 'uncaught-exception';
     readonly unhandledRejection: 'unhandled-rejection';
 };

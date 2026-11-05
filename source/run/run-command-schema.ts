@@ -86,3 +86,9 @@ export const propertyCorpusSnapshotSchema = z
         propertyCorpusEntriesSchema
     ])
     .default({ checkedIn: [], localCache: [], diagnostics: [] });
+
+export const witnessReplayCommandSchema = z.strictObject({
+    ...supervisedCommandFields,
+    kind: z.literal('run'),
+    propertyReplay: propertyWitnessSchema
+});
