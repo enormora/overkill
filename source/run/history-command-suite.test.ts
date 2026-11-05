@@ -8,11 +8,13 @@ import { testNode as replayTerminal } from './replay-terminal.test.ts';
 import { testNode as replay } from './replay-command.test.ts';
 import { testNode as terminal } from './history-terminal.test.ts';
 
+import { testNode as operands } from './replay-operands.test.ts';
+
 export const testNode = createSuite({
     title: 'history commands',
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
-    children: [ replayExecution, operations, cli, boundaries, terminal, replay, replayTerminal ]
+    children: [ replayExecution, operations, cli, boundaries, terminal, replay, replayTerminal, operands ]
 });
 await runIfMain(import.meta, testNode);

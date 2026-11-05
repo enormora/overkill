@@ -231,8 +231,50 @@ type InvalidPlacement = {
     readonly change: (fixture: TraceFixture) => PlacementPlan;
     readonly message: RegExp;
 };
+type ResourceOwner = PlacementPlan['resourceOwnership']['owners'][number];
+function ownedPlacement(
+    fixture: TraceFixture,
+    placement: ResourceOwner['placement'],
+    work: ResourceOwner['work']
+): PlacementPlan {
+    return {
+        ...fixture.plan,
+        resourceOwnership: {
+            owners: [ { boundaryKey: 'retained', resourceName: 'retained', scope: 'per-run', placement, work } ]
+        }
+    };
+}
 function invalidPlacements(): readonly InvalidPlacement[] {
     return [
+        {
+            title: 'resource owner with unknown work',
+            change(fixture) {
+                const work = fixture.assignment.work[0];
+                return ownedPlacement(fixture, { kind: 'infrastructure-worker', id: 'resource-owner' }, [ {
+                    ...work,
+                    case: { ...work.case, title: 'missing' }
+                } ]);
+            },
+            message: /owner refers to unknown work/u
+        },
+        {
+            title: 'resource owner with unknown lane',
+            change(fixture) {
+                return ownedPlacement(fixture, { kind: 'executor-lane', lane: 'missing' }, fixture.assignment.work);
+            },
+            message: /owner refers to an unknown lane/u
+        },
+        {
+            title: 'resource owner with unknown unit',
+            change(fixture) {
+                return ownedPlacement(
+                    fixture,
+                    { kind: 'work-unit', unit: { ...fixture.unit.id, key: 'missing' } },
+                    fixture.assignment.work
+                );
+            },
+            message: /owner refers to an unknown unit/u
+        },
         {
             title: 'duplicate placement lanes',
             change({ plan }) {
