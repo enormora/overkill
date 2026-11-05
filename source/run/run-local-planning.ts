@@ -1,3 +1,4 @@
+import { assertReplaySelection, propertyReplayContext, freezeValue, resolveRunReporters } from './run-support.ts';
 import { resolveRunScheduling } from './run-profile-facts.ts';
 import { createRunFacts, resolveAttachmentPersistence } from './run-facts.ts';
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
@@ -9,7 +10,6 @@ import {
     assertTestPlanMatchesTestFamily,
     assertTestPlanCasesMatchProfilePolicy
 } from './run-selection.ts';
-import { freezeValue, resolveRunReporters } from './run-support.ts';
 import type { ResolvedRun, RunCommand } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
@@ -27,32 +27,43 @@ function fileSetForDiscoveredFiles(files: ResolvedRunInput['files']): (file: str
     };
 }
 
+function isExecutableProperty(testCase: TestPlan['cases'][number]): boolean {
+    return testCase.execution.kind === 'body' && testCase.execution.bodyMode === 'property';
+}
+
 export function createLocalResolvedRunFromTestPlan(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput,
     plannedTestPlan: TestPlan
 ): ResolvedRun {
+    assertReplaySelection(
+        command,
+        plannedTestPlan.cases.length === 1 && isExecutableProperty(plannedTestPlan.cases[0])
+    );
     assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
     assertTestPlanCasesMatchProfilePolicy(plannedTestPlan, input.profile);
 
-    const facts = freezeValue(createRunFacts({
-        hostProcess: null,
-        benchmarkHost: input.benchmarkHost,
-        benchmarkCalibration: input.benchmarkCalibration,
-        benchmarkNormalization: input.benchmarkNormalization,
-        benchmarkPlacement: null,
-        cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
-        config: input.config,
-        dependencies,
-        durationHistory: null,
-        engine: input.engine,
-        placementPlan: null,
-        projectRoot: input.projectRoot,
-        request: input.request,
-        scheduling: resolveRunScheduling(input.request, input.profile),
-        workerCount: null
-    }));
+    const facts = freezeValue({
+        ...propertyReplayContext(command),
+        ...createRunFacts({
+            hostProcess: null,
+            benchmarkHost: input.benchmarkHost,
+            benchmarkCalibration: input.benchmarkCalibration,
+            benchmarkNormalization: input.benchmarkNormalization,
+            benchmarkPlacement: null,
+            cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
+            config: input.config,
+            dependencies,
+            durationHistory: null,
+            engine: input.engine,
+            placementPlan: null,
+            projectRoot: input.projectRoot,
+            request: input.request,
+            scheduling: resolveRunScheduling(input.request, input.profile),
+            workerCount: null
+        })
+    });
 
     return freezeValue(resolveAttachmentPersistence({
         collectionRunnerErrors: [],

@@ -324,3 +324,21 @@ Witness files use the engine-owned version-1 envelope.
 returns a property or simulation witness, throwing `ZodError` for invalid
 envelopes or unsupported envelope versions. It does not decode inputs or execute
 replay. Producer-specific payload compatibility is validated separately.
+
+## Witness replay
+
+Run `overkill replay-witness <path> --profile <name>` to execute a saved property
+input. The profile may be omitted when exactly one property profile exists.
+Replay executes the target once, without corpus trials, examples, generation,
+confirmation, or shrinking. It accepts retained inputs outside current generator
+bounds, subject to total-work limits and normal execution supervision.
+
+Nested witnesses execute the enclosing case normally, including setup, other
+property calls, and cleanup. Only the identified invocation receives the saved
+input. Stable keys take precedence over source location and occurrence. Missing,
+duplicate, or unreached targets produce replay errors. Replay restores only the
+target input; surrounding randomness and corpus contents follow current policy.
+
+The current declaration supplies the input codec. Unsupported formats and codecs
+fail explicitly. Replay reports the current outcome, so a previously failing
+input may pass after a fix. A single replay does not confirm a new cached witness.

@@ -188,3 +188,135 @@ assert.equal(migrated.codec.version, 2);
 assert.equal(decodePropertyInput(migrated, current, consume), 42n);
 console.log('property codecs passed');
 `;
+
+const propertyReplayFixture = `
+import { property, withProperties, gen } from '@overkill-dev/property';
+import { createSuite, createTestCase } from '@overkill-dev/engine';
+
+export const observations = { direct: [], nested: [], surrounding: [], cleanup: [], after: 0 };
+const generator = gen.constant(0).map(function forbidGeneration() {
+    throw new Error('Witness replay must not generate target inputs.');
+});
+function checkRetainedInput(value, sample, label) {
+    sample.plan(3);
+    sample.cleanup(function finishTrial() { observations.cleanup.push(label); });
+    observations[label].push(value.left.number);
+    sample.assert.true(value.left === value.right);
+    sample.assert.true(value.self === value);
+    sample.assert.equal(value.left.number, 42);
+    value.left.number = 0;
+    return sample.assert.collect();
+}
+const direct = property({ title: 'direct', generator, test(value, sample) {
+    return checkRetainedInput(value, sample, 'direct');
+} });
+const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] };
+const nested = createTestCase({ ...metadata, title: 'nested', body: withProperties(async function (parent) {
+    parent.cleanup(function finishCase() { observations.cleanup.push('case'); });
+    await parent.forall(gen.constant(7), function (value, sample) {
+        observations.surrounding.push(value);
+        sample.cleanup(function finishSurroundingTrial() { observations.cleanup.push('surrounding'); });
+        sample.assert.equal(value, 7);
+        return sample.assert.collect();
+    });
+    await parent.forall({ key: 'saved', generator, test(value, sample) {
+        return checkRetainedInput(value, sample, 'nested');
+    } });
+    observations.after += 1;
+    return parent.assert.collect();
+}) });
+export const testNode = createSuite({ ...metadata, title: 'laws', children: [ direct, nested ] });
+`;
+
+export const propertyReplayScript = `
+import { commandLineRunner } from '@overkill-dev/run/command-line';
+import assert from 'node:assert/strict';
+import { writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+import { normalizeConfig, orchestrator } from '@overkill-dev/run';
+import { capturePropertyInput } from '@overkill-dev/run/property-codec';
+import { parseWitnessFile } from '@overkill-dev/engine';
+
+const cwd = await mkdtemp(path.join(process.cwd(), 'witness-replay-'));
+try {
+await writeFile(path.join(cwd, 'law.mjs'), ${JSON.stringify(propertyReplayFixture)});
+const { observations } = await import(pathToFileURL(path.join(cwd, 'law.mjs')).href);
+const config = normalizeConfig({ runtimeStateDir: path.join(cwd, 'state'), profiles: { laws: {
+    testFamily: 'property', files: { include: [ 'law.mjs' ] },
+    execution: { processModel: 'in-process', scheduling: 'serial' },
+    property: { newTrials: 2, maxAutomaticEdges: 0, maxExhaustiveValues: 0 }
+} } });
+const command = { config, cwd, engine: { kind: 'default' }, request: {
+    profile: 'laws', seed: { value: 42n }, capture: 'buffered', record: false, lastFailed: false,
+    baselineUpdateMode: 'none', capabilityRestrictions: { mode: 'enabled' }, coverage: false,
+    debug: { mode: 'off', selectors: [] }, execution: { mode: 'profile-default' },
+    measureProcessUsage: null, order: 'lexical', paths: [], processBudgetOverrides: null,
+    processUsageSamplingIntervalMilliseconds: null, selection: { kind: 'all' },
+    shard: { index: 1, total: 1 }, timingCollection: 'profile-default', verbose: false, workers: null
+} };
+const resolved = await orchestrator.resolve(command);
+const shared = { number: 42 };
+const value = { left: shared, right: shared, self: null };
+value.self = value;
+const counterexample = capturePropertyInput(value, null, () => {});
+async function replay(title, target, selectedCommand) {
+    const selected = resolved.facts.cases.find(function ownsTitle(entry) { return entry.id.title === title; });
+    assert.ok(selected);
+    const witness = parseWitnessFile({
+        version: 1, kind: 'property', producedBy: { library: '@overkill-dev/property', libraryVersion: '0.0.0' },
+        case: selected.id, runtimes: selected.workId.runtimes, seed: '42', target,
+        counterexample, failureIdentity: null, shrinkPath: null
+    });
+    const file = path.join(cwd, title + '.witness.json');
+    await writeFile(file, JSON.stringify(witness));
+    const result = await orchestrator.replayWitness({ ...selectedCommand, request: {
+        path: file, profile: 'laws', seed: { value: 42n }, capture: 'buffered',
+        record: false, timingCollection: 'profile-default'
+    } }, { signal: null, timing: null });
+    assert.deepEqual(result.runnerErrors, []);
+    assert.equal(result.summary.passed, 1);
+    assert.equal(result.perTest.length, 1);
+    assert.equal(result.perTest[0].property.invocations.at(-1).confirmedWitness, null);
+}
+await replay('direct', { kind: 'property-value' }, command);
+await replay('direct', { kind: 'property-value' }, command);
+await replay('nested', { kind: 'forall', key: 'saved', occurrence: 0, location: { kind: 'unknown' } }, command);
+assert.deepEqual(observations.direct, [ 42, 42 ]);
+assert.deepEqual(observations.nested, [ 42 ]);
+assert.deepEqual(observations.surrounding, [ 7, 7 ]);
+assert.equal(observations.after, 1);
+assert.deepEqual(observations.cleanup, [ 'direct', 'direct', 'surrounding', 'surrounding', 'nested', 'case' ]);
+const supervisedCommand = { ...command, config: normalizeConfig({
+    runtimeStateDir: path.join(cwd, 'supervised-state'), profiles: { laws: {
+        testFamily: 'property', files: { include: [ 'law.mjs' ] },
+        execution: { processModel: 'supervised-process', scheduling: 'serial' },
+        property: { newTrials: 2, maxAutomaticEdges: 0, maxExhaustiveValues: 0 },
+        timeouts: { collectionMilliseconds: 20000, softMilliseconds: 5000, hardMilliseconds: 10000 }
+    } }
+}) };
+await replay('direct', { kind: 'property-value' }, supervisedCommand);
+await replay('nested', {
+    kind: 'forall', key: 'saved', occurrence: 0, location: { kind: 'unknown' }
+}, supervisedCommand);
+await writeFile(path.join(cwd, 'smoke.config.mjs'), 'export const config = ' + JSON.stringify({
+    runtimeStateDir: './cli-state', profiles: { laws: {
+        testFamily: 'property', files: { include: [ 'law.mjs' ] },
+        execution: { processModel: 'in-process', scheduling: 'serial' },
+        property: { newTrials: 2, maxAutomaticEdges: 0, maxExhaustiveValues: 0 }
+    } }
+}));
+const cli = await commandLineRunner.replayWitness({
+    cwd, configPath: 'smoke.config.mjs', replayRequest: {
+        path: path.join(cwd, 'direct.witness.json'), profile: null, seed: { value: 42n },
+        capture: 'buffered', record: false, timingCollection: 'profile-default'
+    }
+});
+assert.equal(cli.exitCode, 0);
+assert.deepEqual(cli.fallbackDiagnostics, []);
+assert.equal(cli.runResult.summary.passed, 1);
+console.log('Packaged witness replay passed: ' +
+    'direct, nested, fresh graphs, aliases, cycles, cleanup, supervision, and CLI dispatch.');
+
+} finally { await rm(cwd, { recursive: true, force: true }); }
+`;

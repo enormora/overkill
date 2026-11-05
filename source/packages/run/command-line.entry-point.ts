@@ -2,7 +2,6 @@ import type { CommandLineRunner } from '../../run/command-line-runner.ts';
 import type { NodeCommandLineRunnerOptions } from '../../run/node-command-line-runner.ts';
 import { createCommandLineCommandNamespace } from '../../run/command-line-command-namespace.ts';
 import {
-    createUnimplementedCommand,
     loadUnimplementedBaselineCommands
 } from '../../run/command-line-unimplemented-commands.ts';
 import { loadConfig } from './config.entry-point.ts';
@@ -94,7 +93,10 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
             return await loadedRunner.listTests(request);
         },
         replayRun: nodeCommandNamespace.replayRun,
-        replayWitness: createUnimplementedCommand('replay-witness'),
+        async replayWitness(request) {
+            const loadedRunner = await loadRunner();
+            return await loadedRunner.replayWitness(request);
+        },
         async runTests(request) {
             const loadedRunner = await loadRunner();
 
@@ -137,7 +139,10 @@ export const commandLineRunner: CommandLineRunner = {
     baseline: commandNamespace.baseline,
     bench: commandNamespace.bench,
     replayRun: commandNamespace.replayRun,
-    replayWitness: createUnimplementedCommand('replay-witness'),
+    async replayWitness(request) {
+        const runner = await loadDefaultRunner();
+        return await runner.replayWitness(request);
+    },
     async listTests(request) {
         const runner = await loadDefaultRunner();
 
@@ -200,3 +205,5 @@ export type {
 export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';
 
 export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
+
+export type { CommandLineWitnessReplayRequest } from '../../run/witness-replay-request.ts';

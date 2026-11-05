@@ -21,9 +21,10 @@ import {
     parseRunFilterExpression,
     type RunFilter
 } from '../run/filters.entry-point.ts';
+import { createWitnessReplayCommand } from './witness-replay-command.ts';
 import { createCorpusCommand } from './corpus-command.ts';
-import { benchmarkProfileType } from './benchmark-profile-parser.ts';
 import {
+    profileSelectionType,
     createCommandLineSelection,
     runtimeSelectionFiltersType
 } from './command-line-selection.ts';
@@ -54,25 +55,16 @@ type RunCommandArguments<Profile extends string | null> = {
     readonly workers: CommandLineRunTestsRequest['runRequest']['workers'];
 };
 
-type ListCommandArguments<Profile extends string | null> = {
-    readonly configPath: string | null;
-    readonly lastFailed: boolean;
-    readonly file: string | null;
-    readonly filter: RunFilter | null;
-    readonly order: RunOrder;
-    readonly paths: readonly string[];
-    readonly profile: Profile;
-    readonly runtimeFilters: readonly RunFilter[];
-    readonly seed: RunSeed;
-    readonly shard: RunShard;
-    readonly title: string | null;
-    readonly withLocations: boolean;
-    readonly withOrphans: boolean;
-};
+type RunOnlyArgument = 'coverage' | 'noCapture' | 'record' | 'timings' | 'workers';
+type ListControls = { readonly withLocations: boolean; readonly withOrphans: boolean; };
+type ListCommandArguments<Profile extends string | null> = Except<
+    ListControls & RunCommandArguments<Profile>,
+    RunOnlyArgument
+>;
 
 const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
 
-const configPathType: Type<string[], string | null> = {
+const configPathType: Type<readonly string[], string | null> = {
     displayName: 'path',
     async from([ configPath, ...remainingPaths ]) {
         if (remainingPaths.length > 0) {
@@ -132,10 +124,6 @@ const titleSelectionType: Type<string, string | null> = {
     }
 };
 
-function readCapture(args: RunCommandArguments<string | null>): CommandLineRunTestsRequest['runRequest']['capture'] {
-    return args.noCapture ? 'live' : 'buffered';
-}
-
 function createRunTestsRequest<Profile extends string | null>(
     args: RunCommandArguments<Profile>,
     cwd: string
@@ -148,7 +136,7 @@ function createRunTestsRequest<Profile extends string | null>(
         runRequest: {
             baselineUpdateMode: 'none',
             capabilityRestrictions: { mode: 'enabled' },
-            capture: readCapture(args),
+            capture: args.noCapture ? 'live' : 'buffered',
             record: args.record,
             coverage: args.coverage,
             debug: {
@@ -272,7 +260,7 @@ const benchmarkCommandArguments = {
     ...sharedCommandArguments,
     profile: multioption({
         long: 'profile',
-        type: benchmarkProfileType,
+        type: profileSelectionType,
         defaultValue() {
             return null;
         }
@@ -340,7 +328,7 @@ type ParsedCorpus = {
 };
 type ParsedBenchmark = { readonly command: 'bench'; readonly value: ParsedBenchmarkBaseline | ParsedBenchmarkRun; };
 type ParsedOrdinary = {
-    readonly command: 'list' | 'replay' | 'run';
+    readonly command: 'list' | 'replay' | 'replay-witness' | 'run';
     readonly value: Promise<CommandLineRunnerResult>;
 };
 type ParsedRoot = ParsedBenchmark | ParsedCorpus | ParsedHistory | ParsedOrdinary;
@@ -519,6 +507,10 @@ export async function dispatchOverkillCommand(
                     const runner = await loadRunner();
                     return await runner.replayRun({ cwd, configPath: args.configPath, arguments: args.arguments });
                 }
+            }),
+            'replay-witness': createWitnessReplayCommand(loadRunner, cwd, {
+                config: configPathType,
+                seed: runSeedType
             }),
             corpus: createCorpusCommand(loadRunner, cwd, writePreview),
             history: historyCommand,

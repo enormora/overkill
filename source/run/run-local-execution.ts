@@ -4,6 +4,7 @@ import { resolvedPropertyCorpus } from './property-corpus-execution.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
+    hasPropertyReplay,
     createRunResourceRuntimePolicy,
     engineExecution,
     type ResolvedRunResultFinalizer,
@@ -83,6 +84,7 @@ export async function executeLocalResolvedRun(
             resourceTiming
         ),
         propertyRun: {
+            ...hasPropertyReplay(resolvedRun.facts) ? { replay: resolvedRun.facts.propertyReplay } : {},
             corpus,
             seed: BigInt(resolvedRun.facts.reproducibility.seed),
             projectRoot: resolvedRun.facts.environment.projectRoot

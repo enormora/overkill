@@ -15,6 +15,7 @@ import {
     type CommandLineBenchmarkRunRequest,
     type CommandLineBenchmarkListRequest,
     type CommandLineCommand,
+    type CommandLineWitnessReplayRequest,
     type CommandLineCommandContext,
     type CommandLineExitCode,
     type CommandLineListTestsRequest,
@@ -63,7 +64,9 @@ describe('@overkill-dev/run/command-line', function () {
             (request: CommandLineListTestsRequest) => Promise<CommandLineRunnerResult>
         >();
         expect<typeof commandLineRunner.replayRun>().type.toBe<CommandLineCommand>();
-        expect<typeof commandLineRunner.replayWitness>().type.toBe<CommandLineCommand>();
+        expect<typeof commandLineRunner.replayWitness>().type.toBe<
+            (request: CommandLineWitnessReplayRequest) => Promise<CommandLineRunnerResult>
+        >();
         expect<typeof commandLineRunner.baseline>().type.toBe<CommandLineBaselineCommands>();
         expect<typeof commandLineRunner.bench>().type.toBe<CommandLineBenchmarkCommands>();
         expect<typeof commandLineRunner.bench.runBenchmarks>().type.toBe<

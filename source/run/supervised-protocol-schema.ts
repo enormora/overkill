@@ -6,7 +6,11 @@ import type {
     SupervisedAssignmentCommand,
     SupervisedChildMessage
 } from './supervised-protocol.ts';
-import { supervisedCommandFields, propertyCorpusSnapshotSchema } from './run-command-schema.ts';
+import {
+    supervisedCommandFields,
+    propertyCorpusSnapshotSchema,
+    witnessReplayCommandSchema
+} from './run-command-schema.ts';
 import {
     assignedPropertyPoliciesSchema,
     collectedRunPlanSchema,
@@ -18,7 +22,9 @@ import { processUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-s
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
 const commandSchema: z.ZodType<SupervisedChildCommand> = z.union([
-    z.strictObject({ ...supervisedCommandFields, kind: z.enum([ 'collect', 'run' ]) }),
+    witnessReplayCommandSchema,
+    z.strictObject({ ...supervisedCommandFields, kind: z.literal('collect') }),
+    z.strictObject({ ...supervisedCommandFields, kind: z.literal('run') }),
     frozenSupervisedCommandSchema,
     sessionSupervisedCommandSchema
 ]);

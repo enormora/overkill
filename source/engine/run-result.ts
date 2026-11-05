@@ -45,6 +45,7 @@ export type PerTestResult = {
 };
 
 type RunnerErrorSubtypeByName = {
+    readonly witnessReplay: 'witness-replay';
     readonly artifact: 'artifact';
     readonly attributionDrift: 'attribution-drift';
     readonly coverage: 'coverage';

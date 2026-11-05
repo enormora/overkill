@@ -111,3 +111,14 @@ export type RunHistoryRequest = {
     readonly record: boolean;
     readonly lastFailed: boolean;
 };
+
+type RunHostProcessReasonKey = {
+    readonly 'benchmark-isolation': true;
+    readonly debugging: true;
+    readonly 'forced-garbage-collection': true;
+    readonly 'host-isolation': true;
+    readonly 'node-arguments': true;
+    readonly profiling: true;
+};
+
+export type RunHostProcessReason = keyof RunHostProcessReasonKey;

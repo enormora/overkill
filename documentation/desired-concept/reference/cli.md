@@ -317,3 +317,16 @@ names also support the existing substring and glob filter operators.
 `bench run` also supports `--no-capture`, `--timings`, and `--workers`;
 `bench list` supports `--with-locations` and `--with-orphans`.
 `--coverage` remains microtest-only.
+
+### Property witness replay options
+
+`overkill replay-witness <path>` accepts `--config`, `--profile`, `--seed`,
+`--record`, and `--timings`. Omit `--profile` only when exactly one property
+profile is configured. The selected profile supplies discovery, loaders,
+capability restrictions, and execution supervision. Property profiles require
+buffered capture, so `--no-capture` is rejected.
+
+Replay restores only the target input. Nested witnesses run the enclosing case
+under current seed and corpus policy. The witness's property seed is provenance,
+not a substitute for the enclosing run seed. Simulation replay remains a separate
+implementation milestone.

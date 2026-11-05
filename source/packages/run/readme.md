@@ -743,3 +743,22 @@ diagnostics; each inspection also retains the complete lossless witness payload.
 `decodePropertyInput`, `migratePropertyInput`, and `PropertyCodecError` for shared
 lossless input serialization. Property authoring continues to expose `defineCodec`
 through `@overkill-dev/property`.
+
+## Property witness replay
+
+`orchestrator.replayWitness(command, { signal: null, timing: null })` accepts a
+`ReplayWitnessCommand`. Its `request` contains `path`, `profile` (a name or `null`
+for unique property-profile inference), `seed`, `capture`, `record`, and
+`timingCollection`. Configuration, working directory, and engine selection use
+the same fields as `RunCommand`.
+
+`replayWitnessWithReporterDelivery` additionally reports delivered and undelivered
+runner errors. Both operations retain the selected profile's execution boundaries.
+Runtime input compatibility and target errors use runner-error subtype
+`witness-replay`; ordinary assertions and lifecycle failures retain their outcomes.
+Recorded replay facts retain the witness in `propertyReplay`.
+
+The CLI equivalent is `overkill replay-witness <path>` with `--config`, `--profile`,
+`--seed`, `--record`, and `--timings`. Property profiles require buffered capture;
+`--no-capture` is rejected consistently with ordinary property runs. Simulation
+witness execution is not yet supported.

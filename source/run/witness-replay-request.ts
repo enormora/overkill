@@ -1,0 +1,29 @@
+import type { ConfigLoadRequest } from '../config/config.ts';
+import type {
+    RunCommand,
+    RunRequest,
+    RunInvocationOptions,
+    RunnerResult,
+    RunReporterDeliveryResult
+} from './run-types.ts';
+
+export type ReplayWitnessRequest = {
+    readonly path: string;
+    readonly profile: string | null;
+    readonly seed: RunRequest['seed'];
+    readonly capture: RunRequest['capture'];
+    readonly record: boolean;
+    readonly timingCollection: RunRequest['timingCollection'];
+};
+export type ReplayWitnessCommand = Pick<RunCommand, 'config' | 'cwd' | 'engine'> & {
+    readonly request: ReplayWitnessRequest;
+};
+export type ReplayWitnessOperations = {
+    readonly replayWitness: (command: ReplayWitnessCommand, options: RunInvocationOptions) => Promise<RunnerResult>;
+    readonly replayWitnessWithReporterDelivery: (
+        command: ReplayWitnessCommand,
+        options: RunInvocationOptions
+    ) => Promise<RunReporterDeliveryResult>;
+};
+
+export type CommandLineWitnessReplayRequest = ConfigLoadRequest & { readonly replayRequest: ReplayWitnessRequest; };

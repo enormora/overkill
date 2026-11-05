@@ -27,6 +27,7 @@ export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
         'reporter',
         'process-exhaustion',
         'runtime-state',
+        'witness-replay',
         'runtime-policy',
         'uncaught-exception',
         'unhandled-rejection'

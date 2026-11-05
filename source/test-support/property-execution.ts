@@ -1,3 +1,4 @@
+import type { PropertyWitnessFile } from '../engine/witness-file.ts';
 import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from '../engine/property-corpus.ts';
 import {
     createRoot,
@@ -28,7 +29,16 @@ export const propertyExecutionDefaults: PropertyExecutionRequest = {
     seed: 42n
 };
 
-export async function executePropertyNode(node: TestNode, request: PropertyExecutionRequest): Promise<RunResult> {
+function hasReplay(
+    request: PropertyExecutionRequest
+): request is PropertyExecutionRequest & { readonly replay: PropertyWitnessFile; } {
+    return Object.hasOwn(request, 'replay');
+}
+
+export async function executePropertyNode(
+    node: TestNode,
+    request: PropertyExecutionRequest | PropertyExecutionRequest & { readonly replay: PropertyWitnessFile; }
+): Promise<RunResult> {
     const plan = resolveTestPlanCollectionPolicy(
         createTestPlan(createRoot({
             title: 'properties',
@@ -41,6 +51,7 @@ export async function executePropertyNode(node: TestNode, request: PropertyExecu
     return await createTestEngine().execute(plan, {
         execution: request.execution,
         propertyRun: {
+            ...hasReplay(request) ? { replay: request.replay } : {},
             corpus: request.corpus,
             seed: request.seed,
             projectRoot: process.cwd()

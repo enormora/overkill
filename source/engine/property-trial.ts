@@ -3,9 +3,14 @@ import type { ExecutedBody } from './body-result.ts';
 import { classifyPropertyTrial, propertyTrialWithPolicyErrors } from './property-trial-outcome.ts';
 import { createAssertionRecorder, TestContractSignalError, type AssertionRecorder } from './assertion-recorder.ts';
 import { bodyResultContext, completedBody, failedBody } from './case-body-execution.ts';
-import { propertyScope, type PropertyTrialResult, type PropertyRunContext } from './property-execution-host.ts';
+import {
+    propertyReplayWitness,
+    propertyScope,
+    type PropertyTrialResult,
+    type PropertyRunContext
+} from './property-execution-host.ts';
 import type { TestBody, TestScope } from './test-scope.ts';
-import type { PropertyCaseEvidence, RunnerError } from './run-result.ts';
+import { CaseRunnerError, type PropertyCaseEvidence, type RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import { createTestScopeLifecycle } from './test-scope-lifecycle.ts';
 
@@ -92,11 +97,33 @@ type PropertyCaseBody = {
     readonly takeTrialErrors: () => readonly RunnerError[];
 };
 
+function assertOrdinaryPropertyRun(run: PropertyRunContext): void {
+    if (propertyReplayWitness(run) !== null) {
+        throw new CaseRunnerError('Witness replay requires a resolved property declaration.', {
+            subtype: 'witness-replay',
+            cause: null
+        });
+    }
+}
+
+function matchesReplayDeclaration(target: 'forall' | 'property-value', declaration: 'nested' | 'property'): boolean {
+    const expected = target === 'property-value' ? 'property' : 'nested';
+    return expected === declaration;
+}
+
 export async function runPropertyCaseBody(testCase: TestPlanCase, context: PropertyCaseBody): Promise<AssertionResult> {
     const { execution } = testCase;
     const { scope, body, recorder } = context;
     if (execution.kind !== 'body' || execution.bodyMode !== 'property' || execution.policy.kind !== 'resolved') {
+        assertOrdinaryPropertyRun(context.run);
         return await body(scope);
+    }
+    const witness = propertyReplayWitness(context.run);
+    if (witness !== null && !matchesReplayDeclaration(witness.target.kind, execution.definition.kind)) {
+        throw new CaseRunnerError('Witness target does not match the current property declaration kind.', {
+            subtype: 'witness-replay',
+            cause: null
+        });
     }
     return await body(propertyScope(scope, {
         scope,
