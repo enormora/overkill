@@ -1,10 +1,7 @@
 import { propertyCorpusSnapshot } from '../engine/property-execution-host.ts';
 import { caseIdentityKey, runtimeIdentitiesKey } from '../engine/identity.ts';
 import type { PropertyWitnessFile } from '../engine/witness-file.ts';
-import {
-    serializeValue,
-    type PropertyFailureObservation
-} from '../packages/engine/engine.entry-point.ts';
+import type { PropertyFailureObservation } from '../packages/engine/engine.entry-point.ts';
 import { retainRegressionCapture } from './property-regression-capture.ts';
 import { decodePropertyInput, PropertyCodecError } from './property-graph.ts';
 import { readGeneratorCodec } from './generator.ts';
@@ -58,8 +55,4 @@ export function propertyRegressionInputs<Value>(
         }
     }
     return { checkedIn: inputs(snapshot.checkedIn, true), localCache: inputs(snapshot.localCache, false) };
-}
-
-export function corpusDiagnosticObservation(): PropertyFailureObservation {
-    return { capture: { kind: 'unavailable' }, input: serializeValue(undefined), failure: serializeValue(undefined) };
 }

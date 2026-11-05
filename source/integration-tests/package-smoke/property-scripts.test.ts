@@ -89,6 +89,17 @@ const executed = await execute({...executable,
 });
 assert.equal(executed.summary.passed, 2, JSON.stringify(executed));
 assert.equal(executed.summary.failed, 0);
+for (const result of executed.perTest) {
+    assert.equal(result.property.invocations.length, 1);
+    const invocation = result.property.invocations[0];
+    assert.equal(invocation.summary.status, 'completed');
+    assert.equal(invocation.summary.accounting.phases.examples.executed, 1);
+    assert.equal(invocation.summary.accounting.phases['automatic-edges'].executed, 1);
+    assert.equal(invocation.summary.accounting.phases.exploration.executed, 2);
+    assert.equal(invocation.original, null);
+    assert.equal(invocation.retained, null);
+}
+
 assert.deepEqual(observed, [1, 2, 2, 2, 3, 4, 4, 4]);
 const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.resolve('@overkill-dev/test'))));
 assert.deepEqual(manifest.exports['./property'], {

@@ -7,10 +7,10 @@ import {
     type PropertyShrinkStatus,
     type PropertyTrialResult
 } from '../packages/engine/engine.entry-point.ts';
-import type { PropertyExecutionResult, PropertyInvocationContext } from './property-execution-result.ts';
+import type { PropertyExecutionResult } from './property-execution-result.ts';
 import { confirmedPropertyWitness } from './property-witness.ts';
 import { PropertyCodecError } from './property-graph.ts';
-import { shrinkCoverage } from './property-coverage.ts';
+import type { PropertyExecution } from './property-trial-phases.ts';
 import { recipeInput, type GeneratedInput } from './generator-input.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
 import { propertyExhaustion, type PropertyWork } from './property-work.ts';
@@ -23,7 +23,7 @@ type Diagnostic = PropertyInvocationEvidence['diagnostics'][number];
 type ShrinkSession<Value> = {
     readonly original: FailedExecution<Value>;
     readonly invocation: NormalizedPropertyInvocation<Value>;
-    readonly context: PropertyInvocationContext;
+    readonly context: PropertyExecution<Value>;
     readonly work: PropertyWork;
     readonly identity: string | null;
     readonly state: ShrinkState<Value>;
@@ -84,6 +84,7 @@ function shrinkState<Value>(original: FailedExecution<Value>): ShrinkState<Value
 
 async function publish<Value>(session: ShrinkSession<Value>): Promise<void> {
     await session.context.host.recordEvidence({
+        summary: null,
         confirmedWitness: session.state.confirmed(),
         shrinkStatus: session.state.status(),
         identity: session.context.identity,
@@ -117,11 +118,15 @@ async function evaluate<Value>(session: ShrinkSession<Value>, input: () => Value
     const value = input();
     session.work.context.consumeWork();
     return await observePropertyTrial(value, session.invocation, {
+        async afterTrial() {
+            return session.context.publish('in-progress', session.original.exhaustive);
+        },
         reconstruct: input,
         host: session.context.host,
         signal: session.context.signal,
         work: session.work,
-        ...shrinkCoverage(session.context.host.policy.maxLabels),
+        observeLabel: session.context.observeLabel,
+        observations: session.context.coverage.trial(session.work.phase()),
         observeScores() {
             return undefined;
         }
@@ -282,6 +287,7 @@ async function shrink<Value>(session: ShrinkSession<Value>): Promise<void> {
 async function failShrinkExecution<Value>(session: ShrinkSession<Value>, error: unknown): Promise<never> {
     session.state.stop('execution-error');
     await diagnose(session, 'execution-error', {
+        trial: null,
         capture: { kind: 'unavailable' },
         input: session.state.observation().input,
         failure: serializeValue(error)
@@ -294,9 +300,11 @@ async function recordCodecError<Value>(session: ShrinkSession<Value>, error: Pro
     const retained = session.state.retained();
     session.state.replace(retained, {
         ...session.state.observation(),
+        trial: null,
         capture: { kind: 'codec-error', reason: error.message }
     });
     await diagnose(session, 'codec-error', {
+        trial: null,
         capture: { kind: 'unavailable' },
         input: retained.observation.input,
         failure: serializeValue(error)
@@ -338,7 +346,7 @@ async function boundedShrink<Value>(session: ShrinkSession<Value>): Promise<Fail
 export async function shrinkPropertyFailure<Value>(
     original: FailedExecution<Value>,
     invocation: NormalizedPropertyInvocation<Value>,
-    context: PropertyInvocationContext,
+    context: PropertyExecution<Value>,
     work: PropertyWork
 ): Promise<FailedExecution<Value>> {
     if (original.trial.kind === 'terminated') {

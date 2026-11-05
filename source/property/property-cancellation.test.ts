@@ -41,7 +41,12 @@ export const testNode = test('cancellation preserves failure evidence before con
                 dispose: null,
                 onFinish: null,
                 onEvent(event) {
-                    if (event.kind === 'property-progress') {
+                    if (
+                        event.kind === 'property-progress' &&
+                        event.property.invocations.some(function shrinking(invocation) {
+                            return invocation.shrinkStatus === 'in-progress';
+                        })
+                    ) {
                         controller.abort(new Error('Cancel retained failure.'));
                     }
                 }

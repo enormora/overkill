@@ -182,7 +182,7 @@ function runStartIntent(event: Extract<ReporterEvent, { readonly kind: 'run-star
 function propertyDiagnosticIntents(result: RunResult): readonly OutputLineIntent[] {
     return result.perTest.flatMap(function propertyDiagnostics(testResult) {
         return formatPropertyDiagnostics(testResult.property).map(function diagnosticIntent(line) {
-            return stdout(line, null);
+            return stdout(`${testResult.id.title}: ${line}`, null);
         });
     });
 }

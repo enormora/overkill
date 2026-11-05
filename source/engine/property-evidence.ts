@@ -21,9 +21,12 @@ export function createPropertyEvidenceRecorder(): PropertyEvidenceRecorder {
 export function interruptedPropertyEvidence(evidence: PropertyCaseEvidence | null): PropertyCaseEvidence | null {
     return evidence === null ? null : {
         invocations: evidence.invocations.map(function interrupt(invocation) {
-            return invocation.shrinkStatus === 'in-progress'
-                ? { ...invocation, shrinkStatus: 'interrupted' as const }
+            const interrupted = invocation.summary?.status === 'in-progress'
+                ? { ...invocation, summary: { ...invocation.summary, status: 'interrupted' as const } }
                 : invocation;
+            return interrupted.shrinkStatus === 'in-progress'
+                ? { ...interrupted, shrinkStatus: 'interrupted' as const }
+                : interrupted;
         })
     };
 }

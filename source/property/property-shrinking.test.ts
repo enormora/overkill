@@ -66,7 +66,7 @@ export const testNode = suite('first failure shrinking', [
         );
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.equal(
-            JSON.stringify(firstPropertyEvidence(result)?.retained.input),
+            JSON.stringify(firstPropertyEvidence(result)?.retained?.input),
             JSON.stringify(serializeValue(100))
         );
         return scope.assert.collect();
@@ -122,7 +122,7 @@ export const testNode = suite('first failure shrinking', [
         );
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.equal(
-            JSON.stringify(firstPropertyEvidence(result)?.retained.input),
+            JSON.stringify(firstPropertyEvidence(result)?.retained?.input),
             JSON.stringify(serializeValue(100))
         );
         scope.assert.true(
@@ -153,7 +153,7 @@ export const testNode = suite('first failure shrinking', [
         );
         assertOriginalTarget(scope, result.perTest[0]?.outcome ?? null);
         scope.assert.equal(
-            JSON.stringify(firstPropertyEvidence(result)?.retained.input),
+            JSON.stringify(firstPropertyEvidence(result)?.retained?.input),
             JSON.stringify(serializeValue(0))
         );
         return scope.assert.collect();
@@ -222,7 +222,7 @@ export const testNode = suite('first failure shrinking', [
         scope.assert.equal(seen[0], 100);
         scope.assert.equal(seen[1], 100);
         const evidence = firstPropertyEvidence(result);
-        scope.assert.equal(JSON.stringify(evidence?.retained.input), JSON.stringify(serializeValue(6)));
+        scope.assert.equal(JSON.stringify(evidence?.retained?.input), JSON.stringify(serializeValue(6)));
         scope.assert.true(
             evidence?.diagnostics.some(function unrelated(entry) {
                 return entry.reason === 'unrelated-failure';
@@ -284,7 +284,7 @@ export const testNode = suite('first failure shrinking', [
         const outcome = result.perTest[0]?.outcome;
         scope.assert.equal(outcome?.kind, 'fail');
         scope.assert.equal(
-            JSON.stringify(firstPropertyEvidence(result)?.retained.input),
+            JSON.stringify(firstPropertyEvidence(result)?.retained?.input),
             JSON.stringify(serializeValue(0))
         );
         return scope.assert.collect();
@@ -336,7 +336,7 @@ export const testNode = suite('first failure shrinking', [
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.deepEqual(seen, [ 100, 100, 0, 0 ]);
         scope.assert.equal(evidence?.shrinkStatus, 'non-reproducible');
-        scope.assert.equal(JSON.stringify(evidence?.retained.input), JSON.stringify(serializeValue(0)));
+        scope.assert.equal(JSON.stringify(evidence?.retained?.input), JSON.stringify(serializeValue(0)));
         scope.assert.true(
             evidence?.diagnostics.some(function disagreement(diagnostic) {
                 return diagnostic.reason === 'non-reproducible' && diagnostic.observation !== null;

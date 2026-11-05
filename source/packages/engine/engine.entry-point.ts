@@ -470,6 +470,9 @@ export { propertyFailureIdentity, matchPropertyFailure, propertyTrialEvidence } 
 export type { PropertyCaseEvidence } from '../../engine/run-result.ts';
 
 export type {
+    PropertyInvocationSummary,
+    PropertyTrialPosition,
+    PropertyPhase,
     PropertyInvocationEvidence,
     PropertyFailureObservation,
     PropertyShrinkStatus

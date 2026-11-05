@@ -374,21 +374,26 @@ export function problemLines(
             return problemTestResult(testResult, options.verbose);
         })
         .flatMap(function formatProblem(testResult) {
-            return [
-                ...testProblemLines(result, testResult, context, options),
-                ...formatPropertyDiagnostics(testResult.property)
-            ];
+            return Array.from(testProblemLines(result, testResult, context, options));
         });
     const runnerErrorLines = result.runnerErrors.flatMap(formatRunnerError);
     const runArtifactLines = result.status === 'failed'
         ? unreportedArtifacts(result).flatMap(unreportedArtifactLines)
         : [];
+    const propertyLines = result.perTest.flatMap(function propertyDetails(testResult) {
+        return formatPropertyDiagnostics(testResult.property).map(function identifyProperty(line) {
+            return `${testResult.id.title}: ${line}`;
+        });
+    });
     const lines = [ ...testLines, ...runnerErrorLines, ...runArtifactLines ];
 
-    return lines.length === 0 ? [] : [
-        'Problems',
-        ...lines.map(function indentProblem(line) {
-            return `  ${line}`;
-        })
+    return [
+        ...propertyLines,
+        ...lines.length === 0 ? [] : [
+            'Problems',
+            ...lines.map(function indentProblem(line) {
+                return `  ${line}`;
+            })
+        ]
     ];
 }

@@ -1,11 +1,11 @@
-import { createHash } from 'node:crypto';
 import { z } from 'zod/v4';
 import { propertyCorpusSnapshot, type PropertyExecutionHost } from '../engine/property-execution-host.ts';
 import { serializeValue } from '../packages/engine/engine.entry-point.ts';
 import { sourceLocationSchema } from '../engine/identity-schema.ts';
-import { caseIdentityKey, runtimeIdentitiesKey, workIdentityKey } from '../engine/identity.ts';
+import { caseIdentityKey, runtimeIdentitiesKey } from '../engine/identity.ts';
 import { propertyWitnessSchema, type PropertyWitnessFile } from '../engine/witness-file.ts';
 import type { PropertyFailureObservation } from '../engine/property-failure-evidence.ts';
+import { propertySeed } from './property-random.ts';
 import type { PropertyInvocationContext } from './property-execution-result.ts';
 
 type WitnessTarget = Readonly<PropertyWitnessFile['target']>;
@@ -33,8 +33,7 @@ export function confirmedPropertyWitness(
         return null;
     }
     const { host, identity } = context;
-    const seedContext = JSON.stringify([ 'property-v1', host.seed.toString(), workIdentityKey(host.workId), identity ]);
-    const seed = BigInt(`0x${createHash('sha256').update(seedContext).digest('hex')}`).toString();
+    const seed = propertySeed(host, identity);
     return propertyWitnessSchema.parse({
         version: 1,
         kind: 'property',
@@ -82,11 +81,13 @@ export async function completePropertyTargets(host: PropertyExecutionHost, seen:
     }
     if (corpus.localCache.some(absent)) {
         const observation = {
+            trial: null,
             capture: { kind: 'unavailable' as const },
             input: serializeValue(undefined),
             failure: serializeValue(undefined)
         };
         await host.recordEvidence({
+            summary: null,
             confirmedWitness: null,
             shrinkStatus: null,
             identity: 'unreached-corpus-target',

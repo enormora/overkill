@@ -1,5 +1,6 @@
 import type { PropertyInvocationEvidence } from '../engine/property-failure-evidence.ts';
 import type { TestFailure, PropertyCaseEvidence } from '../engine/run-result.ts';
+import { formatPropertySummary } from './property-summary.ts';
 
 export function formatFailureSummary(failure: TestFailure): string {
     if (failure.kind === 'assertion') {
@@ -45,10 +46,13 @@ function propertyInvocationLines(invocation: PropertyInvocationEvidence): readon
     ) {
         reasons.set(invocation.shrinkStatus, 1);
     }
-    return Array.from(reasons, function reasonLine([ reason, count ]) {
-        const message = propertyDiagnosticMessages[reason] ?? reason;
-        return `Property ${invocation.identity}: ${message} (${count})`;
-    });
+    return [
+        ...formatPropertySummary(invocation),
+        ...Array.from(reasons, function reasonLine([ reason, count ]) {
+            const message = propertyDiagnosticMessages[reason] ?? reason;
+            return `Property ${invocation.identity}: ${message} (${count})`;
+        })
+    ];
 }
 
 export function formatPropertyDiagnostics(evidence: PropertyCaseEvidence | null): readonly string[] {

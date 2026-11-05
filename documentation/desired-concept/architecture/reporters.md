@@ -117,7 +117,12 @@ event and result delivery.
 The engine emits awaited `property-progress` events carrying a complete
 `PropertyCaseEvidence` snapshot plus case, work, attempt, definition locations,
 and suite path. Events precede subsequent candidate evaluations and use normal
-reporter delivery and error handling. Supervisors retain received snapshots for
+reporter delivery and error handling. Snapshots surround each trial body and follow
+trial cleanup, with phase transitions and terminal completion also published.
+Line, dot, and brief reporters print one compact summary per invocation, including
+successful properties. Summaries include phase counts, decimal run and property
+seeds, input coverage observations, exhaustive traversal state, and shrink diagnostics.
+Supervisors retain received snapshots for
 native terminal results, marking active shrinking as interrupted. Delivery before
 hard process termination is best effort.
 

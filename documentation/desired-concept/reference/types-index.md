@@ -1979,20 +1979,89 @@ type RunnerError = {
 type TestRetryPolicy = { readonly maxAttempts: number; };
 type RetryArtifactPolicy = 'first-failure-and-final' | 'last-failure-and-final' | 'all';
 type IntegrationRetryPolicy = TestRetryPolicy & { readonly artifacts: RetryArtifactPolicy; };
+type PropertyPhase = (readonly [
+    'checked-in-corpus',
+    'local-cache',
+    'examples',
+    'automatic-edges',
+    'exhaustive',
+    'exploration',
+    'confirmation',
+    'shrinking',
+    'witness'
+])[number];
+type PropertyTrialPosition = { readonly phase: PropertyPhase; readonly index: number; };
+type PropertyInvocationSummary = {
+    readonly status: (readonly [
+        'in-progress',
+        'completed',
+        'failed',
+        'coverage-unmet',
+        'generation-exhausted',
+        'work-exhausted',
+        'execution-error',
+        'interrupted'
+    ])[number];
+    readonly trial: PropertyTrialPosition | null;
+    readonly runSeed: string;
+    readonly propertySeed: string;
+    readonly witnessSeed: string | null;
+    readonly seedVersion: 'property-v1';
+    readonly accounting: {
+        readonly phases: Readonly<Record<PropertyPhase, { readonly executed: number; readonly rejected: number; }>>;
+        readonly workConsumed: number;
+    };
+    readonly coverage: {
+        readonly phaseDenominators: Readonly<Record<string, number>>;
+        readonly eligibleHits: Readonly<Record<string, number>>;
+        readonly denominator: number;
+        readonly requirements: readonly { readonly label: string; readonly minimumPercent: number; }[];
+        readonly phases: Readonly<Record<string, Readonly<Record<string, number>>>>;
+    };
+    readonly exhaustive: {
+        readonly domainSize: number;
+        readonly executed: number;
+        readonly traversal: 'complete' | 'incomplete';
+    } | null;
+};
+
+type PropertyShrinkStatus = (readonly [
+    'in-progress',
+    'search-exhausted',
+    'work-exhausted',
+    'non-reproducible',
+    'interrupted',
+    'execution-error',
+    'shrinking-disabled',
+    'failure-identity-unavailable',
+    'shrink-state-unavailable'
+])[number];
+
 type PropertyFailureObservation = {
+    readonly capture:
+        | { readonly kind: 'unavailable'; }
+        | { readonly kind: 'encoded'; readonly input: EncodedPropertyInput; }
+        | { readonly kind: 'codec-error'; readonly reason: string; };
+    readonly trial: PropertyTrialPosition | null;
     readonly input: SerializedValue;
     readonly failure: SerializedValue;
 };
 
-type PropertyInvocationEvidence = {
+type PropertyInvocationDetails = {
+    readonly confirmedWitness: PropertyWitnessFile | null;
+    readonly shrinkStatus: PropertyShrinkStatus | null;
+    readonly summary: PropertyInvocationSummary | null;
     readonly identity: string;
-    readonly original: PropertyFailureObservation;
-    readonly retained: PropertyFailureObservation;
     readonly diagnostics: readonly {
         readonly reason: string;
         readonly observation: PropertyFailureObservation | null;
     }[];
 };
+
+type PropertyObservations =
+    | { readonly original: null; readonly retained: null; }
+    | { readonly original: PropertyFailureObservation; readonly retained: PropertyFailureObservation; };
+type PropertyInvocationEvidence = PropertyInvocationDetails & PropertyObservations;
 
 type PropertyCaseEvidence = {
     readonly invocations: readonly PropertyInvocationEvidence[];
