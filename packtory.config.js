@@ -228,6 +228,8 @@ export const configuration = {
                     'corpusCodecChild',
                     'corpusCommands',
                     'propertyReplayCommand',
+                    'replayCommands',
+                    'replayPreparation',
                     'witnessReplayCommand',
                     'benchmarkHost',
                     'benchmarkNormalizationPreparation',
