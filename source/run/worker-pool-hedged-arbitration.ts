@@ -85,11 +85,18 @@ function semanticallyMatches(left: RunResult, right: RunResult): boolean {
         comparableResult(leftResult) === comparableResult(rightResult);
 }
 
-function activePeerExists(runtime: WorkerPoolRunRuntime, taskRun: WorkerPoolTaskRun): boolean {
+function activePeerExists(
+    runtime: WorkerPoolRunRuntime,
+    taskRun: WorkerPoolTaskRun,
+    completedTask: WorkerPoolTaskRun | null
+): boolean {
     const key = taskWorkKey(taskRun);
 
     for (const activeTask of runtime.activeTasks) {
-        if (activeTask !== taskRun && !isDeferredReplayTask(activeTask) && taskWorkKey(activeTask) === key) {
+        if (
+            activeTask !== taskRun && activeTask !== completedTask && !isDeferredReplayTask(activeTask) &&
+            taskWorkKey(activeTask) === key
+        ) {
             return true;
         }
     }
@@ -273,7 +280,7 @@ async function recordFirstAuthority(
     authorities.set(taskWorkKey(authority.taskRun), authority);
     cancelActiveHedgedPeers(runtime, authority.taskRun);
 
-    if (!activePeerExists(runtime, authority.taskRun)) {
+    if (!activePeerExists(runtime, authority.taskRun, null)) {
         await finalizeAuthority(authority, runtime);
     }
 }
@@ -281,7 +288,8 @@ async function recordFirstAuthority(
 async function recordMatchingDuplicate(
     authority: AuthoritativeTaskRun,
     taskRun: WorkerPoolTaskRun,
-    runtime: WorkerPoolRunRuntime
+    runtime: WorkerPoolRunRuntime,
+    completedTask: WorkerPoolTaskRun | null
 ): Promise<void> {
     taskRun.includeArtifacts.write(false);
     workerPoolPlacementTrace(runtime).recordDecision({
@@ -291,7 +299,7 @@ async function recordMatchingDuplicate(
         outcome: 'matched'
     });
 
-    if (!activePeerExists(runtime, taskRun)) {
+    if (!activePeerExists(runtime, taskRun, completedTask)) {
         await finalizeAuthority(authority, runtime);
     }
 }
@@ -320,7 +328,7 @@ async function recordReplayAuthority(
     for (const pending of pendingReplayHedges(runtime, selected.taskRun)) {
         releaseReplayHedge(runtime, pending);
         if (semanticallyMatches(selected.result, pending.result)) {
-            await recordMatchingDuplicate(selected, pending.taskRun, runtime);
+            await recordMatchingDuplicate(selected, pending.taskRun, runtime, selected.taskRun);
         } else {
             recordConflictingDuplicate(selected, pending.result, pending.taskRun, runtime);
         }
@@ -341,7 +349,7 @@ export async function recordCompletedHedgedTaskRun(
         }
         await recordReplayAuthority(authorities, { result, taskRun }, runtime);
     } else if (semanticallyMatches(authority.result, result)) {
-        await recordMatchingDuplicate(authority, taskRun, runtime);
+        await recordMatchingDuplicate(authority, taskRun, runtime, null);
     } else {
         recordConflictingDuplicate(authority, result, taskRun, runtime);
     }
@@ -355,7 +363,7 @@ export function recordCancelledHedgedTaskRun(
     taskRun.includeArtifacts.write(false);
     const authority = authorities.get(taskWorkKey(taskRun));
 
-    if (authority !== undefined && !activePeerExists(runtime, taskRun)) {
+    if (authority !== undefined && !activePeerExists(runtime, taskRun, null)) {
         runtime.taskResults.push(authority.result);
         runtime.reporterEvents.add(flushBufferedReporterEvents(authority.taskRun, runtime));
     }
