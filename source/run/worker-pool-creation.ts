@@ -12,31 +12,23 @@ function isolateWorkers(options: TinypoolWorkerPoolOptions): boolean {
     return options.workerLifecycle === 'fresh-worker-per-unit';
 }
 
-type PoolRunOptions = Parameters<TinypoolInstance['run']>[1];
-async function runWithCancellationTracking(
-    pool: TinypoolInstance,
-    task: unknown,
-    options: PoolRunOptions,
-    observeCancellation: () => void
-): Promise<unknown> {
-    options.signal.addEventListener('abort', observeCancellation, { once: true });
-    try {
-        return await pool.run(task, options);
-    } finally {
-        options.signal.removeEventListener('abort', observeCancellation);
-    }
-}
-function awaitCancelledWorkers(pool: TinypoolInstance): TinypoolInstance {
-    const workerExits: Promise<void>[] = [];
-    const observeCancellation = function observeWorkerExit(): void {
-        for (const worker of pool.threads) {
-            workerExits.push(
+function awaitWorkerExits(pool: TinypoolInstance): TinypoolInstance {
+    const observed = new WeakSet<TinypoolInstance['threads'][number]>();
+    const exits: Promise<void>[] = [];
+    const observeWorkers = function observeWorkerLifetimes(): void {
+        const unobserved = pool.threads.filter(function unobservedWorker(worker) {
+            return !observed.has(worker);
+        });
+        for (const worker of unobserved) {
+            observed.add(worker);
+            exits.push(
                 new Promise<void>(function awaitExit(resolve) {
                     worker.once('exit', resolve);
                 })
             );
         }
     };
+    observeWorkers();
     return {
         get options() {
             return pool.options;
@@ -45,17 +37,19 @@ function awaitCancelledWorkers(pool: TinypoolInstance): TinypoolInstance {
             return pool.threads;
         },
         async run(task, options) {
-            return await runWithCancellationTracking(pool, task, options, observeCancellation);
+            observeWorkers();
+            return await pool.run(task, options);
         },
         async destroy() {
+            observeWorkers();
             await pool.destroy();
-            await Promise.all(workerExits);
+            await Promise.all(exits);
         }
     };
 }
 
 export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
-    return awaitCancelledWorkers(
+    return awaitWorkerExits(
         new Tinypool({
             concurrentTasksPerWorker: 1,
             filename: options.filename,
