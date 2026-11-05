@@ -123,7 +123,7 @@ async function createRuntime(
     dependencies: RunOrchestratorDependencies,
     state: WorkerPoolExecutionState
 ): Promise<WorkerPoolRunRuntime> {
-    return await createWorkerPoolRuntime({
+    const runtime = await createWorkerPoolRuntime({
         attachments: activeRuntimeAttachments(),
         collectionRunnerErrors: resolvedRun.collectionRunnerErrors,
         createdPool: state.createdPool,
@@ -135,6 +135,8 @@ async function createRuntime(
         runState: state.collectionRunState,
         timing: state.timing
     });
+    state.record?.retainPlacementTrace({ entries: runtime.placementTrace.entries() });
+    return runtime;
 }
 
 async function finishExecutionWithRuntime(

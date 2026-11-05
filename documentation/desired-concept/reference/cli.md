@@ -53,7 +53,7 @@ current concept.
 | `overkill list [paths...]`          | Print the resolved test plan without running it.             | [Tests As Values](../authoring/tests-as-values.md)                                                                     |
 | `overkill replay <run-id>`          | Replay a recorded run from `.overkill/runs/<id>.json`.       | [Reproducibility § Replay](../architecture/reproducibility.md#replay)                                                  |
 | `overkill merge-results <paths...>` | Merge completed shard run records into one aggregate result. | [Runtime Behavior § Sharding](../architecture/runtime-behavior.md#sharding)                                            |
-| `overkill replay-witness <path>`    | Replay a single property/simulation failure from a witness.  | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
+| `overkill replay-witness <path> --profile <name>`    | Replay a single property/simulation failure from a witness.  | [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts) |
 
 `overkill replay` without a run id is interactive only. In a TTY it opens a
 picker over replayable retained records, including interrupted records whose

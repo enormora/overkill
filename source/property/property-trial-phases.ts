@@ -53,7 +53,7 @@ function trialResult<Value>(
         };
 }
 
-async function evaluateInput<Value>(
+export async function executePropertyInput<Value>(
     execution: PropertyExecution<Value>,
     input: InputRecipe<Value>
 ): Promise<PropertyExecutionResult<Value> | null> {
@@ -98,7 +98,7 @@ async function executePhase<Value>(
 
     const inputs = boundedInputs(execution, phase);
     for (const input of inputs) {
-        const result = await evaluateInput({ ...execution, phase: phase.name }, input);
+        const result = await executePropertyInput({ ...execution, phase: phase.name }, input);
         if (result !== null) {
             return result;
         }
@@ -126,7 +126,7 @@ async function evaluateExploration<Value>(
     execution.signal.throwIfAborted();
     const candidate = search.next();
     let scores: ReadonlyMap<string, number> = new Map();
-    const failed = await evaluateInput({
+    const failed = await executePropertyInput({
         ...execution,
         phase: 'exploration',
         observeScores(value) {

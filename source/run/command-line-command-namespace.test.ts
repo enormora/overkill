@@ -102,6 +102,9 @@ export const testNode = createOverkillSuite({
                     async loadConfig() {
                         throw new Error('Unexpected history config loading.');
                     },
+                    async loadReplayCommands() {
+                        throw new Error('Replay commands are not configured.');
+                    },
                     loadBaselineCommands: testDouble.resolves<LoadBaselineCommands>(baselineCommandsFactory.build()),
                     loadBenchmarkCommands: testDouble.resolves<LoadBenchmarkCommands>(benchmarkCommandsFactory.build())
                 };
@@ -140,6 +143,9 @@ export const testNode = createOverkillSuite({
                 const loaders = {
                     async loadConfig() {
                         throw new Error('Unexpected history config loading.');
+                    },
+                    async loadReplayCommands() {
+                        throw new Error('Replay commands are not configured.');
                     },
                     loadBaselineCommands: testDouble.resolves<LoadBaselineCommands>(baselineCommandsFactory.build()),
                     loadBenchmarkCommands: testDouble.resolves<LoadBenchmarkCommands>(benchmarkCommandsFactory.build())

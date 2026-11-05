@@ -9,6 +9,7 @@ import type {
 } from '../config/types.ts';
 import { assertFrozenAssignmentInputs } from './workload-input-validation.ts';
 import type {
+    ReplayWire,
     FrozenWorkloadInput,
     RunFacts,
     FrozenMicrotestPolicy,
@@ -37,6 +38,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly replay: ReplayWire | null;
     readonly seed: string;
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;

@@ -103,6 +103,7 @@ export async function createSupervisedChildTestPlan(
 ): Promise<TestPlan> {
     const engine = await selectedEngine(command, dependencies);
     const input = {
+        replay: command.replay,
         cwd: command.cwd,
         definitionLocationCapture: command.definitionLocationCapture,
         discoverRunFiles: dependencies.discoverRunFiles,
@@ -117,7 +118,10 @@ export async function createSupervisedChildTestPlan(
         ? await createRunTestPlan(input)
         : await createRunTestPlanFromFiles({ ...input, files: policy.files });
 
-    return calibrationCapturePlan(resolveTestPlanCollectionPolicy(testPlan, command), command.benchmarkNormalization);
+    return calibrationCapturePlan(
+        resolveTestPlanCollectionPolicy(testPlan, command),
+        command.benchmarkNormalization
+    );
 }
 
 export async function validateSupervisedPolicy(

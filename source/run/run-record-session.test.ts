@@ -72,7 +72,7 @@ export const testNode = createSuite({
                 };
                 await session.start(coverage);
                 assertStartedRecord(scope, writes[0], session.path);
-                await session.recordFacts(facts);
+                await session.recordFacts(facts, null);
                 const result = runResultFactory.build();
                 await session.checkpointResult(result);
                 scope.assert.deepEqual(await session.complete(result), { ...result, maintenanceDiagnostics: [] });
@@ -93,7 +93,7 @@ export const testNode = createSuite({
                 const factsFailure = recordFixture([ 2 ]);
                 await factsFailure.session.start(null);
                 await scope.assert.rejects(async function recordFacts() {
-                    await factsFailure.session.recordFacts(facts);
+                    await factsFailure.session.recordFacts(facts, null);
                 }, { message: `Failed to persist run record during facts: ${factsFailure.session.path}.` });
                 scope.assert.equal(factsFailure.writes[0]?.facts, null);
                 return scope.assert.collect();
@@ -145,7 +145,7 @@ export const testNode = createSuite({
             async body(scope) {
                 const { session, writes } = recordFixture([]);
                 await session.start(null);
-                await session.recordFacts(facts);
+                await session.recordFacts(facts, null);
                 const result = runResultFactory.build({
                     summary: { passed: 3 },
                     runnerErrors: [ { cause: 42n, message: 'Known failure' } ]

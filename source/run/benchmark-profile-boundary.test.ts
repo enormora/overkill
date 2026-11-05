@@ -53,6 +53,9 @@ export const testNode = suite('benchmark profile command boundaries', [
                 const config = normalizeConfig({ profiles: { startup: benchmark } });
                 const runner = createCommandLineRunner({
                     createDefaultReporter: rejectUnexpectedInvocation,
+                    async loadReplayCommands() {
+                        throw new Error('Replay commands are not configured.');
+                    },
                     loadBaselineCommands: rejectUnexpectedInvocation,
                     loadBenchmarkCommands: rejectUnexpectedInvocation,
                     async loadConfig() {

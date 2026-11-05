@@ -16,6 +16,7 @@ import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
 import type {
+    ReplayWire,
     FrozenWorkloadInput,
     RunFacts,
     CollectedRunPlan,
@@ -33,6 +34,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly replay: ReplayWire | null;
     readonly seed: string;
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;

@@ -36,7 +36,7 @@ type CollectedExecution = {
     readonly collectedPlan: CollectedRunPlan;
     readonly runnerErrors: readonly RunResult['runnerErrors'][number][];
 };
-type IsolatedRunOptions = {
+export type IsolatedRunOptions = {
     readonly record: StartedSupervisedExecution['record'];
     readonly baseline: BenchmarkBaselineSession | null;
     readonly source: RunCollectionSource;
@@ -219,7 +219,7 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
                 input,
                 planKind: 'worker-pool'
             });
-            await options.record?.recordFacts(resolved.facts);
+            await options.record?.recordResolvedRun(resolved);
             return resolved;
         },
         {
@@ -279,7 +279,7 @@ export function runIsolatedProcessCommand(
 ): Promise<RunResult> | null {
     const { processModel } = input.profile.execution;
 
-    if (processModel === 'supervised-process') {
+    if (processModel === 'supervised-process' || processModel === 'in-process' && options.source.kind === 'replay') {
         return createSupervisedRunResult({
             baseline: options.baseline,
             record: options.record,

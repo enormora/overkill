@@ -31,6 +31,27 @@ async function witness(): Promise<PropertyWitnessFile> {
 
 export const testNode = suite('stored property regressions', [
     invocationTargets,
+    test('direct replay evaluates one saved input without generation or shrinking', async function (scope) {
+        const saved = await witness();
+        const inputs: number[] = [];
+        const result = await executePropertyNode(
+            property({
+                title: 'stored regression',
+                generator: gen.constant(0).map(function generationMustNotRun(): number {
+                    throw new Error('Replay generated a new input.');
+                }),
+                test(value, sample) {
+                    inputs.push(value);
+                    sample.assert.equal(value, 0);
+                    return sample.assert.collect();
+                }
+            }),
+            { ...propertyExecutionDefaults, corpus: { ...emptyPropertyCorpus, replay: saved } }
+        );
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.deepEqual(inputs, [ 42 ]);
+        return scope.assert.collect();
+    }),
     test('replays confirmed inputs outside the current generation domain', async function (scope) {
         const saved = await witness();
         const inputs: number[] = [];

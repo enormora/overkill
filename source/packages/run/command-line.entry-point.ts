@@ -2,7 +2,6 @@ import type { CommandLineRunner } from '../../run/command-line-runner.ts';
 import type { NodeCommandLineRunnerOptions } from '../../run/node-command-line-runner.ts';
 import { createCommandLineCommandNamespace } from '../../run/command-line-command-namespace.ts';
 import {
-    createUnimplementedCommand,
     loadUnimplementedBaselineCommands
 } from '../../run/command-line-unimplemented-commands.ts';
 import { loadConfig } from './config.entry-point.ts';
@@ -18,6 +17,11 @@ export {
 } from './config.entry-point.ts';
 
 const commandLoaders = {
+    async loadReplayCommands() {
+        const { createReplayCommands } = await import('../../run/replay-commands.ts');
+        const { orchestrator } = await import('../../run/run-orchestrator.entry-point.ts');
+        return createReplayCommands(loadConfig, orchestrator);
+    },
     loadConfig,
     loadBaselineCommands: loadUnimplementedBaselineCommands,
     async loadBenchmarkCommands() {
@@ -94,7 +98,7 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
             return await loadedRunner.listTests(request);
         },
         replayRun: nodeCommandNamespace.replayRun,
-        replayWitness: createUnimplementedCommand('replay-witness'),
+        replayWitness: nodeCommandNamespace.replayWitness,
         async runTests(request) {
             const loadedRunner = await loadRunner();
 
@@ -137,7 +141,7 @@ export const commandLineRunner: CommandLineRunner = {
     baseline: commandNamespace.baseline,
     bench: commandNamespace.bench,
     replayRun: commandNamespace.replayRun,
-    replayWitness: createUnimplementedCommand('replay-witness'),
+    replayWitness: commandNamespace.replayWitness,
     async listTests(request) {
         const runner = await loadDefaultRunner();
 

@@ -1,3 +1,4 @@
+import { hostProcessFacts } from './run-host-process.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { emptyWorkUnitResourceConstraints, type RunFacts, type RunRequest } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -125,4 +126,19 @@ export async function createPlacementResolution(
         }),
         benchmarkPlacement
     };
+}
+
+export async function resolveCollectedHost(
+    input: CollectedExecutionPlanInput,
+    cases: readonly CollectedRunCaseEntry[]
+): Promise<Extract<RunFacts['execution'], { readonly processModel: 'worker-pool'; }>['hostProcess'] | null> {
+    if (input.profile.execution.processModel !== 'worker-pool') {
+        return null;
+    }
+    let { hostProcess } = input.profile.execution;
+    if (input.profile.testFamily === 'benchmark') {
+        const { resolveBenchmarkGarbageCollectionHost } = await import('./benchmark-garbage-collection.ts');
+        hostProcess = resolveBenchmarkGarbageCollectionHost(hostProcess, input.profile.garbageCollection, cases);
+    }
+    return hostProcessFacts(hostProcess);
 }

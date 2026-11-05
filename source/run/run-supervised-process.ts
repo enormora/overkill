@@ -149,7 +149,7 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
                 expectedDirectPlan,
                 input
             });
-            await record?.recordFacts(run.facts);
+            await record?.recordResolvedRun(run);
 
             return run;
         },

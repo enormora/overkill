@@ -1,9 +1,9 @@
 import { validateReporterRunFacts, type DefinedReporter } from '../engine/reporter.ts';
 import { validateNormalizedConfig } from '../config/validation.ts';
 import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
-import type { ProfileConfig, ProcessBudgets } from '../config/types.ts';
+import type { ProfileConfig, ProcessBudgets, NormalizedConfig } from '../config/types.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
-import { invalidRequest } from './run-errors.ts';
+import { invalidRequest, RunResolutionError } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
 import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
@@ -141,7 +141,7 @@ export function assertSupportedProcessEngine(command: RunCommand, profile: Profi
     assertSupportedProcessEngineSelection(command, profile);
 }
 
-export function assertProfileReportersSupported(
+function assertProfileReportersSupported(
     profile: ProfileConfig,
     fallback: readonly DefinedReporter[] | null
 ): void {
@@ -153,4 +153,49 @@ export function assertProfileReportersSupported(
             invalidRequest(error instanceof Error ? error.message : String(error));
         }
     }
+}
+
+type Namespace = 'bench' | 'bench-calibrate' | 'test';
+function assertCapture(request: RunRequest, profile: ProfileConfig): void {
+    if ((profile.testFamily === 'microtest' || profile.testFamily === 'property') && request.capture === 'live') {
+        invalidRequest(
+            `${profile.testFamily === 'microtest' ? 'Microtest' : 'Property'} profiles do not support live capture.`
+        );
+    }
+}
+function assertBaseline(namespace: Namespace, request: RunRequest): void {
+    if (namespace === 'bench' || request.baselineUpdateMode === 'none') {
+        return;
+    }
+    invalidRequest(
+        'Ordinary baseline updates are not implemented. Use benchmark baseline commands for performance baselines.'
+    );
+}
+function assertExecution(request: RunRequest, profile: ProfileConfig): void {
+    if (
+        request.execution.mode === 'serial' && profile.testFamily !== 'microtest' && profile.testFamily !== 'property'
+    ) {
+        throw new RunResolutionError(
+            'Serial execution overrides require a microtest or property profile.',
+            undefined,
+            'unsupported-request'
+        );
+    }
+    if (request.workers !== null && profile.execution.processModel !== 'worker-pool') {
+        invalidRequest('Worker count can only be requested for worker-pool profiles.');
+    }
+}
+export function assertProfileRequestSupported(
+    request: RunRequest,
+    profile: ProfileConfig,
+    namespace: Namespace,
+    reporters: NormalizedConfig['reporters']
+): void {
+    assertBaseline(namespace, request);
+    assertExecution(request, profile);
+    if (request.coverage && profile.testFamily !== 'microtest') {
+        invalidRequest('Coverage can only be requested for microtest profiles.');
+    }
+    assertCapture(request, profile);
+    assertProfileReportersSupported(profile, reporters);
 }

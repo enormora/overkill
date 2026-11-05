@@ -1,6 +1,6 @@
+import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { createCaseId, createDefaultWorkId, type CaseId } from '../engine/identity.ts';
-import { hasAttachedResourceDescriptors } from '../engine/test-body-resource-attachment.ts';
 import type { RunOrder, ProfileConfig } from '../config/types.ts';
 import { assertCollectedPropertyPolicies } from './property-collection.ts';
 import type {
@@ -20,18 +20,14 @@ import { createRandomRunSeed } from './run-seed.ts';
 
 type TestPlan = Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>['testPlan'];
 type TestPlanCase = TestPlan['cases'][number];
+type ResourceAttachedRunCase = { readonly resourceAttachments: TestPlanCase['resourceAttachments']; };
+type ProfileControlledRunCase = { readonly controls: TestPlanCase['controls']; };
 
 type SelectedRunCases<Case> = {
     readonly discoveredCases: NonEmptyReadonlyArray<Case>;
     readonly plannedCases: readonly Case[];
 };
 
-type ResourceAttachedRunCase = {
-    readonly resourceAttachments: TestPlanCase['resourceAttachments'];
-};
-type ProfileControlledRunCase = {
-    readonly controls: TestPlanCase['controls'];
-};
 export type OrderedSeededTestPlan = {
     readonly seed: {
         readonly value: bigint;
@@ -177,7 +173,6 @@ export function assertCollectedRunPlanCasesMatchProfilePolicy(
         }
     }
 }
-
 function selectedCases<Case>(
     cases: NonEmptyReadonlyArray<Case>,
     selection: RunRequest['selection'],

@@ -88,6 +88,9 @@ function createTestRunner(): CommandLineRunner {
         async createDefaultReporter() {
             return memoryReporter;
         },
+        async loadReplayCommands() {
+            throw new Error('Replay commands are not configured.');
+        },
         loadBaselineCommands: loadUnimplementedBaselineCommands,
         async loadBenchmarkCommands() {
             const { createBenchmarkCommands } = await import('./benchmark-commands.ts');

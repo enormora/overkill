@@ -1,16 +1,16 @@
 import { copyConfig } from '../config/snapshot.ts';
 import type { NormalizedConfig, ProfileConfig } from '../config/types.ts';
+import { readCollectionFiles } from './run-collection-source.ts';
 import { copyRunEngineSelection, freezeValue } from './run-support.ts';
 import { selectBenchmarkProfile, selectTestProfile } from './test-profile.ts';
 import { copyRunRequest } from './request-snapshot.ts';
 import type { RunCommand, RunRequest, RunCollectionSource, RunFacts } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
+    assertProfileRequestSupported,
     assertSupportedProcessEngine,
-    assertProfileReportersSupported,
     validateRunInput
 } from './run-validation.ts';
-import { invalidRequest, RunResolutionError } from './run-errors.ts';
 
 export type RunInputResolutionDependencies = Pick<
     RunOrchestratorDependencies,
@@ -35,59 +35,6 @@ export type ResolvedRunInput = {
     readonly request: RunRequest;
 };
 
-function assertMicrotestCaptureSupported(
-    request: RunRequest,
-    profile: ProfileConfig
-): void {
-    if ((profile.testFamily === 'microtest' || profile.testFamily === 'property') && request.capture === 'live') {
-        invalidRequest(
-            `${profile.testFamily === 'microtest' ? 'Microtest' : 'Property'} profiles do not support live capture.`
-        );
-    }
-}
-
-function assertWorkerCountSupported(request: RunRequest, profile: ProfileConfig): void {
-    if (request.workers !== null && profile.execution.processModel !== 'worker-pool') {
-        invalidRequest('Worker count can only be requested for worker-pool profiles.');
-    }
-}
-
-function assertCoverageSupported(request: RunRequest, profile: ProfileConfig): void {
-    if (request.coverage && profile.testFamily !== 'microtest') {
-        invalidRequest('Coverage can only be requested for microtest profiles.');
-    }
-}
-
-function assertBaselineRequestSupported(namespace: RunInvocation['namespace'], request: RunRequest): void {
-    if (namespace !== 'bench' && request.baselineUpdateMode !== 'none') {
-        invalidRequest(
-            'Ordinary baseline updates are not implemented. Use benchmark baseline commands for performance baselines.'
-        );
-    }
-}
-
-function assertProfileRequestSupported(
-    request: RunRequest,
-    profile: ProfileConfig,
-    namespace: RunInvocation['namespace'],
-    reporters: NormalizedConfig['reporters']
-): void {
-    assertBaselineRequestSupported(namespace, request);
-    if (
-        request.execution.mode === 'serial' && profile.testFamily !== 'microtest' && profile.testFamily !== 'property'
-    ) {
-        throw new RunResolutionError(
-            'Serial execution overrides require a microtest or property profile.',
-            undefined,
-            'unsupported-request'
-        );
-    }
-    assertCoverageSupported(request, profile);
-    assertMicrotestCaptureSupported(request, profile);
-    assertWorkerCountSupported(request, profile);
-    assertProfileReportersSupported(profile, reporters);
-}
-
 export async function readRunPolicyInput(
     invocation: RunInvocation,
     dependencies: Pick<RunInputResolutionDependencies, 'discoverRunFilesWithProjectRoot'>,
@@ -103,18 +50,7 @@ export async function readRunPolicyInput(
     assertProfileRequestSupported(request, profile, namespace, config.reporters);
     assertSupportedProcessEngine(command, profile);
     const engine = freezeValue(copyRunEngineSelection(command.engine));
-    const discovery = freezeValue(
-        source.kind === 'frozen-policy'
-            ? {
-                files: source.policy.files,
-                projectRoot: source.policy.projectRoot
-            }
-            : await dependencies.discoverRunFilesWithProjectRoot({
-                cwd: command.cwd,
-                paths: request.paths,
-                profileFiles: profile.files
-            })
-    );
+    const discovery = freezeValue(await readCollectionFiles(command, profile, dependencies, source));
     return {
         benchmarkPurpose: namespace === 'bench-calibrate' ? 'capture' : 'compare',
         benchmarkHost: null,

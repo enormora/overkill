@@ -1,3 +1,4 @@
+import { withReplayCancellation } from './replay-cancellation.ts';
 import {
     createStoredRunValue,
     createSupervisedRunState,
@@ -7,10 +8,9 @@ import type {
     WorkerPoolMessageChannel,
     WorkerPoolRunOutput
 } from './worker-pool-protocol.ts';
-import {
-    workerPoolPlacementTrace,
-    type WorkerPoolRunRuntime,
-    type WorkerPoolTaskRun
+import type {
+    WorkerPoolRunRuntime,
+    WorkerPoolTaskRun
 } from './worker-pool-runtime.ts';
 import type {
     PlacementPlan,
@@ -23,12 +23,15 @@ import type {
     WorkerPoolWorkDispatcher
 } from './worker-pool-dispatch-state.ts';
 import {
+    recordCompletedPlacementResults,
     recordCancelledHedgedTaskRun,
     recordCompletedHedgedTaskRun,
     unitCanUseBufferedHedging,
     type HedgedAuthorities
 } from './worker-pool-hedged-arbitration.ts';
 import {
+    recordBatchStarted,
+    recordBatchCompleted,
     clearTaskTimeout,
     finishCompletedLease,
     finishFailedLease,
@@ -354,43 +357,6 @@ function handleTaskFailure(
     return recordWorkerCrash(context.runtime, context.crashCount, context.dispatcher) ? [] : pendingMembers(taskRun);
 }
 
-function batchAttempts(taskRun: WorkerPoolTaskRun): readonly [TaskAttempt, ...TaskAttempt[]] {
-    const [ first, ...rest ] = taskRun.members;
-
-    return [
-        first.attempt,
-        ...rest.map(function toAttempt(member) {
-            return member.attempt;
-        })
-    ];
-}
-
-function recordBatchStarted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
-    const envelopeId = taskRun.envelopeId.read();
-
-    if (envelopeId !== null) {
-        workerPoolPlacementTrace(runtime).recordDecision({
-            attempts: batchAttempts(taskRun),
-            envelopeId,
-            kind: 'batch-started',
-            lane: taskRun.lane
-        });
-    }
-}
-
-function recordBatchCompleted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
-    const envelopeId = taskRun.envelopeId.read();
-
-    if (envelopeId !== null) {
-        workerPoolPlacementTrace(runtime).recordDecision({
-            attempts: batchAttempts(taskRun),
-            envelopeId,
-            kind: 'batch-completed',
-            lane: taskRun.lane
-        });
-    }
-}
-
 async function recordCompletedTaskRun(
     taskRun: WorkerPoolTaskRun,
     lease: WorkerPoolUnitLease,
@@ -414,9 +380,13 @@ async function recordCompletedTaskRun(
             await recordCompletedHedgedTaskRun(context.authorities, firstResult, taskRun, context.runtime);
         }
     } else {
-        context.runtime.taskResults.push(...output.results.map(function toResult(result) {
-            return result.result;
-        }));
+        recordCompletedPlacementResults(
+            output.results.map(function toResult(result) {
+                return result.result;
+            }),
+            taskRun,
+            context.runtime
+        );
         await completeWorkerPoolResourceMembers(context.runtime, context.resourceLifecycle, taskRun.members);
     }
 }
@@ -545,12 +515,14 @@ async function runPlacementLanes(context: WorkerPoolExecutionContext): Promise<v
     );
 }
 
-async function runPlacementLanesWhenActive(context: WorkerPoolExecutionContext): Promise<void> {
-    if (!context.runtime.terminalFailure.read()) {
-        await runPlacementLanes(context);
+async function runActivePlacementLanes(context: WorkerPoolExecutionContext): Promise<void> {
+    if (context.runtime.terminalFailure.read()) {
+        return;
     }
+    await withReplayCancellation(context, async function executeReplayLanes() {
+        await runPlacementLanes(context);
+    });
 }
-
 export async function executeWorkerPoolUnits(
     runtime: WorkerPoolRunRuntime,
     placementPlan: PlacementPlan,
@@ -563,7 +535,7 @@ export async function executeWorkerPoolUnits(
     );
 
     try {
-        await runPlacementLanesWhenActive(context);
+        await runActivePlacementLanes(context);
     } finally {
         await disposeWorkerPoolResourceLifecycles(runtime, placementPlan, context.resourceLifecycle);
     }

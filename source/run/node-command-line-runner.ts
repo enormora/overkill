@@ -44,6 +44,10 @@ export function createNodeCommandLineRunner(input: NodeCommandLineRunnerInput): 
     });
 
     return createCommandLineRunner({
+        async loadReplayCommands() {
+            const { createReplayCommands } = await import('./replay-commands.ts');
+            return createReplayCommands(input.dependencies.loadConfig, orchestrator);
+        },
         createDefaultReporter: loadDefaultLineReporter,
         loadBaselineCommands: loadUnimplementedBaselineCommands,
         async loadBenchmarkCommands() {

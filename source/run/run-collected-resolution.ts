@@ -1,3 +1,4 @@
+import type { CollectedExecutionPlanInput } from './collected-placement.ts';
 import { collectedRunPlanFromEntries, type CollectedRunCaseEntry } from './collected-run-plan.ts';
 import { collectedRunCaseFactsFromEntries } from './run-case-facts.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
@@ -5,22 +6,21 @@ import { createRunFacts, resolveAttachmentPersistence } from './run-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
-    assertCollectedRunPlanCasesMatchProfilePolicy,
     assertCollectedRunPlanHasCases,
-    assertCollectedRunPlanMatchesTestFamily,
-    selectedCollectedRunPlan
+    selectedCollectedRunPlan,
+    assertCollectedRunPlanCasesMatchProfilePolicy,
+    assertCollectedRunPlanMatchesTestFamily
 } from './run-selection.ts';
 import {
     freezeValue,
     resolveRunReporters
 } from './run-support.ts';
 import type { CollectedRunPlan, ResolvedRun, RunCommand } from './run-types.ts';
-import type { WorkerPoolPlacementResolutionInput } from './worker-pool-placement-planning.ts';
 
 type RunnerError = ResolvedRun['collectionRunnerErrors'][number];
 
 type CollectedPlanKind = 'supervised' | 'worker-pool';
-export type CollectionDurationHistoryIndex = WorkerPoolPlacementResolutionInput['durationHistoryIndex'];
+export type CollectionDurationHistoryIndex = CollectedExecutionPlanInput['durationHistoryIndex'];
 
 type RunCollection = {
     readonly collectedPlan: CollectedRunPlan;
@@ -73,26 +73,38 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
         assertCollectedRunPlanHasCases(input.collectedPlan);
     }
 
-    const { benchmarkPlacement, durationHistory, hostProcess, orderedCases, placementPlan, scheduling, workerCount } =
-        await createCollectedExecutionPlan(input);
-    const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
-    const facts = freezeValue(createRunFacts({
-        hostProcess,
-        benchmarkHost: input.benchmarkHost,
+    const {
         benchmarkPlacement,
-        benchmarkCalibration: input.benchmarkCalibration,
-        benchmarkNormalization: selectedNormalization(input, orderedCases),
-        cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
-        config: input.config,
-        dependencies: input.dependencies,
         durationHistory,
-        engine: input.engine,
+        hostProcess,
+        orderedCases,
         placementPlan,
-        projectRoot: input.projectRoot,
-        request: input.request,
         scheduling,
-        workerCount
-    }));
+        workerCount,
+        recordedFacts
+    } = await createCollectedExecutionPlan(input);
+    const plannedCollectedPlan = collectedRunPlanFromEntries(input.collectedPlan, orderedCases);
+    const facts = freezeValue({
+        ...createRunFacts({
+            hostProcess,
+            benchmarkHost: input.benchmarkHost,
+            benchmarkPlacement,
+            benchmarkCalibration: input.benchmarkCalibration,
+            benchmarkNormalization: selectedNormalization(input, orderedCases),
+            ...recordedFacts,
+            cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
+            config: input.config,
+            dependencies: input.dependencies,
+            durationHistory,
+            engine: input.engine,
+            placementPlan,
+            projectRoot: input.projectRoot,
+            request: input.request,
+            scheduling,
+            workerCount
+        }),
+        ...recordedFacts === null ? {} : { reproducibility: recordedFacts.reproducibility }
+    });
 
     return freezeValue(resolveAttachmentPersistence({
         collectionRunnerErrors: input.collectionRunnerErrors,

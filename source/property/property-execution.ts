@@ -1,5 +1,6 @@
 import type { PropertyInvocationEvidence } from '../engine/property-failure-evidence.ts';
 import { propertyCorpusSnapshot } from '../engine/property-execution-host.ts';
+import { replayPropertyInput } from './property-witness-replay.ts';
 import { propertyRegressionInputs, corpusDiagnosticObservation } from './property-regressions.ts';
 import { executePhases, type PropertyExecution } from './property-trial-phases.ts';
 import { shrinkPropertyFailure } from './property-shrinking.ts';
@@ -21,6 +22,10 @@ async function executeAndShrink<Value>(
     execution: PropertyExecution<Value>,
     regressions: PropertyRegressionInputs<Value>
 ): Promise<PropertyExecutionResult<Value>> {
+    const replayed = await replayPropertyInput(execution);
+    if (replayed !== null) {
+        return replayed;
+    }
     const stored = propertyRegressionInputs(
         execution.invocation,
         execution,

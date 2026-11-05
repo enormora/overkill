@@ -1108,8 +1108,10 @@ The trace needs enough information to restore:
   conflicts
 - lane assignment, reassignment, duration, and recovery decisions
 
-The later placement-trace milestone should settle exact event names and field
-shapes. This section only fixes the semantic requirements.
+Recorded attempts govern dispatch and authoritative outcomes even when current
+completion order changes. An interrupted prefix continues remaining unassigned
+work in saved unit and lane order without new adaptive decisions and emits a
+diagnostic. Replay validates trace references and lifecycles before execution.
 
 ## Remote Execution
 

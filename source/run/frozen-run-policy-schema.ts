@@ -5,7 +5,6 @@ import {
     normalizedMicrotestProfileSchema,
     normalizedProcessBudgetsSchema
 } from '../config/normalized-microtest-schema.ts';
-import type { FrozenMicrotestPolicy } from './run-types.ts';
 import { executionCommandFields } from './run-command-schema.ts';
 import { runSelectionSchema } from './run-selection-schema.ts';
 import { fileModuleBoundarySchema } from './file-module-boundary.ts';
@@ -17,7 +16,7 @@ const fileSchema = z.strictObject({
     path: z.string().min(1)
 });
 
-export const frozenMicrotestPolicySchema: z.ZodType<FrozenMicrotestPolicy> = z.strictObject({
+export const frozenMicrotestPolicySchema = z.strictObject({
     moduleBoundary: fileModuleBoundarySchema.nullable().default(null),
     source: z.discriminatedUnion('kind', [
         z.strictObject({ kind: z.literal('memory') }),

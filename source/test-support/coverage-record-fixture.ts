@@ -11,6 +11,14 @@ import { defaultRunRequest } from './run-command-factory.ts';
 import { fakeWorkerPoolRuntimeDependencies } from './worker-pool-runtime-fixtures.ts';
 
 const recordSnapshotSchema = z.object({
+    version: z.number().int().positive(),
+    replayPlan: z
+        .object({
+            defined: z.number(),
+            files: z.array(z.object({ cases: z.array(z.unknown()) })),
+            discoveredFiles: z.array(z.object({ file: z.string() }))
+        })
+        .nullable(),
     coverage: z.object({ directory: z.string(), rawDataDirectory: z.string() }).nullable(),
     facts: z.unknown(),
     result: z

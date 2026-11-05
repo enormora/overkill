@@ -60,7 +60,7 @@ function elapsedMicroseconds(state: HedgeDispatchState, entry: HedgeActiveUnitLe
     return Number(state.wallClock.currentMonotonicMicroseconds) - entry.startedAtMicroseconds;
 }
 
-function unitIsHedgeSafe(unit: WorkUnit): boolean {
+export function unitIsHedgeSafe(unit: WorkUnit): boolean {
     if (unit.resourceConstraints.duplicateExecution.includes('idempotent')) {
         return true;
     }
@@ -69,7 +69,7 @@ function unitIsHedgeSafe(unit: WorkUnit): boolean {
         unit.resourceConstraints.duplicateExecution.includes('disposable-isolated');
 }
 
-function unitHasNoHardConstraints(unit: WorkUnit): boolean {
+export function unitHasNoHardConstraints(unit: WorkUnit): boolean {
     return unit.resourceConstraints.serialKeys.length === 0 &&
         unit.resourceConstraints.singleWorkerKeys.length === 0;
 }

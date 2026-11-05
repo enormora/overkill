@@ -24,7 +24,6 @@ import {
     type CommandLineCommandNamespace,
     type CommandLineCommandLoaders
 } from './command-line-command-namespace.ts';
-import { createUnimplementedCommand } from './command-line-unimplemented-commands.ts';
 
 import {
     assertOrdinaryCommandProfile,
@@ -73,7 +72,7 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
             }
         },
         replayRun: commandNamespace.replayRun,
-        replayWitness: createUnimplementedCommand('replay-witness'),
+        replayWitness: commandNamespace.replayWitness,
         async runTests(request) {
             const timing = createSystemRunTimingMeasurement();
 

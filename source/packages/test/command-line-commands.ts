@@ -21,15 +21,15 @@ import {
     parseRunFilterExpression,
     type RunFilter
 } from '../run/filters.entry-point.ts';
+import { createReplayWitnessCommand } from './replay-witness-command.ts';
+import { configPathArgument } from './command-line-config-path.ts';
 import { createCorpusCommand } from './corpus-command.ts';
 import { benchmarkProfileType } from './benchmark-profile-parser.ts';
 import {
     createCommandLineSelection,
     runtimeSelectionFiltersType
 } from './command-line-selection.ts';
-import { parseRunSeed } from './run-seed-parser.ts';
-import { parseRunShard } from './run-shard-parser.ts';
-import { runWorkersType } from './run-workers-parser.ts';
+import { runSeedType, runShardType, runWorkersType } from './run-reproducibility-parser.ts';
 
 type RunOrder = Extract<CommandLineRunTestsRequest['runRequest']['order'], 'lexical' | 'seeded'>;
 type RunSeed = CommandLineRunTestsRequest['runRequest']['seed'];
@@ -72,41 +72,12 @@ type ListCommandArguments<Profile extends string | null> = {
 
 const runOrderType = oneOf([ 'seeded', 'lexical' ] as const);
 
-const configPathType: Type<string[], string | null> = {
-    displayName: 'path',
-    async from([ configPath, ...remainingPaths ]) {
-        if (remainingPaths.length > 0) {
-            throw new TypeError('--config may only be provided once.');
-        }
-
-        return configPath ?? null;
-    }
-};
-
 const filterExpressionType: Type<string, RunFilter | null> = {
     displayName: 'expr',
     async from(value) {
         await Promise.resolve();
 
         return parseRunFilterExpression(value);
-    }
-};
-
-const runSeedType: Type<string, RunSeed> = {
-    displayName: 'n',
-    async from(value) {
-        await Promise.resolve();
-
-        return parseRunSeed(value);
-    }
-};
-
-const runShardType: Type<string, RunShard> = {
-    displayName: 'i/n',
-    async from(value) {
-        await Promise.resolve();
-
-        return parseRunShard(value);
     }
 };
 
@@ -197,14 +168,6 @@ function createListTestsRequest<Profile extends string | null>(
         }
     };
 }
-
-const configPathArgument = multioption({
-    long: 'config',
-    type: configPathType,
-    defaultValue() {
-        return null;
-    }
-});
 
 const sharedCommandArguments = {
     lastFailed: flag({ long: 'last-failed' }),
@@ -340,7 +303,7 @@ type ParsedCorpus = {
 };
 type ParsedBenchmark = { readonly command: 'bench'; readonly value: ParsedBenchmarkBaseline | ParsedBenchmarkRun; };
 type ParsedOrdinary = {
-    readonly command: 'list' | 'replay' | 'run';
+    readonly command: 'list' | 'replay' | 'replay-witness' | 'run';
     readonly value: Promise<CommandLineRunnerResult>;
 };
 type ParsedRoot = ParsedBenchmark | ParsedCorpus | ParsedHistory | ParsedOrdinary;
@@ -520,6 +483,7 @@ export async function dispatchOverkillCommand(
                     return await runner.replayRun({ cwd, configPath: args.configPath, arguments: args.arguments });
                 }
             }),
+            'replay-witness': createReplayWitnessCommand(loadRunner, cwd),
             corpus: createCorpusCommand(loadRunner, cwd, writePreview),
             history: historyCommand,
             bench: benchmarkCommand,

@@ -9,7 +9,7 @@ import {
 import {
     createTinypoolWorkerPool,
     workerPoolEntryPoint
-} from './worker-pool-runtime.ts';
+} from './worker-pool-creation.ts';
 import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
 import {
     serializeError,

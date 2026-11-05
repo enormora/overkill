@@ -1,3 +1,4 @@
+import { currentReplay } from './replay-context.ts';
 import { invalidRequest, supervisedCancellationError } from './run-errors.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -13,7 +14,7 @@ function assertSupervisedTest(
 ): void {
     const snapshot = snapshotRunCommand(command).command;
     const profile = selectProfile(snapshot.request.profile, snapshot.config);
-    if (namespace !== 'test' || profile.execution.processModel !== 'supervised-process') {
+    if (currentReplay() === null && (namespace !== 'test' || profile.execution.processModel !== 'supervised-process')) {
         invalidRequest('Invocation cancellation requires a supervised-process test profile.');
     }
 }

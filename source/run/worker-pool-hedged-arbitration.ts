@@ -1,5 +1,13 @@
 import { workIdentityKey } from '../engine/identity.ts';
 import type { PerTestResult, RunResult, HedgedConflictArtifact, RunArtifact } from '../engine/run-result.ts';
+import {
+    replayPlacementResult,
+    isDeferredReplayTask,
+    recordedHedgeAuthority,
+    deferReplayHedge,
+    pendingReplayHedges,
+    releaseReplayHedge
+} from './replay-hedging.ts';
 import type { WorkUnit } from './run-types.ts';
 import {
     workerPoolPlacementTrace,
@@ -81,12 +89,12 @@ function activePeerExists(runtime: WorkerPoolRunRuntime, taskRun: WorkerPoolTask
     const key = taskWorkKey(taskRun);
 
     for (const activeTask of runtime.activeTasks) {
-        if (activeTask !== taskRun && taskWorkKey(activeTask) === key) {
+        if (activeTask !== taskRun && !isDeferredReplayTask(activeTask) && taskWorkKey(activeTask) === key) {
             return true;
         }
     }
 
-    return false;
+    return pendingReplayHedges(runtime, taskRun).length > 0;
 }
 
 function cancelHedgedPeer(
@@ -111,6 +119,9 @@ function cancelHedgedPeer(
 }
 
 function cancelActiveHedgedPeers(runtime: WorkerPoolRunRuntime, taskRun: WorkerPoolTaskRun): void {
+    if (recordedHedgeAuthority(taskRun) !== null) {
+        return;
+    }
     const key = taskWorkKey(taskRun);
     const activePeers = Array.from(runtime.activeTasks).filter(function isIncompleteActivePeer(activeTask) {
         const { attempt } = activeTask.members[0];
@@ -300,6 +311,22 @@ function recordConflictingDuplicate(
     }
 }
 
+async function recordReplayAuthority(
+    authorities: HedgedAuthorities,
+    selected: AuthoritativeTaskRun,
+    runtime: WorkerPoolRunRuntime
+): Promise<void> {
+    await recordFirstAuthority(authorities, selected, runtime);
+    for (const pending of pendingReplayHedges(runtime, selected.taskRun)) {
+        releaseReplayHedge(runtime, pending);
+        if (semanticallyMatches(selected.result, pending.result)) {
+            await recordMatchingDuplicate(selected, pending.taskRun, runtime);
+        } else {
+            recordConflictingDuplicate(selected, pending.result, pending.taskRun, runtime);
+        }
+    }
+}
+
 export async function recordCompletedHedgedTaskRun(
     authorities: HedgedAuthorities,
     result: RunResult,
@@ -309,7 +336,10 @@ export async function recordCompletedHedgedTaskRun(
     const authority = authorities.get(taskWorkKey(taskRun));
 
     if (authority === undefined) {
-        await recordFirstAuthority(authorities, { result, taskRun }, runtime);
+        if (deferReplayHedge(runtime, { result, taskRun })) {
+            return;
+        }
+        await recordReplayAuthority(authorities, { result, taskRun }, runtime);
     } else if (semanticallyMatches(authority.result, result)) {
         await recordMatchingDuplicate(authority, taskRun, runtime);
     } else {
@@ -328,5 +358,15 @@ export function recordCancelledHedgedTaskRun(
     if (authority !== undefined && !activePeerExists(runtime, taskRun)) {
         runtime.taskResults.push(authority.result);
         runtime.reporterEvents.add(flushBufferedReporterEvents(authority.taskRun, runtime));
+    }
+}
+
+export function recordCompletedPlacementResults(
+    results: readonly RunResult[],
+    task: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): void {
+    for (const result of results) {
+        runtime.taskResults.push(replayPlacementResult(result, task.members));
     }
 }

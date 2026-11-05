@@ -76,6 +76,7 @@ export async function runObservedWorkerCollection<Value>(collect: () => Promise<
 
 async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<TestPlan> {
     return await createRunTestPlan({
+        replay: command.replay,
         cwd: command.cwd,
         definitionLocationCapture: command.definitionLocationCapture,
         discoverRunFiles: runDiscovery.discoverRunFiles,
@@ -90,7 +91,10 @@ async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<Tes
 export async function collectTestPlan(command: WorkerPoolCommand): Promise<CollectedWorkerPoolTestPlan> {
     return {
         runnerErrors: [],
-        testPlan: calibrationCapturePlan(await createWorkerPoolTestPlan(command), command.benchmarkNormalization)
+        testPlan: calibrationCapturePlan(
+            await createWorkerPoolTestPlan(command),
+            command.benchmarkNormalization
+        )
     };
 }
 

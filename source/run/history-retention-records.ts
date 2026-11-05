@@ -1,5 +1,6 @@
 import { lstat } from 'node:fs/promises';
 import path from 'node:path';
+import { currentReplay } from './replay-context.ts';
 import type { HistoryOptions } from './history-types.ts';
 import { checkHistoryMaintenanceBudget } from './history-maintenance-budget.ts';
 import { historyDirectoryNames, compareHistoryRuns, assertHistoryRunId } from './history-state-access.ts';
@@ -80,6 +81,14 @@ type Removals = {
     readonly removedRecords: readonly string[];
     readonly removedArtifacts: readonly string[];
 };
+function replaySourceIds(): readonly string[] {
+    const replay = currentReplay();
+    if (replay === null) {
+        return [];
+    }
+    const id = replay.kind === 'record' ? replay.record.id : replay.sourceRunId;
+    return id === null ? [] : [ id ];
+}
 export function selectHistoryRemovals(
     catalog: Catalog,
     runs: string,
@@ -109,10 +118,17 @@ export function selectHistoryRemovals(
                 return value.id;
             })
     );
+    for (const id of replaySourceIds()) {
+        retainedRecords.add(id);
+    }
     const removedRecords = records.filter(function (value) {
-        return !retainedRecords.has(path.basename(value, '.json'));
+        return !retainedRecords.has(path.basename(value, '.json')) &&
+            !replaySourceIds().includes(path.basename(value, '.json'));
     });
     const removedArtifacts = artifactDirectories.filter(function expired(target) {
+        if (replaySourceIds().includes(path.basename(target))) {
+            return false;
+        }
         const value = metadata.get(path.basename(target));
         if (value === undefined) {
             throw new Error(`Missing metadata: ${target}`);

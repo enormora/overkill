@@ -1,5 +1,27 @@
 import type { Type } from 'cmd-ts';
 import type { CommandLineRunTestsRequest } from '../run/command-line.entry-point.ts';
+import { parseRunSeed } from './run-seed-parser.ts';
+import { parseRunShard } from './run-shard-parser.ts';
+
+type RunSeed = CommandLineRunTestsRequest['runRequest']['seed'];
+type RunShard = CommandLineRunTestsRequest['runRequest']['shard'];
+export const runSeedType: Type<string, RunSeed> = {
+    displayName: 'n',
+    async from(value) {
+        await Promise.resolve();
+
+        return parseRunSeed(value);
+    }
+};
+
+export const runShardType: Type<string, RunShard> = {
+    displayName: 'i/n',
+    async from(value) {
+        await Promise.resolve();
+
+        return parseRunShard(value);
+    }
+};
 
 type RunWorkers = CommandLineRunTestsRequest['runRequest']['workers'];
 

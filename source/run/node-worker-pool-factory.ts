@@ -5,7 +5,7 @@ import type {
     WorkerPoolHostProcessStarter
 } from './run-orchestrator-dependencies.ts';
 import { createHostedWorkerPool } from './worker-pool-host-process.ts';
-import { createPool } from './worker-pool-runtime.ts';
+import { createPool } from './worker-pool-creation.ts';
 
 export function createWorkerPoolWithHostProcess(
     options: WorkerPoolCreationOptions,

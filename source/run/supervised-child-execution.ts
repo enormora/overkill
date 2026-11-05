@@ -3,6 +3,7 @@ import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environm
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter } from '../engine/reporter.ts';
+import { withReplayWire } from './replay-wire.ts';
 import type { DefinedReporter, Execute } from './run-engine-primitives.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 import { createResourceLifecycleTiming, type ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
@@ -38,7 +39,10 @@ function readActiveResourceTypes(): readonly string[] {
 
 export async function createSupervisedChildExecute(
     wallClock: Clock,
-    command: Pick<SupervisedRunCommand, 'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'testFamily'>
+    command: Pick<
+        SupervisedRunCommand,
+        'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'replay' | 'testFamily'
+    >
 ): Promise<Execute> {
     let benchmarkEnvironment: BenchmarkExecutionEnvironment | null = null;
     if (command.testFamily === 'benchmark') {
@@ -49,7 +53,7 @@ export async function createSupervisedChildExecute(
             command.benchmarkNormalization
         );
     }
-    return createExecute({
+    const execute = createExecute({
         benchmarkEnvironment,
         asyncLeakDiagnostics: 'enabled',
         readActiveResourceTypes,
@@ -60,6 +64,11 @@ export async function createSupervisedChildExecute(
         }),
         wallClock
     });
+    return async function executeInReplayContext(plan, options) {
+        return await withReplayWire(command.replay, async function executeAssignment() {
+            return await execute(plan, options);
+        });
+    };
 }
 
 export function createSupervisedChildReporter(host: SupervisedChildReporterHost): DefinedReporter {

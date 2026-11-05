@@ -294,3 +294,14 @@ Witness files use the engine-owned version-1 envelope.
 returns a property or simulation witness, throwing `ZodError` for invalid
 envelopes or unsupported envelope versions. It does not decode inputs or execute
 replay. Producer-specific payload compatibility is validated separately.
+
+Simulation resources support runner witness replay through
+`withWitnessReplay(resource, restore)`. The callback receives the fresh owner
+`handle`, validated `witness`, numeric `seed: bigint | null`, and `signal`.
+Restore simulator-specific inputs before returning. The runner restores before
+projecting handles and disposes the owner normally, including on restore errors.
+Resources without this hook reject simulation witness replay.
+
+The built-in HTTP simulation restores its recorded scenario and reruns the
+current handler. Its saved transcript is diagnostic evidence. Unsupported
+payload versions, seeds, runtime snapshots, or fault configurations fail replay.

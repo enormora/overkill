@@ -1,5 +1,7 @@
 import path from 'node:path';
 import { ulid } from 'ulid';
+import { currentReplayWitness } from './replay-context.ts';
+import { currentRunRecordVersion } from './run-record-format.ts';
 import { runRecordVersions } from './run-record-versions.ts';
 import type { HistoryStorage } from './history-storage-types.ts';
 import type { RunRecord, RunRecordVersions } from './run-record-types.ts';
@@ -16,6 +18,14 @@ export type RunRecordDependencies = {
     readonly versions: RunRecordVersions;
     readonly wallClock: RunOrchestratorDependencies['wallClock'];
 };
+
+export function recordedReplayProfile(profile: ResolvedRunInput['profile']): unknown {
+    return Object.fromEntries(
+        Object.entries(profile).filter(function executionPolicy([ name ]) {
+            return name !== 'reporters';
+        })
+    );
+}
 
 export function initialRecord(
     cwd: string,
@@ -51,7 +61,10 @@ export function initialRecord(
         seed,
         startedAt: startedAt.toISOString(),
         status: 'started',
-        version: 1,
+        version: currentRunRecordVersion,
+        replayPlan: null,
+        replayWitness: currentReplayWitness(),
+        replayProfile: recordedReplayProfile(input.profile),
         versions: dependencies.versions
     };
 }

@@ -1,4 +1,5 @@
 import type { WorkId } from '../engine/identity.ts';
+import { currentReplayWire } from './replay-wire.ts';
 import { runCollectionRootFromResolvedPlan } from './collected-run-plan.ts';
 import type {
     PlacementPlan,
@@ -51,6 +52,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
+        replay: currentReplayWire(),
         benchmarkNormalization: runtime.resolvedRun.facts.benchmarkNormalization,
         benchmarkGarbageCollection: execution.benchmarkGarbageCollection,
         attachmentEndpoint: runtime.attachments?.endpoint ?? null,

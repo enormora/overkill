@@ -2,12 +2,14 @@ import { z } from 'zod/v4';
 import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { propertyPolicySchema } from '../config/property-policy.ts';
+import { replayWireSchema } from './replay-wire.ts';
 
 export const hostProcessSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('direct') }),
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
 export const executionCommandFields = {
+    replay: replayWireSchema.nullable().default(null),
     seed: z.string().regex(/^\d+$/v),
     benchmarkNormalization: benchmarkNormalizationContextSchema.nullable().default(null),
     benchmarkGarbageCollection: z.enum([ 'off', 'after-sample' ]).nullable().default(null),
@@ -72,10 +74,15 @@ export const supervisedCommandFields = {
     capture: z.enum([ 'buffered', 'live' ])
 };
 
-export const propertyCorpusSnapshotSchema = z
+const propertyCorpusEntriesSchema = z
     .strictObject({
         checkedIn: z.array(propertyWitnessSchema),
         localCache: z.array(propertyWitnessSchema),
         diagnostics: z.array(z.strictObject({ path: z.string(), reason: z.string() }))
-    })
+    });
+export const propertyCorpusSnapshotSchema = z
+    .union([
+        propertyCorpusEntriesSchema.extend({ replay: propertyWitnessSchema }),
+        propertyCorpusEntriesSchema
+    ])
     .default({ checkedIn: [], localCache: [], diagnostics: [] });

@@ -284,6 +284,9 @@ export function withResources<
     );
 }
 
+export { withWitnessReplay } from '../resources/resources.entry-point.ts';
+export type { ResourceWitnessReplay } from '../resources/resources.entry-point.ts';
+
 export { withFailureArtifacts } from '../resources/resources.entry-point.ts';
 export type {
     FailureArtifactAttachments,

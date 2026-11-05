@@ -281,12 +281,9 @@ same `RunFilter` tree. Runs use seeded ordering by default. Pass
 `RunRequest.order: 'plan'` for programmatic callers that need an already
 materialized order. `RunRequest.shard` uses one-based `{ index, total }`
 values and partitions the filtered work-unit set by stable identity hash.
-Replay execution remains a separate runner milestone. Direct
+Direct
 prebuilt `TestPlan` execution belongs to `@overkill-dev/engine` through
 `execute(testPlan)`.
-The command methods other than `runTests` and `listTests` are fixed first-party
-entrypoints and currently return argument errors until their command
-implementations land.
 
 Coverage is explicit per run. `RunRequest.coverage` defaults to `false` in
 first-party callers, and the `@overkill-dev/test` binary maps `--coverage` to
@@ -312,8 +309,8 @@ All-files reporting emits 0% when selected runtime sources were never loaded.
 Native TypeScript coverage uses Node's type stripping and preserves source
 offsets. Never-loaded TypeScript files need no generated source maps.
 A scope containing no executable sources fails, including scopes matching only
-types or no files. Native data is retained on reporting failures. Replay and
-automatic coverage cleanup await the replay and record-retention workflows.
+types or no files. Native data is retained on reporting failures. Replay restores
+the saved coverage request and resolved profile policy.
 
 Integration runs with resource or runtime wrappers also persist a `RunRecord`.
 The record starts after collection and before resource acquisition. Attachment
@@ -603,9 +600,16 @@ before runner-owned imports. Artifact-only recording starts after collection
 identifies attachment scopes, before resources or cases execute. Reusable
 collection is read-only; each execution receives a fresh record ID.
 
+Version 2 records retain a bodyless replay plan and normalized profile policy
+alongside resolved facts before execution. They preserve collection counts,
+orphan metadata, selected identities, and case controls when execution is
+interrupted. Witness replay records retain their concrete input for subsequent replay.
+Reporter callbacks come from the current configuration. Version 1
+records remain readable by history; records without replay snapshots are unavailable
+for replay.
+
 Required write failures fail the command. Completed records include reporter
-and cleanup errors; escaping exceptions leave interrupted records. History,
-retention, and replay commands are not yet available.
+and cleanup errors; escaping exceptions leave interrupted records.
 
 ## Compact history
 
@@ -690,7 +694,7 @@ Run `overkill history compact` before retrying when pruning reports a repair
 requirement. Repair preserves known case outcomes even when a run summary
 cannot be recovered.
 
-## Replay selection
+## Replay
 
 `overkill replay` opens an arrow-key picker over retained replayable records,
 including interrupted records with complete facts. Use Enter to select or
@@ -701,9 +705,33 @@ Without an ID, stdin, stdout, and stderr must be terminals. In scripts, use
 `overkill history list` to find an ID and pass `overkill replay <run-id>`.
 The picker supports `--config` and uses the configured `runtimeStateDir`.
 
-Selection delegates to the explicit-ID replay command. Recorded-run execution
-is not implemented yet, so selecting or supplying an ID currently reports
-that limitation.
+Replay binds current executable bodies to saved work identities in a fresh
+execution host. It restores the saved seed, controls, order, placement, loader,
+and profile policy without applying current discovery patterns, filters, shards,
+or duration-history scheduling. Missing cases or changed resource descriptors
+fail replay. Unavailable runtime variants are inconclusive. Empty selections
+require no source imports.
+
+Dynamic runs follow recorded split, batch, hedge, authority, and recovery
+decisions. Interrupted traces continue remaining unassigned work in saved lane
+order and emit a diagnostic. Replay writes a fresh record and preserves its
+source record. Node major differences produce a diagnostic.
+
+`orchestrator.replay({ cwd, config, signal, runId })` returns the current
+`RunnerResult`; `replayWithReporterDelivery(...)` also reports runner-error
+delivery. Pass `signal: null` when cancellation is unnecessary.
+
+`overkill replay-witness <path> --profile <name>` replays one property or
+simulation witness. The corresponding APIs are
+`orchestrator.replayWitness({ cwd, config, signal, path, profile })` and
+`replayWitnessWithReporterDelivery(...)`. The profile is required.
+
+Property witnesses evaluate the retained input once, bypassing generation,
+corpus phases, shrinking, and confirmation. Nested witnesses run the enclosing
+case normally and substitute only the named invocation. Missing, ambiguous,
+unreached, or incompatible targets fail replay. Simulation witnesses restore
+inputs through the resource's `withWitnessReplay` callback and run current
+handlers against fresh resources.
 
 ## Property corpus storage
 

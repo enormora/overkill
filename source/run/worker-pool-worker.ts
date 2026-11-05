@@ -1,4 +1,5 @@
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import { withReplayWire } from './replay-wire.ts';
 import { createWorkerExecute } from './worker-execution-engine.ts';
 import {
     prepareLocalOwnerResources,
@@ -283,7 +284,9 @@ async function runResourceOwnerTask(
     wallClock: WorkerTimingClock
 ): Promise<WorkerPoolTaskOutput> {
     if (task.kind === 'acquire-run-resources') {
-        return await acquireRunResources(task, wallClock);
+        return await withReplayWire(task.command.replay, async function restoreOwnerResources() {
+            return await acquireRunResources(task, wallClock);
+        });
     }
 
     if (task.kind === 'dispose-run-resources') {

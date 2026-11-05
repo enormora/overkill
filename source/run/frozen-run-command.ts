@@ -2,7 +2,7 @@ import type { FrozenRunCommand, RunCommand } from './run-types.ts';
 import { frozenPolicyCommand, parseFrozenMicrotestPolicy } from './frozen-run-policy.ts';
 import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
 import type { RunInvocation, RunInputResolutionDependencies } from './run-input-resolution.ts';
-import { configuredFilesRunCollectionSource, type CollectionSource } from './run-collection-source.ts';
+import { selectedRunCollectionSource, type CollectionSource } from './run-collection-source.ts';
 import { invalidRequest } from './run-errors.ts';
 import { validateRunInput } from './run-validation.ts';
 import { withFileModuleBoundary } from './file-module-boundary.ts';
@@ -15,7 +15,7 @@ function isFrozenRunCommand(command: FrozenRunCommand | RunCommand): command is 
 
 export function snapshotRunCommand(command: FrozenRunCommand | RunCommand): PreparedRunCommand {
     if (!isFrozenRunCommand(command)) {
-        return { command: { ...command }, source: configuredFilesRunCollectionSource };
+        return { command: { ...command }, source: selectedRunCollectionSource() };
     }
     const policy = parseFrozenMicrotestPolicy(command.policy);
     return {
@@ -38,7 +38,7 @@ export async function prepareRunCommand(
     dependencies: RunInputResolutionDependencies
 ): Promise<PreparedRunCommand> {
     if (!isFrozenRunCommand(command)) {
-        return { command, source: configuredFilesRunCollectionSource };
+        return { command, source: selectedRunCollectionSource() };
     }
     if (namespace !== 'test') {
         invalidRequest('Frozen microtest policy cannot execute benchmarks.');

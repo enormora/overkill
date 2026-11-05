@@ -1,4 +1,4 @@
-import { hostProcessFacts } from './run-host-process.ts';
+import { replayExecutionPlan } from './replay-context.ts';
 import type { RunFacts, RunWorkerCountFacts, RunHostProcessFacts } from './run-types.ts';
 import { createRunShardHasher, shardCollectedRunPlanCases } from './run-sharding.ts';
 import { orderedRunItems } from './run-ordering.ts';
@@ -10,6 +10,7 @@ import { constrainedScheduling, workResourceConstraints } from './work-unit-reso
 import { assertCollectedPlanCompatible } from './execution-plan-resolution.ts';
 import { resolveRunScheduling } from './run-profile-facts.ts';
 import {
+    resolveCollectedHost,
     benchmarkPlacementForCases,
     createPlacementResolution,
     type CollectedExecutionPlanInput
@@ -17,7 +18,12 @@ import {
 
 type Scheduling = RunFacts['execution']['scheduling'];
 
+type RecordedPlanningFacts = Pick<
+    RunFacts,
+    'benchmarkCalibration' | 'benchmarkHost' | 'benchmarkNormalization' | 'reproducibility'
+>;
 export type CollectedExecutionPlan = {
+    readonly recordedFacts: RecordedPlanningFacts | null;
     readonly hostProcess: RunHostProcessFacts | null;
     readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
     readonly durationHistory: WorkerPoolPlacementResolution['durationHistory'] | null;
@@ -61,22 +67,7 @@ function resolvedScheduling(
     return constrainedScheduling(resolveRunScheduling(input.request, input.profile), constraints);
 }
 
-async function resolveCollectedHost(
-    input: CollectedExecutionPlanInput,
-    cases: CollectedExecutionPlan['orderedCases']
-): Promise<RunHostProcessFacts | null> {
-    if (input.profile.execution.processModel !== 'worker-pool') {
-        return null;
-    }
-    let { hostProcess } = input.profile.execution;
-    if (input.profile.testFamily === 'benchmark') {
-        const { resolveBenchmarkGarbageCollectionHost } = await import('./benchmark-garbage-collection.ts');
-        hostProcess = resolveBenchmarkGarbageCollectionHost(hostProcess, input.profile.garbageCollection, cases);
-    }
-    return hostProcessFacts(hostProcess);
-}
-
-export async function createCollectedExecutionPlan(
+async function createCurrentCollectedExecutionPlan(
     input: CollectedExecutionPlanInput
 ): Promise<CollectedExecutionPlan> {
     if (input.planKind === 'supervised') {
@@ -94,6 +85,7 @@ export async function createCollectedExecutionPlan(
     const orderedCases = orderedCollectedCases(input, placementPlan, shardHasher);
 
     return {
+        recordedFacts: null,
         hostProcess: await resolveCollectedHost(input, orderedCases),
         benchmarkPlacement: placementResolution === null
             ? await benchmarkPlacementForCases(input, orderedCases)
@@ -104,4 +96,10 @@ export async function createCollectedExecutionPlan(
         scheduling: resolvedScheduling(input, orderedCases),
         workerCount
     };
+}
+
+export async function createCollectedExecutionPlan(
+    input: CollectedExecutionPlanInput
+): Promise<CollectedExecutionPlan> {
+    return replayExecutionPlan(input.collectedPlan) ?? await createCurrentCollectedExecutionPlan(input);
 }

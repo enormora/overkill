@@ -1,7 +1,11 @@
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
+import { recordedRunPlan } from './recorded-run-plan.ts';
+import {
+    collectedRunPlanFromTestPlan,
+    createRunResultFromCollectedPlan
+} from './collected-run-plan.ts';
 import { createRunRecordDependencies } from './run-record-input.ts';
 import { createStoredRunValue } from './supervised-run-state.ts';
-import { collectedRunPlanFromTestPlan, createRunResultFromCollectedPlan } from './collected-run-plan.ts';
 import { createRunRecordSession, type RunRecordSession } from './run-record.ts';
 import { selectProfile } from './test-profile.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -71,7 +75,7 @@ export async function createAttachmentRecord(
     if (session === null) {
         await record.start(null);
     }
-    await record.recordFacts(resolved.facts);
+    await record.recordFacts(resolved.facts, recordedRunPlan(resolved));
     const checkpoints = createAttachmentRecordCheckpoint(record, resolved, dependencies);
     return {
         captureTime() {

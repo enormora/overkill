@@ -57,6 +57,9 @@ function createRunnerDependencies(orchestrator: ConfiguredRunOrchestrator): Comm
         async createDefaultReporter() {
             return memoryReporter;
         },
+        async loadReplayCommands() {
+            throw new Error('Replay commands are not configured.');
+        },
         async loadBaselineCommands() {
             throw new Error('Baseline commands are not configured.');
         },

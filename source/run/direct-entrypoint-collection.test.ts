@@ -202,6 +202,7 @@ export const testNode = createSuite({
                 });
                 await scope.assert.rejects(async function collectInvalidConfiguredPlan() {
                     await createRunTestPlan({
+                        replay: null,
                         cwd: '/project',
                         definitionLocationCapture: 'disabled',
                         discoverRunFiles: async function discoverFile() {

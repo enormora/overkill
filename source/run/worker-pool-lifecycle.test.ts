@@ -7,7 +7,7 @@ import {
 import { workerLifecycleProbe } from '../test-support/worker-pool-lifecycle-probe.ts';
 import type { WorkerLifecycle } from '../config/types.ts';
 import type { TinypoolInstance } from './tinypool-node-compatibility.ts';
-import { createTinypoolWorkerPool } from './worker-pool-runtime.ts';
+import { createTinypoolWorkerPool } from './worker-pool-creation.ts';
 
 type WorkerLifecycleProbeResult = {
     readonly assignedUnits: number;

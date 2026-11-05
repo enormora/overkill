@@ -38,6 +38,7 @@ type RecordedPoolDependencies = {
 
 function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): WorkerPoolCommand {
     return {
+        replay: null,
         seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,

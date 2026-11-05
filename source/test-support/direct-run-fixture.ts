@@ -7,10 +7,10 @@ import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
 import { createConfigLoader, type ConfigLoader } from '../config/config.ts';
 import { directRunFacts, finalizeDirectRunResult } from '../run/run-if-main-facts.ts';
 import {
-    assertTestPlanCasesMatchProfilePolicy,
-    assertTestPlanMatchesTestFamily,
     createSeededTestPlan,
-    type OrderedSeededTestPlan
+    type OrderedSeededTestPlan,
+    assertTestPlanCasesMatchProfilePolicy,
+    assertTestPlanMatchesTestFamily
 } from '../run/run-selection.ts';
 import type { DirectEntrypointRunner } from '../run/run-operations.ts';
 
