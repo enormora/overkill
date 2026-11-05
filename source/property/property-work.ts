@@ -1,4 +1,8 @@
-import type { PropertyPolicy } from '../packages/engine/engine.entry-point.ts';
+import type {
+    PropertyPolicy,
+    PropertyInvocationSummary,
+    PropertyTrialPosition
+} from '../packages/engine/engine.entry-point.ts';
 import type { GeneratorContext } from './generator-backend.ts';
 
 const initialPhaseCounts = {
@@ -9,19 +13,17 @@ const initialPhaseCounts = {
     exhaustive: { executed: 0, rejected: 0 },
     exploration: { executed: 0, rejected: 0 },
     confirmation: { executed: 0, rejected: 0 },
-    shrinking: { executed: 0, rejected: 0 }
+    shrinking: { executed: 0, rejected: 0 },
+    witness: { executed: 0, rejected: 0 }
 };
 export type PropertyPhase = keyof typeof initialPhaseCounts;
-type PhaseCounts = { readonly executed: number; readonly rejected: number; };
-export type PropertyAccounting = {
-    readonly phases: Readonly<Record<PropertyPhase, PhaseCounts>>;
-    readonly workConsumed: number;
-};
+export type PropertyAccounting = PropertyInvocationSummary['accounting'];
 
 export type PropertyWork = {
     readonly context: GeneratorContext;
     readonly enterPhase: (phase: PropertyPhase) => void;
     readonly execute: () => void;
+    readonly phase: () => PropertyPhase;
     readonly snapshot: () => PropertyAccounting;
 };
 
@@ -41,6 +43,9 @@ export function createPropertyWork(policy: PropertyPolicy, signal: AbortSignal):
     let shrinkWork = 0;
     const phases = { ...initialPhaseCounts };
     return {
+        phase() {
+            return phase;
+        },
         context: {
             maxSize: policy.maxSize,
             maxDepth: policy.maxDepth,
@@ -80,10 +85,17 @@ export function createPropertyWork(policy: PropertyPolicy, signal: AbortSignal):
                     exhaustive: Object.freeze({ ...phases.exhaustive }),
                     confirmation: Object.freeze({ ...phases.confirmation }),
                     shrinking: Object.freeze({ ...phases.shrinking }),
+                    witness: Object.freeze({ ...phases.witness }),
                     exploration: Object.freeze({ ...phases.exploration })
                 }),
                 workConsumed
             });
         }
     };
+}
+
+export function propertyTrialPosition(work: PropertyWork): PropertyTrialPosition | null {
+    const phase = work.phase();
+    const index = work.snapshot().phases[phase].executed;
+    return index === 0 ? null : { phase, index };
 }

@@ -162,6 +162,21 @@ events; hard termination cannot guarantee child cleanup or undelivered evidence.
 Evidence distinguishes exhausted search, exhausted work, and interruption. A
 shrunk counterexample is not guaranteed to be globally minimal.
 
+## Results and diagnostics
+
+Each invocation exposes a structured summary through case results, attempt results,
+`test-end`, and awaited `property-progress` snapshots. Summaries include phase
+execution and rejection counts, total work, run and property seeds, trial positions,
+input coverage, and exhaustive traversal state. Confirmation, shrinking, and direct
+witness replay have separate counts. A discovered finite domain is not an exhausted
+traversal. Historical records without summaries expose `null`, not zero counts.
+
+Line, dot, and brief reporters print compact summaries for successful properties
+as well as failures. Coverage observations outside accepted exploration or exhaustive
+execution do not satisfy requirements. Non-reproducible failures remain failed and
+cannot supply a confirmed regression witness. Progress surrounds each trial;
+hard termination retains only snapshots already delivered.
+
 ## Current availability
 
 Construction and collection are supported. They retain generator and callback
@@ -172,8 +187,7 @@ automatic edges and new exploration. Only accepted exploration counts toward
 earlier failure stops the invocation. Work or generation exhaustion before
 required checks complete produces an inconclusive outcome.
 
-Disk-backed regression corpora are supported. Standalone witness replay and
-public phase diagnostics follow in their respective milestones. Direct engine execution requires resolved property policy;
+Disk-backed regression corpora are supported. Standalone witness replay and public phase diagnostics are supported. Direct engine execution requires resolved property policy;
 `ExecuteOptions.propertyRun` supplies its run seed and project root; omitted
 context defaults to seed zero and an unknown project root. Configured runner execution supplies the resolved run seed automatically.
 

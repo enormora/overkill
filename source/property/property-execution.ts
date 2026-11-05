@@ -1,9 +1,10 @@
 import type { PropertyInvocationEvidence } from '../engine/property-failure-evidence.ts';
 import { propertyCorpusSnapshot } from '../engine/property-execution-host.ts';
-import { propertyRegressionInputs, corpusDiagnosticObservation } from './property-regressions.ts';
+import { createPropertyReporting } from './property-reporting.ts';
+import { propertyRegressionInputs } from './property-regressions.ts';
 import { executePhases, type PropertyExecution } from './property-trial-phases.ts';
 import { shrinkPropertyFailure } from './property-shrinking.ts';
-import { invocationCoverage, coverageRequirements } from './property-coverage.ts';
+import { invocationCoverage } from './property-coverage.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
 import { createPropertyWork, propertyExhaustion } from './property-work.ts';
 import type {
@@ -33,12 +34,23 @@ async function executeAndShrink<Value>(
         checkedIn: regressionInputs(stored.checkedIn, regressions.checkedIn),
         localCache: regressionInputs(stored.localCache, regressions.localCache)
     });
+    if (result.kind === 'failed') {
+        await execution.host.recordEvidence({
+            summary: null,
+            identity: execution.identity,
+            confirmedWitness: null,
+            shrinkStatus: null,
+            original: result.observation,
+            retained: result.observation,
+            diagnostics: []
+        });
+    }
     return result.kind === 'failed'
         ? await shrinkPropertyFailure(result, execution.invocation, execution, execution.work)
         : result;
 }
 
-function createExecution<Value>(
+export function createPropertyExecution<Value>(
     invocation: NormalizedPropertyInvocation<Value>,
     context: PropertyInvocationContext
 ): PropertyExecution<Value> {
@@ -47,20 +59,9 @@ function createExecution<Value>(
         .map(function diagnostic(item) {
             return { reason: `${item.path}: ${item.reason}`, observation: null };
         });
-    const host = {
-        ...context.host,
-        async recordEvidence(evidence: PropertyInvocationEvidence) {
-            await context.host.recordEvidence({
-                ...evidence,
-                diagnostics: [ ...diagnostics, ...evidence.diagnostics ]
-            });
-        }
-    };
-    const work = createPropertyWork(host.policy, context.signal);
-    const coverage = invocationCoverage(
-        coverageRequirements(Object.hasOwn(invocation, 'coverage') ? Reflect.get(invocation, 'coverage') : []),
-        context.host.policy.maxLabels
-    );
+    const work = createPropertyWork(context.host.policy, context.signal);
+    const coverage = invocationCoverage(invocation.coverage, context.host.policy.maxLabels);
+    const reporting = createPropertyReporting(context, work, coverage, diagnostics);
     const execution: PropertyExecution<Value> = {
         regressionDiagnostics() {
             return diagnostics;
@@ -69,7 +70,7 @@ function createExecution<Value>(
             diagnostics.push(diagnostic);
         },
         ...context,
-        host,
+        ...reporting,
         invocation,
         work,
         coverage,
@@ -83,6 +84,10 @@ function createExecution<Value>(
     return execution;
 }
 
+function failureStatus(kind: string): 'failed' | 'interrupted' {
+    return kind === 'terminated' ? 'interrupted' : 'failed';
+}
+
 async function executeWithDiagnostics<Value>(
     execution: PropertyExecution<Value>,
     regressions: PropertyRegressionInputs<Value>
@@ -90,14 +95,17 @@ async function executeWithDiagnostics<Value>(
     const result = await executeAndShrink(execution, regressions);
     if (execution.regressionDiagnostics().length > 0 && result.kind !== 'failed') {
         await execution.host.recordEvidence({
+            summary: null,
             confirmedWitness: null,
             shrinkStatus: null,
             identity: execution.identity,
-            original: corpusDiagnosticObservation(),
-            retained: corpusDiagnosticObservation(),
+            original: null,
+            retained: null,
             diagnostics: []
         });
     }
+    const status = result.kind === 'failed' ? failureStatus(result.trial.kind) : result.kind;
+    await execution.publish(status, result.exhaustive);
     return result;
 }
 
@@ -106,14 +114,17 @@ export async function executeProperty<Value>(
     regressions: PropertyRegressionInputs<Value>,
     context: PropertyInvocationContext
 ): Promise<PropertyExecutionResult<Value>> {
-    const execution = createExecution(invocation, context);
+    const execution = createPropertyExecution(invocation, context);
+    await execution.publish('in-progress', null);
     try {
         return await executeWithDiagnostics(execution, regressions);
     } catch (error: unknown) {
         const exhaustion = propertyExhaustion(error);
         if (exhaustion === null) {
+            await execution.publish(context.signal.aborted ? 'interrupted' : 'execution-error', execution.exhaustive);
             throw error;
         }
+        await execution.publish(exhaustion, execution.exhaustive);
         return {
             kind: exhaustion,
             accounting: execution.work.snapshot(),

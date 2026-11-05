@@ -1,3 +1,4 @@
+import type { PropertyInvocationSummary } from '../engine/property-failure-evidence.ts';
 import { observePropertyTrial, type ObservedTrial } from './property-trial-observation.ts';
 import { enumerateDomain } from './generator-enumeration.ts';
 import type { PropertyCoverage } from './property-coverage.ts';
@@ -14,6 +15,7 @@ import type {
 } from './property-execution-result.ts';
 
 export type PropertyExecution<Value> = PropertyInvocationContext & {
+    readonly publish: (status: PropertyInvocationSummary['status'], exhaustive: number | null) => Promise<void>;
     readonly invocation: NormalizedPropertyInvocation<Value>;
     readonly work: PropertyWork;
     readonly coverage: PropertyCoverage;
@@ -65,6 +67,9 @@ async function evaluateInput<Value>(
     const observations = execution.coverage.trial(execution.phase);
     const observed = await observePropertyTrial(value, execution.invocation, {
         ...execution,
+        async afterTrial() {
+            return execution.publish('in-progress', execution.exhaustive);
+        },
         reconstruct: input,
         observations
     });
@@ -95,6 +100,7 @@ async function executePhase<Value>(
     phase: TrialPhase<Value>
 ): Promise<PropertyExecutionResult<Value> | null> {
     execution.work.enterPhase(phase.name);
+    await execution.publish('in-progress', execution.exhaustive);
 
     const inputs = boundedInputs(execution, phase);
     for (const input of inputs) {

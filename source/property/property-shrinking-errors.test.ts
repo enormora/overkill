@@ -122,7 +122,7 @@ export const testNode = suite('shrink failure paths', [
         );
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.equal(
-            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained.input),
+            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained?.input),
             JSON.stringify(serializeValue(100))
         );
         scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'unrelated-failure');
@@ -141,17 +141,19 @@ export const testNode = suite('shrink failure paths', [
         scope.assert.true(count > 0);
         scope.assert.deepEqual(
             evidence.invocations.map(function original(invocation) {
-                return invocation.original.input;
+                return invocation.original?.input;
             }),
             [ serializeValue(100) ]
         );
         scope.assert.deepEqual(
             evidence.invocations.map(function retained(invocation) {
-                return invocation.retained.input;
+                return invocation.retained?.input;
             }),
             [ serializeValue(6) ]
         );
-        scope.assert.deepEqual(formatPropertyDiagnostics(withAdapterDiagnostic(evidence)), [
+        const lines = formatPropertyDiagnostics(withAdapterDiagnostic(evidence));
+        scope.assert.includes(lines[0] ?? '', 'failed run seed=42 property seed=');
+        scope.assert.deepEqual(lines.slice(-3), [
             `Property declared-property: Unrelated failures observed during shrinking (${count})`,
             'Property declared-property: adapter diagnostic (1)',
             'Property declared-property: Shrinking exhausted the candidate search (1)'
@@ -165,13 +167,14 @@ export const testNode = suite('shrink failure paths', [
             invocations: evidence.invocations.map(function legacy(invocation) {
                 return Object.fromEntries(
                     Object.entries(invocation).filter(function historicalField([ key ]) {
-                        return key !== 'shrinkStatus';
+                        return key !== 'shrinkStatus' && key !== 'summary';
                     })
                 );
             })
         };
         const decoded = propertyEvidenceSchema.parse(historical);
         scope.assert.equal(decoded.invocations[0]?.shrinkStatus, null);
+        scope.assert.equal(decoded.invocations[0]?.summary, null);
         scope.assert.throws(function invalidStatus() {
             propertyEvidenceSchema.parse({
                 invocations: evidence.invocations.map(function malformed(invocation) {

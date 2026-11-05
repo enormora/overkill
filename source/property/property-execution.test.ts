@@ -65,7 +65,8 @@ export const testNode = suite('property trial execution', [
                 exhaustive: { executed: 0, rejected: 0 },
                 exploration: { executed: 3, rejected: 0 },
                 confirmation: { executed: 0, rejected: 0 },
-                shrinking: { executed: 0, rejected: 0 }
+                shrinking: { executed: 0, rejected: 0 },
+                witness: { executed: 0, rejected: 0 }
             } ]
         );
         return scope.assert.collect();

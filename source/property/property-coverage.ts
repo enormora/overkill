@@ -1,5 +1,8 @@
 import { z } from 'zod/v4';
-import { propertyObservationContractFailure } from '../packages/engine/engine.entry-point.ts';
+import {
+    propertyObservationContractFailure,
+    type PropertyInvocationSummary
+} from '../packages/engine/engine.entry-point.ts';
 import { propertyLabels } from './property-targets.ts';
 import type { PropertyCoverageRequirement } from './property-definition.ts';
 
@@ -25,11 +28,7 @@ const requirementsSchema = z
     })
     .readonly();
 
-export type CoverageSnapshot = {
-    readonly denominator: number;
-    readonly requirements: readonly PropertyCoverageRequirement[];
-    readonly phases: Readonly<Record<string, Readonly<Record<string, number>>>>;
-};
+export type CoverageSnapshot = PropertyInvocationSummary['coverage'];
 
 export type CoverageTrial = {
     readonly cover: (label: string, condition: boolean) => void;
@@ -53,15 +52,20 @@ function countHits(previous: ReadonlyMap<string, number>, hits: ReadonlySet<stri
     return counts;
 }
 
-function trialCoverage(observe: (label: string) => void, commit: (hits: ReadonlySet<string>) => void): CoverageTrial {
+function trialCoverage(
+    observe: (label: string) => void,
+    commit: (hits: ReadonlySet<string>, passed: boolean, labels: ReadonlySet<string>) => void
+): CoverageTrial {
     let active = true;
     const hits = new Set<string>();
+    const labels = new Set<string>();
     return {
         cover(label, condition) {
             if (!active) {
                 propertyObservationContractFailure('Property coverage observation outlived its trial.');
             }
             observe(label);
+            labels.add(label);
             const parsed = z.boolean().safeParse(condition);
             if (!parsed.success) {
                 propertyObservationContractFailure(parsed.error.message);
@@ -72,9 +76,7 @@ function trialCoverage(observe: (label: string) => void, commit: (hits: Readonly
         },
         finish(passed) {
             active = false;
-            if (passed) {
-                commit(hits);
-            }
+            commit(hits, passed, labels);
         }
     };
 }
@@ -95,6 +97,8 @@ export function createCoverage(
     observeLabel: (label: string) => void
 ): PropertyCoverage {
     const phases = new Map<string, Map<string, number>>();
+    const phaseDenominators = new Map<string, number>();
+    const eligible = new Map<string, number>();
     let denominator = 0;
     requirements.forEach(function register(entry) {
         observeLabel(entry.label);
@@ -103,16 +107,27 @@ export function createCoverage(
         trial(phase) {
             return trialCoverage(function observe(label) {
                 observeLabel(label);
-            }, function commit(hits) {
-                if ([ 'exploration', 'exhaustive' ].includes(phase)) {
+            }, function commit(hits, passed, labels) {
+                phaseDenominators.set(phase, (phaseDenominators.get(phase) ?? 0) + 1);
+                if (passed && [ 'exploration', 'exhaustive' ].includes(phase)) {
+                    hits.forEach(function countEligible(label) {
+                        eligible.set(label, (eligible.get(label) ?? 0) + 1);
+                    });
                     denominator += 1;
                 }
                 const counts = phases.get(phase) ?? new Map<string, number>();
+                labels.forEach(function observeMissing(label) {
+                    if (!counts.has(label)) {
+                        counts.set(label, 0);
+                    }
+                });
                 phases.set(phase, countHits(counts, hits));
             });
         },
         snapshot() {
             return Object.freeze({
+                phaseDenominators: Object.freeze(Object.fromEntries(phaseDenominators)),
+                eligibleHits: Object.freeze(Object.fromEntries(eligible)),
                 denominator,
                 requirements,
                 phases: Object.freeze(Object.fromEntries(
@@ -124,8 +139,7 @@ export function createCoverage(
         },
         unmet() {
             return requirements.filter(function unmet(entry) {
-                const hits = (phases.get('exploration')?.get(entry.label) ?? 0) +
-                    (phases.get('exhaustive')?.get(entry.label) ?? 0);
+                const hits = eligible.get(entry.label) ?? 0;
                 return denominator === 0 || !meetsPercentage(hits, denominator, entry.minimumPercent);
             });
         }
@@ -142,10 +156,4 @@ export function invocationCoverage(
 ): InvocationCoverage {
     const observeLabel = propertyLabels(maxLabels);
     return { ...createCoverage(requirements, observeLabel), observeLabel };
-}
-
-type ShrinkCoverage = { readonly observeLabel: (label: string) => void; readonly observations: CoverageTrial; };
-export function shrinkCoverage(maximumLabels: number): ShrinkCoverage {
-    const observeLabel = propertyLabels(maximumLabels);
-    return { observeLabel, observations: createCoverage([], observeLabel).trial('shrinking') };
 }

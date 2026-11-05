@@ -62,8 +62,8 @@ function assertDeadlineEvidence(scope: TestScope, result: RunResult): void {
     const evidence = result.perTest[0]?.property?.invocations[0];
     scope.require.defined(evidence);
     scope.assert.equal(evidence.shrinkStatus, 'interrupted');
-    scope.assert.equal(JSON.stringify(evidence.original.input), JSON.stringify(serializeValue(100)));
-    scope.assert.includes(JSON.stringify(evidence.retained.failure), 'original failure before deadline');
+    scope.assert.equal(JSON.stringify(evidence.original?.input), JSON.stringify(serializeValue(100)));
+    scope.assert.includes(JSON.stringify(evidence.retained?.failure), 'original failure before deadline');
 }
 
 export const testNode = suite('shrink lifecycle', [
@@ -72,7 +72,7 @@ export const testNode = suite('shrink lifecycle', [
         scope.assert.equal(result.summary.crashed, 1);
         assertDeadlineEvidence(scope, result);
         scope.assert.equal(
-            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained.input),
+            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained?.input),
             JSON.stringify(serializeValue(100))
         );
         scope.assert.includes(JSON.stringify(result.runnerErrors), 'hard-timeout');
@@ -111,7 +111,7 @@ export const testNode = suite('shrink lifecycle', [
             scope.assert.equal(calls, 2);
             scope.assert.equal(evidence.shrinkStatus, 'search-exhausted');
             scope.assert.equal(
-                JSON.stringify(evidence.retained.input),
+                JSON.stringify(evidence.retained?.input),
                 JSON.stringify(serializeValue([ 1 ]))
             );
             return scope.assert.collect();
@@ -141,7 +141,7 @@ export const testNode = suite('shrink lifecycle', [
         }));
         scope.assert.true(seen.length >= 2);
         scope.assert.equal(
-            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained.input),
+            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained?.input),
             JSON.stringify(serializeValue(new Map([ [ 'value', 100 ] ])))
         );
         return scope.assert.collect();
@@ -171,7 +171,7 @@ export const testNode = suite('shrink lifecycle', [
         scope.assert.deepEqual(seen, [ 100, 100, 0 ]);
         scope.assert.includes(JSON.stringify(result.perTest[0]?.outcome), 'cleanup-error');
         scope.assert.equal(
-            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained.input),
+            JSON.stringify(result.perTest[0]?.property?.invocations[0]?.retained?.input),
             JSON.stringify(serializeValue(100))
         );
         return scope.assert.collect();

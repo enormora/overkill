@@ -13,7 +13,7 @@ import { trialFailureKey, type TrialFailureKey } from './property-failure-key.ts
 import { trialTargets, type TrialTargets } from './property-targets.ts';
 import type { CoverageTrial } from './property-coverage.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
-import type { PropertyWork } from './property-work.ts';
+import { propertyTrialPosition, type PropertyWork } from './property-work.ts';
 
 export type ObservedTrial = {
     readonly trial: PropertyTrialResult;
@@ -21,6 +21,7 @@ export type ObservedTrial = {
     readonly observation: PropertyFailureObservation;
 };
 type TrialContext = {
+    readonly afterTrial: () => Promise<void>;
     readonly reconstruct: (() => unknown) | null;
     readonly host: PropertyExecutionHost;
     readonly signal: AbortSignal;
@@ -62,7 +63,6 @@ export async function observePropertyTrial<Value>(
     const tracking = { key: trialFailureKey(), targets: trialTargets(context.observeLabel), passed: false };
     try {
         const trial = await context.host.evaluateTrial(async function runCandidate(scope) {
-            context.work.execute();
             return await invocation.test(value, {
                 ...scope,
                 failureKey: tracking.key.set,
@@ -76,6 +76,7 @@ export async function observePropertyTrial<Value>(
             trial,
             key: failureKey,
             observation: {
+                trial: propertyTrialPosition(context.work),
                 capture: failureInput(trial, capture),
                 input: preview,
                 failure: propertyTrialEvidence(trial, failureKey)
@@ -83,5 +84,6 @@ export async function observePropertyTrial<Value>(
         };
     } finally {
         finishTrial(context, tracking.key, tracking.targets, tracking.passed);
+        await context.afterTrial();
     }
 }

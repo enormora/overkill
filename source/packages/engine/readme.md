@@ -280,3 +280,8 @@ Witness files use the engine-owned version-1 envelope.
 returns a property or simulation witness, throwing `ZodError` for invalid
 envelopes or unsupported envelope versions. It does not decode inputs or execute
 replay. Producer-specific payload compatibility is validated separately.
+
+Property invocation evidence includes a nullable `summary` with phase accounting,
+seeds, input coverage, and exhaustive traversal state. `original` and `retained`
+observations are jointly present or jointly null. Progress snapshots use the same
+shape as final case and attempt results; historical summaries may be unavailable.

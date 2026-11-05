@@ -104,6 +104,7 @@ function assertRunCapturedOutput(
 
 function propertyCheckpoint(): PropertyCaseEvidence {
     const observation: PropertyFailureObservation = {
+        trial: null,
         capture: { kind: 'unavailable' },
         input: serializeValue(100),
         failure: serializeValue('original failure')
@@ -114,6 +115,7 @@ function propertyCheckpoint(): PropertyCaseEvidence {
             original: observation,
             retained: observation,
             diagnostics: [],
+            summary: null,
             confirmedWitness: null,
             shrinkStatus: 'in-progress'
         } ]
