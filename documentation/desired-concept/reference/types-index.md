@@ -1980,11 +1980,28 @@ type TestRetryPolicy = { readonly maxAttempts: number; };
 type RetryArtifactPolicy = 'first-failure-and-final' | 'last-failure-and-final' | 'all';
 type IntegrationRetryPolicy = TestRetryPolicy & { readonly artifacts: RetryArtifactPolicy; };
 type PropertyPhase = (readonly [
-    'checked-in-corpus', 'local-cache', 'examples', 'automatic-edges', 'exhaustive', 'exploration', 'confirmation', 'shrinking', 'witness'
+    'checked-in-corpus',
+    'local-cache',
+    'examples',
+    'automatic-edges',
+    'exhaustive',
+    'exploration',
+    'confirmation',
+    'shrinking',
+    'witness'
 ])[number];
 type PropertyTrialPosition = { readonly phase: PropertyPhase; readonly index: number; };
 type PropertyInvocationSummary = {
-    readonly status: (readonly ['in-progress', 'completed', 'failed', 'coverage-unmet', 'generation-exhausted', 'work-exhausted', 'execution-error', 'interrupted'])[number];
+    readonly status: (readonly [
+        'in-progress',
+        'completed',
+        'failed',
+        'coverage-unmet',
+        'generation-exhausted',
+        'work-exhausted',
+        'execution-error',
+        'interrupted'
+    ])[number];
     readonly trial: PropertyTrialPosition | null;
     readonly runSeed: string;
     readonly propertySeed: string;
@@ -2009,9 +2026,15 @@ type PropertyInvocationSummary = {
 };
 
 type PropertyShrinkStatus = (readonly [
-    'in-progress', 'search-exhausted', 'work-exhausted', 'non-reproducible',
-    'interrupted', 'execution-error', 'shrinking-disabled',
-    'failure-identity-unavailable', 'shrink-state-unavailable'
+    'in-progress',
+    'search-exhausted',
+    'work-exhausted',
+    'non-reproducible',
+    'interrupted',
+    'execution-error',
+    'shrinking-disabled',
+    'failure-identity-unavailable',
+    'shrink-state-unavailable'
 ])[number];
 
 type PropertyFailureObservation = {
