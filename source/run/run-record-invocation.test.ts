@@ -95,6 +95,26 @@ async function assertRecordedRun(scope: TestScope, scenario: RecordingScenario):
     });
 }
 
+function assertReplayPlanSnapshot(scope: TestScope, fixture: CoverageRecordFixture): void {
+    const started = fixture.records[0];
+    const frozen = fixture.records[1];
+    scope.require.defined(started);
+    scope.require.defined(frozen);
+    scope.assert.equal(started.replayPlan, null);
+    scope.assert.deepEqual({ version: frozen.version, status: frozen.status, result: frozen.result }, {
+        version: 2,
+        status: 'started',
+        result: null
+    });
+    scope.require.defined(frozen.replayPlan);
+    scope.assert.deepEqual({
+        defined: frozen.replayPlan.defined,
+        planned: frozen.replayPlan.files[0]?.cases.length,
+        file: frozen.replayPlan.discoveredFiles[0]?.file
+    }, { defined: 2, planned: 1, file: passingFile });
+    scope.assert.deepEqual<unknown, unknown>(fixture.records.at(-1)?.replayPlan, frozen.replayPlan);
+}
+
 export const testNode = suite('ordinary and reusable recording invocations', [
     test('profile-required recording persists without an explicit request', async function (scope: TestScope) {
         const profile = config.profiles.microtest;
@@ -135,6 +155,14 @@ export const testNode = suite('ordinary and reusable recording invocations', [
                 await orchestrator.run({ ...command, config: invalid });
             }, { message: 'Invalid run record persistence policy.' });
             scope.assert.equal(fixture.records.length, 0);
+        });
+        return scope.assert.collect();
+    }),
+    test('persists the replay plan before any result exists', async function (scope: TestScope) {
+        await withCoverageRecordFixture(config, [], async function execute(fixture) {
+            const { command, orchestrator } = recordedInvocation(fixture);
+            await orchestrator.run(command);
+            assertReplayPlanSnapshot(scope, fixture);
         });
         return scope.assert.collect();
     }),

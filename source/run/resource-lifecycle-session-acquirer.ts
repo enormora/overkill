@@ -1,5 +1,4 @@
 import { workIdentityKey, type AttemptId } from '../engine/identity.ts';
-import { runWithResourceFailureContext } from '../attachments/resource-failure-context.ts';
 import type {
     AnyResourceDefinition,
     ResourceContext,
@@ -8,9 +7,10 @@ import type {
 } from '../resources/resources.ts';
 import {
     sourceResourceDefinition,
-    acquisitionResourceScenarioBindings,
     exposeResourceHandle
 } from '../resources/resource-scenario-binding.ts';
+import { acquireManagedResourceHandle } from './resource-handle-acquisition.ts';
+import { replayAcquiredResource, replayResourceDefinition } from './replay-resource.ts';
 import {
     caseResourceBoundaryKeys,
     boundaryFor,
@@ -18,7 +18,6 @@ import {
     type LifecycleBoundary
 } from './resource-lifecycle-boundaries.ts';
 import { resourceWrapperLifecycleError, resourceWrapperErrorFromUnknown } from './resource-lifecycle-error.ts';
-import { acquireResourceWithStartupBudget } from './resource-lifecycle-startup-budget.ts';
 import {
     deserializeProjectedHandle,
     projectedHandle,
@@ -26,7 +25,6 @@ import {
     type ResourceProjectionRecords
 } from './resource-lifecycle-projection.ts';
 import {
-    acquireOwnedResource,
     currentLifecycleAttempt,
     currentAttachmentExecution,
     type ManagedLifecycleState,
@@ -229,6 +227,20 @@ export function createManagedResourceAcquirer(
         return Object.freeze(context);
     }
 
+    async function restoreAcquiredResource(
+        record: ManagedResourceRecord,
+        signal: AbortSignal
+    ): Promise<ManagedResourceRecord> {
+        stores.rememberRecord(record.boundary.key, record);
+        await replayAcquiredResource(record.descriptor, record.ownerHandle, signal);
+        const exposed = {
+            ...record,
+            consumerHandle: projectedHandle(record.descriptor, record.ownerHandle, record.dependencyContext)
+        };
+        stores.rememberRecord(record.boundary.key, exposed);
+        return exposed;
+    }
+
     async function startResource(
         resource: AnyResourceDefinition,
         boundary: LifecycleBoundary,
@@ -247,50 +259,25 @@ export function createManagedResourceAcquirer(
                 });
             await currentAttachmentExecution()?.registerResourceConsumers(boundary.key, consumers);
         }
-        const acquireHandle = async function acquireResourceHandle(): Promise<unknown> {
-            const condition = resource.scope === 'per-case'
-                ? {
-                    kind: 'attempt' as const,
-                    work: testCase.workId,
-                    attempt: currentLifecycleAttempt() ?? { index: 0 }
-                }
-                : { kind: 'resource' as const, resource: resource.name, boundary: boundary.key };
-            return await runWithResourceFailureContext(
-                { name: resource.name, condition },
-                async function acquireWithFailureCapture(attachments) {
-                    return await acquireResourceWithStartupBudget(resource, {
-                        attachments,
-                        dependencies: dependencyContext,
-                        scenarios: acquisitionResourceScenarioBindings(resource),
-                        signal,
-                        workload: null
-                    });
-                }
-            );
-        };
-        const observeHandle = async function acquireObservedHandle(): Promise<unknown> {
-            return options.timing === null
-                ? await acquireHandle()
-                : await options.timing.measure({
-                    phase: 'acquire',
-                    resource: { name: resource.name, scope: resource.scope },
-                    signal
-                }, acquireHandle);
-        };
-        const acquisition = await acquireOwnedResource(observeHandle);
+        const acquisition = await acquireManagedResourceHandle({
+            resource,
+            boundary,
+            testCase,
+            signal,
+            dependencies: dependencyContext,
+            timing: options.timing
+        });
         const record = {
             releaseOwner: acquisition.releaseOwner,
             boundary,
             dependencyContext,
             descriptor: resource,
             external: false,
-            consumerHandle: projectedHandle(resource, acquisition.value, dependencyContext),
+            consumerHandle: acquisition.value,
             ownerHandle: acquisition.value
         };
 
-        stores.rememberRecord(boundary.key, record);
-
-        return record;
+        return await restoreAcquiredResource(record, signal);
     }
 
     async function startExternalResource(
@@ -343,10 +330,11 @@ export function createManagedResourceAcquirer(
     }
 
     async function acquire(
-        resource: AnyResourceDefinition,
+        requestedResource: AnyResourceDefinition,
         testCase: TestPlanCase,
         signal: AbortSignal
     ): Promise<ManagedResourceRecord> {
+        const resource = replayResourceDefinition(requestedResource);
         const boundary = boundaryFor(resource, testCase);
         const existingRecord = stores.existingRecord(boundary.key);
 
@@ -364,9 +352,8 @@ export function createManagedResourceAcquirer(
             return externalRecord;
         }
 
-        const existingAcquisition = await stores.existingAcquisition(boundary.key);
-
-        return existingAcquisition ?? await acquireNewResource(resource, boundary, testCase, signal);
+        return await stores.existingAcquisition(boundary.key) ??
+            await acquireNewResource(resource, boundary, testCase, signal);
     }
 
     acquireResource = acquire;

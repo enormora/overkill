@@ -1,3 +1,4 @@
+import { replayPlacementPlan } from './replay-context.ts';
 import type {
     ReporterEvent,
     ProcessUsageSnapshot,
@@ -30,15 +31,12 @@ import type {
 } from './run-orchestrator-dependencies.ts';
 import { createReporterDelivery, createReporterEventQueue, type ReporterEventQueue } from './supervised-run-runtime.ts';
 import { createStoredRunValue, type StoredRunValue, type SupervisedRunState } from './supervised-run-state.ts';
-import { loadTinypoolConstructor, type TinypoolInstance } from './tinypool-node-compatibility.ts';
-import { workerPoolEntryPointUrl } from './worker-pool-worker.ts';
 import { createRoutedPool, type WorkerPoolRoute } from './worker-pool-routing.ts';
 import {
     emptyTimingSpanMetadata,
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
 
-const Tinypool = loadTinypoolConstructor();
 const workerPoolRunResourceOwnerLane = 'run-resource-owner';
 
 export type WorkerPoolCollectionResult = {
@@ -159,41 +157,13 @@ type WorkerPoolExecutionPool = {
     readonly pool: CreatedWorkerPool;
 };
 
-export const workerPoolEntryPoint = workerPoolEntryPointUrl;
-
 export function runStartTimeFromMilliseconds(milliseconds: number): string {
     const startedAt = new Date(milliseconds);
 
     return startedAt.toISOString();
 }
 
-type TinypoolWorkerPoolOptions = WorkerPoolCreationOptions & {
-    readonly filename: string;
-};
-
 type WorkerPoolExecutionFacts = Extract<RunExecutionFacts, { readonly processModel: 'worker-pool'; }>;
-
-function isolateWorkers(options: TinypoolWorkerPoolOptions): boolean {
-    return options.workerLifecycle === 'fresh-worker-per-unit';
-}
-
-export function createTinypoolWorkerPool(options: TinypoolWorkerPoolOptions): TinypoolInstance {
-    return new Tinypool({
-        concurrentTasksPerWorker: 1,
-        filename: options.filename,
-        isolateWorkers: isolateWorkers(options),
-        maxThreads: options.workerCount,
-        minThreads: options.workerCount,
-        runtime: 'worker_threads'
-    });
-}
-
-export function createPool(options: WorkerPoolCreationOptions): TinypoolInstance {
-    return createTinypoolWorkerPool({
-        ...options,
-        filename: workerPoolEntryPoint
-    });
-}
 
 function copiedHostProcess(execution: WorkerPoolExecutionFacts): WorkerPoolCreationOptions['hostProcess'] {
     return execution.hostProcess.kind === 'direct'
@@ -443,7 +413,7 @@ function createExecutionPool(input: WorkerPoolRuntimeInput, placementPlan: Place
 }
 
 function createPoolProcessUsageTracker(
-    pool: TinypoolInstance,
+    pool: CreatedWorkerPool,
     resolvedRun: ResolvedRun,
     dependencies: RunOrchestratorDependencies
 ): WorkerPoolProcessUsageTracker | null {
@@ -468,7 +438,7 @@ export function workerPoolPlacementPlan(resolvedRun: ResolvedRun): PlacementPlan
         throw new Error('Worker-pool execution requires a placement plan.');
     }
 
-    return placementPlan;
+    return replayPlacementPlan(resolvedRun, placementPlan);
 }
 
 export async function createWorkerPoolRuntime(

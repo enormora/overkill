@@ -11,6 +11,7 @@ import {
 } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
 import {
+    recordedRunId,
     assertCompletedRunRecord,
     assertPackagedFilters,
     assertResourcesPackageRootExport,
@@ -71,32 +72,6 @@ const throwsOnImportSmokeFile = 'throws-on-import-smoke.test.mjs';
 const customAuthoringFolder = 'testing';
 const customAuthoringFacadeFile = path.join(customAuthoringFolder, 'custom-authoring.mjs');
 const customAuthoringSmokeFile = 'custom-authoring-smoke.test.mjs';
-async function readPackageJson(packageFolder: string): Promise<PackageJson> {
-    return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
-}
-
-function isBinMap(value: unknown): value is Readonly<Record<string, string>> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isPackageExportsMap(value: unknown): value is Readonly<Record<string, unknown>> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-async function readPackageExports(
-    packageFolder: string,
-    packageName: string
-): Promise<Readonly<Record<string, unknown>>> {
-    const packageJson = await readPackageJson(packageFolder);
-    const packageExports = packageJson.exports;
-
-    if (!isPackageExportsMap(packageExports)) {
-        throw new Error(`Expected ${packageName} exports map.`);
-    }
-
-    return packageExports;
-}
-
 async function collectStream(stream: Readable): Promise<string> {
     return await new Promise(function collect(resolve, reject) {
         const chunks: Buffer[] = [];
@@ -133,6 +108,39 @@ async function spawnCommand(command: string, args: readonly string[]): Promise<S
 
 async function spawnNode(args: readonly string[]): Promise<SpawnOutput> {
     return await spawnCommand(process.execPath, args);
+}
+
+async function assertPackagedReplay(scope: TestScope): Promise<void> {
+    const id = await recordedRunId(packageSmokeFolder, authoringSmokeFile);
+    const result = await spawnNode([ overkillBinEntryPointPath, 'replay', id ]);
+    scope.assert.equal(result.code, 0);
+    scope.assert.equal(result.stderr, '');
+    scope.assert.equal(result.stdout, '');
+}
+async function readPackageJson(packageFolder: string): Promise<PackageJson> {
+    return JSON.parse(await fs.readFile(path.join(packageFolder, 'package.json'), 'utf8')) as PackageJson;
+}
+
+function isBinMap(value: unknown): value is Readonly<Record<string, string>> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPackageExportsMap(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function readPackageExports(
+    packageFolder: string,
+    packageName: string
+): Promise<Readonly<Record<string, unknown>>> {
+    const packageJson = await readPackageJson(packageFolder);
+    const packageExports = packageJson.exports;
+
+    if (!isPackageExportsMap(packageExports)) {
+        throw new Error(`Expected ${packageName} exports map.`);
+    }
+
+    return packageExports;
 }
 
 function assertLineReporterVariants(scope: TestScope): void {
@@ -471,6 +479,7 @@ export const testNode = createSuite({
                 scope.assert.equal(result.stdout, '');
 
                 await assertCompletedRunRecord(scope, packageSmokeFolder, authoringSmokeFile);
+                await assertPackagedReplay(scope);
                 return scope.assert.collect();
             }
         }),

@@ -1,4 +1,5 @@
 import type { ConfigLoader } from '../config/config.ts';
+import { withReplay } from './replay-context.ts';
 import { preparePropertyReplay } from './property-replay-command.ts';
 import { createCommandLineConfig, type CommandLineConfigDependencies } from './command-line-config.ts';
 import {
@@ -31,12 +32,15 @@ export async function replayWitnessFromCommandLine(
         const config = await createCommandLineConfig(loaded, {
             cwd: request.cwd,
             configPath: request.configPath,
-            runRequest: prepared.request
+            runRequest: prepared.command.request
         }, dependencies);
-        const { result, undeliveredRunnerErrors } = await dependencies.orchestrator.runWithReporterDelivery({
-            ...prepared,
-            config
-        });
+        const { result, undeliveredRunnerErrors } = await withReplay(
+            prepared.replay,
+            null,
+            async function executeWitnessReplay() {
+                return await dependencies.orchestrator.runWithReporterDelivery({ ...prepared.command, config });
+            }
+        );
         return {
             exitCode: readExitCodeFromRunResult(result),
             runResult: result,

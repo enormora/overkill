@@ -9,6 +9,7 @@ import { createRunResultFromCollectedPlan, emptyRunPlanStatus, collectedWorkload
 import type { RunRuntimeAttachments, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
+    replayUsesLocalProcessPolicy,
     createSupervisedHardTimeout,
     kill,
     type SupervisedChildHardTimeout,
@@ -325,6 +326,9 @@ function handleChildSample(sample: ProcessUsageSnapshot, runtime: SupervisedRunR
         return;
     }
 
+    if (replayUsesLocalProcessPolicy(runtime.resolvedRun)) {
+        return;
+    }
     const breach = findProcessBudgetBreach(
         runtime.resolvedRun.facts.execution.processUsagePolicy.budgets,
         sample,

@@ -92,7 +92,7 @@ async function assertCoverageArtifacts(
             if (directory === undefined) {
                 throw new Error('Supervised coverage must expose a raw directory.');
             }
-            await record.recordFacts(fixture.facts);
+            await record.recordFacts(fixture.facts, null);
             await writeNativeCoverage(directory);
             return await record.checkpointResult(
                 await session.finalize(runResultFactory
@@ -164,7 +164,7 @@ export const testNode = createSuite({
                                 session.childProcess?.writablePath.endsWith(`${record.id}/coverage/raw/*`),
                                 true
                             );
-                            await record.recordFacts(fixture.facts);
+                            await record.recordFacts(fixture.facts, null);
                             return await record.checkpointResult(
                                 runResultFactory.build({
                                     summary: { discovered: 1, defined: 1, planned: 1, passed: 1 }

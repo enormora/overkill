@@ -184,3 +184,6 @@ export type { WorkloadInput, WorkloadParameters } from '../../engine/workload-in
 export { createWorkloadResourceBinding, resourceWorkloadIdentity } from '../../resources/resource-workload-binding.ts';
 export type { WorkloadResourceBinding } from '../../resources/resource-workload-binding.ts';
 export { bindRuntimeWorkload } from '../../resources/runtime-workload-binding.ts';
+
+export { withWitnessReplay } from '../../resources/witness-replay.ts';
+export type { ResourceWitnessReplay } from '../../resources/witness-replay.ts';

@@ -15,7 +15,6 @@ export function createBenchmarkOrchestrator(dependencies: RunOrchestratorDepende
             return await runBenchmarkBaselineVerb({ command, operations: benchmark, options, verb });
         };
     }
-
     return {
         calibrate: calibration.runWithReporterDelivery,
         baseline: {

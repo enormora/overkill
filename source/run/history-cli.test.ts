@@ -62,7 +62,7 @@ export const testNode = suite('history CLI', [
                 cwd
             });
             scope.assert.equal(explicit.code, 3);
-            scope.assert.includes(explicit.stderr, 'with 1 arguments is not implemented yet');
+            scope.assert.includes(explicit.stderr, 'custom.js');
             const extra = await execute(process.execPath, [ binary, 'replay', 'a', 'b' ], { cwd });
             scope.assert.equal(extra.code, 3);
             const invalid = await execute(process.execPath, [ binary, 'replay', '--yes' ], { cwd });

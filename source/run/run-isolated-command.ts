@@ -11,7 +11,7 @@ import type {
     SupervisedRunCommand
 } from './supervised-protocol.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';
-import { runCollectionRoot, type CollectionSource } from './run-collection-source.ts';
+import { runCollectionContext, type CollectionSource } from './run-collection-source.ts';
 
 type RunOrchestratorDependencies = LocalTestPlanInput['dependencies'];
 
@@ -24,6 +24,7 @@ type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'ins
 type SupervisedCommandBase = {
     readonly benchmarkNormalization: SupervisedRunCommand['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: SupervisedRunCommand['benchmarkGarbageCollection'];
+    readonly replay: SupervisedRunCommand['replay'];
     readonly seed: string;
     readonly propertyPolicy: SupervisedRunCommand['propertyPolicy'];
     readonly retryPolicy: SupervisedRunCommand['retryPolicy'];
@@ -134,7 +135,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         paths: resolvedPaths(input.files),
         processBudgets: processUsagePolicy.budgets,
         processUsageSamplingIntervalMilliseconds: processUsagePolicy.samplingIntervalMilliseconds,
-        root: runCollectionRoot(input.source, input.command.cwd),
+        ...runCollectionContext(input.source, input.command.cwd),
         scheduling: resolveRunScheduling(input.command.request, input.profile),
         testFamily: input.profile.testFamily,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
@@ -224,7 +225,7 @@ export function createWorkerPoolCommand(
         paths: resolvedPaths(input.files),
         processBudgets: processUsagePolicy.budgets,
         processUsageSamplingIntervalMilliseconds: processUsagePolicy.samplingIntervalMilliseconds,
-        root: runCollectionRoot(input.source, input.command.cwd),
+        ...runCollectionContext(input.source, input.command.cwd),
         scheduling: input.profile.execution.scheduling,
         testFamily: input.profile.testFamily,
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds,

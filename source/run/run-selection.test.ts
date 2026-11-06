@@ -33,10 +33,10 @@ import {
 } from './run-selection-filters.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import {
-    assertCollectedRunPlanMatchesTestFamily,
-    assertTestPlanMatchesTestFamily,
     selectedCollectedRunPlan,
-    selectedTestPlan
+    selectedTestPlan,
+    assertCollectedRunPlanMatchesTestFamily,
+    assertTestPlanMatchesTestFamily
 } from './run-selection.ts';
 import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 

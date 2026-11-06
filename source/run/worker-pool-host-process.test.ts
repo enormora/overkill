@@ -65,6 +65,7 @@ function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): 
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        replay: null,
         seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,

@@ -1,4 +1,8 @@
+import { currentRunRecordVersion } from '../run/run-record-format.ts';
+import { recordedReplayProfile } from '../run/run-record-input.ts';
 import type { HistoryRecord } from '../run/history-record.ts';
+import { deterministicCollectedRunPlan } from './deterministic-run-fixtures.ts';
+import { defaultMicrotestProfile } from './run-command-factory.ts';
 
 export const historyWork = {
     case: { file: 'test.ts', params: null, suite: [], title: 'example' },
@@ -12,7 +16,11 @@ export function completedHistoryRecord(id: string): Extract<HistoryRecord, { rea
     return {
         id,
         kind: 'single',
-        version: 1,
+        version: currentRunRecordVersion,
+        replayPlan: deterministicCollectedRunPlan('test.ts'),
+        replayProfile: recordedReplayProfile(
+            defaultMicrotestProfile({ execution: { processModel: 'in-process', scheduling: 'serial' } })
+        ),
         status: 'completed',
         startedAt: historyTimestamp,
         request: { profile: 'unit' },

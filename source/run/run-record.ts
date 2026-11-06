@@ -1,11 +1,13 @@
 import path from 'node:path';
 import type { RunResult } from '../engine/run-result.ts';
+import { recordedRunPlan } from './recorded-run-plan.ts';
+import { currentRunRecordVersion } from './run-record-format.ts';
 import { updateCompactHistory } from './history-storage.ts';
 import { createRunRecordStorage } from './run-record-storage.ts';
 import type { RunRecord, RunRecordCoverage } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { initialRecord, type RunRecordDependencies } from './run-record-input.ts';
-import type { RunFacts, RunnerResult } from './run-types.ts';
+import type { RunFacts, RunnerResult, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 
 export type RunRecordSession = {
     readonly complete: (result: RunResult) => Promise<RunnerResult>;
@@ -14,7 +16,8 @@ export type RunRecordSession = {
     readonly interrupt: (error: unknown) => Promise<void>;
     readonly path: string;
     readonly retainPlacementTrace: (trace: RunRecord['placementTrace']) => void;
-    readonly recordFacts: (facts: RunFacts) => Promise<void>;
+    readonly recordResolvedRun: (run: ResolvedRun) => Promise<void>;
+    readonly recordFacts: (facts: RunFacts, replayPlan: CollectedRunPlan | null) => Promise<void>;
     readonly start: (coverage: RunRecordCoverage | null) => Promise<void>;
 };
 
@@ -30,7 +33,11 @@ export function createRunRecordSession(
         async write(recordPath, content) {
             await dependencies.store.write(recordPath, content);
             const now = new Date(dependencies.wallClock.currentUnixEpochMilliseconds);
-            await updateCompactHistory(dependencies.history, storage.current(), {
+            await updateCompactHistory(dependencies.history, {
+                replayPlan: null,
+                replayProfile: null,
+                ...storage.current()
+            }, {
                 directory,
                 policy: input.config.history,
                 now: now.toISOString(),
@@ -51,7 +58,10 @@ export function createRunRecordSession(
             await release?.();
         }
     }
-    return {
+    const session: RunRecordSession = {
+        async recordResolvedRun(run) {
+            await session.recordFacts(run.facts, recordedRunPlan(run));
+        },
         async checkpointResult(result) {
             return await storage.result(result, 'started', { placementTrace });
         },
@@ -77,9 +87,13 @@ export function createRunRecordSession(
         retainPlacementTrace(trace) {
             placementTrace = trace;
         },
-        async recordFacts(facts) {
+        async recordFacts(facts, replayPlan) {
             await storage.persist({
                 ...storage.current(),
+                version: currentRunRecordVersion,
+                replayPlan,
+                replayWitness: value.version === currentRunRecordVersion ? value.replayWitness : null,
+                replayProfile: value.version === currentRunRecordVersion ? value.replayProfile : null,
                 facts,
                 identities: facts.cases.map(function workIdentity(test) {
                     return test.workId;
@@ -98,6 +112,7 @@ export function createRunRecordSession(
             }
         }
     };
+    return session;
 }
 
 export async function interruptRunRecord(record: RunRecordSession, error: unknown): Promise<never> {

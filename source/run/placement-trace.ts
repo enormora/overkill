@@ -211,3 +211,10 @@ export function createPlacementTraceRecorder(): PlacementTraceRecorder {
 export function traceUnitKey(unit: TraceWorkUnitId): string {
     return JSON.stringify(unit);
 }
+
+export function isDynamicWorkUnitId(unit: TraceWorkUnitId): unit is DynamicWorkUnitId {
+    return Object.hasOwn(unit, 'parent');
+}
+export function parentWorkUnitId(unit: TraceWorkUnitId): WorkUnitId {
+    return isDynamicWorkUnitId(unit) ? unit.parent : unit;
+}

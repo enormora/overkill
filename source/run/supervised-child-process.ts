@@ -1,5 +1,6 @@
 import { dirname, join } from 'node:path';
 import type { Clock } from '@enormora/clock';
+import { currentReplay } from './replay-context.ts';
 import { startChildShutdown } from './child-process-shutdown.ts';
 import type { RuntimeCapabilityPolicyEnvironment } from './capability-policy-snapshots.ts';
 import { childRoleArgument, supervisedChildRole } from './child-process-roles.ts';
@@ -70,6 +71,9 @@ type SupervisedHardTimeoutRuntime = {
     readonly terminalFailure: StoredRunValue<boolean>;
 };
 
+export function replayUsesLocalProcessPolicy(run: ResolvedRun): boolean {
+    return run.facts.execution.processModel === 'in-process' && currentReplay() !== null;
+}
 export function createSupervisedHardTimeout(
     runtime: SupervisedHardTimeoutRuntime
 ): SupervisedChildHardTimeout {
@@ -83,6 +87,9 @@ export function createSupervisedHardTimeout(
             }
         },
         start() {
+            if (replayUsesLocalProcessPolicy(runtime.resolvedRun)) {
+                return;
+            }
             if (hardTimeout !== null) {
                 runtime.dependencies.wallClock.clearTimeout(hardTimeout);
                 hardTimeout = null;

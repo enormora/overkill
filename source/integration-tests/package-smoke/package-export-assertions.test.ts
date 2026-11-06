@@ -198,3 +198,23 @@ export async function assertCompletedRunRecord(scope: TestScope, directory: stri
         return parsed.success && parsed.data.request.paths.includes(file);
     }));
 }
+
+export async function recordedRunId(directory: string, file: string): Promise<string> {
+    const folder = path.join(directory, '.overkill', 'runs');
+    const entries = await readdir(folder);
+    const schema = completedRecordSchema.extend({ id: z.string().min(1) });
+    const names = entries
+        .filter(function json(name) {
+            return name.endsWith('.json');
+        })
+        .toSorted(function newest(left, right) {
+            return right.localeCompare(left);
+        });
+    for (const name of names) {
+        const parsed = schema.safeParse(JSON.parse(await readFile(path.join(folder, name), 'utf8')));
+        if (parsed.success && parsed.data.request.paths.includes(file)) {
+            return parsed.data.id;
+        }
+    }
+    throw new Error('Expected a completed recorded run.');
+}

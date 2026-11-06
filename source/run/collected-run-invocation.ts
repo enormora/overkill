@@ -1,3 +1,4 @@
+import { recordedRunPlan } from './recorded-run-plan.ts';
 import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
 import { executeCollectedPlan } from './collected-run-execution.ts';
 import type { CollectedInvocationPlan, CollectedRunContext } from './collected-run-planning.ts';
@@ -16,7 +17,7 @@ export async function executeCollectedInvocation(
             command: { ...context.command, request: plan.resolved.request },
             dependencies,
             async execute({ record, session }) {
-                await record.recordFacts(plan.resolved.facts);
+                await record.recordFacts(plan.resolved.facts, recordedRunPlan(plan.resolved));
                 return await executeCollectedPlan(
                     context,
                     plan,
@@ -45,7 +46,7 @@ export async function executeCollectedInvocation(
         },
         dependencies,
         async function executeRecordedInvocation(record) {
-            await record?.recordFacts(plan.resolved.facts);
+            await record?.recordFacts(plan.resolved.facts, recordedRunPlan(plan.resolved));
             return await executeCollectedPlan(
                 context,
                 plan,

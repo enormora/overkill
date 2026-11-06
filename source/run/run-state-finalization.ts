@@ -1,4 +1,5 @@
 import type { RunResult } from '../engine/run-result.ts';
+import { currentReplay } from './replay-context.ts';
 import type { ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { persistPropertyCorpus } from './property-corpus-execution.ts';
@@ -39,5 +40,8 @@ export async function readRunDurationHistory(
     projectRoot: string,
     runtimeStateDir: string
 ): ReturnType<typeof readDurationHistoryIndex> {
+    if (currentReplay()?.kind === 'record') {
+        return null;
+    }
     return await readDurationHistoryIndex(dependencies.runtimeStateStore, projectRoot, runtimeStateDir);
 }

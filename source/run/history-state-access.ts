@@ -1,8 +1,9 @@
-import { readdir, lstat, realpath, rm } from 'node:fs/promises';
+import { readFile, readdir, lstat, realpath, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { hostname } from 'node:os';
 import lockfile from 'proper-lockfile';
 import { z } from 'zod';
+import { historyRecordSchema } from './history-record.ts';
 import {
     checkHistoryMaintenanceBudget,
     historyMaintenanceDiagnostics,
@@ -66,12 +67,31 @@ async function existingStatus(target: string): Promise<Awaited<ReturnType<typeof
     }
 }
 export type DetailedRecordState = 'available' | 'pruned' | 'unavailable';
+function recordCompatibility(content: string): DetailedRecordState {
+    const decoded = historyRecordSchema.safeParse(JSON.parse(content));
+    if (!decoded.success) {
+        return 'unavailable';
+    }
+    const record = decoded.data;
+    return record.version !== 1 && record.replayPlan !== null && record.replayProfile !== null && record.facts !== null
+        ? 'available'
+        : 'unavailable';
+}
+
+async function compatibleRecordState(filePath: string): Promise<DetailedRecordState> {
+    try {
+        return recordCompatibility(await readFile(filePath, 'utf8'));
+    } catch {
+        return 'unavailable';
+    }
+}
+
 export async function detailedRecordState(filePath: string): Promise<DetailedRecordState> {
     const status = await existingStatus(filePath);
     if (status === null) {
         return 'pruned';
     }
-    return status.isFile() ? 'available' : 'unavailable';
+    return status.isFile() ? await compatibleRecordState(filePath) : 'unavailable';
 }
 async function assertNotLinked(target: string): Promise<void> {
     const status = await existingStatus(target);

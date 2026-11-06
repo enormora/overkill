@@ -1,6 +1,10 @@
 import type { AssertAssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import type { PropertyWitnessFile } from './witness-file.ts';
-import { emptyPropertyCorpus, type PropertyCorpusSnapshot } from './property-corpus.ts';
+import {
+    emptyPropertyCorpus,
+    propertyReplayWitness as corpusReplayWitness,
+    type PropertyCorpusSnapshot
+} from './property-corpus.ts';
 import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
 import type { ExecutedBody } from './body-result.ts';
 import type { WorkId } from './identity.ts';
@@ -32,10 +36,6 @@ function hasPropertyReplay(context: PropertyRunContext): context is PropertyRunS
     return Object.hasOwn(context, 'replay');
 }
 
-export function propertyReplayWitness(context: PropertyRunContext): PropertyWitnessFile | null {
-    return hasPropertyReplay(context) ? context.replay : null;
-}
-
 type PropertyRunSeed = { readonly seed: bigint; readonly projectRoot: string | null; };
 type StoredPropertyRun = PropertyRunSeed & { readonly corpus: PropertyCorpusSnapshot; };
 type ReplayPropertyRun = StoredPropertyRun & { readonly replay: PropertyWitnessFile; };
@@ -47,6 +47,10 @@ function hasPropertyCorpus(
 }
 export function propertyCorpusSnapshot(context: PropertyRunContext): PropertyCorpusSnapshot {
     return hasPropertyCorpus(context) ? context.corpus : emptyPropertyCorpus;
+}
+
+export function propertyReplayWitness(context: PropertyRunContext): PropertyWitnessFile | null {
+    return hasPropertyReplay(context) ? context.replay : corpusReplayWitness(propertyCorpusSnapshot(context));
 }
 
 export type PropertyExecutionHost = PropertyRunContext & {

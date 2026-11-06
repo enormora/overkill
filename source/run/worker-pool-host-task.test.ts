@@ -41,6 +41,7 @@ function workId(): TestWorkId {
 
 function command(): WorkerPoolCommand {
     return {
+        replay: null,
         seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,

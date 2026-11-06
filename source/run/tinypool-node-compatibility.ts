@@ -26,7 +26,10 @@ type TinypoolOptions = {
     readonly runtime: 'worker_threads';
 };
 
+type TinypoolWorker = { readonly once: (event: 'exit', listener: () => void) => unknown; };
+
 export type TinypoolInstance = {
+    readonly threads: readonly TinypoolWorker[];
     readonly createProcessUsageTracker?: (options: ProcessUsageTrackerOptions) => RunProcessUsageTracker;
     readonly destroy: () => Promise<void>;
     readonly options: TinypoolFilledOptions;

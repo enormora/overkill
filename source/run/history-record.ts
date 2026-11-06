@@ -1,6 +1,8 @@
 import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
 import { workIdSchema } from '../engine/identity-schema.ts';
+import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
+import { currentRunRecordVersion } from './run-record-format.ts';
 import { verdictSchema } from './run-artifact-schema.ts';
 
 const family = z.enum([ 'microtest', 'integration', 'benchmark', 'property' ]);
@@ -35,7 +37,9 @@ const result = z.object({
         .readonly()
 });
 const fields = {
-    version: z.literal(1),
+    version: z.union([ z.literal(1), z.literal(currentRunRecordVersion) ]),
+    replayPlan: collectedRunPlanSchema.nullable().default(null),
+    replayProfile: z.unknown().default(null),
     kind: z.literal('single'),
     id: z.string().min(1),
     startedAt: z.iso.datetime({ offset: true }),

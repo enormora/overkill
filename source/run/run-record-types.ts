@@ -1,11 +1,13 @@
 import type { Except } from 'type-fest';
+import type { WitnessFile } from '../engine/witness-file.ts';
 import type { RuntimeId, WorkId } from '../engine/identity.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type { CoveragePolicy, LoaderConfig, ProfileConfig } from '../config/types.ts';
+import type { currentRunRecordVersion } from './run-record-format.ts';
 import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
-import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest } from './run-types.ts';
+import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest, CollectedRunPlan } from './run-types.ts';
 
 export type RunRecordCoverage = {
     readonly directory: string;
@@ -58,15 +60,22 @@ type RunRecordInputs = {
     readonly runtime: ResolvedRuntime | null;
     readonly seed: string;
     readonly startedAt: string;
-    readonly version: 1;
+
     readonly versions: RunRecordVersions;
 };
 
-type CompletedRunRecord = RunRecordInputs & {
+type RunRecordFormat = { readonly version: 1; } | {
+    readonly version: typeof currentRunRecordVersion;
+    readonly replayPlan: CollectedRunPlan | null;
+    readonly replayProfile: unknown;
+    readonly replayWitness: WitnessFile | null;
+};
+
+type CompletedRunRecord = RunRecordFormat & RunRecordInputs & {
     readonly result: RunRecordResult;
     readonly status: 'completed';
 };
-type StartedRunRecord = RunRecordInputs & {
+type StartedRunRecord = RunRecordFormat & RunRecordInputs & {
     readonly result: RunRecordResult | null;
     readonly status: 'interrupted' | 'started';
 };

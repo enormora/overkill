@@ -1,4 +1,5 @@
 import { createBenchmarkOrchestrator } from './benchmark-orchestrator.ts';
+import { createReplayOperations } from './replay-operations.ts';
 import { createDirectEntrypointRunner, createRunOperations, type DirectEntrypointRunner } from './run-operations.ts';
 import { freezeRunPolicy } from './freeze-run-policy.ts';
 import { initializeRun } from './initialized-run.ts';
@@ -8,17 +9,7 @@ import type { RunOrchestrator } from './run-orchestrator-types.ts';
 
 function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOrchestrator {
     return {
-        async replayWitness(command, options) {
-            const { createPropertyReplayOperations } = await import('./property-replay-command.ts');
-            return await createPropertyReplayOperations(dependencies).replayWitness(command, options);
-        },
-        async replayWitnessWithReporterDelivery(command, options) {
-            const { createPropertyReplayOperations } = await import('./property-replay-command.ts');
-            return await createPropertyReplayOperations(dependencies).replayWitnessWithReporterDelivery(
-                command,
-                options
-            );
-        },
+        ...createReplayOperations(dependencies),
         createExecutionSession(options) {
             return createExecutionSession(options, dependencies);
         },

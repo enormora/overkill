@@ -1,4 +1,4 @@
-import type { ReplayWitnessOperations } from './witness-replay-request.ts';
+import type { ReplayOperations } from './replay-types.ts';
 import type {
     RunCommand,
     FrozenRunCommand,
@@ -11,7 +11,7 @@ import type {
 } from './run-types.ts';
 import type { RunExecutionSession } from './execution-session-types.ts';
 
-export type RunOrchestrator = RunOperations<FrozenRunCommand | RunCommand> & ReplayWitnessOperations & {
+export type RunOrchestrator = RunOperations<FrozenRunCommand | RunCommand> & ReplayOperations & {
     readonly createExecutionSession: (options: RunExecutionSessionOptions) => RunExecutionSession;
     readonly bench: BenchmarkOrchestrator;
     readonly freezePolicy: (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>;

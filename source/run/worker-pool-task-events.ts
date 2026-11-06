@@ -410,3 +410,41 @@ export function handleWorkerMessage(
         handleTaskMessage(message, taskRun, runtime);
     }
 }
+
+type TaskAttempt = WorkerPoolTaskRun['members'][number]['attempt'];
+function batchAttempts(taskRun: WorkerPoolTaskRun): readonly [TaskAttempt, ...TaskAttempt[]] {
+    const [ first, ...rest ] = taskRun.members;
+
+    return [
+        first.attempt,
+        ...rest.map(function toAttempt(member) {
+            return member.attempt;
+        })
+    ];
+}
+
+export function recordBatchStarted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
+    const envelopeId = taskRun.envelopeId.read();
+
+    if (envelopeId !== null) {
+        workerPoolPlacementTrace(runtime).recordDecision({
+            attempts: batchAttempts(taskRun),
+            envelopeId,
+            kind: 'batch-started',
+            lane: taskRun.lane
+        });
+    }
+}
+
+export function recordBatchCompleted(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRuntime): void {
+    const envelopeId = taskRun.envelopeId.read();
+
+    if (envelopeId !== null) {
+        workerPoolPlacementTrace(runtime).recordDecision({
+            attempts: batchAttempts(taskRun),
+            envelopeId,
+            kind: 'batch-completed',
+            lane: taskRun.lane
+        });
+    }
+}

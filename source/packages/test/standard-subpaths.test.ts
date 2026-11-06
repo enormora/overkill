@@ -144,7 +144,8 @@ function assertResourcesSubpathExports(scope: TestScope): void {
         'withFailureArtifacts',
         'withResource',
         'withResources',
-        'withRuntime'
+        'withRuntime',
+        'withWitnessReplay'
     ]);
     scope.assert.equal(typeof resourcesSubpath.startRuntime, 'function');
 }

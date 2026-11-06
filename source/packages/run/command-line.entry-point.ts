@@ -17,6 +17,11 @@ export {
 } from './config.entry-point.ts';
 
 const commandLoaders = {
+    async loadReplayCommands() {
+        const { createReplayCommands } = await import('../../run/replay-commands.ts');
+        const { orchestrator } = await import('../../run/run-orchestrator.entry-point.ts');
+        return createReplayCommands(loadConfig, orchestrator);
+    },
     loadConfig,
     loadBaselineCommands: loadUnimplementedBaselineCommands,
     async loadBenchmarkCommands() {

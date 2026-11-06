@@ -122,6 +122,26 @@ try {
         assert.deepEqual(nested.runnerErrors, []);
         assert.equal(nested.summary.passed, 1);
     }
+    const replaySource = 'import {createTestCase} from '+JSON.stringify(engine)+';'+
+        'export const testNode=createTestCase({annotations:{},controls:{},definitionLocations:[{kind:"unknown"}],'+
+        'title:"replay source",body(scope){scope.assert.true(true);return scope.assert.collect();}});';
+    await writeFile(join(cwd, 'replay.test.mjs'), replaySource);
+    const replayCommand = {...command,request:{...command.request,paths:['replay.test.mjs']}};
+    const recorded = await orchestrator.run(replayCommand);
+    assert.equal(recorded.summary.passed, 1);
+    const replayRecordFile = (await readdir(recordsPath)).filter(file => file.endsWith('.json')).sort().at(-1);
+    const replayRecordText = await readFile(join(recordsPath, replayRecordFile), 'utf8');
+    const replayRecord = JSON.parse(replayRecordText);
+    await writeFile(join(cwd, 'replay.test.mjs'), replaySource.replace('assert.true(true)', 'assert.true(false)'));
+    const replayed = await orchestrator.replayWithReporterDelivery({
+        cwd,config:command.config,signal:null,runId:replayRecord.id
+    });
+    assert.equal(replayed.result.summary.failed, 1, JSON.stringify(replayed.result));
+    assert.deepEqual(replayed.undeliveredRunnerErrors, []);
+    assert.equal(await readFile(join(recordsPath, replayRecordFile), 'utf8'), replayRecordText);
+    assert.equal(typeof orchestrator.replayWitness, 'function');
+    const {withWitnessReplay} = await import('@overkill-dev/resources');
+    assert.equal(typeof withWitnessReplay, 'function');
     process.stdout.write('packaged collected lifecycle passed\\n');
 } finally {
     await rm(cwd, {recursive: true, force: true});
@@ -132,7 +152,7 @@ async function executeLifecycleScript(): Promise<string> {
     return new Promise(function launchConsumer(resolve, reject) {
         execFile(process.execPath, [ '--input-type=module', '--eval', lifecycleScript ], {
             cwd: import.meta.dirname,
-            timeout: 10_000
+            timeout: 30_000
         }, function collectOutput(error, stdout) {
             if (error instanceof Error) {
                 reject(error);

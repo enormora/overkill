@@ -59,7 +59,10 @@ it is an optimization, not the required cross-CI baseline.
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
-    readonly version: 1;
+    readonly version: 2;
+    readonly replayPlan: CollectedRunPlan | null;
+    readonly replayProfile: unknown;
+    readonly replayWitness: WitnessFile | null;
     readonly cwd: string;
     readonly request: RunRecordRequest;
     readonly engine: RunExecutionFacts['engine'];
@@ -395,8 +398,9 @@ reference-workload units for budgets.
 executes the same plan:
 
 - restores the seed
-- restores the selection (no re-collection from disk; the recorded
-  identity set is used directly)
+- imports only recorded source modules to bind current bodies to saved work
+  identities; current discovery patterns, filters, shards, and placement
+  planning do not select new work
 - restores runtime identities where local runtimes are
   available; reports inconclusive for runtimes not available
 - restores the execution strategy
@@ -409,7 +413,18 @@ Replay of dynamic scheduling is trace-led. It does not try to reproduce the
 same wall-clock straggler timing and then hope the scheduler makes the same
 choices. The recorded trace restores the dynamic choices themselves: split
 parentage, batch envelopes, hedged duplicates, authoritative completions,
-discarded duplicates, reassignment, and conflict evidence.
+discarded duplicates, reassignment, and conflict evidence. Current outcomes are
+compared using recorded authority, even when completion timing changes.
+
+An interrupted trace is a prefix. Remaining unassigned work follows the saved
+unit and lane order, without new adaptive scheduling decisions, and replay emits
+a diagnostic. Empty selections require no source imports.
+
+Replay writes a fresh record and leaves the source record intact.
+Version 2 snapshots contain bodyless collection metadata and normalized profile
+policy without reporter callbacks. Witness replay records retain the concrete
+witness input for subsequent recorded-run replay. Version 1 records remain inspectable; missing
+replay metadata is a compatibility error. Reporter callbacks use current config.
 
 Limitations:
 
@@ -423,9 +438,9 @@ Limitations:
 
 For first-class property tests and deterministic-simulation tests, a witness
 can reproduce family-owned inputs without a complete run record.
-`overkill replay-witness <path>` loads the
+`overkill replay-witness <path> --profile <name>` loads the
 witness JSON and replays a first-class property body with the stored input,
-without generation or shrinking. Advanced nested `scope.forall` witnesses
+without generation, corpus phases, shrinking, or confirmation. Advanced nested `scope.forall` witnesses
 execute the enclosing case normally and substitute the target input only;
 missing, ambiguous, or unreached targets are replay errors. The command reports
 the current outcome when source code has changed.
@@ -433,6 +448,13 @@ the current outcome when source code has changed.
 Nested property witnesses reproduce only the target input; they do not
 promise to freeze surrounding executions, corpus contents, or captured state.
 Use complete run recording when reproducing that enclosing run is necessary.
+
+Simulation witnesses select one owning resource and restore through
+`withWitnessReplay(resource, restore)` before projecting its fresh handle. The
+callback receives the witness, a signed `bigint | null` seed, and cancellation
+signal. Disposal follows normal ownership rules, including restore failures.
+The built-in HTTP adapter restores scenarios and reruns the current handler;
+transcripts are diagnostics. Unsupported producer inputs fail replay.
 
 For the witness schema and versioning rules, see
 [Failure Artifacts § Witnesses And Replay Artifacts](../authoring/failure-artifacts.md#witnesses-and-replay-artifacts).

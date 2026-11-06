@@ -47,7 +47,7 @@ export async function createLocalRunResult(
                     options.input,
                     options.source
                 );
-                await options.record?.recordFacts(resolved.facts);
+                await options.record?.recordFacts(resolved.facts, resolved.replayPlan);
                 return resolved.run;
             }
         );

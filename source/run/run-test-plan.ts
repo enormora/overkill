@@ -1,5 +1,5 @@
 import type { Engine } from '../engine/engine.ts';
-import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { bindWireReplayPlan } from './replay-wire.ts';
 import { resolveTestPlanPropertyPolicy } from './property-collection.ts';
 import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import {
@@ -13,7 +13,8 @@ import type {
     RunCollectionSource,
     RunCollectionRoot,
     RunTestFamily,
-    RunFacts
+    RunFacts,
+    ReplayWire
 } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
@@ -24,6 +25,7 @@ type TestPlan = ReturnType<Engine['createTestPlan']>;
 export type RunTestPlanCollectionSource = RunCollectionSource;
 
 export type RunTestPlanInput = {
+    readonly replay: ReplayWire | null;
     readonly cwd: string;
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly discoverRunFiles: RunDiscovery['discoverRunFiles'];
@@ -38,7 +40,7 @@ export type RunTestPlanFromFilesInput = {
     readonly cwd: string;
     readonly definitionLocationCapture: DefinitionLocationCapture;
     readonly engine: Engine;
-    readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
+    readonly files: readonly [DiscoveredRunFile, ...readonly DiscoveredRunFile[]];
     readonly loadRunTestModules: RunTestModuleLoader;
     readonly root: RunCollectionRoot;
     readonly testFamily: RunTestFamily;
@@ -80,7 +82,7 @@ async function createRunTestPlanFromDiscoveredFiles(input: RunTestPlanFromFilesI
 export async function createRunTestPlan(input: RunTestPlanInput): Promise<TestPlan> {
     const files = await input.discoverRunFiles({ cwd: input.cwd, paths: input.paths, profileFiles: null });
 
-    return await createRunTestPlanFromDiscoveredFiles({
+    const plan = await createRunTestPlanFromDiscoveredFiles({
         cwd: input.cwd,
         definitionLocationCapture: input.definitionLocationCapture,
         engine: input.engine,
@@ -89,22 +91,31 @@ export async function createRunTestPlan(input: RunTestPlanInput): Promise<TestPl
         root: input.root,
         testFamily: input.testFamily
     });
+    return bindWireReplayPlan(plan, input.replay);
 }
 
 export async function createRunTestPlanFromFiles(input: RunTestPlanFromFilesInput): Promise<TestPlan> {
     return await createRunTestPlanFromDiscoveredFiles(input);
 }
 
-type TestPlanCollectionPolicy = {
+type CollectionPolicy = {
     readonly testFamily: RunTestFamily;
     readonly propertyPolicy: RunFacts['execution']['propertyPolicy'];
     readonly timeoutMilliseconds: number;
 };
 
+type CollectionReplayPolicy = CollectionPolicy & { readonly replay: ReplayWire | null; };
+function hasReplayPolicy(policy: CollectionPolicy): policy is CollectionReplayPolicy {
+    return Object.hasOwn(policy, 'replay');
+}
+
 export function resolveTestPlanCollectionPolicy(
     testPlan: TestPlan,
-    policy: TestPlanCollectionPolicy
+    policy: CollectionPolicy | CollectionReplayPolicy
 ): TestPlan {
+    if (hasReplayPolicy(policy) && policy.replay?.kind === 'record') {
+        return testPlan;
+    }
     assertTestPlanMatchesTestFamily(testPlan, policy.testFamily);
     if (policy.testFamily !== 'property') {
         return testPlan;

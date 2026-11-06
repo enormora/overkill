@@ -56,7 +56,7 @@ const simulationWitnessSchema = z
     })
     .readonly();
 export type SimulationWitnessFile = z.output<typeof simulationWitnessSchema>;
-const witnessFileSchema = z.union([ propertyWitnessSchema, simulationWitnessSchema ]);
+export const witnessFileSchema = z.union([ propertyWitnessSchema, simulationWitnessSchema ]);
 export type WitnessFile = PropertyWitnessFile | SimulationWitnessFile;
 
 export function parseWitnessFile(value: unknown): WitnessFile {

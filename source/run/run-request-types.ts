@@ -1,3 +1,4 @@
+import type { WitnessFile } from '../engine/witness-file.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { Engine } from '../engine/engine.ts';
 import type { CaseId, WorkId } from '../engine/identity.ts';
@@ -112,6 +113,15 @@ export type RunHistoryRequest = {
     readonly lastFailed: boolean;
 };
 
+export type RecordedRunSource<Plan> = {
+    readonly kind: 'record';
+    readonly plan: Plan;
+    readonly witness: WitnessFile | null;
+} | {
+    readonly kind: 'witness';
+    readonly witness: WitnessFile;
+    readonly moduleGraph: 'current' | 'fresh';
+};
 type RunHostProcessReasonKey = {
     readonly 'benchmark-isolation': true;
     readonly debugging: true;

@@ -1696,7 +1696,19 @@ type RunExecutionSession = {
     readonly dispose: () => Promise<void>;
 };
 
+type ReplayContext = {
+    readonly cwd: string;
+    readonly config: NormalizedConfig;
+    readonly signal: Readonly<AbortSignal> | null;
+};
+type ReplayRunCommand = ReplayContext & { readonly runId: string; };
+type ReplayWitnessInput = ReplayContext & { readonly path: string; readonly profile: string; };
+
 declare const orchestrator: {
+    readonly replay: (command: ReplayRunCommand) => Promise<RunnerResult>;
+    readonly replayWithReporterDelivery: (command: ReplayRunCommand) => Promise<RunReporterDeliveryResult>;
+    readonly replayWitness: (command: ReplayWitnessInput) => Promise<RunnerResult>;
+    readonly replayWitnessWithReporterDelivery: (command: ReplayWitnessInput) => Promise<RunReporterDeliveryResult>;
     readonly createExecutionSession: (options: RunExecutionSessionOptions) => RunExecutionSession;
 };
 

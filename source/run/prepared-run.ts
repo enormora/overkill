@@ -1,10 +1,9 @@
+import { replayEmptySelection } from './replay-empty-selection.ts';
 import type { PreparedBenchmarkRun } from './benchmark-baseline-preparation.ts';
-import type { CollectionSource as RunCollectionSource } from './run-collection-source.ts';
 import type { ResolvedRunInput, RunInvocation } from './run-input-resolution.ts';
-import { runIsolatedProcessCommand } from './run-isolated-process.ts';
+import { runIsolatedProcessCommand, type IsolatedRunOptions } from './run-isolated-process.ts';
 import { runLocalCommand } from './run-local-command.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunRecordSession } from './run-record.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import type { RunCommand } from './run-types.ts';
 
@@ -28,11 +27,11 @@ async function prepareRun(
 }
 
 type PreparedExecution = {
-    readonly record: RunRecordSession | null;
+    readonly record: IsolatedRunOptions['record'];
+    readonly source: IsolatedRunOptions['source'];
+    readonly timing: RunTimingMeasurement;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
-    readonly source: RunCollectionSource;
-    readonly timing: RunTimingMeasurement;
     readonly signal: Readonly<AbortSignal> | null;
 };
 
@@ -43,6 +42,10 @@ async function executePreparedRun(prepared: PreparedBenchmarkRun, options: Prepa
         ...dependencies,
         reporterDispatcher: baseline.reporterDispatcher
     };
+    const emptyReplay = replayEmptySelection({ ...options, input });
+    if (emptyReplay !== null) {
+        return await emptyReplay;
+    }
     const isolatedResult = runIsolatedProcessCommand(resolvedCommand, executionDependencies, {
         baseline,
         record: options.record,

@@ -1,4 +1,5 @@
 import type { ConfigLoader } from '../config/config.ts';
+import type { ReplayCommands } from './replay-commands.ts';
 import type { CorpusCommands } from './corpus-commands.ts';
 import type {
     HistoryCommands,
@@ -10,6 +11,7 @@ import type {
 
 export type CommandLineCommandLoaders = {
     readonly loadConfig: ConfigLoader;
+    readonly loadReplayCommands: () => Promise<ReplayCommands>;
     readonly loadBaselineCommands: () => Promise<CommandLineBaselineCommands>;
     readonly loadBenchmarkCommands: () => Promise<CommandLineBenchmarkCommands>;
 };
@@ -18,6 +20,7 @@ export type CommandLineCommandNamespace = {
     readonly corpus: CorpusCommands;
     readonly history: HistoryCommands;
     readonly replayRun: CommandLineCommand;
+    readonly replayWitness: CommandLineCommand;
     readonly baseline: CommandLineBaselineCommands;
     readonly bench: CommandLineBenchmarkCommands;
 };
@@ -92,13 +95,17 @@ export function createCommandLineCommandNamespace(loaders: CommandLineCommandLoa
         history: createHistoryRoutes(loaders.loadConfig),
         async replayRun(context) {
             const { createReplayCommand, replayTerminal } = await import('./replay-command.ts');
-            const { createUnimplementedCommand } = await import('./command-line-unimplemented-commands.ts');
+            const commands = await loaders.loadReplayCommands();
             return await createReplayCommand({
                 loadConfig: loaders.loadConfig,
                 isTerminal: replayTerminal.isTerminal,
                 pickRun: replayTerminal.pickRun,
-                replayRecordedRun: createUnimplementedCommand('replay')
+                replayRecordedRun: commands.replayRun
             })(context);
+        },
+        async replayWitness(context) {
+            const commands = await loaders.loadReplayCommands();
+            return await commands.replayWitness(context);
         },
         baseline: {
             apply: routeBaselineCommand(loaders.loadBaselineCommands, function selectApplyCommand(commands) {

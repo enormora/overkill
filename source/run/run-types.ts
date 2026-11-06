@@ -19,8 +19,8 @@ import type {
     MicrotestProfileConfig,
     NormalizedConfig,
     ProcessBudgets,
-    ProcessModel,
     ProcessUsagePolicy,
+    ProcessModel,
     RunOrder,
     RunRecordPersistenceFacts,
     Scheduling,
@@ -39,6 +39,7 @@ import type {
     SerializedValue as SerializedValueShape
 } from '../assertion-protocol/assertion-node-shape.ts';
 import type {
+    RecordedRunSource,
     RunHistoryRequest,
     RunHostProcessReason as RunHostProcessReasonDefinition,
     RunEngineSelection,
@@ -529,20 +530,16 @@ export type FrozenRunCommand = {
     readonly reporting: Pick<NormalizedConfig, 'outputRenderer' | 'reporters'>;
 };
 
-export type ConfiguredFilesRunCollectionSource = {
-    readonly kind: 'configured-files';
-};
-
 export type DirectEntrypointRunCollectionSource = {
     readonly kind: 'direct-entrypoint';
     readonly root: RunCollectionRoot;
     readonly testNode: Parameters<Engine['createTestPlanFromTestFiles']>[0]['files'][number]['testNode'];
 };
 
-export type RunCollectionSource = ConfiguredFilesRunCollectionSource | DirectEntrypointRunCollectionSource | {
+export type RunCollectionSource = DirectEntrypointRunCollectionSource | { readonly kind: 'configured-files'; } | {
     readonly kind: 'frozen-policy';
     readonly policy: FrozenMicrotestPolicy;
-};
+} | { readonly kind: 'replay'; readonly replay: ReplayWire; };
 
 export type RunSelection = SelectedCases;
 
@@ -561,3 +558,5 @@ export type RunExecutionSessionOptions = {
     readonly lifecycle: RunExecutionLifecycleReference;
     readonly environment: 'fresh-invocation' | 'profile-default';
 };
+
+export type ReplayWire = RecordedRunSource<CollectedRunPlan>;

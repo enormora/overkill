@@ -62,7 +62,7 @@ async function resolveCoverageLocalRun(resolution: CoverageLocalResolution): Pro
     if (isRunResult(resolved)) {
         return resolved;
     }
-    await resolution.record.recordFacts(resolved.facts);
+    await resolution.record.recordFacts(resolved.facts, resolved.replayPlan);
     return resolved.run;
 }
 
