@@ -2559,6 +2559,29 @@ declare function withProperties(
     body: (scope: PropertyCaseScope) => AssertionResult | Promise<AssertionResult>,
     settings: PropertySettings
 ): TestBody;
+type RelationObservation<Input, Output> = {
+    readonly input: Input;
+    readonly output: Output;
+};
+
+type RelationObservations<Input, Output> = {
+    readonly original: RelationObservation<Input, Output>;
+    readonly transformed: RelationObservation<Input, Output>;
+};
+
+type RelationDefinition<Input, Output> = {
+    readonly transform: (input: Input) => Input | Promise<Input>;
+    readonly run: (input: Input, sample: PropertySampleScope) => Output | Promise<Output>;
+    readonly check: (
+        observations: RelationObservations<Input, Output>,
+        sample: PropertySampleScope
+    ) => AssertionResult | Promise<AssertionResult>;
+};
+
+declare function relation<Input, Output>(
+    definition: RelationDefinition<Input, Output>
+): PropertyBody<Input>;
+
 declare function sampleGenerator<Value>(
     generator: Generator<Value>,
     request: GeneratorSampleRequest
@@ -3087,7 +3110,7 @@ sample explicitly defines them.
   illustrative `saveUser` example
 - `arbitrary.user`, `arbitrary.bytes`, `gen.user`: placeholder generator
   references in property-test snippets
-- `relation`, `differential`, `linearizability`, `browserBenchmark`:
+- `differential`, `linearizability`, `browserBenchmark`:
   settled helper names for higher-layer families; owning
   documentation defines the package home and concept-level semantics, but
   this index does not own their full signatures

@@ -1593,3 +1593,26 @@ regenerating through the original generator to preserve its domain.
 `maxRetainedInputs` bounds per-label champions and `maxWork` bounds search work.
 Failing to improve a score never invalidates completed passing trials; required
 coverage remains a separate condition.
+
+### Generator Preview And Relation Contract
+
+Preview requires a bigint seed and nonnegative safe-integer count, size, and depth.
+A standalone preview uses a fixed 10,000-unit work budget and an independent,
+versioned random stream. It returns exactly count samples in a shallow-frozen
+array or throws RangeError on domain or work exhaustion. Zero count evaluates no
+callbacks. Repeated values are valid. Callback errors propagate unchanged.
+Preview executes no property bodies, codecs, corpus replay, or shrinking.
+Work bounds cover traversal and reconstruction, not arbitrary callback code or
+mapped output allocations.
+
+`relation({ transform, run, check })` returns a PropertyBody for property or
+nested forall use. All callbacks may be asynchronous. Execution awaits transform,
+run on the original input, run on the transformed input, then check, sequentially.
+Run and check receive the property-local sample scope. Cancellation is checked
+before each callback; cleanup follows normal trial lifecycle.
+
+Check receives original and transformed observations, each containing its actual
+input and output after execution. No cloning occurs; authors provide independent
+branches when mutation requires isolation. Shrinking and replay retain the original
+input and recompute the relation. Existing property machinery owns settings,
+examples, coverage, codecs, witnesses, errors, and the single assertion boundary.

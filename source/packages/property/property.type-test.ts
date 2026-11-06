@@ -153,3 +153,32 @@ describe('property authoring types', function () {
         expect<() => number>().type.not.toBeAssignableTo<leaf.Generator<number>>();
     });
 });
+
+describe('preview and relation types', function () {
+    test('shares exports and infers relation inputs and asynchronous outputs', function () {
+        expect<typeof standard.relation>().type.toBe<typeof leaf.relation>();
+        expect<typeof standard.sampleGenerator>().type.toBe<typeof leaf.sampleGenerator>();
+        expect(leaf.sampleGenerator(numberGenerator, { seed: 42n, count: 2, size: 3, depth: 0 }))
+            .type
+            .toBe<readonly number[]>();
+        leaf.property({
+            title: 'typed relation',
+            generator: numberGenerator,
+            test: leaf.relation({
+                transform(value) {
+                    return -value;
+                },
+                async run(value) {
+                    await Promise.resolve();
+                    return String(value);
+                },
+                check({ original }, sample) {
+                    expect(original.input).type.toBe<number>();
+                    expect(original.output).type.toBe<string>();
+                    sample.assert.equal(original.output, '1');
+                    return sample.assert.collect();
+                }
+            })
+        });
+    });
+});

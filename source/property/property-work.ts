@@ -37,7 +37,10 @@ export function propertyExhaustion(error: unknown): 'generation-exhausted' | 'wo
     return error === domainExhausted ? 'generation-exhausted' : null;
 }
 
-export function createPropertyWork(policy: PropertyPolicy, signal: AbortSignal): PropertyWork {
+export function createPropertyWork(
+    policy: Pick<PropertyPolicy, 'maxDepth' | 'maxShrinkWork' | 'maxSize' | 'maxWork'>,
+    signal: AbortSignal
+): PropertyWork {
     let phase: PropertyPhase = 'checked-in-corpus';
     let workConsumed = 0;
     let shrinkWork = 0;

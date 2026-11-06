@@ -8,10 +8,18 @@ import { suite, test, defineMacro } from '@overkill-dev/test';
 import * as leaf from '@overkill-dev/property';
 import * as standard from '@overkill-dev/test/property';
 
+assert.deepEqual(leaf.sampleGenerator(standard.gen.constant(7), {seed: 42n, count: 2, size: 3, depth: 0}), [7, 7]);
+assert.equal(typeof standard.relation({
+    transform: Number, run: Number, check() { throw new Error('deferred'); }
+}), 'function');
 function rejectExecution() { throw new Error('Authoring evaluated a callback.'); }
 const generator = leaf.gen.constant(null).map(rejectExecution);
-assert.deepEqual(Object.keys(leaf).sort(), ['defineCodec', 'gen', 'property', 'withProperties']);
-assert.deepEqual(Object.keys(standard).sort(), ['defineCodec', 'gen', 'property', 'withProperties']);
+assert.deepEqual(Object.keys(leaf).sort(), [
+    'defineCodec', 'gen', 'property', 'relation', 'sampleGenerator', 'withProperties'
+]);
+assert.deepEqual(Object.keys(standard).sort(), [
+    'defineCodec', 'gen', 'property', 'relation', 'sampleGenerator', 'withProperties'
+]);
 const leafBackend = new URL('../../property/generator.js', import.meta.resolve('@overkill-dev/property'));
 const { prepareGenerator: leafCompiler } = await import(leafBackend);
 const standardManifest = findPackageJSON('@overkill-dev/property', import.meta.resolve('@overkill-dev/test/property'));
@@ -114,7 +122,9 @@ const property = await import('@overkill-dev/test/property');
 const { test } = await import('@overkill-dev/test');
 const node = test('nested', property.withProperties(() => { throw new Error('Body executed during authoring.'); }));
 assert.equal(node.kind, 'test');
-assert.deepEqual(Object.keys(property).sort(), ['defineCodec', 'gen', 'property', 'withProperties']);
+assert.deepEqual(Object.keys(property).sort(), [
+    'defineCodec', 'gen', 'property', 'relation', 'sampleGenerator', 'withProperties'
+]);
 const real = property.gen.record({ name: property.gen.string(), active: property.gen.boolean() });
 const declared = property.property({
     title: 'real generator', generator: real, test() { throw new Error('Body executed.'); }
