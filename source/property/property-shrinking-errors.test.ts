@@ -60,7 +60,7 @@ const rejectPropertyProgress = defineReporter(function rejectCheckpoints() {
 });
 
 export const testNode = suite('shrink failure paths', [
-    test('retains an example when compatible shrink state is unavailable', async function (scope) {
+    test('confirms a replayable example when compatible shrink state is unavailable', async function (scope) {
         let calls = 0;
         const result = await executePropertyNode(
             property({
@@ -79,7 +79,7 @@ export const testNode = suite('shrink failure paths', [
             }),
             propertyExecutionDefaults
         );
-        scope.assert.equal(calls, 1);
+        scope.assert.equal(calls, 2);
         scope.assert.equal(result.summary.failed, 1);
         scope.assert.equal(result.perTest[0]?.property?.invocations[0]?.shrinkStatus, 'shrink-state-unavailable');
         scope.assert.includes(JSON.stringify(result.perTest[0]?.property), 'original example failure');

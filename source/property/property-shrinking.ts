@@ -258,6 +258,10 @@ async function canShrink<Value>(session: ShrinkSession<Value>): Promise<boolean>
 }
 
 async function shrinkGeneratedFailure<Value>(session: ShrinkSession<Value>): Promise<void> {
+    await confirm(session, session.original.input);
+    if (session.state.status() !== 'in-progress') {
+        return;
+    }
     const input = session.original.generated ??
         recipeInput(session.invocation.generator, session.original.input, session.work.context);
     if (input === null) {
@@ -265,7 +269,6 @@ async function shrinkGeneratedFailure<Value>(session: ShrinkSession<Value>): Pro
         await diagnose(session, 'shrink-state-unavailable', null);
         return;
     }
-    await confirm(session, input.reconstruct);
     await searchConfirmedFailure(session, input);
 }
 

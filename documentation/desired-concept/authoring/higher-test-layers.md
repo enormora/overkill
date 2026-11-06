@@ -1189,6 +1189,9 @@ invocation are scope-contract failures. Stop admitting inputs and finish cleanup
 for admitted work before completing the case.
 
 Before shrinking, a fresh reconstruction must reproduce the original failure.
+Confirmation does not require shrink state. Examples, automatic edges, and
+exhaustive inputs with a reconstructible recipe still confirm and retain a
+replayable witness when candidate shrinking is unavailable.
 After candidate search completes, confirm the retained counterexample again.
 Both confirmations use the existing total and shrink work budgets; no extra
 confirmation budget is reserved.
