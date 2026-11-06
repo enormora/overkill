@@ -1181,6 +1181,12 @@ Custom assertions should remain:
 They extend the first-party assertion system without creating registration
 order, global availability, or dot-method name collisions.
 
+Native type-test adapters reuse composite references through public engine and
+runner contracts. They delegate static checking to an external checker instead
+of executing a runtime foreign-assertion callback. Supported source forms,
+assert-only semantics, and execution restrictions are defined in the
+[Native Assertion Contract](./testing-models.md#native-assertion-contract).
+
 ### Assertion Reference Helpers
 
 The helper surface lives in `@overkill-dev/assert`.
