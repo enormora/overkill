@@ -387,6 +387,19 @@ produce false passes or false failures. The adapter does not promise equivalence
 to checking the original module. Improve supported cases through regression
 coverage; a future original-path API is optional and does not gate delivery.
 
+The internal generated-input component owns siblings for one callback lifetime.
+It accepts translated text with copied or anchored UTF-16 source ranges and the
+selected compiler API. Import ambiguity propagates through supplied translated
+modules; independent modules remain checkable. It does not discover a complete
+project dependency graph or provide native assertion recognition yet.
+
+Generated names reserve the `.overkill-type-test-` prefix. Overkill discovery
+omits these names and rejects them as explicit run inputs. If ordinary project
+root discovery includes generated files, preparation fails and removes owned
+files. Projects must configure external watchers to ignore the same prefix;
+this component does not control external watchers. Cleanup preserves files
+whose identity or contents changed and reports the failure.
+
 ### Planning And Execution Boundary
 
 1. Collect the ordinary Overkill tree, identify checker-backed cases, and

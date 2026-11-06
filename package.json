@@ -48,6 +48,7 @@
         "tinypool": "2.2.0",
         "tslib": "2.8.1",
         "type-fest": "5.10.0",
+        "typescript": "6.0.3",
         "ulid": "3.0.2",
         "yoctocolors": "2.2.0",
         "zod": "4.6.7"
@@ -78,8 +79,7 @@
         "jscpd": "5.4.2",
         "knip": "6.44.1",
         "rust-just": "1.59.0",
-        "tstyche": "7.2.5",
-        "typescript": "6.0.3"
+        "tstyche": "7.2.5"
     },
     "engines": {
         "node": "^26.9.0"
