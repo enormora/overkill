@@ -24,6 +24,7 @@
         "./test-support/run-command-factory.ts",
         "./test-support/replay-project-fixture.ts",
         "./test-support/property-generator.ts",
+        "./test-support/property-workload.ts",
         "./test-support/collected-run-fixtures.ts",
         "./test-support/benchmark-baseline-fixture.ts",
         "./test-support/benchmark-normalization-fixture.ts",

@@ -1,8 +1,9 @@
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
-import { parseWitnessFile } from '../packages/engine/engine.entry-point.ts';
+import { parseWitnessFile, type PropertyWitnessFile } from '../packages/engine/engine.entry-point.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { normalizeConfig, orchestrator, type RunCommand } from '../packages/run/run.entry-point.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
@@ -47,6 +48,102 @@ async function saveReplayWitness(command: RunCommand): Promise<string> {
     const file = path.join(command.config.runtimeStateDir, 'replay.witness.json');
     await writeFile(file, JSON.stringify(witness));
     return file;
+}
+
+type IncompatibleCorpus = {
+    readonly command: RunCommand;
+    readonly file: string;
+    readonly content: string;
+    readonly incompatible: PropertyWitnessFile;
+};
+async function incompatibleCorpus(
+    scope: TestScope,
+    processModel: 'in-process' | 'supervised-process'
+): Promise<IncompatibleCorpus> {
+    const command = await corpusCommand(scope, processModel);
+    const file = await saveReplayWitness(command);
+    const saved = parseWitnessFile(JSON.parse(await readFile(file, 'utf8')));
+    if (saved.kind !== 'property') {
+        throw new TypeError('Expected property witness.');
+    }
+    const incompatible = {
+        ...saved,
+        counterexample: {
+            ...saved.counterexample,
+            format: {
+                ...saved
+                    .counterexample
+                    .format,
+                version: 999
+            }
+        }
+    };
+    const content = JSON.stringify(incompatible);
+    await writeFile(file, content);
+    return { command, file, content, incompatible };
+}
+async function assertCheckedInCompatibility(scope: TestScope, input: IncompatibleCorpus): Promise<void> {
+    const { command, file, content } = input;
+    const profile = command.config.profiles.laws;
+    if (profile?.testFamily !== 'property') {
+        throw new TypeError('Expected property profile.');
+    }
+    const checkedIn = await orchestrator.run({
+        ...command,
+        config: {
+            ...command.config,
+            profiles: {
+                laws: {
+                    ...profile,
+                    corpus: { ...profile.corpus, checkedIn: [ file ] }
+                }
+            }
+        }
+    });
+    scope.assert.equal(checkedIn.summary.passed, 0);
+    scope.assert.equal(checkedIn.summary.failed, 1);
+    scope.assert.equal(await readFile(file, 'utf8'), content);
+}
+async function assertLocalCompatibility(scope: TestScope, input: IncompatibleCorpus): Promise<void> {
+    const { command, incompatible } = input;
+    const cache = path.join(
+        command.config.runtimeStateDir,
+        'corpus',
+        createHash('sha256').update('laws').digest('hex')
+    );
+    await mkdir(cache, { recursive: true });
+    await writeFile(
+        path.join(cache, 'index.json'),
+        JSON.stringify({
+            version: 1,
+            entries: [
+                { id: 'incompatible', savedAt: '2026-11-06T00:00:00.000Z', entry: incompatible }
+            ]
+        })
+    );
+    const local = await orchestrator.run(command);
+    scope.assert.includes(JSON.stringify(local.perTest), 'Skipped incompatible');
+    scope.assert.equal(
+        local.perTest[0]?.property?.invocations[0]?.summary?.accounting.phases['local-cache'].executed,
+        0
+    );
+}
+async function assertReplayCompatibility(scope: TestScope, input: IncompatibleCorpus): Promise<void> {
+    const { command, file } = input;
+    const replay = await orchestrator.replayWitness({
+        ...command,
+        request: {
+            path: file,
+            profile: 'laws',
+            seed: { value: 42n },
+            capture: 'buffered',
+            record: false,
+            timingCollection: 'profile-default'
+        }
+    }, { signal: null, timing: null });
+    scope.assert.true(replay.runnerErrors.some(function compatibilityError(error) {
+        return error.subtype === 'witness-replay';
+    }));
 }
 
 export const testNode = suite(
@@ -110,6 +207,15 @@ export const testNode = suite(
                     return error.subtype === 'witness-replay';
                 }));
                 scope.assert.equal(replay.summary.passed, 0);
+                return scope.assert.collect();
+            });
+        }),
+        ...([ 'in-process', 'supervised-process' ] as const).map(function incompatibleInput(processModel) {
+            return test(`${processModel} enforces corpus compatibility policies`, async function (scope: TestScope) {
+                const input = await incompatibleCorpus(scope, processModel);
+                await assertCheckedInCompatibility(scope, input);
+                await assertLocalCompatibility(scope, input);
+                await assertReplayCompatibility(scope, input);
                 return scope.assert.collect();
             });
         }),

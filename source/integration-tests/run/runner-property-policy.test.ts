@@ -182,6 +182,30 @@ export const testNode = suite('property runner policy', [
         scope.assert.includes(JSON.stringify(evidence), 'original failure before shrinking');
         return scope.assert.collect();
     }),
+    ...[ 'property-generator-hang', 'property-codec-hang' ].map(function hangingCallback(fixture) {
+        return test(`supervision terminates ${fixture}`, async function (scope) {
+            const command = propertyCommand(scope, fixture, 'supervised-process');
+            const profile = command.config.profiles.laws;
+            if (profile?.testFamily !== 'property') {
+                throw new TypeError('Expected property profile.');
+            }
+            const result = await orchestrator.run({
+                ...command,
+                config: {
+                    ...command.config,
+                    profiles: {
+                        laws: {
+                            ...profile,
+                            timeouts: { ...profile.timeouts, softMilliseconds: 100, hardMilliseconds: 300 }
+                        }
+                    }
+                }
+            });
+            scope.assert.equal(result.summary.crashed, 1);
+            scope.assert.equal(result.perTest.length, 1);
+            return scope.assert.collect();
+        });
+    }),
     test('supervised property profile terminates a CPU-bound body', async function (scope) {
         const command = propertyCommand(scope, 'endless-loop', 'supervised-process');
         const profile = command.config.profiles.laws;

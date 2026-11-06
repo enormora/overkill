@@ -401,3 +401,17 @@ cloning: authors provide independent branches when mutation needs isolation.
 Shrinking, confirmation, corpus replay, and witness replay reconstruct the original
 input and rerun the relation. The enclosing property owns settings, examples,
 coverage, codecs, and its single assertion boundary.
+
+## Integration validation
+
+Run `npx just test-property-integration` with the Node version selected by
+`package.json`. This covers generator contracts, historical codecs, corpus
+policies, nested witness replay, and supervised execution.
+
+Workload measurements use isolated `--expose-gc` processes with seed 42,
+size limits 8 and 64, and depth limits 2 and 5. Candidate production,
+reconstruction, rejection, and evaluation counts are separate from total work.
+JSON reports are written to `target/property-measurements/`.
+Forced-GC checkpoints every 128 work units and at completion report the maximum
+observed live heap above baseline. This is a checkpoint estimate of retained
+memory, not an exact allocation peak or a machine-independent performance gate.

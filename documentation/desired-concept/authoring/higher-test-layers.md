@@ -1557,6 +1557,9 @@ dependency-preserving array/index shrinking, changing dependent element bounds,
 non-injective mappings, impossible filters, recursive limits, mutation
 isolation, deterministic candidate sequences, and lossless witness replay.
 Measure candidate evaluations and peak retained memory on the same workloads.
+Retained-memory validation uses isolated forced-GC checkpoints and reports the
+maximum observed live heap above baseline with the checkpoint interval. This is
+a sampled estimate, not an exact allocation peak or a portable byte threshold.
 
 ### Exhaustive domains and input coverage
 

@@ -54,6 +54,15 @@ test-mutation-integration: benchmark-html-browser
     node source/integration-tests/run/runner-stryker-ownership.test.ts
     node source/integration-tests/run/runner-stryker-persistence.test.ts
 
+test-property-integration: benchmark-html-browser
+    node source/property/property-validation.test.ts
+    node source/run/corpus-suite.test.ts
+    node source/run/property-corpus-storage.test.ts
+    node source/run/property-corpus-execution.test.ts
+    node source/integration-tests/run/runner-replay-witness.test.ts
+    node source/integration-tests/run/runner-property-validation.test.ts
+    node source/integration-tests/run/runner-property-measurements.test.ts
+
 test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-replay-coverage.test.ts
     node source/integration-tests/run/runner-replay-compatibility.test.ts
@@ -71,6 +80,8 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-benchmark-placement.test.ts
     node source/integration-tests/run/runner-benchmark-host.test.ts
     node source/integration-tests/run/runner-property-policy.test.ts
+    node source/integration-tests/run/runner-property-validation.test.ts
+    node source/integration-tests/run/runner-property-measurements.test.ts
     node source/integration-tests/run/runner-benchmark-html.test.ts
     node source/integration-tests/run/runner-measurements.test.ts
     node source/integration-tests/run/runner-supervised-cancellation.test.ts
