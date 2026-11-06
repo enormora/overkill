@@ -24,6 +24,7 @@ export type AttachmentCoordinator = {
 };
 
 const coordinatorContext = new AsyncLocalStorage<AttachmentCoordinator>();
+const artifactFinalizerContext = new AsyncLocalStorage<(result: RunResult) => Promise<RunResult>>();
 
 export function currentAttachmentCoordinator(): AttachmentCoordinator | null {
     return coordinatorContext.getStore() ?? null;
@@ -31,8 +32,16 @@ export function currentAttachmentCoordinator(): AttachmentCoordinator | null {
 
 export async function finalizeRuntimeAttachments(result: RunResult): Promise<RunResult> {
     return currentExecutionSession() === null
-        ? await (currentAttachmentCoordinator()?.finalize(result) ?? result)
+        ? await (artifactFinalizerContext.getStore()?.(result) ?? currentAttachmentCoordinator()?.finalize(result) ??
+            result)
         : result;
+}
+
+export async function runWithArtifactFinalizer(
+    finalize: (result: RunResult) => Promise<RunResult>,
+    run: () => Promise<RunResult>
+): Promise<RunResult> {
+    return await artifactFinalizerContext.run(finalize, run);
 }
 
 export async function runWithAttachmentCoordinator<Value>(

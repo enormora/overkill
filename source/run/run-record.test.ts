@@ -5,12 +5,13 @@ import { testNode as session } from './run-record-session.test.ts';
 import { testNode as reasons } from './run-record-reasons.test.ts';
 import { testNode as invocation } from './run-record-invocation.test.ts';
 import { testNode as attachments } from './run-record-attachments.test.ts';
+import { testNode as propertyWitnesses } from './property-witness-storage.test.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'run record persistence',
     annotations: {},
     controls: {},
-    children: [ session, policy, reasons, invocation, attachments ]
+    children: [ session, policy, reasons, invocation, attachments, propertyWitnesses ]
 });
 await runIfMain(import.meta, testNode);

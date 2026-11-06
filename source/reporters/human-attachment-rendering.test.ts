@@ -4,6 +4,8 @@ import { createSuite, createTestCase, type TestScope } from '../packages/engine/
 import type { AttachmentContent, RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { problemLines } from './human-reporter-rendering.ts';
+import { witnessReplayLines } from './witness-replay-lines.ts';
+import { testNode as witnessReporting } from './witness-reporting.test.ts';
 
 const definition = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const contents: readonly { readonly content: AttachmentContent; readonly expected: string; }[] = [
@@ -112,6 +114,34 @@ export const testNode = createSuite({
     ...definition,
     title: 'source/reporters/human-attachment-rendering.test.ts',
     children: [
+        witnessReporting,
+        createTestCase({
+            ...definition,
+            title: 'replay commands exclude omitted and incomplete witnesses and quote file paths',
+            body(scope: TestScope) {
+                const artifacts = contents.map(function witness({ content }) {
+                    const base = attachment(content);
+                    return { ...base, id: { ...base.id, subtype: 'witness' as const } };
+                });
+                scope.assert.deepEqual(witnessReplayLines(artifacts), [
+                    "Replay: overkill replay-witness 'artifacts/screenshot.bin'"
+                ]);
+                const quoted = attachment({
+                    kind: 'file',
+                    path: "witnesses/user's input.json",
+                    byteLength: 4,
+                    completion: { kind: 'complete' }
+                });
+                scope.assert.deepEqual(
+                    witnessReplayLines([ {
+                        ...quoted,
+                        id: { ...quoted.id, subtype: 'witness' }
+                    } ]),
+                    [ "Replay: overkill replay-witness 'witnesses/user'\\''s input.json'" ]
+                );
+                return scope.assert.collect();
+            }
+        }),
         ...([ 'missing', 'crash', 'inconclusive' ] as const).map(function interruptedEvidence(outcome) {
             return createTestCase({
                 ...definition,
@@ -168,6 +198,9 @@ export const testNode = createSuite({
                     );
                     scope.assert.true(lines.some(function identity(line) {
                         return line.includes('same case');
+                    }));
+                    scope.assert.true(lines.some(function replayCommand(line) {
+                        return line.includes("Replay: overkill replay-witness 'witnesses/reproduction.json'");
                     }));
                     return scope.assert.collect();
                 }

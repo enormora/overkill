@@ -1,27 +1,11 @@
-import { parseWitnessFile } from '../engine/witness-file.ts';
 import {
     preparedResourceAttachments,
     currentAttachmentLimits
 } from '../packages/resources/attachment-context.entry-point.ts';
 import type { AttemptId, WorkId } from '../engine/identity.ts';
-import type { RuntimeAttachments, RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
+import type { RuntimeAttachments } from '../engine/runtime-attachment.ts';
 import type { FailureArtifactAttachments } from '../resources/failure-artifacts.ts';
-import { snapshotJson } from '../attachments/json-snapshot.ts';
-
-async function retainWitness(
-    target: RuntimeAttachments,
-    snapshot: ReturnType<typeof snapshotJson>,
-    witness: unknown
-): Promise<RuntimeAttachmentArtifact> {
-    const metadata = { name: 'scenario-witness', mediaType: 'application/json' };
-    if (snapshot === null) {
-        return await target.json(metadata, witness);
-    }
-    parseWitnessFile(snapshot.value);
-    const writer = await target.open({ ...metadata, kind: 'binary' });
-    await writer.write(Buffer.from(snapshot.encoded));
-    return await writer.close();
-}
+import { retainWitnessAttachment } from './witness-attachment.ts';
 
 export function simulationWitnessAttachments(
     attachments: RuntimeAttachments,
@@ -53,8 +37,12 @@ export function simulationWitnessAttachments(
                 resource: { name: resource },
                 seed: input.seed === null ? null : input.seed.toString()
             };
-            const snapshot = snapshotJson(witness, limits.maxArtifactBytes);
-            const artifact = await retainWitness(target, snapshot, witness);
+            const artifact = await retainWitnessAttachment(
+                target,
+                { name: 'scenario-witness', mediaType: 'application/json' },
+                witness,
+                limits.maxArtifactBytes
+            );
             return { ...artifact, id: { ...artifact.id, subtype: 'witness' }, source: 'native' };
         }
     };

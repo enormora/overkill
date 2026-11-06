@@ -7,11 +7,11 @@ import { runWithAttachmentCoordinator } from './attachment-coordinator-context.t
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
 import { runHasAttachmentScopes } from './run-facts.ts';
-import type { RunRecordSession } from './run-record.ts';
+import { executeWithPropertyWitnesses } from './property-witness-storage.ts';
 
 type AttachmentCompletion = {
     readonly complete: (result: RunResult) => Promise<RunResult>;
-    readonly interrupt: RunRecordSession['interrupt'];
+    readonly interrupt: AttachmentRecord['session']['interrupt'];
 };
 async function finalizeAttachmentSession(coordinator: AttachmentRunCoordinator, result: RunResult): Promise<RunResult> {
     const finalized = await coordinator.finalize(result);
@@ -50,8 +50,11 @@ export async function executeWithAttachments(
     resolved: ResolvedRun,
     dependencies: RunOrchestratorDependencies,
     run: () => Promise<RunResult>,
-    session: RunRecordSession | null
+    session: AttachmentRecord['session'] | null
 ): Promise<RunResult> {
+    if (resolved.facts.execution.testFamily === 'property') {
+        return await executeWithPropertyWitnesses(resolved, dependencies, run, session);
+    }
     if (!runHasAttachmentScopes(resolved)) {
         return await run();
     }

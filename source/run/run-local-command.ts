@@ -1,5 +1,5 @@
 import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
-import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
+import { executeWithRuntimeAttachments, preparePropertyAttachments } from './runtime-attachment-boundary.ts';
 import {
     reportCollectionErrorResult
 } from './run-collection-error-result.ts';
@@ -60,6 +60,9 @@ async function runOrdinaryLocalCommand(
     dependencies: RunOrchestratorDependencies,
     options: LocalRunOptions
 ): Promise<RunResult> {
+    if (command.config.profiles[command.request.profile]?.testFamily === 'property') {
+        await preparePropertyAttachments();
+    }
     return await observeRunRuntimePolicy(
         command.request,
         dependencies,

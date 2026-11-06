@@ -342,6 +342,15 @@ A witness is also a failure artifact - it attaches to the failing case via
 overkill replay-witness .overkill/witnesses/users__round-trip__c0ffee.witness.json
 ```
 
+Confirmed property witnesses use the shared native attachment storage under
+`runtimeStateDir/witnesses/<run-id>/`, with work, attempt, and artifact identity.
+Producing a witness requires a persisted run record even without `--record`.
+Passing properties and unconfirmed failures do not activate witness persistence.
+The standard attachment limits apply without adding property-profile attachment
+configuration. Oversized inputs have explicit omission metadata; incomplete and
+omitted files never receive a replay command. Witness write errors fail the run
+without discarding the property failure.
+
 An incompatible `version` causes the reader to fail fast rather than run
 with subtly-different shrinking semantics.
 

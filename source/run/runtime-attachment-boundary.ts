@@ -5,8 +5,17 @@ import type { ResolvedRun } from './run-types.ts';
 import { currentAttachmentCoordinator, type AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import { runHasAttachmentScopes } from './run-facts.ts';
 import type { RunRecordSession } from './run-record.ts';
+import type * as AttachmentRun from './attachment-run.ts';
+import { createStoredRunValue } from './supervised-run-state.ts';
 
 export type RunAttachmentRecord = RunRecordSession | null;
+const propertyAttachments = createStoredRunValue<Promise<typeof AttachmentRun> | null>(null);
+
+export async function preparePropertyAttachments(): Promise<void> {
+    const loaded = propertyAttachments.read() ?? import('./attachment-run.ts');
+    propertyAttachments.write(loaded);
+    await loaded;
+}
 
 export const activeRuntimeAttachments: () => AttachmentCoordinator | null = currentAttachmentCoordinator;
 export async function executeWithRuntimeAttachments(
@@ -15,9 +24,15 @@ export async function executeWithRuntimeAttachments(
     run: () => Promise<RunResult>,
     record: RunAttachmentRecord
 ): Promise<RunResult> {
-    if (currentExecutionSession() !== null || !runHasAttachmentScopes(resolved)) {
+    if (
+        currentExecutionSession() !== null ||
+        resolved.facts.execution.testFamily !== 'property' && !runHasAttachmentScopes(resolved)
+    ) {
         return await run();
     }
-    const { executeWithAttachments } = await import('./attachment-run.ts');
+    const loaded = propertyAttachments.read();
+    const { executeWithAttachments } = resolved.facts.execution.testFamily === 'property' && loaded !== null
+        ? await loaded
+        : await import('./attachment-run.ts');
     return await executeWithAttachments(resolved, dependencies, run, record);
 }
