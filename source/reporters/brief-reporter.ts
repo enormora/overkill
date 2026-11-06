@@ -11,6 +11,7 @@ import { formatSourceLocation, type ReportingContext } from '../engine/reporting
 import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
 import { primaryFailureSourceLocation } from './failure-location.ts';
 import { formatFailureSummary, formatPropertyDiagnostics } from './failure-summary.ts';
+import { witnessReplayLines } from './witness-replay-lines.ts';
 import {
     formatCoverageSummaryLines,
     formatRunFactSummary,
@@ -230,6 +231,9 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
                 return [
                     finishIntent(result),
                     ...propertyDiagnosticIntents(result),
+                    ...witnessReplayLines(result.artifacts).map(function replayIntent(line) {
+                        return stdout(line, null);
+                    }),
                     ...formatCoverageSummaryLines(result).map(function coverageIntent(line) {
                         return stdout(line, null);
                     }),

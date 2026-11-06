@@ -119,7 +119,7 @@ export const testNode = suite('property trial execution', [
         });
         const result = await executePropertyNode(node, propertyExecutionDefaults);
         scope.assert.equal(result.summary.failed, 1);
-        scope.assert.deepEqual(seen, [ 0 ]);
+        scope.assert.deepEqual(seen, [ 0, 0 ]);
         scope.assert.equal(result.summary.discovered, 1);
         scope.assert.equal(result.perTest.length, 1);
         return scope.assert.collect();

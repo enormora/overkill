@@ -109,6 +109,33 @@ for (const result of executed.perTest) {
 }
 
 assert.deepEqual(observed, [1, 2, 2, 2, 3, 4, 4, 4]);
+for (const surface of [leaf, standard]) {
+    let calls = 0;
+    const failedPlan = createTestPlan(createRoot({
+        title: 'confirmed recipe', annotations: {}, controls: {}, children: [surface.property({
+            title: 'mapped example', generator: surface.gen.constant(42).map(value => ({value})),
+            examples: [() => ({value: 42})], test(input, sample) {
+                calls++;
+                sample.failureKey('recipe');
+                sample.assert.equal(input.value, 0);
+                return sample.assert.collect();
+            }
+        })]
+    }));
+    const resolveFailure = cases => resolveCases(cases).map(selected => ({
+        ...selected, execution: {...selected.execution, policy: {kind: 'resolved',
+            policy: {...policy, maxShrinkWork: 1000}}}
+    }));
+    const failure = await execute({...failedPlan,
+        cases: resolveFailure(failedPlan.cases), discoveredCases: resolveFailure(failedPlan.discoveredCases)
+    });
+    const evidence = failure.perTest[0].property.invocations[0];
+    assert.equal(calls, 2);
+    assert.equal(evidence.shrinkStatus, 'shrink-state-unavailable');
+    const metadata = JSON.parse(readFileSync(findPackageJSON('@overkill-dev/property',
+        import.meta.resolve(surface === leaf ? '@overkill-dev/property' : '@overkill-dev/test/property'))));
+    assert.deepEqual(evidence.confirmedWitness.producedBy, {library: metadata.name, libraryVersion: metadata.version});
+}
 const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.resolve('@overkill-dev/test'))));
 assert.deepEqual(manifest.exports['./property'], {
     import: './packages/test/property.entry-point.js', types: './packages/test/property.entry-point.d.ts'

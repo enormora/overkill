@@ -59,6 +59,7 @@ test-property-integration: benchmark-html-browser
     node source/run/corpus-suite.test.ts
     node source/run/property-corpus-storage.test.ts
     node source/run/property-corpus-execution.test.ts
+    node source/run/property-witness-storage.test.ts
     node source/integration-tests/run/runner-replay-witness.test.ts
     node source/integration-tests/run/runner-property-validation.test.ts
     node source/integration-tests/run/runner-property-measurements.test.ts

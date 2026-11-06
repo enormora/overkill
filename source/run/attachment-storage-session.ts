@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createAttachmentStore, type AttachmentStore } from './attachment-store.ts';
 import { createAttachmentServer, type AttachmentServer } from './attachment-server.ts';
 import type { AttachmentRecord } from './attachment-record.ts';
@@ -9,15 +10,12 @@ export type AttachmentStorageSession = {
     readonly server: AttachmentServer;
     readonly resolved: ResolvedRun;
 };
-export async function createAttachmentStorageSession(
+export function createRunAttachmentStore(
     resolved: ResolvedRun,
-    record: AttachmentRecord
-): Promise<AttachmentStorageSession> {
-    const limits = resolved.facts.execution.attachments;
-    if (limits === null) {
-        throw new TypeError('Runtime attachments require integration limits.');
-    }
-    const store = createAttachmentStore({
+    record: AttachmentRecord,
+    limits: AttachmentLimits
+): AttachmentStore {
+    return createAttachmentStore({
         witnessDirectory: path.resolve(
             resolved.facts.environment.projectRoot,
             resolved.config.runtimeStateDir,
@@ -39,5 +37,16 @@ export async function createAttachmentStorageSession(
             return entry.workId;
         })
     });
+}
+
+export async function createAttachmentStorageSession(
+    resolved: ResolvedRun,
+    record: AttachmentRecord
+): Promise<AttachmentStorageSession> {
+    const limits = resolved.facts.execution.attachments;
+    if (limits === null) {
+        throw new TypeError('Runtime attachments require integration limits.');
+    }
+    const store = createRunAttachmentStore(resolved, record, limits);
     return { resolved, server: await createAttachmentServer(store, limits), store };
 }

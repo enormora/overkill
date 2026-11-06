@@ -6,6 +6,7 @@ import type { RunResult, RunnerError, RunArtifact } from '../engine/run-result.t
 import { formatPropertyDiagnostics } from './failure-summary.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { formatTimingSummary as formatRunTimingSummary } from './run-summary-rendering.ts';
+import { witnessReplayLines } from './witness-replay-lines.ts';
 
 const colorPalette = [
     colors.cyan,
@@ -239,7 +240,7 @@ function attachmentLines(
 
 function artifactLines(artifact: RunArtifact): readonly string[] {
     if (artifact.payload.kind === 'runtime-attachment') {
-        return attachmentLines(artifact.payload, artifact.id.subtype);
+        return [ ...attachmentLines(artifact.payload, artifact.id.subtype), ...witnessReplayLines([ artifact ]) ];
     }
     if (artifact.payload.kind !== 'captured-output') {
         return [];

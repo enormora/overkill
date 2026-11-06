@@ -3,7 +3,7 @@ import type { RunResult } from './run-engine-primitives.ts';
 import type { CollectedInvocationPlan, CollectedRunContext } from './collected-run-planning.ts';
 import { reportCollectionErrorResult } from './run-collection-error-result.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
-import { executeWithRuntimeAttachments } from './runtime-attachment-boundary.ts';
+import { executeWithRuntimeAttachments, preparePropertyAttachments } from './runtime-attachment-boundary.ts';
 import {
     observeRunRuntimePolicy,
     type ResolvedRunResultFinalizer,
@@ -54,6 +54,9 @@ export async function executeCollectedPlan(
     timing: RunTimingMeasurement,
     options: Pick<CollectedPlanExecution, 'finalizeResult' | 'record'>
 ): Promise<RunResult> {
+    if (plan.resolved.facts.execution.testFamily === 'property') {
+        await preparePropertyAttachments();
+    }
     return await observeRunRuntimePolicy(
         plan.resolved.request,
         context.dependencies,

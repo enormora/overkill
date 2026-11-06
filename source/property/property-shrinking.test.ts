@@ -11,6 +11,7 @@ import { executePropertyNode, propertyExecutionDefaults } from '../test-support/
 import { testNode as failurePaths } from './property-shrinking-errors.test.ts';
 import { testNode as cancellation } from './property-cancellation.test.ts';
 import { testNode as lifecycle } from './property-shrinking-lifecycle.test.ts';
+import { testNode as confirmation } from './property-confirmation.test.ts';
 import { property } from './property-authoring.ts';
 import { gen } from './generators.ts';
 
@@ -34,6 +35,7 @@ function assertOriginalTarget(scope: TestScope, outcome: TestOutcome | null): vo
 export const testNode = suite('first failure shrinking', [
     failurePaths,
     lifecycle,
+    confirmation,
     cancellation,
     test('distinguishes exception classes with the same error name and throw site', async function (scope) {
         class OriginalFailureError extends Error {
