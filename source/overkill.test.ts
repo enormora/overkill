@@ -1,6 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite } from './packages/engine/engine.entry-point.ts';
-import { testNode as assertAndRunTestNode } from './test-support/unit-suite-groups/assert-and-run.ts';
+import { testNode as assertAndRunTestNode } from './test-support/unit-suite-groups/compiler-and-assertions.ts';
 import { testNode as compareTestNode } from './test-support/unit-suite-groups/compare.ts';
 import { testNode as doublesTestNode } from './test-support/unit-suite-groups/doubles.ts';
 import { testNode as engineCoreTestNode } from './test-support/unit-suite-groups/engine-core.ts';

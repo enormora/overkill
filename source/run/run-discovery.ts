@@ -1,5 +1,6 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isGeneratedTypeTestPath } from '../generated-input-path.ts';
 import { discoverProfileFiles, ProfileFileDiscoveryError } from '../config/profile-file-discovery.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 
@@ -91,6 +92,9 @@ function createDiscoveredRunFile(
     requestedPath: string,
     fileSet: string | null
 ): DiscoveredRunFile {
+    if (isGeneratedTypeTestPath(requestedPath) || isGeneratedTypeTestPath(realPath)) {
+        invalidRequest('Generated type-test input cannot be selected as a run file.');
+    }
     const relativePath = relative(realCwd, realPath);
 
     if (isOutsideCwd(relativePath)) {
