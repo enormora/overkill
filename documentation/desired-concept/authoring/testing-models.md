@@ -141,6 +141,9 @@ Typical concerns:
 
 They should be able to participate in run planning, reporting, and selection even if the underlying checking engine is external.
 
+See [Type-Test Authoring Feasibility](#type-test-authoring-feasibility) for
+the boundary between shared Overkill composition and static type assertions.
+
 ## Property-Based And Model-Based Tests
 
 These are first-class higher-layer families rather than default microtest
@@ -183,3 +186,105 @@ Overkill should not pretend that one API shape is the perfect surface for
 all of these. The shared core should unify execution and reporting
 contracts; higher-level packages should specialize the authoring model and
 defaults.
+
+## Type-Test Authoring Feasibility
+
+### Question And Constraints
+
+Can type tests use the regular Overkill authoring layers, from low-level
+engine cases through `test`, suites, tables, and macros, while an external
+tool checks the types?
+
+The existing concept requires external checking, a dedicated `type-test`
+profile, independent runtime and compiler loops, and participation in
+planning, selection, and reporting. The plan freezes before execution.
+These constraints remain unchanged.
+
+### Answer
+
+Shared composition is feasible. An adapter can supply a body carrying an
+explicit type-check definition to the existing node constructors. Overkill
+owns the resulting case identity, tree reachability, annotations, selection,
+and reporting lifecycle. The external tool owns assertion semantics and
+compiler diagnostics.
+
+The proposed first boundary is a fixture-backed body. Illustrative syntax,
+not an existing API or a settled package name:
+
+```ts
+test('preserves inference', checkTypes({
+    file: new URL('./inference.type-test.ts', import.meta.url)
+}))
+```
+
+The composition module is imported normally; the referenced fixture is
+checked by TSTyche. Each Overkill case owns its declared fixture boundary.
+Nested TSTyche tests and assertions are structured diagnostic detail, not
+additional Overkill cases discovered during execution. Title selection
+selects the Overkill case and checks its whole fixture.
+
+This does not establish that separate fixtures meet the desired authoring
+experience. Whether inline assertions are required remains open. The
+feasibility answer is settled; the fixture-backed API is a proposal.
+
+### Evidence And Required Integration
+
+The repository already uses TSTyche `7.2.5` through `tstyche.json`,
+`just test-types`, and `*.type-test.ts` files. Existing body-family metadata
+in `source/engine/test-body.ts` can carry adapter definitions. Node
+constructors and table wrappers preserve that metadata. Current execution
+still resolves such bodies as ordinary builder bodies unless a supported
+family-specific execution mode handles them; metadata alone does not
+implement type testing.
+
+TSTyche's pinned public API accepts explicit fixture files and emits
+structured collection, assertion, diagnostic, and completion events. It
+does not expose a separate collection-only phase. Its
+[reporter contract](https://tstyche.org/guides/reporters) supports structured
+result delivery without parsing terminal output. Implementation must use
+the API of the supported TSTyche version rather than assume current website
+examples match the pinned release.
+
+Before plan freeze, the adapter must resolve fixture definitions and
+concrete compiler versions. Compiler variants belong in `WorkId`, not
+logical `CaseId`. Execution must preserve the selected fixture boundary,
+retain diagnostics that cannot be attributed to a nested assertion, and
+surface checker setup failures as failures rather than successful empty
+results. Compiler services stay outside the ordinary microtest startup path.
+
+Tables can compose checker-backed bodies, but runtime row values do not
+specialize a static type-check program. Row-specific fixtures require an
+explicit collection-time resolution mechanism; selecting a fixture inside
+an ordinary execution callback does not satisfy frozen planning. Reusing
+one fixture across rows or macro applications checks the same program.
+
+### Alternatives And Their Limits
+
+- Automatic file-level cases are feasible, but do not establish the desired
+  reuse of Overkill's authoring layers. They remain an optional integration
+  approach rather than the answer to the shared-authoring question.
+- Automatically turning TSTyche's named tests into Overkill cases lacks
+  public collection before checking in the pinned API. Collection events
+  during execution arrive too late to define the frozen plan.
+- Inline TSTyche assertions inside arbitrary Overkill callbacks are found
+  statically, but have no Overkill case ownership. A probe checked both an
+  exported callback and an unreachable callback, reporting their assertions
+  at file level. Overkill selection would therefore not bound checking.
+- A different compiler-backed assertion library does not by itself solve
+  ownership. Reused callbacks and generic macro bodies have shared source;
+  runtime invocations do not cause separate compiler checks with concrete
+  row types. Restricted inline authoring needs its own ownership and
+  selection contract.
+
+### Assumptions And Invalidation
+
+Fixture-backed composition assumes an acceptable split between Overkill
+composition and separately authored static checks. That product preference
+is unresolved. Requiring inline assertions would invalidate this proposed
+boundary and require another design decision, not a claim that the external
+checker already understands Overkill's runtime tree.
+
+Revisit named-test integration if the external tool provides collection
+without checking and exact execution of selected collected nodes. Revisit
+inline authoring only with an explicit account of shared bodies, generic
+macros, tables, unreachable nodes, and diagnostics outside selected bodies.
