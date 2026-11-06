@@ -133,7 +133,7 @@ for (const surface of [leaf, standard]) {
     assert.equal(calls, 2);
     assert.equal(evidence.shrinkStatus, 'shrink-state-unavailable');
     const metadata = JSON.parse(readFileSync(findPackageJSON('@overkill-dev/property',
-        import.meta.resolve(surface === leaf ? '@overkill-dev/property' : '@overkill-dev/test/property')))));
+        import.meta.resolve(surface === leaf ? '@overkill-dev/property' : '@overkill-dev/test/property'))));
     assert.deepEqual(evidence.confirmedWitness.producedBy, {library: metadata.name, libraryVersion: metadata.version});
 }
 const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.resolve('@overkill-dev/test'))));

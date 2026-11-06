@@ -148,13 +148,15 @@ export const configuration = {
             roots: {
                 main: moduleRoot('packages/resources/resources.entry-point'),
                 attachmentContext: moduleRoot('packages/resources/attachment-context.entry-point'),
-                jsonFrameLimiter: moduleRoot('json-frame-limiter')
+                jsonFrameLimiter: moduleRoot('json-frame-limiter'),
+                packageVersion: moduleRoot('package-version')
             },
             packageInterface: {
                 modules: packageModules({
                     '.': 'main',
                     './attachment-context': 'attachmentContext',
-                    './json-frame-limiter': 'jsonFrameLimiter'
+                    './json-frame-limiter': 'jsonFrameLimiter',
+                    './package-version': 'packageVersion'
                 })
             },
             bundlePeerDependencies: [ '@overkill-dev/simulation' ]
