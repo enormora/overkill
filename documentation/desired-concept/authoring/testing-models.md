@@ -200,9 +200,11 @@ owns source translation and result mapping; TSTyche owns type relationships
 and diagnostics. A dedicated `type-test` profile, frozen planning, independent
 runtime and compiler loops, and no coverage remain constraints.
 
-Illustrative assertion name, not an implemented or final API:
+Illustrative adapter binding, not an implemented or final export:
 
 ```ts
+import { sameType } from '@overkill-dev/type-test';
+
 test('preserves inference', (scope) => {
     const result = identity('hello' as const);
     scope.assert(sameType<typeof result, 'hello'>());
@@ -212,6 +214,85 @@ test('preserves inference', (scope) => {
 
 The user writes one source file and one description. No TSTyche imports,
 external fixture references, or second test tree are required in user code.
+
+### Native Assertion Contract
+
+#### References And Adapter Boundaries
+
+Native type assertions reuse imported, engine-branded composite assertion
+references through `scope.assert(reference, ...operands)`. An adapter may expose
+generic reference factories, as illustrated above, and expression operands where
+its checker supports them. Type arguments and expressions are source inputs to
+the adapter, not runtime evidence of a type relationship. No separate static
+reference category or built-in type matcher methods are added to the engine.
+
+The engine and runner must expose public, backend-independent contracts for
+adapter integration. TSTyche and other adapters must not need private core
+imports. The engine owns assertion boundaries, identities, and native results;
+the runner owns generic validation, collection, planning, and execution lowering.
+An adapter owns its supported bindings, source recognition, translation, and
+external checker invocation. The concrete hooks belong to the explicit adapter
+contract milestone, not this authoring contract.
+
+`@overkill-dev/type-test` will provide bindings for the full supported TSTyche
+assertion surface, with checking and diagnostics delegated to TSTyche. Export
+names and matcher signatures belong to that package's milestone. This contract
+does not define a smaller Overkill type-assertion catalog or a public registry
+for user-defined matcher translations.
+
+Supported references must resolve to adapter-owned package exports, including
+aliased imports. Being a composite reference does not by itself make a custom
+assertion statically translatable. Dynamic reference selection, arbitrary
+wrappers, and other indirection without supported source recognition must be
+rejected rather than silently omitted. Runtime custom assertions retain their
+existing protocol.
+
+These bindings are assert-only: they do not provide runtime gating or narrowing
+through `scope.require`. Each reference invocation remains one assertion boundary;
+checker diagnostics nested within it do not create extra cases or boundaries.
+Annotations use the existing prefix assertion context. `scope.assert.collect()`
+remains the authored completion form; it is not executed to obtain checker
+results. Detailed empty, skipped, and expected-failure accounting belongs to the
+results and diagnostics milestone.
+
+A checker-backed case must reject runtime assertions mixed with static bindings.
+Local expressions remain valid TypeScript inputs, but neither their runtime
+values nor side effects are obtained by executing the case body. Runtime
+`fromThrowable` and `fromRejectable` bridges cannot check erased type arguments.
+If ordinary execution invokes a checker-only binding, it must fail clearly;
+it must never record a successful assertion as a fallback.
+
+#### Generic Bodies And Static Composition
+
+The same contract applies to low-level engine cases and high-level `test`,
+suite, table, and macro composition. Users author one source file and one
+description per case, without external fixtures, direct TSTyche imports, or a
+second test tree.
+
+A generic body is checked as authored, under its declared constraints and in its
+original lexical context. Preserve contextual typing and expression diagnostics.
+For example, a check involving `T` inside a generic macro checks that generic
+body; calling the macro with `string` does not replace `T` with `string` in a
+new checker program.
+
+Tables retain ordinary row expansion and case naming. Their shared body sees
+the statically declared or inferred parameter type, not a separate type for each
+runtime row. Multiple rows can therefore own the same static assertion evidence.
+Row-specific type specialization requires an explicit static model outside this
+contract; it must not be inferred from runtime data.
+
+Macros remain ordinary functions returning test trees. Plain functions,
+`defineMacro`, and `defineParameterizedTestBody` follow the same static rule:
+reusing a body does not specialize it per application. Distinct authored bodies
+retain their own assertion sites, while shared sites retain ownership across all
+selected cases that use them. Macro application locations are useful attribution,
+but do not establish assertion-body ownership on their own.
+
+Selection bounds assertion evaluation: omit checks owned only by unselected or
+unreachable bodies. It does not bound the compiler dependency graph; invalid
+TypeScript outside a selected assertion can still prevent checking. Unsupported
+source ownership or assertion forms must produce diagnostics, not successful
+checks with missing evidence.
 
 ### Package Distribution
 
@@ -332,12 +413,8 @@ coverage; a future original-path API is optional and does not gate delivery.
    Serialize or isolate checker runs where TSTyche's global event delivery
    would mix concurrent results. Cancellation and cleanup remain explicit.
 
-Type assertions are static. Case bodies are not invoked by the type checker.
-Runtime row values and generic macro applications do not specialize a shared
-TypeScript body into separate programs. Tables and macros may compose native
-checks, but row-specific type specialization needs an explicit static model.
-Selection bounds assertion evaluation, not the compiler's dependency graph;
-invalid TypeScript outside a selected assertion can still prevent checking.
+Case bodies are not invoked by the type checker. Generic bodies, tables, and
+macros follow the [Native Assertion Contract](#native-assertion-contract).
 
 ### Rejected Approaches And Remaining Work
 
@@ -350,10 +427,11 @@ invalid TypeScript outside a selected assertion can still prevent checking.
 - Private matcher imports or a replacement checker violate the integration
   boundary. Use the existing public runner and structured events.
 
-Native syntax translation is demonstrated, not a complete adapter. Final
-assertion names and catalog, source-anchor instrumentation across all
-composition layers, generated-input mapping and configuration, diagnostic
-preservation, shared-body accounting, and complete lifecycle validation remain
-implementation tasks. Reconsider the generated-input strategy if supported
-projects cannot accommodate it reliably. Reconsider the static model if
+The native authoring contract is defined above; syntax translation is
+demonstrated, not a complete adapter. Package exports and full supported TSTyche
+bindings, public adapter hooks, source-anchor instrumentation across composition
+layers, generated-input mapping and configuration, diagnostic preservation,
+shared-body accounting, and lifecycle validation remain implementation tasks.
+Reconsider the generated-input strategy if supported projects cannot accommodate
+it reliably. Reconsider the static model if
 per-application generic or row-specific type specialization becomes a requirement.

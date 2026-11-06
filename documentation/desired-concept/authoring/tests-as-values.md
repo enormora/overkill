@@ -509,6 +509,11 @@ Both helpers record the helper application site before the concrete test or
 assertion construction site. That keeps reused tests and failures attributable
 to the authored callsite that selected the reusable behavior.
 
+For native type tests, tables and reused macro bodies follow the
+[Native Assertion Contract](./testing-models.md#generic-bodies-and-static-composition).
+Runtime rows and generic applications do not specialize shared checker bodies;
+forwarded application locations do not establish assertion-body ownership.
+
 ```ts
 import { suite } from '@overkill-dev/test';
 import { gen as generators, property } from '@overkill-dev/test/property';
