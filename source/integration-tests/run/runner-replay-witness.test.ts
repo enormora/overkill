@@ -20,12 +20,19 @@ function propertySource(nested: boolean, generating: boolean): string {
     const invocation = `generator: ${generator}, test(value, sample) {
         sample.assert.equal(value, 0); return sample.assert.collect();
     }`;
-    const nestedDeclaration = [
-        "test('retained property', withProperties(async parent => await parent.forall({key: 'retained', ",
-        invocation,
-        '})))'
-    ]
-        .join('');
+    const nestedDeclaration = `test('retained property', withProperties(async parent => {
+        const events = ['setup'];
+        parent.cleanup(() => {
+            if (events.at(-1) !== 'after') throw new Error('Enclosing cleanup lost continuation');
+        });
+        await parent.forall({ key: 'before', generator: gen.constant(7), test(value, sample) {
+            events.push('before'); sample.assert.equal(value, 7); return sample.assert.collect();
+        }});
+        await parent.forall({key: 'retained', ${invocation}});
+        events.push('after');
+        parent.assert.includes(events, 'before');
+        return parent.assert.collect();
+    }))`;
     const declaration = nested
         ? nestedDeclaration
         : `property({title: 'retained property', ${invocation}})`;
@@ -38,7 +45,14 @@ function propertySource(nested: boolean, generating: boolean): string {
 }
 async function savedPropertyWitness(scope: TestScope, project: ReplayProject): Promise<string> {
     const result = await orchestrator.run(project.command);
-    const witness = result.perTest[0]?.property?.invocations[0]?.confirmedWitness;
+    const witness = result
+        .perTest[0]
+        ?.property
+        ?.invocations
+        .find(function confirmed(invocation) {
+            return invocation.confirmedWitness !== null;
+        })
+        ?.confirmedWitness;
     scope.require.defined(witness);
     const file = 'retained.witness.json';
     await writeFile(path.join(project.cwd, file), JSON.stringify(witness));
@@ -105,6 +119,43 @@ async function verifyRecordedWitness(scope: TestScope): Promise<void> {
     scope.assert.false(JSON.stringify(result).includes('generated during replay'));
 }
 export const testNode = suite('witness replay through public surfaces', [
+    ...([ 'in-process', 'supervised-process' ] as const).flatMap(function invalidTargets(mode) {
+        return ([ 'missing', 'duplicate', 'unreached' ] as const).map(function targetFailure(kind) {
+            return test(`${mode} rejects ${kind} nested witness targets`, async function (scope) {
+                const { project, file } = await retainedPropertyProject(scope, true, mode);
+                const invocation = `await parent.forall({key: 'retained', generator: gen.constant(0),
+                    test(value, sample) { sample.assert.equal(value, 0); return sample.assert.collect(); }});`;
+                const bodies = {
+                    unreached: 'parent.assert.true(true);',
+                    duplicate: invocation + invocation,
+                    missing: invocation.replace("'retained'", "'missing'")
+                };
+                const body = bodies[kind];
+                await writeReplayCase(
+                    project,
+                    `
+import {test} from ${JSON.stringify(replayAuthoringUrl)};
+import {withProperties, gen} from ${JSON.stringify(replayPropertyUrl)};
+export const testNode = test('retained property', withProperties(async parent => {
+    ${body}
+    return parent.assert.collect();
+}));`
+                );
+                const result = await orchestrator.replayWitness({
+                    cwd: project.cwd,
+                    config: project.command.config,
+                    signal: null,
+                    path: file,
+                    profile: 'cases'
+                });
+                scope.assert.true(result.runnerErrors.some(function replayError(error) {
+                    return error.subtype === 'witness-replay';
+                }));
+                scope.assert.equal(result.summary.passed, 0);
+                return scope.assert.collect();
+            });
+        });
+    }),
     test('recorded witness replays retain the concrete input', async function (scope: TestScope) {
         await verifyRecordedWitness(scope);
         return scope.assert.collect();

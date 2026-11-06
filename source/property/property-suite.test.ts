@@ -1,4 +1,4 @@
-import { suite } from '../packages/test/test.entry-point.ts';
+import { runIfMain, suite } from '../packages/test/test.entry-point.ts';
 import { testNode as profiles } from '../config/property-profile.test.ts';
 import { testNode as collection } from '../run/property-collection.test.ts';
 import { testNode as runnerPolicy } from '../integration-tests/run/runner-property-policy.test.ts';
@@ -21,3 +21,5 @@ export const testNode = suite('property', [
     scopes,
     deterministic
 ]);
+
+await runIfMain(import.meta, testNode);

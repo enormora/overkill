@@ -52,7 +52,9 @@ function viewSharesBuffer(value: unknown, buffer: unknown): boolean {
 }
 
 function hasThreeHoles(value: unknown): boolean {
-    return Array.isArray(value) && value.length === 3 && !Object.hasOwn(value, 0);
+    return Array.isArray(value) && value.length === 3 && [ 0, 1, 2 ].every(function absent(index) {
+        return !Object.hasOwn(value, index);
+    });
 }
 
 function expressionState(value: unknown): unknown {
@@ -151,7 +153,9 @@ export const testNode = suite('property graph codecs', [
     test('preserves cycles, aliases, sparse arrays and binary backing stores', function (scope) {
         const value = cyclicGraph();
         const restored = decodePropertyInput(capturePropertyInput(value, null, consume), null, consume);
-        scope.assert.true(typeof restored === 'object' && restored !== null);
+        if (!hasGraphFields(restored)) {
+            throw new TypeError('Expected graph fields.');
+        }
         if (hasGraphFields(restored)) {
             scope.assert.true(restored.shared === restored.again);
             scope.assert.true(viewSharesBuffer(restored.view, restored.buffer));
