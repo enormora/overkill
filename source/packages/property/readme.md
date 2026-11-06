@@ -381,8 +381,8 @@ property({
     title: 'sorting ignores input order',
     generator: gen.array(gen.integer({ min: -100, max: 100 })),
     test: relation({
-        transform: values => values.toReversed(),
-        run: values => values.toSorted(),
+        transform: (values) => values.toReversed(),
+        run: (values) => values.toSorted(),
         check({ original, transformed }, sample) {
             sample.assert.deepEqual(original.output, transformed.output);
             return sample.assert.collect();
