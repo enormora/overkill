@@ -213,6 +213,42 @@ test('preserves inference', (scope) => {
 The user writes one source file and one description. No TSTyche imports,
 external fixture references, or second test tree are required in user code.
 
+### Package Distribution
+
+Ship `@overkill-dev/type-test` as one optional package, installed alongside
+`@overkill-dev/test` or used with the lower-level engine and runner APIs.
+It owns native type-assertion references, typed profile wiring, programmatic
+adapter registration, source translation, generated-input management, and
+TSTyche execution. TSTyche and compiler-tooling dependencies belong here.
+The package does not require the high-level `@overkill-dev/test` distribution.
+Its programmatic checking API accepts engine roots and applies the same source
+ownership and planning rules as configured runs. Ordinary engine execution
+must not invoke static assertion markers as builder bodies.
+
+`@overkill-dev/test` continues to supply ordinary `test`, suite, table, and
+macro authoring plus the `overkill` binary. It neither includes the optional
+package nor re-exports it through a standard-distribution subpath. Native
+type assertions are imported from `@overkill-dev/type-test`; users keep the
+same Overkill composition and assertion style.
+
+`@overkill-dev/run` owns generic profile, planning, selection, and orchestration
+contracts; the engine owns nodes, identities, and native results. Neither
+depends on the optional package. Projects attach the adapter explicitly
+through its typed profile or programmatic registration API. Installing it
+does not register commands or widen configuration through module augmentation.
+Importing assertions has no registration side effects. The runner needs a
+generic adapter contract for validation, collection, execution lowering, and
+frozen facts; TSTyche-specific behavior stays in the optional package.
+The existing `overkill run --profile <name>` executes the selected type-test
+profile; a missing adapter produces an actionable configuration error.
+
+The optional package's authoring and registration imports stay lightweight.
+Load checker and compiler modules only when resolving or executing a selected
+type-test run. Keep the TSTyche backend in this package; a separate backend
+package is unnecessary until another supported backend creates that need.
+Recognize assertion references by package and export identity, including import
+aliases, independently of which authoring layer constructs the case.
+
 ### Public API Findings
 
 TSTyche `7.2.5` exposes [`tstyche/api`](https://tstyche.org/guides/programmatic-usage):

@@ -808,7 +808,9 @@ engine features.
 
 The clearest current example is:
 
-- type-test adapters or integrations rather than a built-in type-test engine
+- `@overkill-dev/type-test`, an optional native assertion and TSTyche adapter
+  package above the public engine and runner contracts; see
+  [Native Type-Test Integration](../authoring/testing-models.md#package-distribution)
 - `@overkill-dev/stryker-runner`, a first-party Stryker `TestRunner` plugin
   above the runner; see [Mutation Runner Contract](../authoring/higher-test-layers.md#mutation-runner-contract)
 - a first-party ESLint rule-testing adapter package rather than baking
@@ -988,7 +990,7 @@ heavyweight, or aimed at a narrower audience. Examples:
 
 - browser and browser-benchmark packages
 - model, differential, and linearizability packages
-- type-test adapters
+- `@overkill-dev/type-test`
 - mutation integrations
 - OpenTelemetry timing export
 - ESLint, AWS CDK, contract, accessibility, and similar domain adapters
