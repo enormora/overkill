@@ -356,3 +356,48 @@ target input; surrounding randomness and corpus contents follow current policy.
 The current declaration supplies the input codec. Unsupported formats and codecs
 fail explicitly. Replay reports the current outcome, so a previously failing
 input may pass after a fix. A single replay does not confirm a new cached witness.
+
+## Generator previews
+
+`sampleGenerator(generator, { seed, count, size, depth })` returns a readonly
+array of fresh samples. Supply a bigint seed and nonnegative safe-integer limits.
+The same request reproduces the stream independently of runner randomness.
+Zero count invokes no generator callbacks; repeated values remain valid samples.
+
+Preview uses the generator's size, depth, rejection, and reconstruction contracts
+with a fixed 10,000-unit work budget. It returns exactly the requested count or
+throws RangeError on domain or work exhaustion. Callback errors propagate.
+The returned array is shallow-frozen; generated values remain mutable.
+Preview does not execute property bodies, codecs, corpus replay, or shrinking.
+Traversal bounds cannot interrupt arbitrary callback code or cap mapped allocations.
+
+## Metamorphic relations
+
+`relation({ transform, run, check })` returns a property body for either
+`property({ title, generator, test })` or `scope.forall(generator, body)`:
+
+```ts
+property({
+    title: 'sorting ignores input order',
+    generator: gen.array(gen.integer({ min: -100, max: 100 })),
+    test: relation({
+        transform: values => values.toReversed(),
+        run: values => values.toSorted(),
+        check({ original, transformed }, sample) {
+            sample.assert.deepEqual(original.output, transformed.output);
+            return sample.assert.collect();
+        }
+    })
+});
+```
+
+All callbacks support promises. Each trial awaits transformation, the original
+operation, the transformed operation, then the check, sequentially. The operation
+and check receive the same property sample scope. Cleanup finishes after the trial.
+Cancellation is checked before each callback; callback errors retain native body-error handling.
+
+Observations contain each actual input and output after execution. There is no
+cloning: authors provide independent branches when mutation needs isolation.
+Shrinking, confirmation, corpus replay, and witness replay reconstruct the original
+input and rerun the relation. The enclosing property owns settings, examples,
+coverage, codecs, and its single assertion boundary.

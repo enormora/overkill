@@ -1,6 +1,17 @@
-export { defineCodec, gen, property, withProperties } from '../property/property.entry-point.ts';
+export {
+    defineCodec,
+    gen,
+    property,
+    relation,
+    sampleGenerator,
+    withProperties
+} from '../property/property.entry-point.ts';
 export type {
     Generator,
+    GeneratorSampleRequest,
+    RelationDefinition,
+    RelationObservation,
+    RelationObservations,
     BigintBounds,
     GeneratorConstant,
     LengthBounds,
