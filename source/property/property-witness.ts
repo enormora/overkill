@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { packageVersion } from '../package-version.ts';
 import { propertyCorpusSnapshot, type PropertyExecutionHost } from '../engine/property-execution-host.ts';
 import { serializeValue } from '../packages/engine/engine.entry-point.ts';
 import { sourceLocationSchema } from '../engine/identity-schema.ts';
@@ -9,6 +10,7 @@ import { propertySeed } from './property-random.ts';
 import type { PropertyInvocationContext } from './property-execution-result.ts';
 
 type WitnessTarget = Readonly<PropertyWitnessFile['target']>;
+const producer = await packageVersion(import.meta.url);
 export function propertyWitnessTarget(identity: string): WitnessTarget {
     if (identity === 'declared-property') {
         return { kind: 'property-value' };
@@ -32,12 +34,15 @@ export function confirmedPropertyWitness(
     if (observation.capture.kind !== 'encoded' || failureIdentity === null) {
         return null;
     }
+    if (producer === null) {
+        throw new TypeError('Property witness producer metadata is unavailable.');
+    }
     const { host, identity } = context;
     const seed = propertySeed(host, identity);
     return propertyWitnessSchema.parse({
         version: 1,
         kind: 'property',
-        producedBy: { library: '@overkill-dev/property', libraryVersion: 'unversioned-source' },
+        producedBy: { library: producer.name, libraryVersion: producer.version },
         case: host.workId.case,
         runtimes: Array.from(host.workId.runtimes),
         seed,

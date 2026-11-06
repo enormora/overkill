@@ -1,6 +1,7 @@
 import { fork } from 'node:child_process';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { packageMetadata } from '../package-version.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
 import {
     childProcessEntryPointUrl
@@ -17,7 +18,8 @@ import {
 } from './worker-pool-host-process-starter.ts';
 
 const childProcessEntryPoint = fileURLToPath(childProcessEntryPointUrl);
-const childPackageRoot = dirname(dirname(childProcessEntryPoint));
+const childPackage = await packageMetadata(childProcessEntryPointUrl);
+const childPackageRoot = childPackage?.directory ?? dirname(dirname(childProcessEntryPoint));
 
 type ChildForkOptions = {
     readonly cwd: string;
