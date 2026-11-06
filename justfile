@@ -55,7 +55,7 @@ test-mutation-integration: benchmark-html-browser
     node source/integration-tests/run/runner-stryker-persistence.test.ts
 
 test-property-integration: benchmark-html-browser
-    node source/property/property-validation.test.ts
+    node source/property/property-suite.test.ts
     node source/run/corpus-suite.test.ts
     node source/run/property-corpus-storage.test.ts
     node source/run/property-corpus-execution.test.ts
