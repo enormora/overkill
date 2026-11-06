@@ -273,7 +273,10 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
   [tstyche](https://tstyche.org/), which already runs type tests with its
   own incremental cache, and surface its results through the Overkill
   reporter pipeline. The runtime test loop and the type-test loop stay
-  independent without Overkill owning a compile server.
+  independent without Overkill owning a compile server. Native Overkill
+  assertions require source translation with original module identity; the
+  pinned public API does not yet provide the required original-path input.
+  See [Native Type-Test Integration](../authoring/testing-models.md#native-type-test-integration).
 - **Pre-resolved file lists.** Save the result of glob expansion (and gitignore
   application) between runs. Re-validate via inotify/FSEvents or a short
   `git status` rather than rewalking the tree.

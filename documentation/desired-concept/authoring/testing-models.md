@@ -141,8 +141,8 @@ Typical concerns:
 
 They should be able to participate in run planning, reporting, and selection even if the underlying checking engine is external.
 
-See [Type-Test Authoring Feasibility](#type-test-authoring-feasibility) for
-the boundary between shared Overkill composition and static type assertions.
+See [Native Type-Test Integration](#native-type-test-integration) for the
+authoring direction, programmatic API findings, and remaining backend prerequisite.
 
 ## Property-Based And Model-Based Tests
 
@@ -187,104 +187,117 @@ all of these. The shared core should unify execution and reporting
 contracts; higher-level packages should specialize the authoring model and
 defaults.
 
-## Type-Test Authoring Feasibility
+## Native Type-Test Integration
 
-### Question And Constraints
+### Question And Direction
 
-Can type tests use the regular Overkill authoring layers, from low-level
-engine cases through `test`, suites, tables, and macros, while an external
-tool checks the types?
+Can regular Overkill cases contain native type assertions while TSTyche owns
+checking, without separate fixtures or duplicated test descriptions?
 
-The existing concept requires external checking, a dedicated `type-test`
-profile, independent runtime and compiler loops, and participation in
-planning, selection, and reporting. The plan freezes before execution.
-These constraints remain unchanged.
+That is the required authoring direction. Keep the existing low-level and
+high-level composition layers and assertion-reference style. The adapter
+owns source translation and result mapping; TSTyche owns type relationships
+and diagnostics. A dedicated `type-test` profile, frozen planning, independent
+runtime and compiler loops, and no coverage remain constraints.
 
-### Answer
-
-Shared composition is feasible. An adapter can supply a body carrying an
-explicit type-check definition to the existing node constructors. Overkill
-owns the resulting case identity, tree reachability, annotations, selection,
-and reporting lifecycle. The external tool owns assertion semantics and
-compiler diagnostics.
-
-The proposed first boundary is a fixture-backed body. Illustrative syntax,
-not an existing API or a settled package name:
+Illustrative assertion name, not an implemented or final API:
 
 ```ts
-test('preserves inference', checkTypes({
-    file: new URL('./inference.type-test.ts', import.meta.url)
-}))
+test('preserves inference', scope => {
+    const result = identity('hello' as const);
+    scope.assert(sameType<typeof result, 'hello'>());
+    return scope.assert.collect();
+})
 ```
 
-The composition module is imported normally; the referenced fixture is
-checked by TSTyche. Each Overkill case owns its declared fixture boundary.
-Nested TSTyche tests and assertions are structured diagnostic detail, not
-additional Overkill cases discovered during execution. Title selection
-selects the Overkill case and checks its whole fixture.
+The user writes one source file and one description. No TSTyche imports,
+external fixture references, or second test tree are required in user code.
 
-This does not establish that separate fixtures meet the desired authoring
-experience. Whether inline assertions are required remains open. The
-feasibility answer is settled; the fixture-backed API is a proposal.
+### Public API Findings
 
-### Evidence And Required Integration
+TSTyche `7.2.5` exposes [`tstyche/api`](https://tstyche.org/guides/programmatic-usage):
+`Config`, `Runner.run(files)`, `FileLocation`, `EventEmitter`, and
+`CancellationToken`. Structured events include assertion results, diagnostics,
+and completion. `tstyche/tag` invokes the same file-oriented runner; it does
+not check an erased generic argument supplied by a runtime caller.
 
-The repository already uses TSTyche `7.2.5` through `tstyche.json`,
-`just test-types`, and `*.type-test.ts` files. Existing body-family metadata
-in `source/engine/test-body.ts` can carry adapter definitions. Node
-constructors and table wrappers preserve that metadata. Current execution
-still resolves such bodies as ordinary builder bodies unless a supported
-family-specific execution mode handles them; metadata alone does not
-implement type testing.
+The public exports provide neither a custom assertion backend nor source-text
+or compiler-host input to `Runner`. Recognition expects direct imports from
+`tstyche`, so native assertion references need static translation. Compiler
+and matcher internals remain TSTyche-owned; translation does not require
+implementing type equality or assignability.
 
-TSTyche's pinned public API accepts explicit fixture files and emits
-structured collection, assertion, diagnostic, and completion events. It
-does not expose a separate collection-only phase. Its
-[reporter contract](https://tstyche.org/guides/reporters) supports structured
-result delivery without parsing terminal output. Implementation must use
-the API of the supported TSTyche version rather than assume current website
-examples match the pinned release.
+TSTyche's supported [template mechanism](https://tstyche.org/guides/template-test-files)
+accepts generated text under the template's filename. A prototype imported
+real Overkill nodes without invoking bodies, translated inline assertions,
+and used public runner events to map results back to their source sites.
+Selecting the passing case excluded a failing case and an unreachable body;
+selecting the failing case produced a checker failure.
 
-Before plan freeze, the adapter must resolve fixture definitions and
-concrete compiler versions. Compiler variants belong in `WorkId`, not
-logical `CaseId`. Execution must preserve the selected fixture boundary,
-retain diagnostics that cannot be attributed to a nested assertion, and
-surface checker setup failures as failures rather than successful empty
-results. Compiler services stay outside the ordinary microtest startup path.
+### Source Identity Prerequisite
 
-Tables can compose checker-backed bodies, but runtime row values do not
-specialize a static type-check program. Row-specific fixtures require an
-explicit collection-time resolution mechanism; selecting a fixture inside
-an ordinary execution callback does not satisfy frozen planning. Reusing
-one fixture across rows or macro applications checks the same program.
+Generated sibling files are insufficient for transparent integration. A
+self-imported class with private fields compared equal at its original path
+but failed in a generated sibling: the sibling created a second nominal type.
+A second probe found that excluding generated input from an explicit
+`tsconfig` file list caused TSTyche to use its baseline configuration instead.
+Both can check a different program while appearing to run successfully.
 
-### Alternatives And Their Limits
+The preferred production prerequisite is a public TSTyche source-text or
+compiler-host extension that checks translated text at the original module
+path with the original project configuration. This API is not available in
+the pinned version. Never overwrite user source to emulate it. A complete
+project mirror is an alternative requiring separate evidence of equivalent
+module resolution and identity, not a shortcut justified by the prototype.
 
-- Automatic file-level cases are feasible, but do not establish the desired
-  reuse of Overkill's authoring layers. They remain an optional integration
-  approach rather than the answer to the shared-authoring question.
-- Automatically turning TSTyche's named tests into Overkill cases lacks
-  public collection before checking in the pinned API. Collection events
-  during execution arrive too late to define the frozen plan.
-- Inline TSTyche assertions inside arbitrary Overkill callbacks are found
-  statically, but have no Overkill case ownership. A probe checked both an
-  exported callback and an unreachable callback, reporting their assertions
-  at file level. Overkill selection would therefore not bound checking.
-- A different compiler-backed assertion library does not by itself solve
-  ownership. Reused callbacks and generic macro bodies have shared source;
-  runtime invocations do not cause separate compiler checks with concrete
-  row types. Restricted inline authoring needs its own ownership and
-  selection contract.
+### Planning And Execution Boundary
 
-### Assumptions And Invalidation
+1. Collect the ordinary Overkill tree, identify checker-backed cases, and
+   associate their bodies with stable source anchors. Preserve original
+   contextual typing; ordinary
+   callsite locations, forwarded macro locations, and function text alone do
+   not establish body ownership.
+2. Freeze selected case identities, assertion ownership, source fingerprints,
+   project configuration, and concrete compiler versions. Compiler variants
+   belong in `WorkId`, not logical `CaseId`.
+3. Translate supported assertion references in their original lexical context.
+   Preserve native expression diagnostics and map generated offsets back to
+   original locations. Suppress checks owned only by unselected or unreachable
+   bodies; reject unsupported assertion forms rather than silently omitting them.
+4. Lower frozen type-test cases into external checker work instead of invoking
+   their ordinary builder bodies. Current body-family metadata alone does not
+   provide this execution path. Map checker evidence to the frozen cases.
+   Checker collection events do not create new Overkill cases. Shared source
+   evidence must retain its ownership when used by several selected cases.
+5. Deliver native results, diagnostics, counts, timings, and run records.
+   Setup failures fail the run as infrastructure errors; ordinary module
+   diagnostics fail compilation. Neither becomes a successful empty check
+   or an invented failure of a selected assertion.
+   Serialize or isolate checker runs where TSTyche's global event delivery
+   would mix concurrent results. Cancellation and cleanup remain explicit.
 
-Fixture-backed composition assumes an acceptable split between Overkill
-composition and separately authored static checks. That product preference
-is unresolved. Requiring inline assertions would invalidate this proposed
-boundary and require another design decision, not a claim that the external
-checker already understands Overkill's runtime tree.
+Type assertions are static. Case bodies are not invoked by the type checker.
+Runtime row values and generic macro applications do not specialize a shared
+TypeScript body into separate programs. Tables and macros may compose native
+checks, but row-specific type specialization needs an explicit static model.
+Selection bounds assertion evaluation, not the compiler's dependency graph;
+invalid TypeScript outside a selected assertion can still prevent checking.
 
-Revisit named-test integration if the external tool provides collection
-without checking and exact execution of selected collected nodes. Revisit
-inline authoring only with an explicit account of shared bodies, generic
-macros, tables, unreachable nodes, and diagnostics outside selected bodies.
+### Rejected Approaches And Remaining Work
+
+- Fixture-backed bodies require a second authoring style and can duplicate
+  descriptions. They do not satisfy the native authoring requirement.
+- Re-exporting or wrapping TSTyche's runtime functions does not teach its
+  source recognizer Overkill syntax or recover erased type arguments.
+- Translating into sibling files fails module identity and project-configuration
+  equivalence. It demonstrates syntax feasibility only.
+- Private matcher imports or a replacement checker violate the integration
+  boundary. Prefer a supported upstream extension.
+
+Native syntax translation is demonstrated, not a complete adapter. Final
+assertion names and catalog, source-anchor instrumentation across all
+composition layers, original-path input, diagnostic preservation, shared-body
+accounting, and complete lifecycle validation remain implementation gates.
+Reconsider the backend if TSTyche cannot provide a supported original-path
+integration. Reconsider the static model if per-application generic or
+row-specific type specialization becomes a requirement.
