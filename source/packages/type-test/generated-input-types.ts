@@ -1,4 +1,4 @@
-import type * as TypeScript from 'typescript';
+import type TypeScript from 'typescript';
 import type { ImportDiagnostic, RepairedModule } from './generated-imports.ts';
 import type { SourceRange, TranslatedModule } from './generated-source.ts';
 

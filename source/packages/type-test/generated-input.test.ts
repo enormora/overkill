@@ -1,10 +1,9 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { ReadonlyDeep } from 'type-fest';
-import { Config, EventEmitter, FileLocation, Runner } from 'tstyche/api';
 import { runIfMain } from '#test-runner';
 import * as compiler from 'typescript';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
+import { checkGeneratedInputs } from './checker.entry-point.ts';
 import { withGeneratedInputs, type TranslatedModule } from './generated-input.entry-point.ts';
 
 async function fixture(scope: TestScope): Promise<string> {
@@ -53,48 +52,23 @@ async function generatedNames(directory: string): Promise<readonly string[]> {
 async function checkerEvents(
     directory: string,
     module: TranslatedModule
-): Promise<{ readonly events: readonly string[]; readonly versions: readonly string[]; }> {
-    await writeFile(
-        join(directory, 'checker.json'),
-        JSON.stringify({ extends: './tsconfig.json', include: [ '*.ts', '.*.ts' ] })
-    );
-    const emitter = new EventEmitter();
-    const events: string[] = [];
-    const versions: string[] = [];
-    const handler = {
-        on(event: ReadonlyDeep<Parameters<typeof EventEmitter.dispatch>[0]>): void {
-            events.push(event[0]);
-            if (event[0] === 'project:uses') {
-                versions.push(`${event[1].compilerVersion}@${event[1].projectConfig.specifier}`);
-            }
-        }
-    };
-    emitter.addHandler(handler);
-    try {
-        await withGeneratedInputs({
-            compiler,
-            projectConfigPath: join(directory, 'tsconfig.json'),
-            modules: [ module ]
-        }, async function check(batch) {
-            const result = batch.modules[0];
-            if (result?.kind !== 'ready') {
-                throw new Error('Missing checker input.');
-            }
-            const runner = new Runner(Config.resolve({
-                commandLineOptions: { root: directory },
-                configFileOptions: {
-                    tsconfig: join(directory, 'checker.json'),
-                    target: [ '*' ],
-                    reporters: []
-                }
-            }));
-            await runner.run([ new FileLocation(result.path) ]);
-        });
-    } finally {
-        emitter.removeHandler(handler);
-    }
-
-    return { events, versions };
+): Promise<
+    { readonly events: readonly string[]; readonly versions: readonly string[]; readonly checkerConfigPath: string; }
+> {
+    const result = await checkGeneratedInputs({
+        compiler: { kind: 'local' },
+        projectConfigPath: join(directory, 'tsconfig.json'),
+        modules: [ module ]
+    });
+    const events = result.events.map(function name(event) {
+        return event[0];
+    });
+    const versions = result.events.flatMap(function identity(event) {
+        return event[0] === 'project:uses'
+            ? [ `${event[1].compilerVersion}@${event[1].projectConfig.specifier}` ]
+            : [];
+    });
+    return { events, versions, checkerConfigPath: result.checkerConfigPath };
 }
 export const testNode = suite('generated type-test input', [
     test('repairs direct nominal self-imports and retains original locations', async function (scope: TestScope) {
@@ -169,7 +143,7 @@ export const testNode = suite('generated type-test input', [
             'checker.ts',
             "import { expect } from 'tstyche';\nexpect<string>().type.toBe<string>();\nexpect<string>().type.toBe<number>();\n"
         );
-        const { events, versions } = await checkerEvents(directory, module);
+        const { events, versions, checkerConfigPath } = await checkerEvents(directory, module);
         scope.assert.equal(
             events
                 .filter(function passed(event) {
@@ -186,7 +160,7 @@ export const testNode = suite('generated type-test input', [
                 .length,
             1
         );
-        scope.assert.deepEqual(versions, [ `${compiler.version}@${join(directory, 'checker.json')}` ]);
+        scope.assert.deepEqual(versions, [ `${compiler.version}@${checkerConfigPath}` ]);
         return scope.assert.collect();
     }),
     test('preserves edited files and reports cleanup failure', async function (scope: TestScope) {

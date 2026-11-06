@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import type * as TypeScript from 'typescript';
+import type TypeScript from 'typescript';
 import { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
 import { repairGeneratedImports, type ImportDiagnostic, type RepairedModule } from './generated-imports.ts';
 import { validateMappings } from './generated-source.ts';
