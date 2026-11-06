@@ -203,11 +203,11 @@ runtime and compiler loops, and no coverage remain constraints.
 Illustrative assertion name, not an implemented or final API:
 
 ```ts
-test('preserves inference', scope => {
+test('preserves inference', (scope) => {
     const result = identity('hello' as const);
     scope.assert(sameType<typeof result, 'hello'>());
     return scope.assert.collect();
-})
+});
 ```
 
 The user writes one source file and one description. No TSTyche imports,
