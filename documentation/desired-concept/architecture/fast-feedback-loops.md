@@ -274,8 +274,9 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
   own incremental cache, and surface its results through the Overkill
   reporter pipeline. The runtime test loop and the type-test loop stay
   independent without Overkill owning a compile server. Native Overkill
-  assertions require source translation with original module identity; the
-  pinned public API does not yet provide the required original-path input.
+  assertions use best-effort generated input through the existing public
+  API, with explicit project configuration and documented identity limits.
+  Upstream changes are not a delivery prerequisite.
   See [Native Type-Test Integration](../authoring/testing-models.md#native-type-test-integration).
 - **Pre-resolved file lists.** Save the result of glob expansion (and gitignore
   application) between runs. Re-validate via inotify/FSEvents or a short

@@ -234,32 +234,52 @@ and used public runner events to map results back to their source sites.
 Selecting the passing case excluded a failing case and an unreachable body;
 selecting the failing case produced a checker failure.
 
-### Source Identity Prerequisite
+### Best-Effort Generated Input
 
-Generated sibling files are insufficient for transparent integration. A
-self-imported class with private fields compared equal at its original path
-but failed in a generated sibling: the sibling created a second nominal type.
-A second probe found that excluding generated input from an explicit
-`tsconfig` file list caused TSTyche to use its baseline configuration instead.
-Both can check a different program while appearing to run successfully.
+Use the existing public TSTyche API without waiting for upstream changes.
+Translate native assertions into adapter-owned, dot-prefixed sibling modules,
+preserving the source extension and relative import directory. Users continue
+to author ordinary Overkill cases. Never overwrite original source; exclude
+generated inputs from Overkill discovery and watch triggers, verify exclusion
+from ordinary project discovery, and clean up only artifacts owned by the run.
+If a project cannot safely accommodate generated input, report that limitation.
 
-The preferred production prerequisite is a public TSTyche source-text or
-compiler-host extension that checks translated text at the original module
-path with the original project configuration. This API is not available in
-the pinned version. Never overwrite user source to emulate it. A complete
-project mirror is an alternative requiring separate evidence of equivalent
-module resolution and identity, not a shortcut justified by the prototype.
+Create an explicit checker configuration for each original project and compiler
+version. Preserve effective compiler options, project references, and resolution
+settings; rebase path-valued options where required and include generated inputs
+explicitly. Verify that TSTyche uses the expected configuration and compiler,
+rather than accepting its baseline fallback. An explicit derived configuration
+prevented the fallback in a prototype.
+
+Maintain original-to-generated module and source-offset mappings. Rewrite direct
+self-imports and imports between translated modules when resolution is
+unambiguous. This can repair the direct self-import case without implementing a
+checker. Do not attempt a general project mirror or dependency graph merely to
+claim transparent equivalence.
+
+Generated input still has a different module identity. Unrewritten self-imports,
+transitive references to original nominal declarations, package-specific
+resolution, and source-path-sensitive constructs can change the program being
+checked. Record generated-input provenance and known limitations in results and
+run records. Detected ambiguity makes affected checks inconclusive with source
+diagnostics. Configuration or transport failures fail the run. Missing assertion
+results never become successful checks.
+
+This is explicitly best-effort checking: undetected identity differences may
+produce false passes or false failures. The adapter does not promise equivalence
+to checking the original module. Improve supported cases through regression
+coverage; a future original-path API is optional and does not gate delivery.
 
 ### Planning And Execution Boundary
 
 1. Collect the ordinary Overkill tree, identify checker-backed cases, and
    associate their bodies with stable source anchors. Preserve original
-   contextual typing; ordinary
-   callsite locations, forwarded macro locations, and function text alone do
+   contextual typing; ordinary callsite locations, forwarded macro locations,
+   and function text alone do
    not establish body ownership.
 2. Freeze selected case identities, assertion ownership, source fingerprints,
-   project configuration, and concrete compiler versions. Compiler variants
-   belong in `WorkId`, not logical `CaseId`.
+   project configuration, generated-input policy, and concrete compiler
+   versions. Compiler variants belong in `WorkId`, not logical `CaseId`.
 3. Translate supported assertion references in their original lexical context.
    Preserve native expression diagnostics and map generated offsets back to
    original locations. Suppress checks owned only by unselected or unreachable
@@ -289,15 +309,15 @@ invalid TypeScript outside a selected assertion can still prevent checking.
   descriptions. They do not satisfy the native authoring requirement.
 - Re-exporting or wrapping TSTyche's runtime functions does not teach its
   source recognizer Overkill syntax or recover erased type arguments.
-- Translating into sibling files fails module identity and project-configuration
-  equivalence. It demonstrates syntax feasibility only.
+- Claiming transparent equivalence for sibling input is unsupported. Use the
+  documented best-effort contract and repair bounded cases instead.
 - Private matcher imports or a replacement checker violate the integration
-  boundary. Prefer a supported upstream extension.
+  boundary. Use the existing public runner and structured events.
 
 Native syntax translation is demonstrated, not a complete adapter. Final
 assertion names and catalog, source-anchor instrumentation across all
-composition layers, original-path input, diagnostic preservation, shared-body
-accounting, and complete lifecycle validation remain implementation gates.
-Reconsider the backend if TSTyche cannot provide a supported original-path
-integration. Reconsider the static model if per-application generic or
-row-specific type specialization becomes a requirement.
+composition layers, generated-input mapping and configuration, diagnostic
+preservation, shared-body accounting, and complete lifecycle validation remain
+implementation tasks. Reconsider the generated-input strategy if supported
+projects cannot accommodate it reliably. Reconsider the static model if
+per-application generic or row-specific type specialization becomes a requirement.
