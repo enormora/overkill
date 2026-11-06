@@ -400,6 +400,13 @@ files. Projects must configure external watchers to ignore the same prefix;
 this component does not control external watchers. Cleanup preserves files
 whose identity or contents changed and reports the failure.
 
+The internal checked-input operation derives an owned sibling configuration per
+explicit project and selected compiler. It retains original roots, adds generated
+inputs explicitly, inherits compiler options, and copies project references.
+It returns buffered checker events and provenance only after project/compiler
+verification and cleanup succeed. Calls through this operation are serialized;
+unrelated direct TSTyche runs must not overlap them in the same process.
+
 ### Planning And Execution Boundary
 
 1. Collect the ordinary Overkill tree, identify checker-backed cases, and

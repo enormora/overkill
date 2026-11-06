@@ -1,5 +1,5 @@
 import { dirname, relative, resolve } from 'node:path';
-import type * as TypeScript from 'typescript';
+import type TypeScript from 'typescript';
 import { mapSourceRange, replaceMappedText, type TranslatedModule, type SourceRange } from './generated-source.ts';
 
 export type ImportDiagnostic = {

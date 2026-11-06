@@ -1,4 +1,5 @@
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
+import { testNode as checker } from '../../packages/type-test/checker.test.ts';
 import { testNode as generatedInputs } from '../../packages/type-test/generated-input.test.ts';
 import { testNode as mappings } from '../../packages/type-test/generated-mapping.test.ts';
 import { testNode as discovery } from '../../packages/type-test/generated-discovery.test.ts';
@@ -11,5 +12,5 @@ export const testNode = createSuite({
     title: 'assertions and compiler adapters',
     annotations: {},
     controls: {},
-    children: [ assertions, generatedInputs, mappings, discovery, identity, ownership ]
+    children: [ checker, assertions, generatedInputs, mappings, discovery, identity, ownership ]
 });
