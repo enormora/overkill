@@ -141,14 +141,15 @@ versions declared in `previousDecoders`. Unsupported identities and decoder
 failures are errors, without fallback. Captures always write the current format
 and codec version. Reading never re-encodes an input.
 
-Internal explicit migration decodes the stored input, re-encodes with the current
-writer, and validates the result without modifying the source. File migration
-and corpus commands remain unavailable until their runner milestone.
+Explicit migration decodes the stored input, re-encodes with the current writer,
+and validates the result without modifying the source. Use `overkill corpus migrate`
+or the runner's `migrateCorpus(...)` API to write a separate destination.
 
 ## Failure confirmation and shrinking
 
-The first failure stops exploration. Shrinking confirms a fresh reconstruction
-before searching, and confirms the retained counterexample after search completes.
+The first failure stops exploration. A fresh reconstruction confirms the original
+failure before shrinking, including inputs without compatible shrink state.
+Candidate search finishes with a fresh confirmation of the retained counterexample.
 A passing or unrelated confirmation leaves the property failed, reports
 non-reproducibility, and retains both observations. Such evidence is not a
 reliably reproducing witness.
@@ -310,8 +311,16 @@ claiming global minimality.
 Property profiles accept `corpus.checkedIn`, an array of project-relative JSON
 files or directories. Checked-in entries replay before the local cache, examples,
 automatic edges, and new exploration. Entries use the versioned property witness
-envelope. Test execution never changes checked-in entries. Inspection, promotion,
-and migration commands are not yet available.
+envelope. Test execution never changes checked-in entries.
+
+Use `overkill corpus inspect <path>` to inspect witnesses or cache indexes,
+`overkill corpus promote <path> --to <destination>` to promote a witness,
+and `overkill corpus migrate <path> --to <destination>` for explicit migration.
+Select a cache entry with `--entry <id>`. Promotion and migration show a decoded
+preview before creating a new destination and reject existing files.
+Custom codecs use `--codec <module>` and optional `--codec-export <name>`.
+The runner exposes the same operations through `inspectCorpus(...)`,
+`promoteWitness(...)`, and `migrateCorpus(...)`.
 
 Confirmed replayable failures are saved automatically beneath
 `runtimeStateDir/corpus`, separately for each profile. `corpus.localCache`
@@ -326,6 +335,13 @@ and normal supervision still apply. Input-only entries are confirmed without
 shrinking; changing a generator never silently retires a checked-in entry.
 Confirmation uses existing shrink-work limits, so `maxShrinkWork: 0` prevents
 automatic caching of new failures.
+
+Confirmed failures also produce native witness artifacts under
+`runtimeStateDir/witnesses/<run-id>/`. The runner persists their run record,
+and human reporters print a replay command. Passing properties and unconfirmed
+failures do not create witness artifacts. Witnesses use the standard attachment
+limits, with explicit omissions for oversized inputs; local cache limits remain
+independent. Witness write failures fail the run while preserving failure evidence.
 
 Nested object-form `scope.forall({ key, generator, test })` accepts a nonblank
 key, unique within its enclosing case, to retain target identity when source
