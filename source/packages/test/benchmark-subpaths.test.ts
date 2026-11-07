@@ -13,8 +13,12 @@ export const testNode = suite('benchmark subpaths', [
         );
         return scope.assert.collect();
     }),
-    test('@overkill-dev/test/baselines exposes contracts without loading storage', function (scope) {
-        scope.assert.deepEqual(Object.keys(baselines), []);
+    test('@overkill-dev/test/baselines exposes shared baseline operations', function (scope) {
+        scope.assert.deepEqual(Object.keys(baselines), [
+            'baselineIdentityKey',
+            'findStaleBaselines',
+            'planBaselineChange'
+        ]);
         return scope.assert.collect();
     })
 ]);
