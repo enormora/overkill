@@ -7,6 +7,7 @@ import {
     type ProjectAttachmentLimits as ParsedProjectAttachmentLimits,
     type integrationProfileSchema,
     projectConfigSchema,
+    type ProjectAdapterProfileConfig,
     workerPoolProjectExecution,
     type Config as ParsedProjectConfig,
     type ProjectBenchmarkProfileConfig,
@@ -47,6 +48,7 @@ import type {
     WorkerPoolHedgingPolicy
 } from './types.ts';
 import {
+    normalizeAdapterProfile,
     assertValidProfileName,
     assertValidWorkDistribution,
     normalizeCoveragePolicy,
@@ -80,7 +82,6 @@ type ParsedProfiles = NonNullable<ParsedProjectConfig['profiles']>;
 type ParsedProfile = ParsedProfiles[string];
 type ParsedBenchmarkProfile = Extract<ParsedProfile, { readonly testFamily: 'benchmark'; }>;
 
-type ConfiguredReporters = NonNullable<ParsedProjectConfig['reporters']>;
 type ProjectHostProcessGuard = Readonly<Partial<Record<'hostProcess', never>>>;
 type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
 
@@ -108,7 +109,8 @@ export type ProjectCoverageThresholds = ParsedProjectCoverageThresholds;
 export type ProjectProfileFiles = ParsedProjectProfileFiles;
 export type ProjectPropertyProfileConfig = PropertyProfileInput;
 type StandardTestProfileConfig = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
-type ProjectTestProfileConfig = ProjectPropertyProfileConfig | StandardTestProfileConfig;
+type BuiltinProjectTestProfileConfig = ProjectPropertyProfileConfig | StandardTestProfileConfig;
+type ProjectTestProfileConfig = BuiltinProjectTestProfileConfig | ProjectAdapterProfileConfig;
 export type ProjectProfileConfig = ProjectBenchmarkProfileConfig | ProjectTestProfileConfig;
 export type ProjectProfilesConfig = Readonly<Record<string, ProjectProfileConfig>>;
 export type ProjectProcessBudgets = ParsedProjectProcessBudgets;
@@ -214,12 +216,6 @@ function readNamedConfigExport(configModule: unknown, configPath: string): unkno
     }
 
     throw new ConfigError(`Config file "${configPath}" must export a named config value.`);
-}
-
-function normalizeReporters(
-    reporters: ConfiguredReporters | undefined
-): LoadedConfig['reporters'] {
-    return reporters ?? null;
 }
 
 function normalizeBudgetValue(value: number | null | undefined): number | null {
@@ -402,7 +398,7 @@ function normalizeMicrotestProfile(
         coverage: normalizeCoveragePolicy(profile.coverage, configPath),
         execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeProfileFiles(profile.files),
-        reporters: normalizeReporters(profile.reporters),
+        reporters: profile.reporters ?? null,
         processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'microtest',
         runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
@@ -424,7 +420,7 @@ function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): 
         attachments: attachmentLimitsSchema.parse(profile.attachments),
         execution,
         files,
-        reporters: normalizeReporters(profile.reporters),
+        reporters: profile.reporters ?? null,
         retries: profile.retries === undefined ? null : {
             artifacts: profile.retries.artifacts ?? 'first-failure-and-final',
             maxAttempts: profile.retries.maxAttempts
@@ -467,7 +463,7 @@ function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkPr
         host: profile.host,
         execution,
         files,
-        reporters: normalizeReporters(profile.reporters),
+        reporters: profile.reporters ?? null,
         processUsage: normalizeProcessUsage(profile.processUsage),
         testFamily: 'benchmark',
         runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
@@ -486,7 +482,7 @@ function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): Propert
     return {
         execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeRequiredProfileFiles(profile.files),
-        reporters: normalizeReporters(profile.reporters),
+        reporters: profile.reporters ?? null,
         processUsage: normalizeProcessUsage(profile.processUsage),
         corpus: profile.corpus,
         property: profile.property,
@@ -501,6 +497,9 @@ function normalizeProfile(
     profile: ParsedProfile,
     configPath: string | null
 ): ProfileConfig {
+    if (profile.testFamily === 'type-test') {
+        return normalizeAdapterProfile(profile);
+    }
     if (profile.testFamily === 'property') {
         return normalizePropertyProfile(profile);
     }
@@ -540,7 +539,7 @@ function normalizeConfigForOrigin(parsedConfig: ParsedProjectConfig, configPath:
         loader: parsedConfig.loader ?? defaultLoader,
         outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
         profiles: normalizeConfiguredProfiles(parsedConfig.profiles, configPath),
-        reporters: normalizeReporters(parsedConfig.reporters),
+        reporters: parsedConfig.reporters ?? null,
         runtimeStateDir: parsedConfig.runtimeStateDir ?? '.overkill'
     };
 }

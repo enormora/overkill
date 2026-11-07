@@ -45,7 +45,7 @@ const metadataSchema = z
         ]),
         profile: z.string(),
         scheduling: z.union([ z.literal('concurrent'), z.literal('serial') ]),
-        testFamily: z.enum([ 'benchmark', 'integration', 'microtest', 'property' ]),
+        testFamily: z.enum([ 'benchmark', 'integration', 'microtest', 'property', 'type-test' ]),
         workerLifecycle: z.union([ z.literal('fresh-worker-per-unit'), z.literal('reuse') ]).nullable()
     })
     .readonly();
@@ -72,13 +72,22 @@ const legacyObservationSchema = z
     });
 const observationSchema = z.union([ currentObservationSchema, legacyObservationSchema ]);
 
-const workIdSchema = z
+const ordinaryWorkIdSchema = z
     .strictObject({
         case: caseIdSchema,
         runtimes: z.array(runtimeIdSchema).readonly(),
         workload: workloadIdSchema.nullable()
     })
     .readonly();
+const workIdSchema = z.union([
+    ordinaryWorkIdSchema,
+    ordinaryWorkIdSchema
+        .unwrap()
+        .extend({
+            compiler: z.strictObject({ name: z.literal('typescript'), version: z.string().min(1) })
+        })
+        .readonly()
+]);
 const legacyWorkIdSchema = z
     .strictObject({
         case: caseIdSchema,

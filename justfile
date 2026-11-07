@@ -1,6 +1,7 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
-package-smoke-packages := '@overkill-dev/model,@overkill-dev/reporter-benchmark-html,@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
+package-smoke-packages := '@overkill-dev/model,@overkill-dev/reporter-benchmark-html,@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/type-test,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
 mutation-smoke-packages := '@overkill-dev/engine,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/reporter-line'
+packtory-node-options := '--max-old-space-size-percentage=75'
 
 default:
     @just --list
@@ -119,7 +120,7 @@ _pack-smoke-packages packages: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     rm -rf target/package-smoke
     mkdir -p target/package-smoke/node_modules
-    PACKTORY_INCLUDED_PACKAGES={{packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES={{packages}} packtory pack --all --format folder --version 0.0.0 --vendor-dependencies --out target/package-smoke/node_modules
     ln -s ../../../../package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
 
 test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
@@ -135,6 +136,7 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/bench.test.js
     node target/build/source/integration-tests/package-smoke/property.test.js
     node target/build/source/integration-tests/package-smoke/model.test.js
+    node target/build/source/integration-tests/package-smoke/type-test.test.js
     node target/build/source/integration-tests/package-smoke/stryker-runner.test.js
     node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
     node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
@@ -146,7 +148,7 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
 publish-dry-run: compile
     rm -rf target/build/source/node_modules
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
-    packtory publish
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" packtory publish
 
 benchmark-mutation-cost: compile
     node target/build/source/packages/test/overkill.entry-point.js bench run --profile mutation-cost --seed 42 --order lexical

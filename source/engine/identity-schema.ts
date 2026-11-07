@@ -13,11 +13,17 @@ export const runtimeIdSchema = z.strictObject({
     variantId: z.string().nullable()
 });
 export const workloadIdSchema = z.strictObject({ name: z.string(), params: z.record(z.string(), z.string()) });
-export const workIdSchema = z.strictObject({
+const ordinaryWorkIdSchema = z.strictObject({
     case: caseIdSchema,
     runtimes: z.array(runtimeIdSchema),
     workload: workloadIdSchema.nullable()
 });
+export const workIdSchema = z.union([
+    ordinaryWorkIdSchema,
+    ordinaryWorkIdSchema.extend({
+        compiler: z.strictObject({ name: z.literal('typescript'), version: z.string().min(1) })
+    })
+]);
 export const attemptIdSchema = z.strictObject({ index: z.number().int().nonnegative() });
 export const sourceLocationSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('unknown') }),

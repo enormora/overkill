@@ -54,6 +54,7 @@ function scenarioCase(title: string, scope: string, value: string, options: Scen
     const rootResourceName = options.dependent === true ? 'server' : 'database';
 
     return {
+        bodyOrigin: null,
         workloadParameters: null,
         annotations: { ownership: [], tags: [] },
         controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },

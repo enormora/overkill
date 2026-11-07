@@ -53,6 +53,11 @@ export async function executeLocalResolvedRun(
     dependencies: RunOrchestratorDependencies,
     options: LocalExecutionOptions
 ): Promise<RunResult> {
+    const profile = resolvedRun.config.profiles[resolvedRun.request.profile];
+    if (profile?.testFamily === 'type-test') {
+        const { executeAdapterResolvedRun } = await import('./adapter-run.ts');
+        return await executeAdapterResolvedRun(resolvedRun, profile, dependencies, options);
+    }
     const { processUsagePolicy } = resolvedRun.facts.execution;
     const resourceTiming = options.timing === null
         ? null

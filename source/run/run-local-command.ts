@@ -30,6 +30,20 @@ async function executeResolvedRun(
     });
 }
 
+async function executeCollectedRun(
+    run: ResolvedRun,
+    dependencies: RunOrchestratorDependencies,
+    runtimePolicy: RunRuntimePolicy | null,
+    options: LocalRunOptions
+): Promise<RunResult> {
+    if (run.facts.execution.testFamily === 'type-test') {
+        return await executeResolvedRun(run, dependencies, runtimePolicy, options);
+    }
+    return await executeWithRuntimeAttachments(run, dependencies, async function executeAttachmentRun() {
+        return await executeResolvedRun(run, dependencies, runtimePolicy, options);
+    }, options.record);
+}
+
 async function runLocalWithPolicy(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
@@ -50,9 +64,7 @@ async function runLocalWithPolicy(
             benchmarkHost: null
         });
     }
-    return await executeWithRuntimeAttachments(resolvedRun, dependencies, async function executeAttachmentRun() {
-        return await executeResolvedRun(resolvedRun, dependencies, runtimePolicy, options);
-    }, options.record);
+    return await executeCollectedRun(resolvedRun, dependencies, runtimePolicy, options);
 }
 
 async function runOrdinaryLocalCommand(

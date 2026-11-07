@@ -42,6 +42,7 @@ import {
     type ProcessModel,
     type ProfileConfig,
     type BenchmarkProfileConfig,
+    type AdapterProfileConfig,
     type ProfileFiles,
     type Config,
     type ProjectIntegrationProfileConfig,
@@ -49,6 +50,7 @@ import {
     type ProjectProfileFiles,
     type ProjectMicrotestProfileConfig,
     type ProjectPropertyProfileConfig,
+    type ProjectAdapterProfileConfig,
     type ProjectMicrotestExecution,
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
@@ -176,6 +178,9 @@ function assertWorkIdentityTypes(): void {
     expect<WorkId['runtimes']>().type.toBe<readonly RuntimeId[]>();
     expect<WorkId['workload']>().type.toBe<WorkloadId | null>();
 }
+
+type OrdinaryProfile = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
+type OrdinaryProjectProfile = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
 
 describe('@overkill-dev/run', function () {
     test('exposes the typed run command surface', function () {
@@ -409,7 +414,7 @@ describe('@overkill-dev/run config', function () {
         expect<NormalizedConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<NormalizedConfig['profiles'][string]>().type.toBe<ProfileConfig>();
         expect<ProfileConfig>().type.toBe<
-            BenchmarkProfileConfig | IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig
+            AdapterProfileConfig | BenchmarkProfileConfig | OrdinaryProfile
         >();
         expect<NormalizedConfig['profiles']['backend-http']>().type.toBe<ProfileConfig>();
         expect<NormalizedConfig['reporters']>().type.toBe<readonly DefinedReporter[] | null>();
@@ -444,7 +449,7 @@ describe('@overkill-dev/run config', function () {
 
     test('exposes property profile config types', function () {
         expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
-            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
+            OrdinaryProjectProfile | ProjectAdapterProfileConfig | ProjectBenchmarkProfileConfig
         >();
         expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
             ProjectPropertyProfileConfig

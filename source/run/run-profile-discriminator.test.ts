@@ -25,6 +25,8 @@ function createRunCommand(config: NormalizedConfig, profileName: string): RunCom
     };
 }
 
+const requiredFamilyMessage = 'testFamily must be one of benchmark, integration, microtest, property, type-test.';
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/run-profile-discriminator.test.ts',
@@ -52,8 +54,7 @@ export const testNode = createOverkillSuite({
                         'microtest'
                     ));
                 }, {
-                    message:
-                        'Invalid profile "microtest": testFamily must be "benchmark", "integration", "microtest", or "property".'
+                    message: `Invalid profile "microtest": ${requiredFamilyMessage}`
                 });
 
                 return scope.assert.collect();
@@ -80,8 +81,7 @@ export const testNode = createOverkillSuite({
                         'backend'
                     ));
                 }, {
-                    message:
-                        'Invalid profile "backend": testFamily must be "benchmark", "integration", "microtest", or "property".'
+                    message: `Invalid profile "backend": ${requiredFamilyMessage}`
                 });
 
                 return scope.assert.collect();

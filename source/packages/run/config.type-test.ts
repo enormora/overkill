@@ -20,6 +20,8 @@ import {
     type ProjectTimingProfilePolicy
 } from './config.entry-point.ts';
 
+type ExpectedTestFamily = 'integration' | 'microtest' | 'property' | 'type-test';
+
 describe('@overkill-dev/run/config', function () {
     test('exposes property exploration settings without coverage or worker pools', function () {
         expect<ProjectPropertyProfileConfig>().type.toBeAssignableFrom<{
@@ -34,8 +36,8 @@ describe('@overkill-dev/run/config', function () {
     });
     test('exposes benchmark policy without adding it to ordinary execution profiles', function () {
         expect<typeof normalizeConfig>().type.toBe<(config: Config) => NormalizedConfig>();
-        expect<ProfileConfig['testFamily']>().type.toBe<'benchmark' | 'integration' | 'microtest' | 'property'>();
-        expect<TestProfileConfig['testFamily']>().type.toBe<'integration' | 'microtest' | 'property'>();
+        expect<ProfileConfig['testFamily']>().type.toBe<ExpectedTestFamily | 'benchmark'>();
+        expect<TestProfileConfig['testFamily']>().type.toBe<ExpectedTestFamily>();
         expect<keyof ProjectBenchmarkProfileConfig>().type.toBe<
             keyof {
                 readonly attachments: true;

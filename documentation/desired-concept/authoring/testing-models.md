@@ -200,7 +200,7 @@ owns source translation and result mapping; TSTyche owns type relationships
 and diagnostics. A dedicated `type-test` profile, frozen planning, independent
 runtime and compiler loops, and no coverage remain constraints.
 
-Illustrative adapter binding, not an implemented or final export:
+Native adapter binding:
 
 ```ts
 import { sameType } from '@overkill-dev/type-test';
@@ -220,9 +220,9 @@ external fixture references, or second test tree are required in user code.
 #### References And Adapter Boundaries
 
 Native type assertions reuse imported, engine-branded composite assertion
-references through `scope.assert(reference, ...operands)`. An adapter may expose
-generic reference factories, as illustrated above, and expression operands where
-its checker supports them. Type arguments and expressions are source inputs to
+references through `scope.assert(reference, ...operands)`. The package exposes
+generic reference factories and expression operands where its checker supports
+them. Type arguments and expressions are source inputs to
 the adapter, not runtime evidence of a type relationship. No separate static
 reference category or built-in type matcher methods are added to the engine.
 
@@ -231,12 +231,12 @@ adapter integration. TSTyche and other adapters must not need private core
 imports. The engine owns assertion boundaries, identities, and native results;
 the runner owns generic validation, collection, planning, and execution lowering.
 An adapter owns its supported bindings, source recognition, translation, and
-external checker invocation. The concrete hooks belong to the explicit adapter
-contract milestone, not this authoring contract.
+external checker invocation. Registration uses an explicit adapter value with
+validation, preparation, collection, lowering, and execution contracts.
 
-`@overkill-dev/type-test` will provide bindings for the full supported TSTyche
-assertion surface, with checking and diagnostics delegated to TSTyche. Export
-names and matcher signatures belong to that package's milestone. This contract
+`@overkill-dev/type-test` provides bindings for the full supported TSTyche
+assertion surface, with checking and diagnostics delegated to TSTyche. Concrete
+bindings and operand forms are documented in the optional package. This contract
 does not define a smaller Overkill type-assertion catalog or a public registry
 for user-defined matcher translations.
 
@@ -287,6 +287,21 @@ reusing a body does not specialize it per application. Distinct authored bodies
 retain their own assertion sites, while shared sites retain ownership across all
 selected cases that use them. Macro application locations are useful attribution,
 but do not establish assertion-body ownership on their own.
+
+The engine captures authoring call locations and first-party wrappers forward
+original callback metadata. The adapter resolves those anchors through TypeScript
+symbols. Checking existing roots does not require import instrumentation,
+require hooks, ESM loaders, or a prepared-import API. `import.meta` belongs to
+the module containing it and cannot discover an arbitrary callback's source.
+Unknown or ambiguous provenance produces a diagnostic.
+
+Decorator applicability uses a declaration callback whose parameter is applied
+as a decorator; each native assertion owns all its decorator sites. JSX checks
+retain the original `.tsx` extension and require project JSX compiler options.
+Projects precompile syntax unsupported by Node with ordinary source maps and
+run with source-map support. The adapter never transforms modules during loading. Generated projects retain
+compiler settings and bind the injected `tstyche` import to the adapter's installed
+checker through an explicit path mapping, including when dependencies are nested.
 
 Selection bounds assertion evaluation: omit checks owned only by unselected or
 unreachable bodies. It does not bound the compiler dependency graph; invalid

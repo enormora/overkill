@@ -15,6 +15,9 @@ const stackFramePattern = /^\s*at (?:.+? \()?(?<file>.+):(?<line>\d+):(?<column>
 
 const internalModulePatterns = [
     /\/model\/model-authoring\.[cm]?[jt]s$/u,
+    /\/engine\/(?:test-body|test-node)\.[cm]?[jt]s$/u,
+    /\/packages\/engine\/engine\.entry-point\.[cm]?[jt]s$/u,
+    /\/packages\/test\/(?:resource-wrapper-composition|resources\.entry-point)\.[cm]?[jt]s$/u,
     /\/property\/(?:property-authoring|property-invocation)\.[cm]?[jt]s$/u,
     /\/authoring\/test-node-authoring\.[cm]?[jt]s$/u,
     /\/assertion-protocol\/source-location\.[cm]?[jt]s$/u,

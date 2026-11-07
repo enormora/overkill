@@ -212,6 +212,7 @@ export type {
     ProfileConfig,
     BenchmarkExecution,
     BenchmarkProfileConfig,
+    AdapterProfileConfig,
     TestProfileConfig,
     PropertyProfileConfig,
     ProfileFiles,
@@ -306,3 +307,16 @@ export type {
 } from '../../run/replay-types.ts';
 
 export type { ReplayWitnessRequest, ReplayWitnessCommand } from '../../run/witness-replay-request.ts';
+
+export type { ProjectAdapterProfileConfig } from '../../config/schema.ts';
+export type {
+    RunAdapterRegistration,
+    RunProfileAdapter,
+    CollectedAdapterRun,
+    PreparedAdapterRun
+} from '../../config/adapter-profile.ts';
+export { executeAdapterPlan, prepareAdapterPlan } from '../../run/adapter-execution.ts';
+
+export { selectedTestPlan as selectTestPlan } from '../../run/run-selection.ts';
+
+export { isGeneratedTypeTestPath } from '../../generated-input-path.ts';

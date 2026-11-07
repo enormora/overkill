@@ -185,12 +185,30 @@ function assertExecution(request: RunRequest, profile: ProfileConfig): void {
         invalidRequest('Worker count can only be requested for worker-pool profiles.');
     }
 }
+function assertAdapterRequest(request: RunRequest, profile: ProfileConfig): void {
+    if (profile.testFamily !== 'type-test') {
+        return;
+    }
+    const unsupported = [
+        request.capture !== 'buffered',
+        request.measureProcessUsage === true,
+        request.processBudgetOverrides !== null,
+        request.processUsageSamplingIntervalMilliseconds !== null,
+        request.timingCollection === 'precise'
+    ];
+    if (unsupported.includes(true)) {
+        invalidRequest(
+            'Adapter profiles do not support runtime capture, debugging, process budgets, or precise timings.'
+        );
+    }
+}
 export function assertProfileRequestSupported(
     request: RunRequest,
     profile: ProfileConfig,
     namespace: Namespace,
     reporters: NormalizedConfig['reporters']
 ): void {
+    assertAdapterRequest(request, profile);
     assertBaseline(namespace, request);
     assertExecution(request, profile);
     if (request.coverage && profile.testFamily !== 'microtest') {

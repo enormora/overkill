@@ -2,7 +2,7 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import { ensureDefinitionLocations } from '../assertion-protocol/source-location.ts';
+import { captureSourceLocation, ensureDefinitionLocations } from '../assertion-protocol/source-location.ts';
 import type { TestBody, ThrowingTestBody } from './test-scope.ts';
 import type {
     BenchmarkScope as MeasurementScope,
@@ -12,6 +12,9 @@ import type {
 } from './benchmark-node.ts';
 import { readWorkloadTestCaseVariants, type WorkloadVariant } from './workload-test-case.ts';
 import {
+    captureTestBodyOrigin,
+    readTestBodyOrigin,
+    type TestBodyOrigin,
     propertyExecutionForDefinition,
     type FamilyBodyExecution,
     resolveTestBodyFamily
@@ -75,6 +78,7 @@ export type WorkloadTestCaseExecution = {
 export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution | WorkloadTestCaseExecution;
 
 export type TestCase = {
+    readonly bodyOrigin: TestBodyOrigin | null;
     readonly [testNodeBrand]: true;
     readonly [testNodeFamilyBrand]: TestFamily | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
@@ -107,6 +111,7 @@ export type TableCase = {
 };
 
 export type Table = {
+    readonly bodyOrigins: readonly TestBodyOrigin[];
     readonly [testNodeBrand]: true;
     readonly [testNodeFamilyBrand]: TestFamily | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
@@ -386,6 +391,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
         validateNodeMetadata(options);
 
         const testCase: TestCase = {
+            bodyOrigin: execution.kind === 'body' ? captureTestBodyOrigin(execution.body) : null,
             [testNodeBrand]: true,
             [testNodeFamilyBrand]: family,
             [testNodeOwnerBrand]: owner,
@@ -467,10 +473,14 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     }
 
     function createTable(options: TableOptions): Table {
+        const location = captureSourceLocation();
         validateNodeMetadata(options);
         ensureTableCases(options.cases);
 
         const table: Table = {
+            bodyOrigins: options.cases.map(function caseOrigin(entry) {
+                return readTestBodyOrigin(entry.body) ?? { body: entry.body, location };
+            }),
             [testNodeBrand]: true,
             [testNodeFamilyBrand]: null,
             [testNodeOwnerBrand]: owner,

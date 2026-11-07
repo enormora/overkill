@@ -1,4 +1,5 @@
 import type {
+    AdapterProfileConfig,
     NormalizedConfig,
     ProfilesConfig,
     ProfileConfig,
@@ -196,7 +197,7 @@ function copyBenchmarkExecution(execution: BenchmarkExecution): BenchmarkExecuti
         : { ...execution };
 }
 
-function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
+function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfileConfig>): ProfileConfig {
     if (profile.testFamily === 'property') {
         return {
             execution: copyMicrotestExecution(profile.execution),
@@ -254,6 +255,21 @@ function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
         timings: copyTimingProfilePolicy(profile.timings),
         timeouts: copyTimeoutPolicy(profile.timeouts)
     };
+}
+
+function copyAdapterProfile(profile: AdapterProfileConfig): AdapterProfileConfig {
+    return {
+        ...profile,
+        files: copyProfileFiles(profile.files),
+        execution: { ...profile.execution },
+        timeouts: { ...profile.timeouts },
+        processUsage: copyProcessUsagePolicy(profile.processUsage),
+        reporters: profile.reporters === null ? null : Array.from(profile.reporters)
+    };
+}
+
+function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
+    return profile.testFamily === 'type-test' ? copyAdapterProfile(profile) : copyBuiltinProfileConfig(profile);
 }
 
 function copyProfilesConfig(profiles: ProfilesConfig): ProfilesConfig {

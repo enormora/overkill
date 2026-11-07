@@ -59,6 +59,7 @@ export type {
     NormalizedConfig,
     ProfileConfig,
     BenchmarkProfileConfig,
+    AdapterProfileConfig,
     PropertyProfileConfig,
     TestProfileConfig
 } from '../../config/types.ts';
@@ -67,3 +68,11 @@ export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
 export type { BenchmarkHostLimits, BenchmarkHostPolicy } from '../../config/benchmark-host.ts';
 
 export type { RunRecordPersistenceMode, RunRecordProfilePolicy } from '../../config/types.ts';
+
+export type { ProjectAdapterProfileConfig } from '../../config/schema.ts';
+export type {
+    RunAdapterRegistration,
+    RunProfileAdapter,
+    CollectedAdapterRun,
+    PreparedAdapterRun
+} from '../../config/adapter-profile.ts';

@@ -64,6 +64,21 @@ const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ..
 export default {
     forbidden: [
         {
+            name: 'optional-type-test-boundary',
+            severity: 'error',
+            from: { path: '^source/(engine|config|run|packages/(engine|run|test))/', pathNot: testFiles },
+            to: { path: '^source/packages/type-test/' }
+        },
+        {
+            name: 'checker-dependencies-stay-optional',
+            severity: 'error',
+            from: {
+                path: '^source/(assertion-protocol|engine|config|run|packages/(engine|run|test))/',
+                pathNot: testFiles
+            },
+            to: { path: '(^|node_modules/)(typescript|tstyche)(/|$)' }
+        },
+        {
             name: 'config-does-not-import-orchestration',
             severity: 'error',
             from: { path: '^source/config/', pathNot: testFiles },
