@@ -11,7 +11,8 @@ export type PropertyCoverageRequirement = { readonly label: string; readonly min
 type CoverageDeclaration = { readonly coverage: readonly PropertyCoverageRequirement[]; };
 type ExamplesDeclaration<Value> = { readonly examples: readonly PropertyExample<Value>[]; };
 
-export type PropertySampleScope = TestScope & {
+export type PropertySampleScope<Value = unknown> = TestScope & {
+    readonly reconstructInput: () => Value;
     readonly failureKey: (key: string) => void;
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;
@@ -19,7 +20,7 @@ export type PropertySampleScope = TestScope & {
 
 export type PropertyBody<Value> = (
     value: Value,
-    sample: PropertySampleScope
+    sample: PropertySampleScope<Value>
 ) => AssertionResult | Promise<AssertionResult>;
 
 export type PropertyExample<Value> = () => Value;

@@ -295,6 +295,12 @@ export const configuration = {
             bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ]
         },
         {
+            name: 'model',
+            description: 'Sequential model-based testing above the Overkill property core.',
+            packageInterface: { modules: packageModules({ '.': 'main' }) },
+            bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/property' ]
+        },
+        {
             name: 'property',
             description: 'Generator-driven property test authoring for Overkill.',
             packageInterface: { modules: packageModules({ '.': 'main' }) },

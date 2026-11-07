@@ -11,6 +11,7 @@ import { capturePropertyInput } from './property-graph.ts';
 import { readGeneratorCodec } from './generator.ts';
 import { trialFailureKey, type TrialFailureKey } from './property-failure-key.ts';
 import { trialTargets, type TrialTargets } from './property-targets.ts';
+import { trialInputReconstruction, type TrialInputReconstruction } from './property-input-reconstruction.ts';
 import type { CoverageTrial } from './property-coverage.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
 import { propertyTrialPosition, type PropertyWork } from './property-work.ts';
@@ -20,9 +21,9 @@ export type ObservedTrial = {
     readonly key: string | null;
     readonly observation: PropertyFailureObservation;
 };
-type TrialContext = {
+type TrialContext<Value> = {
     readonly afterTrial: () => Promise<void>;
-    readonly reconstruct: (() => unknown) | null;
+    readonly reconstruct: () => Value;
     readonly host: PropertyExecutionHost;
     readonly signal: AbortSignal;
     readonly work: PropertyWork;
@@ -31,16 +32,19 @@ type TrialContext = {
     readonly observations: CoverageTrial;
 };
 
-function finishTrial(
-    context: TrialContext,
-    key: TrialFailureKey,
-    targets: TrialTargets,
-    passed: boolean
-): void {
-    key.finish();
-    context.observations.finish(passed);
-    const scores = targets.finish();
-    if (passed) {
+type TrialTracking = {
+    readonly reconstruction: TrialInputReconstruction<unknown>;
+    readonly passed: boolean;
+    readonly key: TrialFailureKey;
+    readonly targets: TrialTargets;
+};
+
+function finishTrial(context: TrialContext<unknown>, tracking: TrialTracking): void {
+    tracking.reconstruction.finish();
+    tracking.key.finish();
+    context.observations.finish(tracking.passed);
+    const scores = tracking.targets.finish();
+    if (tracking.passed) {
         context.observeScores(scores);
     }
 }
@@ -52,7 +56,7 @@ function failureInput(trial: PropertyTrialResult, input: EncodedPropertyInput): 
 export async function observePropertyTrial<Value>(
     value: Value,
     invocation: NormalizedPropertyInvocation<Value>,
-    context: TrialContext
+    context: TrialContext<Value>
 ): Promise<ObservedTrial> {
     const capture = regressionCapture(context.reconstruct) ??
         capturePropertyInput(value, readGeneratorCodec(invocation.generator), function consumeCodecWork() {
@@ -60,11 +64,17 @@ export async function observePropertyTrial<Value>(
             context.work.context.consumeWork();
         });
     const preview = serializeValue(value);
-    const tracking = { key: trialFailureKey(), targets: trialTargets(context.observeLabel), passed: false };
+    const tracking = {
+        key: trialFailureKey(),
+        targets: trialTargets(context.observeLabel),
+        passed: false,
+        reconstruction: trialInputReconstruction(context.reconstruct, context.work.context.consumeWork, context.signal)
+    };
     try {
         const trial = await context.host.evaluateTrial(async function runCandidate(scope) {
             return await invocation.test(value, {
                 ...scope,
+                reconstructInput: tracking.reconstruction.input,
                 failureKey: tracking.key.set,
                 target: tracking.targets.target,
                 cover: context.observations.cover
@@ -83,7 +93,7 @@ export async function observePropertyTrial<Value>(
             }
         };
     } finally {
-        finishTrial(context, tracking.key, tracking.targets, tracking.passed);
+        finishTrial(context, tracking);
         await context.afterTrial();
     }
 }

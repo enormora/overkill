@@ -36,6 +36,8 @@ const testRootAuthoringFiles = [
     '^source/packages/test/test\\.entry-point\\.ts$'
 ];
 const testRootLazyModuleBoundaries = [
+    '^source/model/',
+    '^source/packages/model/',
     '^source/property/',
     '^source/packages/property/',
     '^source/config/',

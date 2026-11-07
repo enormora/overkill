@@ -29,7 +29,8 @@ describe('property authoring types', function () {
             generator,
             test(value, sample) {
                 expect(value).type.toBe<{ readonly name: string; }>();
-                expect(sample).type.toBe<leaf.PropertySampleScope>();
+                expect(sample).type.toBe<leaf.PropertySampleScope<{ readonly name: string; }>>();
+                expect(sample.reconstructInput()).type.toBe<{ readonly name: string; }>();
                 sample.failureKey('name');
                 sample.target('length', value.name.length);
                 sample.cover('empty', value.name === '');
