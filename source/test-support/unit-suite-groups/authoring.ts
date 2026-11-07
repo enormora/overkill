@@ -1,3 +1,4 @@
+import { testNode as modelTestNode } from '../../model/model.test.ts';
 import { testNode as propertyTestNode } from '../../property/property-suite.test.ts';
 import { testNode as measurementTestNode } from '../../bench/measurement-suite.test.ts';
 import { testNode as workloadTestNode } from '../../bench/workload.test.ts';
@@ -18,6 +19,7 @@ export const testNode = createSuite({
         benchEntryPointTestNode,
         benchEngineCopiesTestNode,
         benchMacroLocationsTestNode,
+        modelTestNode,
         propertyTestNode
     ],
     controls: {},

@@ -14,6 +14,7 @@ export const unknownSourceLocation: SourceLocation = {
 const stackFramePattern = /^\s*at (?:.+? \()?(?<file>.+):(?<line>\d+):(?<column>\d+)\)?$/u;
 
 const internalModulePatterns = [
+    /\/model\/model-authoring\.[cm]?[jt]s$/u,
     /\/engine\/(?:test-body|test-node)\.[cm]?[jt]s$/u,
     /\/packages\/engine\/engine\.entry-point\.[cm]?[jt]s$/u,
     /\/packages\/test\/(?:resource-wrapper-composition|resources\.entry-point)\.[cm]?[jt]s$/u,

@@ -1622,3 +1622,37 @@ input and output after execution. No cloning occurs; authors provide independent
 branches when mutation requires isolation. Shrinking and replay retain the original
 input and recompute the relation. Existing property machinery owns settings,
 examples, coverage, codecs, witnesses, errors, and the single assertion boundary.
+
+## Model-Based Testing Resolution
+
+`@overkill-dev/model` is an optional package above the property core. It uses
+property profiles and capability restrictions. It generates sequential valid
+operation traces, not concurrent histories or resource-backed integration runs.
+Differential testing and linearizability retain their separate package ownership.
+
+`model` creates a property-family case. `modelScenario` returns a property
+invocation for direct or nested composition and generator preview. Operations
+are ordinary typed data; there is no command registry or foreign runner.
+Definitions supply pure initial-state, state-dependent command-generator, and
+transition callbacks. Transitions return enabled next states or disabled results.
+Generation and shrinking preserve enabled transitions; disabled commands never
+silently disappear during execution. A null command generator denotes terminal
+state. Length bounds intersect property size policy without relaxing minima.
+
+Every evaluation reconstructs independent prediction and system operation graphs.
+The property sample scope exposes `reconstructInput()` through
+`PropertySampleScope<Value>`. Retained recipes regenerate new inputs or decode
+stored ones; reconstruction charges property work and expires with the trial.
+Factories and transitions obey the existing purity and fresh-graph contract.
+
+Validate the entire predicted trace before system creation. Check the initial
+system and each completed operation, then finish ordinary trial cleanup. Checks
+use existing assertion semantics. Invalid stored or explicit traces fail with an
+indexed applicability error before system creation. Stored traces remain runnable
+outside current generation length bounds and replay without command generators.
+
+Reuse property phase accounting, failure identity, shrinking, confirmation,
+codecs, corpora, witnesses, and supervision. One model remains one collected case
+and one property boundary assertion. No new CLI, test family, or witness format
+is introduced. Data operations avoid registry identities and command-specific
+replay compatibility; authors dispatch their operation unions explicitly.

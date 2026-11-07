@@ -2494,7 +2494,8 @@ declare const gen: {
     readonly recursive: <Value>(definition: RecursiveGeneratorDefinition<Value>) => Generator<Value>;
 };
 
-type PropertySampleScope = TestScope & {
+type PropertySampleScope<Value = unknown> = TestScope & {
+    readonly reconstructInput: () => Value;
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;
     readonly failureKey: (key: string) => void;
@@ -2502,7 +2503,7 @@ type PropertySampleScope = TestScope & {
 
 type PropertyBody<Value> = (
     value: Value,
-    sample: PropertySampleScope
+    sample: PropertySampleScope<Value>
 ) => AssertionResult | Promise<AssertionResult>;
 
 type PropertyExample<Value> = () => Value;
@@ -3179,3 +3180,14 @@ facts omit it. Runtime replay errors use runner-error subtype `witness-replay`.
 Shared baseline contracts and pure identity, planning, and inventory operations are
 exported by `@overkill-dev/baselines` and `@overkill-dev/test/baselines`.
 See [the baseline package](../../../source/packages/baselines/readme.md) for signatures and compatibility.
+
+## Model-Based Testing
+
+`@overkill-dev/model` exports `model`, `modelScenario`, `ModelDefinition`,
+`ModelScenarioDefinition`, `ModelMachine`, and `ModelTransition`.
+`model` returns a property-family `TestCase`; `modelScenario` returns
+`PropertyInvocation<readonly Operation[]>`. Machine transitions distinguish
+`{ kind: 'enabled', state }` from `{ kind: 'disabled' }`.
+
+Canonical: [Model-Based Testing Resolution](../authoring/higher-test-layers.md#model-based-testing-resolution).
+See [the model package](../../../source/packages/model/readme.md) for authoring and lifecycle behavior.
