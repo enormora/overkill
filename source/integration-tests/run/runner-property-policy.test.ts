@@ -7,6 +7,7 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 import { normalizeConfig, orchestrator, type RunCommand } from '../../packages/run/run.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
+import { propertyTrialCount, resetPropertyTrialCount } from './fixtures/property-console-trials.test.ts';
 
 const fixtureDirectory = 'source/integration-tests/run/fixtures/';
 
@@ -96,11 +97,10 @@ export const testNode = suite('property runner policy', [
         ];
     }),
     test('in-process stops new property inputs after a capability violation', async function (scope) {
-        const fixture = await import('./fixtures/property-console-trials.test.ts');
-        fixture.resetPropertyTrialCount();
+        resetPropertyTrialCount();
         const result = await orchestrator.run(propertyCommand(scope, 'property-console-trials', 'in-process'));
         scope.assert.equal(result.summary.runtimePolicy, 1);
-        scope.assert.equal(fixture.propertyTrialCount(), 1);
+        scope.assert.equal(propertyTrialCount(), 1);
         scope.assert.true(result.runnerErrors.some(function capabilityFailure(error) {
             return error.subtype === 'runtime-policy';
         }));
