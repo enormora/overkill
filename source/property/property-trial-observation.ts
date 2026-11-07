@@ -14,7 +14,7 @@ import { trialTargets, type TrialTargets } from './property-targets.ts';
 import { trialInputReconstruction, type TrialInputReconstruction } from './property-input-reconstruction.ts';
 import type { CoverageTrial } from './property-coverage.ts';
 import type { NormalizedPropertyInvocation } from './property-definition.ts';
-import { propertyTrialPosition, type PropertyWork } from './property-work.ts';
+import { propertyExhaustion, propertyTrialPosition, type PropertyWork } from './property-work.ts';
 
 export type ObservedTrial = {
     readonly trial: PropertyTrialResult;
@@ -53,6 +53,16 @@ function failureInput(trial: PropertyTrialResult, input: EncodedPropertyInput): 
     return trial.kind === 'passed' ? { kind: 'unavailable' } : { kind: 'encoded', input };
 }
 
+function propagateTrialWorkExhaustion(trial: PropertyTrialResult): PropertyTrialResult {
+    if (trial.kind === 'body-error') {
+        const error = trial.result.bodyError?.thrown;
+        if (error instanceof Error && propertyExhaustion(error) !== null) {
+            throw error;
+        }
+    }
+    return trial;
+}
+
 export async function observePropertyTrial<Value>(
     value: Value,
     invocation: NormalizedPropertyInvocation<Value>,
@@ -71,15 +81,17 @@ export async function observePropertyTrial<Value>(
         reconstruction: trialInputReconstruction(context.reconstruct, context.work.context.consumeWork, context.signal)
     };
     try {
-        const trial = await context.host.evaluateTrial(async function runCandidate(scope) {
-            return await invocation.test(value, {
-                ...scope,
-                reconstructInput: tracking.reconstruction.input,
-                failureKey: tracking.key.set,
-                target: tracking.targets.target,
-                cover: context.observations.cover
-            });
-        }, context.signal);
+        const trial = propagateTrialWorkExhaustion(
+            await context.host.evaluateTrial(async function runCandidate(scope) {
+                return await invocation.test(value, {
+                    ...scope,
+                    reconstructInput: tracking.reconstruction.input,
+                    failureKey: tracking.key.set,
+                    target: tracking.targets.target,
+                    cover: context.observations.cover
+                });
+            }, context.signal)
+        );
         tracking.passed = trial.kind === 'passed';
         const failureKey = tracking.key.finish();
         return {
