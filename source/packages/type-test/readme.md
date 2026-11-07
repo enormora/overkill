@@ -17,7 +17,7 @@ import { typeTestProfile } from '@overkill-dev/type-test/profile';
 export const config = defineConfig({
     profiles: {
         types: typeTestProfile({
-            files: { include: ['source/**/*.types.ts'] },
+            files: { include: [ 'source/**/*.types.ts' ] },
             projectConfigPath: fileURLToPath(new URL('./tsconfig.json', import.meta.url)),
             compiler: { kind: 'local' }
         })
@@ -48,18 +48,18 @@ fails clearly; they cannot establish runtime narrowing through `scope.require`.
 
 ## Assertion references
 
-| Export | Check |
-| --- | --- |
-| `sameType<Actual, Expected>()` | Type equality |
-| `assignableTo<Actual, Expected>()` | Actual assignable to expected |
-| `assignableFrom<Actual, Expected>()` | Actual assignable from expected |
-| `acceptsProps<Actual>()` | JSX component props |
-| `applicableTo<Actual>()` | Decorator applicability |
-| `callableWith<Actual>()` | Function arguments |
-| `constructableWith<Actual>()` | Constructor arguments |
-| `instantiableWith<Actual, Arguments>()` | Generic instantiation with a tuple |
-| `hasProperty<Actual>()` | Property presence |
-| `raisesTypeError<Actual>()` | Pinned TSTyche legacy error matcher |
+| Export                                  | Check                               |
+| --------------------------------------- | ----------------------------------- |
+| `sameType<Actual, Expected>()`          | Type equality                       |
+| `assignableTo<Actual, Expected>()`      | Actual assignable to expected       |
+| `assignableFrom<Actual, Expected>()`    | Actual assignable from expected     |
+| `acceptsProps<Actual>()`                | JSX component props                 |
+| `applicableTo<Actual>()`                | Decorator applicability             |
+| `callableWith<Actual>()`                | Function arguments                  |
+| `constructableWith<Actual>()`           | Constructor arguments               |
+| `instantiableWith<Actual, Arguments>()` | Generic instantiation with a tuple  |
+| `hasProperty<Actual>()`                 | Property presence                   |
+| `raisesTypeError<Actual>()`             | Pinned TSTyche legacy error matcher |
 
 Every factory has a `.not` counterpart. Relation factories additionally offer
 `.withActual<Expected>()`, `.withExpected<Actual>()`, and `.expressions`.
@@ -74,7 +74,8 @@ Decorator applicability takes a declaration callback. TSTyche checks every
 
 ```ts
 scope.assert(applicableTo<typeof decorate>(), (apply) => {
-    @apply class Subject {}
+    @apply
+    class Subject {}
 });
 ```
 
