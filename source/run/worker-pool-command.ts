@@ -52,6 +52,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
     const execution = workerPoolExecutionFacts(runtime.resolvedRun);
 
     return {
+        capture: execution.capture,
         replay: currentReplayWire(),
         benchmarkNormalization: runtime.resolvedRun.facts.benchmarkNormalization,
         benchmarkGarbageCollection: execution.benchmarkGarbageCollection,

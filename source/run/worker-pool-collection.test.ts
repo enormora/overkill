@@ -43,6 +43,7 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        capture: 'buffered',
         replay: null,
         seed: '0',
         benchmarkNormalization: null,

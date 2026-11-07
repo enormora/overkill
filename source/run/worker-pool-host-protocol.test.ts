@@ -54,6 +54,7 @@ function createChildProcess(): SupervisedChildProcess {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        capture: 'buffered',
         replay: null,
         seed: '0',
         benchmarkNormalization: null,

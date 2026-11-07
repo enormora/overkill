@@ -28,9 +28,15 @@ function portTransferList(port: NodeMessagePort): readonly NodeMessagePort[] {
     return [ port ];
 }
 
-function recordCollectionOutput(message: WorkerPoolMessage, runState: SupervisedRunState): void {
+function recordCollectionOutput(message: WorkerPoolMessage, input: WorkerPoolCollectionInput): void {
     if (message.kind === 'output') {
-        runState.recordCapturedOutput(
+        if (input.command.capture === 'live') {
+            input.dependencies.liveOutput[message.stream].write(message.chunk);
+
+            return;
+        }
+
+        input.runState.recordCapturedOutput(
             message.stream,
             Buffer.from(message.chunk),
             message.capturedAtMicroseconds
@@ -122,9 +128,9 @@ async function runCollectionTask(
     return collection;
 }
 
-function observeCollectionOutput(port: NodeMessagePort, runState: SupervisedRunState): void {
+function observeCollectionOutput(port: NodeMessagePort, input: WorkerPoolCollectionInput): void {
     port.on('message', function receiveCollectionMessage(message: WorkerPoolMessage) {
-        recordCollectionOutput(message, runState);
+        recordCollectionOutput(message, input);
     });
 }
 
@@ -142,7 +148,7 @@ function createCollectionRuntime(
         terminalFailure
     });
 
-    observeCollectionOutput(port2, input.runState);
+    observeCollectionOutput(port2, input);
     const timingOption = input.timing === null ? {} : { timing: input.timing };
     const poolOptions = {
         cwd: input.command.cwd,
@@ -160,6 +166,12 @@ function createCollectionRuntime(
         }
     ) ?? input.dependencies.createWorkerPool(poolOptions);
     pool.setHostOutputSink?.(function recordHostOutput(stream, chunk) {
+        if (input.command.capture === 'live') {
+            input.dependencies.liveOutput[stream].write(chunk);
+
+            return;
+        }
+
         input.runState.recordCapturedOutput(
             stream,
             chunk,

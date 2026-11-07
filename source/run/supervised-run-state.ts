@@ -69,6 +69,7 @@ export type SupervisedRunState = {
     readonly recordPropertyProgress: (key: string, attempt: number, evidence: PropertyCaseEvidence) => void;
     readonly recordBenchmarkProgress: (key: string, result: BenchmarkExecutionResult) => void;
     readonly activeCases: ReadonlyMap<string, ActiveSupervisedCase>;
+    readonly captureMode: (capture: RunRequest['capture']) => RunRequest['capture'];
     readonly addActiveCase: (
         key: string,
         testCase: SupervisedCase,
@@ -258,6 +259,16 @@ export function deduplicatedChildRuntimePolicyErrors(
     });
 }
 
+type OutputCaptureState = {
+    readonly active: ReadonlyMap<string, ActiveSupervisedCase>;
+    readonly outputDraining: ReadonlyMap<string, ActiveSupervisedCase>;
+    readonly terminalOutputDraining: boolean;
+};
+
+function outputCases(cases: OutputCaptureState): ReadonlyMap<string, ActiveSupervisedCase> {
+    return cases.active.size === 0 && cases.terminalOutputDraining ? cases.outputDraining : cases.active;
+}
+
 export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): SupervisedRunState {
     const cases = {
         active: new Map<string, ActiveSupervisedCase>(),
@@ -311,6 +322,12 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
     }
 
     return {
+        captureMode(capture) {
+            const active = outputCases(cases);
+            const [ activeCase ] = active.values();
+
+            return capture === 'live' || active.size !== 1 ? capture : activeCase?.capture ?? capture;
+        },
         recordPropertyProgress(key, attempt, evidence) {
             const active = cases.active.get(key);
             if (active?.attempt.index === attempt) {
@@ -350,9 +367,7 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             cases.terminalOutputDraining = true;
         },
         recordCapturedOutput(stream, chunk, capturedAtMicroseconds) {
-            const captureWindow = cases.active.size === 0 && cases.terminalOutputDraining
-                ? cases.outputDraining
-                : cases.active;
+            const captureWindow = outputCases(cases);
             const activeWork = Array.from(captureWindow.values(), function capturedWork(testCase) {
                 return { attempt: testCase.attempt, work: testCase.workId ?? createDefaultWorkId(testCase.id) };
             });

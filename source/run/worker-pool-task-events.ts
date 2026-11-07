@@ -1,7 +1,7 @@
 import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { applyEvent } from './supervised-run-runtime.ts';
+import { applyEvent, collectedCasesByKey } from './supervised-run-runtime.ts';
 import {
     remainingHardTimeoutMilliseconds,
     type SupervisedCase,
@@ -61,11 +61,23 @@ export function finishFailedLease(
     });
 }
 
-function casesByKey(taskRun: WorkerPoolTaskRun): ReadonlyMap<string, SupervisedCase> {
+function casesByKey(
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): ReadonlyMap<string, SupervisedCase> {
+    const collectedCases = collectedCasesByKey(runtime.collectedPlan);
+
     return new Map(
         memberUnits(taskRun).flatMap(function toUnitCases(unit) {
             return unit.work.map(function toCaseEntry(work) {
-                return [ workIdentityKey(work), { capture: null, id: work.case, workId: work } ] as const;
+                const collected = collectedCases.get(workIdentityKey(work)) ??
+                    collectedCases.get(workIdentityKey(createDefaultWorkId(work.case)));
+
+                return [ workIdentityKey(work), {
+                    capture: collected?.capture ?? null,
+                    id: work.case,
+                    workId: work
+                } ] as const;
             });
         })
     );
@@ -342,7 +354,7 @@ function handleWorkerEvent(
     applyEvent(
         reportedEvent,
         taskRun.state,
-        casesByKey(taskRun),
+        casesByKey(taskRun, runtime),
         Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
     );
 
@@ -379,17 +391,27 @@ function handleUnitCompleted(
     }
 }
 
+function handleTaskOutput(
+    message: Extract<WorkerPoolMessage, { readonly kind: 'output'; }>,
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): void {
+    if (taskRun.state.captureMode(runtime.resolvedRun.facts.execution.capture) === 'live') {
+        runtime.dependencies.liveOutput[message.stream].write(message.chunk);
+
+        return;
+    }
+
+    taskRun.state.recordCapturedOutput(message.stream, Buffer.from(message.chunk), message.capturedAtMicroseconds);
+}
+
 function handleTaskMessage(
     message: Exclude<WorkerPoolMessage, { readonly kind: 'prepare-resource-artifacts' | 'task-messages-completed'; }>,
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): void {
     if (message.kind === 'output') {
-        taskRun.state.recordCapturedOutput(
-            message.stream,
-            Buffer.from(message.chunk),
-            message.capturedAtMicroseconds
-        );
+        handleTaskOutput(message, taskRun, runtime);
     } else if (message.kind === 'attempt-started') {
         handleUnitStarted(message, taskRun, runtime);
     } else if (message.kind === 'attempt-completed') {
