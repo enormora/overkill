@@ -431,3 +431,12 @@ JSON reports are written to `target/property-measurements/`.
 Forced-GC checkpoints every 128 work units and at completion report the maximum
 observed live heap above baseline. This is a checkpoint estimate of retained
 memory, not an exact allocation peak or a machine-independent performance gate.
+
+## Reconstructing trial inputs
+
+`sample.reconstructInput()` returns the original trial input as a fresh graph,
+including after the body mutates its input. It uses retained generation recipes
+or stored-input decoding, preserving aliases and cycles within each graph.
+Reconstruction charges the active work budget, honors cancellation, and is
+unavailable after the trial closes. `PropertySampleScope<Value>` types its result;
+existing unparameterized scope annotations retain an `unknown` result.
