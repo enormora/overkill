@@ -36,7 +36,8 @@ Return `null` from `commands` for a terminal state. Short terminal traces must
 still satisfy `minLength`. Property `maxSize` caps generated trace length.
 
 Each evaluation reconstructs separate operation graphs for prediction and system
-execution. Aliases and cycles remain intact within each graph. System mutation
+execution. Aliases and cycles remain intact within each graph. The scheduled
+command sequence stays fixed when a payload refers back to its trace. System mutation
 cannot change expected model state or retained witnesses. This relies on the
 property reconstruction contract: factories cannot return shared mutable data.
 Supply a versioned codec for the complete trace when operations use custom types.

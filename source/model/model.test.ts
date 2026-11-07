@@ -3,6 +3,7 @@ import { runIfMain, suite, test } from '../packages/test/test.entry-point.ts';
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import { model, modelScenario } from '../packages/model/model.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
+import { testNode as contracts } from './model-contract.test.ts';
 import { testNode as composition } from './model-composition.test.ts';
 import type { ModelScenarioDefinition } from './model-definition.ts';
 
@@ -40,6 +41,7 @@ function counter(): ModelScenarioDefinition<number, number, { readonly value: nu
 }
 
 export const testNode = suite('model-based testing', [
+    contracts,
     composition,
     test('reconstruction retains aliases and expires after cleanup', async function (scope) {
         let reconstruct: () => unknown = function () {
