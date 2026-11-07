@@ -8,6 +8,7 @@ import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { compareExactly } from '../compare/raw-comparison.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
 import type { WorkId } from '../engine/identity.ts';
+import { planBaselineChange } from './baseline-planning.ts';
 import type { PerformanceBaselineAdapter, PerformanceBaselineValue } from './performance-adapter.ts';
 import {
     normalizedPerformanceBaselineVersion,
@@ -26,10 +27,6 @@ type PerformanceProposalPlan = {
     readonly profile: string;
     readonly work: WorkId;
 };
-
-function preservesBaseline(input: PerformanceProposalPlan): boolean {
-    return input.mode === 'none' || input.mode === 'bootstrap' && input.existing !== null;
-}
 
 function previousExpectation(existing: StoredPerformanceBaseline | null): PerformanceBaselineValue | null {
     return existing === null ? null : existing.expected;
@@ -66,17 +63,11 @@ function unchangedExpectation(input: PerformanceProposalPlan, value: Performance
     const currentBasis = canonicalIdentityJson(normalizationBudgetBasis(input.normalization));
     return compareExactly(existing.expected.value, value) && storedBasis === currentBasis;
 }
-export function proposePerformanceBaseline(input: PerformanceProposalPlan): BaselineChange | null {
-    if (preservesBaseline(input)) {
-        return null;
-    }
+function proposedPerformanceBaseline(input: PerformanceProposalPlan): StoredPerformanceBaseline {
     const proposal = input.adapter.propose({ actual: input.actual, expected: previousExpectation(input.existing) });
     const snapshot = snapshotJson(proposal, input.maxBytes);
     if (snapshot === null) {
         throw new Error('Performance baseline proposal exceeds the configured artifact byte limit.');
-    }
-    if (unchangedExpectation(input, snapshot.value)) {
-        return null;
     }
     const baseline: StoredPerformanceBaseline = {
         adapter: input.adapter.id,
@@ -88,7 +79,17 @@ export function proposePerformanceBaseline(input: PerformanceProposalPlan): Base
             : { version: normalizedPerformanceBaselineVersion, normalization: input.normalization },
         work: input.work
     };
-    return input.existing === null
-        ? { baseline, kind: 'create' }
-        : { baseline, kind: 'update', previous: input.existing };
+    return baseline;
+}
+export function proposePerformanceBaseline(input: PerformanceProposalPlan): BaselineChange | null {
+    return planBaselineChange({
+        mode: input.mode,
+        existing: input.existing,
+        propose() {
+            return proposedPerformanceBaseline(input);
+        },
+        equals(previous, proposed) {
+            return unchangedExpectation({ ...input, existing: previous }, proposed.expected.value);
+        }
+    });
 }

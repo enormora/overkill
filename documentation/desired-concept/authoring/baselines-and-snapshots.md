@@ -201,12 +201,21 @@ accepts both deliberately by running `apply`.
   or `bootstrap`); `overkill run` never modifies
   baselines, regardless of the host environment or who triggered
   the run.
-- delete baselines that belong to tests the current run did not
-  execute. Stale detection only compares on-disk baselines against the
-  case identities actually executed in that run. Comprehensive cleanup
-  therefore requires an unfiltered `overkill baseline apply`; a filtered
-  run only cleans within its selection.
+- delete baselines without a complete, successful profile inventory. Filtered,
+  path-selected, sharded, incomplete, and failed runs cannot establish staleness.
+  Cleanup preserves skipped cases and foreign profile, subtype, and comparison scopes.
 
 ## Package Position
 
 Generic snapshots should live above the core, primarily in integration-oriented packages or shared baseline utilities. If research later proves that baseline identity or lifecycle must be in the core, that should be documented as a deliberate exception.
+
+## Shared Package Contract
+
+The baselines package exposes generic observations, comparisons, adapters, entries,
+changes, and write outcomes. Adapters may return values or promises and retain
+separate observation, comparison, and proposal values. Payloads need not be JSON.
+
+Pure operations derive canonical structured identity keys, plan explicit changes,
+and find stale entries in an already scoped complete inventory. They perform no
+I/O. Runners own execution, scope selection, storage, and error attribution.
+Performance adapters retain their synchronous API and existing persisted formats.

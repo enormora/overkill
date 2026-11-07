@@ -17,3 +17,11 @@ export type {
     PerformanceProposalInput,
     StoredPerformanceBaseline
 } from '../baselines/baselines.entry-point.ts';
+export type {
+    BaselineAdapter,
+    BaselineComparison,
+    BaselineIdentity,
+    BaselineInventory,
+    BaselineObservation
+} from '../baselines/baselines.entry-point.ts';
+export { baselineIdentityKey, findStaleBaselines, planBaselineChange } from '../baselines/baselines.entry-point.ts';

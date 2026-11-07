@@ -1,4 +1,4 @@
-import { caseIdentityKey, createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
+import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
 import { runStatusFromPlan, type PerTestResult, type RunResult, type RunnerError } from '../engine/run-result.ts';
 import type { ComparableCalibration } from '../bench/host-calibration-result.ts';
@@ -11,6 +11,7 @@ import {
 import type { PerformanceBaselineAdapter } from './performance-adapter.ts';
 import {
     performanceBaselineIdentity,
+    stalePerformanceBaselines,
     performanceComparisonClass,
     normalizedPerformanceBaselineVersion,
     type PerformanceBaselineIdentity,
@@ -155,24 +156,18 @@ export function successfulPerformanceRun(result: RunResult): boolean {
 }
 
 function staleBaselines(result: RunResult, state: WorkflowState): readonly StoredPerformanceBaseline[] {
-    const skipped = new Set(
+    return stalePerformanceBaselines(
+        state.existing,
+        state.participating,
         result
             .perTest
-            .filter(function skippedCase(testResult) {
+            .filter(function skipped(testResult) {
                 return testResult.verdict === 'skip';
             })
-            .map(function skippedIdentity(testResult) {
-                return caseIdentityKey(testResult.workId.case);
+            .map(function skippedCase(testResult) {
+                return testResult.workId.case;
             })
     );
-    return Array
-        .from(state.existing)
-        .filter(function stale([ key, baseline ]) {
-            return !state.participating.has(key) && !skipped.has(caseIdentityKey(baseline.work.case));
-        })
-        .map(function staleBaseline([ , baseline ]) {
-            return baseline;
-        });
 }
 
 function reconcileInventory(

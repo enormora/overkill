@@ -477,8 +477,8 @@ export const expectedStandardSubpathImportOutput = [
     'true',
     'true',
     JSON.stringify(benchmarkAuthoringExports),
-    '[]',
-    '["readPerformanceBaselineReport"]',
+    '["baselineIdentityKey","findStaleBaselines","planBaselineChange"]',
+    '["baselineIdentityKey","findStaleBaselines","planBaselineChange","readPerformanceBaselineReport"]',
     ''
 ]
     .join('\n');
