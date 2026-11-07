@@ -1,4 +1,4 @@
-import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
+import { finalizeRunResult } from './run-result-finalization.ts';
 import { executeWithRuntimeAttachments, preparePropertyAttachments } from './runtime-attachment-boundary.ts';
 import {
     reportCollectionErrorResult
@@ -21,14 +21,7 @@ async function executeResolvedRun(
 ): Promise<RunResult> {
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {
         async finalizeResult(run, result) {
-            const finalized = await finalizeResultWithDurationHistory(
-                dependencies,
-                run,
-                options.baseline?.prepareResult(result) ?? result,
-                options.timing
-            );
-            const checkpoint = options.record === null ? finalized : await options.record.checkpointResult(finalized);
-            return options.baseline === null ? checkpoint : await options.baseline.finalize(checkpoint);
+            return await finalizeRunResult(run, result, { ...options, dependencies, coverageSession: null });
         },
         runtimePolicy,
         timing: options.timing

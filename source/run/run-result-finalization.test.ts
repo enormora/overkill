@@ -5,11 +5,11 @@ import { createDeterministicRunOrchestrator } from '../test-support/create-deter
 import { defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createCoverageRunRecord } from './coverage-run-record.ts';
-import { finalizeSupervisedResult } from './run-supervised-finalization.ts';
+import { finalizeRunResult } from './run-result-finalization.ts';
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
-    title: 'source/run/run-supervised-finalization.test.ts',
+    title: 'source/run/run-result-finalization.test.ts',
     annotations: {},
     controls: {},
     children: [ createTestCase({
@@ -21,7 +21,7 @@ export const testNode = createSuite({
             return await withCoverageRecordFixture(
                 defaultRunConfig(),
                 [],
-                async function assertSupervisedCheckpoint(fixture) {
+                async function assertCoverageCheckpoint(fixture) {
                     const command = {
                         ...fixture.request.command,
                         request: {
@@ -40,7 +40,7 @@ export const testNode = createSuite({
                         null
                     );
                     await attempt.start();
-                    const result = await finalizeSupervisedResult(run, runResultFactory.build({ status: 'passed' }), {
+                    const result = await finalizeRunResult(run, runResultFactory.build({ status: 'passed' }), {
                         ...fixture.request,
                         baseline: null,
                         record: attempt.record,

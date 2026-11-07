@@ -6,20 +6,20 @@ import type { RunResultSession } from './run-support.ts';
 import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import type { ResolvedRun } from './run-types.ts';
 
-export type SupervisedCoverageExecution = {
+export type RunResultSessions = {
     readonly baseline: RunResultSession | null;
     readonly coverageSession: RecordedCoverageExecution['session'] | null;
     readonly record: RecordedCoverageExecution['record'] | null;
 };
-type SupervisedFinalization = SupervisedCoverageExecution & {
+type RunResultFinalization = RunResultSessions & {
     readonly dependencies: RunOrchestratorDependencies;
     readonly timing: RunTimingMeasurement | null;
 };
 
-export async function finalizeSupervisedResult(
+export async function finalizeRunResult(
     run: ResolvedRun,
     result: RunResult,
-    execution: SupervisedFinalization
+    execution: RunResultFinalization
 ): Promise<RunResult> {
     const { coverageSession, dependencies, record, timing } = execution;
     const prepared = execution.baseline?.prepareResult(result) ?? result;

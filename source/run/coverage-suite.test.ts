@@ -5,7 +5,7 @@ import { testNode as coverageReportingTestNode } from './coverage-reporting.test
 import { testNode as recordedCoverageTestNode } from './recorded-coverage-run.test.ts';
 import { testNode as localCoverageTestNode } from './run-local-coverage.test.ts';
 import { testNode as supervisedCoverageTestNode } from './run-supervised-coverage.test.ts';
-import { testNode as supervisedFinalizationTestNode } from './run-supervised-finalization.test.ts';
+import { testNode as resultFinalizationTestNode } from './run-result-finalization.test.ts';
 import { testNode as sessionTestNode } from './recorded-coverage-session.test.ts';
 import { testNode as runCoverageTestNode } from './run-coverage.test.ts';
 
@@ -18,7 +18,7 @@ export const testNode = createOverkillSuite({
         recordSuiteTestNode,
         localCoverageTestNode,
         sessionTestNode,
-        supervisedFinalizationTestNode,
+        resultFinalizationTestNode,
         supervisedCoverageTestNode,
         coverageReportingTestNode,
         runCoverageTestNode,
