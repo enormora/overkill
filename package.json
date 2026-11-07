@@ -55,11 +55,11 @@
         "zod": "4.6.7"
     },
     "devDependencies": {
-        "@enormora/eslint-config-base": "0.0.51",
-        "@enormora/eslint-config-browser": "0.0.29",
-        "@enormora/eslint-config-node": "0.0.37",
-        "@enormora/eslint-config-test-base": "0.0.21",
-        "@enormora/eslint-config-typescript": "0.0.58",
+        "@enormora/eslint-config-base": "0.0.75",
+        "@enormora/eslint-config-browser": "0.0.42",
+        "@enormora/eslint-config-node": "0.0.53",
+        "@enormora/eslint-config-test-base": "0.0.46",
+        "@enormora/eslint-config-typescript": "0.0.83",
         "@enormora/objectory": "0.0.25",
         "@ls-lint/ls-lint": "2.3.2",
         "@overkill-dev/assert": "0.0.66",
@@ -76,7 +76,7 @@
         "@types/proper-lockfile": "4.1.4",
         "c8": "12.0.0",
         "dependency-cruiser": "18.7.2",
-        "eslint": "10.7.0",
+        "eslint": "10.14.0",
         "jscpd": "5.4.2",
         "knip": "6.44.1",
         "rust-just": "1.59.0"
