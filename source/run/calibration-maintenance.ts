@@ -104,6 +104,9 @@ export function calibrationMaintenanceSession(session: MaintenanceInput): RunRes
         return session.baseline;
     }
     return {
+        prepareResult(result) {
+            return session.baseline?.prepareResult(result) ?? result;
+        },
         reporterDispatcher: session.baseline?.reporterDispatcher ?? session.dependencies.reporterDispatcher,
         async finalize(result) {
             return await finalizeMaintenance(session, result);

@@ -1,5 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite } from '../engine/engine.entry-point.ts';
+import { testNode as ordinaryBaselines } from './command-line-runner-baseline.test.ts';
 import { testNode as witnessReplay } from './witness-replay-command.test.ts';
 import { testNode as commandLineRunnerBenchTestNode } from './command-line-runner-bench.test.ts';
 import { testNode as commandLineRunnerHelpTestNode } from './command-line-runner-help.test.ts';
@@ -9,7 +10,7 @@ export const testNode = createSuite({
     title: 'source/packages/test/command-line-runner-namespace-suite.test.ts',
     annotations: {},
     controls: {},
-    children: [ commandLineRunnerBenchTestNode, commandLineRunnerHelpTestNode, witnessReplay ]
+    children: [ ordinaryBaselines, commandLineRunnerBenchTestNode, commandLineRunnerHelpTestNode, witnessReplay ]
 });
 
 await runIfMain(import.meta, testNode);

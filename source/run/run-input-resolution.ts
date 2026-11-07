@@ -19,7 +19,7 @@ export type RunInputResolutionDependencies = Pick<
 
 export type RunInvocation = {
     readonly command: RunCommand;
-    readonly namespace: 'bench' | 'bench-calibrate' | 'test';
+    readonly namespace: 'baseline' | 'bench' | 'bench-calibrate' | 'test';
 };
 
 export type ResolvedRunInput = {
@@ -44,7 +44,7 @@ export async function readRunPolicyInput(
     validateRunInput(command);
     const request = freezeValue(copyRunRequest(command.request));
     const config = freezeValue(copyConfig(command.config));
-    const profile = namespace === 'test'
+    const profile = namespace === 'test' || namespace === 'baseline'
         ? selectTestProfile(request.profile, config)
         : selectBenchmarkProfile(request.profile, config);
     assertProfileRequestSupported(request, profile, namespace, config.reporters);

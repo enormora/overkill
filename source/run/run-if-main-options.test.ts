@@ -59,6 +59,7 @@ function directProfile(
     scheduling: 'concurrent' | 'serial'
 ): MicrotestProfileConfig {
     return {
+        baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
         runRecords: { persist: 'on-demand' },
         coverage: {
             outputDirectory: null,

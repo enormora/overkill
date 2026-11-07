@@ -41,6 +41,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
 
 function createDefaultMicrotestProfile(): MicrotestProfileConfig {
     return {
+        baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
         coverage: defaultCoveragePolicy,
         execution: {
             maxConcurrency: 5,

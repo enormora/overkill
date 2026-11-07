@@ -229,7 +229,7 @@ async function executeWorkerPoolRunResult(options: WorkerPoolRunResultInput): Pr
                 const finalized = await finalizeResultWithDurationHistory(
                     dependencies,
                     resolvedRun,
-                    completion.result,
+                    options.baseline?.prepareResult(completion.result) ?? completion.result,
                     timing
                 );
                 const checkpoint = options.record === null

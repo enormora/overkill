@@ -22,6 +22,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import { withBenchmarkErrorMetadata } from './benchmark-report-metadata.ts';
 
 export type RunResultSession = {
+    readonly prepareResult: (result: RunResult) => RunResult;
     readonly finalize: (result: RunResult) => Promise<RunResult>;
     readonly reporterDispatcher: ReporterDispatcher;
 };

@@ -1,10 +1,10 @@
 import type { BenchmarkGarbageCollectionPolicy } from '../engine/benchmark-result.ts';
 import type { PropertyPolicy } from '../engine/property-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { BenchmarkBaselinePolicy } from '../baselines/performance-adapter.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { ReportingPolicy } from './reporting-schema.ts';
 import type { RunAdapterRegistration } from './adapter-profile.ts';
+import type { BenchmarkBaselinePolicy, OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
 import type { HistoryPolicy } from './history-policy.ts';
 import type { BenchmarkHostPolicy } from './benchmark-host.ts';
 import type {
@@ -150,6 +150,7 @@ export type ProfileFiles = ProfileFilePatterns | {
 };
 
 export type MicrotestProfileConfig = {
+    readonly baselines: OrdinaryBaselinePolicy;
     readonly coverage: CoveragePolicy;
     readonly execution: MicrotestExecution;
     readonly files: ProfileFiles | null;
@@ -162,6 +163,7 @@ export type MicrotestProfileConfig = {
 };
 
 export type IntegrationProfileConfig = {
+    readonly baselines: OrdinaryBaselinePolicy;
     readonly attachments: AttachmentLimits;
     readonly retries: IntegrationRetryPolicy | null;
     readonly execution: IntegrationExecution;
@@ -205,6 +207,7 @@ export type PropertyCorpusPolicy = {
     readonly localCache: { readonly maxEntries: number; readonly maxBytes: number; readonly maxEntryBytes: number; };
 };
 export type PropertyProfileConfig = {
+    readonly baselines: OrdinaryBaselinePolicy;
     readonly corpus: PropertyCorpusPolicy;
     readonly execution: MicrotestExecution;
     readonly files: ProfileFiles;
@@ -234,7 +237,7 @@ export type AdapterProfileConfig = {
     readonly settings: unknown;
 };
 
-type BuiltinTestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
+export type BuiltinTestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
 export type TestProfileConfig = AdapterProfileConfig | BuiltinTestProfileConfig;
 export type ProfileConfig = BenchmarkProfileConfig | TestProfileConfig;
 

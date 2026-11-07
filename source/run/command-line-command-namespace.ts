@@ -25,14 +25,15 @@ export type CommandLineCommandNamespace = {
     readonly bench: CommandLineBenchmarkCommands;
 };
 
-type SelectBaselineCommand = (commands: CommandLineBaselineCommands) => CommandLineCommand;
+type BaselineCommand<Request> = (request: Request) => Promise<CommandLineRunnerResult>;
+type SelectBaselineCommand<Request> = (commands: CommandLineBaselineCommands) => BaselineCommand<Request>;
 type BenchmarkCommand<Request> = (request: Request) => Promise<CommandLineRunnerResult>;
 type SelectBenchmarkCommand<Request> = (commands: CommandLineBenchmarkCommands) => BenchmarkCommand<Request>;
 
-function routeBaselineCommand(
+function routeBaselineCommand<Request>(
     loadBaselineCommands: CommandLineCommandLoaders['loadBaselineCommands'],
-    selectCommand: SelectBaselineCommand
-): CommandLineCommand {
+    selectCommand: SelectBaselineCommand<Request>
+): BaselineCommand<Request> {
     return async function runBaselineCommandRoute(context) {
         const commands = await loadBaselineCommands();
 

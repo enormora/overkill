@@ -79,3 +79,8 @@ already restricted to the relevant profile, subtype, and comparison scope.
 Complete inventories carry participating identities and preserved skipped cases;
 incomplete inventories produce no removals. Only successful complete profile runs
 can establish staleness. These operations perform no storage or execution.
+
+Ordinary profiles register typed adapters through `defineBaselineAdapter` from
+`@overkill-dev/run` or `@overkill-dev/test/config`. The runner owns storage,
+execution, and `overkill baseline update/apply/bootstrap/diff/list`. See
+[ordinary baseline workflows](../run/readme.md#ordinary-baselines).

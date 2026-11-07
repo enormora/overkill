@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { z } from 'zod/v4';
 import { parse } from '@schema-hub/zod-error-formatter';
-import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import { ordinaryBaselinePolicySchema } from './baseline-policy.ts';
 import {
     attachmentLimitsSchema,
     type ProjectAttachmentLimits as ParsedProjectAttachmentLimits,
@@ -67,6 +67,7 @@ import {
     defaultIntegrationTimeoutPolicy,
     normalizeHistoryPolicy,
     defaultLoader,
+    defaultOutputRenderer,
     defaultProcessUsagePolicy,
     defaultProcessUsageSamplingIntervalMilliseconds,
     defaultTimeoutPolicy,
@@ -88,7 +89,10 @@ type ProjectRetryPolicyGuard = Readonly<Partial<Record<'retries', never>>>;
 export type LoadedConfig = NormalizedConfig & { readonly configPath: string | null; };
 
 export type ProjectIntegrationExecution = ParsedProjectIntegrationExecution & ProjectHostProcessGuard;
-type IntegrationArtifactSettings = Pick<z.input<typeof integrationProfileSchema>, 'attachments' | 'retries'>;
+type IntegrationArtifactSettings = Pick<
+    z.input<typeof integrationProfileSchema>,
+    'attachments' | 'baselines' | 'retries'
+>;
 export type ProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
     readonly coverage?: never;
     readonly execution?: ProjectIntegrationExecution | undefined;
@@ -386,50 +390,56 @@ function normalizeIntegrationExecution(
     };
 }
 
-function normalizeMicrotestProfile(
-    profile: ProjectMicrotestProfileConfig,
-    configPath: string | null
-): MicrotestProfileConfig {
-    const timeouts = normalizeTimeouts(profile.timeouts, defaultTimeoutPolicy);
-
+function normalizeProfilePolicy(
+    profile: Exclude<ProjectProfileConfig, ProjectAdapterProfileConfig>,
+    defaults: TimeoutPolicy
+): Pick<ProfileConfig, 'processUsage' | 'reporters' | 'runRecords' | 'timeouts' | 'timings'> {
+    const timeouts = normalizeTimeouts(profile.timeouts, defaults);
     assertValidTimeouts(timeouts);
-
     return {
-        coverage: normalizeCoveragePolicy(profile.coverage, configPath),
-        execution: normalizeMicrotestExecution(profile.execution),
-        files: normalizeProfileFiles(profile.files),
         reporters: profile.reporters ?? null,
         processUsage: normalizeProcessUsage(profile.processUsage),
-        testFamily: 'microtest',
         runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
         timings: normalizeTimings(profile.timings),
         timeouts
     };
 }
 
+function normalizeMicrotestProfile(
+    profile: ProjectMicrotestProfileConfig,
+    configPath: string | null
+): MicrotestProfileConfig {
+    const policy = normalizeProfilePolicy(profile, defaultTimeoutPolicy);
+
+    return {
+        ...policy,
+        baselines: ordinaryBaselinePolicySchema.parse(profile.baselines ?? {}),
+        coverage: normalizeCoveragePolicy(profile.coverage, configPath),
+        execution: normalizeMicrotestExecution(profile.execution),
+        files: normalizeProfileFiles(profile.files),
+        testFamily: 'microtest'
+    };
+}
+
 function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): IntegrationProfileConfig {
-    const timeouts = normalizeTimeouts(profile.timeouts, defaultIntegrationTimeoutPolicy);
+    const policy = normalizeProfilePolicy(profile, defaultIntegrationTimeoutPolicy);
     const files = normalizeRequiredProfileFiles(profile.files);
     const execution = normalizeIntegrationExecution(profile.execution);
 
-    assertValidTimeouts(timeouts);
     assertValidWorkDistribution(execution, files);
     assertValidWorkerPoolHedging(execution);
 
     return {
+        ...policy,
+        baselines: ordinaryBaselinePolicySchema.parse(profile.baselines ?? {}),
         attachments: attachmentLimitsSchema.parse(profile.attachments),
         execution,
         files,
-        reporters: profile.reporters ?? null,
         retries: profile.retries === undefined ? null : {
             artifacts: profile.retries.artifacts ?? 'first-failure-and-final',
             maxAttempts: profile.retries.maxAttempts
         },
-        processUsage: normalizeProcessUsage(profile.processUsage),
-        testFamily: 'integration',
-        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
-        timings: normalizeTimings(profile.timings),
-        timeouts
+        testFamily: 'integration'
     };
 }
 
@@ -448,48 +458,39 @@ function normalizeBenchmarkExecution(
 }
 
 function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkProfileConfig {
-    const timeouts = normalizeTimeouts(profile.timeouts, defaultBenchmarkTimeoutPolicy);
+    const policy = normalizeProfilePolicy(profile, defaultBenchmarkTimeoutPolicy);
     const execution = normalizeBenchmarkExecution(profile.execution);
     const files = normalizeRequiredProfileFiles(profile.files);
 
-    assertValidTimeouts(timeouts);
-    validateBenchmarkExecution(execution, timeouts);
+    validateBenchmarkExecution(execution, policy.timeouts);
     assertValidWorkDistribution(execution, files);
 
     return {
+        ...policy,
         attachments: attachmentLimitsSchema.parse(profile.attachments),
         garbageCollection: profile.garbageCollection,
         baselines: profile.baselines,
         host: profile.host,
         execution,
         files,
-        reporters: profile.reporters ?? null,
-        processUsage: normalizeProcessUsage(profile.processUsage),
-        testFamily: 'benchmark',
-        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
-        timings: normalizeTimings(profile.timings),
-        timeouts
+        testFamily: 'benchmark'
     };
 }
 
 function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): PropertyProfileConfig {
-    const timeouts = normalizeTimeouts(profile.timeouts, {
+    const policy = normalizeProfilePolicy(profile, {
         collectionMilliseconds: 2000,
         softMilliseconds: 1000,
         hardMilliseconds: 2000
     });
-    assertValidTimeouts(timeouts);
     return {
+        ...policy,
         execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeRequiredProfileFiles(profile.files),
-        reporters: profile.reporters ?? null,
-        processUsage: normalizeProcessUsage(profile.processUsage),
+        baselines: ordinaryBaselinePolicySchema.parse(profile.baselines ?? {}),
         corpus: profile.corpus,
         property: profile.property,
-        testFamily: 'property',
-        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
-        timings: normalizeTimings(profile.timings),
-        timeouts
+        testFamily: 'property'
     };
 }
 
@@ -537,7 +538,7 @@ function normalizeConfigForOrigin(parsedConfig: ParsedProjectConfig, configPath:
     return {
         history: normalizeHistoryPolicy(parsedConfig.history ?? {}),
         loader: parsedConfig.loader ?? defaultLoader,
-        outputRenderer: parsedConfig.outputRenderer ?? createPlainOutputRenderer(),
+        outputRenderer: parsedConfig.outputRenderer ?? defaultOutputRenderer,
         profiles: normalizeConfiguredProfiles(parsedConfig.profiles, configPath),
         reporters: parsedConfig.reporters ?? null,
         runtimeStateDir: parsedConfig.runtimeStateDir ?? '.overkill'

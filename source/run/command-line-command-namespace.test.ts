@@ -109,7 +109,10 @@ export const testNode = createOverkillSuite({
                     loadBenchmarkCommands: testDouble.resolves<LoadBenchmarkCommands>(benchmarkCommandsFactory.build())
                 };
                 const commands = createCommandLineCommandNamespace(loaders);
-                const baseline = await commands.baseline.update(commandLineCommandContextFactory.build());
+                const baseline = await commands.baseline.update({
+                    ...commandLineCommandContextFactory.build(),
+                    runRequest: defaultRunRequest()
+                });
                 const benchmark = await commands.bench.listBenchmarks({
                     configPath: null,
                     cwd: '/project',
@@ -153,11 +156,11 @@ export const testNode = createOverkillSuite({
                 const commands = createCommandLineCommandNamespace(loaders);
                 const context = commandLineCommandContextFactory.build();
                 const results = await Promise.all([
-                    commands.baseline.apply(context),
-                    commands.baseline.bootstrap(context),
-                    commands.baseline.diff(context),
-                    commands.baseline.list(context),
-                    commands.baseline.update(context),
+                    commands.baseline.apply({ ...context, runRequest: defaultRunRequest() }),
+                    commands.baseline.bootstrap({ ...context, runRequest: defaultRunRequest() }),
+                    commands.baseline.diff({ ...context, runRequest: defaultRunRequest() }),
+                    commands.baseline.list({ ...context, listRequest: { paths: [], profile: 'microtest' } }),
+                    commands.baseline.update({ ...context, runRequest: defaultRunRequest() }),
                     commands.bench.baseline.apply({
                         ...context,
                         runRequest: { ...defaultRunRequest(), profile: null }

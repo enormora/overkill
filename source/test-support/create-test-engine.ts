@@ -1,7 +1,7 @@
 import { createDeterministicClock, type Clock } from '@enormora/clock';
 import { createEngine, type Engine } from '../engine/engine.ts';
-import { createExecute } from '../engine/execution.ts';
-import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
+import { createExecute, type Execute } from '../engine/execution.ts';
+import { createReporterDispatcher, type ReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 
 function ignoreOutputLine(): void {
     return undefined;
@@ -9,6 +9,19 @@ function ignoreOutputLine(): void {
 
 function readNoActiveResourceTypes(): readonly string[] {
     return [];
+}
+
+export function createTestExecution(
+    wallClock: Clock,
+    reporterDispatcher: ReporterDispatcher
+): Execute {
+    return createExecute({
+        benchmarkEnvironment: null,
+        asyncLeakDiagnostics: 'enabled',
+        readActiveResourceTypes: readNoActiveResourceTypes,
+        reporterDispatcher,
+        wallClock
+    });
 }
 
 export function createTimedTestEngine(wallClock: Clock): Engine {

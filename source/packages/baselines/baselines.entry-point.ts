@@ -6,7 +6,6 @@ export type {
     PerformanceMetricScale,
     PerformanceBaselineOperations,
     BaselineJson,
-    BenchmarkBaselinePolicy,
     PerformanceBaselineAdapter,
     PerformanceBaselineValue,
     PerformanceComparison,
@@ -34,3 +33,5 @@ export type {
     BaselineObservation
 } from '../../baselines/baseline-model.ts';
 export { baselineIdentityKey, findStaleBaselines, planBaselineChange } from '../../baselines/baseline-planning.ts';
+
+export type { BenchmarkBaselinePolicy } from '../../baselines/baseline-policy.ts';

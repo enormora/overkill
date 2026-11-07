@@ -1,3 +1,5 @@
+import { orchestrator } from '../packages/run/run.entry-point.ts';
+import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
@@ -48,6 +50,23 @@ const unsupportedRuntimeSettings = Object.entries({
 });
 
 export const testNode = suite('adapter profile configuration', [
+    test('rejects ordinary baseline commands for checker profiles', async function (scope) {
+        const config = normalizeConfig({ profiles: { types: definition } });
+        const command = {
+            config,
+            cwd: process.cwd(),
+            engine: { kind: 'default' as const },
+            request: defaultRunRequest({ profile: 'types' })
+        };
+        const error = { message: 'Ordinary baselines require a microtest, property, or integration profile.' };
+        await scope.assert.rejects(async function () {
+            await orchestrator.baseline.list({ ...command, request: { profile: 'types', paths: [] } });
+        }, error);
+        await scope.assert.rejects(async function () {
+            await orchestrator.baseline.update(command, { timing: null });
+        }, error);
+        return scope.assert.collect();
+    }),
     ...profileScenarios.flatMap(function (scenario) {
         return [
             test(`normalizes ${scenario.name} without loading the checker`, function (scope) {

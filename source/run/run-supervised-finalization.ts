@@ -22,7 +22,8 @@ export async function finalizeSupervisedResult(
     execution: SupervisedFinalization
 ): Promise<RunResult> {
     const { coverageSession, dependencies, record, timing } = execution;
-    const coveredResult = coverageSession === null ? result : await coverageSession.finalize(result);
+    const prepared = execution.baseline?.prepareResult(result) ?? result;
+    const coveredResult = coverageSession === null ? prepared : await coverageSession.finalize(prepared);
     const finalResult = await finalizeResultWithDurationHistory(dependencies, run, coveredResult, timing);
     const recordedResult = record === null ? finalResult : await record.checkpointResult(finalResult);
     return execution.baseline === null ? recordedResult : await execution.baseline.finalize(recordedResult);

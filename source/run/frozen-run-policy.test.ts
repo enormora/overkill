@@ -29,7 +29,11 @@ export const testNode = suite('frozen microtest policy', [
         const invocation = { ...baseline, request: { ...baseline.request, seed: { value: 42n } } };
         const input = createSupervisedRunCommand(
             invocation,
-            { ...policy.profile, reporters: null },
+            {
+                ...policy.profile,
+                reporters: null,
+                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' }
+            },
             policy.files,
             { source: { kind: 'frozen-policy', policy }, normalization: null }
         );
@@ -102,7 +106,11 @@ export const testNode = suite('frozen microtest policy', [
         });
         const supervised = createSupervisedRunCommand(
             policyBaselineCommand(policy),
-            { ...policy.profile, reporters: null },
+            {
+                ...policy.profile,
+                reporters: null,
+                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' }
+            },
             policy.files,
             { source: { kind: 'frozen-policy', policy }, normalization: null }
         );

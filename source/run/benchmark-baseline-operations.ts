@@ -1,26 +1,13 @@
 import { realpath } from 'node:fs/promises';
-import { posix as path } from 'node:path';
 import { createPerformanceBaselineStore } from '../baselines/performance-store.ts';
 import type { BaselineEntry } from '../baselines/performance-baseline.ts';
 import type { BenchmarkProfileConfig } from '../config/types.ts';
+import { matchesBaselineSourcePath } from './baseline-path-selection.ts';
 import { RunCollectionError } from './run-errors.ts';
 import { selectBenchmarkProfile } from './test-profile.ts';
 import type {
     BenchmarkBaselineListCommand
 } from './run-types.ts';
-
-function matchesSourcePath(file: string | null, paths: readonly string[]): boolean {
-    if (paths.length === 0) {
-        return true;
-    }
-    if (file === null) {
-        return false;
-    }
-    return paths.some(function matchesPath(operand) {
-        const normalized = path.normalize(operand.replaceAll('\\', '/')).replace(/\/$/u, '');
-        return file === normalized || file.startsWith(`${normalized}/`) || path.matchesGlob(file, normalized);
-    });
-}
 
 async function readSelectedBaselines(
     command: BenchmarkBaselineListCommand,
@@ -34,7 +21,7 @@ async function readSelectedBaselines(
     const entries = await store.list();
     return entries.filter(function selectedEntry(entry) {
         return entry.baseline.profile.normalize('NFC') === command.request.profile.normalize('NFC') &&
-            matchesSourcePath(entry.baseline.work.case.file, command.request.paths);
+            matchesBaselineSourcePath(entry.baseline.work.case.file, command.request.paths);
     });
 }
 

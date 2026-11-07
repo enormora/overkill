@@ -21,7 +21,12 @@ async function executeResolvedRun(
 ): Promise<RunResult> {
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {
         async finalizeResult(run, result) {
-            const finalized = await finalizeResultWithDurationHistory(dependencies, run, result, options.timing);
+            const finalized = await finalizeResultWithDurationHistory(
+                dependencies,
+                run,
+                options.baseline?.prepareResult(result) ?? result,
+                options.timing
+            );
             const checkpoint = options.record === null ? finalized : await options.record.checkpointResult(finalized);
             return options.baseline === null ? checkpoint : await options.baseline.finalize(checkpoint);
         },

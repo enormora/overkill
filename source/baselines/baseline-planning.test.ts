@@ -1,3 +1,7 @@
+import { testNode as recordedPolicy } from '../run/recorded-baseline-policy.test.ts';
+import { testNode as ordinaryStorage } from '../run/baseline-store.test.ts';
+import { testNode as publication } from '../run/baseline-session.test.ts';
+import { testNode as ordinaryAdapters } from '../run/baseline-adapter.test.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import {
@@ -16,7 +20,11 @@ const identity: BaselineIdentity = {
     comparisonContext: {},
     work: createDefaultWorkId(createCaseId('output.test.ts', [], 'output', null))
 };
-export const testNode = suite('shared baseline planning', [
+export const testNode = suite('baseline contracts', [
+    ordinaryAdapters,
+    publication,
+    ordinaryStorage,
+    recordedPolicy,
     test('preserves expectations without calling proposal callbacks', function (scope: TestScope) {
         for (const mode of [ 'none', 'bootstrap' ] as const) {
             scope.assert.equal(

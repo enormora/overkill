@@ -20,6 +20,40 @@ function createRunOrchestrator(dependencies: RunOrchestratorDependencies): RunOr
         async initialize(command) {
             return await initializeRun(command, dependencies);
         },
+        baseline: {
+            async apply(command, options) {
+                const { createBaselineOperations } = await import('./baseline-operations.ts');
+                return await createBaselineOperations(createRunOperations(dependencies, 'baseline')).apply(
+                    command,
+                    options
+                );
+            },
+            async bootstrap(command, options) {
+                const { createBaselineOperations } = await import('./baseline-operations.ts');
+                return await createBaselineOperations(createRunOperations(dependencies, 'baseline')).bootstrap(
+                    command,
+                    options
+                );
+            },
+            async diff(command, options) {
+                const { createBaselineOperations } = await import('./baseline-operations.ts');
+                return await createBaselineOperations(createRunOperations(dependencies, 'baseline')).diff(
+                    command,
+                    options
+                );
+            },
+            async list(command) {
+                const { createBaselineOperations } = await import('./baseline-operations.ts');
+                return await createBaselineOperations(createRunOperations(dependencies, 'baseline')).list(command);
+            },
+            async update(command, options) {
+                const { createBaselineOperations } = await import('./baseline-operations.ts');
+                return await createBaselineOperations(createRunOperations(dependencies, 'baseline')).update(
+                    command,
+                    options
+                );
+            }
+        },
         bench: createBenchmarkOrchestrator(dependencies)
     };
 }

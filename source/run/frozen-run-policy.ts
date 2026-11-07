@@ -1,3 +1,4 @@
+import type { MicrotestProfileConfig } from '../config/types.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import { normalizeProfileFiles } from '../config/profile-normalization.ts';
 import type {
@@ -25,6 +26,14 @@ export function intersectSelection(baseline: RunSelection, selected: RunSelectio
     return { kind: 'filter', filter: { kind: 'all', filters: [ baseline.filter, selected.filter ] } };
 }
 
+export function frozenPolicyProfile(policy: FrozenMicrotestPolicy): MicrotestProfileConfig {
+    return {
+        ...policy.profile,
+        reporters: null,
+        baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' }
+    };
+}
+
 export function frozenPolicyCommand(input: FrozenRunCommand): RunCommand {
     const { policy, invocation, reporting } = input;
     const selection = intersectSelection(policy.request.selection, invocation.selection);
@@ -34,7 +43,9 @@ export function frozenPolicyCommand(input: FrozenRunCommand): RunCommand {
             ...reporting,
             history: policy.history,
             loader: policy.loader,
-            profiles: { [policy.request.profile]: { ...policy.profile, reporters: null } },
+            profiles: {
+                [policy.request.profile]: frozenPolicyProfile(policy)
+            },
             runtimeStateDir: policy.runtimeStateDir
         },
         cwd: policy.cwd,
@@ -57,7 +68,7 @@ export function parseFrozenMicrotestPolicy(value: unknown): FrozenMicrotestPolic
     validateFrozenPolicyOrigins(policy);
     const command = policyBaselineCommand(policy);
     validateRunInput(command);
-    resolveProcessUsagePolicy(command.request, { ...policy.profile, reporters: null });
+    resolveProcessUsagePolicy(command.request, frozenPolicyProfile(policy));
     normalizeProfileFiles(policy.profile.files ?? undefined);
     return freezeValue(policy);
 }

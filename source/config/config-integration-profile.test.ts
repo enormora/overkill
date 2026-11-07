@@ -45,6 +45,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(profile);
                 scope.require.defined(microtestProfile);
                 scope.assert.deepEqual(profile, {
+                    baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
                     attachments: defaultAttachmentLimits,
                     retries: null,
                     execution: {

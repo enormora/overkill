@@ -138,7 +138,7 @@ responsible for not putting `baseline apply` in a check-only pipeline.
 This is a settled policy choice, not something configurable via
 `process.env.CI` or a configuration-level opt-in flag.
 
-Performance write verbs defer all writes until selected cases, observations,
+Ordinary and performance write verbs defer all writes until selected cases, observations,
 comparisons required by bootstrap, and prewrite validation succeed. A failure
 blocks the whole pending batch. Files are published atomically one at a time;
 a later I/O or final reporter failure preserves completed writes and reports
@@ -219,3 +219,16 @@ Pure operations derive canonical structured identity keys, plan explicit changes
 and find stale entries in an already scoped complete inventory. They perform no
 I/O. Runners own execution, scope selection, storage, and error attribution.
 Performance adapters retain their synchronous API and existing persisted formats.
+
+### Ordinary Runner Registration And Storage
+
+`defineBaselineAdapter` registers an ordinary adapter with its subtype and explicit
+comparison context. Typed conversion and codecs preserve separate observation,
+comparison, and proposal values. The runner owns physical I/O. Ordinary profile
+`baselines` policy selects adapters, the directory (default `test-baselines`), and
+stale handling (`fail` by default, or `warn`).
+
+Ordinary records use versioned JSON under subtype directories. Canonical identity
+hashes name the files; text remains text and binary payloads use base64. Listing
+reads identities without invoking adapters or codecs. Unavailable adapter entries
+remain inspectable and are preserved during reconciliation.

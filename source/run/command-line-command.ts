@@ -58,12 +58,18 @@ export type CommandLineRunnerResult = {
 
 export type CommandLineCommand = (context: CommandLineCommandContext) => Promise<CommandLineRunnerResult>;
 
+export type CommandLineBaselineRequest = ConfigLoadRequest & {
+    readonly runRequest: Except<RunRequest, 'baselineUpdateMode'>;
+};
+export type CommandLineBaselineListRequest = ConfigLoadRequest & {
+    readonly listRequest: { readonly paths: readonly string[]; readonly profile: string; };
+};
 export type CommandLineBaselineCommands = {
-    readonly apply: CommandLineCommand;
-    readonly bootstrap: CommandLineCommand;
-    readonly diff: CommandLineCommand;
-    readonly list: CommandLineCommand;
-    readonly update: CommandLineCommand;
+    readonly apply: (request: CommandLineBaselineRequest) => Promise<CommandLineRunnerResult>;
+    readonly bootstrap: (request: CommandLineBaselineRequest) => Promise<CommandLineRunnerResult>;
+    readonly diff: (request: CommandLineBaselineRequest) => Promise<CommandLineRunnerResult>;
+    readonly list: (request: CommandLineBaselineListRequest) => Promise<CommandLineRunnerResult>;
+    readonly update: (request: CommandLineBaselineRequest) => Promise<CommandLineRunnerResult>;
 };
 
 export type BenchmarkRunRequest = ProfileRunRequest<string | null>;

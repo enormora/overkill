@@ -57,6 +57,7 @@ export function fakeWorkerPoolRuntimeDependencies(): WorkerPoolRunRuntime['depen
             }
         },
         discoverRunFilesWithProjectRoot: testOnlyDependency,
+        createExecution: testOnlyDependency,
         execute: defaultRunEngine.execute,
         liveOutput: {
             stderr: {

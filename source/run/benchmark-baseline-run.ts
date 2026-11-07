@@ -1,5 +1,6 @@
 import { evaluateBenchmarkHost } from '../bench/benchmark-host-assessment.ts';
-import { prepareBenchmarkBaselineRun, type PreparedBenchmarkRun } from './benchmark-baseline-preparation.ts';
+import { prepareBenchmarkBaselineRun } from './benchmark-baseline-preparation.ts';
+import type { PreparedRun } from './prepared-run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
@@ -57,7 +58,7 @@ function assertBenchmarkHostAccepted(assessment: BenchmarkHostAssessment): void 
 
 export async function prepareBenchmarkExecution(
     options: BenchmarkPreparationInput
-): Promise<PreparedBenchmarkRun | RunResult> {
+): Promise<PreparedRun | RunResult> {
     let assessment: BenchmarkHostAssessment | null = null;
     try {
         assessment = await assessBenchmarkExecutionHost(options.input, options.dependencies);

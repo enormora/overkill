@@ -155,21 +155,13 @@ function assertProfileReportersSupported(
     }
 }
 
-type Namespace = 'bench' | 'bench-calibrate' | 'test';
+type Namespace = 'baseline' | 'bench' | 'bench-calibrate' | 'test';
 function assertCapture(request: RunRequest, profile: ProfileConfig): void {
     if ((profile.testFamily === 'microtest' || profile.testFamily === 'property') && request.capture === 'live') {
         invalidRequest(
             `${profile.testFamily === 'microtest' ? 'Microtest' : 'Property'} profiles do not support live capture.`
         );
     }
-}
-function assertBaseline(namespace: Namespace, request: RunRequest): void {
-    if (namespace === 'bench' || request.baselineUpdateMode === 'none') {
-        return;
-    }
-    invalidRequest(
-        'Ordinary baseline updates are not implemented. Use benchmark baseline commands for performance baselines.'
-    );
 }
 function assertExecution(request: RunRequest, profile: ProfileConfig): void {
     if (
@@ -209,7 +201,12 @@ export function assertProfileRequestSupported(
     reporters: NormalizedConfig['reporters']
 ): void {
     assertAdapterRequest(request, profile);
-    assertBaseline(namespace, request);
+    if (namespace === 'baseline' && profile.testFamily === 'type-test') {
+        invalidRequest('Ordinary baselines require a microtest, property, or integration profile.');
+    }
+    if ((namespace === 'test' || namespace === 'bench-calibrate') && request.baselineUpdateMode !== 'none') {
+        invalidRequest('Baseline updates and previews require baseline commands.');
+    }
     assertExecution(request, profile);
     if (request.coverage && profile.testFamily !== 'microtest') {
         invalidRequest('Coverage can only be requested for microtest profiles.');

@@ -125,7 +125,9 @@ Standard subpaths:
 - `@overkill-dev/test/baselines` exports shared adapter, identity, entry, and change
   contracts plus pure identity, planning, and inventory operations. Existing types
   retain performance defaults. See [baselines](../baselines/readme.md).
-  Performance baseline commands live under `overkill bench baseline`.
+  Register ordinary adapters with `defineBaselineAdapter` from `@overkill-dev/test/config`;
+  ordinary commands live under `overkill baseline`. Performance baseline commands
+  live under `overkill bench baseline`.
 
 Implemented root authoring forms:
 
@@ -538,6 +540,7 @@ Supported command-line surface:
 - `overkill bench run [paths...]`
 - `overkill bench list [paths...]`
 - `overkill bench calibrate [paths...]`
+- `overkill baseline <update|apply|bootstrap|list|diff> [paths...]`
 - `overkill bench baseline <update|apply|bootstrap|list|diff> [paths...]`
 - `--config <path>`
 - `--file <path>`

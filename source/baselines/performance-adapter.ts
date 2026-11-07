@@ -59,9 +59,5 @@ export type ChartedPerformanceBaselineAdapter = PerformanceBaselineOperations & 
     readonly describeMetrics: (input: PerformanceProposalInput) => readonly PerformanceMetricComparison[];
 };
 export type PerformanceBaselineAdapter = ChartedPerformanceBaselineAdapter | PerformanceBaselineOperations;
-export type BenchmarkBaselinePolicy = {
-    readonly adapters: readonly PerformanceBaselineAdapter[];
-    readonly directory: string;
-};
 
 export type ComparableCalibration = ComparableCalibrationDefinition;

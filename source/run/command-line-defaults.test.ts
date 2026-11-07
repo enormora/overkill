@@ -1,5 +1,4 @@
 import { runIfMain } from '#test-runner';
-import { createFactory } from '@enormora/objectory';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -16,25 +15,9 @@ import {
     createCommandLineRunner,
     type CommandLineRunner
 } from './command-line-runner.ts';
-import type { CommandLineCommandContext } from './command-line-command.ts';
-import {
-    createUnimplementedCommand,
-    loadUnimplementedBaselineCommands,
-    createUnimplementedBaselineCommands
-} from './command-line-unimplemented-commands.ts';
 import type { ConfiguredRunOrchestrator } from './run-types.ts';
 
 const fixtureCwd = '/project';
-
-const commandLineCommandContextFactory = createFactory<CommandLineCommandContext>(
-    function createCommandLineCommandContext() {
-        return {
-            arguments: [],
-            configPath: null,
-            cwd: fixtureCwd
-        };
-    }
-);
 
 const singletonRunRequest = defaultRunRequest({
     capabilityRestrictions: { mode: 'disabled' },
@@ -91,7 +74,9 @@ function createTestRunner(): CommandLineRunner {
         async loadReplayCommands() {
             throw new Error('Replay commands are not configured.');
         },
-        loadBaselineCommands: loadUnimplementedBaselineCommands,
+        async loadBaselineCommands() {
+            throw new Error('Baseline loader is unused in this test.');
+        },
         async loadBenchmarkCommands() {
             const { createBenchmarkCommands } = await import('./benchmark-commands.ts');
 
@@ -122,51 +107,10 @@ function createTestRunner(): CommandLineRunner {
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
-    title: 'source/run/command-line-unimplemented-commands.test.ts',
+    title: 'source/run/command-line-defaults.test.ts',
     annotations: {},
     controls: {},
     children: [
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'unimplemented direct commands return argument errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const command = createUnimplementedCommand('replay');
-                const result = await command(commandLineCommandContextFactory.build({
-                    arguments: [ 'run-1' ]
-                }));
-
-                scope.assert.equal(result.exitCode, 3);
-                scope.assert.deepEqual(result.fallbackDiagnostics, [
-                    'Overkill argument error: Command "replay" with 1 arguments is not implemented yet.'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
-        createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
-            title: 'unimplemented command families return argument errors',
-            annotations: {},
-            controls: {},
-            async body(scope: OverkillScope) {
-                const baseline = await loadUnimplementedBaselineCommands();
-                const benchmark = createUnimplementedBaselineCommands('bench baseline');
-                const context = commandLineCommandContextFactory.build();
-                const baselineResult = await baseline.update(context);
-                const benchmarkResult = await benchmark.update(context);
-
-                scope.assert.deepEqual(baselineResult.fallbackDiagnostics, [
-                    'Overkill argument error: Command "baseline update" is not implemented yet.'
-                ]);
-                scope.assert.deepEqual(benchmarkResult.fallbackDiagnostics, [
-                    'Overkill argument error: Command "bench baseline update" is not implemented yet.'
-                ]);
-
-                return scope.assert.collect();
-            }
-        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'commandLineRunner rejects benchmark selection without configured benchmark profiles',

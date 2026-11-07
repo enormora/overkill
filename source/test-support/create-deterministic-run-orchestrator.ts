@@ -9,7 +9,7 @@ import {
     createFakeSupervisedChildProcess,
     type FakeSupervisedChildRunContext
 } from './fake-supervised-child-process.ts';
-import { createTestEngine } from './create-test-engine.ts';
+import { createTestEngine, createTestExecution } from './create-test-engine.ts';
 import {
     createDeterministicRunResult,
     createDeterministicProcessUsageTracker,
@@ -303,6 +303,9 @@ function createDeterministicRunCoordinatorWithDependencies(
                 files: [ firstFile, ...files.slice(1) ],
                 projectRoot: request.cwd
             };
+        },
+        createExecution(dispatcher) {
+            return createTestExecution(wallClock, dispatcher);
         },
         execute: engine.execute,
         async loadRunEngineModule() {

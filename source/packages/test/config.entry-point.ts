@@ -41,3 +41,14 @@ export type {
 } from '../run/config.entry-point.ts';
 
 export type { RunRecordPersistenceMode, RunRecordProfilePolicy } from '../run/config.entry-point.ts';
+
+export { defineBaselineAdapter } from '../run/config.entry-point.ts';
+export type {
+    BaselineAdapterDefinition,
+    BaselinePayload,
+    OrdinaryBaselineAdapter,
+    OrdinaryBaselineSubtype,
+    OrdinaryObservationInput
+} from '../run/config.entry-point.ts';
+
+export type { OrdinaryBaselinePolicy } from '../run/config.entry-point.ts';
