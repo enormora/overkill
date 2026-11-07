@@ -602,34 +602,48 @@ const stdout = defineBaselineAdapter<string, string, string>({
     adapter: {
         id: 'stdout',
         observe({ artifacts }) {
-            const text = artifacts.flatMap(function captured(artifact) {
-                return artifact.payload.kind === 'captured-output' && artifact.payload.stream === 'stdout'
-                    ? [ artifact.payload.text ] : [];
-            }).join('');
+            const text = artifacts
+                .flatMap(function captured(artifact) {
+                    return artifact.payload.kind === 'captured-output' && artifact.payload.stream === 'stdout'
+                        ? [ artifact.payload.text ] :
+                        [];
+                })
+                .join('');
             return { kind: 'observed', value: text };
         },
-        propose({ actual }) { return actual; },
+        propose({ actual }) {
+            return actual;
+        },
         compare({ actual, expected }) {
             return actual === expected ? { kind: 'match' } : {
-                kind: 'mismatch', diagnostics: [ { actual, expected, summary: 'stdout changed' } ]
+                kind: 'mismatch',
+                diagnostics: [ { actual, expected, summary: 'stdout changed' } ]
             };
         }
     },
-    toComparisonValue(text) { return text; },
-    encode(text) { return { kind: 'text', text }; },
+    toComparisonValue(text) {
+        return text;
+    },
+    encode(text) {
+        return { kind: 'text', text };
+    },
     decode(payload) {
-        if (payload.kind !== 'text') { throw new TypeError('Expected a text baseline.'); }
+        if (payload.kind !== 'text') {
+            throw new TypeError('Expected a text baseline.');
+        }
         return payload.text;
     }
 });
 
-export const config = defineConfig({ profiles: {
-    integration: {
-        testFamily: 'integration',
-        files: { include: [ 'source/**/*.integration.test.ts' ] },
-        baselines: { adapters: [ stdout ] }
+export const config = defineConfig({
+    profiles: {
+        integration: {
+            testFamily: 'integration',
+            files: { include: [ 'source/**/*.integration.test.ts' ] },
+            baselines: { adapters: [ stdout ] }
+        }
     }
-} });
+});
 ```
 
 Callbacks may be asynchronous. `toComparisonValue` converts observations for
