@@ -34,6 +34,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly capture: RunCommand['request']['capture'];
     readonly replay: ReplayWire | null;
     readonly seed: string;
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];

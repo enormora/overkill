@@ -8,9 +8,7 @@ const integration = createTestFacade({
 });
 
 export const testNode = integration.test('captures output', function testOutput(scope) {
-    process.stdout.write('case stdout\n', function ignoreWriteResult() {
-        return undefined;
-    });
+    console.log('case stdout');
     process.stderr.write('case stderr\n', 'utf8', function ignoreErrorWriteResult() {
         return undefined;
     });

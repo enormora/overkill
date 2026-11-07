@@ -208,6 +208,7 @@ export function createWorkerPoolCommand(
     const processUsagePolicy = resolveProcessUsagePolicy(input.command.request, input.profile);
 
     return {
+        capture: input.command.request.capture,
         seed: (input.command.request.seed.value ?? defaultRunSeed).toString(),
         benchmarkNormalization: input.benchmarkNormalization,
         benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,

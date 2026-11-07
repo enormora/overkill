@@ -8,6 +8,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { caseIdentityKey, createDefaultWorkId, workIdentityKey, type CaseId } from '../engine/identity.ts';
+import { runResultFactory } from '../test-support/run-result-factory.ts';
 import {
     createSupervisedRunState,
     type SupervisedRunState
@@ -147,6 +148,40 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'selects authored live capture only for a single active case',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const state = createSupervisedRunState('first-failure-and-final');
+                scope.assert.equal(state.captureMode('buffered'), 'buffered');
+                state.addActiveCase('live', { capture: 'live', id: caseId('live') }, 0, { index: 0 });
+                scope.assert.equal(state.captureMode('buffered'), 'live');
+                addActiveCase(state, caseId('concurrent'));
+                scope.assert.equal(state.captureMode('buffered'), 'buffered');
+                scope.assert.equal(state.captureMode('live'), 'live');
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'preserves authored live capture while terminal output drains',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const state = createSupervisedRunState('first-failure-and-final');
+                const result = runResultFactory.build({ perTest: [ { id: caseId('live') } ] }).perTest[0];
+                scope.require.defined(result);
+                const key = workIdentityKey(result.workId);
+                state.addActiveCase(key, { capture: 'live', id: result.id, workId: result.workId }, 0, { index: 0 });
+                state.recordTestAttemptResult(key, result, 'final', 1);
+                state.removeActiveCase(key);
+                state.beginOutputDraining();
+                scope.assert.equal(state.captureMode('buffered'), 'live');
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'retains property progress delivered through the supervised event boundary',

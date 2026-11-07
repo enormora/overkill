@@ -18,6 +18,7 @@ const assignedUnitSchema = z.strictObject({
 });
 const commandSchema = z.strictObject({
     ...executionCommandFields,
+    capture: z.enum([ 'buffered', 'live' ]),
     attachmentEndpoint: attachmentEndpointSchema.nullable(),
     hostProcess: hostProcessSchema,
     workerLifecycle: z.enum([ 'fresh-worker-per-unit', 'reuse' ])

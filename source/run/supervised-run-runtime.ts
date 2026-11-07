@@ -105,7 +105,7 @@ async function recordReporterEventErrors(
     }
 }
 
-function caseByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, SupervisedCase> {
+export function collectedCasesByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, SupervisedCase> {
     const entries: [string, SupervisedCase][] = [];
 
     for (const file of collectedPlan.files) {
@@ -285,7 +285,7 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
         applyEvent(
             reportedEvent,
             runtime.state,
-            caseByKey(collectedPlan),
+            collectedCasesByKey(collectedPlan),
             Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)
         );
     }

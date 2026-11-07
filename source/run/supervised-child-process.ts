@@ -334,22 +334,12 @@ export async function runSupervisedChildProcessEntryPoint(
     }
 }
 
-function activeCapture(runtime: SupervisedChildOutputRuntime): RunRequest['capture'] {
-    const [ activeCase ] = Array.from(runtime.state.activeCases.values());
-
-    if (runtime.capture === 'live' || runtime.state.activeCases.size !== 1 || activeCase === undefined) {
-        return runtime.capture;
-    }
-
-    return activeCase.capture ?? runtime.capture;
-}
-
 function recordOrWriteCapturedOutput(
     stream: 'stderr' | 'stdout',
     chunk: Uint8Array,
     runtime: SupervisedChildOutputRuntime
 ): void {
-    if (activeCapture(runtime) === 'live') {
+    if (runtime.state.captureMode(runtime.capture) === 'live') {
         runtime.dependencies.liveOutput[stream].write(chunk);
 
         return;

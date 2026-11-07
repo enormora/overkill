@@ -103,6 +103,7 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-explicit-files.test.ts
     node source/integration-tests/run/runner-supervised-timeouts.test.ts
     node source/integration-tests/run/runner-file-sets.test.ts
+    node source/integration-tests/run/runner-output.test.ts
     node source/integration-tests/run/runner-command-line.test.ts
     node source/integration-tests/run/runner-capability-policy.test.ts
     node source/integration-tests/run/runner-process-policy.test.ts

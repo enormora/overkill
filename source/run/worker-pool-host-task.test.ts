@@ -41,6 +41,7 @@ function workId(): TestWorkId {
 
 function command(): WorkerPoolCommand {
     return {
+        capture: 'buffered',
         replay: null,
         seed: '0',
         benchmarkNormalization: null,
