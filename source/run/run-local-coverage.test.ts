@@ -73,6 +73,7 @@ export const testNode = createSuite({
                         const attempt = await createCoverageRunRecord(process.cwd(), input, dependencies, null);
                         await attempt.start();
                         const result = await executeCoverageLocalRun({
+                            baseline: null,
                             command: { ...fixture.request.command, request: input.request },
                             dependencies,
                             input,

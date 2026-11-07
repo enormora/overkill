@@ -1,4 +1,4 @@
-import { finalizeResultWithDurationHistory } from './run-state-finalization.ts';
+import { finalizeRunResult } from './run-result-finalization.ts';
 import { createResultFromResolutionError, reportCollectionErrorResult } from './run-collection-error-result.ts';
 import type { RecordedCoverageExecution, RecordedCoverageRequest } from './recorded-coverage-types.ts';
 import { executeInProcessResolvedRun } from './run-in-process-execution.ts';
@@ -7,7 +7,7 @@ import {
     type LocalRunCollectionSource as RunCollectionSource
 } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import { observeRunRuntimePolicy, type RunRuntimePolicy } from './run-support.ts';
+import { observeRunRuntimePolicy, type RunRuntimePolicy, type RunResultSession } from './run-support.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
 import type { ResolvedRun, RunCommand } from './run-types.ts';
 
@@ -15,6 +15,7 @@ type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type ActiveCoverageSession = RecordedCoverageExecution['session'];
 type CoveredResolution = Awaited<ReturnType<typeof createLocalRunOrEmptySelectionResultFromInput>>;
 type CoverageLocalExecution = {
+    readonly baseline: RunResultSession | null;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly input: RecordedCoverageRequest['input'];
@@ -66,6 +67,20 @@ async function resolveCoverageLocalRun(resolution: CoverageLocalResolution): Pro
     return resolved.run;
 }
 
+async function reportUnexecutedCoverageRun(
+    execution: CoverageLocalExecution,
+    result: RunResult
+): Promise<RunResult> {
+    const prepared = execution.baseline?.prepareResult(result) ?? result;
+    const covered = await execution.session.finalize(prepared);
+    const checkpoint = await execution.record.checkpointResult(covered);
+    const finalResult = execution.baseline === null ? checkpoint : await execution.baseline.finalize(checkpoint);
+    return await reportCollectionErrorResult(execution.command, execution.dependencies, finalResult, {
+        timing: execution.timing,
+        benchmarkHost: null
+    });
+}
+
 async function executeCoveredWithPolicy(
     execution: CoverageLocalExecution,
     runtimePolicy: RunRuntimePolicy | null
@@ -83,25 +98,22 @@ async function executeCoveredWithPolicy(
 
     if (isRunResult(resolvedRun)) {
         const errors = runtimePolicy?.takeRunErrors() ?? [];
-        const finalResult = await session.finalize({
+        return await reportUnexecutedCoverageRun(execution, {
             ...resolvedRun,
             runnerErrors: [ ...resolvedRun.runnerErrors, ...errors ],
             status: errors.length > 0 ? 'failed' : resolvedRun.status
-        });
-
-        return await reportCollectionErrorResult(command, dependencies, await record.checkpointResult(finalResult), {
-            timing,
-            benchmarkHost: null
         });
     }
 
     return await executeInProcessResolvedRun(resolvedRun, dependencies, {
         async finalizeResult(run, result) {
-            const coverageResult = await session.finalize(result);
-
-            return await record.checkpointResult(
-                await finalizeResultWithDurationHistory(dependencies, run, coverageResult, timing)
-            );
+            return await finalizeRunResult(run, result, {
+                baseline: execution.baseline,
+                coverageSession: session,
+                record,
+                dependencies,
+                timing
+            });
         },
         runtimePolicy,
         timing
@@ -118,17 +130,29 @@ export async function executeCoverageLocalRun(execution: CoverageLocalExecution)
     );
 }
 
-type CoverageLocalCommand = Pick<CoverageLocalExecution, 'command' | 'dependencies' | 'input' | 'source' | 'timing'>;
+type CoverageLocalCommand = Pick<
+    CoverageLocalExecution,
+    'baseline' | 'command' | 'dependencies' | 'input' | 'source' | 'timing'
+>;
 
 export async function createCoverageLocalRunResult(request: CoverageLocalCommand): Promise<RunResult> {
-    const { command, dependencies, input, source, timing } = request;
+    const { baseline, command, dependencies, input, source, timing } = request;
     const { runRecordedCoverage } = await import('./recorded-coverage-run.ts');
 
     return await runRecordedCoverage({
         command,
         dependencies,
         async execute({ record, session }) {
-            return await executeCoverageLocalRun({ command, dependencies, input, record, session, source, timing });
+            return await executeCoverageLocalRun({
+                baseline,
+                command,
+                dependencies,
+                input,
+                record,
+                session,
+                source,
+                timing
+            });
         },
         input,
         timing

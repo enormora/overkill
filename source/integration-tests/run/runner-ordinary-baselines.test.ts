@@ -95,6 +95,17 @@ async function assertEntryCount(scope: TestScope, store: OrdinaryBaselineStore, 
     scope.assert.equal(entries.length, expected);
 }
 export const testNode = suite('ordinary baseline workflows', [
+    test('reconciles ordinary baselines under in-process coverage', async function (scope: TestScope) {
+        const data = await createOrdinaryBaselineFixture(scope, 'in-process', 'text');
+        const command = { ...data.command, request: { ...data.command.request, coverage: true } };
+        assertWritten(scope, await orchestrator.baseline.update(command, { timing: null }), 2);
+        const original = await data.entries();
+        data.setActual(43);
+        const compared = await orchestrator.run(command, { timing: null });
+        scope.assert.equal(compared.summary.failed, 2);
+        scope.assert.deepEqual(await data.entries(), original);
+        return scope.assert.collect();
+    }),
     ...([ 'in-process', 'supervised-process', 'worker-pool' ] as const).map(function executionCase(execution) {
         return test(`reconciles ordinary baselines with ${execution}`, async function (scope: TestScope) {
             const data = await createOrdinaryBaselineFixture(
