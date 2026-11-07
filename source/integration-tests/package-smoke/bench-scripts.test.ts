@@ -7,6 +7,18 @@ import { readFileSync, readdirSync } from 'node:fs';
 import * as bench from '@overkill-dev/bench';
 import * as ordinary from '@overkill-dev/test';
 import * as standard from '@overkill-dev/test/bench';
+import * as baselines from '@overkill-dev/baselines';
+import * as standardBaselines from '@overkill-dev/test/baselines';
+for (const facade of [ baselines, standardBaselines ]) {
+    assert.deepEqual(facade.planBaselineChange({
+        mode: 'update', existing: null, propose: () => 'snapshot', equals: Object.is
+    }), { kind: 'create', baseline: 'snapshot' });
+    assert.deepEqual(facade.findStaleBaselines([], { kind: 'incomplete' }, () => {
+        throw new Error('Unexpected identity lookup');
+    }), []);
+    assert.equal(typeof facade.baselineIdentityKey, 'function');
+}
+
 import { createRoot, createTestPlan, createWorkloadTestCase, execute } from '@overkill-dev/engine';
 import { defineResource, withResource } from '@overkill-dev/test/resources';
 

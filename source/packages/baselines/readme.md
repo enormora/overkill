@@ -22,11 +22,13 @@ Configure adapters on a benchmark profile:
 
 ```ts
 export const config = defineConfig({
-    profiles: {
-        startup: {
-            testFamily: 'benchmark',
-            files: { include: [ 'source/**/*.bench.ts' ] },
-            baselines: { directory: 'test-baselines', adapters: [ durationAdapter ] }
+    benchmark: {
+        profiles: {
+            startup: {
+                testFamily: 'benchmark',
+                files: { include: [ 'source/**/*.bench.ts' ] },
+                baselines: { directory: 'test-baselines', adapters: [ durationAdapter ] }
+            }
         }
     }
 });
@@ -54,3 +56,26 @@ comparison outcome and never derives pass/fail from chart values. Existing
 adapters need no migration. Invalid chart metadata becomes an infrastructure
 error after otherwise valid baseline operations, preserving completed writes.
 `readPerformanceBaselineReport(result)` reads current and legacy retained reports.
+
+## Shared baseline model
+
+Both baseline facades export `BaselineAdapter`, `BaselineObservation`,
+`BaselineComparison`, `BaselineIdentity`, and `BaselineInventory`.
+`BaselineEntry<T>`, `BaselineChange<T>`, and `BaselineWriteOutcome<T>`
+accept subtype records; omitting `T` preserves the performance types.
+Adapters may return values or promises, including binary domain values. Existing
+performance callbacks remain synchronous.
+
+`baselineIdentityKey(identity)` includes subtype, profile, adapter, full work
+identity, and explicit comparison context. Use an empty context when unnecessary.
+This key does not replace legacy performance filenames.
+
+`planBaselineChange({ mode, existing, propose, equals })` lazily proposes a
+record and returns a create/update change or null. Proposal equality is distinct
+from comparison tolerance. `none` and existing `bootstrap` entries never propose.
+
+`findStaleBaselines(scopedRecords, inventory, identify)` requires records
+already restricted to the relevant profile, subtype, and comparison scope.
+Complete inventories carry participating identities and preserved skipped cases;
+incomplete inventories produce no removals. Only successful complete profile runs
+can establish staleness. These operations perform no storage or execution.

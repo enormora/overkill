@@ -1,30 +1,23 @@
-import type { JsonValue, ReadonlyDeep } from 'type-fest';
 import type { WorkId } from '../engine/identity.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
 import type {
     ComparableCalibration as ComparableCalibrationDefinition
 } from '../bench/host-calibration-result.ts';
+import type { BaselineJson as SharedBaselineJson, BaselineObservation, BaselineComparison } from './baseline-model.ts';
 
-export type BaselineJson = ReadonlyDeep<JsonValue>;
+export type BaselineJson = SharedBaselineJson;
+
 export type PerformanceBaselineValue = {
     readonly calibration: ComparableCalibration;
     readonly value: BaselineJson;
 };
-type MissingObservation = { readonly kind: 'missing'; readonly reason: string; };
-type InapplicableObservation = { readonly kind: 'not-applicable'; };
-type ObservedValue = { readonly kind: 'observed'; readonly value: BaselineJson; };
-export type PerformanceObservation = InapplicableObservation | MissingObservation | ObservedValue;
+export type PerformanceObservation = BaselineObservation<BaselineJson>;
 export type BaselineDiagnostic = {
     readonly actual: BaselineJson;
     readonly expected: BaselineJson;
     readonly summary: string;
 };
-type MatchingPerformance = { readonly kind: 'match'; };
-type MismatchingPerformance = {
-    readonly diagnostics: readonly [BaselineDiagnostic, ...(readonly BaselineDiagnostic[])];
-    readonly kind: 'mismatch';
-};
-export type PerformanceComparison = MatchingPerformance | MismatchingPerformance;
+export type PerformanceComparison = BaselineComparison<BaselineDiagnostic>;
 export type PerformanceObservationInput = {
     readonly artifacts: readonly RunArtifact[];
     readonly calibration: ComparableCalibration;

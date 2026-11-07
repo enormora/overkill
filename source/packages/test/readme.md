@@ -122,7 +122,9 @@ Standard subpaths:
   distribution. `benchmark(...)` measures named workloads and generates budget
   assertions. Bench code stays behind this explicit subpath,
   outside root imports and ordinary microtest startup.
-- `@overkill-dev/test/baselines` re-exports baseline adapter and comparison types.
+- `@overkill-dev/test/baselines` exports shared adapter, identity, entry, and change
+  contracts plus pure identity, planning, and inventory operations. Existing types
+  retain performance defaults. See [baselines](../baselines/readme.md).
   Performance baseline commands live under `overkill bench baseline`.
 
 Implemented root authoring forms:

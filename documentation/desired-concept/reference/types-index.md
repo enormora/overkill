@@ -3173,3 +3173,9 @@ The command combines that request with `RunCommand`'s `config`, `cwd`, and `engi
 Both accept explicit `RunInvocationOptions`, including `signal` and `timing`.
 Replay facts carry `propertyReplay: PropertyWitnessFile`; historical ordinary
 facts omit it. Runtime replay errors use runner-error subtype `witness-replay`.
+
+## Shared Baselines
+
+Shared baseline contracts and pure identity, planning, and inventory operations are
+exported by `@overkill-dev/baselines` and `@overkill-dev/test/baselines`.
+See [the baseline package](../../../source/packages/baselines/readme.md) for signatures and compatibility.

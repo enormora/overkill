@@ -26,3 +26,11 @@ export type {
 } from '../../baselines/performance-baseline.ts';
 export { readPerformanceBaselineReport } from '../../baselines/performance-report.ts';
 export type { PerformanceBaselineReport } from '../../baselines/performance-report.ts';
+export type {
+    BaselineAdapter,
+    BaselineComparison,
+    BaselineIdentity,
+    BaselineInventory,
+    BaselineObservation
+} from '../../baselines/baseline-model.ts';
+export { baselineIdentityKey, findStaleBaselines, planBaselineChange } from '../../baselines/baseline-planning.ts';

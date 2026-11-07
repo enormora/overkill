@@ -3,15 +3,26 @@ import type { BenchmarkNormalizationEvidence } from '../engine/benchmark-result.
 import type {
     BenchmarkCalibrationResult as BenchmarkCalibrationResultDefinition
 } from '../bench/host-calibration-result.ts';
-import type { WorkId } from '../engine/identity.ts';
+import type { CaseId, WorkId } from '../engine/identity.ts';
+import { findStaleBaselines } from './baseline-planning.ts';
+import type {
+    BaselineIdentity,
+    BaselineChange as SharedBaselineChange,
+    BaselineEntry as SharedBaselineEntry,
+    BaselineWriteOutcome as SharedBaselineWriteOutcome,
+    BaselineSubtype as SharedBaselineSubtype,
+    BaselineUpdateMode as SharedBaselineUpdateMode
+} from './baseline-model.ts';
 import type { PerformanceBaselineValue } from './performance-adapter.ts';
+
+export type BaselineSubtype = SharedBaselineSubtype;
+export type BaselineUpdateMode = SharedBaselineUpdateMode;
 
 export const previousNormalizedPerformanceBaselineVersion = 2;
 export const normalizedPerformanceBaselineVersion = 3;
 
 export type CalibrationReferenceChange = { readonly kind: 'remove' | 'write'; readonly path: string; };
 
-export type BaselineSubtype = 'content-snapshot' | 'performance-baseline' | 'terminal-snapshot' | 'visual-snapshot';
 export type PerformanceBaselineIdentity = {
     readonly adapter: string;
     readonly machineClass: string;
@@ -31,24 +42,9 @@ type NormalizedPerformanceBaseline = PerformanceBaselineData & {
     readonly normalization: BenchmarkNormalizationEvidence | null;
 };
 export type StoredPerformanceBaseline = LegacyPerformanceBaseline | NormalizedPerformanceBaseline;
-export type BaselineEntry = {
-    readonly baseline: StoredPerformanceBaseline;
-    readonly path: string;
-};
-type CreatedBaseline = { readonly baseline: StoredPerformanceBaseline; readonly kind: 'create'; };
-type RemovedBaseline = { readonly baseline: StoredPerformanceBaseline; readonly kind: 'remove'; };
-type UpdatedBaseline = {
-    readonly baseline: StoredPerformanceBaseline;
-    readonly kind: 'update';
-    readonly previous: StoredPerformanceBaseline;
-};
-export type BaselineChange = CreatedBaseline | RemovedBaseline | UpdatedBaseline;
-type WrittenBaselines = { readonly changes: readonly BaselineChange[]; readonly kind: 'written'; };
-type BlockedBaselineWrites = { readonly kind: 'blocked'; };
-type FailedBaselineWrites = { readonly kind: 'failed'; readonly writtenChanges: readonly BaselineChange[]; };
-type ReadOnlyBaselines = { readonly kind: 'read-only'; };
-export type BaselineWriteOutcome = BlockedBaselineWrites | FailedBaselineWrites | ReadOnlyBaselines | WrittenBaselines;
-export type BaselineUpdateMode = 'apply' | 'bootstrap' | 'diff' | 'none' | 'update';
+export type BaselineEntry<TBaseline = StoredPerformanceBaseline> = SharedBaselineEntry<TBaseline>;
+export type BaselineChange<TBaseline = StoredPerformanceBaseline> = SharedBaselineChange<TBaseline>;
+export type BaselineWriteOutcome<TBaseline = StoredPerformanceBaseline> = SharedBaselineWriteOutcome<TBaseline>;
 
 export function performanceComparisonClass(
     machineClass: string,
@@ -77,3 +73,26 @@ export function performanceBaselineIdentity(baseline: StoredPerformanceBaseline)
 }
 
 export type BenchmarkCalibrationResult = BenchmarkCalibrationResultDefinition;
+
+function sharedPerformanceIdentity(baseline: StoredPerformanceBaseline): BaselineIdentity {
+    const { machineClass, ...identity } = performanceBaselineIdentity(baseline);
+    return { ...identity, subtype: 'performance-baseline', comparisonContext: { machineClass } };
+}
+export function stalePerformanceBaselines(
+    existing: ReadonlyMap<string, StoredPerformanceBaseline>,
+    participating: ReadonlySet<string>,
+    preservedCases: readonly CaseId[]
+): readonly StoredPerformanceBaseline[] {
+    return findStaleBaselines(Array.from(existing.values()), {
+        kind: 'complete',
+        participating: Array
+            .from(existing)
+            .filter(function participatingEntry([ key ]) {
+                return participating.has(key);
+            })
+            .map(function identity([ , baseline ]) {
+                return sharedPerformanceIdentity(baseline);
+            }),
+        preservedCases
+    }, sharedPerformanceIdentity);
+}
