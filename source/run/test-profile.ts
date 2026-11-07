@@ -1,4 +1,11 @@
-import type { BenchmarkProfileConfig, BuiltinTestProfileConfig, NormalizedConfig, ProfileConfig, TestProfileConfig } from '../config/types.ts';
+import {
+    isBuiltinTestProfile,
+    type BenchmarkProfileConfig,
+    type BuiltinTestProfileConfig,
+    type NormalizedConfig,
+    type ProfileConfig,
+    type TestProfileConfig
+} from '../config/types.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 
 export function selectProfile(profileName: string, config: NormalizedConfig): ProfileConfig {
@@ -34,7 +41,7 @@ export function selectBenchmarkProfile(profileName: string, config: NormalizedCo
 
 export function selectBaselineProfile(profileName: string, config: NormalizedConfig): BuiltinTestProfileConfig {
     const profile = selectTestProfile(profileName, config);
-    if (profile.testFamily === 'type-test') {
+    if (!isBuiltinTestProfile(profile)) {
         throw new RunResolutionError(
             'Ordinary baselines require a microtest, property, or integration profile.',
             undefined,

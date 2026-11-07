@@ -1,10 +1,9 @@
-import { orchestrator } from '../packages/run/run.entry-point.ts';
-import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { runIfMain } from '#test-runner';
+import { orchestrator, normalizeConfig } from '../packages/run/run.entry-point.ts';
+import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import type { RunAdapterRegistration } from './adapter-profile.ts';
-import { normalizeConfig } from './config.ts';
 import { projectConfigSchema } from './schema.ts';
 import { copyConfig } from './snapshot.ts';
 import { validateNormalizedConfig } from './validation.ts';

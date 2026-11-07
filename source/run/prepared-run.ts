@@ -13,7 +13,7 @@ async function prepareRun(
     invocation: RunInvocation,
     options: RunPreparationInput
 ): Promise<PreparedRun | RunResult> {
-    if (invocation.namespace === 'test' || invocation.namespace === 'baseline') {
+    if ([ 'test', 'baseline' ].includes(invocation.namespace)) {
         const { profile, request } = options.input;
         if (profile.testFamily === 'type-test') {
             return { input: options.input, session: null };

@@ -2,9 +2,9 @@ import type { BenchmarkGarbageCollectionPolicy } from '../engine/benchmark-resul
 import type { PropertyPolicy } from '../engine/property-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
+import type { BenchmarkBaselinePolicy, OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
 import type { ReportingPolicy } from './reporting-schema.ts';
 import type { RunAdapterRegistration } from './adapter-profile.ts';
-import type { BenchmarkBaselinePolicy, OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
 import type { HistoryPolicy } from './history-policy.ts';
 import type { BenchmarkHostPolicy } from './benchmark-host.ts';
 import type {
@@ -265,3 +265,7 @@ export type RunRecordPersistenceFacts = {
     readonly persist: boolean;
     readonly reasons: readonly RunRecordPersistenceReason[];
 };
+
+export function isBuiltinTestProfile(profile: ProfileConfig): profile is BuiltinTestProfileConfig {
+    return [ 'microtest', 'property', 'integration' ].includes(profile.testFamily);
+}

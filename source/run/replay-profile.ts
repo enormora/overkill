@@ -5,7 +5,7 @@ import { integrationExecutionSchema, attachmentLimitsSchema } from '../config/sc
 import { propertyPolicySchema } from '../config/property-policy.ts';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
 import { benchmarkHostPolicySchema } from '../config/benchmark-host.ts';
-import type { ProfileConfig } from '../config/types.ts';
+import { isBuiltinTestProfile, type ProfileConfig, type AdapterProfileConfig } from '../config/types.ts';
 import { recordedBaselinePolicySchema, restoreRecordedBaselines } from './recorded-baseline-policy.ts';
 
 const common = normalizedMicrotestProfileSchema.omit({ coverage: true, execution: true, testFamily: true }).extend({
@@ -71,11 +71,14 @@ const recordedProfileSchema = z.union([
     })
 ]);
 
-export function restoreReplayProfile(value: unknown, current: ProfileConfig | undefined): ProfileConfig {
+export function restoreReplayProfile(
+    value: unknown,
+    current: ProfileConfig | undefined
+): Exclude<ProfileConfig, AdapterProfileConfig> {
     const profile = recordedProfileSchema.parse(value);
     const reporters = current?.reporters ?? null;
     if (profile.testFamily !== 'benchmark') {
-        const policy = current !== undefined && current.testFamily !== 'benchmark' && current.testFamily !== 'type-test'
+        const policy = current !== undefined && isBuiltinTestProfile(current)
             ? current.baselines
             : { directory: 'test-baselines', adapters: [], stale: 'fail' as const };
         return { ...profile, reporters, baselines: restoreRecordedBaselines(profile.baselines, policy) };
