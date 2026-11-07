@@ -1,5 +1,11 @@
 import { runIfMain } from '#test-runner';
 import {
+    attachTestBodyFamily,
+    attachTestBodyOrigin,
+    captureTestBodyOrigin,
+    forwardTestBodyOrigin,
+    readTestBodyOrigin,
+    resolveSourceLocation,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -133,6 +139,144 @@ export const testNode = createOverkillSuite({
                     { definitionLocations: [ unusedSuiteLocation ], file: null, kind: 'suite', title: 'unused suite' }
                 ]);
 
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'preserves ownership when the same origin is attached again',
+            body(scope: OverkillScope) {
+                const body = function (): null {
+                    return null;
+                };
+                const origin = captureTestBodyOrigin(body);
+                attachTestBodyOrigin(body, origin);
+
+                scope.assert.equal(attachTestBodyOrigin(body, origin), body);
+                scope.assert.equal(readTestBodyOrigin(body), origin);
+                scope.assert.equal(captureTestBodyOrigin(body), origin);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'rejects replacing the authored body or source location',
+            body(scope: OverkillScope) {
+                const body = function (): null {
+                    return null;
+                };
+                const origin = captureTestBodyOrigin(body);
+                attachTestBodyOrigin(body, origin);
+
+                scope.assert.throws(function replaceBody() {
+                    attachTestBodyOrigin(body, {
+                        body() {
+                            return null;
+                        },
+                        location: origin.location
+                    });
+                }, { message: 'Cannot replace test body source ownership.' });
+                scope.assert.throws(function replaceLocation() {
+                    attachTestBodyOrigin(body, { body, location: { kind: 'unknown' } });
+                }, { message: 'Cannot replace test body source ownership.' });
+                scope.assert.equal(readTestBodyOrigin(body), origin);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'leaves ownership unchanged when forwarding to itself or from a nonfunction',
+            body(scope: OverkillScope) {
+                const body = function (): null {
+                    return null;
+                };
+                const origin = captureTestBodyOrigin(body);
+                attachTestBodyOrigin(body, origin);
+                const unowned = function (): null {
+                    return null;
+                };
+
+                scope.assert.equal(forwardTestBodyOrigin(body, body), body);
+                scope.assert.equal(readTestBodyOrigin(body), origin);
+                scope.assert.equal(forwardTestBodyOrigin(null, unowned), unowned);
+                scope.assert.equal(readTestBodyOrigin(unowned), null);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'rejects a property body carrying a conflicting test family',
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const body = attachTestBodyFamily(function (sample: OverkillScope) {
+                    sample.assert.true(true);
+                    return sample.assert.collect();
+                }, { family: 'microtest', definition: null });
+
+                scope.assert.throws(function planConflictingFamily() {
+                    const node = engine.createPropertyTestCase({
+                        annotations: {},
+                        controls: {},
+                        definitionLocations: [ { kind: 'unknown' } ],
+                        title: 'conflicting property',
+                        body,
+                        definition: { kind: 'nested', settingsDeclarations: [ { kind: 'profile-default' } ] }
+                    });
+                    engine.createTestPlan(engine.createRoot({
+                        annotations: {},
+                        controls: {},
+                        title: 'family validation',
+                        children: [ node ]
+                    }));
+                }, { message: 'Test body family "microtest" conflicts with test family "property".' });
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            annotations: {},
+            controls: {},
+            title: 'uses the table definition location when a row has no body origin',
+            body(scope: OverkillScope) {
+                const engine = createEngine();
+                const location = { kind: 'known' as const, file: 'source/table.test.ts', line: 10, column: 1 };
+                const table = engine.createTable({
+                    annotations: {},
+                    controls: {},
+                    definitionLocations: [ location ],
+                    title: 'unowned rows',
+                    cases: [ 'first', 'second' ].map(function (title) {
+                        return {
+                            annotations: {},
+                            controls: {},
+                            title,
+                            parameters: title,
+                            body(sample: OverkillScope) {
+                                sample.assert.true(true);
+                                return sample.assert.collect();
+                            }
+                        };
+                    })
+                });
+                const plan = engine.createTestPlan(engine.createRoot({
+                    annotations: {},
+                    controls: {},
+                    title: 'table fallback',
+                    children: [ { ...table, bodyOrigins: [] } ]
+                }));
+                scope.assert.equal(plan.cases.length, 2);
+                for (const row of plan.cases) {
+                    scope.require.notNull(row.bodyOrigin);
+                    scope.assert.deepEqual(resolveSourceLocation(row.bodyOrigin.location), location);
+                }
                 return scope.assert.collect();
             }
         })
