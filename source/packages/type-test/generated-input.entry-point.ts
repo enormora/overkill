@@ -1,4 +1,4 @@
-import { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
+import { isGeneratedTypeTestPath } from '../run/run.entry-point.ts';
 import { createGeneratedFileOwnership, type GeneratedFileOwnership } from './generated-file-ownership.ts';
 import { planGeneratedModules, parseProject } from './generated-module-plan.ts';
 import type { RepairedModule } from './generated-imports.ts';
@@ -13,7 +13,7 @@ export type {
 } from './generated-input-types.ts';
 export { mapSourceRange } from './generated-source.ts';
 export type { SourceMapping, SourceRange, TranslatedModule } from './generated-source.ts';
-export { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
+export { isGeneratedTypeTestPath } from '../run/run.entry-point.ts';
 async function writeReadyInputs(
     modules: readonly GeneratedModuleResult[],
     repaired: readonly RepairedModule[],

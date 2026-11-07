@@ -1,4 +1,6 @@
 import {
+    attachTestBodyOrigin,
+    captureTestBodyOrigin,
     forwardTestBodyResources,
     captureSourceLocation,
     forwardAssertionSourceLocations,
@@ -159,13 +161,14 @@ export function runMacroWithDefinitionLocations<Result>(body: () => Result): Res
 export function defineParameterizedTestBodyFactory<Data>(
     body: ParameterizedTestBody<Data>
 ): (data: Data) => TestBody {
+    const origin = captureTestBodyOrigin(body);
     return function createParameterizedTestBody(data) {
         const sourceLocations: NonEmptyReadonlyArray<ResolvableSourceLocation> = [ captureSourceLocation() ];
 
-        return async function runParameterizedTestBody(scope) {
+        return attachTestBodyOrigin(async function runParameterizedTestBody(scope) {
             return forwardAssertionSourceLocations(sourceLocations, async function runBody() {
                 return body(scope, data);
             });
-        };
+        }, origin);
     };
 }

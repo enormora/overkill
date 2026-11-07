@@ -32,6 +32,7 @@ import type {
     ProjectIntegrationProfileConfig,
     ProjectMicrotestProfileConfig,
     ProjectPropertyProfileConfig,
+    ProjectAdapterProfileConfig,
     ProjectProfileConfig,
     ProjectBenchmarkProfileConfig,
     ProjectProfileFiles,
@@ -166,11 +167,13 @@ const projectedDatabase = defineResource({
 const typeTestController = new AbortController();
 declare const testScope: TestScope;
 
+type OrdinaryProjectProfile = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
+
 describe('@overkill-dev/test standard subpaths', function () {
     test('exposes config authoring types', function () {
         expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
         expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
-            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
+            OrdinaryProjectProfile | ProjectAdapterProfileConfig | ProjectBenchmarkProfileConfig
         >();
         expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
             ProjectPropertyProfileConfig

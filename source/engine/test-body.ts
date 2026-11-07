@@ -1,3 +1,6 @@
+import type { ResolvableSourceLocation, SourceLocation } from '../assertion-protocol/assertion-node-shape.ts';
+import { captureSourceLocation, resolveSourceLocation } from '../assertion-protocol/source-location.ts';
+
 import {
     isPropertyBodyDefinition,
     type PropertyBodyDefinition,
@@ -5,6 +8,81 @@ import {
 } from './property-node.ts';
 import type { TestFamily } from './test-data.ts';
 import type { WorkloadInput } from './workload-input.ts';
+
+type SourceBody = (...arguments_: readonly never[]) => unknown;
+
+type AuthoredBodyOrigin = {
+    readonly body: SourceBody;
+    readonly location: ResolvableSourceLocation;
+};
+
+export type TableBodyOrigin = AuthoredBodyOrigin & {
+    readonly tableIndex: number;
+    readonly forwarded: TestBodyOrigin | null;
+};
+export type TestBodyOrigin = AuthoredBodyOrigin | TableBodyOrigin;
+
+export function isTableBodyOrigin(origin: TestBodyOrigin): origin is TableBodyOrigin {
+    return Object.hasOwn(origin, 'tableIndex');
+}
+
+const bodyOriginBrand = Symbol.for('@overkill-dev/engine/TestBodyOrigin');
+
+type OriginAttachedBody = SourceBody & {
+    readonly [bodyOriginBrand]: TestBodyOrigin;
+};
+
+function hasBodyOrigin(body: SourceBody): body is OriginAttachedBody {
+    return Object.hasOwn(body, bodyOriginBrand);
+}
+
+export function readTestBodyOrigin(body: SourceBody): TestBodyOrigin | null {
+    return hasBodyOrigin(body) ? body[bodyOriginBrand] : null;
+}
+
+export function testBodyLocation(
+    origin: TestBodyOrigin | undefined,
+    fallback: ResolvableSourceLocation
+): SourceLocation {
+    const captured = origin === undefined ? { kind: 'unknown' as const } : resolveSourceLocation(origin.location);
+    return captured.kind === 'known' ? captured : resolveSourceLocation(fallback);
+}
+
+export function captureTestBodyOrigin(body: SourceBody): TestBodyOrigin {
+    return readTestBodyOrigin(body) ??
+        Object.freeze({ body, location: captureSourceLocation() });
+}
+
+export function attachTestBodyOrigin<Body extends SourceBody>(body: Body, origin: TestBodyOrigin): Body {
+    const existing = readTestBodyOrigin(body);
+    if (existing !== null) {
+        if (existing.body !== origin.body || existing.location !== origin.location) {
+            throw new TypeError('Cannot replace test body source ownership.');
+        }
+        return body;
+    }
+    Object.defineProperty(body, bodyOriginBrand, { value: origin });
+    return body;
+}
+
+function isSourceBody(source: unknown): source is SourceBody {
+    return typeof source === 'function';
+}
+
+export function forwardTestBodyOrigin<Body extends SourceBody>(source: unknown, body: Body): Body {
+    if (!isSourceBody(source) || source === body) {
+        return body;
+    }
+    const existing = readTestBodyOrigin(body);
+    const origin = readTestBodyOrigin(source) ?? Object.freeze({
+        body: source,
+        location: captureSourceLocation()
+    });
+    if (existing !== null && existing.body === origin.body) {
+        return body;
+    }
+    return attachTestBodyOrigin(body, origin);
+}
 
 const testBodyFamilyBrand = Symbol.for('@overkill-dev/engine/TestBodyFamily');
 
@@ -44,7 +122,7 @@ export function forwardTestBodyFamily<Body extends (scope: never) => unknown>(
 ): Body {
     const attachment = readTestBodyFamily(source);
     if (attachment === null) {
-        return body;
+        return forwardTestBodyOrigin(source, body);
     }
     const existing = readTestBodyFamily(body);
     if (existing === null) {
@@ -52,7 +130,7 @@ export function forwardTestBodyFamily<Body extends (scope: never) => unknown>(
     } else if (existing.family !== attachment.family || existing.definition !== attachment.definition) {
         throw new TypeError('Cannot replace test body family metadata.');
     }
-    return body;
+    return forwardTestBodyOrigin(source, body);
 }
 
 export function resolveTestBodyFamily(body: unknown, family: TestFamily | null): TestFamily | null {
@@ -104,7 +182,7 @@ export function forwardTestBodyResources<Scope, Result>(
             return forwardTestBodyResources(resolveTestBodyWorkload(source, workload), forward);
         });
     }
-    return body;
+    return forwardTestBodyOrigin(source, body);
 }
 
 export type PropertyBodyExecution<Body> = {

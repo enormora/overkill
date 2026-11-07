@@ -5,7 +5,14 @@ import type {
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { serializeValue } from '../compare/serialized-value.ts';
 import type { WorkloadInput, WorkloadParameters } from './workload-input.ts';
-import { resolveFamilyBodyExecution, resolveTestBodyWorkload, resolveTestBodyFamily } from './test-body.ts';
+import {
+    readTestBodyOrigin,
+    testBodyLocation,
+    type TestBodyOrigin,
+    resolveFamilyBodyExecution,
+    resolveTestBodyWorkload,
+    resolveTestBodyFamily
+} from './test-body.ts';
 import {
     caseIdentityKey,
     createCaseId,
@@ -54,6 +61,7 @@ export type TestPlanSuitePathEntry = {
 };
 
 export type TestPlanCase = {
+    readonly bodyOrigin: TestBodyOrigin | null;
     readonly annotations: TestAnnotations;
     readonly controls: TestControls;
     readonly definitionLocations: NonEmptyReadonlyArray<ResolvableSourceLocation>;
@@ -236,6 +244,12 @@ function collectTestCase(
                 annotations,
                 controls,
                 definitionLocations: testCase.definitionLocations,
+                bodyOrigin: testCase.execution.kind === 'body'
+                    ? testCase.bodyOrigin ?? readTestBodyOrigin(testCase.execution.body) ?? {
+                        body: testCase.execution.body,
+                        location: testCase.definitionLocations.at(-1) ?? testCase.definitionLocations[0]
+                    }
+                    : null,
                 execution: testCase.execution,
                 id,
                 suitePath: context.suitePath,
@@ -266,7 +280,7 @@ function collectTable(
     const tableControls = resolveTestControls(context.controls, table.controls);
 
     return {
-        cases: table.cases.map(function collectTableCase(tableCase): LogicalTestPlanCase {
+        cases: table.cases.map(function collectTableCase(tableCase, tableIndex): LogicalTestPlanCase {
             const annotations = resolveTestAnnotations(tableAnnotations, tableCase.annotations);
             const controls = resolveTestControls(tableControls, tableCase.controls);
             const id = createCaseId(
@@ -280,6 +294,18 @@ function collectTable(
                 annotations,
                 controls,
                 definitionLocations: table.definitionLocations,
+                bodyOrigin: {
+                    body: readTestBodyOrigin(tableCase.body)?.body ?? tableCase.body,
+                    location: function tableLocation() {
+                        const origin = Object.hasOwn(table, 'bodyOrigins') ? table.bodyOrigins[tableIndex] : undefined;
+                        return testBodyLocation(
+                            origin,
+                            table.definitionLocations.at(-1) ?? table.definitionLocations[0]
+                        );
+                    },
+                    forwarded: readTestBodyOrigin(tableCase.body),
+                    tableIndex
+                },
                 execution: { body: tableCase.body, bodyMode: 'builder', kind: 'body' },
                 id,
                 suitePath: tablePath,

@@ -39,6 +39,13 @@ async function executeObservedCollectedPlan(execution: CollectedPlanExecution): 
             { timing, benchmarkHost: null }
         );
     }
+    if (plan.resolved.facts.execution.testFamily === 'type-test') {
+        return await executeInProcessResolvedRun(plan.resolved, dependencies, {
+            finalizeResult,
+            runtimePolicy,
+            timing
+        });
+    }
     return await executeWithRuntimeAttachments(plan.resolved, dependencies, async function executeObservedPlan() {
         return await executeInProcessResolvedRun(plan.resolved, dependencies, {
             finalizeResult,

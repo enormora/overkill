@@ -1,3 +1,4 @@
+import type { SerializedValue } from '../compare/serialized-value.ts';
 import type { AttemptId, CaseId, RuntimeId, WorkloadId } from './identity.ts';
 
 export type RunArtifactScope = {
@@ -12,7 +13,7 @@ export type RunArtifactScope = {
 type RunArtifactBaseId = {
     readonly runtimes: readonly RuntimeId[];
     readonly sequence: number;
-    readonly subtype: 'attachment' | 'coverage' | 'hedged-conflict' | 'log-capture' | 'witness';
+    readonly subtype: 'adapter' | 'attachment' | 'coverage' | 'hedged-conflict' | 'log-capture' | 'witness';
     readonly workload: WorkloadId | null;
 };
 
@@ -41,4 +42,10 @@ export type CapturedOutputArtifact = {
     readonly id: RunArtifactId & { readonly subtype: 'log-capture' | 'witness'; };
     readonly payload: CapturedOutputArtifactPayload;
     readonly source: 'boundary-captured' | 'native';
+};
+
+export type AdapterArtifact = {
+    readonly id: RunArtifactId & { readonly subtype: 'adapter'; };
+    readonly payload: { readonly kind: 'adapter'; readonly adapter: string; readonly facts: SerializedValue; };
+    readonly source: 'native';
 };

@@ -209,6 +209,6 @@ export type {
 
 export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfileConfig } from '../../config/types.ts';
 
-export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
+export type { ProjectBenchmarkProfileConfig, ProjectAdapterProfileConfig } from '../../config/schema.ts';
 
 export type { CommandLineWitnessReplayRequest } from '../../run/witness-replay-request.ts';

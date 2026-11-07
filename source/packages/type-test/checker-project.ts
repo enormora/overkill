@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { dirname, join } from 'node:path';
 import type TypeScript from 'typescript';
+import { checkerCompilerOptions, comparableCompilerOptions } from './checker-resolution.ts';
 import { parseProject } from './generated-module-plan.ts';
 import type { GeneratedInputRequest } from './generated-input-types.ts';
 import { createGeneratedFileOwnership, type GeneratedFileOwnership } from './generated-file-ownership.ts';
@@ -14,17 +15,21 @@ function references(
     }) ?? [];
 }
 function verifyProject(
+    compiler: typeof TypeScript,
     original: TypeScript.ParsedCommandLine,
     derived: TypeScript.ParsedCommandLine,
     files: readonly string[]
 ): void {
-    const { configFilePath: originalIdentity, ...originalOptions } = original.options;
-    const { configFilePath: derivedIdentity, ...derivedOptions } = derived.options;
     const missing = files.some(function missingFile(file) {
         return !derived.fileNames.includes(file);
     });
     if (
-        originalIdentity === derivedIdentity || missing || !isDeepStrictEqual(originalOptions, derivedOptions) ||
+        original.options.configFilePath === derived.options.configFilePath || missing ||
+        !isDeepStrictEqual(
+            comparableCompilerOptions(compiler, original.options),
+            comparableCompilerOptions(compiler, derived.options)
+        ) ||
+        !isDeepStrictEqual(checkerCompilerOptions(compiler, original.options).paths, derived.options.paths) ||
         !isDeepStrictEqual(references(original), references(derived))
     ) {
         throw new Error('Derived checker project does not preserve original configuration.');
@@ -40,9 +45,15 @@ async function createCheckerProject(
     const files = Array.from(new Set([ ...original.fileNames, ...paths ]));
     await owned.write(
         path,
-        JSON.stringify({ extends: request.projectConfigPath, files, include: [], references: references(original) })
+        JSON.stringify({
+            extends: request.projectConfigPath,
+            files,
+            include: [],
+            references: references(original),
+            compilerOptions: { paths: checkerCompilerOptions(request.compiler, original.options).paths }
+        })
     );
-    verifyProject(original, parseProject({ ...request, projectConfigPath: path }), files);
+    verifyProject(request.compiler, original, parseProject({ ...request, projectConfigPath: path }), files);
     return path;
 }
 async function useProject<Result>(

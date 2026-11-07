@@ -41,6 +41,8 @@ async function runChecker(
                 tsconfig: checkerConfigPath,
                 target: [ target ],
                 reporters: [],
+                quiet: true,
+                checkSuppressedErrors: false,
                 checkDeclarationFiles: false
             }
         }));

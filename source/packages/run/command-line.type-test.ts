@@ -28,6 +28,7 @@ import {
     type ProjectIntegrationProfileConfig,
     type ProjectMicrotestProfileConfig,
     type ProjectPropertyProfileConfig,
+    type ProjectAdapterProfileConfig,
     type ProjectProfileFiles,
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
@@ -50,6 +51,8 @@ type ProjectProfileFileSets = {
         }>
     >;
 };
+
+type OrdinaryProjectProfile = ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig;
 
 describe('@overkill-dev/run/command-line', function () {
     test('exposes an instantiated command-line runner', function () {
@@ -133,7 +136,7 @@ describe('@overkill-dev/run/command-line', function () {
         expect<Config['profiles']>().type.toBe<ProjectProfilesConfig | undefined>();
         expect<ProjectProfilesConfig[string]>().type.toBe<ProjectProfileConfig>();
         expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
-            ProjectBenchmarkProfileConfig | ProjectIntegrationProfileConfig | ProjectMicrotestProfileConfig
+            OrdinaryProjectProfile | ProjectAdapterProfileConfig | ProjectBenchmarkProfileConfig
         >();
         expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
             ProjectPropertyProfileConfig
