@@ -164,6 +164,7 @@ export const configuration = {
             description: 'Overkill run resolution and orchestration.',
             bundlePeerDependencies: [ '@overkill-dev/engine' ],
             roots: {
+                adapterRun: { javaScript: 'run/adapter-run.js' },
                 attachmentConnection: { javaScript: 'run/attachment-connection.js' },
                 attachmentRun: { javaScript: 'run/attachment-run.js' },
                 benchmarkCommands: moduleRoot('run/benchmark-commands'),
@@ -217,6 +218,7 @@ export const configuration = {
                     './transcript-store': 'transcriptStore'
                 }),
                 privateRoots: [
+                    'adapterRun',
                     'attachmentConnection',
                     'attachmentRun',
                     'benchmarkCommands',
@@ -278,6 +280,21 @@ export const configuration = {
                 '@overkill-dev/resources',
                 '@overkill-dev/run'
             ]
+        },
+        {
+            name: 'type-test',
+            description: 'Native type assertions and TSTyche checking for Overkill.',
+            roots: {
+                main: moduleRoot('packages/type-test/type-test.entry-point'),
+                profile: moduleRoot('packages/type-test/profile.entry-point'),
+                check: moduleRoot('packages/type-test/check.entry-point'),
+                adapter: { javaScript: 'packages/type-test/adapter.entry-point.js' }
+            },
+            packageInterface: {
+                modules: packageModules({ '.': 'main', './profile': 'profile', './check': 'check' }),
+                privateRoots: [ 'adapter' ]
+            },
+            bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ]
         },
         {
             name: 'stryker-runner',

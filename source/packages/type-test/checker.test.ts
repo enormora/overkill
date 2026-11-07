@@ -1,5 +1,6 @@
 import { mkdtemp, writeFile, readdir, rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { ProjectConfigKind } from 'tstyche/api';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
@@ -7,14 +8,16 @@ import { checkGeneratedInputs, type CheckerRequest } from './checker.entry-point
 import { verifyCheckerEvidence } from './checker-evidence.ts';
 
 async function writeProject(directory: string): Promise<void> {
+    await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module' }));
     await mkdir(join(directory, 'dependency'));
+    await mkdir(join(directory, 'config'));
     await writeFile(
         join(directory, 'dependency/tsconfig.json'),
         JSON.stringify({ compilerOptions: { composite: true }, files: [ 'index.ts' ] })
     );
     await writeFile(join(directory, 'dependency/index.ts'), 'export {};');
     await writeFile(
-        join(directory, 'base.json'),
+        join(directory, 'config/base.json'),
         JSON.stringify({
             compilerOptions: {
                 strict: false,
@@ -22,14 +25,14 @@ async function writeProject(directory: string): Promise<void> {
                 types: [],
                 module: 'NodeNext',
                 moduleResolution: 'NodeNext',
-                paths: { alias: [ './value.ts' ] }
+                paths: { alias: [ '../value.ts' ] }
             }
         })
     );
     await writeFile(
         join(directory, 'tsconfig.json'),
         JSON.stringify({
-            extends: './base.json',
+            extends: './config/base.json',
             files: [ 'ambient.d.ts', 'input.ts', 'value.ts' ],
             references: [ { path: './dependency' } ]
         })
@@ -38,7 +41,7 @@ async function writeProject(directory: string): Promise<void> {
     await writeFile(join(directory, 'value.ts'), 'export type Value = string;');
 }
 async function fixture(scope: TestScope): Promise<CheckerRequest> {
-    const directory = await mkdtemp(join(process.cwd(), 'target-checker-'));
+    const directory = await mkdtemp(join(tmpdir(), 'overkill-checker-'));
     scope.cleanup(async function () {
         await rm(directory, { recursive: true, force: true });
     });

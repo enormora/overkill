@@ -8,6 +8,7 @@ import { validateHostProcess } from './host-process.ts';
 import { assertValidProfileName, normalizeRequiredProfileFiles } from './profile-normalization.ts';
 import { validateBenchmarkExecution } from './benchmark-execution.ts';
 import type {
+    AdapterProfileConfig,
     NormalizedConfig,
     BenchmarkProfileConfig,
     ProfileConfig,
@@ -66,7 +67,7 @@ function validateMicrotestProfile(profile: ProfileConfig): void {
 }
 
 function validateAttachmentLimits(profile: ProfileConfig): void {
-    if (profile.testFamily === 'microtest' || profile.testFamily === 'property') {
+    if (profile.testFamily !== 'benchmark' && profile.testFamily !== 'integration') {
         return;
     }
     for (const [ name, value ] of Object.entries(profile.attachments)) {
@@ -118,18 +119,46 @@ function validatePropertyProfile(profile: PropertyProfileConfig): void {
     }
 }
 
+const profileFamilies: ReadonlySet<string> = new Set([
+    'benchmark',
+    'integration',
+    'microtest',
+    'property',
+    'type-test'
+]);
 function validateProfileFamily(profileName: string, testFamily: unknown): void {
-    if (
-        testFamily !== 'benchmark' && testFamily !== 'integration' && testFamily !== 'microtest' &&
-        testFamily !== 'property'
-    ) {
+    if (typeof testFamily !== 'string' || !profileFamilies.has(testFamily)) {
         throw new ConfigError(
-            [
-                `Invalid profile "${profileName}":`,
-                'testFamily must be "benchmark", "integration", "microtest", or "property".'
-            ]
-                .join(' ')
+            `Invalid profile "${profileName}": testFamily must be one of ${Array.from(profileFamilies).join(', ')}.`
         );
+    }
+}
+
+function validateAdapterProfile(profile: AdapterProfileConfig): void {
+    profile.adapter.validate(profile.settings);
+    normalizeRequiredProfileFiles(profile.files);
+    z
+        .strictObject({
+            processModel: z.literal('in-process'),
+            maxConcurrency: z.literal(1),
+            scheduling: z.literal('serial')
+        })
+        .parse(profile.execution);
+    validateProcessUsagePolicy(profile.processUsage);
+    validateTimeoutPolicy(profile.timeouts);
+}
+
+function validateProfile(profileName: string, profile: ProfileConfig): void {
+    if (profile.testFamily === 'type-test') {
+        validateAdapterProfile(profile);
+    } else if (profile.testFamily === 'benchmark') {
+        validateBenchmarkProfile(profileName, profile);
+    } else if (profile.testFamily === 'property') {
+        validatePropertyProfile(profile);
+    } else if (profile.testFamily === 'microtest') {
+        validateMicrotestProfile(profile);
+    } else {
+        validateIntegrationProfile(profile);
     }
 }
 
@@ -137,16 +166,7 @@ export function validateNormalizedConfig(config: NormalizedConfig): void {
     for (const [ profileName, profile ] of Object.entries(config.profiles)) {
         assertValidProfileName(profileName);
         validateProfileFamily(profileName, profile.testFamily);
-
-        if (profile.testFamily === 'benchmark') {
-            validateBenchmarkProfile(profileName, profile);
-        } else if (profile.testFamily === 'property') {
-            validatePropertyProfile(profile);
-        } else if (profile.testFamily === 'microtest') {
-            validateMicrotestProfile(profile);
-        } else {
-            validateIntegrationProfile(profile);
-        }
+        validateProfile(profileName, profile);
         if (!z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) }).safeParse(profile.runRecords).success) {
             throw new ConfigError('Invalid run record persistence policy.');
         }

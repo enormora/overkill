@@ -49,11 +49,16 @@ async function readTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
 
 async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     const testPlan = await readTestPlan(input);
-    return resolveTestPlanCollectionPolicy(testPlan, {
+    const collected = resolveTestPlanCollectionPolicy(testPlan, {
         testFamily: input.profile.testFamily,
         propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds
     });
+    if (input.profile.testFamily === 'type-test') {
+        const { prepareAdapterPlan } = await import('./adapter-execution.ts');
+        return await prepareAdapterPlan(input.profile.adapter, input.profile.settings, collected);
+    }
+    return collected;
 }
 
 function firstObservedCollectionError(observer: ExecutionGlobalErrorObserver): RunCollectionError {

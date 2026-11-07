@@ -9,6 +9,7 @@ const caseId = createCaseId('matrix.test.ts', [], 'runs on every variant', null)
 
 function testCaseWithRuntimeGraphs(runtimeGraphs: TestPlanCase['resourceAttachments']['runtimeGraphs']): TestPlanCase {
     return {
+        bodyOrigin: null,
         workloadParameters: null,
         annotations: { ownership: [], tags: [] },
         controls: { capture: null, duplicateExecution: null, timeoutMilliseconds: null },

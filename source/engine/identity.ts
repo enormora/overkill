@@ -23,11 +23,19 @@ export type WorkloadId = {
     readonly params: Readonly<Record<string, string>>;
 };
 
-export type WorkId = {
+type OrdinaryWorkId = {
     readonly case: CaseId;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
+
+type CompilerWorkId = OrdinaryWorkId & {
+    readonly compiler: { readonly name: 'typescript'; readonly version: string; };
+};
+export type WorkId = CompilerWorkId | OrdinaryWorkId;
+export function isCompilerWorkId(work: WorkId): work is CompilerWorkId {
+    return Object.hasOwn(work, 'compiler');
+}
 
 export function createCaseId(
     file: string | null,
@@ -86,6 +94,16 @@ export function runtimeIdentitiesKey(runtimes: readonly RuntimeId[]): string {
 }
 
 export function workIdentityKey(work: WorkId): string {
+    if (isCompilerWorkId(work)) {
+        return JSON.stringify([
+            'compiler',
+            work.compiler.name,
+            work.compiler.version,
+            caseIdentityKey(work.case),
+            runtimeIdentitiesShape(work.runtimes),
+            workloadIdentityShape(work.workload)
+        ]);
+    }
     if (work.runtimes.length === 0 && work.workload === null) {
         return caseIdentityKey(work.case);
     }

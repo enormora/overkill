@@ -98,7 +98,7 @@ export type RunDebugRequest = {
     readonly selectors: readonly [];
 };
 
-export type RunTestFamily = 'benchmark' | 'integration' | 'microtest' | 'property';
+export type RunTestFamily = 'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test';
 export type RunHostProcessReason = RunHostProcessReasonDefinition;
 
 export type WorkUnitMode = 'case' | 'file' | 'group';

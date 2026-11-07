@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
-import { isOutputRenderer, type DefinedOutputRenderer } from '../engine/reporter-output.ts';
-import { isReporter, type DefinedReporter } from '../engine/reporter.ts';
+import { reporterSchema, outputRendererSchema } from './reporting-schema.ts';
+import { isRunAdapterRegistration, type RunAdapterRegistration } from './adapter-profile.ts';
 import { propertyCorpusPolicySchema } from './property-corpus.ts';
 import { historyPolicySchema } from './history-policy.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
@@ -14,13 +14,6 @@ import {
     type ProjectCoverageSources as CoverageSources,
     type ProjectCoverageThresholds as CoverageThresholds
 } from './coverage-schema.ts';
-
-const reporterSchema = z.custom<DefinedReporter>(isReporter, 'must be created with defineReporter(...)');
-
-const outputRendererSchema = z.custom<DefinedOutputRenderer>(
-    isOutputRenderer,
-    'must be created with defineOutputRenderer(...)'
-);
 
 export const loaderSchema = z
     .strictObject({
@@ -337,7 +330,19 @@ export const propertyProfileSchema = z
 
 export type ProjectPropertyProfileConfig = z.input<typeof propertyProfileSchema>;
 
+const adapterProfileSchema = z
+    .strictObject({
+        testFamily: z.literal('type-test'),
+        files: profileFilesSchema,
+        adapter: z.custom<RunAdapterRegistration>(isRunAdapterRegistration, 'Attach a type-test adapter explicitly.'),
+        settings: z.unknown(),
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly())
+    })
+    .readonly();
+export type ProjectAdapterProfileConfig = z.input<typeof adapterProfileSchema>;
+
 const profileSchema = z.discriminatedUnion('testFamily', [
+    adapterProfileSchema,
     benchmarkProfileSchema,
     integrationProfileSchema,
     microtestProfileSchema,

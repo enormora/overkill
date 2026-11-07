@@ -10,10 +10,21 @@ import {
     invalidProfileFileSetNameMessage,
     invalidProfileNameMessage
 } from './profile-patterns.ts';
-import type { ProjectIntegrationExecution, ProjectProfileFiles, ProjectTimingProfilePolicy } from './schema.ts';
-import { defaultCoveragePolicy, defaultTimingProfilePolicy, defaultWorkDistribution } from './defaults.ts';
+import type {
+    ProjectAdapterProfileConfig,
+    ProjectIntegrationExecution,
+    ProjectProfileFiles,
+    ProjectTimingProfilePolicy
+} from './schema.ts';
+import {
+    defaultCoveragePolicy,
+    defaultTimingProfilePolicy,
+    defaultWorkDistribution,
+    defaultProcessUsagePolicy
+} from './defaults.ts';
 import { ConfigError } from './config-error.ts';
 import type {
+    AdapterProfileConfig,
     CoveragePolicy,
     CoverageSourcePolicy,
     CoverageThresholds,
@@ -225,4 +236,20 @@ export function normalizedWorkDistribution(
 
 export function normalizeTimings(timings: ProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
     return { collection: timings?.collection ?? defaultTimingProfilePolicy.collection };
+}
+
+export function normalizeAdapterProfile(profile: ProjectAdapterProfileConfig): AdapterProfileConfig {
+    profile.adapter.validate(profile.settings);
+    return {
+        adapter: profile.adapter,
+        settings: profile.settings,
+        testFamily: 'type-test',
+        files: normalizeRequiredProfileFiles(profile.files),
+        reporters: profile.reporters ?? null,
+        execution: { processModel: 'in-process', maxConcurrency: 1, scheduling: 'serial' },
+        processUsage: defaultProcessUsagePolicy,
+        timings: defaultTimingProfilePolicy,
+        runRecords: { persist: 'on-demand' },
+        timeouts: { collectionMilliseconds: 60_000, softMilliseconds: 60_000, hardMilliseconds: 60_000 }
+    };
 }

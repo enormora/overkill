@@ -3,8 +3,8 @@ import type { PropertyPolicy } from '../engine/property-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { BenchmarkBaselinePolicy } from '../baselines/performance-adapter.ts';
 import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
-import type { DefinedReporter } from '../engine/reporter.ts';
-import type { DefinedOutputRenderer } from '../engine/reporter-output.ts';
+import type { ReportingPolicy } from './reporting-schema.ts';
+import type { RunAdapterRegistration } from './adapter-profile.ts';
 import type { HistoryPolicy } from './history-policy.ts';
 import type { BenchmarkHostPolicy } from './benchmark-host.ts';
 import type {
@@ -153,7 +153,7 @@ export type MicrotestProfileConfig = {
     readonly coverage: CoveragePolicy;
     readonly execution: MicrotestExecution;
     readonly files: ProfileFiles | null;
-    readonly reporters: readonly DefinedReporter[] | null;
+    readonly reporters: ReportingPolicy['reporters'];
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'microtest';
     readonly runRecords: RunRecordProfilePolicy;
@@ -166,7 +166,7 @@ export type IntegrationProfileConfig = {
     readonly retries: IntegrationRetryPolicy | null;
     readonly execution: IntegrationExecution;
     readonly files: ProfileFiles;
-    readonly reporters: readonly DefinedReporter[] | null;
+    readonly reporters: ReportingPolicy['reporters'];
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'integration';
     readonly runRecords: RunRecordProfilePolicy;
@@ -192,7 +192,7 @@ export type BenchmarkProfileConfig = {
     readonly attachments: AttachmentLimits;
     readonly execution: BenchmarkExecution;
     readonly files: ProfileFiles;
-    readonly reporters: readonly DefinedReporter[] | null;
+    readonly reporters: ReportingPolicy['reporters'];
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'benchmark';
     readonly runRecords: RunRecordProfilePolicy;
@@ -208,7 +208,7 @@ export type PropertyProfileConfig = {
     readonly corpus: PropertyCorpusPolicy;
     readonly execution: MicrotestExecution;
     readonly files: ProfileFiles;
-    readonly reporters: readonly DefinedReporter[] | null;
+    readonly reporters: ReportingPolicy['reporters'];
     readonly processUsage: ProcessUsagePolicy;
     readonly property: PropertyPolicy;
     readonly testFamily: 'property';
@@ -217,7 +217,25 @@ export type PropertyProfileConfig = {
     readonly timeouts: TimeoutPolicy;
 };
 
-export type TestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
+export type AdapterProfileConfig = {
+    readonly execution: {
+        readonly processModel: 'in-process';
+        readonly maxConcurrency: 1;
+        readonly scheduling: 'serial';
+    };
+    readonly files: ProfileFiles;
+    readonly reporters: ReportingPolicy['reporters'];
+    readonly processUsage: ProcessUsagePolicy;
+    readonly runRecords: RunRecordProfilePolicy;
+    readonly timings: TimingProfilePolicy;
+    readonly timeouts: TimeoutPolicy;
+    readonly testFamily: 'type-test';
+    readonly adapter: RunAdapterRegistration;
+    readonly settings: unknown;
+};
+
+type BuiltinTestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
+export type TestProfileConfig = AdapterProfileConfig | BuiltinTestProfileConfig;
 export type ProfileConfig = BenchmarkProfileConfig | TestProfileConfig;
 
 export type ProfilesConfig = Readonly<Record<string, ProfileConfig>>;
@@ -225,9 +243,9 @@ export type ProfilesConfig = Readonly<Record<string, ProfileConfig>>;
 export type NormalizedConfig = {
     readonly history: HistoryPolicy;
     readonly loader: LoaderConfig;
-    readonly outputRenderer: DefinedOutputRenderer;
+    readonly outputRenderer: ReportingPolicy['outputRenderer'];
     readonly profiles: ProfilesConfig;
-    readonly reporters: readonly DefinedReporter[] | null;
+    readonly reporters: ReportingPolicy['reporters'];
     readonly runtimeStateDir: string;
 };
 export type RunOrder = 'lexical' | 'plan' | 'seeded';

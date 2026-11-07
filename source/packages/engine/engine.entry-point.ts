@@ -24,6 +24,14 @@ export type {
     RuntimeAttachmentArtifact
 } from '../../engine/runtime-attachment.ts';
 export { attachTestBodyFamily, forwardTestBodyFamily, readTestBodyFamily } from '../../engine/test-body.ts';
+export {
+    attachTestBodyOrigin,
+    captureTestBodyOrigin,
+    forwardTestBodyOrigin,
+    readTestBodyOrigin,
+    isTableBodyOrigin
+} from '../../engine/test-body.ts';
+export type { TestBodyOrigin } from '../../engine/test-body.ts';
 export type { TestBodyFamilyAttachment } from '../../engine/test-body.ts';
 
 export type {
@@ -147,7 +155,7 @@ export type {
     TestPlanFromTestFilesFactory,
     TestPlanFromTestFilesOptions
 } from '../../engine/test-plan.ts';
-export { formatCaseId, workIdentityKey } from '../../engine/identity.ts';
+export { formatCaseId, workIdentityKey, isCompilerWorkId } from '../../engine/identity.ts';
 export { canonicalIdentityJson } from '../../canonical-identity.ts';
 export { snapshotValidatedJson } from '../../attachments/json-snapshot.ts';
 export type {
@@ -489,3 +497,8 @@ export type {
     SimulationWitnessFile,
     WitnessFile
 } from '../../engine/witness-file.ts';
+
+export { createRunResult } from '../../engine/execution-result.ts';
+export { singleAttemptResult } from '../../engine/run-result.ts';
+
+export type { AdapterArtifact } from '../../engine/run-artifact.ts';

@@ -14,6 +14,7 @@ export type {
     ProjectIntegrationExecution,
     ProjectIntegrationProfileConfig,
     ProjectBenchmarkProfileConfig,
+    ProjectAdapterProfileConfig,
     ProjectMeasuredProcessUsage,
     ProjectMicrotestExecution,
     ProjectMicrotestProfileConfig,
@@ -33,6 +34,7 @@ export type {
     ConfigLoadRequest,
     ProfileConfig,
     BenchmarkProfileConfig,
+    AdapterProfileConfig,
     BenchmarkHostLimits,
     BenchmarkHostPolicy,
     TestProfileConfig

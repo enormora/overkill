@@ -1,7 +1,12 @@
 import type { Except } from 'type-fest';
 import type { SerializedValue } from '../compare/serialized-value.ts';
-import type { HedgedConflictArtifact, TestAttemptResult, TestFailure, TestOutcome } from '../engine/run-result.ts';
-import type { CapturedOutputArtifact } from '../engine/run-artifact.ts';
+import type {
+    HedgedConflictArtifact,
+    TestAttemptResult,
+    TestFailure,
+    TestOutcome
+} from '../engine/run-result.ts';
+import type { AdapterArtifact, CapturedOutputArtifact } from '../engine/run-artifact.ts';
 import type { CoverageArtifact } from '../engine/coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 
@@ -43,4 +48,4 @@ type RecordedConflictArtifact = Except<HedgedConflictArtifact, 'payload'> & {
 };
 
 type DiagnosticArtifact = CapturedOutputArtifact | RuntimeAttachmentArtifact;
-export type RunRecordArtifact = CoverageArtifact | DiagnosticArtifact | RecordedConflictArtifact;
+export type RunRecordArtifact = AdapterArtifact | CoverageArtifact | DiagnosticArtifact | RecordedConflictArtifact;
