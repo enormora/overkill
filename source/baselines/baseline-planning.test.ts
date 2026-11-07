@@ -1,4 +1,5 @@
 import { testNode as recordedPolicy } from '../run/recorded-baseline-policy.test.ts';
+import { testNode as ordinaryCommands } from '../run/baseline-commands.test.ts';
 import { testNode as ordinaryStorage } from '../run/baseline-store.test.ts';
 import { testNode as publication } from '../run/baseline-session.test.ts';
 import { testNode as ordinaryAdapters } from '../run/baseline-adapter.test.ts';
@@ -25,6 +26,7 @@ export const testNode = suite('baseline contracts', [
     publication,
     ordinaryStorage,
     recordedPolicy,
+    ordinaryCommands,
     test('preserves expectations without calling proposal callbacks', function (scope: TestScope) {
         for (const mode of [ 'none', 'bootstrap' ] as const) {
             scope.assert.equal(
