@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { sourceSymbol, type SourceAnalysis } from './source-ownership.ts';
+import { sourceSymbol, type SourceAnalysis } from './source-analysis.ts';
 
 type BindingKind = 'ability' | 'decorator' | 'instantiation' | 'relation';
 type Binding = { readonly matcher: string; readonly kind: BindingKind; };
@@ -20,7 +20,6 @@ export type NativeReference = Binding & {
     readonly negated: boolean;
     readonly form: ReferenceForm;
     readonly types: readonly TypeScript.TypeNode[];
-    readonly subjectExpression: string | null;
 };
 
 function adapterDeclaration(declaration: TypeScript.Declaration): boolean {
@@ -125,10 +124,5 @@ export function nativeReference(analysis: SourceAnalysis, node: TypeScript.Expre
     const negated = members[0] === 'not';
     const form = referenceForm(negated ? members.slice(1) : members, binding.kind);
     validateReferenceSyntax(binding, form, syntax);
-    const subject = syntax.types[0];
-    const subjectExpression =
-        binding.matcher === 'toAcceptProps' && subject !== undefined && analysis.compiler.isTypeQueryNode(subject)
-            ? subject.exprName.getText()
-            : null;
-    return { ...binding, negated, form, types: syntax.types, subjectExpression };
+    return { ...binding, negated, form, types: syntax.types };
 }

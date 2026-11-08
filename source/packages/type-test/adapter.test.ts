@@ -1,7 +1,9 @@
+import { fileURLToPath } from 'node:url';
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../test/test.entry-point.ts';
 import {
     runNativeProject,
+    runPrefixedTypeProject,
     runCompiledTypeProject,
     runChangedTypeProject
 } from '../../test-support/native-type-project.ts';
@@ -67,6 +69,152 @@ const nodes=[test('declarations',scope=>{
 })];`;
 
 export const testNode = suite('native type-test adapter', [
+    test('preserves hashbangs and leading compiler directives', async function (scope) {
+        const result = await runPrefixedTypeProject(
+            scope,
+            basicCases,
+            '#!/usr/bin/env node\n/// <reference types="node" />\n'
+        );
+        scope.assert.equal(result.summary.passed, 1, { message: result.errors.join('\n') });
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.equal(result.bodyCalls, 0);
+        return scope.assert.collect();
+    }),
+    test('preserves type-only JSX subjects and explicit generic instantiations', async function (scope) {
+        const definitions = `export function Component<T extends string>(props:{value:T}){return null;}
+        import type {Component as TypeOnlyComponent} from './cases.js';
+        function generic<T extends string>(value:T){
+            return test('generic props',scope=>{
+                bodyCalls++;scope.assert(acceptsProps<typeof TypeOnlyComponent<T>>(),{value:value});
+                return scope.assert.collect();
+            });
+        }
+        const nodes=[generic('text'),test('type only',scope=>{
+            bodyCalls++;scope.assert(acceptsProps<typeof TypeOnlyComponent>(),{value:'text'});
+            return scope.assert.collect();
+        }),test('wrong props',scope=>{
+            bodyCalls++;scope.assert(acceptsProps<typeof TypeOnlyComponent<'fixed'>>(),{value:'other'});
+            return scope.assert.collect();
+        })];`;
+        const result = await runCompiledTypeProject(scope, definitions, null);
+        scope.assert.equal(result.summary.passed, 2, {
+            message: [ ...result.errors, ...result.diagnostics ].join('\n')
+        });
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.includes(result.diagnostics.join('\n'), 'fixed');
+        scope.assert.equal(result.bodyCalls, 0);
+        return scope.assert.collect();
+    }),
+    test('preserves imports used only by translated assertions with unused checks enabled', async function (scope) {
+        const referencePath = fileURLToPath(new URL('./type-test.entry-point.ts', import.meta.url));
+        const definitions = `import {sameType as onlyInline} from ${JSON.stringify(referencePath)};
+        export type Placeholder = _;
+        void [same,assignableTo,assignableFrom,acceptsProps,applicableTo,callableWith,constructableWith,
+            instantiableWith,hasProperty,raisesTypeError,suite,table,defineMacro,defineParameterizedTestBody,
+            defineResource,withResource,typeTestAdapter,metadata];
+        const nodes=[test('unused imports',scope=>{
+            scope.assert(onlyInline<string,string>());return scope.assert.collect();
+        })];
+        const {readFile,writeFile}=await import('node:fs/promises');
+        const projectPath=import.meta.dirname+'/tsconfig.json';
+        const configuration=JSON.parse(await readFile(projectPath,'utf8'));
+        configuration.compilerOptions.noUnusedLocals=true;
+        await writeFile(projectPath,JSON.stringify(configuration));`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'passed', {
+            message: [ ...result.errors, ...result.diagnostics ].join('\n')
+        });
+        scope.assert.equal(result.summary.passed, 1);
+        return scope.assert.collect();
+    }),
+    test('rejects scope forwarding through shorthand properties', async function (scope) {
+        const definitions = `const nodes=[test('forwarded scope',scope=>{
+            const box={scope};box.scope.assert.true(false);
+            scope.assert(same<string,string>());return scope.assert.collect();
+        })];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.equal(result.summary.passed, 0);
+        scope.assert.includes(result.errors.join('\n'), 'Scope forwarding');
+        return scope.assert.collect();
+    }),
+    test('rejects reassigned function declarations', async function (scope) {
+        const definitions = `function body(scope:engine.TestScope){
+            scope.assert(same<string,string>());return scope.assert.collect();
+        }
+        ({body}={body:scope=>{scope.assert(same<string,number>());return scope.assert.collect();}});
+        const nodes=[test('reassigned',body)];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.equal(result.summary.passed, 0);
+        scope.assert.includes(result.errors.join('\n'), 'cannot be reassigned');
+        return scope.assert.collect();
+    }),
+    test('rejects destructured aliases that can mutate table bodies', async function (scope) {
+        const definitions = `const body:engine.TestBody=scope=>{
+            scope.assert(same<string,string>());return scope.assert.collect();
+        };
+        const options={...metadata,title:'rows',cases:[{...metadata,title:'row',parameters:1,body},
+            {...metadata,title:'other',parameters:2,body}]};
+        const {cases}=options;
+        cases[0]!.body=scope=>{scope.assert(same<string,number>());return scope.assert.collect();};
+        const nodes=[engine.createTable(options)];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.equal(result.summary.passed, 0);
+        scope.assert.includes(result.errors.join('\n'), 'escape static source ownership');
+        return scope.assert.collect();
+    }),
+    test('rejects named options mutated before construction', async function (scope) {
+        const definitions = `const original:engine.TestBody=scope=>{
+            scope.assert(same<string,string>());return scope.assert.collect();
+        };
+        const options={...metadata,title:'mutated',body:original};
+        options.body=scope=>{scope.assert(same<string,number>());return scope.assert.collect();};
+        const nodes=[engine.createTestCase(options)];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.includes(result.errors.join('\n'), 'may be mutated');
+        return scope.assert.collect();
+    }),
+    test('preserves native errors in expression operands', async function (scope) {
+        const definitions = `const nodes=[test('expression error',scope=>{
+            const value={present:1};
+            scope.assert(same.withActual<number>(),value.missing);
+            return scope.assert.collect();
+        })];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.equal(result.summary.passed, 0);
+        scope.assert.includes([ ...result.errors, ...result.diagnostics ].join('\n'), 'missing');
+        scope.assert.equal(result.bodyCalls, 0);
+        return scope.assert.collect();
+    }),
+    test('resolves transparent syntax throughout callback aliases', async function (scope) {
+        const definitions = `const original:engine.TestBody=scope=>{
+            scope.assert(same<string,string>());return scope.assert.collect();
+        };
+        const alias=(original satisfies engine.TestBody);
+        const wrapped=alias as engine.TestBody;
+        const define=test;
+        const nodes=[define('transparent',wrapped)];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
+        return scope.assert.collect();
+    }),
+    test('rejects options whose callback is overwritten by a spread', async function (scope) {
+        const definitions = `const first:engine.TestBody=scope=>{
+            scope.assert(same<string,string>());return scope.assert.collect();
+        };
+        const overrides={body:((scope:engine.TestScope)=>{
+            scope.assert(same<string,number>());return scope.assert.collect();
+        })};
+        const nodes=[engine.createTestCase({...metadata,title:'overridden',body:first,...overrides})];`;
+        const result = await runNativeProject(scope, definitions, null);
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.includes(result.errors.join('\n'), 'potentially overriding');
+        return scope.assert.collect();
+    }),
     test('checks engine roots with original diagnostics and never invokes bodies', async function (scope) {
         const result = await runNativeProject(scope, basicCases, null);
         scope.assert.equal(result.summary.passed, 1);
@@ -241,7 +389,7 @@ await lowered.execute();`;
     test('rejects decorator aliases instead of omitting their checks', async function (scope) {
         const definitions = declarationCases.replace(
             '@apply class Subject { value=1; }',
-            'const alias=apply; @apply class Subject { value=1; } @alias class Extra {}'
+            'const box={apply}; @apply class Subject { value=1; } @box.apply class Extra {}'
         );
         const result = await runCompiledTypeProject(scope, definitions, null);
         scope.assert.equal(result.status, 'failed');
