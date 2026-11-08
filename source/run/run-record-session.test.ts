@@ -1,7 +1,11 @@
+import { randomBytes } from 'node:crypto';
 import { runIfMain } from '#test-runner';
+import { withExecutionObservation } from '../engine/execution-observation.ts';
+import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import {
     type RecordSessionSnapshot,
     recordFixture,
+    recordFixtureWithStorageProbe,
     recordUnresolvedSeed,
     recordId,
     profile,
@@ -11,6 +15,9 @@ import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-trac
 import type { RunResult } from '../engine/run-result.ts';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
+import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
+
+const recordingEnvironment = {};
 
 function assertStartedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined, recordPath: string): void {
     scope.require.defined(record);
@@ -48,6 +55,42 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'record persistence excludes runner entropy while retaining user randomness checks',
+            annotations: {},
+            controls: {},
+            async body(scope) {
+                return await withExecutionObservation(async function recordingPolicyBoundary() {
+                    const fixture = recordFixtureWithStorageProbe([], function drawStorageEntropy() {
+                        randomBytes(8);
+                    });
+                    const policy = createRuntimeCapabilityPolicy({
+                        dependencies: {
+                            ...fakeWorkerPoolRuntimeDependencies().runtimeCapabilityPolicy,
+                            readEnvironment() {
+                                return recordingEnvironment;
+                            }
+                        },
+                        observedStderr: false,
+                        observedStdout: false
+                    });
+                    await policy.runLoad(async function recordCollectedFacts() {
+                        await fixture.session.start(null);
+                        await fixture.session.recordFacts(facts, null);
+                    });
+                    scope.assert.deepEqual(policy.takePendingRunErrors(), []);
+                    scope.assert.equal(fixture.writes.length, 2);
+                    await policy.runLoad(async function drawUserEntropy() {
+                        randomBytes(8);
+                    });
+                    const errors = policy.takeRunErrors();
+                    scope.assert.equal(errors.length, 1);
+                    scope.assert.equal(errors[0]?.subtype, 'runtime-policy');
+                    return scope.assert.collect();
+                });
+            }
+        }),
         createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: 'recording rejects unresolved seeds',
