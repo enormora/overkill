@@ -1,5 +1,5 @@
 import { replayEmptySelection } from './replay-empty-selection.ts';
-import type { PreparedBenchmarkRun } from './benchmark-baseline-preparation.ts';
+import type { PreparedRun, RunPreparationInput } from './prepared-run-types.ts';
 import type { ResolvedRunInput, RunInvocation } from './run-input-resolution.ts';
 import { runIsolatedProcessCommand, type IsolatedRunOptions } from './run-isolated-process.ts';
 import { runLocalCommand } from './run-local-command.ts';
@@ -9,18 +9,23 @@ import type { RunCommand } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
-type RunPreparationInput = {
-    readonly command: RunCommand;
-    readonly dependencies: RunOrchestratorDependencies;
-    readonly input: ResolvedRunInput;
-    readonly timing: RunTimingMeasurement;
-};
 async function prepareRun(
     invocation: RunInvocation,
     options: RunPreparationInput
-): Promise<PreparedBenchmarkRun | RunResult> {
-    if (invocation.namespace === 'test') {
-        return { input: options.input, session: null };
+): Promise<PreparedRun | RunResult> {
+    if ([ 'test', 'baseline' ].includes(invocation.namespace)) {
+        const { profile, request } = options.input;
+        if (profile.testFamily === 'type-test') {
+            return { input: options.input, session: null };
+        }
+        if (
+            profile.testFamily === 'benchmark' ||
+            profile.baselines.adapters.length === 0 && request.baselineUpdateMode === 'none'
+        ) {
+            return { input: options.input, session: null };
+        }
+        const { prepareOrdinaryBaselineRun } = await import('./baseline-preparation.ts');
+        return await prepareOrdinaryBaselineRun(options);
     }
     const { prepareBenchmarkExecution } = await import('./benchmark-baseline-run.ts');
     return await prepareBenchmarkExecution(options);
@@ -35,12 +40,13 @@ type PreparedExecution = {
     readonly signal: Readonly<AbortSignal> | null;
 };
 
-async function executePreparedRun(prepared: PreparedBenchmarkRun, options: PreparedExecution): Promise<RunResult> {
+async function executePreparedRun(prepared: PreparedRun, options: PreparedExecution): Promise<RunResult> {
     const { command: resolvedCommand, dependencies, source, timing } = options;
     const { input, session: baseline } = prepared;
     const executionDependencies = baseline === null ? dependencies : {
         ...dependencies,
-        reporterDispatcher: baseline.reporterDispatcher
+        reporterDispatcher: baseline.reporterDispatcher,
+        execute: dependencies.createExecution(baseline.reporterDispatcher)
     };
     const emptyReplay = replayEmptySelection({ ...options, input });
     if (emptyReplay !== null) {
@@ -67,7 +73,7 @@ async function executePreparedRun(prepared: PreparedBenchmarkRun, options: Prepa
     });
 }
 
-function isRunResult(value: PreparedBenchmarkRun | RunResult): value is RunResult {
+function isRunResult(value: PreparedRun | RunResult): value is RunResult {
     return Object.hasOwn(value, 'summary');
 }
 

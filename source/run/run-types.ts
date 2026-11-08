@@ -508,7 +508,7 @@ export type FrozenMicrotestPolicy = {
     readonly projectRoot: string;
     readonly files: NonEmptyReadonlyArray<DiscoveredRunFile>;
     readonly loader: NormalizedConfig['loader'];
-    readonly profile: Except<MicrotestProfileConfig, 'reporters'>;
+    readonly profile: Except<MicrotestProfileConfig, 'baselines' | 'reporters'>;
     readonly request: Except<RunRequest, 'seed'>;
     readonly engine: Exclude<RunEngineSelection, { readonly kind: 'instance'; }>;
     readonly runtimeStateDir: string;

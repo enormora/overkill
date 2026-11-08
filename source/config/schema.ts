@@ -6,7 +6,7 @@ import { propertyCorpusPolicySchema } from './property-corpus.ts';
 import { historyPolicySchema } from './history-policy.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
 import { defaultPropertyPolicy, resolvePropertySettings, propertySettingsSchema } from './property-policy.ts';
-import { performanceBaselinePolicySchema } from './performance-baselines.ts';
+import { performanceBaselinePolicySchema, ordinaryBaselinePolicySchema } from './baseline-policy.ts';
 import {
     coveragePolicySchema,
     type ProjectCoverageOutput as CoverageOutput,
@@ -253,6 +253,7 @@ const benchmarkExecutionSchema = z.discriminatedUnion('processModel', [
 
 export const microtestProfileSchema = z
     .strictObject({
+        baselines: z.optional(ordinaryBaselinePolicySchema),
         coverage: z.optional(coveragePolicySchema),
         execution: z.optional(microtestExecutionSchema),
         files: z.optional(profileFilesSchema),
@@ -279,6 +280,7 @@ export type ProjectAttachmentLimits = z.input<typeof attachmentLimitsSchema>;
 
 export const integrationProfileSchema = z
     .strictObject({
+        baselines: z.optional(ordinaryBaselinePolicySchema),
         attachments: attachmentLimitsSchema,
         execution: z.optional(integrationExecutionSchema),
         files: profileFilesSchema,
@@ -313,6 +315,7 @@ export type ProjectBenchmarkProfileConfig = z.input<typeof benchmarkProfileSchem
 
 export const propertyProfileSchema = z
     .strictObject({
+        baselines: z.optional(ordinaryBaselinePolicySchema),
         corpus: propertyCorpusPolicySchema,
         execution: z.optional(microtestExecutionSchema),
         files: profileFilesSchema,
@@ -386,7 +389,7 @@ export function workerPoolProjectExecution(
 }
 export type ProjectIntegrationProfileConfig = z.infer<typeof integrationProfileSchema>;
 export type ProjectMicrotestExecution = z.infer<typeof microtestExecutionSchema>;
-export type ProjectMicrotestProfileConfig = z.infer<typeof microtestProfileSchema>;
+export type ProjectMicrotestProfileConfig = z.input<typeof microtestProfileSchema>;
 export type Config = z.infer<typeof projectConfigSchema>;
 
 export type ParsedPropertyProfileConfig = z.output<typeof propertyProfileSchema>;

@@ -155,11 +155,11 @@ Command-line business logic is exposed through `@overkill-dev/run/command-line`:
 - `commandLineRunner.listTests(context)`
 - `commandLineRunner.replayRun(context)`
 - `commandLineRunner.replayWitness(context)`
-- `commandLineRunner.baseline.update(context)`
-- `commandLineRunner.baseline.apply(context)`
-- `commandLineRunner.baseline.bootstrap(context)`
-- `commandLineRunner.baseline.list(context)`
-- `commandLineRunner.baseline.diff(context)`
+- `commandLineRunner.baseline.update({ cwd, configPath, runRequest })`
+- `commandLineRunner.baseline.apply({ cwd, configPath, runRequest })`
+- `commandLineRunner.baseline.bootstrap({ cwd, configPath, runRequest })`
+- `commandLineRunner.baseline.list({ cwd, configPath, listRequest })`
+- `commandLineRunner.baseline.diff({ cwd, configPath, runRequest })`
 - `commandLineRunner.bench.runBenchmarks(context)`
 - `commandLineRunner.bench.listBenchmarks(context)`
 - `commandLineRunner.bench.baseline.update(context)`
@@ -587,6 +587,100 @@ its values again.
 
 `createNodeFileStore` provides atomic runtime state writes and create-only
 publication, with temporary-file cleanup on failure.
+
+## Ordinary baselines
+
+Configure custom adapters on microtest, property, and integration profiles with `defineBaselineAdapter`,
+available from `@overkill-dev/run` and `@overkill-dev/test/config`:
+
+```ts
+import { defineBaselineAdapter, defineConfig } from '@overkill-dev/test/config';
+
+const stdout = defineBaselineAdapter<string, string, string>({
+    subtype: 'terminal-snapshot',
+    comparisonContext: {},
+    adapter: {
+        id: 'stdout',
+        observe({ artifacts }) {
+            const text = artifacts
+                .flatMap(function captured(artifact) {
+                    return artifact.payload.kind === 'captured-output' && artifact.payload.stream === 'stdout'
+                        ? [ artifact.payload.text ] :
+                        [];
+                })
+                .join('');
+            return { kind: 'observed', value: text };
+        },
+        propose({ actual }) {
+            return actual;
+        },
+        compare({ actual, expected }) {
+            return actual === expected ? { kind: 'match' } : {
+                kind: 'mismatch',
+                diagnostics: [ { actual, expected, summary: 'stdout changed' } ]
+            };
+        }
+    },
+    toComparisonValue(text) {
+        return text;
+    },
+    encode(text) {
+        return { kind: 'text', text };
+    },
+    decode(payload) {
+        if (payload.kind !== 'text') {
+            throw new TypeError('Expected a text baseline.');
+        }
+        return payload.text;
+    }
+});
+
+export const config = defineConfig({
+    profiles: {
+        integration: {
+            testFamily: 'integration',
+            files: { include: [ 'source/**/*.integration.test.ts' ] },
+            baselines: { adapters: [ stdout ] }
+        }
+    }
+});
+```
+
+Callbacks may be asynchronous. `toComparisonValue` converts observations for
+comparison; `encode` serializes proposals; `decode` restores comparison values.
+Payloads are text or bytes. Adapter IDs are unique within a profile.
+
+`baselines.directory` defaults to `test-baselines`; `baselines.stale` defaults to
+`fail` and accepts `warn`. Records use versioned JSON in subtype directories,
+with text or base64 payloads. Identity includes profile, adapter, subtype, full
+work identity, and comparison context. Performance files retain their existing
+format and `overkill bench baseline` namespace.
+
+Use `overkill baseline <verb> --profile <name> [paths...]`:
+
+- `update` creates missing entries and replaces changed entries.
+- `apply` also removes stale entries after a complete successful profile inventory.
+- `bootstrap` creates missing entries and compares existing entries without replacing them.
+- `diff` previews apply changes without writing baselines; changes produce exit code `1`.
+- `list` reads persisted identities without collecting tests, observing output, or creating reporters.
+
+Filtered, path-selected, sharded, last-failed, incomplete, and failed runs cannot
+remove entries. Skipped cases and foreign scopes are preserved. Entries whose
+adapters are unavailable remain inspectable through `list` and are preserved.
+Ordinary `run` and replay compare without writing; writes require a baseline verb,
+including in CI.
+
+The programmatic equivalents are `orchestrator.baseline.update`, `apply`,
+`bootstrap`, `diff`, and `list`. Executing verbs accept a `BaselineCommand` and
+`{ timing: null }`; list accepts `{ config, cwd, request: { profile, paths } }`.
+`BaselineRunResult` includes changes and the write outcome;
+`readOrdinaryBaselineReport(result)` reads the retained report.
+
+Write commands validate the pending batch before publication. Execution,
+observation, comparison, or prewrite failures block all changes. Publication is
+atomic per file. Later I/O failures retain completed writes and report them;
+final reporter failures also preserve completed writes. Built-in snapshot and
+visual authoring are separate workflows.
 
 ## Run recording
 

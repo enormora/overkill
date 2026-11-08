@@ -13,7 +13,7 @@ import {
     createSupervisedRunCommand,
     type IsolatedRunCollectionSource
 } from './run-isolated-command.ts';
-import { finalizeSupervisedResult, type SupervisedCoverageExecution } from './run-supervised-finalization.ts';
+import { finalizeRunResult, type RunResultSessions } from './run-result-finalization.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { collectSupervisedRun } from './supervised-run-collection.ts';
 import {
@@ -23,7 +23,7 @@ import type { CollectedRunPlan, ResolvedRun, RunCommand, RunInvocationOptions } 
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type RunTimingMeasurement = NonNullable<RunInvocationOptions['timing']>;
-type SupervisedExecution = SupervisedCoverageExecution & {
+type SupervisedExecution = RunResultSessions & {
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly input: ResolvedRunInput;
@@ -32,8 +32,8 @@ type SupervisedExecution = SupervisedCoverageExecution & {
     readonly signal: Readonly<AbortSignal> | null;
 };
 export type StartedSupervisedExecution = {
-    readonly record: SupervisedCoverageExecution['record'];
-    readonly baseline: SupervisedCoverageExecution['baseline'];
+    readonly record: RunResultSessions['record'];
+    readonly baseline: RunResultSessions['baseline'];
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly input: ResolvedRunInput;
@@ -158,7 +158,7 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
             record,
             signal: execution.signal,
             async finalizeResult(resolvedRun, result) {
-                return await finalizeSupervisedResult(resolvedRun, result, execution);
+                return await finalizeRunResult(resolvedRun, result, execution);
             },
             timing
         }

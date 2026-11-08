@@ -212,6 +212,17 @@ async function prepareRecord(record: ReplayRunRecord): Promise<PreparedReplay> {
     });
 }
 export const testNode = suite('retained replay record validation', [
+    test('replays baseline write records with comparisons only', async function (scope: TestScope) {
+        const record = retainedRecord();
+        for (const mode of [ 'apply', 'bootstrap', 'diff', 'update' ] as const) {
+            const prepared = await prepareRecord({
+                ...record,
+                request: { ...record.request, baselineUpdateMode: mode }
+            });
+            scope.assert.equal(prepared.command.request.baselineUpdateMode, 'none');
+        }
+        return scope.assert.collect();
+    }),
     test('rejects a saved profile that disagrees with execution facts', async function (scope: TestScope) {
         const record = retainedRecord();
         await scope.assert.rejects(async function inconsistentProfile() {

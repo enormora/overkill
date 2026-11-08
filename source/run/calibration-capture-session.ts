@@ -115,6 +115,9 @@ async function finalizeCapture(input: CaptureSessionInput, result: RunResult): P
 }
 export function createCalibrationCaptureSession(input: CaptureSessionInput): RunResultSession {
     return {
+        prepareResult(result) {
+            return result;
+        },
         reporterDispatcher: input.dependencies.reporterDispatcher,
         async finalize(result) {
             return await finalizeCapture(input, result);

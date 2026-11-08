@@ -1,7 +1,12 @@
 import { validateReporterRunFacts, type DefinedReporter } from '../engine/reporter.ts';
 import { validateNormalizedConfig } from '../config/validation.ts';
 import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
-import type { ProfileConfig, ProcessBudgets, NormalizedConfig } from '../config/types.ts';
+import {
+    isBuiltinTestProfile,
+    type ProfileConfig,
+    type ProcessBudgets,
+    type NormalizedConfig
+} from '../config/types.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
@@ -155,21 +160,13 @@ function assertProfileReportersSupported(
     }
 }
 
-type Namespace = 'bench' | 'bench-calibrate' | 'test';
+type Namespace = 'baseline' | 'bench' | 'bench-calibrate' | 'test';
 function assertCapture(request: RunRequest, profile: ProfileConfig): void {
     if ((profile.testFamily === 'microtest' || profile.testFamily === 'property') && request.capture === 'live') {
         invalidRequest(
             `${profile.testFamily === 'microtest' ? 'Microtest' : 'Property'} profiles do not support live capture.`
         );
     }
-}
-function assertBaseline(namespace: Namespace, request: RunRequest): void {
-    if (namespace === 'bench' || request.baselineUpdateMode === 'none') {
-        return;
-    }
-    invalidRequest(
-        'Ordinary baseline updates are not implemented. Use benchmark baseline commands for performance baselines.'
-    );
 }
 function assertExecution(request: RunRequest, profile: ProfileConfig): void {
     if (
@@ -202,6 +199,14 @@ function assertAdapterRequest(request: RunRequest, profile: ProfileConfig): void
         );
     }
 }
+function assertBaselineRequest(request: RunRequest, profile: ProfileConfig, namespace: Namespace): void {
+    if (namespace === 'baseline' && !isBuiltinTestProfile(profile)) {
+        invalidRequest('Ordinary baselines require a microtest, property, or integration profile.');
+    }
+    if ([ 'test', 'bench-calibrate' ].includes(namespace) && request.baselineUpdateMode !== 'none') {
+        invalidRequest('Baseline updates and previews require baseline commands.');
+    }
+}
 export function assertProfileRequestSupported(
     request: RunRequest,
     profile: ProfileConfig,
@@ -209,7 +214,7 @@ export function assertProfileRequestSupported(
     reporters: NormalizedConfig['reporters']
 ): void {
     assertAdapterRequest(request, profile);
-    assertBaseline(namespace, request);
+    assertBaselineRequest(request, profile, namespace);
     assertExecution(request, profile);
     if (request.coverage && profile.testFamily !== 'microtest') {
         invalidRequest('Coverage can only be requested for microtest profiles.');

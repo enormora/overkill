@@ -74,7 +74,7 @@ async function createNativeSessionChild(data: string): Promise<ChildRunFixture> 
     const { policy } = options.command;
     const command = createSupervisedRunCommand(
         policyBaselineCommand(policy),
-        { ...policy.profile, reporters: null },
+        { ...policy.profile, reporters: null, baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' } },
         policy.files,
         { source: { kind: 'frozen-policy', policy }, normalization: null }
     );

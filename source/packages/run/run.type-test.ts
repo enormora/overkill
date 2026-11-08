@@ -6,6 +6,7 @@ import type {
     TestAnnotationsInput,
     TestControlsInput
 } from '../engine/engine.entry-point.ts';
+import type { OrdinaryBaselinePolicy } from './config.entry-point.ts';
 import {
     ConfigError,
     RunResolutionError,
@@ -474,6 +475,7 @@ describe('@overkill-dev/run config', function () {
             readonly testFamily: 'integration';
         }>();
         expect<IntegrationProfileConfig>().type.toBeAssignableFrom<{
+            readonly baselines: OrdinaryBaselinePolicy;
             readonly attachments: AttachmentLimits;
             readonly retries: null;
             readonly execution: {

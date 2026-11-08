@@ -198,6 +198,7 @@ function assertProcessUsageCommand(scope: OverkillScope, command: RunCommand): v
 
     scope.require.defined(profile);
     scope.assert.deepEqual(profile, {
+        baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
         coverage: {
             outputDirectory: null,
             outputs: [ 'v8', 'lcov' ],

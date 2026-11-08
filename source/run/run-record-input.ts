@@ -24,9 +24,26 @@ export function recordedReplayProfile(profile: ResolvedRunInput['profile']): unk
         return null;
     }
     return Object.fromEntries(
-        Object.entries(profile).filter(function executionPolicy([ name ]) {
-            return name !== 'reporters';
-        })
+        Object
+            .entries(profile)
+            .filter(function executionPolicy([ name ]) {
+                return name !== 'reporters';
+            })
+            .map(function serializablePolicy([ name, value ]) {
+                if (name !== 'baselines' || profile.testFamily === 'benchmark') {
+                    return [ name, value ];
+                }
+                return [ name, {
+                    ...profile.baselines,
+                    adapters: profile.baselines.adapters.map(function reference(adapter) {
+                        return {
+                            id: adapter.id,
+                            subtype: adapter.subtype,
+                            comparisonContext: adapter.comparisonContext
+                        };
+                    })
+                } ];
+            })
     );
 }
 

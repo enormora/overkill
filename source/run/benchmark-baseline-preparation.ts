@@ -1,9 +1,9 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { ComparableCalibration } from '../bench/host-calibration-result.ts';
+import type { PreparedRun } from './prepared-run-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { BenchmarkBaselineSession } from './benchmark-baseline-session.ts';
 import { RunCollectionError } from './run-errors.ts';
 
 type BenchmarkInput = ResolvedRunInput & {
@@ -45,7 +45,7 @@ async function baselineCalibration(input: ResolvedRunInput, required: boolean): 
 export async function prepareBenchmarkBaselineRun(
     input: ResolvedRunInput,
     dependencies: RunOrchestratorDependencies
-): Promise<PreparedBenchmarkRun> {
+): Promise<PreparedRun> {
     if (input.profile.testFamily !== 'benchmark') {
         throw new Error('Performance baseline execution requires a benchmark profile.');
     }
@@ -78,8 +78,3 @@ export async function prepareBenchmarkBaselineRun(
         )
     };
 }
-
-export type PreparedBenchmarkRun = {
-    readonly input: ResolvedRunInput;
-    readonly session: BenchmarkBaselineSession | null;
-};

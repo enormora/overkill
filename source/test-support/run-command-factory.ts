@@ -281,6 +281,7 @@ export function defaultMicrotestProfile(
     overrides: MicrotestProfileOverrides = {}
 ): MicrotestProfileConfig {
     return {
+        baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
         coverage: defaultCoveragePolicy(overrides.coverage),
         execution: defaultMicrotestExecution(overrides.execution),
         files: overrides.files ?? null,
@@ -297,6 +298,7 @@ export function defaultIntegrationProfile(
     overrides: IntegrationProfileOverrides
 ): IntegrationProfileConfig {
     return {
+        baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
         attachments: defaultAttachmentLimits,
         retries: null,
         execution: defaultIntegrationExecution(overrides.execution),

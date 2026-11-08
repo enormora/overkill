@@ -121,7 +121,11 @@ export const testNode = suite('frozen policy transport', [
         const policy = await freezePolicy();
         const command = createSupervisedCollectCommand(
             policyBaselineCommand(policy),
-            { ...policy.profile, reporters: null },
+            {
+                ...policy.profile,
+                reporters: null,
+                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' }
+            },
             policy.files,
             { source: { kind: 'frozen-policy', policy }, normalization: null }
         );

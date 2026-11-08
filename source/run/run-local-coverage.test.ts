@@ -3,13 +3,14 @@ import { createSuite, createTestCase, type TestScope, type RunResult } from '../
 import { withCoverageRecordFixture } from '../test-support/coverage-record-fixture.ts';
 import { defaultMicrotestProfile, defaultRunConfig } from '../test-support/run-command-factory.ts';
 import { createDeterministicRunTestModuleLoader } from '../test-support/deterministic-run-fixtures.ts';
+import { coverageBaselineSession, assertCoverageBaseline } from '../test-support/coverage-baseline-fixture.ts';
 import { createCoverageRunRecord } from './coverage-run-record.ts';
 import { configuredFilesRunCollectionSource } from './run-collection-source.ts';
 import { executeCoverageLocalRun } from './run-local-coverage.ts';
 import { createRunTimingMeasurement } from './run-timing-collection.ts';
 
 const passingFile = 'source/integration-tests/run/fixtures/passing.test.ts';
-const scenarios = [
+const collectionScenarios = [
     { file: passingFile, mode: 'enabled', missingSelection: false, shard: { index: 1, total: 1 }, status: 'passed' },
     {
         file: 'source/integration-tests/run/fixtures/throws-on-import.test.ts',
@@ -22,6 +23,9 @@ const scenarios = [
     { file: passingFile, mode: 'disabled', missingSelection: false, shard: { index: 1, total: 2 }, status: 'passed' },
     { file: passingFile, mode: 'disabled', missingSelection: false, shard: { index: 2, total: 2 }, status: 'passed' }
 ] as const;
+const scenarios = collectionScenarios.flatMap(function baselineCases(scenario) {
+    return [ { ...scenario, baseline: false }, { ...scenario, baseline: true } ];
+});
 
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
@@ -33,7 +37,8 @@ export const testNode = createSuite({
         return createTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
             title: `local coverage checkpoints ${file} with ${scenario.mode} restrictions, ` +
-                `selection ${scenario.missingSelection} and shard ${scenario.shard.index}/${scenario.shard.total}`,
+                `selection ${scenario.missingSelection}, shard ${scenario.shard.index}/${scenario.shard.total}, ` +
+                `baselines ${scenario.baseline}`,
             annotations: {},
             controls: {},
             async body(scope: TestScope) {
@@ -73,6 +78,7 @@ export const testNode = createSuite({
                         const attempt = await createCoverageRunRecord(process.cwd(), input, dependencies, null);
                         await attempt.start();
                         const result = await executeCoverageLocalRun({
+                            baseline: coverageBaselineSession(scenario.baseline, dependencies.reporterDispatcher),
                             command: { ...fixture.request.command, request: input.request },
                             dependencies,
                             input,
@@ -92,6 +98,7 @@ export const testNode = createSuite({
                         scope.assert.equal(result.status, scenario.status);
                         scope.assert.equal(fixture.records.at(-1)?.status, 'started');
                         scope.assert.equal(fixture.records.at(-1)?.result?.status, result.status);
+                        assertCoverageBaseline(scope, result, scenario.baseline);
                         return scope.assert.collect();
                     }
                 );

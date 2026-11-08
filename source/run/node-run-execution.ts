@@ -18,7 +18,7 @@ type RuntimeStateDependencies = Pick<
 >;
 type ExecutionDependencies = Pick<
     RunOrchestratorDependencies,
-    'createProcessUsageTracker' | 'createWorkerPool' | 'execute'
+    'createExecution' | 'createProcessUsageTracker' | 'createWorkerPool' | 'execute'
 >;
 type NodeExecutionDependencies = ExecutionDependencies & RuntimeStateDependencies;
 
@@ -27,7 +27,19 @@ function readActiveResourceTypes(): readonly string[] {
 }
 
 export function createNodeExecutionDependencies(input: NodeExecutionInput): NodeExecutionDependencies {
+    function createExecution(
+        reporterDispatcher: NodeExecutionInput['reporterDispatcher']
+    ): RunOrchestratorDependencies['execute'] {
+        return createExecute({
+            benchmarkEnvironment: null,
+            asyncLeakDiagnostics: 'enabled',
+            readActiveResourceTypes,
+            reporterDispatcher,
+            wallClock: input.wallClock
+        });
+    }
     return {
+        createExecution,
         createHistoryStorage: createNodeHistoryStorage,
         async maintainHistory(options) {
             const { maintainHistory } = await import('./history-maintenance.ts');
@@ -39,13 +51,7 @@ export function createNodeExecutionDependencies(input: NodeExecutionInput): Node
         createWorkerPool(options) {
             return createWorkerPoolWithHostProcess(options, input.readEnvironment(), input.startWorkerPoolHost);
         },
-        execute: createExecute({
-            benchmarkEnvironment: null,
-            asyncLeakDiagnostics: 'enabled',
-            readActiveResourceTypes,
-            reporterDispatcher: input.reporterDispatcher,
-            wallClock: input.wallClock
-        }),
+        execute: createExecution(input.reporterDispatcher),
         runtimeStateStore: createNodeFileStore()
     };
 }

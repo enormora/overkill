@@ -1,3 +1,4 @@
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import { historyPolicySchema, type HistoryPolicy, type ProjectHistoryPolicy } from './history-policy.ts';
 import type {
     CoveragePolicy,
@@ -105,3 +106,5 @@ export const defaultWorkDistribution = { mode: 'file' } as const;
 export function normalizeHistoryPolicy(value: ProjectHistoryPolicy): HistoryPolicy {
     return historyPolicySchema.parse(value);
 }
+
+export const defaultOutputRenderer = createPlainOutputRenderer();

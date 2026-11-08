@@ -448,7 +448,7 @@ export const expectedRootImportOutput = [
     .join('\n');
 
 export const expectedStandardSubpathImportOutput = [
-    '["ConfigError","defineConfig","loadConfig","normalizeConfig"]',
+    '["ConfigError","defineBaselineAdapter","defineConfig","loadConfig","normalizeConfig"]',
     '["createBenchmarkHtmlReporter","createBriefReporter","createDotReporter","createGithubActionsOutputRenderer","createLineProgressReporter","createLineReporter","createLineTreeReporter"]',
     '["defineCompositeAssertion","defineNarrowingCompositeAssertion"]',
     '["throwingTest"]',
@@ -484,7 +484,7 @@ export const expectedStandardSubpathImportOutput = [
     .join('\n');
 
 export const expectedRunSubpathImportOutput = [
-    '["ConfigError","defineConfig","loadConfig","normalizeConfig"]',
+    '["ConfigError","defineBaselineAdapter","defineConfig","loadConfig","normalizeConfig"]',
     'false',
     'function',
     'ConfigError',

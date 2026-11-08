@@ -10,18 +10,20 @@ import { selectProfile } from './test-profile.ts';
 
 function assertSupervisedTest(
     command: Parameters<RunOrchestrator['run']>[0],
-    namespace: 'bench' | 'bench-calibrate' | 'test'
+    namespace: 'baseline' | 'bench' | 'bench-calibrate' | 'test'
 ): void {
     const snapshot = snapshotRunCommand(command).command;
     const profile = selectProfile(snapshot.request.profile, snapshot.config);
-    if (currentReplay() === null && (namespace !== 'test' || profile.execution.processModel !== 'supervised-process')) {
+    const ordinary = namespace === 'test' || namespace === 'baseline';
+    const supervised = ordinary && profile.execution.processModel === 'supervised-process';
+    if (currentReplay() === null && !supervised) {
         invalidRequest('Invocation cancellation requires a supervised-process test profile.');
     }
 }
 
 export function readRunCancellation(
     command: Parameters<RunOrchestrator['run']>[0],
-    namespace: 'bench' | 'bench-calibrate' | 'test',
+    namespace: 'baseline' | 'bench' | 'bench-calibrate' | 'test',
     options: RunInvocationOptions | RunInvocationTimingOptions | undefined
 ): Readonly<AbortSignal> | null {
     const signal: unknown = options === undefined ? null : Reflect.get(options, 'signal') ?? null;

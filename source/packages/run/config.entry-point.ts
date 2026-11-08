@@ -76,3 +76,15 @@ export type {
     CollectedAdapterRun,
     PreparedAdapterRun
 } from '../../config/adapter-profile.ts';
+
+export { defineBaselineAdapter } from '../../run/baseline-adapter.ts';
+export type {
+    BaselineAdapterDefinition,
+    BaselinePayload,
+    OrdinaryBaselineAdapter,
+    OrdinaryBaselineEvaluation,
+    OrdinaryBaselineSubtype,
+    OrdinaryObservationInput
+} from '../../baselines/ordinary-baseline-adapter.ts';
+
+export type { OrdinaryBaselinePolicy } from '../../baselines/baseline-policy.ts';

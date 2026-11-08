@@ -72,6 +72,7 @@ function assertConfigSubpath(scope: TestScope): void {
 
     scope.assert.deepEqual(sortedKeys(configSubpath), [
         'ConfigError',
+        'defineBaselineAdapter',
         'defineConfig',
         'loadConfig',
         'normalizeConfig'

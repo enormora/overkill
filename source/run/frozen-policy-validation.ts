@@ -4,14 +4,14 @@ import { runExecutionFailure } from './execution-failure.ts';
 import { currentExecutionSession } from './execution-session-context.ts';
 import { freezeResolvedRunPolicy } from './freeze-run-policy.ts';
 import type { FrozenMicrotestPolicy } from './run-types.ts';
-import { policyBaselineCommand } from './frozen-run-policy.ts';
+import { policyBaselineCommand, frozenPolicyProfile } from './frozen-run-policy.ts';
 import { readRunPolicyInput, type RunInputResolutionDependencies } from './run-input-resolution.ts';
 import { resolveProcessUsagePolicy, resolveRunScheduling, resolveTimingCollection } from './run-profile-facts.ts';
 import { RunResolutionError } from './run-errors.ts';
 
 function policyFacts(policy: FrozenMicrotestPolicy): Readonly<Record<string, unknown>> {
     const command = policyBaselineCommand(policy);
-    const profile = { ...policy.profile, reporters: null };
+    const profile = frozenPolicyProfile(policy);
     return {
         moduleBoundary: policy.moduleBoundary,
         source: policy.source,

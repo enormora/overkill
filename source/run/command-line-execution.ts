@@ -91,6 +91,20 @@ function createCommandFromListRequest(
     };
 }
 
+async function readBaselineWarnings(result: RunResult): Promise<readonly string[]> {
+    const present = result.artifacts.some(function baselineReport(artifact) {
+        return artifact.payload.kind === 'runtime-attachment' &&
+            artifact.payload.mediaType === 'application/vnd.overkill.baselines+json';
+    });
+    if (!present) {
+        return [];
+    }
+    const { readOrdinaryBaselineReport } = await import('./baseline-report.ts');
+    return readOrdinaryBaselineReport(result)?.warnings.map(function warning(message) {
+        return `Warning: ${message}`;
+    }) ?? [];
+}
+
 function runRequestExitCode(request: RunCommand['request'], result: RunResult): CommandLineExitCode {
     const code = readExitCodeFromRunResult(result);
     return request.lastFailed && code === commandLineExitCodes.noTestsCollected ? commandLineExitCodes.pass : code;
@@ -109,7 +123,8 @@ export async function runTestsWithLoadedConfig(
         exitCode: runRequestExitCode(command.request, runResult.result),
         fallbackDiagnostics: [
             ...formatRunnerErrorDiagnostics(runResult.undeliveredRunnerErrors),
-            ...runResult.result.maintenanceDiagnostics
+            ...runResult.result.maintenanceDiagnostics,
+            ...await readBaselineWarnings(runResult.result)
         ],
         runResult: runResult.result,
         stdoutLines: []

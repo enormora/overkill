@@ -77,6 +77,9 @@ export async function createBenchmarkBaselineSession(
     });
     const reporter = createBaselineReporter(input.reporterDispatcher, workflow);
     return {
+        prepareResult(result) {
+            return result;
+        },
         reporterDispatcher: reporter.dispatcher,
         async finalize(result) {
             return await finalizeBenchmarkBaselines({

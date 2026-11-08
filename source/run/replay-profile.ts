@@ -5,9 +5,12 @@ import { integrationExecutionSchema, attachmentLimitsSchema } from '../config/sc
 import { propertyPolicySchema } from '../config/property-policy.ts';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
 import { benchmarkHostPolicySchema } from '../config/benchmark-host.ts';
-import type { ProfileConfig } from '../config/types.ts';
+import { isBuiltinTestProfile, type ProfileConfig, type AdapterProfileConfig } from '../config/types.ts';
+import { recordedBaselinePolicySchema, restoreRecordedBaselines } from './recorded-baseline-policy.ts';
 
-const common = normalizedMicrotestProfileSchema.omit({ coverage: true, execution: true, testFamily: true });
+const common = normalizedMicrotestProfileSchema.omit({ coverage: true, execution: true, testFamily: true }).extend({
+    baselines: recordedBaselinePolicySchema
+});
 const worker = integrationExecutionSchema.options[1].unwrap().required();
 const distribution = worker.shape.workDistribution;
 const workDistribution = distribution.transform(function normalize(value) {
@@ -48,7 +51,7 @@ const benchmarkExecution = z.union([
     })
 ]);
 const recordedProfileSchema = z.union([
-    normalizedMicrotestProfileSchema,
+    normalizedMicrotestProfileSchema.extend({ baselines: recordedBaselinePolicySchema }),
     common.extend({
         testFamily: z.literal('property'),
         files: common.shape.files.unwrap(),
@@ -68,11 +71,17 @@ const recordedProfileSchema = z.union([
     })
 ]);
 
-export function restoreReplayProfile(value: unknown, current: ProfileConfig | undefined): ProfileConfig {
+export function restoreReplayProfile(
+    value: unknown,
+    current: ProfileConfig | undefined
+): Exclude<ProfileConfig, AdapterProfileConfig> {
     const profile = recordedProfileSchema.parse(value);
     const reporters = current?.reporters ?? null;
     if (profile.testFamily !== 'benchmark') {
-        return { ...profile, reporters };
+        const policy = current !== undefined && isBuiltinTestProfile(current)
+            ? current.baselines
+            : { directory: 'test-baselines', adapters: [], stale: 'fail' as const };
+        return { ...profile, reporters, baselines: restoreRecordedBaselines(profile.baselines, policy) };
     }
     const adapters = profile.baselines.adapters.map(function bindAdapter(saved) {
         const adapter = current?.testFamily === 'benchmark'

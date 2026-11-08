@@ -98,6 +98,7 @@ export type RunOrchestratorDependencies = RunHostObservations & {
     readonly defaultEngine: Engine;
     readonly discoverRunFilesWithProjectRoot: RunDiscovery['discoverRunFilesWithProjectRoot'];
     readonly runtimeStateStore: RuntimeStateStore;
+    readonly createExecution: (reporterDispatcher: ReporterDispatcher) => Execute;
     readonly execute: Execute;
     readonly loadRunEngineModule: RunEngineModuleLoader;
     readonly loadRunTestModules: RunTestModuleLoader;

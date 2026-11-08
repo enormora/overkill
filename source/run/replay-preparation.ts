@@ -59,6 +59,7 @@ export async function prepareRecordedReplay(
             },
             request: {
                 ...record.request,
+                baselineUpdateMode: 'none',
                 seed: { value: BigInt(record.seed) },
                 record: true,
                 lastFailed: false,

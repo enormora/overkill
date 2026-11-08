@@ -200,6 +200,7 @@ function copyBenchmarkExecution(execution: BenchmarkExecution): BenchmarkExecuti
 function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfileConfig>): ProfileConfig {
     if (profile.testFamily === 'property') {
         return {
+            baselines: { ...profile.baselines, adapters: Array.from(profile.baselines.adapters) },
             execution: copyMicrotestExecution(profile.execution),
             files: copyProfileFiles(profile.files),
             reporters: copyReporters(profile.reporters),
@@ -231,6 +232,7 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
 
     if (profile.testFamily === 'integration') {
         return {
+            baselines: { ...profile.baselines, adapters: Array.from(profile.baselines.adapters) },
             attachments: { ...profile.attachments },
             execution: copyIntegrationExecution(profile.execution),
             files: copyIntegrationFiles(profile.files),
@@ -245,6 +247,7 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
     }
 
     return {
+        baselines: { ...profile.baselines, adapters: Array.from(profile.baselines.adapters) },
         coverage: copyCoveragePolicy(profile.coverage),
         execution: copyMicrotestExecution(profile.execution),
         files: profile.files === null ? null : copyProfileFiles(profile.files),

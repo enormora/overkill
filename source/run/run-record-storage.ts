@@ -1,4 +1,5 @@
 import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-tracking.ts';
+import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { createResultFromResolutionError } from './run-collection-error-result.ts';
 import { RunCollectionError } from './run-errors.ts';
@@ -70,7 +71,9 @@ export function createRunRecordStorage(
         async persist(value, phase) {
             current = value;
             try {
-                await store.write(filePath, `${JSON.stringify(value, null, jsonIndentation)}\n`);
+                await withRunnerInfrastructure(async function writeRunRecord() {
+                    await store.write(filePath, `${JSON.stringify(value, null, jsonIndentation)}\n`);
+                });
             } catch (error: unknown) {
                 throw runRecordPersistenceError(filePath, phase, error);
             }

@@ -91,7 +91,7 @@ function readRunnerResult(result: CommandLineRunnerResult | Error): CommandLineR
     return result;
 }
 
-function createBenchmarkBaselineCommands(
+function createBaselineCommandRecorder(
     recorder: RequestRecorder,
     result: CommandLineRunnerResult | Error
 ): CommandLineBenchmarkBaselineCommands {
@@ -125,16 +125,10 @@ function createRunner(
             compact: unexpectedCommand,
             clear: unexpectedCommand
         },
-        baseline: {
-            apply: unexpectedCommand,
-            bootstrap: unexpectedCommand,
-            diff: unexpectedCommand,
-            list: unexpectedCommand,
-            update: unexpectedCommand
-        },
+        baseline: createBaselineCommandRecorder(requestRecorder, result),
         bench: {
             calibrate: unexpectedCommand,
-            baseline: createBenchmarkBaselineCommands(requestRecorder, result),
+            baseline: createBaselineCommandRecorder(requestRecorder, result),
             async listBenchmarks(context) {
                 requestRecorder.recordBenchmarkList(context);
 

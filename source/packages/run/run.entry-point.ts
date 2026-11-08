@@ -320,3 +320,23 @@ export { executeAdapterPlan, prepareAdapterPlan } from '../../run/adapter-execut
 export { selectedTestPlan as selectTestPlan } from '../../run/run-selection.ts';
 
 export { isGeneratedTypeTestPath } from '../../generated-input-path.ts';
+
+export { defineBaselineAdapter } from '../../run/baseline-adapter.ts';
+export type {
+    BaselineAdapterDefinition,
+    BaselinePayload,
+    OrdinaryBaselineAdapter,
+    OrdinaryBaselineEvaluation,
+    OrdinaryBaselineSubtype,
+    OrdinaryObservationInput
+} from '../../baselines/ordinary-baseline-adapter.ts';
+
+export type {
+    BaselineCommand,
+    BaselineListCommand,
+    BaselineOrchestrator,
+    BaselineRunResult
+} from '../../run/baseline-types.ts';
+export { readOrdinaryBaselineReport } from '../../run/baseline-report.ts';
+export type { OrdinaryBaselineReport } from '../../run/baseline-report.ts';
+export type { StoredOrdinaryBaseline } from '../../run/baseline-record.ts';

@@ -9,9 +9,6 @@ import {
     createCurrentProcessRunOrchestrator
 } from './current-process-run-orchestrator.ts';
 import type { CurrentProcessRunOrchestratorDependencies } from './current-process-run-input.ts';
-import {
-    loadUnimplementedBaselineCommands
-} from './command-line-unimplemented-commands.ts';
 
 type NodeCommandLineRunDiscovery = CurrentProcessRunOrchestratorDependencies['discoverRunFilesWithProjectRoot'];
 type NodeCommandLineStartSupervisedChild = CurrentProcessRunOrchestratorDependencies['startSupervisedChild'];
@@ -49,7 +46,14 @@ export function createNodeCommandLineRunner(input: NodeCommandLineRunnerInput): 
             return createReplayCommands(input.dependencies.loadConfig, orchestrator);
         },
         createDefaultReporter: loadDefaultLineReporter,
-        loadBaselineCommands: loadUnimplementedBaselineCommands,
+        async loadBaselineCommands() {
+            const { createBaselineCommands } = await import('./baseline-commands.ts');
+            return createBaselineCommands({
+                loadConfig: input.dependencies.loadConfig,
+                createDefaultReporter: loadDefaultLineReporter,
+                orchestrator
+            });
+        },
         async loadBenchmarkCommands() {
             const { createBenchmarkCommands } = await import('./benchmark-commands.ts');
 

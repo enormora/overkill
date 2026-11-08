@@ -1,9 +1,6 @@
 import type { CommandLineRunner } from '../../run/command-line-runner.ts';
 import type { NodeCommandLineRunnerOptions } from '../../run/node-command-line-runner.ts';
 import { createCommandLineCommandNamespace } from '../../run/command-line-command-namespace.ts';
-import {
-    loadUnimplementedBaselineCommands
-} from '../../run/command-line-unimplemented-commands.ts';
 import { loadConfig } from './config.entry-point.ts';
 
 export {
@@ -23,7 +20,12 @@ const commandLoaders = {
         return createReplayCommands(loadConfig, orchestrator);
     },
     loadConfig,
-    loadBaselineCommands: loadUnimplementedBaselineCommands,
+    async loadBaselineCommands() {
+        const { createBaselineCommands } = await import('../../run/baseline-commands.ts');
+        const { orchestrator } = await import('../../run/run-orchestrator.entry-point.ts');
+        const { loadDefaultLineReporter } = await import('../../run/command-line-runner.ts');
+        return createBaselineCommands({ loadConfig, createDefaultReporter: loadDefaultLineReporter, orchestrator });
+    },
     async loadBenchmarkCommands() {
         const { createBenchmarkCommands } = await import('../../run/benchmark-commands.ts');
 
@@ -212,3 +214,5 @@ export type { NormalizedConfig, ProfileConfig, BenchmarkProfileConfig, TestProfi
 export type { ProjectBenchmarkProfileConfig, ProjectAdapterProfileConfig } from '../../config/schema.ts';
 
 export type { CommandLineWitnessReplayRequest } from '../../run/witness-replay-request.ts';
+
+export type { CommandLineBaselineRequest, CommandLineBaselineListRequest } from '../../run/command-line-command.ts';

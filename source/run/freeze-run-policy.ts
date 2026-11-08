@@ -13,7 +13,7 @@ export function freezeResolvedRunPolicy(input: FreezePolicyInput, resolved: Reso
     if (resolved.profile.testFamily !== 'microtest' || resolved.engine.kind === 'instance') {
         throw new TypeError('Expected a portable microtest policy.');
     }
-    const { reporters: _reporters, ...profile } = resolved.profile;
+    const { reporters: _reporters, baselines: _baselines, ...profile } = resolved.profile;
     const { seed: _seed, ...request } = resolved.request;
     return parseFrozenMicrotestPolicy({
         moduleBoundary: input.moduleBoundary,
