@@ -79,8 +79,10 @@ scope.assert(applicableTo<typeof decorate>(), (apply) => {
 });
 ```
 
-`applicableTo.withActual(decorate)` supplies an expression subject. JSX component
-subjects must use a component identifier, such as `acceptsProps<typeof Component>()`.
+`applicableTo.withActual(decorate)` supplies an expression subject. JSX type
+subjects preserve type-only imports and explicit instantiations, such as
+`acceptsProps<typeof Component<string>>()`. Expression subjects must use a
+component identifier.
 Use `.tsx` source files and a project JSX compiler option for JSX checks.
 When Node cannot load the authored syntax, precompile with your project tooling
 and source maps, then run with `--enable-source-maps`. The adapter reads the
@@ -111,7 +113,13 @@ const result = await checkTypeTests({
 Use the same engine that constructed the root. Roots may be constructed before
 importing the adapter. The engine and first-party composition APIs preserve
 callback provenance without import hooks or source transforms during loading.
-Unknown source locations and ambiguous callback origins are unsupported.
+Callback lookup supports direct functions and immutable aliases, including
+parentheses, type assertions, and `satisfies`. Named options require an
+unambiguous callback: potentially overriding spreads, mutation, and escaping
+containers are rejected. Low-level table case arrays cannot contain spreads.
+Unknown source locations and ambiguous callback origins produce diagnostics.
+Copied assertion operands and type arguments retain precise original-source
+locations through translation and import repair.
 
 Compiler selection is explicit: `local` uses the compiler resolved by TSTyche;
 `version` requires an exact version. Compiler identity belongs to executable

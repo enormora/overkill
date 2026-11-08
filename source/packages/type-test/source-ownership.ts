@@ -1,41 +1,28 @@
 import type TypeScript from 'typescript';
 import { resolveSourceLocation, isTableBodyOrigin, type TestBodyOrigin } from '../engine/engine.entry-point.ts';
 
+import {
+    sourceSymbol,
+    immutableInitializer,
+    transparentExpression,
+    validateFunctionBinding,
+    type SourceAnalysis
+} from './source-analysis.ts';
+import { validateCallbackStorage, supportedCall } from './source-options.ts';
+
 type ExpressionBody = TypeScript.ArrowFunction | TypeScript.FunctionExpression;
 type DeclarationBody = TypeScript.FunctionDeclaration | TypeScript.MethodDeclaration;
 export type SourceBody = Readonly<DeclarationBody | ExpressionBody>;
-export type SourceAnalysis = {
-    readonly compiler: typeof TypeScript;
-    readonly checker: TypeScript.TypeChecker;
-    readonly program: TypeScript.Program;
-};
-
-export function sourceSymbol(analysis: SourceAnalysis, node: TypeScript.Node): TypeScript.Symbol | undefined {
-    const symbol = analysis.checker.getSymbolAtLocation(node);
-    return symbol?.flags === analysis.compiler.SymbolFlags.Alias ? analysis.checker.getAliasedSymbol(symbol) : symbol;
-}
-
 function isSourceBody(compiler: typeof TypeScript, node: TypeScript.Node): node is SourceBody {
     return compiler.isArrowFunction(node) || compiler.isFunctionExpression(node) ||
         compiler.isFunctionDeclaration(node) || compiler.isMethodDeclaration(node);
-}
-
-function immutableInitializer(analysis: SourceAnalysis, node: TypeScript.Node): TypeScript.Node | undefined {
-    const { compiler } = analysis;
-    if (!compiler.isVariableDeclaration(node) || !compiler.isVariableDeclarationList(node.parent)) {
-        return undefined;
-    }
-    return node.parent.getFirstToken()?.kind === compiler.SyntaxKind.ConstKeyword ? node.initializer : undefined;
 }
 
 function callbackDeclarations(
     analysis: SourceAnalysis,
     expression: TypeScript.Node
 ): readonly TypeScript.Declaration[] {
-    const symbol = analysis.compiler.isShorthandPropertyAssignment(expression)
-        ? analysis.checker.getShorthandAssignmentValueSymbol(expression)
-        : sourceSymbol(analysis, expression);
-    return symbol?.declarations ?? [];
+    return sourceSymbol(analysis, expression)?.declarations ?? [];
 }
 
 function constantExpression(
@@ -56,20 +43,31 @@ function declarationExpression(analysis: SourceAnalysis, expression: TypeScript.
         return isSourceBody(analysis.compiler, node) && node.body !== undefined;
     });
     const [ implementation ] = implementations;
-    return implementations.length === 1 && implementation !== undefined
-        ? implementation
-        : constantExpression(analysis, declarations);
+    if (implementations.length === 1 && implementation !== undefined) {
+        if (analysis.compiler.isFunctionDeclaration(implementation)) {
+            validateFunctionBinding(analysis, implementation.name ?? expression);
+        }
+        return implementation;
+    }
+    return constantExpression(analysis, declarations);
+}
+
+function nextExpression(analysis: SourceAnalysis, node: TypeScript.Node): TypeScript.Node | undefined {
+    return transparentExpression(analysis, node) ??
+        (analysis.compiler.isIdentifier(node) ? declarationExpression(analysis, node) : undefined);
 }
 
 function originalExpression(analysis: SourceAnalysis, initial: TypeScript.Node): TypeScript.Node {
     let expression = initial;
-    const seen = new Set<TypeScript.Node>();
-    while (analysis.compiler.isIdentifier(expression)) {
-        if (seen.has(expression)) {
+    let next = nextExpression(analysis, expression);
+    const seen = new Set<TypeScript.Node>([ initial ]);
+    while (next !== undefined) {
+        if (seen.has(next)) {
             throw new Error('Cyclic callback source ownership.');
         }
-        seen.add(expression);
-        expression = declarationExpression(analysis, expression);
+        seen.add(next);
+        expression = next;
+        next = nextExpression(analysis, expression);
     }
     return expression;
 }
@@ -103,23 +101,44 @@ function propertyExpression(analysis: SourceAnalysis, property: TypeScript.Objec
 }
 
 function objectField(analysis: SourceAnalysis, input: TypeScript.Node, field: string): TypeScript.Node {
+    validateCallbackStorage(analysis, input);
     const node = originalExpression(analysis, input);
     if (!analysis.compiler.isObjectLiteralExpression(node)) {
         throw new Error('Unsupported callback options expression.');
     }
-    const property = node.properties.find(function named(entry) {
-        return entry.name?.getText() === field;
+    const property = node.properties.findLast(function named(entry) {
+        return entry.name !== undefined &&
+            (analysis.compiler.isIdentifier(entry.name) || analysis.compiler.isStringLiteral(entry.name)) &&
+            entry.name.text === field;
     });
+    if (
+        property !== undefined &&
+        node.properties.slice(node.properties.indexOf(property) + 1).some(function uncertain(entry) {
+            return analysis.compiler.isSpreadAssignment(entry) ||
+                analysis.compiler.isComputedPropertyName(entry.name);
+        })
+    ) {
+        throw new Error('Callback options contain a potentially overriding property.');
+    }
     if (property === undefined) {
         throw new Error(`Callback definition has no explicit ${field} source.`);
     }
     return propertyExpression(analysis, property);
 }
 
+function validatedCases(analysis: SourceAnalysis, input: TypeScript.Node): TypeScript.Node {
+    const source = objectField(analysis, input, 'cases');
+    validateCallbackStorage(analysis, source);
+    return source;
+}
+
 function tableCaseExpression(analysis: SourceAnalysis, input: TypeScript.Node, index: number): TypeScript.Node {
-    const cases = originalExpression(analysis, objectField(analysis, input, 'cases'));
+    const cases = originalExpression(analysis, validatedCases(analysis, input));
     if (!analysis.compiler.isArrayLiteralExpression(cases)) {
         throw new Error('Low-level table cases require static source ownership.');
+    }
+    if (cases.elements.some(analysis.compiler.isSpreadElement)) {
+        throw new Error('Low-level table case spreads have ambiguous source ownership.');
     }
     const row = cases.elements[index];
     if (row === undefined) {
@@ -128,11 +147,40 @@ function tableCaseExpression(analysis: SourceAnalysis, input: TypeScript.Node, i
     return objectField(analysis, row, 'body');
 }
 
-function callName(analysis: SourceAnalysis, call: TypeScript.CallExpression): string | undefined {
-    const location = analysis.compiler.isPropertyAccessExpression(call.expression)
-        ? call.expression.name
-        : call.expression;
+const authoringNames = new Set([
+    'test',
+    'table',
+    'createTestCase',
+    'createTable',
+    'withResource',
+    'withResources',
+    'withRuntime',
+    'defineParameterizedTestBody'
+]);
+
+function expressionName(analysis: SourceAnalysis, expression: TypeScript.Node): string | undefined {
+    const location = analysis.compiler.isPropertyAccessExpression(expression) ? expression.name : expression;
     return sourceSymbol(analysis, location)?.name;
+}
+
+function authoringName(
+    analysis: SourceAnalysis,
+    expression: TypeScript.Node,
+    seen: ReadonlySet<TypeScript.Node>
+): string | undefined {
+    const name = expressionName(analysis, expression);
+    if (name !== undefined && authoringNames.has(name)) {
+        return name;
+    }
+    if (seen.has(expression)) {
+        throw new Error('Cyclic authoring API alias.');
+    }
+    const next = nextExpression(analysis, expression);
+    return next === undefined ? name : authoringName(analysis, next, new Set([ ...seen, expression ]));
+}
+
+function callName(analysis: SourceAnalysis, call: TypeScript.CallExpression): string | undefined {
+    return authoringName(analysis, call.expression, new Set());
 }
 
 function positionalBody(
@@ -199,7 +247,15 @@ function locatedCall(analysis: SourceAnalysis, origin: TestBodyOrigin): TypeScri
     if (file === undefined) {
         throw new Error(`Callback source is outside the checker project: ${location.file}`);
     }
-    return callAtOffset(analysis, file, file.getPositionOfLineAndCharacter(location.line - 1, location.column - 1));
+    const call = callAtOffset(
+        analysis,
+        file,
+        file.getPositionOfLineAndCharacter(location.line - 1, location.column - 1)
+    );
+    if (!supportedCall(analysis, call)) {
+        throw new Error('Callback anchor does not identify a supported authoring API.');
+    }
+    return call;
 }
 
 function preferredOrigin(origin: TestBodyOrigin): TestBodyOrigin {

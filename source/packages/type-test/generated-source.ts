@@ -4,6 +4,10 @@ export type SourceMapping = {
     readonly original: SourceRange;
     readonly kind: 'anchored' | 'copied';
 };
+type CopiedFragment = { readonly kind: 'copied'; readonly original: SourceRange; };
+type AnchoredFragment = { readonly kind: 'anchored'; readonly original: SourceRange; readonly text: string; };
+export type SourceFragment = AnchoredFragment | CopiedFragment;
+
 export type TranslatedModule = {
     readonly path: string;
     readonly originalText: string;
@@ -45,8 +49,10 @@ export function validateMappings(module: TranslatedModule): void {
 function intersectRange(range: SourceRange, segment: SourceRange): SourceRange | null {
     const start = Math.max(range.start, segment.start);
     const end = Math.min(range.end, segment.end);
-    const point = range.start === range.end || segment.start === segment.end;
-    return start < end || point && start === end ? { start, end } : null;
+    if (range.start === range.end) {
+        return start === end ? { start, end } : null;
+    }
+    return start < end ? { start, end } : null;
 }
 
 export function mapSourceRange(
@@ -85,6 +91,52 @@ function preservedMapping(mapping: SourceMapping, range: SourceRange, shift: num
     };
 }
 
+export function replaceMappedSource(
+    module: TranslatedModule,
+    range: SourceRange,
+    fragments: readonly SourceFragment[]
+): TranslatedModule {
+    validateRange(range, module.text.length);
+    let offset = range.start;
+    const mappings: SourceMapping[] = [];
+    const text = fragments
+        .map(function render(fragment) {
+            validateRange(fragment.original, module.originalText.length);
+            const value = fragment.kind === 'copied'
+                ? module.originalText.slice(fragment.original.start, fragment.original.end)
+                : fragment.text;
+            if (value.length > 0) {
+                mappings.push({
+                    kind: fragment.kind,
+                    original: fragment.original,
+                    generated: { start: offset, end: offset + value.length }
+                });
+            }
+            offset += value.length;
+            return value;
+        })
+        .join('');
+    const shift = text.length - (range.end - range.start);
+    const preserved = module.mappings.flatMap(function preserve(mapping) {
+        return [
+            preservedMapping(mapping, { start: 0, end: range.start }, 0),
+            preservedMapping(mapping, { start: range.end, end: module.text.length }, shift)
+        ]
+            .filter(function present(piece) {
+                return piece !== null;
+            });
+    });
+    const result = {
+        ...module,
+        text: module.text.slice(0, range.start) + text + module.text.slice(range.end),
+        mappings: [ ...preserved, ...mappings ].toSorted(function byPosition(left, right) {
+            return left.generated.start - right.generated.start;
+        })
+    };
+    validateMappings(result);
+    return result;
+}
+
 export function replaceMappedText(module: TranslatedModule, range: SourceRange, text: string): TranslatedModule {
     const originalRanges = mapSourceRange(module.mappings, range, 'generated');
     const first = originalRanges[0];
@@ -99,22 +151,5 @@ export function replaceMappedText(module: TranslatedModule, range: SourceRange, 
             return value.end;
         }))
     };
-    const shift = text.length - (range.end - range.start);
-    const mappings = module.mappings.flatMap(function preserve(mapping) {
-        return [
-            preservedMapping(mapping, { start: 0, end: range.start }, 0),
-            preservedMapping(mapping, { start: range.end, end: module.text.length }, shift)
-        ]
-            .filter(function present(piece) {
-                return piece !== null;
-            });
-    });
-    mappings.push({ kind: 'anchored', original, generated: { start: range.start, end: range.start + text.length } });
-    return {
-        ...module,
-        text: module.text.slice(0, range.start) + text + module.text.slice(range.end),
-        mappings: mappings.toSorted(function byPosition(left, right) {
-            return left.generated.start - right.generated.start;
-        })
-    };
+    return replaceMappedSource(module, range, [ { kind: 'anchored', original, text } ]);
 }

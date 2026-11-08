@@ -1,9 +1,10 @@
 import type TypeScript from 'typescript';
-import { namedBodyParameter, type SourceAnalysis } from './source-ownership.ts';
+import { sourceSymbol, type SourceAnalysis } from './source-analysis.ts';
+import { namedBodyParameter } from './source-ownership.ts';
 import type { NativeReference } from './native-reference.ts';
-import type { SourceRange } from './generated-source.ts';
+import type { SourceRange, SourceFragment } from './generated-source.ts';
 
-export type SourceReplacement = { readonly range: SourceRange; readonly text: string; };
+export type SourceReplacement = { readonly range: SourceRange; readonly fragments: readonly SourceFragment[]; };
 
 type DecoratorBinding = { readonly parameter: TypeScript.Identifier; readonly symbol: TypeScript.Symbol; };
 function decoratorParameter(analysis: SourceAnalysis, declaration: TypeScript.Expression): DecoratorBinding {
@@ -30,7 +31,7 @@ function rejectDecoratorForwarding(analysis: SourceAnalysis, node: TypeScript.No
     if (!analysis.compiler.isIdentifier(node) || node === binding.parameter) {
         return;
     }
-    if (analysis.checker.getSymbolAtLocation(node) === binding.symbol && !directDecoratorUse(analysis, node)) {
+    if (sourceSymbol(analysis, node) === binding.symbol && !directDecoratorUse(analysis, node)) {
         throw new Error('Decorator parameter forwarding is unsupported.');
     }
 }
@@ -50,7 +51,15 @@ export function decoratorReplacements(
             const { expression } = node;
             replacements.push({
                 range: { start: expression.getStart(), end: expression.end },
-                text: `(${expectName}(${parameter.getText()}).type.${reference.negated ? 'not.' : ''}toBeApplicable)`
+                fragments: [
+                    { kind: 'anchored', original: { start: node.getStart(), end: node.end }, text: `(${expectName}(` },
+                    { kind: 'copied', original: { start: expression.getStart(), end: expression.end } },
+                    {
+                        kind: 'anchored',
+                        original: { start: node.getStart(), end: node.end },
+                        text: `).type.${reference.negated ? 'not.' : ''}toBeApplicable)`
+                    }
+                ]
             });
         }
         compiler.forEachChild(node, visit);

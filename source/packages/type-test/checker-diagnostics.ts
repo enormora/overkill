@@ -53,8 +53,13 @@ function originalLocation(
     const generated = origin.sourceFile.fileName;
     const file = originalPath(context, generated);
     const ranges = context.check.inputs.mapRange(generated, { start: origin.start, end: origin.end }, 'generated');
-    const start = ranges[0]?.start ?? origin.start;
-    return { ...originalPosition(context, origin, file, start), end: ranges.at(-1)?.end ?? origin.end };
+    const start = ranges.length === 0 ? origin.start : Math.min(...ranges.map(function beginning(range) {
+        return range.start;
+    }));
+    const end = ranges.length === 0 ? origin.end : Math.max(...ranges.map(function ending(range) {
+        return range.end;
+    }));
+    return { ...originalPosition(context, origin, file, start), end };
 }
 
 export function checkerDiagnostic(context: DiagnosticContext, diagnostic: ReadonlyDeep<Diagnostic>): CheckerDiagnostic {

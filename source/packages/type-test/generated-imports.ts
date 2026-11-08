@@ -1,3 +1,4 @@
+import { isBuiltin } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import type TypeScript from 'typescript';
 import { mapSourceRange, replaceMappedText, type TranslatedModule, type SourceRange } from './generated-source.ts';
@@ -125,7 +126,7 @@ function resolveRepair(context: ResolutionContext, literal: TypeScript.StringLit
         .resolveModuleName(literal.text, module.path, options, compiler.sys, undefined, undefined, mode)
         .resolvedModule;
     if (target === undefined) {
-        return ambiguous(context, literal);
+        return isBuiltin(literal.text) ? { kind: 'unrelated' } : ambiguous(context, literal);
     }
     const originalPath = resolve(target.resolvedFileName);
     const generatedPath = paths.get(originalPath);

@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
+import { sourceSymbol, type SourceAnalysis } from './source-analysis.ts';
 import { nativeMatcherBinding } from './native-reference.ts';
-import type { SourceAnalysis, SourceBody } from './source-ownership.ts';
+import type { SourceBody } from './source-ownership.ts';
 
 function annotatedReceiver(analysis: SourceAnalysis, initial: TypeScript.Expression): TypeScript.Expression {
     const { compiler } = analysis;
@@ -16,7 +17,7 @@ function annotatedReceiver(analysis: SourceAnalysis, initial: TypeScript.Express
 
 function isScope(analysis: SourceAnalysis, node: TypeScript.Node, scope: TypeScript.Identifier): boolean {
     return analysis.compiler.isIdentifier(node) && node.text === scope.text &&
-        analysis.checker.getSymbolAtLocation(node) === analysis.checker.getSymbolAtLocation(scope);
+        sourceSymbol(analysis, node) === sourceSymbol(analysis, scope);
 }
 
 function scopeTarget(

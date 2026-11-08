@@ -20,6 +20,7 @@ const resultSchema = z
 export type NativeProjectResult = z.infer<typeof resultSchema>;
 type ProjectChange = 'config' | 'identity' | 'source';
 type ProjectRequest = {
+    readonly prefix: string;
     readonly definitions: string;
     readonly titles: readonly string[] | null;
     readonly compiled: boolean;
@@ -63,7 +64,7 @@ function fixtureSource(request: ProjectRequest): string {
             })
         }
     };
-    return `import * as engine from ${engineImport};
+    return `${request.prefix}import * as engine from ${engineImport};
 import { test, suite, table, defineMacro, defineParameterizedTestBody } from ${authoringImport};
 import {
     sameType as same, assignableTo, assignableFrom, acceptsProps, applicableTo,
@@ -161,7 +162,7 @@ export async function runNativeProject(
     definitions: string,
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, { definitions, titles, compiled: false, change: null });
+    return await runProject(scope, { definitions, titles, compiled: false, change: null, prefix: '' });
 }
 
 export async function runCompiledTypeProject(
@@ -169,7 +170,7 @@ export async function runCompiledTypeProject(
     definitions: string,
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, { definitions, titles, compiled: true, change: null });
+    return await runProject(scope, { definitions, titles, compiled: true, change: null, prefix: '' });
 }
 
 export async function runChangedTypeProject(
@@ -177,5 +178,13 @@ export async function runChangedTypeProject(
     definitions: string,
     change: ProjectChange
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, { definitions, titles: null, compiled: false, change });
+    return await runProject(scope, { definitions, titles: null, compiled: false, change, prefix: '' });
+}
+
+export async function runPrefixedTypeProject(
+    scope: TestScope,
+    definitions: string,
+    prefix: string
+): Promise<NativeProjectResult> {
+    return await runProject(scope, { definitions, titles: null, compiled: false, change: null, prefix });
 }

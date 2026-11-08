@@ -1,8 +1,99 @@
+import TypeScript from 'typescript';
 import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../test/test.entry-point.ts';
-import { mapSourceRange, replaceMappedText, validateMappings, type TranslatedModule } from './generated-source.ts';
+import { referenceExpression } from './native-reference-expression.ts';
+import {
+    mapSourceRange,
+    replaceMappedSource,
+    replaceMappedText,
+    validateMappings,
+    type TranslatedModule
+} from './generated-source.ts';
+
+function referenceCall(node: TypeScript.Node): TypeScript.CallExpression | undefined {
+    return TypeScript.isCallExpression(node) ? node : TypeScript.forEachChild(node, referenceCall);
+}
 
 export const testNode = suite('generated source mapping', [
+    test('preserves leading source trivia in translated type arguments', function (scope: TestScope) {
+        const originalText = 'reference<string, /* expected type */ number>()';
+        const file = TypeScript.createSourceFile('/example.ts', originalText, TypeScript.ScriptTarget.Latest, true);
+        const call = referenceCall(file);
+        if (call === undefined) {
+            throw new Error('Expected a reference call.');
+        }
+        const range = { start: 0, end: originalText.length };
+        const fragments = referenceExpression(
+            {
+                kind: 'relation',
+                matcher: 'toBe',
+                form: 'typed',
+                negated: false,
+                types: call.typeArguments ?? []
+            },
+            [],
+            'check',
+            range
+        );
+        const translated = replaceMappedSource(
+            {
+                path: file.fileName,
+                originalText,
+                text: originalText,
+                mappings: [ { kind: 'copied', original: range, generated: range } ]
+            },
+            range,
+            fragments
+        );
+        scope.assert.equal(translated.text, 'check<string>().type.toBe< /* expected type */ number>()');
+        return scope.assert.collect();
+    }),
+    test('excludes adjacent synthetic insertions from original token ranges', function (scope: TestScope) {
+        const originalText = 'value';
+        const module = replaceMappedText(
+            {
+                path: '/example.ts',
+                originalText,
+                text: originalText,
+                mappings: [ { kind: 'copied', original: { start: 0, end: 5 }, generated: { start: 0, end: 5 } } ]
+            },
+            { start: 0, end: 0 },
+            'prefix;'
+        );
+        scope.assert.deepEqual(mapSourceRange(module.mappings, { start: 0, end: 1 }, 'original'), [ {
+            start: 7,
+            end: 8
+        } ]);
+        return scope.assert.collect();
+    }),
+    test('maps copied operands precisely inside generated syntax', function (scope: TestScope) {
+        const originalText = '😀\r\nvalue.missing';
+        const start = originalText.indexOf('value');
+        const module = replaceMappedSource(
+            {
+                path: '/example.ts',
+                originalText,
+                text: originalText,
+                mappings: [ {
+                    kind: 'copied',
+                    original: { start: 0, end: originalText.length },
+                    generated: { start: 0, end: originalText.length }
+                } ]
+            },
+            { start, end: originalText.length },
+            [
+                { kind: 'anchored', original: { start, end: originalText.length }, text: 'check(' },
+                { kind: 'copied', original: { start, end: originalText.length } },
+                { kind: 'anchored', original: { start, end: originalText.length }, text: ')' }
+            ]
+        );
+        validateMappings(module);
+        const generated = module.text.indexOf('missing');
+        scope.assert.deepEqual(mapSourceRange(module.mappings, { start: generated, end: generated + 7 }, 'generated'), [
+            { start: originalText.indexOf('missing'), end: originalText.length }
+        ]);
+        return scope.assert.collect();
+    }),
     test('composes length changes across CRLF and UTF-16 source ranges', function (scope: TestScope) {
         const text = '😀\r\nimport "./self.ts";\r\nexport {};';
         const module: TranslatedModule = {
