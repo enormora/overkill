@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { promisify } from 'node:util';
 import { runIfMain } from '#test-runner';
 import { withExecutionObservation } from '../engine/execution-observation.ts';
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
@@ -12,12 +13,17 @@ import {
     facts
 } from '../test-support/run-record-session-fixture.ts';
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
-import type { RunResult } from '../engine/run-result.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import { createSuite, createTestCase, type TestScope, type RunResult } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createRuntimeCapabilityPolicy } from './capability-policy.ts';
 
 const recordingEnvironment = {};
+const drawEntropy = promisify(function requestEntropy(
+    size: number,
+    complete: (error: Error | null, bytes: Uint8Array) => void
+): void {
+    randomBytes(size, complete);
+});
 
 function assertStartedRecord(scope: TestScope, record: RecordSessionSnapshot | undefined, recordPath: string): void {
     scope.require.defined(record);
@@ -62,8 +68,8 @@ export const testNode = createSuite({
             controls: {},
             async body(scope) {
                 return await withExecutionObservation(async function recordingPolicyBoundary() {
-                    const fixture = recordFixtureWithStorageProbe([], function drawStorageEntropy() {
-                        randomBytes(8);
+                    const fixture = recordFixtureWithStorageProbe([], async function drawStorageEntropy() {
+                        await drawEntropy(8);
                     });
                     const policy = createRuntimeCapabilityPolicy({
                         dependencies: {
@@ -82,7 +88,7 @@ export const testNode = createSuite({
                     scope.assert.deepEqual(policy.takePendingRunErrors(), []);
                     scope.assert.equal(fixture.writes.length, 2);
                     await policy.runLoad(async function drawUserEntropy() {
-                        randomBytes(8);
+                        await drawEntropy(8);
                     });
                     const errors = policy.takeRunErrors();
                     scope.assert.equal(errors.length, 1);

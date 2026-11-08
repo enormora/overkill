@@ -62,7 +62,10 @@ export type RecordSessionSnapshot = z.output<typeof snapshotSchema>;
 
 type RecordFixture = { readonly session: RunRecordSession; readonly writes: readonly RecordSessionSnapshot[]; };
 
-export function recordFixtureWithStorageProbe(failedWrites: readonly number[], probe: () => void): RecordFixture {
+export function recordFixtureWithStorageProbe(
+    failedWrites: readonly number[],
+    probe: () => Promise<void> | void
+): RecordFixture {
     const writes: RecordSessionSnapshot[] = [];
     let attempts = 0;
     const session = createRunRecordSession('/project/subdirectory', input, {
@@ -76,7 +79,7 @@ export function recordFixtureWithStorageProbe(failedWrites: readonly number[], p
         node,
         store: {
             async write(filePath, content) {
-                probe();
+                await probe();
                 attempts += 1;
                 if (failedWrites.includes(attempts)) {
                     throw new Error(`Cannot write ${filePath}`);
