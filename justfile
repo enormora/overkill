@@ -67,7 +67,6 @@ test-property-integration: benchmark-html-browser
 
 test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-ordinary-baselines.test.ts
-    node source/integration-tests/run/runner-ordinary-baseline-failures.test.ts
     node source/integration-tests/run/runner-replay-coverage.test.ts
     node source/integration-tests/run/runner-replay-compatibility.test.ts
     node source/integration-tests/run/runner-replay.test.ts

@@ -15,7 +15,29 @@ type NullComparison = { readonly expected: null; };
 const work = createDefaultWorkId(createCaseId('output.test.ts', [], 'output', null));
 const existing: BaselinePayload = { kind: 'text', text: '42' };
 
+function unexpectedCallback(): never {
+    throw new Error('Unexpected adapter callback.');
+}
+
 export const testNode = suite('ordinary baseline adapters', [
+    test('rejects blank adapter IDs before invoking callbacks', function (scope: TestScope) {
+        scope.assert.throws(function () {
+            return defineBaselineAdapter({
+                subtype: 'content-snapshot',
+                comparisonContext: {},
+                adapter: {
+                    id: ' \t',
+                    observe: unexpectedCallback,
+                    propose: unexpectedCallback,
+                    compare: unexpectedCallback
+                },
+                toComparisonValue: unexpectedCallback,
+                encode: unexpectedCallback,
+                decode: unexpectedCallback
+            });
+        }, { type: TypeError, message: 'Baseline adapter ID must not be empty.' });
+        return scope.assert.collect();
+    }),
     test('keeps observation, comparison, and proposal values distinct', async function (scope: TestScope) {
         const adapter = defineBaselineAdapter({
             subtype: 'content-snapshot',

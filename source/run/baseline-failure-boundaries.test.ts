@@ -1,6 +1,5 @@
-import { runIfMain } from '#test-runner';
-import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
-import { defineReporter } from '../../packages/engine/engine.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { defineReporter } from '../packages/engine/engine.entry-point.ts';
 import {
     orchestrator,
     createHistory,
@@ -9,13 +8,13 @@ import {
     RunResolutionError,
     type RunCommand,
     type BaselineRunResult
-} from '../../packages/run/run.entry-point.ts';
+} from '../packages/run/run.entry-point.ts';
 import {
     createOrdinaryBaselineFixture,
     ordinaryBaselineFixtureFile,
     type OrdinaryBaselineFixture
-} from '../../test-support/ordinary-baseline-fixture.ts';
-import { createBaselineCommands } from '../../run/baseline-commands.ts';
+} from '../test-support/ordinary-baseline-fixture.ts';
+import { createBaselineCommands } from './baseline-commands.ts';
 
 function assertBlockedPublication(scope: TestScope, result: BaselineRunResult): void {
     scope.assert.equal(result.result.status, 'failed');
@@ -174,4 +173,3 @@ export const testNode = suite('ordinary baseline failure boundaries', [
         }
     )
 ]);
-await runIfMain(import.meta, testNode);

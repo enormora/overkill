@@ -71,6 +71,9 @@ async function seedStaleRecord(scope: TestScope, fixture: CommandFixture): Promi
 async function assertReadOnlyCleanup(scope: TestScope, fixture: CommandFixture): Promise<void> {
     const original = await fixture.data.entries();
     scope.assert.equal(original.length, 3);
+    const compared = await orchestrator.run(fixture.data.command, { timing: null });
+    scope.assert.equal(compared.status, 'failed');
+    scope.assert.equal(compared.runnerErrors[0]?.subtype, 'artifact');
     await assertCommand(scope, fixture.commands.update(fixture.request), 0, 1);
     await assertCommand(
         scope,
