@@ -1,4 +1,4 @@
-import { runSelectionSchema } from './run-selection-schema.ts';
+import { parseRunSelection } from './run-selection-schema.ts';
 import { collectAdapterResolvedRun, isAdapterPlan } from './adapter-execution.ts';
 import {
     createEmptySelectionResult,
@@ -43,12 +43,16 @@ export type CollectedInvocationPlan = {
     readonly resolved: ResolvedRun;
 };
 
-function collectedInvocationRequest(resolved: ResolvedRun, invocation: CollectedRunInvocation): RunRequest {
-    const parsed = runSelectionSchema.safeParse(invocation.selection);
-    if (!parsed.success) {
-        invalidRequest(parsed.error.message);
+function validatedInvocationSelection(invocation: CollectedRunInvocation): RunRequest['selection'] {
+    try {
+        return parseRunSelection(invocation.selection);
+    } catch (error: unknown) {
+        invalidRequest(error instanceof Error ? error.message : String(error));
     }
-    const selection = intersectSelection(resolved.request.selection, parsed.data);
+}
+
+function collectedInvocationRequest(resolved: ResolvedRun, invocation: CollectedRunInvocation): RunRequest {
+    const selection = intersectSelection(resolved.request.selection, validatedInvocationSelection(invocation));
     return freezeValue({ ...resolved.request, selection });
 }
 

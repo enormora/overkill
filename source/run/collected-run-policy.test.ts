@@ -174,7 +174,7 @@ export const testNode = createSuite({
         }),
         createTestCase({
             ...metadata,
-            title: 'invalid invocation filters reject and release the invocation guard',
+            title: 'invalid invocation selections reject and release the invocation guard',
             async body(scope) {
                 const { collected } = await collectLifecycleRun(collectedRunCommand());
                 await scope.assert.rejects(async function runInvalidFilter() {
@@ -182,6 +182,10 @@ export const testNode = createSuite({
                         selection: { kind: 'filter', filter: { kind: 'equals', field: 'title', value: '' } }
                     });
                 }, { message: /non-empty string/u });
+                const selection = { kind: 'all' as const, assertion: 1 };
+                await scope.assert.rejects(async function runNestedSelection() {
+                    await collected.run({ selection });
+                }, { message: /Unrecognized key/u });
                 const result = await collected.run(firstCase);
                 scope.assert.deepEqual([ result.status, result.summary.planned ], [ 'passed', 1 ]);
                 return scope.assert.collect();
