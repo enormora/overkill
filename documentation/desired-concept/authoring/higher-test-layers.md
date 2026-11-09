@@ -1690,7 +1690,6 @@ counts as one case and one boundary assertion. Replay restores inputs and reruns
 current implementations; captured outcomes are not replay payloads. Checks may
 use `sample.failureKey` when automatic assertion identity is too broad.
 
-
 ## Linearizability Checking Resolution
 
 `@overkill-dev/linearizability` is an optional package above the model layer.
