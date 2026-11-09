@@ -17,7 +17,8 @@ export const testNode = suite('benchmark subpaths', [
         scope.assert.deepEqual(Object.keys(baselines), [
             'baselineIdentityKey',
             'findStaleBaselines',
-            'planBaselineChange'
+            'planBaselineChange',
+            'snapshot'
         ]);
         return scope.assert.collect();
     })

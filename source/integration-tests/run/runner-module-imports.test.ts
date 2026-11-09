@@ -27,6 +27,7 @@ async function commandFor(
                 imports: {
                     testFamily: 'benchmark',
                     files: { include: [ filename ] },
+                    timeouts: { collectionMilliseconds: 30_000 },
                     execution: boundary === 'supervised-process'
                         ? { processModel: 'supervised-process' }
                         : { processModel: 'worker-pool', workerLifecycle: boundary }

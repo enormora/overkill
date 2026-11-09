@@ -40,6 +40,7 @@ function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): Worke
     return {
         capture: 'buffered',
         replay: null,
+        snapshots: null,
         seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,

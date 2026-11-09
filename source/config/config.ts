@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { z } from 'zod/v4';
 import { parse } from '@schema-hub/zod-error-formatter';
-import { ordinaryBaselinePolicySchema } from './baseline-policy.ts';
+import { ordinaryBaselinePolicySchema, resolveStrictBaselines } from './baseline-policy.ts';
 import {
     attachmentLimitsSchema,
     type ProjectAttachmentLimits as ParsedProjectAttachmentLimits,
@@ -413,7 +413,7 @@ function normalizeMicrotestProfile(
 
     return {
         ...policy,
-        baselines: ordinaryBaselinePolicySchema.parse(profile.baselines ?? {}),
+        baselines: resolveStrictBaselines(profile.baselines ?? {}),
         coverage: normalizeCoveragePolicy(profile.coverage, configPath),
         execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeProfileFiles(profile.files),
@@ -487,7 +487,7 @@ function normalizePropertyProfile(profile: ParsedPropertyProfileConfig): Propert
         ...policy,
         execution: normalizeMicrotestExecution(profile.execution),
         files: normalizeRequiredProfileFiles(profile.files),
-        baselines: ordinaryBaselinePolicySchema.parse(profile.baselines ?? {}),
+        baselines: resolveStrictBaselines(profile.baselines ?? {}),
         corpus: profile.corpus,
         property: profile.property,
         testFamily: 'property'

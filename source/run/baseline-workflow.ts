@@ -1,7 +1,8 @@
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
-import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
-import type { OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
+import type { RunResult, RunnerError } from '../engine/run-result.ts';
+import type { BaselineWorkflowInput } from './baseline-types.ts';
+import { snapshotEvidence } from './snapshot-evidence.ts';
 import {
     baselineRunnerError,
     withBaselineChecks,
@@ -17,14 +18,7 @@ import {
 } from './baseline-record.ts';
 import { evaluateBaselineAdapter, type OrdinaryAdapterEvaluation } from './baseline-evaluation.ts';
 import { belongsToBaselineScope, reconcileBaselineInventory } from './baseline-inventory.ts';
-import type { RunRequest } from './run-types.ts';
 
-type WorkflowInput = {
-    readonly policy: OrdinaryBaselinePolicy;
-    readonly projectRoot: string;
-    readonly request: RunRequest;
-    readonly maxBytes: number;
-};
 type CaseEvaluation = { readonly errors: readonly RunnerError[]; readonly event: BaselineCaseEnd; };
 type EvaluatedBaseline = Extract<OrdinaryAdapterEvaluation, { readonly kind: 'evaluated'; }>;
 type EvaluationState = {
@@ -42,7 +36,7 @@ export type OrdinaryBaselineWorkflow = {
     readonly evaluate: (event: BaselineCaseEnd) => Promise<CaseEvaluation>;
 };
 function createEvaluationState(
-    input: WorkflowInput,
+    input: BaselineWorkflowInput,
     existing: ReadonlyMap<string, StoredOrdinaryBaseline>
 ): EvaluationState {
     const changes: OrdinaryBaselineChange[] = [];
@@ -59,22 +53,49 @@ function createEvaluationState(
         }
         return evaluated.checks;
     }
+    async function recordSnapshots(event: BaselineCaseEnd): Promise<void> {
+        const evidence = await snapshotEvidence({
+            artifacts: event.artifacts,
+            profile: input.request.profile,
+            work: event.workId ?? createDefaultWorkId(event.case),
+            mode: input.request.baselineUpdateMode,
+            existing,
+            projectRoot: input.projectRoot
+        });
+        participating.push(...evidence.identities);
+        changes.push(...evidence.changes);
+    }
     async function evaluateAdapters(event: BaselineCaseEnd): Promise<CaseEvaluation> {
         const checks: EvaluatedBaseline['checks'][number][] = [];
         const errors: RunnerError[] = [];
-        for (const adapter of input.policy.adapters) {
+        async function collectSnapshots(): Promise<void> {
+            if (!input.policy.snapshots) {
+                return;
+            }
             try {
-                const evaluated = await evaluateBaselineAdapter({
-                    adapter,
-                    event,
-                    profile: input.request.profile,
-                    mode: input.request.baselineUpdateMode,
-                    existing
-                });
-                checks.push(...record(evaluated));
+                await recordSnapshots(event);
             } catch (error: unknown) {
                 errors.push(baselineRunnerError(error, event));
             }
+        }
+        async function collectAdapter(adapter: BaselineWorkflowInput['policy']['adapters'][number]): Promise<void> {
+            try {
+                checks.push(...record(
+                    await evaluateBaselineAdapter({
+                        adapter,
+                        event,
+                        profile: input.request.profile,
+                        mode: input.request.baselineUpdateMode,
+                        existing
+                    })
+                ));
+            } catch (error: unknown) {
+                errors.push(baselineRunnerError(error, event));
+            }
+        }
+        await collectSnapshots();
+        for (const adapter of input.policy.adapters) {
+            await collectAdapter(adapter);
         }
         const evaluated = withBaselineChecks(event, checks);
         events.set(workIdentityKey(event.workId ?? createDefaultWorkId(event.case)), evaluated);
@@ -97,7 +118,7 @@ function createEvaluationState(
         }
     };
 }
-export async function createOrdinaryBaselineWorkflow(input: WorkflowInput): Promise<OrdinaryBaselineWorkflow> {
+export async function createOrdinaryBaselineWorkflow(input: BaselineWorkflowInput): Promise<OrdinaryBaselineWorkflow> {
     const store = await createOrdinaryBaselineStore({
         directory: input.policy.directory,
         projectRoot: input.projectRoot,

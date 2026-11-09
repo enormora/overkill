@@ -25,3 +25,4 @@ export type {
     BaselineObservation
 } from '../baselines/baselines.entry-point.ts';
 export { baselineIdentityKey, findStaleBaselines, planBaselineChange } from '../baselines/baselines.entry-point.ts';
+export { snapshot } from '../baselines/baselines.entry-point.ts';

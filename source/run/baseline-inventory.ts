@@ -3,6 +3,7 @@ import type { RunResult } from '../engine/run-result.ts';
 import { baselineIdentityKey, findStaleBaselines } from '../baselines/baseline-planning.ts';
 import type { BaselineIdentity } from '../baselines/baseline-model.ts';
 import type { OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
+import { isSupportedSnapshotRecord } from './snapshot-identity.ts';
 import { baselineRunnerError, successfulBaselineRun } from './baseline-outcomes.ts';
 import {
     ordinaryBaselineIdentity,
@@ -18,6 +19,9 @@ export function belongsToBaselineScope(
 ): boolean {
     if (baseline.profile.normalize('NFC') !== profile.normalize('NFC')) {
         return false;
+    }
+    if (policy.snapshots && isSupportedSnapshotRecord(baseline)) {
+        return true;
     }
     const identity = ordinaryBaselineIdentity(baseline);
     return policy.adapters.some(function configuredScope(adapter) {

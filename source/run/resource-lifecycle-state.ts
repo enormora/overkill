@@ -2,10 +2,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { runWithAttachmentContext } from '../packages/resources/attachment-context.entry-point.ts';
 import { createTranscriptAttemptScope } from '../attachments/resource-failure-context.ts';
 import { runWithTranscriptScope } from '../transcript/transcript-store.ts';
-import type { RunnerError } from '../engine/run-result.ts';
 import { workIdentityKey, type WorkId, type AttemptId } from '../engine/identity.ts';
 import { observeResourceOwnerAcquisition, releaseResourceOwner } from '../engine/resource-owner-observation.ts';
-import type { TestPlanCase } from '../engine/test-plan.ts';
+import type { RunnerError, TestPlanCase } from './run-engine-primitives.ts';
+import { runSnapshotAttempt } from './snapshot-attempt.ts';
 import type { AttachmentExecution } from './attachment-execution.ts';
 import type {
     ComposedResourceSession,
@@ -93,7 +93,9 @@ export async function runWithLifecycleCase<Value>(
     run: () => Promise<Value>
 ): Promise<Value> {
     return await runningCase.run({ testCase, attempt }, async function runScopedCase() {
-        return await runWithTranscriptScope(transcriptAttemptScope(testCase, attempt), run);
+        return await runSnapshotAttempt(testCase.workId, async function executeSnapshotAttempt() {
+            return await runWithTranscriptScope(transcriptAttemptScope(testCase, attempt), run);
+        });
     });
 }
 

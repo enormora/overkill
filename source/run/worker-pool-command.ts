@@ -1,4 +1,5 @@
 import type { WorkId } from '../engine/identity.ts';
+import { currentSnapshotRun } from './execution-session-context.ts';
 import { currentReplayWire } from './replay-wire.ts';
 import { runCollectionRootFromResolvedPlan } from './collected-run-plan.ts';
 import type {
@@ -53,6 +54,7 @@ export function createRunCommand(runtime: WorkerPoolRunRuntime, unit: WorkUnit):
 
     return {
         capture: execution.capture,
+        snapshots: currentSnapshotRun(),
         replay: currentReplayWire(),
         benchmarkNormalization: runtime.resolvedRun.facts.benchmarkNormalization,
         benchmarkGarbageCollection: execution.benchmarkGarbageCollection,

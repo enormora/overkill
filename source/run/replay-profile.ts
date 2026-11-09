@@ -80,7 +80,7 @@ export function restoreReplayProfile(
     if (profile.testFamily !== 'benchmark') {
         const policy = current !== undefined && isBuiltinTestProfile(current)
             ? current.baselines
-            : { directory: 'test-baselines', adapters: [], stale: 'fail' as const };
+            : { directory: 'test-baselines', adapters: [], snapshots: false, stale: 'fail' as const };
         return { ...profile, reporters, baselines: restoreRecordedBaselines(profile.baselines, policy) };
     }
     const adapters = profile.baselines.adapters.map(function bindAdapter(saved) {

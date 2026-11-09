@@ -18,6 +18,7 @@ async function workflowFixture(
     const workflow = await createOrdinaryBaselineWorkflow({
         policy: {
             directory: data.directory,
+            snapshots: false,
             stale: 'fail',
             adapters: [ {
                 ...data.adapter,

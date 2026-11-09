@@ -75,7 +75,12 @@ export const testNode = suite('recorded ordinary baseline policy', [
         const profile = configuredProfile(adapter({}));
         const { baselines: _baselines, reporters: _reporters, ...legacy } = profile;
         const restored = restoreReplayProfile(legacy, profile);
-        scope.assert.deepEqual(restored.baselines, { adapters: [], directory: 'test-baselines', stale: 'fail' });
+        scope.assert.deepEqual(restored.baselines, {
+            adapters: [],
+            directory: 'test-baselines',
+            snapshots: false,
+            stale: 'fail'
+        });
         return scope.assert.collect();
     })
 ]);

@@ -67,6 +67,7 @@ function workerPoolCommand(): WorkerPoolCommand {
     return {
         capture: 'buffered',
         replay: null,
+        snapshots: null,
         seed: '0',
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,

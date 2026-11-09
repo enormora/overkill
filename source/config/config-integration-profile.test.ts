@@ -26,6 +26,28 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'rejects snapshot enablement in strict profiles',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                for (const testFamily of [ 'microtest', 'property' ] as const) {
+                    await scope.assert.rejects(async function strictSnapshotProfile() {
+                        await loadConfigValue({
+                            profiles: {
+                                strict: {
+                                    testFamily,
+                                    files: { include: [ 'strict.test.ts' ] },
+                                    baselines: { snapshots: true }
+                                }
+                            }
+                        });
+                    }, { message: 'Snapshots require an integration profile.' });
+                }
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'loadConfig() normalizes integration profile defaults',
             annotations: {},
@@ -45,7 +67,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(profile);
                 scope.require.defined(microtestProfile);
                 scope.assert.deepEqual(profile, {
-                    baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
+                    baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                     attachments: defaultAttachmentLimits,
                     retries: null,
                     execution: {

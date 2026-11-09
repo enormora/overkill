@@ -176,12 +176,22 @@ function hasBenchmarkAttachments(testCase: CollectedRunCase | LocalCase): boolea
     return benchmarkAttachments(testCase.benchmark);
 }
 
+function runSupportsAttachments(resolved: ResolvedRun): boolean {
+    const family = resolved.facts.execution.testFamily;
+    return family !== 'microtest' && family !== 'property' && resolved.facts.cases.length > 0;
+}
+
+function snapshotsEnabled(resolved: ResolvedRun): boolean {
+    const profile = resolved.config.profiles[resolved.request.profile];
+    return profile?.testFamily === 'integration' && profile.baselines.snapshots;
+}
+
 export function runHasAttachmentScopes(resolved: ResolvedRun): boolean {
-    if (
-        resolved.facts.execution.testFamily === 'microtest' || resolved.facts.execution.testFamily === 'property' ||
-        resolved.facts.cases.length === 0
-    ) {
+    if (!runSupportsAttachments(resolved)) {
         return false;
+    }
+    if (snapshotsEnabled(resolved)) {
+        return true;
     }
     const selected = new Set(resolved.facts.cases.map(function selectedWork(entry) {
         return workIdentityKey(entry.workId);

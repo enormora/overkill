@@ -3214,7 +3214,6 @@ Canonical: [Differential Testing Resolution](../authoring/higher-test-layers.md#
 - `DifferentialObservations<Input, Output>`: readonly tuple of at least two observations
 - `isTestControlError(error: unknown): boolean`: engine-owned control-error classifier
 
-
 ## Linearizability Checking
 
 `@overkill-dev/linearizability` exports `checkLinearizability` and the
@@ -3226,3 +3225,17 @@ and abort signal. Results distinguish linearizable, not-linearizable, and
 inconclusive outcomes.
 
 Canonical: [Linearizability Checking Resolution](../authoring/higher-test-layers.md#linearizability-checking-resolution).
+
+## Content Snapshot Assertions
+
+```ts
+type SnapshotAssertions = typeof import('@overkill-dev/baselines').snapshot;
+```
+
+The same references are exported from `@overkill-dev/test/baselines`.
+`text` accepts `(name: string, actual: string)`, `value` accepts JSON data,
+and `bytes` accepts `(name: string, actual: Uint8Array)`. Use them through
+`await scope.assert(reference, name, actual)` in an integration profile with
+`baselines.snapshots: true`. Each call is one assertion boundary.
+
+Canonical: [Built-In Content Snapshot Authoring](../authoring/baselines-and-snapshots.md#built-in-content-snapshot-authoring).

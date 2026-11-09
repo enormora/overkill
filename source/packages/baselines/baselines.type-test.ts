@@ -1,6 +1,8 @@
 import { expect, test } from 'tstyche';
-import type { BaselineEntry as StandardEntry } from '../test/baselines.entry-point.ts';
+import type { snapshot as standardSnapshot, BaselineEntry as StandardEntry } from '../test/baselines.entry-point.ts';
+import type { AssertReferenceArguments } from '../engine/assertion-protocol.entry-point.ts';
 import type {
+    snapshot,
     BaselineAdapter,
     BaselineJson,
     BaselineChange,
@@ -11,6 +13,13 @@ import type {
     PerformanceBaselineAdapter,
     StoredPerformanceBaseline
 } from './baselines.entry-point.ts';
+
+test('exposes typed snapshot references through both facades', function () {
+    expect<typeof standardSnapshot>().type.toBe<typeof snapshot>();
+    expect<AssertReferenceArguments<typeof snapshot.text>>().type.toBe<readonly [string, string]>();
+    expect<AssertReferenceArguments<typeof snapshot.bytes>>().type.toBe<readonly [string, Uint8Array]>();
+    expect<readonly [string, Date]>().type.not.toBeAssignableTo<AssertReferenceArguments<typeof snapshot.value>>();
+});
 
 test('preserves performance defaults and supports subtype records', function () {
     expect<BaselineEntry['baseline']>().type.toBe<StoredPerformanceBaseline>();
