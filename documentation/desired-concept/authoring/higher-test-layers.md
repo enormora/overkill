@@ -1689,3 +1689,26 @@ confirmation, corpora, witnesses, cleanup, and supervision. A differential prope
 counts as one case and one boundary assertion. Replay restores inputs and reruns
 current implementations; captured outcomes are not replay payloads. Checks may
 use `sample.failureKey` when automatic assertion identity is too broad.
+
+## Linearizability Checking Resolution
+
+`@overkill-dev/linearizability` is an optional package above the model layer.
+`checkLinearizability({ history, model, maxWork, signal })` checks an ordered
+invocation/response event log. Unique invocation IDs pair responses; missing
+responses are pending. Event order establishes real-time precedence.
+
+The observation-driven pure model reuses enabled/disabled `ModelTransition`
+results and adds explicit alternative next states. Every completed operation
+must fit a sequential explanation. Pending operations may be omitted or included
+with model-approved effects. Callbacks preserve input and branch state graphs.
+
+The asynchronous bounded search returns linearizable, not-linearizable only on
+exhaustive rejection, or inconclusive on work exhaustion. It charges candidate
+inspection, transition calls, and successor exploration separately, yields every
+256 units, propagates cancellation and model errors, and rejects malformed input.
+Diagnostic prefixes are not minimal counterexamples. See the package readme for
+the exact public contract and work-accounting limits.
+
+The subsequent `linearizability(...)` helper owns concurrent operation execution
+and recording. Property continues to own shrinking, witnesses, corpora, reporting,
+and supervision; this checker adds no parallel infrastructure or test family.

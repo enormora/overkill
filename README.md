@@ -28,3 +28,13 @@ property shrinking, witnesses, and corpora.
 
 See the [package documentation](source/packages/differential/readme.md) for
 installation, authoring, and outcome semantics.
+
+## Linearizability checking
+
+Install `@overkill-dev/linearizability` to check recorded concurrent histories
+against a pure sequential model. `checkLinearizability(...)` supports pending
+operations, an explicit work budget, and cancellation. Budget exhaustion returns
+inconclusive rather than a consistency verdict.
+
+See the [package documentation](source/packages/linearizability/readme.md) for
+event logs, model transitions, and result semantics.

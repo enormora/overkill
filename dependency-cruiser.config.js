@@ -36,6 +36,8 @@ const testRootAuthoringFiles = [
     '^source/packages/test/test\\.entry-point\\.ts$'
 ];
 const testRootLazyModuleBoundaries = [
+    '^source/linearizability/',
+    '^source/packages/linearizability/',
     '^source/differential/',
     '^source/packages/differential/',
     '^source/model/',
@@ -65,6 +67,15 @@ const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ..
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
     forbidden: [
+        {
+            name: 'linearizability-stays-optional',
+            severity: 'error',
+            from: {
+                path: '^source/(engine|model|property|run|packages/(engine|model|property|run|test))/',
+                pathNot: testFiles
+            },
+            to: { path: '^source/(linearizability|packages/linearizability)/' }
+        },
         {
             name: 'differential-stays-optional',
             severity: 'error',
