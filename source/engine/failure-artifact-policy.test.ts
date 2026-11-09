@@ -71,6 +71,20 @@ export const testNode = createSuite({
     children: [
         createTestCase({
             ...metadata,
+            title: 'legacy reporter contexts retain default failure rendering',
+            async body(scope: TestScope) {
+                const result = await failedComparison(defaultFailureArtifactPolicy, null);
+                const failure = firstAssertionFailure(result);
+                const context = createReportingContext({ projectRoot: null });
+                const legacy = { relativizeLocationPath: context.relativizeLocationPath };
+                const rendered = formatFailure(failure, legacy);
+                scope.assert.deepEqual(rendered, formatFailure(failure, context));
+                scope.assert.includes(rendered.join('\n'), text);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
             title: 'profile limits default independently and reject unbounded values',
             body(scope: TestScope) {
                 const profile = microtestProfileSchema.parse({

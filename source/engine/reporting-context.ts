@@ -12,7 +12,7 @@ import { resolvedFailureArtifactPolicySchema, type FailureArtifactPolicy } from 
 import { currentFailureArtifactPolicy } from './execution-observation.ts';
 
 export type ReportingContext = {
-    readonly failureArtifacts: FailureArtifactPolicy;
+    readonly failureArtifacts?: FailureArtifactPolicy;
     readonly relativizeLocationPath: (location: KnownSourceLocation) => string;
 };
 

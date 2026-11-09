@@ -325,7 +325,11 @@ function renderFailure(failure: TestFailure, context: ReportingContext): readonl
 }
 
 export function formatFailure(failure: TestFailure, context: ReportingContext): readonly string[] {
-    return withFailureArtifactContext(context.failureArtifacts, function renderBoundedFailure() {
-        return renderFailure(failure, context);
-    }, null);
+    return withFailureArtifactContext(
+        context.failureArtifacts ?? currentFailureArtifactPolicy(),
+        function renderBoundedFailure() {
+            return renderFailure(failure, context);
+        },
+        null
+    );
 }

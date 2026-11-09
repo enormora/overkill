@@ -293,6 +293,9 @@ and human rendering limits. Omission uses `defaultFailureArtifactPolicy`.
 Concurrent and nested executions keep their serialization budgets isolated;
 diagnostic policy does not change collected test identity.
 
+Reporter contexts from older runners may omit `failureArtifacts`. Rendering then
+uses the active execution policy or its defaults.
+
 `RunArtifact` includes `WorkerCrashArtifact` and `ProcessExhaustionArtifact`.
 They preserve active `WorkId` and `AttemptId` evidence, unavailable metadata as
 `null`, and capture provenance. Case-owned artifacts accompany `test-end`;

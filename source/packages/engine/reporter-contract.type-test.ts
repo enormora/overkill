@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'tstyche';
-import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import {
     defineOutputRenderer,
     defineReporter,
@@ -9,6 +8,7 @@ import {
     type DefinedOutputRenderer,
     type DefinedReporter,
     type FinalResultReporter,
+    type FailureArtifactPolicy,
     type NonEmptyReadonlyArray,
     type OutputLineIntent,
     type OutputRenderer,
@@ -115,6 +115,10 @@ describe('Reporter contract', function () {
         >();
     });
 
+    test('accepts reporter contexts without diagnostic limits', function () {
+        expect<ReportingContext['failureArtifacts']>().type.toBe<FailureArtifactPolicy | undefined>();
+    });
+
     test('exposes sink declarations for every supported sink kind', function () {
         expect<SinkDeclaration['kind']>().type.toBe<ExpectedSinkKind>();
     });
@@ -128,7 +132,6 @@ describe('Reporter contract', function () {
 
     test('exposes extension branding helpers without replacing structural contracts', function () {
         const context: ReportingContext = {
-            failureArtifacts: defaultFailureArtifactPolicy,
             relativizeLocationPath(location) {
                 return location.file;
             }
