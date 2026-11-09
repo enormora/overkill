@@ -344,3 +344,5 @@ export type { OrdinaryBaselineReport } from '../../run/baseline-report.ts';
 export type { StoredOrdinaryBaseline } from '../../run/baseline-record.ts';
 
 export { parseAdapterFacts } from '../../config/adapter-facts.ts';
+
+export { packageVersion, type PackageVersion } from '../../package-version.ts';

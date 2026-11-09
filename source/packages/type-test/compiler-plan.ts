@@ -9,11 +9,12 @@ import {
 } from '../engine/engine.entry-point.ts';
 import {
     parseAdapterFacts,
+    packageVersion,
+    type PackageVersion,
     type AdapterPreparation,
     type CollectedAdapterRun,
     type PreparedAdapterRun
 } from '../run/run.entry-point.ts';
-import { packageVersion, type PackageVersion } from '../../package-version.ts';
 import { loadProject, verifyFrozenProject, type FrozenProject } from './frozen-project.ts';
 import { collectProject } from './native-execution.ts';
 import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';

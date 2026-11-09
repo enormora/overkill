@@ -895,3 +895,5 @@ collects once, exposes immutable JSON through `RunFacts.adapter`, and retains
 the collection for lowering and execution. Reusable invocations collect their
 selected subset through the original preparation. Adapter result artifacts
 also carry lossless JSON facts; assertion diagnostic budgets do not apply.
+
+Adapters can resolve package identity with `packageVersion(moduleUrl)`.
