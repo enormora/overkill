@@ -1,12 +1,14 @@
 import { execFile } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { uneval } from 'devalue';
 import { createTestCase } from '@overkill-dev/engine';
 import { runIfMain } from '#test-runner';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
 
-async function executeConsumer(script: string): Promise<string> {
+async function executeConsumer(file: string): Promise<string> {
     return new Promise(function executeSnapshotConsumer(resolve, reject) {
-        execFile(process.execPath, [ '--input-type=module', '--eval', script ], {
+        execFile(process.execPath, [ file ], {
             cwd: import.meta.dirname,
             timeout: 180_000
         }, function completed(error, stdout, stderr) {
@@ -60,7 +62,13 @@ export const testNode = createTestCase({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'compares content snapshots across packaged execution boundaries',
     async body(scope) {
-        const output = await executeConsumer(script);
+        const directory = await mkdtemp(join(import.meta.dirname, 'snapshot-script-'));
+        scope.cleanup(async function removeConsumerScript() {
+            await rm(directory, { recursive: true, force: true });
+        });
+        const file = join(directory, 'consumer.mjs');
+        await writeFile(file, script);
+        const output = await executeConsumer(file);
         scope.assert.equal(output.trim(), 'snapshot package passed');
         return scope.assert.collect();
     }
