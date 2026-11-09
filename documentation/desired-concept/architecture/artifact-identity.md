@@ -92,9 +92,11 @@ type OrdinaryWorkId = {
     readonly workload: WorkloadId | null;
 };
 
-type WorkId = OrdinaryWorkId | (OrdinaryWorkId & {
-    readonly compiler: { readonly name: 'typescript'; readonly version: string; };
-});
+type WorkId =
+    | OrdinaryWorkId
+    | (OrdinaryWorkId & {
+        readonly compiler: { readonly name: 'typescript'; readonly version: string; };
+    });
 
 type WorkUnitId = {
     readonly mode: 'file' | 'case' | 'group';
