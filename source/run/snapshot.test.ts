@@ -74,6 +74,21 @@ export const testNode = suite('content snapshot boundaries', [
         }, { message: 'Snapshots require an integration profile with baselines.snapshots enabled.' });
         return scope.assert.collect();
     }),
+    test('rejects invalid payload types and JSON byte overflow', function (scope) {
+        for (
+            const [ input, maxBytes, message ] of [
+                [ { kind: 'text', actual: 42 }, 1024, 'Text snapshots require string values.' ],
+                [ { kind: 'bytes', actual: [] }, 1024, 'Binary snapshots require Uint8Array values.' ],
+                [ { kind: 'value', actual: 'oversized' }, 2, 'Snapshot exceeds its byte limit.' ],
+                [ { kind: 'value', actual: { a: 1 } }, 8, 'Snapshot exceeds its byte limit.' ]
+            ] as const
+        ) {
+            scope.assert.throws(function invalidSnapshot() {
+                Reflect.apply(captureSnapshot, null, [ { ...input, name: 'invalid' }, maxBytes ]);
+            }, { message });
+        }
+        return scope.assert.collect();
+    }),
     test('rejects non-finite JSON values without invoking accessors', function (scope) {
         scope.assert.throws(function nonFiniteSnapshot() {
             captureSnapshot({ kind: 'value', name: 'number', actual: Number.NaN }, 1024);
