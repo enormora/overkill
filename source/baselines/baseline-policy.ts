@@ -8,5 +8,6 @@ export type BenchmarkBaselinePolicy = {
 export type OrdinaryBaselinePolicy = {
     readonly adapters: readonly OrdinaryBaselineAdapter[];
     readonly directory: string;
+    readonly snapshots: boolean;
     readonly stale: 'fail' | 'warn';
 };

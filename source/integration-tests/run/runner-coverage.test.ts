@@ -40,7 +40,7 @@ function coverageConfig(
         outputRenderer: createPlainOutputRenderer(),
         profiles: {
             microtest: {
-                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
+                baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                 coverage,
                 execution: { maxConcurrency: 5, processModel, scheduling },
                 files: null,

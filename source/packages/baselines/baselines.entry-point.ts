@@ -35,3 +35,4 @@ export type {
 export { baselineIdentityKey, findStaleBaselines, planBaselineChange } from '../../baselines/baseline-planning.ts';
 
 export type { BenchmarkBaselinePolicy } from '../../baselines/baseline-policy.ts';
+export { snapshot } from '../../baselines/snapshot.ts';

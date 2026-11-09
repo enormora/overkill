@@ -211,6 +211,29 @@ Generic snapshots should live above the core, primarily in integration-oriented 
 
 ## Shared Package Contract
 
+### Built-In Content Snapshot Authoring
+
+Integration profiles explicitly enable `baselines.snapshots`, disabled by default.
+The baselines facades export asynchronous assertion references `snapshot.text`,
+`snapshot.value`, and `snapshot.bytes`, used as
+`await scope.assert(snapshot.text, 'name', actual)` followed by normal assertion
+collection. Each call contributes one assertion boundary and preserves the caller
+location. Names are normalized to NFC and unique across formats within an attempt.
+
+Text and bytes compare exactly. Values accept finite acyclic JSON data with plain
+objects and dense arrays. Object key order is insignificant; negative zero becomes
+zero. Unsupported inputs and size-limit failures never produce truncated baselines.
+
+The runner supplies immutable expectations and collects proposals through managed
+case attachments. Only accepted final attempts contribute to publication. Baselines
+use the existing ordinary record envelope with reserved adapter
+`overkill.content-snapshot` and comparison context containing name, format, and codec
+version. Renamed or removed names require deliberate stale cleanup through `apply`.
+Snapshot authoring requires enabled integration execution; strict microtest/property
+profiles and direct engine execution reject it. Custom adapters retain their contract.
+
+### Generic Operations
+
 The baselines package exposes generic observations, comparisons, adapters, entries,
 changes, and write outcomes. Adapters may return values or promises and retain
 separate observation, comparison, and proposal values. Payloads need not be JSON.

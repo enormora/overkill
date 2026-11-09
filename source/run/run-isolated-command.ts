@@ -1,5 +1,5 @@
 import { propertyReplayContext } from './run-support.ts';
-import { currentExecutionSession } from './execution-session-context.ts';
+import { currentExecutionSession, currentSnapshotRun } from './execution-session-context.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
 import { createLocalTestPlan, type LocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
 import { resolveProcessUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
@@ -22,6 +22,7 @@ const defaultRunSeed = 0n;
 type IsolatedCommandEngine = Exclude<RunCommand['engine'], { readonly kind: 'instance'; }>;
 
 type SupervisedCommandBase = {
+    readonly snapshots: SupervisedRunCommand['snapshots'];
     readonly benchmarkNormalization: SupervisedRunCommand['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: SupervisedRunCommand['benchmarkGarbageCollection'];
     readonly replay: SupervisedRunCommand['replay'];
@@ -126,6 +127,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
         capabilityRestrictions: supervisedCapabilityRestrictions(input.profile, input.command),
         capture: input.capture,
+        snapshots: currentSnapshotRun(),
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,
         cwd: input.command.cwd,
         definitionLocationCapture: input.definitionLocationCapture,
@@ -209,6 +211,7 @@ export function createWorkerPoolCommand(
 
     return {
         capture: input.command.request.capture,
+        snapshots: currentSnapshotRun(),
         seed: (input.command.request.seed.value ?? defaultRunSeed).toString(),
         benchmarkNormalization: input.benchmarkNormalization,
         benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,

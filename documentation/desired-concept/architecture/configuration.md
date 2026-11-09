@@ -129,6 +129,11 @@ export const config = defineConfig({
 });
 ```
 
+Integration profiles can explicitly set `baselines.snapshots: true` to enable
+built-in content snapshot assertions. It defaults to `false`; strict microtest
+and property profiles reject enablement. Existing custom baseline adapters keep
+their registration and execution contract.
+
 `retries` is integration-only. `maxAttempts` must be a positive safe integer
 and counts the initial attempt. Omitted retry policy normalizes to `null`.
 Artifact retention defaults to `first-failure-and-final`; alternatives are

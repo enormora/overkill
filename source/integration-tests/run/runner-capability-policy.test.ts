@@ -94,7 +94,7 @@ function createRunConfig(
         }),
         profiles: {
             microtest: {
-                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
+                baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                 coverage: defaultCoveragePolicy,
                 execution: { maxConcurrency: 5, processModel, scheduling },
                 files: null,
@@ -137,7 +137,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): NormalizedConfig
         }),
         profiles: {
             integration: {
-                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' },
+                baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                 attachments: defaultAttachmentLimits,
                 retries: null,
                 execution: {

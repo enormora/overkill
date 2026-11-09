@@ -5,6 +5,7 @@ import { canonicalIdentityJson } from '../canonical-identity.ts';
 
 export const recordedBaselinePolicySchema = z
     .strictObject({
+        snapshots: z.boolean().default(false),
         directory: z.string(),
         stale: z.enum([ 'fail', 'warn' ]),
         adapters: z.array(z.strictObject({
@@ -13,7 +14,7 @@ export const recordedBaselinePolicySchema = z
             comparisonContext: z.record(z.string(), z.string())
         }))
     })
-    .default({ directory: 'test-baselines', stale: 'fail', adapters: [] });
+    .default({ directory: 'test-baselines', snapshots: false, stale: 'fail', adapters: [] });
 type RecordedBaselinePolicy = ReadonlyDeep<z.infer<typeof recordedBaselinePolicySchema>>;
 export function restoreRecordedBaselines(
     saved: RecordedBaselinePolicy,

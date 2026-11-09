@@ -66,6 +66,7 @@ test-property-integration: benchmark-html-browser
     node source/integration-tests/run/runner-property-measurements.test.ts
 
 test-runner-integration: test-mutation-integration
+    node source/integration-tests/run/runner-content-snapshots.test.ts
     node source/integration-tests/run/runner-ordinary-baselines.test.ts
     node source/integration-tests/run/runner-replay-coverage.test.ts
     node source/integration-tests/run/runner-replay-compatibility.test.ts
@@ -131,6 +132,7 @@ test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-package-smoke: (_pack-smoke-packages package-smoke-packages)
+    node target/build/source/integration-tests/package-smoke/content-snapshots.test.js
     node target/build/source/integration-tests/package-smoke/engine-direct-execution.test.js
     node target/build/source/integration-tests/package-smoke/run-lifecycle.test.js
     node target/build/source/integration-tests/package-smoke/benchmark-html.test.js

@@ -32,7 +32,7 @@ export const testNode = suite('frozen microtest policy', [
             {
                 ...policy.profile,
                 reporters: null,
-                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' }
+                baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
             },
             policy.files,
             { source: { kind: 'frozen-policy', policy }, normalization: null }
@@ -109,7 +109,7 @@ export const testNode = suite('frozen microtest policy', [
             {
                 ...policy.profile,
                 reporters: null,
-                baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' }
+                baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
             },
             policy.files,
             { source: { kind: 'frozen-policy', policy }, normalization: null }

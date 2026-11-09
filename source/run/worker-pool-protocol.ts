@@ -2,7 +2,6 @@ import {
     MessageChannel as NodeMessageChannel,
     type MessagePort as NodeMessagePort
 } from 'node:worker_threads';
-import type { RunTimingSpan } from '../engine/run-timings.ts';
 import type {
     BenchmarkProfileConfig,
     HostProcess,
@@ -11,7 +10,15 @@ import type {
     ProcessBudgets,
     Scheduling
 } from '../config/types.ts';
-import type { AttemptId, ReporterEvent, WorkId, RunnerError, RunResult } from './run-engine-primitives.ts';
+import type {
+    AttemptId,
+    ReporterEvent,
+    WorkId,
+    RunnerError,
+    RunResult,
+    RunTimingSpan
+} from '../packages/engine/engine.entry-point.ts';
+import type { SnapshotRun } from './snapshot-wire.ts';
 import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
@@ -34,6 +41,7 @@ import type {
 type RunEngineSelection = RunCommand['engine'];
 
 export type WorkerPoolCommand = {
+    readonly snapshots: SnapshotRun | null;
     readonly capture: RunCommand['request']['capture'];
     readonly replay: ReplayWire | null;
     readonly seed: string;

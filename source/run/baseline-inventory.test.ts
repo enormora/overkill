@@ -4,7 +4,7 @@ import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import type { OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
 import { belongsToBaselineScope, reconcileBaselineInventory } from './baseline-inventory.ts';
 
-const policy: OrdinaryBaselinePolicy = { adapters: [], directory: 'test-baselines', stale: 'fail' };
+const policy: OrdinaryBaselinePolicy = { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' };
 const inventory = {
     policy,
     request: defaultRunRequest({ profile: 'unit' }),
@@ -13,6 +13,25 @@ const inventory = {
     participating: []
 };
 export const testNode = suite('ordinary baseline inventories', [
+    test('preserves incompatible snapshot codecs and foreign contexts', function (scope) {
+        const snapshots = { ...policy, snapshots: true };
+        const record = {
+            ...storedBaseline,
+            adapter: 'overkill.content-snapshot',
+            comparisonContext: { codec: '1', name: 'response', format: 'text' }
+        };
+        scope.assert.true(belongsToBaselineScope(snapshots, record.profile, record));
+        scope.assert.false(belongsToBaselineScope(snapshots, record.profile, {
+            ...record,
+            comparisonContext: { ...record.comparisonContext, codec: '2' }
+        }));
+        scope.assert.false(belongsToBaselineScope(snapshots, record.profile, {
+            ...record,
+            comparisonContext: { ...record.comparisonContext, domain: 'other' }
+        }));
+        scope.assert.false(belongsToBaselineScope(policy, record.profile, record));
+        return scope.assert.collect();
+    }),
     test('rejects unobserved stale expectations in normal runs', function (scope: TestScope) {
         const completed = reconcileBaselineInventory(inventory);
         scope.assert.equal(completed.result.status, 'failed');
