@@ -169,6 +169,9 @@ export const configuration = {
                 adapterRun: { javaScript: 'run/adapter-run.js' },
                 attachmentConnection: { javaScript: 'run/attachment-connection.js' },
                 attachmentRun: { javaScript: 'run/attachment-run.js' },
+                baselineCommands: moduleRoot('run/baseline-commands'),
+                baselineOperations: { javaScript: 'run/baseline-operations.js' },
+                baselinePreparation: { javaScript: 'run/baseline-preparation.js' },
                 benchmarkCommands: moduleRoot('run/benchmark-commands'),
                 benchmarkBaselineCommands: { javaScript: 'run/benchmark-baseline-commands.js' },
                 benchmarkBaselineExecution: { javaScript: 'run/benchmark-baseline-execution.js' },
@@ -205,6 +208,7 @@ export const configuration = {
                 recordedCoverage: { javaScript: 'run/recorded-coverage-run.js' },
                 recordedRun: { javaScript: 'run/recorded-run.js' },
                 resourceLifecycle: moduleRoot('packages/run/resource-lifecycle.entry-point'),
+                snapshotPreparation: { javaScript: 'run/snapshot-preparation.js' },
                 transcriptStore: moduleRoot('packages/run/transcript-store.entry-point'),
                 workerPoolWorker: { javaScript: 'run/worker-pool-worker.js' }
             },
@@ -223,6 +227,9 @@ export const configuration = {
                     'adapterRun',
                     'attachmentConnection',
                     'attachmentRun',
+                    'baselineCommands',
+                    'baselineOperations',
+                    'baselinePreparation',
                     'benchmarkCommands',
                     'benchmarkBaselineCommands',
                     'benchmarkBaselineExecution',
@@ -252,6 +259,7 @@ export const configuration = {
                     'nodeCommandLineRunner',
                     'recordedCoverage',
                     'recordedRun',
+                    'snapshotPreparation',
                     'workerPoolWorker'
                 ]
             }
