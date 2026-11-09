@@ -254,9 +254,26 @@ async function assertCompletedCrashRecord(scope: TestScope, rawDirectory: string
     const recordPath = `${path.resolve(rawDirectory, '../..')}.json`;
     const record = JSON.parse(await readFile(recordPath, 'utf8')) as RunRecord;
     scope.assert.equal(record.status, 'completed');
-    scope.assert.equal(record.result?.status, 'failed');
-    scope.assert.equal(record.result?.summary.crashed, 1);
-    scope.assert.deepEqual<unknown, unknown>(record.result?.artifacts, []);
+    scope.require.defined(record.result);
+    scope.assert.partialDeepEqual(record.result, {
+        status: 'failed',
+        summary: { crashed: 1 },
+        artifacts: [ {
+            id: {
+                subtype: 'worker-crash',
+                attempt: { index: 0 },
+                scope: { kind: 'case', case: { file: endlessLoopFixturePath, title: 'loops' } }
+            },
+            source: 'boundary-captured',
+            payload: {
+                kind: 'worker-crash',
+                reason: 'Supervised child exceeded hard timeout.',
+                capture: 'automatic',
+                completeness: 'best-effort'
+            }
+        } ]
+    });
+    scope.assert.equal(record.result.artifacts.length, 1);
     scope.assert.equal(path.resolve(record.coverage?.rawDataDirectory ?? 'missing'), path.resolve(rawDirectory));
 }
 
