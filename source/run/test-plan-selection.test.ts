@@ -104,11 +104,14 @@ export const testNode = suite('exact test plan selection', [
         const second = await planTestSelection(plan, options);
         scope.assert.deepEqual(first, second);
         if (first.kind !== 'selected') {
-            throw new Error('Expected an unsharded plan.');
+            throw new Error('Expected a selected plan.');
         }
-        scope.assert.deepEqual(first.testPlan.cases.map(function caseTitle(entry) {
-            return entry.id.title;
-        }), [ 'first', 'third', 'second' ]);
+        scope.assert.deepEqual(
+            first.testPlan.cases.map(function caseTitle(entry) {
+                return entry.id.title;
+            }),
+            [ 'first', 'third', 'second' ]
+        );
         return scope.assert.collect();
     })
 ]);
