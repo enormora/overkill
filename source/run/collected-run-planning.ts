@@ -47,7 +47,7 @@ function validatedInvocationSelection(invocation: CollectedRunInvocation): RunRe
     try {
         return parseRunSelection(invocation.selection);
     } catch (error: unknown) {
-        invalidRequest(error instanceof Error ? error.message : String(error));
+        return invalidRequest(error instanceof Error ? error.message : String(error));
     }
 }
 
