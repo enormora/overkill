@@ -472,6 +472,17 @@ checking. Detected drift invalidates the entire invocation, discards case
 evidence, and requires fresh collection. This is observed-input validation,
 not a hermetic snapshot or a guarantee against transient filesystem changes.
 
+### Exact Selection
+
+Direct engine-root checks accept explicit runner `selection`, `order`, `seed`,
+and `shard` values. Runtime and compiler expansion precede filtering; sharding
+precedes ordering. Seeded direct checks require a resolved seed. Empty shards
+succeed without checker execution. Unsupported nested assertion selectors are
+rejected rather than widened to an enclosing case.
+
+Selected plan and result order remain authoritative. External checker traversal
+may group shared static evidence independently of that order.
+
 ### Rejected Approaches And Remaining Work
 
 - Fixture-backed bodies require a second authoring style and can duplicate

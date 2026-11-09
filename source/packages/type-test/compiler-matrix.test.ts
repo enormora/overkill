@@ -24,6 +24,7 @@ export const testNode = suite('compiler matrix evidence', [
         scope.assert.equal(result.status, 'passed', { message: result.errors.join('\n') });
         scope.assert.equal(result.summary.passed, 4);
         scope.assert.equal(result.logicalCaseCount, 2);
+        scope.assert.deepEqual(result.compilerVersions.slice(0, 2), result.compilerVersions.slice(2, 4));
         const compilers = new Set(result.compilerVersions);
         scope.assert.equal(compilers.size, 2);
         scope.assert.equal(result.bodyCalls, 0);

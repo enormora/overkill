@@ -32,7 +32,8 @@ type ProjectRequest = {
 
 function executionSource(request: ProjectRequest, selection: string): string {
     if (request.change === null) {
-        return `const result = await checkTypeTests({engine, root, selection: ${selection},
+        return `const result = await checkTypeTests({order:'plan',seed:{value:null},shard:{index:1,total:1},
+engine, root, selection: ${selection},
     projectConfigPath: import.meta.dirname + '/tsconfig.json', compiler: ${JSON.stringify(request.compiler)}});`;
     }
     const packages = resolvePath(import.meta.dirname, '../packages');

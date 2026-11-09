@@ -105,6 +105,9 @@ const result = await checkTypeTests({
     engine,
     root,
     selection: { kind: 'all' },
+    order: 'plan',
+    seed: { value: null },
+    shard: { index: 1, total: 1 },
     projectConfigPath,
     compiler: { kind: 'version', version: '6.0.3' }
 });
@@ -177,3 +180,9 @@ Detected changes require fresh collection. Inputs are checked before and after
 checking; drift invalidates the invocation and stops remaining compilers.
 This detects observed filesystem drift without providing an isolated snapshot
 or guaranteeing detection of transient changes restored between checks.
+
+Direct checks expand runtime and compiler variants before filtering. Supply a
+nonnegative seed for `order: 'seeded'`. Filters precede sharding and ordering;
+an empty shard succeeds without invoking the checker. Nested assertion selectors
+are unsupported. Result order follows the selected plan; checker traversal may
+group shared static evidence independently.

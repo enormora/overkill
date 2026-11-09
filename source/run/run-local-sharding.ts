@@ -4,7 +4,7 @@ import {
     collectedRunCaseEntries,
     collectedRunPlanFromTestPlanCases
 } from './collected-run-plan.ts';
-import type { ResolvedRunInput } from './run-input-resolution.ts';
+import type { RunShard } from './run-types.ts';
 import {
     createRunShardHasher,
     shardCollectedRunCaseEntries
@@ -12,12 +12,12 @@ import {
 
 export async function shardedLocalCases(
     testPlan: TestPlan,
-    input: ResolvedRunInput
+    shard: RunShard
 ): Promise<readonly TestPlanCase[]> {
-    const shardHasher = await createRunShardHasher(input.request.shard);
+    const shardHasher = await createRunShardHasher(shard);
     const entries = shardCollectedRunCaseEntries(
         collectedRunCaseEntries(collectedRunPlanFromTestPlanCases(testPlan, testPlan.cases)),
-        input.request.shard,
+        shard,
         shardHasher
     );
     const casesByKey = new Map(testPlan.cases.map(function toCaseEntry(testCase) {

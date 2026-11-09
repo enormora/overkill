@@ -346,3 +346,10 @@ export type { StoredOrdinaryBaseline } from '../../run/baseline-record.ts';
 export { parseAdapterFacts } from '../../config/adapter-facts.ts';
 
 export { packageVersion, type PackageVersion } from '../../package-version.ts';
+
+export {
+    planTestSelection,
+    type TestPlanSelection,
+    type TestPlanSelectionOptions
+} from '../../run/test-plan-selection.ts';
+export { expandRuntimeMatrices as expandTestPlanRuntimes } from '../../run/runtime-matrix-expansion.ts';

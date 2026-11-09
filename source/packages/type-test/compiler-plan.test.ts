@@ -90,6 +90,17 @@ export const testNode = suite('compiler planning', [
         }, { message: /does not match the frozen project/u });
         return scope.assert.collect();
     }),
+    test('rejects duplicate work and foreign discovery', async function (scope) {
+        const { preparation } = await preparedProject(scope);
+        const plan = preparation.testPlan;
+        await scope.assert.rejects(async function () {
+            return preparation.collect({ ...plan, cases: [ plan.cases[0], plan.cases[0] ] });
+        }, { message: /Duplicate selected/u });
+        await scope.assert.rejects(async function () {
+            return preparation.collect({ ...plan, discoveredCases: [ plan.discoveredCases[0] ] });
+        }, { message: /Discovery does not match/u });
+        return scope.assert.collect();
+    }),
     test('revalidates inputs before lowering', async function (scope) {
         const { directory, preparation } = await preparedProject(scope);
         const collected = await preparation.collect(preparation.testPlan);
