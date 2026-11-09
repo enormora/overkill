@@ -7,6 +7,7 @@ import {
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
+import { createBoundaryFailureArtifact, type BoundaryFailure, type BoundaryMetadata } from '../engine/run-artifact.ts';
 import { recordedReplayProfile } from './run-record-input.ts';
 import { restoreReplayProfile } from './replay-profile.ts';
 import { createSupervisedRunState, type SupervisedRunState } from './supervised-run-state.ts';
@@ -78,10 +79,115 @@ function capturedRetryOutput(): SupervisedRunState {
     return state;
 }
 
+function assertNativeEvidenceRetention(
+    scope: TestScope,
+    failure: BoundaryFailure,
+    nativeMetadata: BoundaryMetadata
+): void {
+    const native = createBoundaryFailureArtifact(
+        failure,
+        nativeMetadata,
+        [ { work, attempt: crashedAttempt } ],
+        0
+    );
+    const state = createSupervisedRunState('all');
+    state.recordArtifact(native);
+    state.recordArtifact(native);
+    state.recordBoundaryFailure(failure);
+    state.recordBoundaryFailure({
+        kind: 'worker-crash',
+        reason: 'parent-exit',
+        exitCode: 9,
+        signal: 'SIGKILL',
+        coreDumpPath: 'artifacts/parent-core',
+        nativeAddons: [ 'parent.node' ]
+    });
+    scope.assert.deepEqual(state.artifacts(), [ native ]);
+}
+
 export const testNode = createSuite({
     ...metadata,
     title: 'boundary failure artifacts',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'native completion evidence survives repeated delivery and parent exits',
+            body(scope: TestScope) {
+                const failures: readonly BoundaryFailure[] = [
+                    {
+                        kind: 'worker-crash',
+                        reason: 'native-exit',
+                        exitCode: null,
+                        signal: 'SIGSEGV',
+                        coreDumpPath: null,
+                        nativeAddons: null
+                    },
+                    {
+                        kind: 'process-exhaustion',
+                        metric: 'activeResourceCount',
+                        budget: 5,
+                        observed: 10,
+                        enforcement: 'sampled',
+                        processUsageSamplingIntervalMilliseconds: 100,
+                        samples: [ sample ]
+                    }
+                ];
+                const nativeMetadata: BoundaryMetadata = {
+                    source: 'native',
+                    workerId: 'worker',
+                    nodeVersion: '26.13.0',
+                    timestamp: '1970-01-01T00:00:00.000Z'
+                };
+                for (const failure of failures) {
+                    assertNativeEvidenceRetention(scope, failure, nativeMetadata);
+                }
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            ...metadata,
+            title: 'later exits preserve known crash metadata and original attempt ownership',
+            body(scope: TestScope) {
+                const state = createSupervisedRunState('all');
+                state.addActiveCase(
+                    workIdentityKey(work),
+                    { capture: null, id: work.case, workId: work },
+                    0,
+                    crashedAttempt
+                );
+                state.recordBoundaryFailure({
+                    kind: 'worker-crash',
+                    reason: 'native-exit',
+                    exitCode: 1,
+                    signal: 'SIGSEGV',
+                    coreDumpPath: 'artifacts/first-core',
+                    nativeAddons: [ 'first.node' ]
+                });
+                state.recordTerminalActiveCases('crashed', 10);
+                state.recordBoundaryFailure({
+                    kind: 'worker-crash',
+                    reason: 'process-exit',
+                    exitCode: 2,
+                    signal: 'SIGKILL',
+                    coreDumpPath: 'artifacts/later-core',
+                    nativeAddons: [ 'later.node' ]
+                });
+                const artifacts = state.artifacts();
+                scope.assert.equal(artifacts.length, 1);
+                scope.require.defined(artifacts[0]);
+                scope.assert.partialDeepEqual(artifacts[0], {
+                    id: { scope: { kind: 'case', case: work.case }, attempt: crashedAttempt },
+                    payload: {
+                        reason: 'native-exit',
+                        exitCode: 1,
+                        signal: 'SIGSEGV',
+                        coreDumpPath: 'artifacts/first-core',
+                        nativeAddons: [ 'first.node' ]
+                    }
+                });
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'replay restores saved diagnostic limits and defaults legacy records',
