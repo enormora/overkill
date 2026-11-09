@@ -1,8 +1,10 @@
 import { runIfMain } from '#test-runner';
 import { safeParse } from '@schema-hub/zod-error-formatter';
 import type { $ZodType } from 'zod/v4/core';
+
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -48,6 +50,8 @@ function assertValidationFailure(scope: OverkillScope, testCase: SchemaValidatio
 
     scope.assert.deepEqual(result.error.issues, testCase.expectedIssues);
 }
+
+const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 const invalidMicrotestProfileFields: readonly SchemaValidationFailure[] = [
     {
@@ -128,31 +132,35 @@ const invalidNestedFields: readonly SchemaValidationFailure[] = [
 ];
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
+    ...metadata,
+
     title: 'source/config/config-schema.test.ts',
-    annotations: {},
-    controls: {},
+
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'microtest profile schema accepts the minimal profile',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
-                assertValidationSuccess(scope, microtestProfileSchema, { testFamily: 'microtest' });
+                assertValidationSuccess(scope, microtestProfileSchema, {
+                    testFamily: 'microtest',
+                    failureArtifacts: defaultFailureArtifactPolicy
+                });
 
                 return scope.assert.collect();
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'microtest profile schema accepts every current profile field',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
 
                 assertValidationSuccess(scope, microtestProfileSchema, {
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     coverage: { outputs: [] },
                     execution: {
                         processModel: 'in-process',
@@ -185,12 +193,13 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'microtest profile schema accepts profile file sets',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, microtestProfileSchema, {
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     files: {
                         sets: {
                             integration: {
@@ -209,10 +218,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'microtest execution schema accepts process model and scheduling variants',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 for (const processModel of [ 'in-process', 'supervised-process' ] as const) {
                     for (const scheduling of [ 'concurrent', 'serial' ] as const) {
@@ -229,14 +238,15 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration profile schema accepts supervised profiles with files',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const reporter = createInMemoryRealTimeReporter();
 
                 assertValidationSuccess(scope, integrationProfileSchema, {
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     attachments: defaultAttachmentLimits,
                     execution: {
                         processModel: 'supervised-process',
@@ -261,12 +271,13 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration profile schema accepts worker-pool profiles with files',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, integrationProfileSchema, {
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     attachments: defaultAttachmentLimits,
                     execution: {
                         processModel: 'worker-pool',
@@ -283,10 +294,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema accepts worker-pool lifecycle and distribution fields',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, integrationExecutionSchema, {
                     assignmentPolicy: 'case-count-balanced',
@@ -335,10 +346,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema rejects invalid worker-pool distribution fields',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     processModel: 'worker-pool',
@@ -356,10 +367,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema rejects host-process fields',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     hostProcess: {
@@ -376,10 +387,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema rejects invalid worker lifecycle fields',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     processModel: 'worker-pool',
@@ -393,10 +404,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema accepts duration-history-balanced assignment policy',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     assignmentPolicy: 'duration-history-balanced',
@@ -410,10 +421,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema rejects invalid worker-pool dispatch policy',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     dispatchPolicy: 'least-busy',
@@ -427,10 +438,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema rejects worker-pool fields on supervised profiles',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     dispatchPolicy: 'dynamic-lease',
@@ -446,10 +457,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration execution schema rejects in-process profiles',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationExecutionSchema, {
                     processModel: 'in-process',
@@ -462,10 +473,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'integration profile schema rejects missing files',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const result = safeParse(integrationProfileSchema, { testFamily: 'integration' });
 
@@ -475,10 +486,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'microtest process usage schema accepts measured and unmeasured policies',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, processUsageSchema, { measure: false });
                 assertValidationSuccess(scope, processUsageSchema, {
@@ -496,10 +507,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'microtest timeout schema accepts soft and hard timeouts',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 assertValidationSuccess(scope, timeoutSchema, {
                     hardMilliseconds: 2,
@@ -511,10 +522,10 @@ export const testNode = createOverkillSuite({
         }),
         ...invalidMicrotestProfileFields.map(function createInvalidMicrotestProfileFieldTest(testCase) {
             return createOverkillTestCase({
-                definitionLocations: [ { kind: 'unknown' as const } ],
+                ...metadata,
+
                 title: `microtest profile schema rejects ${testCase.name}`,
-                annotations: {},
-                controls: {},
+
                 body(scope: OverkillScope) {
                     assertValidationFailure(scope, testCase);
 
@@ -524,10 +535,10 @@ export const testNode = createOverkillSuite({
         }),
         ...invalidNestedFields.map(function createInvalidNestedFieldTest(testCase) {
             return createOverkillTestCase({
-                definitionLocations: [ { kind: 'unknown' as const } ],
+                ...metadata,
+
                 title: `microtest profile nested schema ${testCase.name}`,
-                annotations: {},
-                controls: {},
+
                 body(scope: OverkillScope) {
                     assertValidationFailure(scope, testCase);
 

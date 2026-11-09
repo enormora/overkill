@@ -148,7 +148,7 @@ async function createCollectionRuntime(
         collected: createStoredRunValue<SupervisedCollectionResult | null>(null),
         dependencies,
         previousSample: createStoredRunValue<ProcessUsageSnapshot | null>(null),
-        state: createSupervisedRunState('first-failure-and-final'),
+        state: createSupervisedRunState('first-failure-and-final', command.failureArtifacts.capturedOutputBytes),
         terminalFailure: createStoredRunValue(false)
     };
 }

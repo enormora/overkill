@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process';
 import { runIfMain } from '#test-runner';
 import { z } from 'zod/v4';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -54,6 +56,7 @@ function createChildProcess(): SupervisedChildProcess {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,
         snapshots: null,

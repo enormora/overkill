@@ -48,6 +48,7 @@ export type WorkerPoolCommand = {
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly attachmentEndpoint: AttachmentEndpoint | null;
+    readonly failureArtifacts: RunFacts['execution']['failureArtifacts'];
     readonly retryPolicy: IntegrationProfileConfig['retries'];
     readonly collectionTimeoutMilliseconds: number;
     readonly cwd: string;

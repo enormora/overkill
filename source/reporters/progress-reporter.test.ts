@@ -2,7 +2,9 @@ import { runIfMain } from '#test-runner';
 import ansiEscapes from 'ansi-escapes';
 import figures from 'figures';
 import colors from 'yoctocolors';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -58,6 +60,7 @@ async function reportProgressRun(terminal: FakeTerminal): Promise<void> {
         interactive: true,
         stdout: terminal.output
     }, { showPassing: false, verbose: false })({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }
@@ -172,6 +175,7 @@ export const testNode = createOverkillSuite({
                     interactive: false,
                     stdout: terminal.output
                 }, { showPassing: true, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }
@@ -205,6 +209,7 @@ export const testNode = createOverkillSuite({
                     interactive: false,
                     stdout: terminal.output
                 }, { showPassing: true, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }
@@ -233,6 +238,7 @@ export const testNode = createOverkillSuite({
                     interactive: true,
                     stdout: terminal.output
                 }, { showPassing: true, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }
@@ -273,6 +279,7 @@ export const testNode = createOverkillSuite({
                     interactive: true,
                     stdout: unknownTerminal.output
                 }, { showPassing: true, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }
@@ -281,6 +288,7 @@ export const testNode = createOverkillSuite({
                     interactive: true,
                     stdout: emptyTerminal.output
                 }, { showPassing: true, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }

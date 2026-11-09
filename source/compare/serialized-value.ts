@@ -1,3 +1,4 @@
+import { currentSerializationBudget } from './serialization-context.ts';
 import {
     defaultSerializationBudget as serializedValueBudget,
     type SerializationBudget as SerializationBudgetShape,
@@ -601,5 +602,5 @@ export function serializeValueWithBudget(value: unknown, budget: SerializationBu
 }
 
 export function serializeValue(value: unknown): SerializedValue {
-    return serializeValueWithBudget(value, defaultSerializationBudget);
+    return serializeValueWithBudget(value, currentSerializationBudget());
 }

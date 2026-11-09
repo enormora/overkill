@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'tstyche';
 import type {
     AttachmentLimits,
+    FailureArtifactPolicy,
     DefinedOutputRenderer,
     DefinedReporter,
     TestAnnotationsInput,
@@ -477,6 +478,7 @@ describe('@overkill-dev/run config', function () {
         expect<IntegrationProfileConfig>().type.toBeAssignableFrom<{
             readonly baselines: OrdinaryBaselinePolicy;
             readonly attachments: AttachmentLimits;
+            readonly failureArtifacts: FailureArtifactPolicy;
             readonly retries: null;
             readonly execution: {
                 readonly hostProcess: { readonly kind: 'child'; readonly nodeArguments: readonly string[]; };

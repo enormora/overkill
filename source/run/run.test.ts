@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -208,6 +210,7 @@ export const testNode = createOverkillSuite({
                     durationHistory: null,
                     environment: expectedRunEnvironment(),
                     execution: {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         benchmarkGarbageCollection: null,
                         propertyPolicy: null,
                         attachments: null,
@@ -418,6 +421,7 @@ export const testNode = createOverkillSuite({
                     durationHistory: null,
                     environment: expectedRunEnvironment(),
                     execution: {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         benchmarkGarbageCollection: null,
                         propertyPolicy: null,
                         attachments: null,

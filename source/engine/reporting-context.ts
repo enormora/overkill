@@ -8,8 +8,11 @@ import {
     ensureValidSourceLocation,
     resolveSourceLocation
 } from '../assertion-protocol/source-location.ts';
+import { resolvedFailureArtifactPolicySchema, type FailureArtifactPolicy } from './failure-artifact-policy.ts';
+import { currentFailureArtifactPolicy } from './execution-observation.ts';
 
 export type ReportingContext = {
+    readonly failureArtifacts: FailureArtifactPolicy;
     readonly relativizeLocationPath: (location: KnownSourceLocation) => string;
 };
 
@@ -18,9 +21,11 @@ export type RenderedSourceLocations = {
     readonly primary: string | null;
 };
 
-type ReportingContextState = {
+type ProfileReportingContextState = {
     readonly projectRoot: string | null;
+    readonly failureArtifacts: FailureArtifactPolicy;
 };
+type ReportingContextState = ProfileReportingContextState | { readonly projectRoot: string | null; };
 
 type LocationDetailLabels = {
     readonly final: string;
@@ -72,10 +77,62 @@ export function relativizeSourceLocationPath(
         : rawLocationPath(location);
 }
 
+function hasProfilePolicy(state: ReportingContextState): state is ProfileReportingContextState {
+    return Object.hasOwn(state, 'failureArtifacts');
+}
+
 export function createReportingContext(state: ReportingContextState): ReportingContext {
     return {
+        get failureArtifacts() {
+            return hasProfilePolicy(state) ? state.failureArtifacts : currentFailureArtifactPolicy();
+        },
         relativizeLocationPath(location) {
             return relativizeSourceLocationPath(location, state.projectRoot);
+        }
+    };
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null;
+}
+
+function projectRootFromRunFacts(facts: unknown): string | null {
+    if (!isRecord(facts)) {
+        return null;
+    }
+    const { environment } = facts;
+    if (!isRecord(environment) || typeof environment.projectRoot !== 'string') {
+        return null;
+    }
+    return environment.projectRoot.trim().length === 0 ? null : environment.projectRoot;
+}
+
+function policyFromRunFacts(facts: unknown): FailureArtifactPolicy {
+    if (!isRecord(facts) || !isRecord(facts.execution)) {
+        return currentFailureArtifactPolicy();
+    }
+    const policy = facts.execution.failureArtifacts;
+    return policy === undefined ? currentFailureArtifactPolicy() : resolvedFailureArtifactPolicySchema.parse(policy);
+}
+
+type RunReportingContext = {
+    readonly context: ReportingContext;
+    readonly observeFacts: (facts: unknown) => void;
+};
+
+export function createRunReportingContext(): RunReportingContext {
+    let state: ProfileReportingContextState = { projectRoot: null, failureArtifacts: currentFailureArtifactPolicy() };
+    return {
+        context: createReportingContext({
+            get projectRoot() {
+                return state.projectRoot;
+            },
+            get failureArtifacts() {
+                return state.failureArtifacts;
+            }
+        }),
+        observeFacts(facts) {
+            state = { projectRoot: projectRootFromRunFacts(facts), failureArtifacts: policyFromRunFacts(facts) };
         }
     };
 }

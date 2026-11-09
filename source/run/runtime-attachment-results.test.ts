@@ -149,6 +149,8 @@ async function assertIndependentOutputSequence(scope: TestScope): Promise<void> 
         id: { ...attachment.id, subtype: 'log-capture' },
         source: 'native',
         payload: {
+            capture: 'automatic',
+            completeness: 'best-effort',
             kind: 'captured-output',
             capturedAtMicroseconds: 0,
             stream: 'stdout',

@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { runArtifactSubtypes } from '../engine/run-artifact.ts';
 import { attemptIdSchema, caseIdSchema, runtimeIdSchema, workloadIdSchema } from '../engine/identity-schema.ts';
 
 export const artifactIdentityFields = {
@@ -9,13 +10,13 @@ export const artifactIdentityFields = {
 export const runArtifactIdSchema = z.union([
     z.strictObject({
         ...artifactIdentityFields,
-        subtype: z.enum([ 'adapter', 'attachment', 'coverage', 'hedged-conflict', 'log-capture', 'witness' ]),
+        subtype: z.enum(runArtifactSubtypes),
         attempt: z.null(),
         scope: z.strictObject({ kind: z.literal('run') })
     }),
     z.strictObject({
         ...artifactIdentityFields,
-        subtype: z.enum([ 'adapter', 'attachment', 'coverage', 'hedged-conflict', 'log-capture', 'witness' ]),
+        subtype: z.enum(runArtifactSubtypes),
         attempt: attemptIdSchema,
         scope: z.strictObject({
             activeCases: z.array(caseIdSchema),

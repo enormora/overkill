@@ -43,6 +43,7 @@ describe('@overkill-dev/run/config', function () {
                 readonly attachments: true;
                 readonly baselines: true;
                 readonly execution: true;
+                readonly failureArtifacts: true;
                 readonly files: true;
                 readonly garbageCollection: true;
                 readonly host: true;

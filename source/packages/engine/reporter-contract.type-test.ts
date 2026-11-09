@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'tstyche';
+import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import {
     defineOutputRenderer,
     defineReporter,
@@ -26,6 +27,8 @@ import {
 } from './engine.entry-point.ts';
 
 type ExecuteOptionKeyByName = {
+    readonly failureArtifacts: true;
+    readonly processUsageSamplingIntervalMilliseconds: true;
     readonly execution: true;
     readonly finalizeResult: true;
     readonly outputRenderer: true;
@@ -125,6 +128,7 @@ describe('Reporter contract', function () {
 
     test('exposes extension branding helpers without replacing structural contracts', function () {
         const context: ReportingContext = {
+            failureArtifacts: defaultFailureArtifactPolicy,
             relativizeLocationPath(location) {
                 return location.file;
             }

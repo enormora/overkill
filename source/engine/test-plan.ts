@@ -3,7 +3,7 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import { serializeValue } from '../compare/serialized-value.ts';
+import { serializeValueWithBudget, defaultSerializationBudget } from '../compare/serialized-value.ts';
 import type { WorkloadInput, WorkloadParameters } from './workload-input.ts';
 import {
     readTestBodyOrigin,
@@ -199,7 +199,7 @@ type TitledNode = {
 const minimumTableCaseCount = 2;
 
 function parameterIdentity(parameters: TableCase['parameters']): string {
-    return JSON.stringify(serializeValue(parameters));
+    return JSON.stringify(serializeValueWithBudget(parameters, defaultSerializationBudget));
 }
 
 function suiteTitles(suitePath: readonly TestPlanSuitePathEntry[]): readonly string[] {

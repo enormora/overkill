@@ -1,12 +1,7 @@
-import type { ProcessUsageSnapshot } from './process-usage.ts';
+import type { AttemptId, CaseId, WorkId } from './identity.ts';
+import type { RunnerError } from './run-result.ts';
+import type { ExecuteProcessBudgets, ProcessUsageSnapshot } from './process-usage.ts';
 import { observedGrowthBytesPerSecond } from './process-usage-growth.ts';
-
-export type ExecuteProcessBudgets = {
-    readonly activeResourceCount: number | null;
-    readonly javaScriptEngineHeapBytes: number | null;
-    readonly residentSetBytes: number | null;
-    readonly residentSetGrowthBytesPerSecond: number | null;
-};
 
 type ProcessBudgetMetric = keyof ExecuteProcessBudgets;
 
@@ -58,4 +53,31 @@ export function findProcessBudgetBreach(
     }
 
     return null;
+}
+
+export type ProcessExhaustionCause = ProcessBudgetBreach & {
+    readonly activeAttempts: readonly AttemptId[];
+    readonly activeCases: readonly CaseId[];
+    readonly activeWork: readonly WorkId[];
+    readonly enforcement: 'post-test-diagnostic' | 'sampled';
+};
+
+function soleBoundaryOwner<Identity>(identities: readonly Identity[]): Identity | null {
+    return identities.length === 1 ? identities[0] ?? null : null;
+}
+
+export function processExhaustionError(cause: ProcessExhaustionCause): RunnerError {
+    return {
+        attributedToAttempt: soleBoundaryOwner(cause.activeAttempts),
+        attributedTo: soleBoundaryOwner(cause.activeCases),
+        attributedToWork: soleBoundaryOwner(cause.activeWork),
+        cause,
+        diagnostics: [
+            { label: 'metric', value: cause.metric },
+            { label: 'observed', value: String(cause.observed) },
+            { label: 'budget', value: String(cause.budget) }
+        ],
+        message: `Process budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
+        subtype: 'process-exhaustion'
+    };
 }

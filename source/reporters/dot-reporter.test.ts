@@ -1,7 +1,9 @@
 import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -66,6 +68,7 @@ function createFakeTerminal(columns: number): FakeTerminal {
 
 function createDotRuntimeReporter(options: DotReporterOptions): RealTimeReporter {
     return createDotReporter(options)({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }
@@ -344,6 +347,7 @@ export const testNode = createOverkillSuite({
                     interactive: false,
                     stdout: terminal.output
                 })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file === '/workspace/source/users.test.ts'
                             ? 'source/users.test.ts'

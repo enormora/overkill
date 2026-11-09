@@ -1,3 +1,4 @@
+import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import { suite, test } from '../test/test.entry-point.ts';
 import { normalizeConfig } from '../run/run.entry-point.ts';
 import { createDeterministicRunOrchestrator } from '../../test-support/create-deterministic-run-orchestrator.ts';
@@ -15,6 +16,7 @@ export const testNode = suite('mutation execution policy', [
                     loader: { sourceMaps: true, stripMode: 'strip-only' },
                     profiles: {
                         unit: {
+                            failureArtifacts: defaultFailureArtifactPolicy,
                             testFamily: 'microtest',
                             files: { sets: { unit: { include: [ fixture ] } } },
                             execution: { processModel, scheduling, maxConcurrency: 3 },
@@ -51,6 +53,7 @@ export const testNode = suite('mutation execution policy', [
                     files: selectMicrotestProfile(resolved.config, 'unit').profile.files,
                     loader: resolved.facts.loader,
                     execution: {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         scheduling: resolved.facts.execution.scheduling,
                         processModel: resolved.facts.execution.processModel,
                         maxConcurrency: resolved.facts.execution.maxConcurrency,
@@ -67,6 +70,7 @@ export const testNode = suite('mutation execution policy', [
                     files: profile.files,
                     loader: config.loader,
                     execution: {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         scheduling: 'serial',
                         processModel,
                         maxConcurrency: 3,

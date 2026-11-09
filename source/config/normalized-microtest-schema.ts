@@ -7,6 +7,7 @@ import {
     timeoutSchema,
     timingProfilePolicySchema
 } from './schema.ts';
+import { failureArtifactPolicySchema } from './evidence-policy.ts';
 
 const [ patterns, sets ] = profileFilesSchema.unwrap().options;
 const filePatterns = patterns.unwrap().omit({ sets: true }).required();
@@ -20,6 +21,7 @@ const thresholds = coveragePolicySchema.unwrap().shape.thresholds.unwrap().unwra
 export const normalizedProcessBudgetsSchema = processBudgetsSchema.unwrap().required();
 
 export const normalizedMicrotestProfileSchema = z.strictObject({
+    failureArtifacts: failureArtifactPolicySchema,
     coverage: z.strictObject({
         outputDirectory: coveragePolicySchema.unwrap().shape.outputDir.unwrap().nullable(),
         outputs: coveragePolicySchema.unwrap().shape.outputs.unwrap(),

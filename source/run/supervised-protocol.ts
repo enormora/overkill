@@ -44,6 +44,7 @@ type SupervisedCommandBase = {
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
     readonly benchmarkGarbageCollection: BenchmarkProfileConfig['garbageCollection'] | null;
     readonly propertyPolicy: PropertyPolicy | null;
+    readonly failureArtifacts: RunFacts['execution']['failureArtifacts'];
     readonly retryPolicy: IntegrationProfileConfig['retries'];
     readonly capabilityRestrictions: {
         readonly mode: 'disabled' | 'enabled';

@@ -83,6 +83,7 @@ function assertCapturedOutputCap(
     scope.assert.equal(overflow.payload.byteLength, 0);
     scope.assert.equal(overflow.payload.stream, 'stderr');
     scope.assert.equal(overflow.payload.truncated, true);
+    scope.assert.equal(artifacts.length, 2);
 }
 
 function assertRunCapturedOutput(
@@ -336,6 +337,10 @@ export const testNode = createOverkillSuite({
                 addActiveCase(state, testCase);
                 state.recordCapturedOutput('stdout', Buffer.alloc(capturedOutputLimitBytes, 'a'), 1);
                 state.recordCapturedOutput('stderr', Buffer.from('overflow'), 2);
+                for (let index = 0; index < 1000; index += 1) {
+                    state.recordCapturedOutput('stdout', Buffer.from('discarded'), 3);
+                    state.recordCapturedOutput('stderr', Buffer.alloc(0), 4);
+                }
 
                 assertCapturedOutputCap(scope, state.artifacts());
 

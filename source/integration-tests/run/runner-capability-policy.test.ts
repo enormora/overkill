@@ -1,7 +1,9 @@
 import { rm } from 'node:fs/promises';
 import { runIfMain } from '#test-runner';
+
 import { defaultAttachmentLimits } from '../../engine/runtime-attachment.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite,
     createTestCase,
     defineOutputRenderer,
@@ -94,6 +96,7 @@ function createRunConfig(
         }),
         profiles: {
             microtest: {
+                failureArtifacts: defaultFailureArtifactPolicy,
                 baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                 coverage: defaultCoveragePolicy,
                 execution: { maxConcurrency: 5, processModel, scheduling },
@@ -137,6 +140,7 @@ function createIntegrationRunConfig(reporter: DefinedReporter): NormalizedConfig
         }),
         profiles: {
             integration: {
+                failureArtifacts: defaultFailureArtifactPolicy,
                 baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                 attachments: defaultAttachmentLimits,
                 retries: null,

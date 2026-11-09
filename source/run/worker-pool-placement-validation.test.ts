@@ -1,6 +1,8 @@
 import { runIfMain } from '#test-runner';
+
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type CaseId,
@@ -226,6 +228,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                failureArtifacts: defaultFailureArtifactPolicy,
                 runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,
                 propertyPolicy: null,

@@ -2287,29 +2287,32 @@ type DiffArtifact = {
     readonly hunks?: ReadonlyArray<Hunk>;
 };
 
-type WorkerCrash = {
-    readonly timestamp: string; // ISO 8601
-    readonly signal: string; // 'SIGSEGV', 'SIGABRT', ...
-    readonly workerId: string; // PID or pool index
-    readonly activeCase?: CaseId;
-    readonly nodeVersion?: string;
-    readonly nativeAddons?: ReadonlyArray<string>;
+type BoundaryFailureEvidence = {
+    readonly timestamp: string;
+    readonly workerId: string | null;
+    readonly nodeVersion: string | null;
+    readonly capture: 'automatic';
+    readonly completeness: 'best-effort';
+    readonly activeWork: readonly { readonly work: WorkId; readonly attempt: AttemptId; }[];
 };
 
-type ProcessExhaustion = {
-    readonly timestamp: string; // ISO 8601
-    readonly metric:
-        | 'javaScriptEngineHeapBytes'
-        | 'residentSetBytes'
-        | 'residentSetGrowthBytesPerSecond'
-        | 'activeResourceCount'
-        | 'libuvHandleCount';
+type WorkerCrash = BoundaryFailureEvidence & {
+    readonly kind: 'worker-crash';
+    readonly reason: string;
+    readonly exitCode: number | null;
+    readonly signal: string | null;
+    readonly coreDumpPath: string | null;
+    readonly nativeAddons: readonly string[] | null;
+};
+
+type ProcessExhaustion = BoundaryFailureEvidence & {
+    readonly kind: 'process-exhaustion';
+    readonly metric: keyof ProcessBudgets;
     readonly budget: number;
     readonly observed: number;
     readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
-    readonly processUsageSamplingIntervalMilliseconds: number;
-    readonly workerId: string;
-    readonly activeCase: CaseId;
+    readonly processUsageSamplingIntervalMilliseconds: number | null;
+    readonly samples: readonly ProcessUsageSnapshot[];
 };
 
 // see runtime-behavior.md § Test Debug Mode

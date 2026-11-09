@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createTestCase as createDirectTestCase,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -59,6 +61,7 @@ function directProfile(
     scheduling: 'concurrent' | 'serial'
 ): MicrotestProfileConfig {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
         runRecords: { persist: 'on-demand' },
         coverage: {

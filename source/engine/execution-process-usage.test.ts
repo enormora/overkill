@@ -23,6 +23,8 @@ import {
 import { createDisabledExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 
+const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
+
 const sample = {
     activeResourceCount: 1,
     activeResourceTypes: [ 'Timeout' ],
@@ -202,17 +204,38 @@ async function executeSampledProcessExhaustion(): Promise<SampledProcessExhausti
     return { reporter, result };
 }
 
+function assertNativeExhaustionArtifacts(scope: OverkillScope, fixture: SampledProcessExhaustionFixture): void {
+    const artifact = fixture.result.artifacts[0];
+    scope.require.defined(artifact);
+    scope.assert.partialDeepEqual(artifact, {
+        id: { subtype: 'process-exhaustion', scope: { kind: 'case' } },
+        source: 'native',
+        payload: { kind: 'process-exhaustion', metric: 'residentSetBytes', budget: 1 }
+    });
+    const completedEvent = fixture
+        .reporter
+        .getRecordedEntries()
+        .flatMap(function recordedEvent(entry) {
+            return entry.event === null ? [] : [ entry.event ];
+        })
+        .find(function caseFinished(event) {
+            return event.kind === 'test-end';
+        });
+    scope.require.defined(completedEvent);
+    scope.assert.deepEqual(completedEvent.artifacts, fixture.result.artifacts);
+}
+
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
+    ...metadata,
+
     title: 'source/engine/execution-process-usage.test.ts',
-    annotations: {},
-    controls: {},
+
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'execute() includes process usage in the returned result and final reporter result',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const reporter = createInMemoryFinalResultReporter();
@@ -276,12 +299,13 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'execute() records sampled process exhaustion against the active case',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const { reporter, result } = await executeSampledProcessExhaustion();
+                assertNativeExhaustionArtifacts(scope, { reporter, result });
 
                 scope.assert.equal(result.runnerErrors[0]?.subtype, 'process-exhaustion');
                 scope.assert.deepEqual(recordedRunnerErrorMessages(reporter), [
@@ -316,10 +340,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'execute() applies valid timeout controls before the default timeout',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -359,10 +383,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'execute() rejects timeout controls beyond the soft timeout',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const engine = createEngine();
                 const testPlan = engine.createTestPlan(
@@ -403,10 +427,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'recordProcessUsageSample() reports post-test process usage diagnostics',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
                 const breached = recordProcessUsageSample({
@@ -442,10 +466,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'recordProcessUsageSample() ignores omitted budgets',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const supervision = createExecutionSupervision();
                 const dependencies = executionDependencies(
@@ -474,10 +498,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'executeCasesAndMeasureProcessUsage() stops tracking after execution throws',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 let finishCount = 0;
 

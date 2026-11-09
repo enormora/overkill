@@ -1,8 +1,10 @@
 import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
+
 import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -31,6 +33,7 @@ function lineReporterWithOptions(log: Log, verbose: boolean): RealTimeReporter {
     };
 
     return createLineReporter(fakeDependencies)({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }
@@ -65,6 +68,8 @@ function caseOutputArtifact(text: string): CapturedOutputArtifact {
             workload: null
         },
         payload: {
+            capture: 'automatic',
+            completeness: 'best-effort',
             byteLength: Buffer.byteLength(text),
             capturedAtMicroseconds: 1,
             kind: 'captured-output',
@@ -80,6 +85,8 @@ function truncatedEmptyCaseOutputArtifact(): RunArtifact {
     return {
         ...caseOutputArtifact(''),
         payload: {
+            capture: 'automatic',
+            completeness: 'best-effort',
             byteLength: 0,
             capturedAtMicroseconds: 1,
             kind: 'captured-output',
@@ -101,6 +108,8 @@ function runOutputArtifact(text: string): RunArtifact {
             workload: null
         },
         payload: {
+            capture: 'automatic',
+            completeness: 'best-effort',
             byteLength: Buffer.byteLength(text),
             capturedAtMicroseconds: 1,
             kind: 'captured-output',

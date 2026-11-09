@@ -139,6 +139,8 @@ function resultWithOpaqueEvidence(): RunResult {
                 workload: null
             },
             payload: {
+                capture: 'automatic',
+                completeness: 'best-effort',
                 byteLength: 3,
                 capturedAtMicroseconds: 0,
                 kind: 'captured-output',

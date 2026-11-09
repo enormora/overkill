@@ -61,11 +61,12 @@ async function assertCaptureFailure(
     scope.assert.equal(execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } }).length, 1);
 }
 async function assertBoundedUnicode(scope: TestScope): Promise<void> {
-    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    const limits = { ...defaultAttachmentLimits, maxInlineBytes: 16 };
+    const fixture = await attachmentFixture(scope, limits);
     await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
         await fixture.execution.runAttempt(work, { index: 0 }, async function overflowingOutput() {
             const stream = attemptStream();
-            stream.write(`${'x'.repeat(defaultAttachmentLimits.maxInlineBytes - 1)}🌍`);
+            stream.write(`${'x'.repeat(limits.maxInlineBytes - 1)}🌍`);
             stream.write('discarded');
             await closeAttemptFailureStreams(work, { index: 0 });
             await stream.close();
@@ -75,7 +76,7 @@ async function assertBoundedUnicode(scope: TestScope): Promise<void> {
     scope.require.defined(artifact);
     scope.assert.partialDeepEqual(artifact.payload.content, {
         kind: 'text',
-        text: 'x'.repeat(defaultAttachmentLimits.maxInlineBytes - 1),
+        text: 'x'.repeat(limits.maxInlineBytes - 1),
         completion: { kind: 'incomplete', reason: 'capture-limit' }
     });
     scope.assert.deepEqual(await fixture.execution.finish(), []);

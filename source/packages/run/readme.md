@@ -333,6 +333,33 @@ which attachment files remain. Cancelled or matching hedged peers are discarded;
 conflicting executions retain their attachments in the conflict evidence.
 Microtest profiles reject attachment configuration.
 
+Profiles accept `failureArtifacts` to configure diagnostic limits independently
+of attachment storage:
+
+```ts
+failureArtifacts: {
+    capturedOutputBytes: 1_048_576,
+    serialization: { stringBytes: 8192, operandBytes: 65_536 },
+    rendering: { diffLines: 100, valueBytes: 8192 },
+}
+```
+
+Omitted fields retain their defaults. Limits must be positive safe integers.
+Serialization also supports `depth`, `visitedNodes`, `objectEntries`, and
+`arrayEntries`. Output shares its limit across stdout, stderr, and retries of
+one work item. Once truncated, further writes in that attempt are drained
+without adding more artifacts. Later attempts that write output retain one
+truncation marker each. Traces and structured resource logs use existing transcript and
+attachment APIs and their `attachments` limits.
+
+Crash and process-budget failures include typed `worker-crash` and
+`process-exhaustion` artifacts alongside runner errors. A single known owner
+receives case scope; shared failures produce one run-scoped artifact containing
+all active work and attempt identities. Available signals, worker metadata,
+budget observations, and bounded usage samples survive in machine-readable
+results and persisted records. Unavailable metadata is `null`. Ordinary
+microtest failures do not create separate artifact files.
+
 Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
 The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
 directory. Configured output directories keep raw data under `raw/<id>`.

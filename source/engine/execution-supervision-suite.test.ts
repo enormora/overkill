@@ -1,5 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as failureArtifactPolicyTestNode } from './failure-artifact-policy.test.ts';
 import { testNode as globalErrorObserverTestNode } from './execution-global-error-observer.test.ts';
 import { testNode as nativeGuardOwnershipTestNode } from './native-guard-ownership.test.ts';
 import { testNode as nativeErrorOwnershipTestNode } from './native-error-ownership.test.ts';
@@ -13,6 +14,7 @@ export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'source/engine/execution-supervision-suite.test.ts',
     children: [
+        failureArtifactPolicyTestNode,
         globalErrorObserverTestNode,
         nativeGuardOwnershipTestNode,
         nativeErrorOwnershipTestNode,

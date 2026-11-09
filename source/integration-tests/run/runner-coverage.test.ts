@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { runIfMain } from '#test-runner';
+
 import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
     orchestrator,
@@ -12,6 +13,7 @@ import {
     type Scheduling
 } from '../../packages/run/run.entry-point.ts';
 import {
+    defaultFailureArtifactPolicy,
     createPlainOutputRenderer,
     createSuite,
     createTestCase,
@@ -40,6 +42,7 @@ function coverageConfig(
         outputRenderer: createPlainOutputRenderer(),
         profiles: {
             microtest: {
+                failureArtifacts: defaultFailureArtifactPolicy,
                 baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                 coverage,
                 execution: { maxConcurrency: 5, processModel, scheduling },

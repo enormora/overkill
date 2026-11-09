@@ -2,10 +2,7 @@ import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { workIdentityKey, type WorkId, type AttemptId } from '../engine/identity.ts';
 import type { TestVerdict, RunResult } from '../engine/run-result.ts';
-import type {
-    RuntimeAttachmentArtifact,
-    AttachmentLimits
-} from '../engine/runtime-attachment.ts';
+import type { RuntimeAttachmentArtifact, AttachmentLimits } from '../engine/runtime-attachment.ts';
 import { createFailureArtifactRetention, type FailureArtifactRetention } from './failure-artifact-retention.ts';
 import {
     retainedAttachmentPath,
