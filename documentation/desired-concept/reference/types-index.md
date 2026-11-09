@@ -46,11 +46,17 @@ type WorkloadId = {
     readonly params: Readonly<Record<string, string>>;
 };
 
-type WorkId = {
+type OrdinaryWorkId = {
     readonly case: CaseId;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
+
+type WorkId =
+    | OrdinaryWorkId
+    | (OrdinaryWorkId & {
+        readonly compiler: { readonly name: 'typescript'; readonly version: string; };
+    });
 
 type WorkUnitId = {
     readonly mode: 'file' | 'case' | 'group';
@@ -1374,6 +1380,10 @@ type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
 type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
 
 type RunFacts = {
+    readonly adapter: {
+        readonly id: string;
+        readonly facts: import('type-fest').ReadonlyDeep<import('type-fest').JsonValue>;
+    } | null;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly cases: ReadonlyArray<RunCaseFacts>;

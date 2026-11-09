@@ -15,12 +15,9 @@ export async function checkTypeTests(request: TypeTestCheckRequest): Promise<Run
         projectConfigPath: request.projectConfigPath,
         compiler: request.compiler
     }, request.engine.createTestPlan(request.root));
-    const plan = selectTestPlan(prepared, request.selection);
+    const plan = selectTestPlan(prepared.testPlan, request.selection);
     return {
-        ...await executeAdapterPlan(typeTestAdapter, {
-            projectConfigPath: request.projectConfigPath,
-            compiler: request.compiler
-        }, plan),
+        ...await executeAdapterPlan(typeTestAdapter, prepared.collect(plan), plan),
         maintenanceDiagnostics: []
     };
 }

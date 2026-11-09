@@ -21,7 +21,11 @@ export function createCollectedRun(context: CollectedRunContext): CollectedRun {
             return await withFileModuleBoundary(context.moduleBoundary, async function executeBoundedPlan() {
                 const timing = createRunTimingMeasurement(context.dependencies.wallClock);
                 return runnerResult(
-                    await executeCollectedInvocation(context, planCollectedInvocation(context, invocation), timing)
+                    await executeCollectedInvocation(
+                        context,
+                        await planCollectedInvocation(context, invocation),
+                        timing
+                    )
                 );
             });
         } finally {

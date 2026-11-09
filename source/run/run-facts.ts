@@ -126,6 +126,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
     const profile = selectProfile(input.request.profile, input.config);
 
     return {
+        adapter: null,
         benchmarkHost: input.benchmarkHost,
         benchmarkPlacement: input.benchmarkPlacement,
         benchmarkCalibration: input.benchmarkCalibration,

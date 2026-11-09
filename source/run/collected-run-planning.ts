@@ -1,3 +1,4 @@
+import { collectAdapterResolvedRun, isAdapterPlan } from './adapter-execution.ts';
 import {
     createEmptySelectionResult,
     createEmptyShardResolvedRunFromTestPlan,
@@ -16,9 +17,10 @@ import type {
     RunCommand,
     RunRequest
 } from './run-types.ts';
-import type { RunResult } from './run-engine-primitives.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
+
+type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 type ReusableResolvedRun = ResolvedRun & {
     readonly plan: Extract<ResolvedRunPlan, { readonly kind: 'empty-shard' | 'local'; }>;
@@ -50,10 +52,10 @@ function collectedInvocationRequest(resolved: ResolvedRun, invocation: Collected
     return freezeValue({ ...resolved.request, selection });
 }
 
-export function planCollectedInvocation(
+export async function planCollectedInvocation(
     context: CollectedRunContext,
     invocation: CollectedRunInvocation
-): CollectedInvocationPlan {
+): Promise<CollectedInvocationPlan> {
     const { command, dependencies, input, resolved } = context;
     const request = collectedInvocationRequest(resolved, invocation);
     if (resolved.plan.kind === 'empty-shard') {
@@ -86,9 +88,9 @@ export function planCollectedInvocation(
     }
     return {
         kind: 'planned',
-        resolved: createLocalResolvedRunFromTestPlan({ ...command, request }, dependencies, runInput, {
-            ...testPlan,
-            cases
-        })
+        resolved: await collectAdapterResolvedRun(
+            isAdapterPlan(resolved.plan) ? resolved.plan.adapter.preparation : null,
+            createLocalResolvedRunFromTestPlan({ ...command, request }, dependencies, runInput, { ...testPlan, cases })
+        )
     };
 }

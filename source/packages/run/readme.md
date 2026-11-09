@@ -886,3 +886,14 @@ The CLI equivalent is `overkill replay-witness <path>` with `--config`, `--profi
 `--seed`, `--record`, and `--timings`. Property profiles require buffered capture;
 `--no-capture` is rejected consistently with ordinary property runs. Simulation
 witnesses require an explicit profile and a resource restoration callback.
+
+## Profile adapters
+
+Adapter preparation returns `{ testPlan, collect }`. The collection closure
+retains backend inputs while the runner selects executable work. Resolution
+collects once, exposes immutable JSON through `RunFacts.adapter`, and retains
+the collection for lowering and execution. Reusable invocations collect their
+selected subset through the original preparation. Adapter result artifacts
+also carry lossless JSON facts; assertion diagnostic budgets do not apply.
+
+Adapters can resolve package identity with `packageVersion(moduleUrl)`.

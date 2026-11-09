@@ -3,6 +3,7 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../test/test.entry-point.ts';
 import {
     runNativeProject,
+    runMatrixTypeProject,
     runPrefixedTypeProject,
     runCompiledTypeProject,
     runChangedTypeProject
@@ -69,6 +70,20 @@ const nodes=[test('declarations',scope=>{
 })];`;
 
 export const testNode = suite('native type-test adapter', [
+    test('expands exact compilers without duplicating logical cases', async function (scope) {
+        const result = await runMatrixTypeProject(scope, basicCases);
+        scope.assert.equal(result.summary.passed, 2, { message: result.errors.join('\n') });
+        scope.assert.equal(result.summary.failed, 2);
+        scope.assert.equal(result.logicalCaseCount, 2);
+        scope.assert.deepEqual(
+            Array.from(new Set(result.compilerVersions)).toSorted(function (left, right) {
+                return left.localeCompare(right);
+            }),
+            [ '5.9.3', '6.0.3' ]
+        );
+        scope.assert.equal(result.bodyCalls, 0);
+        return scope.assert.collect();
+    }),
     test('preserves hashbangs and leading compiler directives', async function (scope) {
         const result = await runPrefixedTypeProject(
             scope,
@@ -375,8 +390,8 @@ const nodes=[test('wrapped',withResource(resource,scope=>{
 const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
 const existing=engine.createRoot({title:'existing',annotations:{},controls:{},children:nodes});
 const backend=await typeTestAdapter.load();
-const plan=await backend.prepare(engine.createTestPlan(existing),settings);
-const collected=await backend.collect(plan,settings);
+const preparation=await backend.prepare(engine.createTestPlan(existing),settings);
+const collected=await preparation.collect(preparation.testPlan);
 const lowered=await collected.lower();
 const {appendFile}=await import('node:fs/promises');
 await appendFile(settings.projectConfigPath,'\\n');

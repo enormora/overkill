@@ -142,6 +142,7 @@ export function createResolvedRun(
         cwd: command.cwd,
         engine: command.engine,
         facts: {
+            adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
             benchmarkNormalization: null,

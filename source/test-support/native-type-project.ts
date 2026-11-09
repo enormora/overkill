@@ -3,6 +3,7 @@ import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 import TypeScript from 'typescript';
 import { z } from 'zod';
+import type { TypeTestOptions } from '../packages/type-test/profile-settings.ts';
 import type { TestScope } from '../packages/engine/engine.entry-point.ts';
 
 const resultSchema = z
@@ -14,12 +15,14 @@ const resultSchema = z
         bodyCalls: z.number(),
         compilerVersions: z.array(z.string()),
         artifactCount: z.number(),
+        logicalCaseCount: z.number(),
         diagnostics: z.array(z.string())
     })
     .readonly();
 export type NativeProjectResult = z.infer<typeof resultSchema>;
 type ProjectChange = 'config' | 'identity' | 'source';
 type ProjectRequest = {
+    readonly compiler: TypeTestOptions['compiler'];
     readonly prefix: string;
     readonly definitions: string;
     readonly titles: readonly string[] | null;
@@ -30,7 +33,7 @@ type ProjectRequest = {
 function executionSource(request: ProjectRequest, selection: string): string {
     if (request.change === null) {
         return `const result = await checkTypeTests({engine, root, selection: ${selection},
-    projectConfigPath: import.meta.dirname + '/tsconfig.json', compiler: { kind: 'local' }});`;
+    projectConfigPath: import.meta.dirname + '/tsconfig.json', compiler: ${JSON.stringify(request.compiler)}});`;
     }
     const packages = resolvePath(import.meta.dirname, '../packages');
     const runPath = JSON.stringify(join(packages, 'run/run.entry-point.ts'));
@@ -41,10 +44,11 @@ function executionSource(request: ProjectRequest, selection: string): string {
         : `await appendFile(${path},'\\n');`;
     return `const {prepareAdapterPlan,executeAdapterPlan}=await import(${runPath});
 const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
-let plan=await prepareAdapterPlan(typeTestAdapter,settings,engine.createTestPlan(root));
+const preparation=await prepareAdapterPlan(typeTestAdapter,settings,engine.createTestPlan(root));
+let plan=preparation.testPlan;
 const {appendFile}=await import('node:fs/promises');
 ${change}
-const result=await executeAdapterPlan(typeTestAdapter,settings,plan);`;
+const result=await executeAdapterPlan(typeTestAdapter,preparation.collect(plan),plan);`;
 }
 
 function fixtureSource(request: ProjectRequest): string {
@@ -84,6 +88,7 @@ console.log(JSON.stringify({
     compilerVersions: result.perTest.map(r =>
         engine.isCompilerWorkId(r.workId) ? r.workId.compiler.version : 'missing'),
     artifactCount: result.artifacts.length,
+    logicalCaseCount: new Set(result.perTest.map(r => JSON.stringify(r.id))).size,
     diagnostics: result.perTest.flatMap(r => r.outcome?.kind === 'fail'
         ? r.outcome.failures.flatMap(f => f.kind === 'assertion' ? f.checks.map(c => c.summary) : [f.kind]) : [])
 }));`;
@@ -162,7 +167,14 @@ export async function runNativeProject(
     definitions: string,
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, { definitions, titles, compiled: false, change: null, prefix: '' });
+    return await runProject(scope, {
+        compiler: { kind: 'local' },
+        definitions,
+        titles,
+        compiled: false,
+        change: null,
+        prefix: ''
+    });
 }
 
 export async function runCompiledTypeProject(
@@ -170,7 +182,14 @@ export async function runCompiledTypeProject(
     definitions: string,
     titles: readonly string[] | null
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, { definitions, titles, compiled: true, change: null, prefix: '' });
+    return await runProject(scope, {
+        compiler: { kind: 'local' },
+        definitions,
+        titles,
+        compiled: true,
+        change: null,
+        prefix: ''
+    });
 }
 
 export async function runChangedTypeProject(
@@ -178,7 +197,14 @@ export async function runChangedTypeProject(
     definitions: string,
     change: ProjectChange
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, { definitions, titles: null, compiled: false, change, prefix: '' });
+    return await runProject(scope, {
+        compiler: { kind: 'local' },
+        definitions,
+        titles: null,
+        compiled: false,
+        change,
+        prefix: ''
+    });
 }
 
 export async function runPrefixedTypeProject(
@@ -186,5 +212,30 @@ export async function runPrefixedTypeProject(
     definitions: string,
     prefix: string
 ): Promise<NativeProjectResult> {
-    return await runProject(scope, { definitions, titles: null, compiled: false, change: null, prefix });
+    return await runProject(scope, {
+        compiler: { kind: 'local' },
+        definitions,
+        titles: null,
+        compiled: false,
+        change: null,
+        prefix
+    });
+}
+
+export async function runMatrixTypeProject(scope: TestScope, definitions: string): Promise<NativeProjectResult> {
+    return await runProject(scope, {
+        definitions,
+        titles: null,
+        compiled: false,
+        change: null,
+        prefix: '',
+        compiler: {
+            kind: 'matrix',
+            compilers: [
+                { kind: 'version', version: '6.0.3' },
+                { kind: 'version', version: '5.9.3' },
+                { kind: 'version', version: '6.0.3' }
+            ]
+        }
+    });
 }

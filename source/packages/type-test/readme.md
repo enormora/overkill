@@ -147,4 +147,33 @@ original locations and adapter provenance.
 
 Checker calls are serialized within the package. Do not overlap unrelated direct
 TSTyche runs in the same process. Dedicated watch support, checker deadlines,
-compiler matrices, and historical reproduction remain separate integration work.
+and historical reproduction remain separate integration work.
+
+## Compiler planning
+
+A profile may select several exact compiler versions:
+
+```ts
+compiler: {
+    kind: 'matrix',
+    compilers: [
+        { kind: 'local' },
+        { kind: 'version', version: '6.0.3' }
+    ]
+}
+```
+
+Planning resolves `local` once and deduplicates equivalent versions. Each
+compiler produces distinct executable work while retaining the logical case
+identity. A local compiler must also be loadable by its exact version.
+
+Preparation retains the original compiler program, configuration, source
+fingerprints, and assertion ownership. Compiler reads include imported
+declarations, inherited configuration, and resolution metadata. Frozen facts
+are available before execution; generated-input provenance follows in the
+result artifact. Facts use lossless JSON rather than assertion serialization.
+
+Detected changes require fresh collection. Inputs are checked before and after
+checking; drift invalidates the invocation and stops remaining compilers.
+This detects observed filesystem drift without providing an isolated snapshot
+or guaranteeing detection of transient changes restored between checks.

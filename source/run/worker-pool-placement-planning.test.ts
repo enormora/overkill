@@ -176,6 +176,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
             benchmarkNormalization: null,

@@ -76,6 +76,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     const profile = selectTestProfile(input.profileName, input.config);
 
     return {
+        adapter: null,
         benchmarkHost: null,
         benchmarkCalibration: null,
         benchmarkNormalization: null,

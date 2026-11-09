@@ -86,11 +86,17 @@ type WorkloadId = {
     readonly params: Readonly<Record<string, string>>;
 };
 
-type WorkId = {
+type OrdinaryWorkId = {
     readonly case: CaseId;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };
+
+type WorkId =
+    | OrdinaryWorkId
+    | (OrdinaryWorkId & {
+        readonly compiler: { readonly name: 'typescript'; readonly version: string; };
+    });
 
 type WorkUnitId = {
     readonly mode: 'file' | 'case' | 'group';

@@ -1,6 +1,6 @@
 import { appendRunnerErrors } from '../engine/execution-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
-import { executeAdapterPlan } from './adapter-execution.ts';
+import { executeAdapterPlan, isAdapterPlan } from './adapter-execution.ts';
 import { reportResultWithDelivery } from './run-result-reporting.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun, RunnerResult } from './run-types.ts';
@@ -68,7 +68,10 @@ async function executeReportedAdapter(context: AdapterReporting, profile: Adapte
         root: context.plan.root,
         startedAt: startedAt.toISOString()
     });
-    const result = await executeAdapterPlan(profile.adapter, profile.settings, context.plan);
+    if (!isAdapterPlan(context.run.plan)) {
+        throw new Error('Adapter execution requires collected preparation.');
+    }
+    const result = await executeAdapterPlan(profile.adapter, context.run.plan.adapter.collected, context.plan);
     return await reportAdapterResult(context, appendRunnerErrors(result, errors));
 }
 

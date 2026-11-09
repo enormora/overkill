@@ -20,7 +20,6 @@ import type {
     NormalizedConfig,
     ProcessBudgets,
     ProcessUsagePolicy,
-    ProcessModel,
     RunOrder,
     RunRecordPersistenceFacts,
     Scheduling,
@@ -38,6 +37,20 @@ import type {
     SourceLocation,
     SerializedValue as SerializedValueShape
 } from '../assertion-protocol/assertion-node-shape.ts';
+import type {
+    WorkUnitMode as WorkUnitModeDefinition,
+    WorkUnitId as WorkUnitIdDefinition,
+    WorkUnitResourceConstraints as WorkUnitResourceConstraintsDefinition,
+    DuplicateExecutionSafety as DuplicateExecutionSafetyDefinition,
+    WorkUnit as WorkUnitDefinition,
+    ExecutorDescriptor as ExecutorDescriptorDefinition,
+    PlacementLane as PlacementLaneDefinition,
+    PlacementAssignment as PlacementAssignmentDefinition,
+    PlacementPlan as PlacementPlanDefinition,
+    DurationHistoryObservation as DurationHistoryObservationDefinition,
+    DurationHistorySample as DurationHistorySampleDefinition,
+    DurationHistoryInput as DurationHistoryInputDefinition
+} from './work-unit-types.ts';
 import type {
     RecordedRunSource,
     RunHistoryRequest,
@@ -62,12 +75,9 @@ import type {
     TestPlanCase,
     Engine,
     TestPlanRootOptions,
-    WorkId as EngineWorkId,
-    RuntimeId,
-    WorkloadId
+    WorkId as EngineWorkId
 } from './run-engine-primitives.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
-import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
 export type SerializedValue = SerializedValueShape;
 export type WorkId = EngineWorkId;
@@ -101,25 +111,18 @@ export type RunDebugRequest = {
 export type RunTestFamily = 'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test';
 export type RunHostProcessReason = RunHostProcessReasonDefinition;
 
-export type WorkUnitMode = 'case' | 'file' | 'group';
-
-export type WorkUnitId = {
-    readonly key: string;
-    readonly mode: WorkUnitMode;
-    readonly runtimes: readonly RuntimeId[];
-    readonly workload: WorkloadId | null;
-};
-
-export type WorkUnitResourceConstraints = {
-    readonly affinityKeys: readonly string[];
-    readonly capacityWeight: number;
-    readonly duplicateExecution: readonly DuplicateExecutionSafety[];
-    readonly faultDomains: readonly string[];
-    readonly serialKeys: readonly string[];
-    readonly singleWorkerKeys: readonly string[];
-};
-
-export type DuplicateExecutionSafety = 'disposable-isolated' | 'idempotent';
+export type WorkUnitMode = WorkUnitModeDefinition;
+export type WorkUnitId = WorkUnitIdDefinition;
+export type WorkUnitResourceConstraints = WorkUnitResourceConstraintsDefinition;
+export type DuplicateExecutionSafety = DuplicateExecutionSafetyDefinition;
+export type WorkUnit = WorkUnitDefinition;
+export type ExecutorDescriptor = ExecutorDescriptorDefinition;
+export type PlacementLane = PlacementLaneDefinition;
+export type PlacementAssignment = PlacementAssignmentDefinition;
+export type PlacementPlan = PlacementPlanDefinition;
+export type DurationHistoryObservation = DurationHistoryObservationDefinition;
+export type DurationHistorySample = DurationHistorySampleDefinition;
+export type DurationHistoryInput = DurationHistoryInputDefinition;
 
 export const emptyWorkUnitResourceConstraints: WorkUnitResourceConstraints = Object.freeze({
     affinityKeys: Object.freeze([]),
@@ -129,64 +132,6 @@ export const emptyWorkUnitResourceConstraints: WorkUnitResourceConstraints = Obj
     serialKeys: Object.freeze([]),
     singleWorkerKeys: Object.freeze([])
 });
-
-export type WorkUnit = {
-    readonly group: string | null;
-    readonly id: WorkUnitId;
-    readonly order: RunOrder;
-    readonly resourceConstraints: WorkUnitResourceConstraints;
-    readonly scheduling: Scheduling;
-    readonly work: NonEmptyReadonlyArray<WorkId>;
-    readonly workerLifecycle: WorkerLifecycle;
-};
-
-export type ExecutorDescriptor = {
-    readonly capabilities: readonly string[];
-    readonly capacity: number;
-    readonly id: string;
-    readonly kind: 'browser' | 'local-process' | 'local-worker' | 'remote';
-};
-
-export type PlacementLane = {
-    readonly executor: ExecutorDescriptor;
-    readonly id: string;
-};
-
-export type PlacementAssignment = {
-    readonly lane: PlacementLane['id'];
-    readonly unit: WorkUnitId;
-};
-
-export type PlacementPlan = {
-    readonly assignments: readonly PlacementAssignment[];
-    readonly lanes: readonly PlacementLane[];
-    readonly resourceOwnership: ResourceOwnershipPlan;
-    readonly units: readonly WorkUnit[];
-};
-
-export type DurationHistoryObservation = {
-    readonly durationMicroseconds: number;
-    readonly metadata: {
-        readonly processModel: ProcessModel;
-        readonly profile: string;
-        readonly scheduling: Scheduling;
-        readonly testFamily: RunTestFamily;
-        readonly workerLifecycle: WorkerLifecycle | null;
-    };
-    readonly observedAt: string;
-};
-export type DurationHistorySample = {
-    readonly durationMicroseconds: number;
-    readonly observedAt: string;
-    readonly observations: readonly DurationHistoryObservation[];
-    readonly sampleCount: number;
-    readonly work: WorkId;
-};
-export type DurationHistoryInput = {
-    readonly generatedAt: string;
-    readonly samples: readonly DurationHistorySample[];
-    readonly source: 'runtime-state-index';
-};
 
 export type ProfileRunRequest<Profile extends string | null> = RunHistoryRequest & {
     readonly baselineUpdateMode: BaselineUpdateMode;
@@ -222,7 +167,13 @@ export type RunCommand = OrdinaryRunCommand | WitnessRunCommand;
 type ReplayRunFacts = OrdinaryRunFacts & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
 export type RunFacts = OrdinaryRunFacts | ReplayRunFacts;
 
+type AdapterProfile = Extract<NormalizedConfig['profiles'][string], { readonly testFamily: 'type-test'; }>;
+type AdapterBackend = Awaited<ReturnType<AdapterProfile['adapter']['load']>>;
+type AdapterPreparation = Awaited<ReturnType<AdapterBackend['prepare']>>;
+type AdapterCollection = Awaited<ReturnType<AdapterPreparation['collect']>>;
+
 type OrdinaryRunFacts = {
+    readonly adapter: { readonly id: string; readonly facts: AdapterCollection['facts']; } | null;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
@@ -372,6 +323,10 @@ export type ResolvedRunPlan = {
 } | {
     readonly collectedPlan: CollectedRunPlan;
     readonly kind: 'worker-pool';
+} | {
+    readonly kind: 'local';
+    readonly testPlan: TestPlan;
+    readonly adapter: { readonly preparation: AdapterPreparation; readonly collected: AdapterCollection; };
 } | {
     readonly kind: 'local';
     readonly testPlan: TestPlan;

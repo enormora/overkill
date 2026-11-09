@@ -4,7 +4,6 @@ import {
     createEngine,
     createRunResult,
     singleAttemptResult,
-    serializeValue,
     type Engine,
     type TestCase,
     type TestPlan,
@@ -12,9 +11,9 @@ import {
     type RunnerError,
     type RunResult
 } from '../packages/engine/engine.entry-point.ts';
-import type { RunAdapterRegistration } from '../config/adapter-profile.ts';
+import type { RunAdapterRegistration, AdapterPreparation, CollectedAdapterRun } from '../config/adapter-profile.ts';
 import { normalizeConfig } from '../config/config.ts';
-import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
+import { createInMemoryRealTimeReporter, type InMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { executeAdapterPlan, prepareAdapterPlan } from './adapter-execution.ts';
@@ -72,6 +71,20 @@ function conflictingEvidence(plan: TestPlan, conflict: 'duplicate' | 'unknown'):
     return [ { ...result, id, workId: { ...result.workId, case: id } } ];
 }
 
+function evidenceCollection(check: (plan: TestPlan) => RunResult, plan: TestPlan): CollectedAdapterRun {
+    return {
+        facts: null,
+        async lower() {
+            return {
+                facts: null,
+                async execute() {
+                    return check(plan);
+                }
+            };
+        }
+    };
+}
+
 function evidenceAdapter(check: (plan: TestPlan) => RunResult): RunAdapterRegistration {
     return {
         id: 'evidence',
@@ -82,22 +95,29 @@ function evidenceAdapter(check: (plan: TestPlan) => RunResult): RunAdapterRegist
         },
         async load() {
             return {
-                async prepare(plan) {
-                    return plan;
-                },
-                async collect(plan) {
-                    const prepared = {
-                        facts: serializeValue(null),
-                        async execute() {
-                            return check(plan);
-                        }
-                    };
+                async prepare(testPlan) {
                     return {
-                        facts: serializeValue(null),
-                        async lower() {
-                            return prepared;
+                        testPlan,
+                        async collect(plan) {
+                            return evidenceCollection(check, plan);
                         }
                     };
+                }
+            };
+        }
+    };
+}
+
+function failedPreparation(testPlan: TestPlan, record: (event: string) => void): AdapterPreparation {
+    record('prepare');
+    return {
+        testPlan,
+        async collect() {
+            record('collect');
+            return {
+                facts: 'collected',
+                async lower() {
+                    throw new Error('Lowering failed.');
                 }
             };
         }
@@ -114,32 +134,86 @@ function failingAdapter(record: (event: string) => void): RunAdapterRegistration
             record('load');
             return {
                 async prepare(plan) {
-                    record('prepare');
-                    return plan;
-                },
-                async collect() {
-                    record('collect');
-                    return {
-                        facts: serializeValue('collected'),
-                        async lower() {
-                            throw new Error('Lowering failed.');
-                        }
-                    };
+                    return failedPreparation(plan, record);
                 }
             };
         }
     };
 }
 
+async function checkAdapterEvidence(adapter: RunAdapterRegistration, plan: TestPlan): Promise<RunResult> {
+    const preparation = await prepareAdapterPlan(adapter, null, plan);
+    return await executeAdapterPlan(adapter, preparation.collect(plan), plan);
+}
+
+function adapterRunFacts(reporter: InMemoryRealTimeReporter): unknown {
+    const start = reporter.getRecordedEntries().find(function (entry) {
+        return entry.event?.kind === 'run-start';
+    });
+    return start?.event?.kind === 'run-start' ? start.event.facts.adapter : null;
+}
+
 export const testNode = suite('generic adapter execution', [
+    test('reuses preparation across collected invocations', async function (scope) {
+        const events: string[] = [];
+        const adapter = failingAdapter(function (event) {
+            events.push(event);
+        });
+        const coordinator = createDeterministicRunCoordinator();
+        const config = normalizeConfig({
+            profiles: {
+                types: {
+                    testFamily: 'type-test',
+                    files: { include: [ 'source/native.types.ts' ] },
+                    adapter,
+                    settings: null
+                }
+            }
+        });
+        const initialized = await coordinator.orchestrator.initialize({
+            config,
+            cwd: '/project',
+            engine: { kind: 'default' },
+            request: defaultRunRequest({ profile: 'types', paths: [ 'source/native.types.ts' ] })
+        });
+        const collected = await initialized.collect();
+        const first = await collected.run({ selection: { kind: 'all' } });
+        const second = await collected.run({ selection: { kind: 'all' } });
+        scope.assert.deepEqual({
+            statuses: [ first.status, second.status ],
+            loads: events
+                .filter(function (event) {
+                    return event === 'load';
+                })
+                .length,
+            preparations: events
+                .filter(function (event) {
+                    return event === 'prepare';
+                })
+                .length,
+            collections: events
+                .filter(function (event) {
+                    return event === 'collect';
+                })
+                .length,
+            facts: collected.facts.adapter
+        }, {
+            statuses: [ 'failed', 'failed' ],
+            loads: 1,
+            preparations: 1,
+            collections: 3,
+            facts: { id: 'fixture', facts: 'collected' }
+        });
+        return scope.assert.collect();
+    }),
     test('prepares through explicit registration and retains setup failures as runner errors', async function (scope) {
         const events: string[] = [];
         const adapter = failingAdapter(function record(event) {
             events.push(event);
         });
         const prepared = await prepareAdapterPlan(adapter, null, executionPlan());
-        const result = await executeAdapterPlan(adapter, null, prepared);
-        scope.assert.deepEqual(events, [ 'validate', 'load', 'prepare', 'validate', 'load', 'collect' ]);
+        const result = await executeAdapterPlan(adapter, prepared.collect(prepared.testPlan), prepared.testPlan);
+        scope.assert.deepEqual(events, [ 'validate', 'load', 'prepare', 'collect' ]);
         scope.assert.equal(result.status, 'failed');
         scope.assert.equal(result.summary.passed, 0);
         scope.assert.equal(result.runnerErrors.length, 1);
@@ -151,7 +225,7 @@ export const testNode = suite('generic adapter execution', [
         const adapter = evidenceAdapter(function (input) {
             return reportedRun(input, [], []);
         });
-        const result = await executeAdapterPlan(adapter, null, plan);
+        const result = await checkAdapterEvidence(adapter, plan);
         scope.assert.equal(result.status, 'failed');
         scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'incomplete work evidence');
         return scope.assert.collect();
@@ -162,7 +236,7 @@ export const testNode = suite('generic adapter execution', [
             const adapter = evidenceAdapter(function (input) {
                 return reportedRun(input, conflictingEvidence(input, conflict), []);
             });
-            const result = await executeAdapterPlan(adapter, null, plan);
+            const result = await checkAdapterEvidence(adapter, plan);
             scope.assert.equal(result.status, 'failed');
             scope.assert.equal(result.summary.passed, 0);
             scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'duplicate or unknown work identities');
@@ -182,7 +256,7 @@ export const testNode = suite('generic adapter execution', [
         const adapter = evidenceAdapter(function (input) {
             return reportedRun(input, [], [ failure ]);
         });
-        const result = await executeAdapterPlan(adapter, null, executionPlan());
+        const result = await checkAdapterEvidence(adapter, executionPlan());
         scope.assert.equal(result.status, 'failed');
         scope.assert.deepEqual(result.runnerErrors, [ failure ]);
         scope.assert.equal(result.artifacts.length, 1);
@@ -259,6 +333,7 @@ export const testNode = suite('generic adapter execution', [
                 return artifact.payload.kind;
             })
         }, { status: 'passed', passed: 1, errors: [], artifacts: [ 'adapter' ] });
+        scope.assert.deepEqual(adapterRunFacts(reporter), { id: 'evidence', facts: null });
         scope.assert.deepEqual(
             reporter
                 .getRecordedEntries()

@@ -72,6 +72,8 @@ export type { RunRecordPersistenceMode, RunRecordProfilePolicy } from '../../con
 export type { ProjectAdapterProfileConfig } from '../../config/schema.ts';
 export type {
     RunAdapterRegistration,
+    AdapterPreparation,
+    AdapterRunFacts,
     RunProfileAdapter,
     CollectedAdapterRun,
     PreparedAdapterRun
@@ -88,3 +90,5 @@ export type {
 } from '../../baselines/ordinary-baseline-adapter.ts';
 
 export type { OrdinaryBaselinePolicy } from '../../baselines/baseline-policy.ts';
+
+export { parseAdapterFacts } from '../../config/adapter-facts.ts';

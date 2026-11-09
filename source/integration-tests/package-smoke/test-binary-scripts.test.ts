@@ -484,7 +484,7 @@ export const expectedStandardSubpathImportOutput = [
     .join('\n');
 
 export const expectedRunSubpathImportOutput = [
-    '["ConfigError","defineBaselineAdapter","defineConfig","loadConfig","normalizeConfig"]',
+    '["ConfigError","defineBaselineAdapter","defineConfig","loadConfig","normalizeConfig","parseAdapterFacts"]',
     'false',
     'function',
     'ConfigError',

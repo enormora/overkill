@@ -196,6 +196,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts), true);
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts.cases), true);
                 scope.assert.deepEqual(plainData(resolvedRun.facts), {
+                    adapter: null,
                     cases: [
                         expectedPassingFixtureCaseFact()
                     ],
@@ -405,6 +406,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(runStartEvent);
                 scope.assert.equal(runStartEvent.kind, 'run-start');
                 scope.assert.deepEqual(plainData(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null), {
+                    adapter: null,
                     cases: [
                         expectedPassingFixtureLiveCaseFact()
                     ],

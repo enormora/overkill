@@ -1,16 +1,13 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import type TypeScript from 'typescript';
 import { isGeneratedTypeTestPath } from '../run/run.entry-point.ts';
+import { sourceFingerprint as fingerprint } from './frozen-inputs.ts';
 import { repairGeneratedImports, type ImportDiagnostic, type RepairedModule } from './generated-imports.ts';
 import { checkerCompilerOptions } from './checker-resolution.ts';
 import { validateMappings } from './generated-source.ts';
 import type { GeneratedInputRequest, GeneratedModuleResult } from './generated-input-types.ts';
-
-function fingerprint(text: string): string {
-    return createHash('sha256').update(text).digest('hex');
-}
 
 export function parseProject(request: GeneratedInputRequest): TypeScript.ParsedCommandLine {
     const errors: TypeScript.Diagnostic[] = [];
