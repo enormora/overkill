@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { uneval } from 'devalue';
 import { createTestCase } from '@overkill-dev/engine';
 import { runIfMain } from '#test-runner';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
@@ -41,7 +42,7 @@ try {
         timeouts: {collectionMilliseconds: 120000, softMilliseconds: 120000, hardMilliseconds: 180000}
     }}});
     const command = {cwd, config: {...config, reporters: []}, engine: {kind: 'default'},
-        request: ${JSON.stringify(defaultRunRequest({ profile: 'snapshots' }))}};
+        request: ${uneval(defaultRunRequest({ profile: 'snapshots' }))}};
     const updated = await orchestrator.baseline.bootstrap(command, {timing: null});
     assert.equal(updated.result.status, 'passed', JSON.stringify(updated.result));
     assert.equal(updated.changes.length, 3);
