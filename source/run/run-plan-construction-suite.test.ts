@@ -1,5 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as exactSelection } from './test-plan-selection.test.ts';
 import { testNode as benchmarkProfileBoundaryTestNode } from './benchmark-profile-boundary.test.ts';
 import { testNode as collectedRunPlanTestNode } from './collected-run-plan.test.ts';
 import { testNode as runShardingTestNode } from './run-sharding.test.ts';
@@ -15,6 +16,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        exactSelection,
         benchmarkProfileBoundaryTestNode,
         collectedRunPlanTestNode,
         frozenPolicyTestNode,

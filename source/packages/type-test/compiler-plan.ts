@@ -21,6 +21,7 @@ import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings
 
 const microsecondsPerMillisecond = 1000;
 type CompilerPlan = {
+    readonly discoveredCases: TestPlan['discoveredCases'];
     readonly cases: ReadonlyMap<string, TestPlan['cases'][number]>;
     readonly projects: ReadonlyMap<string, FrozenProject>;
     readonly requestedCompilers: TypeTestOptions['compiler'];
@@ -44,6 +45,11 @@ function compilerVariant(testCase: TestPlan['cases'][number], version: string): 
     return Object.freeze({
         ...testCase,
         id,
+        annotations: Object.freeze({
+            ownership: Object.freeze(Array.from(testCase.annotations.ownership)),
+            tags: Object.freeze(Array.from(testCase.annotations.tags))
+        }),
+        controls: Object.freeze({ ...testCase.controls }),
         workId: Object.freeze({
             ...testCase.workId,
             case: id,
@@ -88,6 +94,19 @@ function expandedCompilerPlan(plan: TestPlan, projects: CompilerPlan['projects']
     });
 }
 
+function orderedCompilerResults(plan: TestPlan, results: readonly RunResult[]): RunResult['perTest'] {
+    const evidence = results.flatMap(function (entry) {
+        return entry.perTest;
+    });
+    const positions = new Map(plan.cases.map(function (entry, index) {
+        return [ workIdentityKey(entry.workId), index ];
+    }));
+    return evidence.toSorted(function plannedOrder(left, right) {
+        return (positions.get(workIdentityKey(left.workId)) ?? Number.POSITIVE_INFINITY) -
+            (positions.get(workIdentityKey(right.workId)) ?? Number.POSITIVE_INFINITY);
+    });
+}
+
 async function executeCompilerMatrix(
     plan: TestPlan,
     projects: CompilerPlan['projects'],
@@ -104,9 +123,7 @@ async function executeCompilerMatrix(
     const completed = performance.now() * microsecondsPerMillisecond;
     const result = createRunResult(
         plan,
-        results.flatMap(function (entry) {
-            return entry.perTest;
-        }),
+        orderedCompilerResults(plan, results),
         results.flatMap(function (entry) {
             return entry.runnerErrors;
         }),
@@ -141,12 +158,25 @@ async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): P
     return groups;
 }
 
-async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Promise<CollectedAdapterRun> {
+function assertFrozenSelection(input: CompilerPlan, selected: TestPlan): void {
+    if (selected.discoveredCases !== input.discoveredCases) {
+        throw new Error('Discovery does not match the frozen project.');
+    }
+    const seen = new Set<string>();
     for (const entry of selected.cases) {
+        const key = workIdentityKey(entry.workId);
+        if (seen.has(key)) {
+            throw new Error('Duplicate selected compiler work identity.');
+        }
+        seen.add(key);
         if (input.cases.get(workIdentityKey(entry.workId)) !== entry) {
             throw new Error('Compiler work identity does not match the frozen project.');
         }
     }
+}
+
+async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Promise<CollectedAdapterRun> {
+    assertFrozenSelection(input, selected);
     const groups = await collectCompilerGroups(input, selected);
     const planning = {
         version: 1,
@@ -205,6 +235,7 @@ export async function prepare(plan: TestPlan, settings: unknown): Promise<Adapte
     const projects = await resolveCompilerProjects(options);
     const testPlan = expandedCompilerPlan(plan, projects);
     const input: CompilerPlan = {
+        discoveredCases: testPlan.discoveredCases,
         cases: new Map(testPlan.cases.map(function (entry) {
             return [ workIdentityKey(entry.workId), entry ];
         })),

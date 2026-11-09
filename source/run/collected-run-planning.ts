@@ -1,3 +1,4 @@
+import { runSelectionSchema } from './run-selection-schema.ts';
 import { collectAdapterResolvedRun, isAdapterPlan } from './adapter-execution.ts';
 import {
     createEmptySelectionResult,
@@ -6,7 +7,6 @@ import {
 } from './run-local-planning.ts';
 import { selectedNonEmptyTestPlanCases } from './run-selection.ts';
 import { intersectSelection } from './frozen-run-policy.ts';
-import { copyRunSelection, invalidRunSelectionMessage } from './run-selection-filters.ts';
 import { invalidRequest } from './run-errors.ts';
 import { freezeValue } from './run-support.ts';
 import type {
@@ -44,11 +44,11 @@ export type CollectedInvocationPlan = {
 };
 
 function collectedInvocationRequest(resolved: ResolvedRun, invocation: CollectedRunInvocation): RunRequest {
-    const message = invalidRunSelectionMessage(invocation.selection);
-    if (message !== null) {
-        invalidRequest(message);
+    const parsed = runSelectionSchema.safeParse(invocation.selection);
+    if (!parsed.success) {
+        invalidRequest(parsed.error.message);
     }
-    const selection = intersectSelection(resolved.request.selection, copyRunSelection(invocation.selection));
+    const selection = intersectSelection(resolved.request.selection, parsed.data);
     return freezeValue({ ...resolved.request, selection });
 }
 

@@ -7,6 +7,7 @@ import {
     type ProcessBudgets,
     type NormalizedConfig
 } from '../config/types.ts';
+import { runSelectionSchema } from './run-selection-schema.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
@@ -16,7 +17,7 @@ import type { RunCommand, RunRequest } from './run-types.ts';
 const minimumSeedValue = 0n;
 const executionModes: ReadonlySet<string> = new Set([ 'profile-default', 'serial' ]);
 
-function validateRunShard(request: RunRequest): void {
+export function validateRunShard(request: Pick<RunRequest, 'shard'>): void {
     if (!Number.isSafeInteger(request.shard.total) || request.shard.total <= 0) {
         invalidRequest('Shard total must be a positive safe integer.');
     }
@@ -30,7 +31,7 @@ function validateRunShard(request: RunRequest): void {
     }
 }
 
-function validateRunSeed(request: RunRequest): void {
+export function validateRunSeed(request: Pick<RunRequest, 'seed'>): void {
     if (request.seed.value !== null && request.seed.value < minimumSeedValue) {
         invalidRequest('Run seed must be a nonnegative bigint.');
     }
@@ -81,6 +82,11 @@ function validateRunSelection(request: RunRequest): void {
 
     if (message !== null) {
         invalidRequest(message);
+    }
+
+    const parsed = runSelectionSchema.safeParse(request.selection);
+    if (!parsed.success) {
+        invalidRequest(parsed.error.message);
     }
 }
 
