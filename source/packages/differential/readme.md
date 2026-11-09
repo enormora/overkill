@@ -13,8 +13,8 @@ export const testNode = property({
     generator: gen.integer({ min: 0, max: 100 }),
     test: differential({
         implementations: [
-            { name: 'multiply', run: value => value * 2 },
-            { name: 'add', run: value => value + value }
+            { name: 'multiply', run: (value) => value * 2 },
+            { name: 'add', run: (value) => value + value }
         ],
         check(observations, sample) {
             sample.assert.deepEqual(observations[0].outcome, observations[1].outcome);

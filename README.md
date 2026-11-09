@@ -19,7 +19,7 @@ Repository tests run through the published `@overkill-dev/run` package. The
 including for package smoke tests with their own installed packages. Test files
 continue to import source modules for the code under test.
 
-### Differential testing
+## Differential testing
 
 Install `@overkill-dev/differential` alongside `@overkill-dev/test`.
 Use `differential({ implementations, check })` as a property body to compare
