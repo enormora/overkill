@@ -3111,7 +3111,7 @@ sample explicitly defines them.
   illustrative `saveUser` example
 - `arbitrary.user`, `arbitrary.bytes`, `gen.user`: placeholder generator
   references in property-test snippets
-- `differential`, `linearizability`, `browserBenchmark`:
+- `linearizability`, `browserBenchmark`:
   settled helper names for higher-layer families; owning
   documentation defines the package home and concept-level semantics, but
   this index does not own their full signatures
@@ -3191,3 +3191,15 @@ See [the baseline package](../../../source/packages/baselines/readme.md) for sig
 
 Canonical: [Model-Based Testing Resolution](../authoring/higher-test-layers.md#model-based-testing-resolution).
 See [the model package](../../../source/packages/model/readme.md) for authoring and lifecycle behavior.
+
+## Differential Testing
+
+Canonical: [Differential Testing Resolution](../authoring/higher-test-layers.md#differential-testing-resolution).
+
+- `differential<Input, Output>(definition): PropertyBody<Input>`
+- `DifferentialDefinition<Input, Output>`: implementations and required check
+- `DifferentialImplementation<Input, Output>`: name and input/signal run callback
+- `DifferentialOutcome<Output>`: returned value or thrown unknown error
+- `DifferentialObservation<Input, Output>`: name, actual input, and outcome
+- `DifferentialObservations<Input, Output>`: readonly tuple of at least two observations
+- `isTestControlError(error: unknown): boolean`: engine-owned control-error classifier

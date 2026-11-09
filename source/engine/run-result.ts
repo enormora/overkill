@@ -330,7 +330,7 @@ function permissionDeniedRunnerError(
     };
 }
 
-function isAccessDeniedError(error: unknown): boolean {
+export function isAccessDeniedError(error: unknown): boolean {
     return accessDeniedErrorCode(error) === 'ERR_ACCESS_DENIED';
 }
 

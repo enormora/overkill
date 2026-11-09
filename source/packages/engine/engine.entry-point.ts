@@ -502,3 +502,5 @@ export { createRunResult } from '../../engine/execution-result.ts';
 export { singleAttemptResult } from '../../engine/run-result.ts';
 
 export type { AdapterArtifact } from '../../engine/run-artifact.ts';
+
+export { isTestControlError } from '../../engine/test-control-error.ts';

@@ -36,6 +36,8 @@ const testRootAuthoringFiles = [
     '^source/packages/test/test\\.entry-point\\.ts$'
 ];
 const testRootLazyModuleBoundaries = [
+    '^source/differential/',
+    '^source/packages/differential/',
     '^source/model/',
     '^source/packages/model/',
     '^source/property/',
@@ -63,6 +65,12 @@ const ignoreFromOrphans = [ ...configFiles, ...entryPointFiles, ...testFiles, ..
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
     forbidden: [
+        {
+            name: 'differential-stays-optional',
+            severity: 'error',
+            from: { path: '^source/(engine|property|packages/(engine|property|test))/', pathNot: testFiles },
+            to: { path: '^source/(differential|packages/differential)/' }
+        },
         {
             name: 'optional-type-test-boundary',
             severity: 'error',

@@ -1656,3 +1656,36 @@ codecs, corpora, witnesses, and supervision. One model remains one collected cas
 and one property boundary assertion. No new CLI, test family, or witness format
 is introduced. Data operations avoid registry identities and command-specific
 replay compatibility; authors dispatch their operation unions explicitly.
+
+## Differential Testing Resolution
+
+`@overkill-dev/differential` is a separate optional install above the property
+core. `differential({ implementations, check })` returns `PropertyBody<Input>`
+for `property` or nested `scope.forall`. It introduces no test family, CLI,
+configuration extension, or witness format.
+
+Implementations are an ordered readonly tuple of at least two named run
+callbacks sharing input and output types. Names are unique nonblank strings.
+Construction validates and snapshots the declaration without running callbacks.
+Each run receives a fresh `sample.reconstructInput()` graph and the trial abort
+signal. Runs settle sequentially in declaration order. Reconstruction charges
+ordinary property work and remains outside outcome capture.
+
+Outcomes are `{ kind: 'returned', value }` or `{ kind: 'threw', error }`.
+Capture ordinary synchronous throws and asynchronous rejections, but propagate
+permission denials and engine control signals unchanged. Check cancellation
+before reconstruction and execution, after settlement, and around comparison.
+The engine exposes `isTestControlError(error)` for package-owned catch boundaries.
+
+The required check receives ordered observations with name, actual input after
+execution, and outcome, plus `PropertySampleScope<Input>`. It returns the usual
+assertion result. Equivalence is explicit, including expected errors; identical
+throws do not automatically pass. Check errors retain body-error semantics.
+Observation containers are shallow-frozen; input and output graphs remain intact.
+Shared external mutable state remains the author's responsibility.
+
+Property owns examples, coverage, settings, codecs, phase accounting, shrinking,
+confirmation, corpora, witnesses, cleanup, and supervision. A differential property
+counts as one case and one boundary assertion. Replay restores inputs and reruns
+current implementations; captured outcomes are not replay payloads. Checks may
+use `sample.failureKey` when automatic assertion identity is too broad.
