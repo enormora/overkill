@@ -12,6 +12,7 @@ import type {
 } from './run.entry-point.ts';
 
 type RunFactsKeys = readonly [
+    'adapter',
     'benchmarkHost',
     'benchmarkPlacement',
     'benchmarkCalibration',
