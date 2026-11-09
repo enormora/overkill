@@ -259,6 +259,11 @@ export const configuration = {
         {
             name: 'baselines',
             description: 'Shared Overkill baseline models and performance adapter contracts.',
+            roots: {
+                main: moduleRoot('packages/baselines/baselines.entry-point'),
+                executionContext: moduleRoot('packages/baselines/execution-context.entry-point')
+            },
+            defaultModuleRoot: 'main',
             bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {

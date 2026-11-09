@@ -679,8 +679,10 @@ The programmatic equivalents are `orchestrator.baseline.update`, `apply`,
 Write commands validate the pending batch before publication. Execution,
 observation, comparison, or prewrite failures block all changes. Publication is
 atomic per file. Later I/O failures retain completed writes and report them;
-final reporter failures also preserve completed writes. Built-in snapshot and
-visual authoring are separate workflows.
+final reporter failures also preserve completed writes. Integration profiles can
+enable `baselines.snapshots` for the imported `snapshot.text`, `snapshot.value`,
+and `snapshot.bytes` assertion references from `@overkill-dev/test/baselines`.
+See the baselines package documentation for authoring and update examples.
 
 ## Run recording
 

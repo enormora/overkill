@@ -1,12 +1,13 @@
 import type { Clock } from '@enormora/clock';
-import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environment.ts';
 import { createExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter } from '../engine/reporter.ts';
+import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
 import { withReplayWire } from './replay-wire.ts';
-import type { DefinedReporter, Execute } from './run-engine-primitives.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 import { createResourceLifecycleTiming, type ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
+
+import type { DefinedReporter, Execute, ExecuteDependencies } from './run-engine-primitives.ts';
 
 export function createSupervisedResourceLifecycleTiming(
     clock: Clock,
@@ -37,22 +38,30 @@ function readActiveResourceTypes(): readonly string[] {
     return process.getActiveResourcesInfo();
 }
 
+type SupervisedExecutionCommand = Pick<
+    SupervisedRunCommand,
+    'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'replay' | 'snapshots' | 'testFamily'
+>;
+
+async function supervisedBenchmarkEnvironment(
+    command: SupervisedExecutionCommand
+): Promise<ExecuteDependencies['benchmarkEnvironment']> {
+    if (command.testFamily !== 'benchmark') {
+        return null;
+    }
+    const { createBenchmarkExecutionEnvironment } = await import('./benchmark-execution-environment.ts');
+    return createBenchmarkExecutionEnvironment(
+        command.benchmarkGarbageCollection,
+        'supervised-process',
+        command.benchmarkNormalization
+    );
+}
+
 export async function createSupervisedChildExecute(
     wallClock: Clock,
-    command: Pick<
-        SupervisedRunCommand,
-        'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'replay' | 'testFamily'
-    >
+    command: SupervisedExecutionCommand
 ): Promise<Execute> {
-    let benchmarkEnvironment: BenchmarkExecutionEnvironment | null = null;
-    if (command.testFamily === 'benchmark') {
-        const { createBenchmarkExecutionEnvironment } = await import('./benchmark-execution-environment.ts');
-        benchmarkEnvironment = createBenchmarkExecutionEnvironment(
-            command.benchmarkGarbageCollection,
-            'supervised-process',
-            command.benchmarkNormalization
-        );
-    }
+    const benchmarkEnvironment = await supervisedBenchmarkEnvironment(command);
     const execute = createExecute({
         benchmarkEnvironment,
         asyncLeakDiagnostics: 'enabled',
@@ -66,7 +75,13 @@ export async function createSupervisedChildExecute(
     });
     return async function executeInReplayContext(plan, options) {
         return await withReplayWire(command.replay, async function executeAssignment() {
-            return await execute(plan, options);
+            return await execute(
+                plan,
+                options === undefined ? options : {
+                    ...options,
+                    runtimePolicy: snapshotRuntimePolicy(options.runtimePolicy ?? null, command.snapshots)
+                }
+            );
         });
     };
 }

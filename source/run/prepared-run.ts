@@ -4,24 +4,29 @@ import type { ResolvedRunInput, RunInvocation } from './run-input-resolution.ts'
 import { runIsolatedProcessCommand, type IsolatedRunOptions } from './run-isolated-process.ts';
 import { runLocalCommand } from './run-local-command.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunTimingMeasurement } from './run-timing-collection.ts';
 import type { RunCommand } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
+
+function needsOrdinaryBaselines(input: ResolvedRunInput): boolean {
+    const { profile, request } = input;
+    if (profile.testFamily === 'benchmark' || profile.testFamily === 'type-test') {
+        return false;
+    }
+    return profile.baselines.snapshots || profile.baselines.adapters.length > 0 ||
+        request.baselineUpdateMode !== 'none';
+}
 
 async function prepareRun(
     invocation: RunInvocation,
     options: RunPreparationInput
 ): Promise<PreparedRun | RunResult> {
     if ([ 'test', 'baseline' ].includes(invocation.namespace)) {
-        const { profile, request } = options.input;
+        const { profile } = options.input;
         if (profile.testFamily === 'type-test') {
             return { input: options.input, session: null };
         }
-        if (
-            profile.testFamily === 'benchmark' ||
-            profile.baselines.adapters.length === 0 && request.baselineUpdateMode === 'none'
-        ) {
+        if (!needsOrdinaryBaselines(options.input)) {
             return { input: options.input, session: null };
         }
         const { prepareOrdinaryBaselineRun } = await import('./baseline-preparation.ts');
@@ -34,7 +39,7 @@ async function prepareRun(
 type PreparedExecution = {
     readonly record: IsolatedRunOptions['record'];
     readonly source: IsolatedRunOptions['source'];
-    readonly timing: RunTimingMeasurement;
+    readonly timing: NonNullable<IsolatedRunOptions['timing']>;
     readonly command: RunCommand;
     readonly dependencies: RunOrchestratorDependencies;
     readonly signal: Readonly<AbortSignal> | null;
@@ -82,5 +87,15 @@ export async function executePreparedInvocation(
     options: PreparedExecution & { readonly input: ResolvedRunInput; }
 ): Promise<RunResult> {
     const prepared = await prepareRun(invocation, options);
-    return isRunResult(prepared) ? prepared : await executePreparedRun(prepared, options);
+    if (isRunResult(prepared)) {
+        return prepared;
+    }
+    const { profile } = prepared.input;
+    if (profile.testFamily !== 'integration' || !profile.baselines.snapshots) {
+        return await executePreparedRun(prepared, options);
+    }
+    const { withSnapshotRun } = await import('./snapshot-preparation.ts');
+    return await withSnapshotRun(prepared.input, async function executeSnapshots() {
+        return await executePreparedRun(prepared, options);
+    });
 }

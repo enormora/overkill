@@ -7,6 +7,7 @@ import { testNode as storage } from './baseline-storage.test.ts';
 import { testNode as workflow } from './baseline-workflow.test.ts';
 import { testNode as publication } from './baseline-publication.test.ts';
 import { testNode as failures } from './baseline-failure-boundaries.test.ts';
+import { testNode as snapshots } from './snapshot.test.ts';
 
 export const testNode = suite('ordinary baseline execution', [
     commands,
@@ -16,5 +17,6 @@ export const testNode = suite('ordinary baseline execution', [
     storage,
     workflow,
     publication,
-    failures
+    failures,
+    snapshots
 ]);

@@ -1,8 +1,9 @@
 import { z } from 'zod/v4';
-import type { BenchmarkBaselinePolicy } from '../baselines/baseline-policy.ts';
+import type { BenchmarkBaselinePolicy, OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
 import type { PerformanceBaselineAdapter } from '../baselines/performance-adapter.ts';
 
 import type { OrdinaryBaselineAdapter } from '../baselines/ordinary-baseline-adapter.ts';
+import { ConfigError } from './config-error.ts';
 
 function isPerformanceBaselineAdapter(value: unknown): value is PerformanceBaselineAdapter {
     if (typeof value !== 'object' || value === null) {
@@ -43,6 +44,7 @@ export const ordinaryBaselinePolicySchema = z
     .strictObject({
         adapters: z.array(ordinaryBaselineAdapterSchema).readonly().default([]),
         directory: z.string().trim().min(1).default('test-baselines'),
+        snapshots: z.boolean().default(false),
         stale: z.enum([ 'fail', 'warn' ]).default('fail')
     })
     .refine(function uniqueAdapterIds(policy) {
@@ -51,4 +53,17 @@ export const ordinaryBaselinePolicySchema = z
         }));
         return ids.size === policy.adapters.length;
     }, 'Baseline adapter IDs must be unique.')
+    .refine(function reservedSnapshotId(policy) {
+        return policy.adapters.every(function ordinaryAdapter(adapter) {
+            return adapter.id.normalize('NFC') !== 'overkill.content-snapshot';
+        });
+    }, 'The overkill.content-snapshot adapter ID is reserved.')
     .readonly();
+
+export function resolveStrictBaselines(value: unknown): OrdinaryBaselinePolicy {
+    const policy = ordinaryBaselinePolicySchema.parse(value);
+    if (policy.snapshots) {
+        throw new ConfigError('Snapshots require an integration profile.');
+    }
+    return policy;
+}

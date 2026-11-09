@@ -126,6 +126,7 @@ export function supervisedChildCommand(kind: 'collect' | 'run', path: string): S
         capabilityRestrictions: { mode: 'disabled' },
         capture: 'buffered',
         replay: null,
+        snapshots: null,
         seed: '0',
         propertyPolicy: null,
         collectionTimeoutMilliseconds: 1000,

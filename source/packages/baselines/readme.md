@@ -1,8 +1,33 @@
 # @overkill-dev/baselines
 
-Shared baseline identities, change reports, and performance adapter contracts.
-Included in `@overkill-dev/test`; standard users import the types from
+Content snapshot assertions, shared baseline identities, and performance adapter
+contracts. Included in `@overkill-dev/test`; standard users import from
 `@overkill-dev/test/baselines`.
+
+## Content snapshots
+
+Enable `baselines: { snapshots: true }` on an integration profile, then import
+`snapshot` from this package or `@overkill-dev/test/baselines`:
+
+```ts
+await scope.assert(snapshot.text, 'response', responseText);
+await scope.assert(snapshot.value, 'user', { name: 'Ada', active: true });
+await scope.assert(snapshot.bytes, 'archive', archiveBytes);
+return scope.assert.collect();
+```
+
+Each awaited call counts as one assertion. Names must be nonblank and unique
+within a case attempt. Text and bytes compare exactly. Values accept finite,
+acyclic JSON data in plain objects and arrays; object key order is insignificant.
+Unsupported values and oversized snapshots fail instead of being truncated.
+JSON nesting is limited to 64 levels; capture uses the profile attachment limits.
+
+`overkill run` compares without writing. Use `overkill baseline bootstrap` for
+missing snapshots, `update` for intentional changes, and `apply` to also remove
+stale snapshots. `diff` previews changes without writing, and `list` inspects
+stored identities. Review and commit the files under `test-baselines` with the
+change they describe. Strict microtest/property profiles and direct engine
+execution do not provide the required snapshot context.
 
 A `PerformanceBaselineAdapter` has a unique `id` and three synchronous methods:
 

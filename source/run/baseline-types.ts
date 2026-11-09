@@ -1,4 +1,5 @@
 import type { Except } from 'type-fest';
+import type { OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
 import type { BaselineWriteOutcome } from '../baselines/baseline-model.ts';
 import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 import type { OrdinaryBaselineChange, OrdinaryBaselineEntry, StoredOrdinaryBaseline } from './baseline-record.ts';
@@ -25,4 +26,11 @@ export type BaselineOrchestrator = {
     readonly diff: BaselineVerb;
     readonly list: (command: BaselineListCommand) => Promise<readonly OrdinaryBaselineEntry[]>;
     readonly update: BaselineVerb;
+};
+
+export type BaselineWorkflowInput = {
+    readonly policy: OrdinaryBaselinePolicy;
+    readonly projectRoot: string;
+    readonly request: RunCommand['request'];
+    readonly maxBytes: number;
 };

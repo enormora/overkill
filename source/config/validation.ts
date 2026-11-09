@@ -3,13 +3,18 @@ import { microtestExecutionSchema, propertyProfileSchema } from './schema.ts';
 import { propertyPolicySchema } from './property-policy.ts';
 import { ConfigError } from './config-error.ts';
 import { validateNormalizedBenchmarkHostPolicy } from './benchmark-host.ts';
-import { performanceBaselinePolicySchema, ordinaryBaselinePolicySchema } from './baseline-policy.ts';
+import {
+    performanceBaselinePolicySchema,
+    ordinaryBaselinePolicySchema,
+    resolveStrictBaselines
+} from './baseline-policy.ts';
 import { validateHostProcess } from './host-process.ts';
 import { assertValidProfileName, normalizeRequiredProfileFiles } from './profile-normalization.ts';
 import { validateBenchmarkExecution } from './benchmark-execution.ts';
 import type {
     AdapterProfileConfig,
     NormalizedConfig,
+    MicrotestProfileConfig,
     BenchmarkProfileConfig,
     ProfileConfig,
     PropertyProfileConfig,
@@ -61,10 +66,8 @@ export function validateProcessUsagePolicy(policy: ProcessUsagePolicy): void {
     }
 }
 
-function validateMicrotestProfile(profile: ProfileConfig): void {
-    if (profile.testFamily !== 'benchmark' && profile.testFamily !== 'type-test') {
-        ordinaryBaselinePolicySchema.parse(profile.baselines);
-    }
+function validateMicrotestProfile(profile: MicrotestProfileConfig | PropertyProfileConfig): void {
+    resolveStrictBaselines(profile.baselines);
     validateProcessUsagePolicy(profile.processUsage);
     validateTimeoutPolicy(profile.timeouts);
 }

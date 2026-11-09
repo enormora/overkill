@@ -30,7 +30,7 @@ export function frozenPolicyProfile(policy: FrozenMicrotestPolicy): MicrotestPro
     return {
         ...policy.profile,
         reporters: null,
-        baselines: { adapters: [], directory: 'test-baselines', stale: 'fail' }
+        baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
     };
 }
 

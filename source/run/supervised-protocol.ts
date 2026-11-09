@@ -1,4 +1,3 @@
-import type { JsonValue } from 'type-fest';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import type {
     BenchmarkProfileConfig,
@@ -7,6 +6,7 @@ import type {
     ProcessBudgets,
     Scheduling
 } from '../config/types.ts';
+import type { SnapshotRun } from './snapshot-wire.ts';
 import { assertFrozenAssignmentInputs } from './workload-input-validation.ts';
 import type {
     ReplayWire,
@@ -38,6 +38,7 @@ import {
 type RunEngineSelection = RunCommand['engine'];
 
 type SupervisedCommandBase = {
+    readonly snapshots: SnapshotRun | null;
     readonly replay: ReplayWire | null;
     readonly seed: string;
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
@@ -129,10 +130,10 @@ export type SupervisedChildMessage = {
     readonly kind: 'event';
 } | {
     readonly kind: 'execution-checkpoint';
-    readonly data: JsonValue;
+    readonly data: RunExecutionTransport['data'];
 } | {
     readonly kind: 'execution-data';
-    readonly data: JsonValue;
+    readonly data: RunExecutionTransport['data'];
 } | {
     readonly kind: 'result';
     readonly result: RunResult;
