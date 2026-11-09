@@ -312,6 +312,12 @@ export const configuration = {
             bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ]
         },
         {
+            name: 'differential',
+            description: 'Differential comparisons above the Overkill property core.',
+            packageInterface: { modules: packageModules({ '.': 'main' }) },
+            bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/property' ]
+        },
+        {
             name: 'model',
             description: 'Sequential model-based testing above the Overkill property core.',
             packageInterface: { modules: packageModules({ '.': 'main' }) },
