@@ -1,8 +1,11 @@
+import { parseAdapterFacts } from '../config/adapter-facts.ts';
 import type { TestPlan } from '../engine/test-plan.ts';
-import type { RunAdapterRegistration } from '../config/adapter-profile.ts';
+import type { AdapterPreparation, CollectedAdapterRun, RunAdapterRegistration } from '../config/adapter-profile.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { createRunResult } from '../engine/execution-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
+import { freezeValue } from './run-support.ts';
+import type { ResolvedRun } from './run-types.ts';
 import { parseRunResult } from './run-result-schema.ts';
 
 const microsecondsPerMillisecond = 1000;
@@ -31,15 +34,13 @@ function validatedAdapterResult(plan: TestPlan, value: unknown): RunResult {
 
 export async function executeAdapterPlan(
     adapter: RunAdapterRegistration,
-    settings: unknown,
+    collected: CollectedAdapterRun | Promise<CollectedAdapterRun>,
     plan: TestPlan
 ): Promise<RunResult> {
-    adapter.validate(settings);
     const startedAtMicroseconds = performance.now() * microsecondsPerMillisecond;
     try {
-        const backend = await adapter.load();
-        const collected = await backend.collect(plan, settings);
-        const lowered = await collected.lower();
+        const collection = await collected;
+        const lowered = await collection.lower();
         const result = validatedAdapterResult(plan, await lowered.execute());
         return {
             ...result,
@@ -53,7 +54,7 @@ export async function executeAdapterPlan(
                     workload: null
                 },
                 source: 'native',
-                payload: { kind: 'adapter', adapter: adapter.id, facts: lowered.facts }
+                payload: { kind: 'adapter', adapter: adapter.id, facts: parseAdapterFacts(lowered.facts) }
             } ]
         };
     } catch (error: unknown) {
@@ -78,8 +79,33 @@ export async function prepareAdapterPlan(
     adapter: RunAdapterRegistration,
     settings: unknown,
     plan: TestPlan
-): Promise<TestPlan> {
+): Promise<AdapterPreparation> {
     adapter.validate(settings);
     const backend = await adapter.load();
     return await backend.prepare(plan, settings);
+}
+
+export async function collectAdapterResolvedRun(
+    preparation: AdapterPreparation | null,
+    run: ResolvedRun
+): Promise<ResolvedRun> {
+    if (preparation === null || run.plan.kind !== 'local') {
+        return run;
+    }
+    const profile = run.config.profiles[run.request.profile];
+    if (profile?.testFamily !== 'type-test') {
+        throw new Error('Adapter preparation requires an adapter profile.');
+    }
+    const collected = await preparation.collect(run.plan.testPlan);
+    const facts = parseAdapterFacts(collected.facts);
+    return freezeValue({
+        ...run,
+        facts: { ...run.facts, adapter: { id: profile.adapter.id, facts } },
+        plan: { ...run.plan, adapter: { preparation, collected } }
+    });
+}
+
+type AdapterPlan = Extract<ResolvedRun['plan'], { readonly adapter: unknown; }>;
+export function isAdapterPlan(plan: ResolvedRun['plan']): plan is AdapterPlan {
+    return Object.hasOwn(plan, 'adapter');
 }

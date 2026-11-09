@@ -108,6 +108,7 @@ async function resolveRunCommand(command: RunCommand): ReturnType<ConfiguredRunO
         config: command.config,
         cwd: command.cwd,
         facts: {
+            adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
             benchmarkNormalization: null,

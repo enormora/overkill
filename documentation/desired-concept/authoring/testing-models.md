@@ -451,6 +451,27 @@ unrelated direct TSTyche runs must not overlap them in the same process.
 Case bodies are not invoked by the type checker. Generic bodies, tables, and
 macros follow the [Native Assertion Contract](#native-assertion-contract).
 
+### Frozen Compiler Plans
+
+Compiler selection accepts one selection or an explicit non-empty matrix.
+Resolve local selections once, deduplicate exact versions, and expand executable
+work before selection. Logical case identity remains unchanged. Compiler
+programs, original configuration, assertion ownership, and observed filesystem
+inputs belong to one explicit preparation object retained through selection.
+
+The adapter preparation returns its expanded plan and a collection closure.
+The runner collects selected work during resolution and retains that collection
+for execution. Immutable adapter facts are available in `RunFacts.adapter`
+before `run-start`. Adapter facts are lossless JSON; bounded diagnostic
+serialization must not truncate reproducibility inputs.
+
+Record configuration dependencies, effective options, original roots and
+references, loaded source and declaration fingerprints, resolution metadata,
+and existence probes. Revalidate at collection, lowering, and before and after
+checking. Detected drift invalidates the entire invocation, discards case
+evidence, and requires fresh collection. This is observed-input validation,
+not a hermetic snapshot or a guarantee against transient filesystem changes.
+
 ### Rejected Approaches And Remaining Work
 
 - Fixture-backed bodies require a second authoring style and can duplicate

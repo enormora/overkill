@@ -95,7 +95,7 @@ export function assertExpectedDirectEntrypointCollection(
     actual: CollectedRunPlan
 ): void {
     if (expected !== null) {
-        assertDirectEntrypointCollectionMatches(expected, actual);
+        assertDirectEntrypointCollectionMatches(expected.testPlan, actual);
     }
 }
 

@@ -41,6 +41,8 @@ A reproducible run captures, at minimum:
 - the loader configuration (TS strip mode, source-map flag, registered
   hooks)
 - the Overkill engine and package versions
+- adapter planning facts, including exact compiler variants, source and configuration
+  fingerprints, assertion ownership, and generated-input policy when applicable
 
 Together these form a `RunFacts` value preserved as part of the run record.
 `RunFacts` is a serializable snapshot with run-level domains and a

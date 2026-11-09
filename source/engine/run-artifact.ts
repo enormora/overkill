@@ -1,4 +1,4 @@
-import type { SerializedValue } from '../compare/serialized-value.ts';
+import type { ReadonlyDeep, JsonValue } from 'type-fest';
 import type { AttemptId, CaseId, RuntimeId, WorkloadId } from './identity.ts';
 
 export type RunArtifactScope = {
@@ -46,6 +46,6 @@ export type CapturedOutputArtifact = {
 
 export type AdapterArtifact = {
     readonly id: RunArtifactId & { readonly subtype: 'adapter'; };
-    readonly payload: { readonly kind: 'adapter'; readonly adapter: string; readonly facts: SerializedValue; };
+    readonly payload: { readonly kind: 'adapter'; readonly adapter: string; readonly facts: ReadonlyDeep<JsonValue>; };
     readonly source: 'native';
 };

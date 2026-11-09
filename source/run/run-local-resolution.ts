@@ -1,3 +1,4 @@
+import { collectAdapterResolvedRun as attachAdapter } from './adapter-execution.ts';
 import { assertReplaySelection } from './run-support.ts';
 import { recordedRunPlan } from './recorded-run-plan.ts';
 import { collectedRunPlanFromTestPlanCases } from './collected-run-plan.ts';
@@ -21,7 +22,7 @@ export async function createLocalResolvedRun(
     input: ResolvedRunInput,
     source: LocalTestPlanInput['source']
 ): Promise<ResolvedRun> {
-    const testPlan = await createLocalTestPlan({
+    const { testPlan, preparation } = await createLocalTestPlan({
         command,
         definitionLocationCapture: 'enabled',
         dependencies,
@@ -35,11 +36,14 @@ export async function createLocalResolvedRun(
     }
     const selectedPlan = selectedTestPlan(testPlan, input.request.selection);
 
-    return await createShardedLocalResolvedRunFromTestPlan(
-        command,
-        dependencies,
-        input,
-        selectedPlan
+    return await attachAdapter(
+        preparation,
+        await createShardedLocalResolvedRunFromTestPlan(
+            command,
+            dependencies,
+            input,
+            selectedPlan
+        )
     );
 }
 
@@ -55,7 +59,7 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
         throw new Error('Expected in-process profile.');
     }
 
-    const testPlan = await createLocalTestPlan({
+    const { testPlan, preparation } = await createLocalTestPlan({
         command,
         definitionLocationCapture: 'disabled',
         dependencies,
@@ -76,10 +80,13 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
         };
     }
 
-    const run = await createShardedLocalResolvedRunFromTestPlan(command, dependencies, input, {
-        ...testPlan,
-        cases: plannedCases
-    });
+    const run = await attachAdapter(
+        preparation,
+        await createShardedLocalResolvedRunFromTestPlan(command, dependencies, input, {
+            ...testPlan,
+            cases: plannedCases
+        })
+    );
 
     return { replayPlan: recordedRunPlan(run), facts: run.facts, run };
 }

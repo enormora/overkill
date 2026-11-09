@@ -167,7 +167,13 @@ export type RunCommand = OrdinaryRunCommand | WitnessRunCommand;
 type ReplayRunFacts = OrdinaryRunFacts & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
 export type RunFacts = OrdinaryRunFacts | ReplayRunFacts;
 
+type AdapterProfile = Extract<NormalizedConfig['profiles'][string], { readonly testFamily: 'type-test'; }>;
+type AdapterBackend = Awaited<ReturnType<AdapterProfile['adapter']['load']>>;
+type AdapterPreparation = Awaited<ReturnType<AdapterBackend['prepare']>>;
+type AdapterCollection = Awaited<ReturnType<AdapterPreparation['collect']>>;
+
 type OrdinaryRunFacts = {
+    readonly adapter: { readonly id: string; readonly facts: AdapterCollection['facts']; } | null;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
@@ -317,6 +323,10 @@ export type ResolvedRunPlan = {
 } | {
     readonly collectedPlan: CollectedRunPlan;
     readonly kind: 'worker-pool';
+} | {
+    readonly kind: 'local';
+    readonly testPlan: TestPlan;
+    readonly adapter: { readonly preparation: AdapterPreparation; readonly collected: AdapterCollection; };
 } | {
     readonly kind: 'local';
     readonly testPlan: TestPlan;

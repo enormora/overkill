@@ -1,8 +1,8 @@
-import type { TestPlan } from '../engine/test-plan.ts';
 import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
+import type { prepareAdapterPlan } from './adapter-execution.ts';
 
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 
@@ -25,7 +25,9 @@ export type LocalTestPlanInput = Pick<ResolvedRunInput, 'files' | 'profile'> & {
     readonly dependencies: RunOrchestratorDependencies;
     readonly source: RunTestPlanCollectionSource;
 };
-export type LocalTestPlan = TestPlan;
+type AdapterPreparation = Awaited<ReturnType<typeof prepareAdapterPlan>>;
+type TestPlan = AdapterPreparation['testPlan'];
+export type LocalTestPlan = { readonly testPlan: TestPlan; readonly preparation: AdapterPreparation | null; };
 
 async function readTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     const engine = await resolveRunEngine(input.command.engine, input.dependencies);
@@ -47,7 +49,7 @@ async function readTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     });
 }
 
-async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
+async function createTestPlan(input: LocalTestPlanInput): Promise<LocalTestPlan> {
     const testPlan = await readTestPlan(input);
     const collected = resolveTestPlanCollectionPolicy(testPlan, {
         testFamily: input.profile.testFamily,
@@ -56,9 +58,10 @@ async function createTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
     });
     if (input.profile.testFamily === 'type-test') {
         const { prepareAdapterPlan } = await import('./adapter-execution.ts');
-        return await prepareAdapterPlan(input.profile.adapter, input.profile.settings, collected);
+        const preparation = await prepareAdapterPlan(input.profile.adapter, input.profile.settings, collected);
+        return { testPlan: preparation.testPlan, preparation };
     }
-    return collected;
+    return { testPlan: collected, preparation: null };
 }
 
 function firstObservedCollectionError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
@@ -76,7 +79,7 @@ async function waitForObservedCollectionError(observer: ExecutionGlobalErrorObse
     throw firstObservedCollectionError(observer);
 }
 
-export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
+export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<LocalTestPlan> {
     const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
     try {
         return await globalErrorObserver.runBoundary(async function runObservedCollection() {

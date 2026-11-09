@@ -5,7 +5,7 @@ import type {
 } from '../run/config.entry-point.ts';
 import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
 
-export type { TypeTestOptions } from './profile-settings.ts';
+export type { CompilerPolicy, TypeTestOptions } from './profile-settings.ts';
 export type TypeTestProfileOptions = TypeTestOptions & { readonly files: ProjectProfileFiles; };
 
 export const typeTestAdapter: RunAdapterRegistration = Object.freeze({
