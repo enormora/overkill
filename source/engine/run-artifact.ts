@@ -179,7 +179,7 @@ export function artifactsForAttempt<Artifact extends { readonly id: RunArtifactI
             return false;
         }
         const identity = {
-            familyVariant: artifact.id.familyVariant,
+            familyVariant: artifact.id.familyVariant ?? null,
             case: artifact.id.scope.case,
             runtimes: artifact.id.runtimes,
             workload: artifact.id.workload

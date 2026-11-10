@@ -83,6 +83,27 @@ export const testNode = suite('family identity', [
         scope.assert.deepEqual(artifactsForAttempt([ artifact ], second, { index: 0 }), []);
         return scope.assert.collect();
     }),
+    test('matches legacy case artifacts to neutral attempts', function (scope: TestScope) {
+        const artifact = {
+            id: {
+                runtimes: [],
+                workload: null,
+                scope: { kind: 'case', case: logical, activeCases: [ logical ], confidence: 'active-case' },
+                attempt: { index: 0 },
+                sequence: 0,
+                subtype: 'worker-crash'
+            }
+        };
+        const neutralMatches: unknown = Reflect.apply(artifactsForAttempt, null, [
+            [ artifact ],
+            neutral,
+            { index: 0 }
+        ]);
+        const variantMatches: unknown = Reflect.apply(artifactsForAttempt, null, [ [ artifact ], first, { index: 0 } ]);
+        scope.assert.equal(JSON.stringify(neutralMatches), JSON.stringify([ artifact ]));
+        scope.assert.equal(JSON.stringify(variantMatches), '[]');
+        return scope.assert.collect();
+    }),
     test('retains family variants in boundary failure evidence', function (scope: TestScope) {
         const artifact = createBoundaryFailureArtifact(
             {
