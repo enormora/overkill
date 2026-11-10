@@ -353,7 +353,7 @@ await using prepared = await engine.prepareFamily({
     signal
 });
 const collected = await prepared.collect({
-    workIds: prepared.testPlan.cases.map(testCase => testCase.workId),
+    workIds: prepared.testPlan.cases.map((testCase) => testCase.workId),
     signal
 });
 const result = await engine.execute(collected, { ...executionOptions, signal });
