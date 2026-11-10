@@ -50,7 +50,7 @@ The standalone checker records no operations. The package adds no test family,
 CLI, or persistence format. Property owns shrinking, witnesses, corpora, and reporting;
 `linearizability(...)` owns concurrent execution.
 
-### Concurrent Operation Authoring
+## Concurrent Operation Authoring
 
 ```ts
 import { gen, property } from '@overkill-dev/test/property';
@@ -60,7 +60,7 @@ export const testNode = property({
     title: 'increments are linearizable',
     generator: gen.array(gen.array(gen.integer({ min: 1, max: 3 }))),
     test: linearizability({
-        create: () => new Map([['count', 0]]),
+        create: () => new Map([ [ 'count', 0 ] ]),
         run(delta: number, counter) {
             const next = (counter.get('count') ?? 0) + delta;
             counter.set('count', next);
