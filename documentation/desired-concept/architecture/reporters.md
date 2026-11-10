@@ -289,7 +289,7 @@ convention and no package-name lookup magic in the settled concept.
 standard users do not need to import each built-in reporter from its leaf
 package by default. The current standard distribution exports
 `createLineReporter`, `createLineTreeReporter`, `createLineProgressReporter`,
-`createBriefReporter`, `createDotReporter`, `createGithubActionsOutputRenderer`,
+`createBriefReporter`, `createBriefFinalResultReporter`, `createDotReporter`, `createGithubActionsOutputRenderer`,
 and `createBenchmarkHtmlReporter`. Each factory also ships in its leaf package.
 
 ## Multi-Reporter Composition
@@ -430,6 +430,13 @@ It renders:
 Failure lines include source location when a structured failure has one.
 Located failure intents carry annotations so renderers can adapt them for CI
 systems without the reporter knowing platform-specific command syntax.
+
+The final-result factory, `createBriefFinalResultReporter()`, renders final
+structured failure causes and runner errors, followed by the same count,
+evidence, and timing output. It consumes only the completed result and emits
+no start or progress lines. Recovered retry failures are excluded from final
+failure diagnostics. Inconclusive and native-terminal cases retain counts and
+available runner errors without an additional per-case diagnostic format.
 
 ## Timing Output
 

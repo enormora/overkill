@@ -1,9 +1,16 @@
 import { describe, expect, test } from 'tstyche';
-import type { DefinedReporter, RealTimeReporter } from '../engine/engine.entry-point.ts';
-import type { BriefReporterSinks, createBriefReporter } from './reporter-brief.entry-point.ts';
+import type { DefinedReporter, FinalResultReporter, RealTimeReporter } from '../engine/engine.entry-point.ts';
+import type {
+    BriefReporterSinks,
+    createBriefFinalResultReporter,
+    createBriefReporter
+} from './reporter-brief.entry-point.ts';
 
 describe('@overkill-dev/reporter-brief', function () {
-    test('returns the public real-time reporter contract', function () {
+    test('returns the public reporter lifecycle contracts', function () {
+        expect<typeof createBriefFinalResultReporter>().type.toBe<
+            () => DefinedReporter<FinalResultReporter<BriefReporterSinks>>
+        >();
         expect<typeof createBriefReporter>().type.toBe<() => DefinedReporter<RealTimeReporter<BriefReporterSinks>>>();
     });
 });

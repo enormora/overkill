@@ -1,4 +1,3 @@
-import { formatCaseId } from '../engine/identity.ts';
 import type { OutputLineIntent } from '../engine/reporter-output.ts';
 import {
     defineReporter,
@@ -7,20 +6,18 @@ import {
     type ReporterEvent,
     type RunFacts
 } from '../engine/reporter.ts';
-import { formatSourceLocation, type ReportingContext } from '../engine/reporting-context.ts';
-import type { RunResult, RunnerError, TestFailure } from '../engine/run-result.ts';
-import { primaryFailureSourceLocation } from './failure-location.ts';
-import { formatFailureSummary, formatPropertyDiagnostics } from './failure-summary.ts';
-import { witnessReplayLines } from './witness-replay-lines.ts';
+import type { ReportingContext } from '../engine/reporting-context.ts';
 import {
-    formatCoverageSummaryLines,
-    formatRunFactSummary,
-    formatTimingOffenderLines,
-    formatTimingSummary
-} from './run-summary-rendering.ts';
+    briefReporterSinks,
+    type BriefReporterSinks,
+    briefSummaryIntents,
+    failureIntent,
+    runnerErrorIntent,
+    stdout
+} from './brief-reporter-rendering.ts';
+import { formatRunFactSummary } from './run-summary-rendering.ts';
 
 const progressInterval = 100;
-const microsecondsPerMillisecond = 1000;
 
 type BriefReporterState = {
     readonly completed: number;
@@ -33,49 +30,10 @@ type BriefReporterUpdate = {
     readonly state: BriefReporterState;
 };
 
-export type BriefReporterSinks = readonly [{ readonly kind: 'stdout-managed-primary'; }];
-
-const briefReporterSinks: BriefReporterSinks = [ { kind: 'stdout-managed-primary' } ];
-
-function stdout(text: string, annotation: OutputLineIntent['annotation']): OutputLineIntent {
-    return {
-        annotation,
-        kind: 'stdout-line',
-        role: 'primary',
-        text
-    };
-}
-
 function readPlannedCount(facts: RunFacts): number | null {
     const { cases } = facts;
 
     return Array.isArray(cases) ? cases.length : null;
-}
-
-function formatFailureLine(
-    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    failure: TestFailure,
-    context: ReportingContext
-): string {
-    const location = primaryFailureSourceLocation(failure);
-    const locationText = location === null ? null : formatSourceLocation(location, context);
-    const origin = locationText === null ? formatCaseId(event.case) : `${locationText} ${formatCaseId(event.case)}`;
-
-    return `fail ${origin}: ${formatFailureSummary(failure)}`;
-}
-
-function failureIntent(
-    event: Extract<ReporterEvent, { readonly kind: 'test-end'; }>,
-    failure: TestFailure,
-    context: ReportingContext
-): OutputLineIntent {
-    const location = primaryFailureSourceLocation(failure);
-
-    return stdout(formatFailureLine(event, failure, context), {
-        location,
-        severity: 'error',
-        title: formatCaseId(event.case)
-    });
 }
 
 function progressIntent(state: BriefReporterState): OutputLineIntent {
@@ -90,49 +48,6 @@ function shouldReportProgress(state: BriefReporterState): boolean {
     }
 
     return state.planned === null || state.completed < state.planned;
-}
-
-function executedCount(result: RunResult): number {
-    const { summary } = result;
-
-    return summary.passed + summary.failed + summary.skipped + summary.inconclusive +
-        summary.processExhausted + summary.crashed;
-}
-
-function retryCountSummary(result: RunResult): string {
-    const count = result
-        .perTest
-        .filter(function retried(testResult) {
-            return testResult.retried !== null;
-        })
-        .length;
-    return count === 0 ? '' : `retried=${count} `;
-}
-
-function finishIntent(result: RunResult): OutputLineIntent {
-    const { summary } = result;
-    const discoveryCounts = `done status=${result.status} discovered=${summary.discovered} planned=${summary.planned}`;
-    const executionCounts = `executed=${executedCount(result)} passed=${summary.passed} failed=${summary.failed}`;
-    const totalMicroseconds = result.timings.summary.totalWallTimeMicroseconds;
-    const remainingCounts = `skipped=${summary.skipped} inconclusive=${summary.inconclusive} ` +
-        `processExhausted=${summary.processExhausted} runtimePolicy=${summary.runtimePolicy} ` +
-        `crashed=${summary.crashed} ` +
-        `ms=${totalMicroseconds / microsecondsPerMillisecond}`;
-
-    return stdout(
-        `${discoveryCounts} ${executionCounts} ${retryCountSummary(result)}${remainingCounts} timing="${
-            formatTimingSummary(result)
-        }"`,
-        null
-    );
-}
-
-function runnerErrorIntent(error: RunnerError): OutputLineIntent {
-    return stdout(`runner-error ${error.message}`, {
-        location: null,
-        severity: 'error',
-        title: 'Runner error'
-    });
 }
 
 function updateForCompletedTest(state: BriefReporterState, failed: boolean): BriefReporterState {
@@ -161,7 +76,7 @@ function testEndUpdate(
     }
 
     const failureIntents = event.outcome.failures.map(function toFailureIntent(failure) {
-        return failureIntent(event, failure, context);
+        return failureIntent(event.case, failure, context);
     });
 
     return {
@@ -178,14 +93,6 @@ function runStartIntent(event: Extract<ReporterEvent, { readonly kind: 'run-star
     const details = summary === null ? '' : ` ${summary}`;
 
     return stdout(`run ${event.root.title}${details}`, null);
-}
-
-function propertyDiagnosticIntents(result: RunResult): readonly OutputLineIntent[] {
-    return result.perTest.flatMap(function propertyDiagnostics(testResult) {
-        return formatPropertyDiagnostics(testResult.property).map(function diagnosticIntent(line) {
-            return stdout(`${testResult.id.title}: ${line}`, null);
-        });
-    });
 }
 
 export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefReporterSinks>> {
@@ -227,21 +134,7 @@ export function createBriefReporter(): DefinedReporter<RealTimeReporter<BriefRep
                 return [];
             },
 
-            onFinish(result) {
-                return [
-                    finishIntent(result),
-                    ...propertyDiagnosticIntents(result),
-                    ...witnessReplayLines(result.artifacts).map(function replayIntent(line) {
-                        return stdout(line, null);
-                    }),
-                    ...formatCoverageSummaryLines(result).map(function coverageIntent(line) {
-                        return stdout(line, null);
-                    }),
-                    ...formatTimingOffenderLines(result).map(function timingIntent(line) {
-                        return stdout(line, null);
-                    })
-                ];
-            }
+            onFinish: briefSummaryIntents
         };
     });
 }

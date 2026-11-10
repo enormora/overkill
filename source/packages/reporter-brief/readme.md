@@ -21,3 +21,11 @@ ANSI color, cursor control, or passing test lines. Failed assertion lines carry
 source-location annotations when the failed check has one.
 
 Precise timing summaries list up to five runner overhead spans above 500 ms.
+
+Use `createBriefFinalResultReporter()` from the same package for completed
+results without a live event stream. It returns a final-result reporter using
+the same managed stdout sink, failure annotations, counts, evidence, and timing
+output. It prints final failure causes and runner errors before the summary,
+without run-start, progress, retry, or passing-test lines. Recovered retry
+failures are not printed as final failures. Both factories are also exported
+from `@overkill-dev/test/reporters`.
