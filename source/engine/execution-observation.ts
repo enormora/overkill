@@ -2,8 +2,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { withSerializationBudget } from '../compare/serialization-context.ts';
 import { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from './failure-artifact-policy.ts';
-import type { BoundaryFailureArtifact } from './run-artifact.ts';
-import { workIdentityKey, type AttemptId, type CaseId, type WorkId } from './identity.ts';
+import { artifactsForAttempt, type BoundaryFailureArtifact } from './run-artifact.ts';
+import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
 
@@ -334,11 +334,7 @@ export function boundaryArtifacts(): readonly BoundaryFailureArtifact[] {
 }
 
 export function caseBoundaryArtifacts(work: WorkId, attempt: AttemptId): readonly BoundaryFailureArtifact[] {
-    return boundaryArtifacts().filter(function belongsToAttempt(artifact) {
-        const [ active ] = artifact.payload.activeWork;
-        return artifact.id.scope.kind === 'case' && active !== undefined &&
-            workIdentityKey(active.work) === workIdentityKey(work) && active.attempt.index === attempt.index;
-    });
+    return artifactsForAttempt(boundaryArtifacts(), work, attempt);
 }
 
 export function currentProcessUsageSamplingInterval(): number | null {
