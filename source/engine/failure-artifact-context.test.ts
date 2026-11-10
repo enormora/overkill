@@ -6,6 +6,7 @@ import {
     createTestCase,
     defaultFailureArtifactPolicy,
     serializeValue,
+    type RunnerError,
     type TestScope
 } from '../packages/engine/engine.entry-point.ts';
 import type * as ObservationModule from './execution-observation.ts';
@@ -18,6 +19,8 @@ import {
     withFailureArtifactContext
 } from './execution-observation.ts';
 import { createDefaultWorkId } from './identity.ts';
+import { crashError as executionCrashError, type CrashCause } from './execution-supervision-state.ts';
+import { throwWithCleanupErrors } from './execution-result.ts';
 import {
     createBoundaryFailureArtifact,
     type ActiveBoundaryWork,
@@ -33,6 +36,9 @@ type EvidenceObservation = {
     readonly foreign: readonly BoundaryFailureArtifact[];
     readonly retried: readonly BoundaryFailureArtifact[];
 };
+type TimeoutOwnership = Pick<RunnerError, 'attributedTo' | 'attributedToAttempt' | 'attributedToWork'> & {
+    readonly activeWork: readonly ActiveBoundaryWork[];
+};
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const work = createDefaultWorkId({ file: 'example.test.ts', suite: [], title: 'owned', params: null });
@@ -42,6 +48,21 @@ const text = 'abcdefgh';
 const observationModuleUrl = new URL('./execution-observation.ts', import.meta.url);
 const copiedObservationUrl = new URL('?artifact-context-copy', observationModuleUrl);
 const copiedSerializationUrl = new URL('../compare/serialization-context.ts?artifact-context-copy', import.meta.url);
+const timeoutOwners: readonly TimeoutOwnership[] = [
+    { activeWork: [], attributedTo: null, attributedToAttempt: null, attributedToWork: null },
+    {
+        activeWork: [ { work, attempt } ],
+        attributedTo: work.case,
+        attributedToAttempt: attempt,
+        attributedToWork: work
+    },
+    {
+        activeWork: [ { work, attempt }, { work: peer, attempt: { index: 1 } } ],
+        attributedTo: null,
+        attributedToAttempt: null,
+        attributedToWork: null
+    }
+];
 
 function crashEvidence(activeWork: readonly ActiveBoundaryWork[]): BoundaryFailureArtifact {
     return createBoundaryFailureArtifact(
@@ -80,10 +101,62 @@ function observeAttemptEvidence(
     };
 }
 
+async function rejectedExecution(error: Error, cleanupErrors: readonly unknown[]): Promise<unknown> {
+    try {
+        await throwWithCleanupErrors(error, async function cleanupExecution() {
+            return cleanupErrors;
+        });
+    } catch (error_: unknown) {
+        return error_;
+    }
+    throw new Error('Expected execution to reject.');
+}
+
 export const testNode = createSuite({
     ...metadata,
     title: 'failure artifact contexts',
     children: [
+        ...timeoutOwners.map(function timeoutAttribution({ activeWork, ...attribution }) {
+            return createTestCase({
+                ...metadata,
+                title: `hard timeout attribution follows ${activeWork.length} active attempts`,
+                body(scope: TestScope) {
+                    const cause: CrashCause = {
+                        activeAttempts: activeWork.map(function (active) {
+                            return active.attempt;
+                        }),
+                        activeCases: activeWork.map(function (active) {
+                            return active.work.case;
+                        }),
+                        activeWork: activeWork.map(function (active) {
+                            return active.work;
+                        }),
+                        reason: 'hard-timeout',
+                        termination: 'hard-timeout'
+                    };
+                    scope.assert.partialDeepEqual(executionCrashError(cause), {
+                        ...attribution,
+                        cause,
+                        subtype: 'crash'
+                    });
+                    return scope.assert.collect();
+                }
+            });
+        }),
+        createTestCase({
+            ...metadata,
+            title: 'execution and cleanup failures retain their original causes in order',
+            async body(scope: TestScope) {
+                const error = new Error('execution failed');
+                const cleanup = new Error('capture cleanup failed');
+                const failure = await rejectedExecution(error, [ cleanup, null ]);
+                scope.require.instanceOf(failure, AggregateError);
+                scope.assert.deepEqual(failure.errors, [ error, cleanup, null ]);
+                scope.assert.equal(failure.cause, error);
+                scope.assert.equal(await rejectedExecution(error, []), error);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'module copies share execution and serialization budgets',

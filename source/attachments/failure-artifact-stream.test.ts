@@ -98,10 +98,41 @@ async function assertLateEmptyCapture(scope: TestScope): Promise<void> {
     scope.assert.equal(errors[0]?.subtype, 'attribution-drift');
     scope.assert.deepEqual(fixture.store.artifacts(), []);
 }
+
+async function assertLateClosedCapture(scope: TestScope): Promise<void> {
+    const fixture = await attachmentFixture(scope, defaultAttachmentLimits);
+    await runWithAttachmentExecution(fixture.execution, async function ownedRun() {
+        await fixture.execution.runAttempt(work, { index: 0 }, async function closedCapture() {
+            const stream = attemptStream();
+            stream.write('received');
+            await stream.close();
+            stream.write('late');
+            await closeAttemptFailureStreams(work, { index: 0 });
+        });
+    });
+    const errors = fixture.execution.takeErrors({ kind: 'case', work, attempt: { index: 0 } });
+    scope.assert.equal(errors.length, 1);
+    scope.assert.equal(errors[0]?.message, 'Attachment writes require an open writer and an awaited previous write.');
+    const artifact = fixture.store.artifacts()[0];
+    scope.require.defined(artifact);
+    scope.assert.partialDeepEqual(artifact.payload.content, {
+        kind: 'text',
+        text: 'received',
+        completion: { kind: 'complete' }
+    });
+}
 export const testNode = createSuite({
     ...metadata,
     title: 'source/attachments/failure-artifact-stream.test.ts',
     children: [
+        createTestCase({
+            ...metadata,
+            title: 'late output reports a closed writer failure while preserving captured evidence',
+            async body(scope: TestScope) {
+                await assertLateClosedCapture(scope);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             ...metadata,
             title: 'attempt cleanup reports failed stream drains as an aggregate error',

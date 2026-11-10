@@ -5,6 +5,7 @@ import { testNode as definitionLocationsTestNode } from './supervised-definition
 import { testNode as supervisedChildProcessTestNode } from './supervised-child-process.test.ts';
 import { testNode as supervisedChildTestNode } from './supervised-child.test.ts';
 import { testNode as childProcessStartersTestNode } from './node-child-process-starters.test.ts';
+import { testNode as nativeArtifactsTestNode } from './supervised-native-artifacts.test.ts';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
@@ -15,6 +16,7 @@ export const testNode = createOverkillSuite({
         reporterFlushTestNode,
         definitionLocationsTestNode,
         childProcessStartersTestNode,
+        nativeArtifactsTestNode,
         supervisedChildProcessTestNode,
         supervisedChildTestNode
     ]
