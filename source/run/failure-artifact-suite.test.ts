@@ -7,12 +7,13 @@ import { testNode as resources } from './integration-failure-artifacts.test.ts';
 import { testNode as sharing } from './failure-artifact-sharing.test.ts';
 import { testNode as preparation } from './resource-failure-preparation.test.ts';
 import { testNode as processes } from './process-failure-evidence.test.ts';
+import { testNode as terminalReports } from './run-result-reporting.test.ts';
 
 export const testNode = createSuite({
     annotations: {},
     controls: {},
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'integration failure artifacts',
-    children: [ boundaries, streams, collectors, resources, sharing, preparation, processes ]
+    children: [ boundaries, streams, collectors, resources, sharing, preparation, processes, terminalReports ]
 });
 await runIfMain(import.meta, testNode);
