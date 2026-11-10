@@ -193,6 +193,7 @@ export function createDebugArtifact(
     const facts = evidenceFacts(evidence, trace);
     return {
         id: {
+            familyVariant: input.testCase.workId.familyVariant,
             scope: {
                 kind: 'case',
                 case: input.testCase.id,

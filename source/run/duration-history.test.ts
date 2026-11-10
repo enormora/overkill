@@ -59,6 +59,7 @@ type DurationHistoryUpdateResults = {
 
 function work(title: string): WorkId {
     return {
+        familyVariant: null,
         case: {
             file: `source/${title}.test.ts`,
             params: null,
@@ -73,7 +74,7 @@ function work(title: string): WorkId {
 function unit(key: string, unitWork: readonly [WorkId, ...WorkId[]]): WorkUnit {
     return {
         group: null,
-        id: { key, mode: 'case', runtimes: [], workload: null },
+        id: { familyVariant: null, key, mode: 'case', runtimes: [], workload: null },
         order: 'plan',
         resourceConstraints: emptyWorkUnitResourceConstraints,
         scheduling: 'concurrent',
@@ -431,6 +432,7 @@ export const testNode = createOverkillSuite({
                                 entries: [ {
                                     observations: [ observation(100, now) ],
                                     work: {
+                                        familyVariant: null,
                                         case: {
                                             file: 'source/legacy.test.ts',
                                             params: null,

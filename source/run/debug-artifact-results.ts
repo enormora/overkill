@@ -5,7 +5,12 @@ function artifactKey(artifact: RunArtifact, index: number): string {
     if (!isTestDebugArtifact(artifact)) {
         return `ordinary:${index.toString()}`;
     }
-    const work = { case: artifact.id.scope.case, runtimes: artifact.id.runtimes, workload: artifact.id.workload };
+    const work = {
+        case: artifact.id.scope.case,
+        familyVariant: artifact.id.familyVariant,
+        runtimes: artifact.id.runtimes,
+        workload: artifact.id.workload
+    };
     return `debug:${workIdentityKey(work)}:${artifact.id.attempt.index.toString()}:${artifact.id.sequence.toString()}`;
 }
 function replacesPrevious(previous: RunArtifact | undefined, next: RunArtifact): boolean {

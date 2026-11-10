@@ -129,6 +129,7 @@ function coverageArtifact(
 ): CoverageArtifact {
     return {
         id: {
+            familyVariant: null,
             attempt: null,
             runtimes: [],
             scope: { kind: 'run' },

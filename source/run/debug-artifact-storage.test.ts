@@ -51,6 +51,31 @@ export const testNode = suite('debug artifact persistence', [
         scope.assert.equal(uniquePaths.size, 2);
         return scope.assert.collect();
     }),
+    test('family variants retain separate debug files and results', async function (scope: TestScope) {
+        const { artifact } = await debugArtifactFixture('family');
+        const paths: string[] = [];
+        const store = createDebugArtifactStore('/state/debug', {
+            async write(file) {
+                paths.push(file);
+            }
+        });
+        const first: TestDebugArtifact = {
+            ...artifact,
+            id: { ...artifact.id, familyVariant: { family: 'custom', key: 'first' } }
+        };
+        const second: TestDebugArtifact = {
+            ...artifact,
+            id: { ...artifact.id, familyVariant: { family: 'custom', key: 'second' } }
+        };
+        await store.persist([ first, second ]);
+        const uniquePaths = new Set(paths);
+        scope.assert.deepEqual([ paths.length, uniquePaths.size, mergeDebugArtifacts([ first, second ]).length ], [
+            2,
+            2,
+            2
+        ]);
+        return scope.assert.collect();
+    }),
     test('completed native evidence wins over a late checkpoint', async function (scope: TestScope) {
         const { artifact } = await debugArtifactFixture('complete');
         const checkpoint: TestDebugArtifact = {

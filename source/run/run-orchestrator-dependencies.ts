@@ -1,7 +1,8 @@
-import type { HostProcess, ProfileConfig } from '../config/types.ts';
+import type { HostProcess } from '../config/types.ts';
 import type { HistoryMaintenance, HistoryStorageFactory, RuntimeStateStore } from './history-storage-types.ts';
 import type { RunHostObservations, ProcessUsageTrackerOptions } from './run-host-observations.ts';
 import type {
+    TestFamilyId,
     Engine,
     Execute,
     ReporterDispatcher,
@@ -33,7 +34,7 @@ export type WorkerPoolHostOutputSink = (
 export type WorkerPoolCreationOptions = {
     readonly cwd: string;
     readonly hostProcess: HostProcess;
-    readonly testFamily: ProfileConfig['testFamily'];
+    readonly testFamily: TestFamilyId;
     readonly timing?: RunTimingMeasurement | null;
     readonly workerCount: number;
     readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';
@@ -43,7 +44,7 @@ export type WorkerPoolHostProcessStartOptions = {
     readonly cwd: string;
     readonly environmentVariables: RuntimeCapabilityPolicyEnvironment;
     readonly nodeArguments: readonly string[];
-    readonly testFamily: ProfileConfig['testFamily'];
+    readonly testFamily: TestFamilyId;
 };
 
 export type WorkerPoolHostProcessStarter = (

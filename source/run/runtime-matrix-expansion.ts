@@ -184,6 +184,7 @@ function expandCase(testCase: TestPlanCase): readonly TestPlanCase[] {
             ...testCase,
             resourceAttachments: attachmentsForVariant(testCase.resourceAttachments, combination),
             workId: {
+                familyVariant: testCase.workId.familyVariant,
                 case: testCase.id,
                 runtimes: sortedRuntimeIds(combination.map(function selectedRuntime(selection) {
                     return selection.runtimeId;

@@ -1,3 +1,4 @@
+import { workUnitIdentityKey } from './work-unit-identity.ts';
 import type { PlacementLane, PlacementPlan, WorkUnit } from './run-types.ts';
 import { createWorkUnitQueue, type WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import {
@@ -11,22 +12,18 @@ type StaticQueueItem = {
     readonly unit: WorkUnit;
 };
 
-function workUnitIdKey(unit: WorkUnit['id']): string {
-    return JSON.stringify(unit);
-}
-
 function unitKey(unit: WorkUnit): string {
-    return workUnitIdKey(unit.id);
+    return workUnitIdentityKey(unit.id);
 }
 
 function unitByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
     return new Map(units.map(function toEntry(unit) {
-        return [ JSON.stringify(unit.id), unit ];
+        return [ workUnitIdentityKey(unit.id), unit ];
     }));
 }
 
 function knownUnit(units: ReadonlyMap<string, WorkUnit>, unitId: WorkUnit['id']): WorkUnit {
-    const unit = units.get(JSON.stringify(unitId));
+    const unit = units.get(workUnitIdentityKey(unitId));
 
     if (unit === undefined) {
         throw new Error('Placement assignment referenced an unknown work unit.');
@@ -55,7 +52,7 @@ export function createStaticDispatcher(
         return [ lane.id, createWorkUnitQueue(unitsAssignedToLane(plan, lane)) ];
     }));
     const assignedLaneByUnit = new Map(plan.assignments.map(function toAssignmentEntry(assignment) {
-        return [ JSON.stringify(assignment.unit), assignment.lane ];
+        return [ workUnitIdentityKey(assignment.unit), assignment.lane ];
     }));
 
     return {

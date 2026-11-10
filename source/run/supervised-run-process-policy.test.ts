@@ -162,13 +162,19 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(processExhaustionError(breach, multiState).attributedTo, null);
                 scope.assert.deepEqual(crashError(multiState, 'Crashed.').cause, {
                     activeAttempts: [
-                        { work: { case: firstCaseId, runtimes: [], workload: null }, attempt: { index: 0 } },
-                        { work: { case: secondCaseId, runtimes: [], workload: null }, attempt: { index: 0 } }
+                        {
+                            work: { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
+                            attempt: { index: 0 }
+                        },
+                        {
+                            work: { familyVariant: null, case: secondCaseId, runtimes: [], workload: null },
+                            attempt: { index: 0 }
+                        }
                     ],
                     activeCases: [ firstCaseId, secondCaseId ],
                     activeWork: [
-                        { case: firstCaseId, runtimes: [], workload: null },
-                        { case: secondCaseId, runtimes: [], workload: null }
+                        { familyVariant: null, case: firstCaseId, runtimes: [], workload: null },
+                        { familyVariant: null, case: secondCaseId, runtimes: [], workload: null }
                     ],
                     reason: 'Crashed.'
                 });

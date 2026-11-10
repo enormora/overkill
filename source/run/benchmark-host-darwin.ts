@@ -32,20 +32,30 @@ export function parseDarwinCpuLimits(text: string): PlatformPressure {
 }
 
 async function readProbe(executable: string, args: readonly string[], signal: AbortSignal): Promise<string> {
-    return await new Promise(function executeProbe(resolve, reject) {
-        execFile(executable, args, {
-            signal,
-            timeout: probeTimeoutMilliseconds,
-            maxBuffer: maximumProbeBytes,
-            encoding: 'utf8'
-        }, function completed(error: Error | null, stdout: string) {
-            if (error === null) {
-                resolve(stdout);
-            } else {
-                reject(error);
-            }
+    signal.throwIfAborted();
+    const completion = Promise.withResolvers<string>();
+    const child = execFile(executable, args, {
+        signal,
+        timeout: probeTimeoutMilliseconds,
+        maxBuffer: maximumProbeBytes,
+        encoding: 'utf8'
+    }, function completed(error: Error | null, stdout: string) {
+        if (error === null) {
+            completion.resolve(stdout);
+        } else {
+            completion.reject(error);
+        }
+    });
+    const closed = new Promise<undefined>(function (resolve) {
+        child.once('close', function () {
+            resolve(undefined);
         });
     });
+    try {
+        return await completion.promise;
+    } finally {
+        await closed;
+    }
 }
 
 async function thermalPressure(signal: AbortSignal): Promise<PlatformPressure> {

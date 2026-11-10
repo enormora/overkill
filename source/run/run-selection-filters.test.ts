@@ -37,6 +37,7 @@ const candidate = {
     }),
     id: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR'),
     workId: {
+        familyVariant: null,
         case: createCaseId('source/Payments/Card.test.ts', [ 'payments', 'card' ], 'Charges Card', 'currency=EUR'),
         runtimes: [
             {

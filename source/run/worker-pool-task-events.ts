@@ -313,7 +313,12 @@ function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
 }
 
 function taskDebugArtifact(artifact: TestDebugArtifact, taskRun: WorkerPoolTaskRun): TestDebugArtifact {
-    const work = { case: artifact.id.scope.case, runtimes: artifact.id.runtimes, workload: artifact.id.workload };
+    const work = {
+        case: artifact.id.scope.case,
+        familyVariant: artifact.id.familyVariant,
+        runtimes: artifact.id.runtimes,
+        workload: artifact.id.workload
+    };
     const member = taskRun.members.find(function ownsWork(candidate) {
         return candidate.unit.work.some(function matches(entry) {
             return workIdentityKey(entry) === workIdentityKey(work);

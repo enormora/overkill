@@ -19,7 +19,15 @@ export function runJsonArtifact(input: RunJsonArtifactInput): RuntimeAttachmentA
         return Math.max(next, artifact.id.sequence + 1);
     }, 0);
     return {
-        id: { attempt: null, runtimes: [], scope: { kind: 'run' }, sequence, subtype: 'attachment', workload: null },
+        id: {
+            familyVariant: null,
+            attempt: null,
+            runtimes: [],
+            scope: { kind: 'run' },
+            sequence,
+            subtype: 'attachment',
+            workload: null
+        },
         payload: {
             capture: 'opt-in',
             capturedAtMicroseconds: input.capturedAtMicroseconds,

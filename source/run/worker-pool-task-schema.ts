@@ -1,11 +1,18 @@
 import { z } from 'zod/v4';
-import { workIdSchema, runtimeIdSchema, workloadIdSchema, attemptIdSchema } from '../engine/identity-schema.ts';
+import {
+    familyVariantSchema,
+    workIdSchema,
+    runtimeIdSchema,
+    workloadIdSchema,
+    attemptIdSchema
+} from '../engine/identity-schema.ts';
 import { workloadInputsSchema } from './collected-run-plan-schema.ts';
 import type { WorkerPoolTaskWithoutPort } from './worker-pool-host-protocol.ts';
 import { executionCommandFields, hostProcessSchema } from './run-command-schema.ts';
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
 const workUnitSchema = z.strictObject({
+    familyVariant: familyVariantSchema.default(null),
     key: z.string(),
     mode: z.enum([ 'case', 'file', 'group' ]),
     runtimes: z.array(runtimeIdSchema),

@@ -13,6 +13,7 @@ export type DebugArtifactStore = {
 };
 function debugArtifactPath(directory: string, artifact: TestDebugArtifact): string {
     const identity = workIdentityKey({
+        familyVariant: artifact.id.familyVariant,
         case: artifact.id.scope.case,
         runtimes: artifact.id.runtimes,
         workload: artifact.id.workload
@@ -28,6 +29,7 @@ function debugWriteFailure(artifact: TestDebugArtifact, path: string, error: unk
         cause: error,
         attributedTo: artifact.id.scope.case,
         attributedToWork: {
+            familyVariant: artifact.id.familyVariant,
             case: artifact.id.scope.case,
             runtimes: artifact.id.runtimes,
             workload: artifact.id.workload

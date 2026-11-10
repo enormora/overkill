@@ -66,7 +66,7 @@ function passResult(): PerTestResult {
         outcome: { kind: 'pass' },
         verdict: 'pass',
         durationMicroseconds: 0,
-        workId: { case: id, runtimes: [], workload: null }
+        workId: { familyVariant: null, case: id, runtimes: [], workload: null }
     };
 }
 
@@ -357,10 +357,9 @@ export const testNode = createOverkillSuite({
 
                 taskRun.state.addActiveCase('active', { capture: null, id: activeCase }, 0, { index: 0 });
                 scope.assert.equal(recordPermissionFailureForTask(taskRun, runtime), true);
-                scope.assert.equal(
-                    JSON.stringify(taskRun.state.runnerErrors()[0]?.attributedToWork),
-                    JSON.stringify(passResult().workId)
-                );
+                const attributedWork = taskRun.state.runnerErrors()[0]?.attributedToWork;
+                scope.require.defined(attributedWork);
+                scope.assert.deepEqual(attributedWork, passResult().workId);
                 scope.assert.equal(taskRun.state.runnerErrors()[0]?.attributedTo, activeCase);
 
                 return scope.assert.collect();

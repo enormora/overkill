@@ -217,6 +217,7 @@ export const testNode = suite('structured dry-run results', [
                     kind: 'hedged-duplicate-conflict',
                     summary: 'unsupported sentinel',
                     artifact: {
+                        familyVariant: null,
                         attempt: null,
                         runtimes: [],
                         workload: null,

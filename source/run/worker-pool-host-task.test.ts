@@ -30,6 +30,7 @@ port.unref();
 
 function workId(): TestWorkId {
     return {
+        familyVariant: null,
         case: {
             file: 'test.ts',
             params: null,
@@ -93,12 +94,7 @@ function runTask(): WorkerPoolTask {
         ...taskBase(),
         assignedUnits: [ {
             attempt: 'attempt-1',
-            traceUnit: {
-                key: 'test.ts',
-                mode: 'case',
-                runtimes: [],
-                workload: null
-            },
+            traceUnit: { familyVariant: null, key: 'test.ts', mode: 'case', runtimes: [], workload: null },
             work: [ workId() ]
         } ],
         kind: 'run',
@@ -202,6 +198,7 @@ export const testNode = createOverkillSuite({
                         assignedUnits: [ {
                             attempt: 'attempt-1',
                             traceUnit: {
+                                familyVariant: null,
                                 key: 'test.ts',
                                 mode: 'case',
                                 runtimes: [],

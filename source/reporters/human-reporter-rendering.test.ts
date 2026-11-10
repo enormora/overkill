@@ -24,6 +24,7 @@ const failingCaseId: CaseId = { file: 'source/fails.test.ts', params: null, suit
 function caseOutputArtifact(): RunArtifact {
     return {
         id: {
+            familyVariant: null,
             attempt: { index: 0 },
             runtimes: [],
             scope: {
@@ -53,6 +54,7 @@ function caseOutputArtifact(): RunArtifact {
 function truncatedCaseOutputArtifact(): RunArtifact {
     return {
         id: {
+            familyVariant: null,
             attempt: { index: 0 },
             runtimes: [],
             scope: {
@@ -82,6 +84,7 @@ function truncatedCaseOutputArtifact(): RunArtifact {
 function ignoredRunArtifact(): RunArtifact {
     return {
         id: {
+            familyVariant: null,
             attempt: null,
             runtimes: [],
             scope: { kind: 'run' },

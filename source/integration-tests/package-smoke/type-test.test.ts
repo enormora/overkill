@@ -22,7 +22,9 @@ const result=await checkTypeTests({order:'plan',seed:{value:null},shard:{index:1
 engine,root,selection:{kind:'all'},
     projectConfigPath:new URL('./tsconfig.json',import.meta.url).pathname,compiler:{kind:'local'}});
 if(result.status!=='passed'||result.summary.passed!==1) { throw new Error(JSON.stringify(result)); }
-if(!engine.isCompilerWorkId(result.perTest[0]!.workId)) { throw new Error('Missing compiler identity.'); }
+if(result.perTest[0]!.workId.familyVariant?.family !== '@overkill-dev/type-test') {
+    throw new Error('Missing compiler identity.');
+}
 console.log('native check passed');`;
 
 type ScriptOutput = { readonly code: number; readonly stdout: string; readonly stderr: string; };

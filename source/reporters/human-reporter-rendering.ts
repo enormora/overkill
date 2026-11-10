@@ -210,6 +210,7 @@ function formatRunnerError(error: RunnerError): readonly string[] {
 function artifactWorkKey(artifact: RunArtifact): string | null {
     return artifact.id.scope.kind === 'case'
         ? workIdentityKey({
+            familyVariant: artifact.id.familyVariant,
             case: artifact.id.scope.case,
             runtimes: artifact.id.runtimes,
             workload: artifact.id.workload

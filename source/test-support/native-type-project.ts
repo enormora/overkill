@@ -41,7 +41,7 @@ engine, root, selection: ${selection},
     const path = request.change === 'source' ? 'import.meta.filename' : "import.meta.dirname+'/tsconfig.json'";
     const change = request.change === 'identity'
         ? `plan={...plan,cases:[{...plan.cases[0],workId:{...plan.cases[0].workId,
-    compiler:{name:'typescript',version:'0.0.0'}}},...plan.cases.slice(1)]};`
+    familyVariant:{family:'@overkill-dev/type-test',key:'typescript@0.0.0'}}},...plan.cases.slice(1)]};`
         : `await appendFile(${path},'\\n');`;
     return `const {prepareAdapterPlan,executeAdapterPlan}=await import(${runPath});
 const settings={projectConfigPath:import.meta.dirname+'/tsconfig.json',compiler:{kind:'local'}};
@@ -87,7 +87,7 @@ console.log(JSON.stringify({
     status: result.status, summary: result.summary, titles: result.perTest.map(r => r.id.title),
     errors: result.runnerErrors.map(r => r.message), bodyCalls,
     compilerVersions: result.perTest.map(r =>
-        engine.isCompilerWorkId(r.workId) ? r.workId.compiler.version : 'missing'),
+        r.workId.familyVariant?.key.replace('typescript@', '') ?? 'missing'),
     artifactCount: result.artifacts.length,
     logicalCaseCount: new Set(result.perTest.map(r => JSON.stringify(r.id))).size,
     diagnostics: result.perTest.flatMap(r => r.outcome?.kind === 'fail'

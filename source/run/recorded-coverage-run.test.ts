@@ -49,8 +49,17 @@ function assertFinalArtifacts(scope: TestScope, fixture: CoverageRecordFixture, 
 function capturedArtifacts(): RunResult['artifacts'] {
     const testCase = { file: 'fixture.ts', params: null, suite: [], title: 'passes' };
     const identities: readonly RunArtifactId[] = [
-        { attempt: null, runtimes: [], scope: { kind: 'run' }, sequence: 3, subtype: 'log-capture', workload: null },
         {
+            familyVariant: null,
+            attempt: null,
+            runtimes: [],
+            scope: { kind: 'run' },
+            sequence: 3,
+            subtype: 'log-capture',
+            workload: null
+        },
+        {
+            familyVariant: null,
             attempt: { index: 0 },
             runtimes: [],
             sequence: 3,

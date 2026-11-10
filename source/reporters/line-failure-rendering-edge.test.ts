@@ -53,6 +53,7 @@ export const testNode = createOverkillSuite({
                         kind: 'hedged-duplicate-conflict',
                         summary: 'Duplicate attempts completed with conflicting outcomes.',
                         artifact: {
+                            familyVariant: null,
                             attempt: null,
                             runtimes: [],
                             scope: { kind: 'run' },

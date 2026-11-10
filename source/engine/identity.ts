@@ -1,3 +1,8 @@
+import type { Except } from 'type-fest';
+
+// eslint-disable-next-line sonarjs/redundant-type-aliases -- The public family contract names serialized IDs.
+export type TestFamilyId = string;
+
 export type TestId = {
     readonly file: string | null;
     readonly suite: readonly string[];
@@ -23,19 +28,12 @@ export type WorkloadId = {
     readonly params: Readonly<Record<string, string>>;
 };
 
-type OrdinaryWorkId = {
+export type WorkId = {
     readonly case: CaseId;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
+    readonly familyVariant: { readonly family: TestFamilyId; readonly key: string; } | null;
 };
-
-type CompilerWorkId = OrdinaryWorkId & {
-    readonly compiler: { readonly name: 'typescript'; readonly version: string; };
-};
-export type WorkId = CompilerWorkId | OrdinaryWorkId;
-export function isCompilerWorkId(work: WorkId): work is CompilerWorkId {
-    return Object.hasOwn(work, 'compiler');
-}
 
 export function createCaseId(
     file: string | null,
@@ -94,14 +92,12 @@ export function runtimeIdentitiesKey(runtimes: readonly RuntimeId[]): string {
 }
 
 export function workIdentityKey(work: WorkId): string {
-    if (isCompilerWorkId(work)) {
+    if (Object.hasOwn(work, 'familyVariant') && work.familyVariant !== null) {
         return JSON.stringify([
-            'compiler',
-            work.compiler.name,
-            work.compiler.version,
-            caseIdentityKey(work.case),
-            runtimeIdentitiesShape(work.runtimes),
-            workloadIdentityShape(work.workload)
+            'family',
+            work.familyVariant.family,
+            work.familyVariant.key,
+            workIdentityKey({ ...work, familyVariant: null })
         ]);
     }
     if (work.runtimes.length === 0 && work.workload === null) {
@@ -118,6 +114,7 @@ export function workIdentityKey(work: WorkId): string {
 export function createDefaultWorkId(testCase: CaseId): WorkId {
     return {
         case: testCase,
+        familyVariant: null,
         runtimes: [],
         workload: null
     };
@@ -136,3 +133,8 @@ export function formatCaseId(caseId: CaseId): string {
 export type AttemptId = {
     readonly index: number;
 };
+
+export function workIdentityProjection(work: WorkId): Except<WorkId, 'familyVariant'> | WorkId {
+    const { familyVariant, ...neutral } = work;
+    return familyVariant === null ? neutral : work;
+}

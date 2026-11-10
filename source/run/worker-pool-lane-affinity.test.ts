@@ -18,12 +18,13 @@ function workUnitWithConstraints(
 ): WorkUnit {
     return {
         group: null,
-        id: { key, mode: 'file', runtimes: [], workload: null },
+        id: { familyVariant: null, key, mode: 'file', runtimes: [], workload: null },
         order: 'plan',
         resourceConstraints,
         scheduling: 'concurrent',
         work: [
             {
+                familyVariant: null,
                 case: { file: key, params: null, suite: [], title: key },
                 runtimes: [],
                 workload: null

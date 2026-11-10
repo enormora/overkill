@@ -54,7 +54,15 @@ const contents: readonly { readonly content: AttachmentContent; readonly expecte
 
 function attachment(content: AttachmentContent): RuntimeAttachmentArtifact {
     return {
-        id: { attempt: null, runtimes: [], scope: { kind: 'run' }, sequence: 0, subtype: 'attachment', workload: null },
+        id: {
+            familyVariant: null,
+            attempt: null,
+            runtimes: [],
+            scope: { kind: 'run' },
+            sequence: 0,
+            subtype: 'attachment',
+            workload: null
+        },
         source: 'instrumented',
         payload: {
             capture: 'opt-in',
@@ -70,6 +78,7 @@ function attachment(content: AttachmentContent): RuntimeAttachmentArtifact {
 
 function variantWork(name: string): WorkId {
     return {
+        familyVariant: null,
         case: { file: 'variants.test.ts', suite: [], title: 'same case', params: null },
         runtimes: [ { name, dimensions: {}, scenarios: {}, variantId: null } ],
         workload: null

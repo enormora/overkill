@@ -46,6 +46,7 @@ export async function executeAdapterPlan(
             ...result,
             artifacts: [ ...result.artifacts, {
                 id: {
+                    familyVariant: null,
                     subtype: 'adapter',
                     sequence: result.artifacts.length,
                     scope: { kind: 'run' },

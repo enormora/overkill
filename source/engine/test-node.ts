@@ -3,6 +3,7 @@ import type {
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
 import { captureSourceLocation, ensureDefinitionLocations } from '../assertion-protocol/source-location.ts';
+import type { TestFamilyId } from './identity.ts';
 import type { TestBody, ThrowingTestBody } from './test-scope.ts';
 import type {
     BenchmarkScope as MeasurementScope,
@@ -23,8 +24,7 @@ import {
     normalizeTestAnnotations,
     normalizeTestControls,
     type TestAnnotationsInput,
-    type TestControlsInput,
-    type TestFamily
+    type TestControlsInput
 } from './test-data.ts';
 
 export type BenchmarkScope = MeasurementScope;
@@ -80,7 +80,7 @@ export type TestCaseExecution = BodyTestCaseExecution | SkippedTestCaseExecution
 export type TestCase = {
     readonly bodyOrigin: TestBodyOrigin | null;
     readonly [testNodeBrand]: true;
-    readonly [testNodeFamilyBrand]: TestFamily | null;
+    readonly [testNodeFamilyBrand]: TestFamilyId | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly annotations: TestAnnotationsInput;
     readonly controls: TestControlsInput;
@@ -92,7 +92,7 @@ export type TestCase = {
 
 export type Suite = {
     readonly [testNodeBrand]: true;
-    readonly [testNodeFamilyBrand]: TestFamily | null;
+    readonly [testNodeFamilyBrand]: TestFamilyId | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly annotations: TestAnnotationsInput;
     readonly children: readonly TestNode[];
@@ -113,7 +113,7 @@ export type TableCase = {
 export type Table = {
     readonly bodyOrigins: readonly TestBodyOrigin[];
     readonly [testNodeBrand]: true;
-    readonly [testNodeFamilyBrand]: TestFamily | null;
+    readonly [testNodeFamilyBrand]: TestFamilyId | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly annotations: TestAnnotationsInput;
     readonly cases: readonly TableCase[];
@@ -127,7 +127,7 @@ export type TestNode = Suite | Table | TestCase;
 
 export type TestRoot = {
     readonly [testRootBrand]: true;
-    readonly [testNodeFamilyBrand]: TestFamily | null;
+    readonly [testNodeFamilyBrand]: TestFamilyId | null;
     readonly [testNodeOwnerBrand]: TestNodeOwner;
     readonly annotations: TestAnnotationsInput;
     readonly children: readonly TestNode[];
@@ -285,11 +285,11 @@ export function isTestRoot(value: unknown): value is TestRoot {
     return typeof value === 'object' && value !== null && Object.hasOwn(value, testRootBrand);
 }
 
-export function testNodeFamily(node: TestNode | TestRoot): TestFamily | null {
+export function testNodeFamily(node: TestNode | TestRoot): TestFamilyId | null {
     return node[testNodeFamilyBrand];
 }
 
-function assertCompatibleTestFamily(node: TestNode | TestRoot, family: TestFamily): void {
+function assertCompatibleTestFamily(node: TestNode | TestRoot, family: TestFamilyId): void {
     const currentFamily = testNodeFamily(node);
 
     if (currentFamily !== null && currentFamily !== family) {
@@ -297,7 +297,7 @@ function assertCompatibleTestFamily(node: TestNode | TestRoot, family: TestFamil
     }
 }
 
-export function stampTestNodeFamily(node: TestNode | TestRoot, family: TestFamily): void {
+export function stampTestNodeFamily(node: TestNode | TestRoot, family: TestFamilyId): void {
     assertCompatibleTestFamily(node, family);
     Object.defineProperty(node, testNodeFamilyBrand, {
         configurable: true,
@@ -386,7 +386,7 @@ export function createTestNodeFactory(factoryOptions: TestNodeFactoryOptions): T
     function createExecutableTestCase(
         options: TestCaseDefinition,
         execution: TestCaseExecution,
-        family: TestFamily | null
+        family: TestFamilyId | null
     ): TestCase {
         validateNodeMetadata(options);
 

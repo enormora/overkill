@@ -1709,6 +1709,36 @@ inspection, transition calls, and successor exploration separately, yields every
 Diagnostic prefixes are not minimal counterexamples. See the package readme for
 the exact public contract and work-accounting limits.
 
-The subsequent `linearizability(...)` helper owns concurrent operation execution
+The `linearizability(...)` helper owns concurrent operation execution
 and recording. Property continues to own shrinking, witnesses, corpora, reporting,
 and supervision; this checker adds no parallel infrastructure or test family.
+
+### Concurrent Operation Authoring
+
+`linearizability({ create, run, model, maxWork })` returns a
+`PropertyBody<LinearizabilityProgram<Operation>>`. Programs are readonly arrays
+of readonly operation arrays. Lanes execute concurrently; operations within each
+lane execute sequentially. Empty programs and lanes are valid.
+
+`create(sample)` creates a fresh system for each trial and registers teardown
+with `sample.cleanup`. `run(operation, system, signal)` returns an output or a
+promise. Ordinary throws become recorded outcomes. Cancellation, permission
+denials, and engine control errors stop admission, abort the helper signal, and
+drain admitted work before propagation. Existing timeout supervision may interrupt
+uncooperative work and run cleanup without waiting for it.
+
+Execution and model observations use independently reconstructed operation graphs.
+Models are pure; returned output graphs must remain stable after settlement.
+Event order, including synchronous returns and throws, determines precedence.
+The checker budget is separate from property traversal work.
+
+Linearizable histories pass, exhaustive rejection fails with bounded history and
+checker diagnostics, and checker exhaustion calls `sample.inconclusive(reason)`.
+This trial-local control requires a nonblank reason. Existing failures take
+precedence; inconclusive confirmation or shrinking cannot erase an established
+failure or create an unconfirmed witness.
+
+Use ordinary property generators, examples, codecs, corpora, and nested `forall`.
+Witnesses preserve lane inputs, not event-loop timing. Replay reruns current code;
+property confirmation reports failures that do not reproduce. Property profile
+capability and resource restrictions remain unchanged.

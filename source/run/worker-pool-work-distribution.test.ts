@@ -121,11 +121,11 @@ function thirdCaseId(): CaseId {
 }
 
 function caseWorkUnit(testCase: CaseId): WorkUnit {
-    const work = { case: testCase, runtimes: [], workload: null };
+    const work = { familyVariant: null, case: testCase, runtimes: [], workload: null };
 
     return {
         group: null,
-        id: { key: caseIdentityKey(testCase), mode: 'case', runtimes: [], workload: null },
+        id: { familyVariant: null, key: caseIdentityKey(testCase), mode: 'case', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [ work ]
@@ -148,26 +148,26 @@ function fileWorkUnit(testCase: CaseId, group: string | null): WorkUnit {
 
     return {
         group,
-        id: { key: file, mode: 'file', runtimes: [], workload: null },
+        id: { familyVariant: null, key: file, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { case: testCase, runtimes: [], workload: null } ]
+        work: [ { familyVariant: null, case: testCase, runtimes: [], workload: null } ]
     };
 }
 
 function groupWorkUnit(group: string, cases: readonly [CaseId, ...CaseId[]]): WorkUnit {
     const [ firstCase, ...remainingCases ] = cases;
-    const firstWork = { case: firstCase, runtimes: [], workload: null };
+    const firstWork = { familyVariant: null, case: firstCase, runtimes: [], workload: null };
 
     return {
         group,
-        id: { key: group, mode: 'group', runtimes: [], workload: null },
+        id: { familyVariant: null, key: group, mode: 'group', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
         work: [
             firstWork,
             ...remainingCases.map(function toWork(testCase) {
-                return { case: testCase, runtimes: [], workload: null };
+                return { familyVariant: null, case: testCase, runtimes: [], workload: null };
             })
         ]
     };

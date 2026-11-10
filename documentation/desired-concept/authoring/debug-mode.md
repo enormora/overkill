@@ -32,13 +32,13 @@ annotation or configuration default that implicitly enables debug mode.
 Analysis-only type-test profiles reject runtime debug recording.
 
 `RunFacts.execution.debug` retains the request. `execution.debuggedCases` records
-the selected `WorkId` values, including runtime and workload identity. An explicit
+the selected `WorkId` values, including runtime, workload, and family-variant identity. An explicit
 request persists a run record even when its debug scope matches no cases.
 
 ## Artifact Shape
 
 `TestDebugArtifact` is a native `RunArtifact` variant with subtype and payload kind
-`debug`. Its shared artifact ID supplies case, runtime, workload, and attempt
+`debug`. Its shared artifact ID supplies case, runtime, workload, family variant, and attempt
 identity. The payload has `schemaVersion: 1` and contains:
 
 - authoritative verdict, nullable outcome, and attempt duration in microseconds

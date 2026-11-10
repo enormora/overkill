@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { familyVariantSchema } from '../engine/identity-schema.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import {
     attachmentChunkBytes,
@@ -36,6 +37,7 @@ const runtimeSchema = z.object({
 const workloadSchema = z.object({ name: z.string(), params: z.record(z.string(), z.string()) });
 const attemptSchema = z.object({ index: z.number().int().nonnegative() });
 const workSchema = z.object({
+    familyVariant: familyVariantSchema.default(null),
     case: caseSchema,
     runtimes: z.array(runtimeSchema),
     workload: workloadSchema.nullable()
@@ -121,6 +123,7 @@ const contentSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('omitted'), limit: writerSchema, reason: z.enum([ 'byte-limit', 'count-limit' ]) })
 ]);
 const artifactBaseSchema = z.object({
+    familyVariant: familyVariantSchema.default(null),
     runtimes: z.array(runtimeSchema),
     sequence: writerSchema,
     subtype: z.enum([ 'attachment', 'witness' ]),

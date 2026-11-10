@@ -1,4 +1,5 @@
-import type { ReadonlyDeep, JsonValue } from 'type-fest';
+import type { ReadonlyDeep, JsonValue, Except } from 'type-fest';
+import { canonicalIdentityJson } from '../canonical-identity.ts';
 import type { TestDebugPayload } from './test-debug.ts';
 import type { ExecuteProcessBudgets, ProcessUsageSnapshot } from './process-usage.ts';
 import {
@@ -20,6 +21,7 @@ export type RunArtifactScope = {
 };
 
 type RunArtifactBaseId = {
+    readonly familyVariant: WorkId['familyVariant'];
     readonly runtimes: readonly RuntimeId[];
     readonly sequence: number;
     readonly subtype: RunArtifactSubtype;
@@ -120,6 +122,7 @@ function boundaryIdentity(activeWork: readonly ActiveBoundaryWork[], sequence: n
     const [ active ] = activeWork;
     return activeWork.length === 1 && active !== undefined
         ? {
+            familyVariant: active.work.familyVariant,
             attempt: active.attempt,
             scope: {
                 kind: 'case',
@@ -132,7 +135,15 @@ function boundaryIdentity(activeWork: readonly ActiveBoundaryWork[], sequence: n
             sequence,
             subtype: 'worker-crash'
         }
-        : { attempt: null, scope: { kind: 'run' }, runtimes: [], workload: null, sequence, subtype: 'worker-crash' };
+        : {
+            familyVariant: null,
+            attempt: null,
+            scope: { kind: 'run' },
+            runtimes: [],
+            workload: null,
+            sequence,
+            subtype: 'worker-crash'
+        };
 }
 
 export function createBoundaryFailureArtifact(
@@ -170,6 +181,7 @@ export function artifactsForAttempt<Artifact extends { readonly id: RunArtifactI
             return false;
         }
         const identity = {
+            familyVariant: artifact.id.familyVariant ?? null,
             case: artifact.id.scope.case,
             runtimes: artifact.id.runtimes,
             workload: artifact.id.workload
@@ -183,3 +195,17 @@ export type TestDebugArtifact = {
     readonly source: 'boundary-captured' | 'native';
     readonly payload: TestDebugPayload;
 };
+export function artifactIdentityProjection(id: RunArtifactId): Except<RunArtifactId, 'familyVariant'> | RunArtifactId {
+    const { familyVariant, ...neutral } = id;
+    return familyVariant === null ? neutral : id;
+}
+
+export function artifactReferenceKey(reference: unknown): string {
+    if (typeof reference === 'object' && reference !== null && Reflect.get(reference, 'familyVariant') === null) {
+        const entries = Object.entries(reference).filter(function retainedIdentityField([ key ]) {
+            return key !== 'familyVariant';
+        });
+        return canonicalIdentityJson(Object.fromEntries(entries));
+    }
+    return canonicalIdentityJson(reference);
+}

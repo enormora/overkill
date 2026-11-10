@@ -38,6 +38,7 @@ export function retainedRetryArtifacts<Artifact extends RunArtifact>(
             return true;
         }
         const key = workIdentityKey({
+            familyVariant: artifact.id.familyVariant,
             case: artifact.id.scope.case,
             runtimes: artifact.id.runtimes,
             workload: artifact.id.workload

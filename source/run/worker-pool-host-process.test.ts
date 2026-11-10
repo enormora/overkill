@@ -187,12 +187,7 @@ async function runTask(pool: CreatedWorkerPool): Promise<unknown> {
     return pool.run({
         workloadInputs: [],
         assignedUnits: [ {
-            traceUnit: {
-                key: 'test.ts',
-                mode: 'case',
-                runtimes: [],
-                workload: null
-            },
+            traceUnit: { familyVariant: null, key: 'test.ts', mode: 'case', runtimes: [], workload: null },
             attempt: 'attempt-0',
             work: [ createDefaultWorkId({ file: 'test.ts', suite: [], title: 'case', params: null }) ]
         } ],

@@ -1,3 +1,4 @@
+import { workUnitIdentityKey } from './work-unit-identity.ts';
 import type {
     PlacementLane,
     PlacementPlan,
@@ -15,12 +16,12 @@ type FaultQuotaLedger = {
 
 function unitByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
     return new Map(units.map(function toEntry(unit) {
-        return [ JSON.stringify(unit.id), unit ];
+        return [ workUnitIdentityKey(unit.id), unit ];
     }));
 }
 
 function knownUnit(units: ReadonlyMap<string, WorkUnit>, unitId: WorkUnit['id']): WorkUnit {
-    const unit = units.get(JSON.stringify(unitId));
+    const unit = units.get(workUnitIdentityKey(unitId));
 
     if (unit === undefined) {
         throw new Error('Placement assignment referenced an unknown work unit.');

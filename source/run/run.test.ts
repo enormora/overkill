@@ -85,7 +85,7 @@ function expectedPassingFixtureCaseFact(): unknown {
         propertyPolicy: null,
         fileSet: null,
         id,
-        workId: { case: expectedPassingFixtureCaseId(), runtimes: [], workload: null }
+        workId: { familyVariant: null, case: expectedPassingFixtureCaseId(), runtimes: [], workload: null }
     };
 }
 
@@ -98,7 +98,7 @@ function expectedPassingFixtureLiveCaseFact(): unknown {
         propertyPolicy: null,
         fileSet: null,
         id,
-        workId: { case: id, runtimes: [], workload: null }
+        workId: { familyVariant: null, case: id, runtimes: [], workload: null }
     };
 }
 

@@ -1,3 +1,4 @@
+import { artifactIdentityProjection } from '../engine/run-artifact.ts';
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import type { BenchmarkExecutionResult, BenchmarkBudgetResult } from '../engine/benchmark-result.ts';
 import {
@@ -51,7 +52,7 @@ export async function recordObservationSamples(
     const omitted = artifact.payload.content.kind === 'omitted';
     return {
         status: omitted ? 'omitted' : 'recorded',
-        reference: JSON.stringify(artifact.id),
+        reference: JSON.stringify(artifactIdentityProjection(artifact.id)),
         reason: omitted ? artifact.payload.content.reason : null
     };
 }

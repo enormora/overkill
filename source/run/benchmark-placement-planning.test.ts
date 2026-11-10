@@ -214,6 +214,7 @@ export const testNode = suite('adaptive benchmark plan integration', [
                                 }
                             },
                             workId: {
+                                familyVariant: null,
                                 case: {
                                     file: file.file,
                                     title: testCase.title,
