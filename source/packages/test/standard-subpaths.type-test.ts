@@ -40,6 +40,7 @@ import type {
 } from './config.entry-point.ts';
 import type {
     BriefReporterSinks,
+    createBriefFinalResultReporter,
     createBriefReporter,
     createDotReporter,
     createGithubActionsOutputRenderer,
@@ -189,6 +190,9 @@ describe('@overkill-dev/test standard subpaths', function () {
         expect<typeof createLineReporter>().type.toBe<LineReporterFactory>();
         expect<typeof createLineProgressReporter>().type.toBe<LineProgressReporterFactory>();
         expect<typeof createLineTreeReporter>().type.toBe<LineTreeReporterFactory>();
+        expect<typeof createBriefFinalResultReporter>().type.toBe<
+            () => DefinedReporter<FinalResultReporter<BriefReporterSinks>>
+        >();
         expect<typeof createBriefReporter>().type.toBe<
             () => DefinedReporter<RealTimeReporter<BriefReporterSinks>>
         >();

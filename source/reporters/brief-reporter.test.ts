@@ -10,7 +10,7 @@ import { createReportingContext } from '../engine/reporting-context.ts';
 import type { OutputLineIntent, ReporterOutput } from '../engine/reporter-output.ts';
 import type { RealTimeReporter, ReporterEvent, RunFacts } from '../engine/reporter.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
-import { createBriefReporter, type BriefReporterSinks } from './brief-reporter.ts';
+import { createBriefReporter, type BriefReporterSinks } from '../packages/reporter-brief/reporter-brief.entry-point.ts';
 import { formatRunFactSummary } from './run-summary-rendering.ts';
 
 const testMetadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;

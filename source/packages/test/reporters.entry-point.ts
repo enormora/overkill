@@ -1,3 +1,4 @@
+export { createBriefFinalResultReporter } from '../reporter-brief/reporter-brief.entry-point.ts';
 export {
     createGithubActionsOutputRenderer
 } from '../output-renderer-github-actions/output-renderer-github-actions.entry-point.ts';
