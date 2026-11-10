@@ -1,5 +1,5 @@
 import { createThrownErrorRecord, type ThrownErrorRecord } from '../assertion-protocol/thrown-error-record.ts';
-import { PropertyInconclusiveSignalError } from './property-inconclusive.ts';
+import { isPropertyInconclusiveSignalError } from './property-inconclusive.ts';
 import {
     isTestContractFailure,
     RequireFailedSignalError,
@@ -243,7 +243,7 @@ function nonRunnerFailedBody(input: FailedBodyInput): ExecutedBody {
 
 export function failedBody(input: FailedBodyInput): ExecutedBody {
     const { context, error, testCase } = input;
-    if (error instanceof PropertyInconclusiveSignalError) {
+    if (isPropertyInconclusiveSignalError(error)) {
         return {
             bodyError: null,
             inconclusiveReason: error.message,
