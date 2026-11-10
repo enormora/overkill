@@ -62,6 +62,7 @@ import type {
 } from './run-request-types.ts';
 import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
+    TestFamilyId,
     PropertyPolicy,
     PropertyCorpusSnapshot,
     PropertyBodyDefinition,
@@ -109,7 +110,7 @@ export type RunDebugRequest = {
     readonly selectors: readonly [];
 };
 
-export type RunTestFamily = 'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test';
+export type RunTestFamily = TestFamilyId;
 export type RunHostProcessReason = RunHostProcessReasonDefinition;
 
 export type WorkUnitMode = WorkUnitModeDefinition;

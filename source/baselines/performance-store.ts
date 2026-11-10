@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstat, mkdir, readdir, realpath, unlink } from 'node:fs/promises';
 import path from 'node:path';
+import { workIdentityProjection } from '../engine/identity.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import { createNodeFileStore, type FileStore } from '../file-store.ts';
 import { snapshotJson } from '../attachments/json-snapshot.ts';
@@ -14,7 +15,9 @@ import {
     type PerformanceBaselineIdentity
 } from './performance-baseline.ts';
 
-export const performanceBaselineKey: (identity: PerformanceBaselineIdentity) => string = canonicalIdentityJson;
+export function performanceBaselineKey(identity: PerformanceBaselineIdentity): string {
+    return canonicalIdentityJson({ ...identity, work: workIdentityProjection(identity.work) });
+}
 
 type PerformanceStoreInput = {
     readonly directory: string;
@@ -86,7 +89,9 @@ async function readBaseline(location: StoreLocation, name: string): Promise<Base
 async function verifyPrevious(location: StoreLocation, change: BaselineChange, filePath: string): Promise<void> {
     const expected = change.kind === 'create'
         ? null
-        : JSON.stringify(change.kind === 'update' ? change.previous : change.baseline);
+        : JSON.stringify(
+            storedPerformanceBaselineSchema.parse(change.kind === 'update' ? change.previous : change.baseline)
+        );
     const previous = await location.files.read(filePath);
     if (previous === null) {
         if (expected !== null) {

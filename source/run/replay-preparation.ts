@@ -110,7 +110,10 @@ export async function prepareWitnessReplay(
                 selection: {
                     kind: 'filter',
                     filter: witness.kind === 'property'
-                        ? { kind: 'work-id', id: { case: witness.case, runtimes: witness.runtimes, workload: null } }
+                        ? {
+                            kind: 'work-id',
+                            id: { familyVariant: null, case: witness.case, runtimes: witness.runtimes, workload: null }
+                        }
                         : { kind: 'case-id', id: witness.case }
                 },
                 shard: { index: 1, total: 1 },

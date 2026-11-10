@@ -7,11 +7,12 @@ import {
 import { createPlacementTraceRecorder } from './placement-trace.ts';
 
 const work = {
+    familyVariant: null,
     case: { file: 'example.test.ts', params: null, suite: [], title: 'example' },
     runtimes: [],
     workload: null
 };
-const unit = { key: 'example', mode: 'case' as const, runtimes: [], workload: null };
+const unit = { familyVariant: null, key: 'example', mode: 'case' as const, runtimes: [], workload: null };
 const testCaseMetadata = {
     annotations: {},
     controls: {},

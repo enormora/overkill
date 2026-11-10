@@ -19,7 +19,8 @@ import {
     createDefaultWorkId,
     formatCaseId,
     type CaseId,
-    type WorkId
+    type WorkId,
+    type TestFamilyId
 } from './identity.ts';
 import { readTestBodyResourceAttachments, type TestBodyResourceAttachments } from './test-body-resource-attachment.ts';
 import {
@@ -30,8 +31,7 @@ import {
     type TestAnnotations,
     type TestAnnotationsInput,
     type TestControls,
-    type TestControlsInput,
-    type TestFamily
+    type TestControlsInput
 } from './test-data.ts';
 import type { OrphanedNode } from './run-result.ts';
 import {
@@ -69,7 +69,7 @@ export type TestPlanCase = {
     readonly id: CaseId;
     readonly resourceAttachments: TestBodyResourceAttachments;
     readonly suitePath: readonly TestPlanSuitePathEntry[];
-    readonly testFamily: TestFamily | null;
+    readonly testFamily: TestFamilyId | null;
     readonly workId: WorkId;
     readonly workloadParameters: WorkloadParameters | null;
 };

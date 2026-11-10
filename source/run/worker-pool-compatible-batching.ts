@@ -57,6 +57,7 @@ function resourceConstraintEnvelope(unit: WorkUnit): unknown {
 
 function executionEnvelopeKey(unit: WorkUnit): string {
     return JSON.stringify({
+        familyVariant: unit.id.familyVariant,
         paths: unitPathEnvelope(unit),
         resourceConstraints: resourceConstraintEnvelope(unit),
         runtimes: unit.id.runtimes,

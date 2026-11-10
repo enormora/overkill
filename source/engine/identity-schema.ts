@@ -13,16 +13,29 @@ export const runtimeIdSchema = z.strictObject({
     variantId: z.string().nullable()
 });
 export const workloadIdSchema = z.strictObject({ name: z.string(), params: z.record(z.string(), z.string()) });
-const ordinaryWorkIdSchema = z.strictObject({
+export const familyVariantSchema = z.strictObject({ family: z.string().min(1), key: z.string().min(1) }).nullable();
+const currentWorkIdSchema = z.strictObject({
     case: caseIdSchema,
     runtimes: z.array(runtimeIdSchema),
-    workload: workloadIdSchema.nullable()
+    workload: workloadIdSchema.nullable(),
+    familyVariant: familyVariantSchema.default(null)
 });
 export const workIdSchema = z.union([
-    ordinaryWorkIdSchema,
-    ordinaryWorkIdSchema.extend({
-        compiler: z.strictObject({ name: z.literal('typescript'), version: z.string().min(1) })
-    })
+    currentWorkIdSchema,
+    z
+        .strictObject({
+            case: caseIdSchema,
+            runtimes: z.array(runtimeIdSchema),
+            workload: workloadIdSchema.nullable(),
+            compiler: z.strictObject({ name: z.literal('typescript'), version: z.string().min(1) })
+        })
+        .transform(function migrateCompilerIdentity(work) {
+            const { compiler, ...identity } = work;
+            return {
+                ...identity,
+                familyVariant: { family: '@overkill-dev/type-test', key: `typescript@${compiler.version}` }
+            };
+        })
 ]);
 export const attemptIdSchema = z.strictObject({ index: z.number().int().nonnegative() });
 export const sourceLocationSchema = z.discriminatedUnion('kind', [

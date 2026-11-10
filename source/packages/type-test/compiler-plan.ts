@@ -1,6 +1,6 @@
+import { resolve } from 'node:path';
 import {
     createRunResult,
-    isCompilerWorkId,
     workIdentityKey,
     type RuntimeId,
     type WorkloadId,
@@ -55,7 +55,7 @@ function compilerVariant(testCase: TestPlan['cases'][number], version: string): 
             case: id,
             runtimes: Object.freeze(testCase.workId.runtimes.map(frozenRuntimeIdentity)),
             workload: frozenWorkloadIdentity(testCase.workId.workload),
-            compiler: Object.freeze({ name: 'typescript' as const, version })
+            familyVariant: Object.freeze({ family: '@overkill-dev/type-test', key: `typescript@${version}` })
         })
     });
 }
@@ -148,7 +148,8 @@ async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): P
     for (const [ version, project ] of input.projects) {
         await verifyFrozenProject(project, { modules: [], sites: [] });
         const cases = selected.cases.filter(function (entry) {
-            return isCompilerWorkId(entry.workId) && entry.workId.compiler.version === version;
+            const variant = entry.workId.familyVariant;
+            return variant?.family === '@overkill-dev/type-test' && variant.key === `typescript@${version}`;
         });
         const first = cases[0];
         if (first !== undefined) {
@@ -211,6 +212,27 @@ async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Pro
     };
 }
 
+function compilerFingerprint(project: FrozenProject): string {
+    const compilerPath = resolve(project.compiler.sys.getExecutingFilePath());
+    const compilerInput = project.inputs.files.find(function compilerFile(input) {
+        return input.path === compilerPath;
+    });
+    if (compilerInput?.value === undefined || compilerInput.value === null) {
+        throw new Error('Cannot fingerprint the selected compiler implementation.');
+    }
+    return compilerInput.value;
+}
+
+function retainCompilerProject(existing: FrozenProject | undefined, project: FrozenProject): FrozenProject {
+    if (existing === undefined) {
+        return project;
+    }
+    if (compilerFingerprint(existing) !== compilerFingerprint(project)) {
+        throw new Error('Conflicting compiler implementations claim the same version.');
+    }
+    return existing;
+}
+
 async function resolveCompilerProjects(options: TypeTestOptions): Promise<ReadonlyMap<string, FrozenProject>> {
     const selections = options.compiler.kind === 'matrix' ? options.compiler.compilers : [ options.compiler ];
     const unique = new Map(selections.map(function (selection) {
@@ -219,9 +241,7 @@ async function resolveCompilerProjects(options: TypeTestOptions): Promise<Readon
     const projects = new Map<string, FrozenProject>();
     for (const selection of unique.values()) {
         const project = await loadProject(options.projectConfigPath, selection);
-        if (!projects.has(project.compiler.version)) {
-            projects.set(project.compiler.version, project);
-        }
+        projects.set(project.compiler.version, retainCompilerProject(projects.get(project.compiler.version), project));
     }
     return projects;
 }

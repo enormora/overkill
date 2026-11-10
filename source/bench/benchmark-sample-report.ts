@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
-import type { RunArtifact, PerTestResult, RunResult } from '../engine/run-result.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
+import { artifactReferenceKey } from '../engine/run-artifact.ts';
+import type { RunArtifact, PerTestResult, RunResult } from '../engine/run-result.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { metricReadingSchema } from './benchmark-statistics-schema.ts';
 
@@ -24,7 +25,12 @@ function assertSampleOwner(artifact: RunArtifact, test: PerTestResult): void {
     if (id.scope.kind !== 'case') {
         throw new Error('Raw sample artifact belongs to another workload, runtime, case, or attempt.');
     }
-    const owner = { case: id.scope.case, workload: id.workload, runtimes: id.runtimes };
+    const owner = {
+        familyVariant: id.familyVariant,
+        case: id.scope.case,
+        workload: id.workload,
+        runtimes: id.runtimes
+    };
     if (workIdentityKey(owner) !== workIdentityKey(test.workId)) {
         throw new Error('Raw sample artifact belongs to another workload, runtime, case, or attempt.');
     }
@@ -80,7 +86,7 @@ function referencedSamples(
     evidence: RetainedEvidence
 ): BenchmarkSampleEvidence {
     const reference: unknown = JSON.parse(evidence.reference);
-    const key = canonicalIdentityJson(reference);
+    const key = artifactReferenceKey(reference);
     const artifact = artifacts.get(key);
     if (artifact === undefined) {
         return { kind: 'unavailable', reason: 'Referenced raw sample artifact is unavailable.' };
@@ -91,7 +97,7 @@ function referencedSamples(
 export function createBenchmarkSampleReader(result: RunResult): (test: PerTestResult) => BenchmarkSampleEvidence {
     const artifacts = new Map<string, RunArtifact>();
     for (const artifact of result.artifacts) {
-        const key = canonicalIdentityJson(artifact.id);
+        const key = artifactReferenceKey(artifact.id);
         if (!artifacts.has(key)) {
             artifacts.set(key, artifact);
         }

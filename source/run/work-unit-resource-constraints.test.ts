@@ -77,6 +77,7 @@ function collectedPlan(cases: readonly CollectedRunCase[]): CollectedRunPlan {
 
 function workId(title: string): WorkId {
     return {
+        familyVariant: null,
         case: {
             file: filePath,
             params: null,
@@ -202,6 +203,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(
                     workResourceConstraints([
                         {
+                            familyVariant: null,
                             case: {
                                 file: null,
                                 params: null,

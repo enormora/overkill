@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { WorkId } from '../engine/identity.ts';
+import { workIdSchema as engineWorkIdSchema } from '../engine/identity-schema.ts';
 import { durationHistoryIndexVersion } from './duration-history-types.ts';
 
 const legacyDurationHistoryIndexVersion = 1;
@@ -10,14 +12,6 @@ const caseIdSchema = z
         params: z.string().nullable(),
         suite: z.array(z.string()).readonly(),
         title: z.string()
-    })
-    .readonly();
-const runtimeIdSchema = z
-    .strictObject({
-        dimensions: stringRecordSchema,
-        name: z.string(),
-        scenarios: stringRecordSchema,
-        variantId: z.string().nullable()
     })
     .readonly();
 const legacyRuntimeIdSchema = z
@@ -45,7 +39,7 @@ const metadataSchema = z
         ]),
         profile: z.string(),
         scheduling: z.union([ z.literal('concurrent'), z.literal('serial') ]),
-        testFamily: z.enum([ 'benchmark', 'integration', 'microtest', 'property', 'type-test' ]),
+        testFamily: z.string(),
         workerLifecycle: z.union([ z.literal('fresh-worker-per-unit'), z.literal('reuse') ]).nullable()
     })
     .readonly();
@@ -72,24 +66,10 @@ const legacyObservationSchema = z
     });
 const observationSchema = z.union([ currentObservationSchema, legacyObservationSchema ]);
 
-const ordinaryWorkIdSchema = z
-    .strictObject({
-        case: caseIdSchema,
-        runtimes: z.array(runtimeIdSchema).readonly(),
-        workload: workloadIdSchema.nullable()
-    })
-    .readonly();
-const workIdSchema = z.union([
-    ordinaryWorkIdSchema,
-    ordinaryWorkIdSchema
-        .unwrap()
-        .extend({
-            compiler: z.strictObject({ name: z.literal('typescript'), version: z.string().min(1) })
-        })
-        .readonly()
-]);
+const workIdSchema: z.ZodType<WorkId> = engineWorkIdSchema;
 const legacyWorkIdSchema = z
     .strictObject({
+        familyVariant: z.null().default(null),
         case: caseIdSchema,
         runtimes: z.array(legacyRuntimeIdSchema).readonly(),
         workload: workloadIdSchema.nullable()

@@ -91,7 +91,7 @@ const fileSchema = z
             workloadParameters: workloadParametersSchema.default(null),
             resourceAttachments: attachmentsSchema,
             suitePath: suitePathSchema,
-            testFamily: z.enum([ 'benchmark', 'integration', 'microtest', 'property', 'type-test' ]).nullable(),
+            testFamily: z.string().nullable(),
             title: z.string(),
             workId: workIdSchema.optional()
         })),

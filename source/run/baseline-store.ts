@@ -68,14 +68,14 @@ export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Pr
             .toSorted(function alphabetical(left, right) {
                 return left.localeCompare(right);
             });
-        return await Promise.all(selectedNames.map(async function entry(name) {
+        return await Array.fromAsync(selectedNames, async function entry(name) {
             const file = path.join(selected, name);
             const baseline = await read(file);
             if (baseline === null) {
                 throw new Error('Baseline disappeared while listing.');
             }
             return { baseline, path: path.relative(root, file).replaceAll('\\', '/') };
-        }));
+        });
     }
     async function validateChanges(changes: readonly OrdinaryBaselineChange[]): Promise<void> {
         for (const change of changes) {
@@ -96,7 +96,7 @@ export async function createOrdinaryBaselineStore(input: BaselineStoreInput): Pr
     await checkDirectory(directory);
     return {
         async list() {
-            const groups = await Promise.all(storedOrdinaryBaselineSchema.shape.subtype.options.map(listSubtype));
+            const groups = await Array.fromAsync(storedOrdinaryBaselineSchema.shape.subtype.options, listSubtype);
             return groups.flat();
         },
         validate: validateChanges,

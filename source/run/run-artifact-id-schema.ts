@@ -1,8 +1,15 @@
 import { z } from 'zod/v4';
+import {
+    familyVariantSchema,
+    attemptIdSchema,
+    caseIdSchema,
+    runtimeIdSchema,
+    workloadIdSchema
+} from '../engine/identity-schema.ts';
 import { runArtifactSubtypes } from '../engine/run-artifact.ts';
-import { attemptIdSchema, caseIdSchema, runtimeIdSchema, workloadIdSchema } from '../engine/identity-schema.ts';
 
 export const artifactIdentityFields = {
+    familyVariant: familyVariantSchema.default(null),
     runtimes: z.array(runtimeIdSchema),
     sequence: z.number(),
     workload: workloadIdSchema.nullable()

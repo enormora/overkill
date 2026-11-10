@@ -1,5 +1,5 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { RuntimeId, WorkloadId } from './identity.ts';
+import type { RuntimeId, WorkloadId, WorkId } from './identity.ts';
 
 export type CoverageMetric = {
     readonly covered: number;
@@ -42,6 +42,7 @@ export type CoverageArtifactPayload = {
 export type CoverageArtifact = {
     readonly id: {
         readonly attempt: null;
+        readonly familyVariant: WorkId['familyVariant'];
         readonly runtimes: readonly RuntimeId[];
         readonly scope: { readonly kind: 'run'; };
         readonly sequence: number;

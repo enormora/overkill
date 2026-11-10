@@ -107,6 +107,7 @@ export const testNode = suite('mutation coverage delivery', [
         const artifact: CoverageArtifact = {
             source: 'v8-native',
             id: {
+                familyVariant: null,
                 attempt: null,
                 runtimes: [],
                 scope: { kind: 'run' },

@@ -8,7 +8,7 @@ import type {
     RunShard,
     WorkUnitId
 } from './run-types.ts';
-import { caseWorkUnitId } from './work-unit-identity.ts';
+import { caseWorkUnitId, workUnitIdentityProjection } from './work-unit-identity.ts';
 
 export type RunShardHasher = {
     readonly hash: (value: string) => bigint;
@@ -72,7 +72,8 @@ export function workUnitBelongsToShard(
         throw new Error('Sharded planning requires a shard hasher.');
     }
 
-    return hasher.hash(canonicalIdentityJson(unit)) % shardTotal(shard) === shardIndex(shard);
+    return hasher.hash(canonicalIdentityJson(workUnitIdentityProjection(unit))) % shardTotal(shard) ===
+        shardIndex(shard);
 }
 
 export function shardCollectedRunCaseEntries(

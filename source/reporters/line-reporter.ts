@@ -268,7 +268,7 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
                 wrappedTerminal.line(infoSymbol, `Retry after attempt ${event.attempt + 1}: ${event.case.title}`);
                 return;
             }
-            const work = event.workId ?? { runtimes: [], workload: null };
+            const work = event.workId ?? { familyVariant: null, runtimes: [], workload: null };
             const prefix = contextPrefix(work.runtimes, work.workload, event.case.suite, formatOptions);
             const [ symbol, message ] = event.outcome === null
                 ? formatTerminalTestResult(event.case, event.verdict, event.durationMicroseconds, prefix)

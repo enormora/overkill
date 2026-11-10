@@ -283,20 +283,20 @@ function secondCaseId(): CaseId {
 function firstWorkUnit(): WorkUnit {
     return {
         group: null,
-        id: { key: integrationPath, mode: 'file', runtimes: [], workload: null },
+        id: { familyVariant: null, key: integrationPath, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { case: firstCaseId(), runtimes: [], workload: null } ]
+        work: [ { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } ]
     };
 }
 
 function secondWorkUnit(): WorkUnit {
     return {
         group: null,
-        id: { key: secondIntegrationPath, mode: 'file', runtimes: [], workload: null },
+        id: { familyVariant: null, key: secondIntegrationPath, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         resourceConstraints: emptyWorkUnitResourceConstraints,
-        work: [ { case: secondCaseId(), runtimes: [], workload: null } ]
+        work: [ { familyVariant: null, case: secondCaseId(), runtimes: [], workload: null } ]
     };
 }
 

@@ -6,7 +6,7 @@ import type {
     TestBody,
     TestCase,
     TestControlsInput,
-    TestFamily as EngineTestFamily,
+    TestFamilyId as EngineTestFamily,
     TestNode,
     TestScope
 } from '../engine/engine.entry-point.ts';
@@ -116,7 +116,7 @@ import {
     type testDouble,
     type TestDouble as RootTestDouble,
     type TestDoubleFactory as RootTestDoubleFactory,
-    type TestFamily,
+    type TestFamilyId,
     type testIterable,
     type TestIterable as RootTestIterable,
     type TestIterableFactory as RootTestIterableFactory,
@@ -269,7 +269,7 @@ describe('@overkill-dev/test', function () {
         expect<typeof createTestFacade>().type.toBeCallableWith();
         expect<typeof createTestFacade>().type.toBeCallableWith({});
         expect<typeof runIfMain>().type.toBe<RunIfMain>();
-        expect<TestFamily>().type.toBe<EngineTestFamily>();
+        expect<TestFamilyId>().type.toBe<EngineTestFamily>();
     });
 
     typeTest('re-exports doubles values from the root facade', function () {

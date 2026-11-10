@@ -175,6 +175,7 @@ async function finalizeAuthority(
 
 function conflictArtifactId(result: PerTestResult, sequence: number): HedgedConflictArtifact['id'] {
     return {
+        familyVariant: result.workId.familyVariant,
         attempt: result.attempts.at(-1)?.attempt ?? result.attempts[0].attempt,
         runtimes: result.workId.runtimes,
         scope: {

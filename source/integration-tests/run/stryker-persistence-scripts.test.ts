@@ -44,6 +44,7 @@ function assertTimeoutEvidence(artifacts) {
     const [artifact]=artifacts;
     assert.equal(artifact.source,'boundary-captured');
     assert.equal(artifact.id.subtype,'worker-crash');
+    assert.equal(artifact.id.familyVariant,null);
     assert.equal(artifact.id.scope.kind,'case');
     assert.equal(artifact.id.scope.case.title,'second admitted case');
     assert.deepEqual(artifact.id.attempt,{index:0});
@@ -52,7 +53,8 @@ function assertTimeoutEvidence(artifacts) {
     assert.equal(artifact.payload.capture,'automatic');
     assert.equal(artifact.payload.completeness,'best-effort');
     assert.deepEqual(artifact.payload.activeWork,[{
-        work:{case:artifact.id.scope.case,runtimes:artifact.id.runtimes,workload:artifact.id.workload},
+        work:{case:artifact.id.scope.case,runtimes:artifact.id.runtimes,
+            workload:artifact.id.workload,familyVariant:null},
         attempt:artifact.id.attempt
     }]);
 }

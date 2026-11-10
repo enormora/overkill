@@ -36,6 +36,7 @@ const failures: readonly BoundaryFailure[] = [
 ];
 const adapter: RunArtifact = {
     id: {
+        familyVariant: null,
         attempt: null,
         runtimes: [],
         scope: { kind: 'run' },

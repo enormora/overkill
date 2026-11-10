@@ -140,11 +140,7 @@ function assertSkippedExecutionResult(scope: OverkillScope, result: RunResult): 
             id: skippedCaseId,
             outcome,
             verdict: 'skip',
-            workId: {
-                case: skippedCaseId,
-                runtimes: [],
-                workload: null
-            },
+            workId: { familyVariant: null, case: skippedCaseId, runtimes: [], workload: null },
             durationMicroseconds: 0
         }
     ]);

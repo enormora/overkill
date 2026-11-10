@@ -16,7 +16,7 @@ function fixtureTest(result: RunResult): PerTestResult {
 
 export function benchmarkHtmlFixture(title: string): RunResult {
     const id = createCaseId('fixture.bench.ts', [ 'benchmarks' ], title, null);
-    const workId = { case: id, workload: { name: 'small', params: {} }, runtimes: [] };
+    const workId = { familyVariant: null, case: id, workload: { name: 'small', params: {} }, runtimes: [] };
     const base = runResultFactory.build({
         summary: { defined: 1, discovered: 1, planned: 1, passed: 1 },
         perTest: [ { id, workId, verdict: 'pass' } ]
@@ -28,6 +28,7 @@ export function benchmarkHtmlFixture(title: string): RunResult {
     });
     const samples: RuntimeAttachmentArtifact = {
         id: {
+            familyVariant: null,
             attempt: { index: 0 },
             scope: { kind: 'case', case: id, activeCases: [ id ], confidence: 'active-case' },
             runtimes: [],

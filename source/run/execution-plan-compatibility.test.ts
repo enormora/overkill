@@ -140,6 +140,7 @@ function identityConflictPlan(): CollectedRunPlan {
                             } ]
                         },
                         workId: {
+                            familyVariant: null,
                             case: { file: file.file, params: null, suite: [], title: testCase.title },
                             runtimes: [ { dimensions: {}, name: 'runtime', scenarios: {}, variantId: null } ],
                             workload: null
@@ -182,7 +183,7 @@ function workUnit(
 ): WorkUnit {
     return {
         group: null,
-        id: { key, mode: 'case', runtimes: [], workload: null },
+        id: { familyVariant: null, key, mode: 'case', runtimes: [], workload: null },
         order: 'plan',
         resourceConstraints: { ...emptyWorkUnitResourceConstraints, singleWorkerKeys },
         scheduling: 'concurrent',
@@ -362,11 +363,12 @@ function assertOwnershipPlacements(scope: OverkillScope): void {
 }
 
 const work = {
+    familyVariant: null,
     case: { file: 'test.ts', params: null, suite: [], title: 'test' },
     runtimes: [],
     workload: null
 };
-const unit = { key: 'unit', mode: 'case' as const, runtimes: [], workload: null };
+const unit = { familyVariant: null, key: 'unit', mode: 'case' as const, runtimes: [], workload: null };
 const describedConflicts: readonly RunExecutionPlanConflict[] = [
     {
         boundaryKey: 'resource@per-run',

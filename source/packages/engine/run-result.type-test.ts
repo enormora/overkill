@@ -103,6 +103,7 @@ describe('run result verdicts', function () {
     test('artifact attempt identity follows its scope', function () {
         expect<RunArtifactId>().type.toBeAssignableFrom<{
             readonly attempt: AttemptId;
+            readonly familyVariant: null;
             readonly runtimes: readonly [];
             readonly workload: null;
             readonly sequence: 0;
@@ -116,6 +117,7 @@ describe('run result verdicts', function () {
         }>();
         expect<RunArtifactId>().type.not.toBeAssignableFrom<{
             readonly attempt: null;
+            readonly familyVariant: null;
             readonly runtimes: readonly [];
             readonly workload: null;
             readonly sequence: 0;

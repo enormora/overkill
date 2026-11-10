@@ -134,7 +134,7 @@ function passResult(): PerTestResult {
         outcome: { kind: 'pass' },
         verdict: 'pass',
         durationMicroseconds: 0,
-        workId: { case: id, runtimes: [], workload: null }
+        workId: { familyVariant: null, case: id, runtimes: [], workload: null }
     };
 }
 

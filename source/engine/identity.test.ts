@@ -4,6 +4,7 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as familyTestNode } from './test-family.test.ts';
 import { formatCaseId, runtimeIdentityKey, type CaseId } from './identity.ts';
 
 export const testNode = createOverkillSuite({
@@ -12,6 +13,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        familyTestNode,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'formatCaseId() renders direct engine identities for display',

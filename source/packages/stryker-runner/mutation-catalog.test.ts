@@ -18,6 +18,7 @@ import {
 
 const root = resolve('/sandbox');
 const work: WorkId = {
+    familyVariant: null,
     case: { file: 'tests/a.ts', suite: [ 'suite' ], title: 'case', params: null },
     runtimes: [],
     workload: null

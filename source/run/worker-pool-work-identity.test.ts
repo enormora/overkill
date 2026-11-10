@@ -6,6 +6,7 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import type { WorkDistribution } from '../config/types.ts';
+import { testNode as familyIdentityTestNode } from './family-identity.test.ts';
 import { emptyWorkUnitResourceConstraints, type CollectedRunPlan } from './run-types.ts';
 import { type WorkUnitPlanningInput, workUnitsFromCollectedPlan } from './work-unit-planning.ts';
 
@@ -62,6 +63,7 @@ function collectedCaseWithWorkload(): CollectedRunPlan['files'][number]['cases']
     return {
         ...collectedCase(firstCaseId()),
         workId: {
+            familyVariant: null,
             case: firstCaseId(),
             runtimes: [],
             workload: {
@@ -108,6 +110,7 @@ export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/run/worker-pool-work-identity.test.ts',
     children: [
+        familyIdentityTestNode,
         createOverkillTestCase({
             annotations: {},
             controls: {},
@@ -118,7 +121,7 @@ export const testNode = createOverkillSuite({
                     name: 'browser',
                     params: { channel: 'stable' }
                 };
-                const work = { case: firstCaseId(), runtimes: [], workload };
+                const work = { familyVariant: null, case: firstCaseId(), runtimes: [], workload };
 
                 scope.assert.deepEqual(
                     workUnitsFromCollectedPlan(planningInput(
@@ -132,17 +135,17 @@ export const testNode = createOverkillSuite({
                     [
                         {
                             group: null,
-                            id: { key: firstPath, mode: 'file', runtimes: [], workload: null },
+                            id: { familyVariant: null, key: firstPath, mode: 'file', runtimes: [], workload: null },
                             ...defaultUnitPolicy,
                             resourceConstraints: emptyWorkUnitResourceConstraints,
-                            work: [ { case: firstCaseId(), runtimes: [], workload: null } ]
+                            work: [ { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } ]
                         },
                         {
                             group: null,
-                            id: { key: secondPath, mode: 'file', runtimes: [], workload: null },
+                            id: { familyVariant: null, key: secondPath, mode: 'file', runtimes: [], workload: null },
                             ...defaultUnitPolicy,
                             resourceConstraints: emptyWorkUnitResourceConstraints,
-                            work: [ { case: secondCaseId(), runtimes: [], workload: null } ]
+                            work: [ { familyVariant: null, case: secondCaseId(), runtimes: [], workload: null } ]
                         }
                     ]
                 );
@@ -155,7 +158,7 @@ export const testNode = createOverkillSuite({
                     )),
                     [ {
                         group: null,
-                        id: { key: firstPath, mode: 'file', runtimes: [], workload },
+                        id: { familyVariant: null, key: firstPath, mode: 'file', runtimes: [], workload },
                         ...defaultUnitPolicy,
                         resourceConstraints: emptyWorkUnitResourceConstraints,
                         work: [ work ]

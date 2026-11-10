@@ -8,7 +8,7 @@ import { canonicalWork, mutationLifecycleDataSchema } from './mutation-catalog.t
 
 type CaseId = SerializedRunDiagnostics['perTest'][number]['id'];
 function canonicalCase(root: string, id: CaseId): CaseId {
-    return canonicalWork(root, { case: id, runtimes: [], workload: null }).case;
+    return canonicalWork(root, { familyVariant: null, case: id, runtimes: [], workload: null }).case;
 }
 function canonicalArtifactIdentity<Artifact extends SerializedRunDiagnostics['artifacts'][number]>(
     root: string,

@@ -1,7 +1,10 @@
+import { workIdentityProjection } from '../engine/identity.ts';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
 import type { BaselineChange, BaselineIdentity, BaselineInventory, BaselineUpdateMode } from './baseline-model.ts';
 
-export const baselineIdentityKey: (identity: BaselineIdentity) => string = canonicalIdentityJson;
+export function baselineIdentityKey(identity: BaselineIdentity): string {
+    return canonicalIdentityJson({ ...identity, work: workIdentityProjection(identity.work) });
+}
 
 type BaselineProposal<TBaseline> = {
     readonly mode: BaselineUpdateMode;

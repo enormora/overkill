@@ -89,6 +89,7 @@ function leaseMember(unit: WorkUnit): WorkerPoolLeaseMember {
     return {
         attempt: 'attempt-1',
         traceUnit: {
+            familyVariant: null,
             key: unit.id.key,
             mode: unit.id.mode,
             runtimes: unit.id.runtimes,
