@@ -48,6 +48,7 @@ function forkSupervisedChildProcess(
             if (child.connected) {
                 child.disconnect();
             }
+            child.unref();
         },
         get exitCode() {
             return child.exitCode;
