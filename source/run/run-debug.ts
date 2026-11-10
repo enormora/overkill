@@ -2,7 +2,7 @@ import { z } from 'zod/v4';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { TestPlanCase } from '../engine/test-plan.ts';
 import type { ExecuteDebugSelection } from '../engine/test-debug.ts';
-import type { RunDebugRequest } from './run-types.ts';
+import type { DebugRequestInput, RunCommand, RunCommandInput, RunDebugRequest } from './run-types.ts';
 import { matchesRunFilter } from './run-selection-filters.ts';
 import { parseRunFilterExpression } from './run-filter-grammar.ts';
 
@@ -10,6 +10,15 @@ export const runDebugRequestSchema = z.union([
     z.strictObject({ mode: z.enum([ 'off', 'all' ]), selectors: z.tuple([]) }),
     z.strictObject({ mode: z.literal('selected'), selectors: z.tuple([ z.string() ]).rest(z.string()) })
 ]);
+type DebugOption = { readonly debug: RunDebugRequest; };
+export function requestedDebug(input: DebugRequestInput<DebugOption>): RunDebugRequest {
+    const { debug = { mode: 'off', selectors: [] } } = input;
+    return debug;
+}
+
+export function commandWithDebug(command: RunCommandInput): RunCommand {
+    return { ...command, request: { ...command.request, debug: requestedDebug(command.request) } };
+}
 type DebugCandidate = Pick<TestPlanCase, 'annotations' | 'id' | 'workId'>;
 export function resolveDebugSelection(debug: RunDebugRequest, cases: readonly DebugCandidate[]): ExecuteDebugSelection {
     if (debug.mode !== 'selected') {

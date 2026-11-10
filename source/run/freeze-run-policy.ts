@@ -8,6 +8,7 @@ import {
 import { configuredFilesRunCollectionSource } from './run-collection-source.ts';
 import { RunResolutionError } from './run-errors.ts';
 import { selectTestProfile } from './test-profile.ts';
+import { commandWithDebug } from './run-debug.ts';
 
 export function freezeResolvedRunPolicy(input: FreezePolicyInput, resolved: ResolvedRunInput): FrozenMicrotestPolicy {
     if (resolved.profile.testFamily !== 'microtest' || resolved.engine.kind === 'instance') {
@@ -45,7 +46,7 @@ export async function freezeRunPolicy(
         );
     }
     const resolved = await readResolvedRunInput(
-        { command: input.command, namespace: 'test' },
+        { command: commandWithDebug(input.command), namespace: 'test' },
         dependencies,
         configuredFilesRunCollectionSource
     );

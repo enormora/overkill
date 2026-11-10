@@ -50,6 +50,27 @@ export const testNode = createOverkillSuite({
         serialRequestTestNode,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' } ],
+            title: 'programmatic calls can omit debug activation',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const orchestrator = createDeterministicRunOrchestrator();
+                const { debug: _debug, ...request } = defaultRequest;
+                const command = {
+                    config: defaultConfig,
+                    cwd: process.cwd(),
+                    engine: { kind: 'default' as const },
+                    request
+                };
+                const result = await orchestrator.run(command);
+                scope.assert.equal(result.status, 'passed');
+                scope.assert.equal(result.summary.passed, 1);
+                scope.assert.deepEqual(result.artifacts, []);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
             title: 'programmatic debug requests validate their shape and selectors',
             annotations: {},
             controls: {},

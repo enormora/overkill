@@ -1,6 +1,7 @@
 import { replayDiagnostics } from './replay-diagnostics.ts';
 import { createRunOperations } from './run-operations.ts';
 import { withReplay } from './replay-context.ts';
+import { requestedDebug } from './run-debug.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { RunInvocationOptions } from './run-types.ts';
 import type { ReplayWitnessCommand } from './witness-replay-request.ts';
@@ -43,7 +44,8 @@ export function createReplayOperations(dependencies: RunOrchestratorDependencies
     }
     const replayWithReporterDelivery: ReplayOperations['replayWithReporterDelivery'] = async function replay(input) {
         const { prepareRecordedReplay } = await import('./replay-preparation.ts');
-        return await execute(input, await prepareRecordedReplay(input, dependencies), null);
+        const prepared = await prepareRecordedReplay({ ...input, debug: requestedDebug(input) }, dependencies);
+        return await execute(input, prepared, null);
     };
     const replayWitnessWithReporterDelivery = async function replay(
         command: ReplayWitnessCommand | ReplayWitnessInput,
@@ -54,7 +56,7 @@ export function createReplayOperations(dependencies: RunOrchestratorDependencies
         const invocation = options[0] ?? { signal: null, timing: null };
         const prepared = isWitnessReplayCommand(command)
             ? await preparePropertyReplay(command)
-            : await prepareWitnessReplay(command);
+            : await prepareWitnessReplay({ ...command, debug: requestedDebug(command) });
         const { signal } = isWitnessReplayCommand(command) ? invocation : command;
         return await execute({ signal }, prepared, invocation.timing);
     };

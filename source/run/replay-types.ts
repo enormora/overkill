@@ -1,7 +1,7 @@
 import type { NormalizedConfig } from '../config/types.ts';
 import type { ReplayExecution } from './replay-context.ts';
 import type { ReplayWitnessOperations } from './witness-replay-request.ts';
-import type { RunCommand, RunnerResult, RunReporterDeliveryResult } from './run-types.ts';
+import type { DebugRequestInput, RunCommand, RunnerResult, RunReporterDeliveryResult } from './run-types.ts';
 
 export type ReplayContext = {
     readonly debug: RunCommand['request']['debug'];
@@ -9,8 +9,10 @@ export type ReplayContext = {
     readonly config: NormalizedConfig;
     readonly signal: Readonly<AbortSignal> | null;
 };
-export type ReplayRunCommand = ReplayContext & { readonly runId: string; };
-export type ReplayWitnessInput = ReplayContext & { readonly path: string; readonly profile: string; };
+export type ReplayRunCommand = DebugRequestInput<ReplayContext & { readonly runId: string; }>;
+export type ReplayWitnessInput = DebugRequestInput<
+    ReplayContext & { readonly path: string; readonly profile: string; }
+>;
 type DirectReplayOperations = {
     readonly replay: (command: ReplayRunCommand) => Promise<RunnerResult>;
     readonly replayWithReporterDelivery: (command: ReplayRunCommand) => Promise<RunReporterDeliveryResult>;

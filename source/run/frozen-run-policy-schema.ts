@@ -37,7 +37,7 @@ export const frozenMicrotestPolicySchema = z.strictObject({
         capabilityRestrictions: z.strictObject({ mode: z.enum([ 'disabled', 'enabled' ]) }),
         capture: z.literal('buffered'),
         coverage: z.boolean(),
-        debug: runDebugRequestSchema,
+        debug: runDebugRequestSchema.default({ mode: 'off', selectors: [] }),
         execution: z.discriminatedUnion('mode', [
             z.strictObject({ mode: z.literal('profile-default') }),
             z.strictObject({ mode: z.literal('serial') })

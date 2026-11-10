@@ -5,7 +5,7 @@ import { invalidRequest } from './run-errors.ts';
 import { restoreReplayProfile } from './replay-profile.ts';
 import { readRecordedReplay } from './replay-record.ts';
 import { readWitnessReplayFile, decodeReplayInput } from './replay-input.ts';
-import type { PreparedReplay, ReplayRunCommand, ReplayWitnessInput } from './replay-types.ts';
+import type { PreparedReplay, ReplayContext, ReplayRunCommand, ReplayWitnessInput } from './replay-types.ts';
 import type { RunSelection, WorkId } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
@@ -32,7 +32,7 @@ function recordedSelection(identities: readonly WorkId[]): RunSelection {
     };
 }
 export async function prepareRecordedReplay(
-    input: ReplayRunCommand,
+    input: ReplayContext & ReplayRunCommand,
     dependencies: RunOrchestratorDependencies
 ): Promise<PreparedReplay> {
     const record = await readRecordedReplay(input, dependencies);
@@ -76,7 +76,7 @@ function witnessSourceRun(input: ReplayWitnessInput): string | null {
     return id !== undefined && /^[A-Za-z0-9_-]+$/u.test(id) && parts.length > 0 ? id : null;
 }
 export async function prepareWitnessReplay(
-    input: ReplayWitnessInput
+    input: ReplayContext & ReplayWitnessInput
 ): Promise<PreparedReplay> {
     const raw = await readWitnessReplayFile(path.resolve(input.cwd, input.path));
     const witness = decodeReplayInput(raw, parseWitnessFile);

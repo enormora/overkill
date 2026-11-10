@@ -18,7 +18,8 @@ continue through their normal cleanup and disposal.
   repeated. Repeated scopes are combined with OR.
 - Supplying both forms is a usage error.
 
-Programmatic callers use `RunRequest.debug`:
+Programmatic callers use `RunRequest.debug`. Omitting the field on a run or
+replay command leaves debug mode off.
 
 ```ts
 type RunDebugRequest =

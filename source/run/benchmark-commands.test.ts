@@ -12,7 +12,7 @@ import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { configFixtureCwd, createSingleConfigModuleLoader } from '../test-support/run-config-module-loader.ts';
 import { createBenchmarkCommands } from './benchmark-commands.ts';
 import type { CommandLineBenchmarkCommands, CommandLineRunnerResult } from './command-line-command.ts';
-import type { RunCommand } from './run-types.ts';
+import type { RunCommandInput } from './run-types.ts';
 
 const benchmark = {
     testFamily: 'benchmark',
@@ -78,7 +78,7 @@ const selectionErrors: readonly SelectionScenario[] = [
 
 type BenchmarkCommandFixture = {
     readonly benchmark: CommandLineBenchmarkCommands;
-    readonly commands: readonly RunCommand[];
+    readonly commands: readonly RunCommandInput[];
 };
 
 function createCommandFixture(
@@ -86,16 +86,16 @@ function createCommandFixture(
 ): BenchmarkCommandFixture {
     const defaultReporter = createNullReporter();
     const orchestrator = createDeterministicRunOrchestrator();
-    const commands: RunCommand[] = [];
+    const commands: RunCommandInput[] = [];
     const runner = {
         ...orchestrator,
         bench: {
             ...orchestrator.bench,
-            async list(command: RunCommand) {
+            async list(command: RunCommandInput) {
                 commands.push(command);
                 return await orchestrator.bench.list(command, { timing: null });
             },
-            async runWithReporterDelivery(command: RunCommand) {
+            async runWithReporterDelivery(command: RunCommandInput) {
                 commands.push(command);
                 return await orchestrator.bench.runWithReporterDelivery(command, { timing: null });
             }
