@@ -90,6 +90,7 @@ export function propertyTrialEvidence(trial: PropertyTrialResult, failureKey: st
             identity: failureKey ?? propertyFailureIdentity(trial),
             assertions: assertionFailure(trial.result.returnedAssertions),
             bodyError: trial.result.bodyError,
+            inconclusiveReason: trial.result.inconclusiveReason,
             cleanupErrors: trial.result.cleanupErrors,
             contractFailures: trial.result.contractFailures,
             runnerErrors: trial.result.runnerErrors

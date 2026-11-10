@@ -328,7 +328,12 @@ export const configuration = {
             name: 'linearizability',
             description: 'Bounded concurrent-history checking above the Overkill model core.',
             packageInterface: { modules: packageModules({ '.': 'main' }) },
-            bundlePeerDependencies: [ '@overkill-dev/model' ]
+            bundlePeerDependencies: [
+                '@overkill-dev/model',
+                '@overkill-dev/engine',
+                '@overkill-dev/property',
+                '@overkill-dev/assert'
+            ]
         },
         {
             name: 'differential',

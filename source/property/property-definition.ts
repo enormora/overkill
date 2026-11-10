@@ -13,6 +13,7 @@ type ExamplesDeclaration<Value> = { readonly examples: readonly PropertyExample<
 
 export type PropertySampleScope<Value = unknown> = TestScope & {
     readonly reconstructInput: () => Value;
+    readonly inconclusive: (reason: string) => never;
     readonly failureKey: (key: string) => void;
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;

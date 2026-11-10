@@ -1,7 +1,10 @@
 import { expect, test } from 'tstyche';
+import type { PropertyBody } from '../property/property.entry-point.ts';
 import type { ModelTransition } from '../model/model.entry-point.ts';
 import {
     checkLinearizability,
+    linearizability,
+    type LinearizabilityProgram,
     type LinearizabilityResult,
     type LinearizabilityTransition
 } from './linearizability.entry-point.ts';
@@ -32,4 +35,33 @@ test('infers observation types and accepts deterministic model transitions', fun
         signal: controller.signal
     });
     expect(result).type.toBe<Promise<LinearizabilityResult>>();
+});
+
+test('infers concurrent operation and output types', function () {
+    const body = linearizability({
+        create() {
+            return { value: 0 };
+        },
+        run(operation: number, system, signal) {
+            expect(system.value).type.toBe<number>();
+            expect(signal).type.toBe<AbortSignal>();
+            return String(operation);
+        },
+        model: {
+            initial() {
+                return 0;
+            },
+            transition(state, observation) {
+                expect(observation.operation).type.toBe<number>();
+                if (observation.outcome.kind === 'returned') {
+                    expect(observation.outcome.value).type.toBe<string>();
+                }
+                return { kind: 'enabled', state };
+            }
+        },
+        maxWork: 100
+    });
+    expect(body).type.toBe<
+        PropertyBody<LinearizabilityProgram<number>>
+    >();
 });
