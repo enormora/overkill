@@ -169,6 +169,7 @@ export const testNode = createSuite({
                 const fixture = createChildTransportFixture(true);
                 fixture.emit('disconnect', undefined);
                 fixture.clock.advanceByMilliseconds(1000);
+                fixture.clock.advanceByMilliseconds(1000);
                 scope.assert.equal(fixture.state.runnerErrors()[0]?.subtype, 'crash');
                 scope.assert.deepEqual(fixture.outcome(), {
                     closed: 1,
@@ -179,7 +180,7 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            title: 'a completed child that never closes fails and releases the parent transport',
+            title: 'a completed child that never closes fails and bounds termination waiting',
             ...metadata,
             body(scope) {
                 const fixture = createChildTransportFixture(true);
@@ -192,7 +193,9 @@ export const testNode = createSuite({
                     fixture.state.runnerErrors()[0]?.message,
                     'Supervised child shutdown exceeded one second.'
                 );
-                scope.assert.deepEqual(fixture.outcome(), { closed: 1, finished: 1, signals: [ 'SIGKILL' ] });
+                scope.assert.deepEqual(fixture.outcome(), { closed: 1, finished: 0, signals: [ 'SIGKILL' ] });
+                fixture.clock.advanceByMilliseconds(1000);
+                scope.assert.equal(fixture.outcome().finished, 1);
                 return scope.assert.collect();
             }
         }),
@@ -217,18 +220,16 @@ export const testNode = createSuite({
                     fixture.emit('message', message);
                     const error = fixture.state.runnerErrors()[0];
                     scope.require.defined(error);
-                    scope.assert.deepEqual([
-                        error.subtype,
-                        error.attributedTo,
-                        error.attributedToAttempt,
-                        error.attributedToWork
-                    ], [ 'runtime-policy', null, null, null ]);
-                    scope.assert.deepEqual(
-                        fixture.state.perTestResults().map(function result(test) {
+                    scope.assert.deepEqual({
+                        error: [ error.subtype, error.attributedTo, error.attributedToAttempt, error.attributedToWork ],
+                        cases: fixture.state.perTestResults().map(function result(test) {
                             return { verdict: test.verdict, attempt: test.attempts[0].attempt.index };
-                        }),
-                        [ { verdict: 'crashed', attempt: 2 } ]
-                    );
+                        })
+                    }, {
+                        error: [ 'runtime-policy', null, null, null ],
+                        cases: [ { verdict: 'crashed', attempt: 2 } ]
+                    });
+                    fixture.clock.advanceByMilliseconds(1000);
                     fixture.clock.advanceByMilliseconds(1000);
                     scope.assert.deepEqual(fixture.outcome(), {
                         closed: 1,

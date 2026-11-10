@@ -10,6 +10,7 @@ type ShutdownChild = {
 };
 const shutdownStarts = new WeakMap<ShutdownChild, () => void>();
 const shutdownMilliseconds = 1000;
+const terminationMilliseconds = 1000;
 
 export function startChildShutdown(child: ShutdownChild): void {
     shutdownStarts.get(child)?.();
@@ -58,11 +59,8 @@ export function observeChildShutdown(
 
         timeout = clock.setTimeout(function terminateLingeringChild() {
             timedOut();
-            try {
-                terminateChild(child);
-            } finally {
-                finish();
-            }
+            timeout = clock.setTimeout(finish, terminationMilliseconds);
+            terminateChild(child);
         }, shutdownMilliseconds);
     }
 
