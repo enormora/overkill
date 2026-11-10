@@ -17,7 +17,7 @@ import {
 } from '../../packages/run/run.entry-point.ts';
 import { createLineReporter } from '../../packages/reporter-line/reporter-line.entry-point.ts';
 import { defaultRunRequest } from '../../test-support/run-command-factory.ts';
-import { canonicalIdentityJson } from '../../canonical-identity.ts';
+import { artifactReferenceKey } from '../../engine/run-artifact.ts';
 
 const fixture = 'source/integration-tests/run/fixtures/measurement.bench.test.ts';
 const lifecycleFile = 'target/measurement-lifecycle.txt';
@@ -102,8 +102,8 @@ function assertWarmupEvidence(scope: TestScope, result: Awaited<ReturnType<typeo
         scope.assert.equal(lifecycle.warmup.rawSamples.status, 'recorded');
         scope.assert.deepEqual(lifecycle.cleanup, { callbacks: 160, failures: 0 });
         const artifact = result.artifacts.find(function warmupArtifact(candidate) {
-            return canonicalIdentityJson(candidate.id) ===
-                canonicalIdentityJson(JSON.parse(lifecycle.warmup.rawSamples.reference ?? 'null'));
+            return artifactReferenceKey(candidate.id) ===
+                artifactReferenceKey(JSON.parse(lifecycle.warmup.rawSamples.reference ?? 'null'));
         });
         scope.require.defined(artifact);
         scope.assert.partialDeepEqual(artifact.payload, {
