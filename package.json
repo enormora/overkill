@@ -78,7 +78,7 @@
         "dependency-cruiser": "18.7.2",
         "eslint": "10.7.0",
         "jscpd": "5.4.2",
-        "knip": "6.44.1",
+        "knip": "6.44.2",
         "rust-just": "1.59.0"
     },
     "engines": {
