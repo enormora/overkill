@@ -160,18 +160,18 @@ Where: [Runtime Behavior § Watch-Mode Targeting](../architecture/runtime-behavi
 Alternative: Node `--watch`. Future TIA-driven smart watch is open
 research.
 
-### No custom type-test engine
+### No replacement TypeScript checker
 
-Overkill does not implement its own TypeScript type checker for
-`expect-type` / `assert-type` style tests.
+TypeScript owns parsing, resolution, inference, and language diagnostics.
+Overkill does not reimplement the language checker or patch its internals.
 
-Why: type checking belongs to `tsc`; reimplementing it duplicates a
-moving target and ties Overkill releases to TS releases.
+Overkill may implement native type-assertion analysis and comparison through
+public compiler APIs. Prefer a suitable public dependency API when available;
+keeping or dropping TSTyche is not a product requirement. Original-source
+checking must not depend on temporary files, virtual replacement files, or
+code generation.
 
-Where: [Fast Feedback Loops § 11. Out-of-the-box ideas for fast startup](../architecture/fast-feedback-loops.md#11-out-of-the-box-ideas-for-fast-startup)
-
-Alternative: integrate with [tstyche](https://tstyche.org/) and surface
-its results through the Overkill reporter pipeline.
+Where: [Native Type-Test Integration](../authoring/testing-models.md#native-type-test-integration).
 
 ### No CI auto-detection
 

@@ -1181,9 +1181,10 @@ Custom assertions should remain:
 They extend the first-party assertion system without creating registration
 order, global availability, or dot-method name collisions.
 
-Native type-test adapters reuse composite references through public engine and
-runner contracts. They delegate static checking to an external checker instead
-of executing a runtime foreign-assertion callback. Supported source forms,
+The type-test family reuses composite references through the public engine
+execution contract. It reads assertion operands from the original TypeScript
+program without executing a runtime foreign-assertion callback or generating
+replacement source. Public compiler and dependency APIs supply checking. Supported source forms,
 assert-only semantics, and execution restrictions are defined in the
 [Native Assertion Contract](./testing-models.md#native-assertion-contract).
 

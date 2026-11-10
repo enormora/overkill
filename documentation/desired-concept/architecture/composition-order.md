@@ -40,9 +40,12 @@ layer resolves the run in this order:
    Requirements own capability and runtime needs. See
    [Test Data And Selection § Annotations](./test-data-and-selection.md#annotations)
    and [Test Data And Selection § Controls](./test-data-and-selection.md#controls).
-5. **Runtime and workload expansion.** Each selected logical `CaseId`
-   expands into one or more executable `WorkId`s when runtime matrices,
-   browser variants, scenarios, or benchmark workloads apply.
+5. **Family preparation and variant expansion.** The selected executable family
+   validates the plan and prepares its inputs. Each logical `CaseId` expands
+   into executable `WorkId`s for runtime matrices, browser variants, scenarios,
+   benchmark workloads, or compiler versions. Type tests retain the original
+   compiler project; preparation does not invoke case bodies. See
+   [Executable Test Families](./test-families.md).
 6. **Filter application.** The CLI filter expression (or
    programmatic predicate) is evaluated against resolved annotations
    and identity. Result: a filtered `WorkId` set. See
@@ -70,11 +73,18 @@ layer resolves the run in this order:
     discovery authority.
 
 After step 12, the resolved run does not change. New tests discovered during
-execution are an error.
+execution are an error. Family preparation retains the selected plan and its
+facts for execution; filtering must not reconstruct the compiler project or
+rediscover cases.
 
 ## Execution-Time Wrapping
 
-For each test in the plan, the runner sets up nested wrappers around
+Runtime families execute bodies through the wrappers below. Static families
+instead evaluate original-source evidence through the same engine result and
+reporter contracts; they do not enter runtime body wrappers. Their preparation,
+deadlines, and disposal remain explicit.
+
+For each runtime test in the plan, the runner sets up nested wrappers around
 the body. Outermost first:
 
 1. **Worker / process boundary.** Families with a capability model apply

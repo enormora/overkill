@@ -58,8 +58,11 @@ Source: [Package Architecture](../architecture/package-architecture.md).
 
 ## Test Family
 
-A closed enumeration that classifies the semantic family a profile runs.
-First-party families:
+An executable definition selected by a profile or direct engine caller. It
+supplies settings validation, preparation, and execution through a public engine
+contract. Results retain its stable `TestFamilyId`, not its executable object.
+Additional families arrive through explicit imports rather than extending a
+closed union or mutating a registry. First-party semantic families:
 
 - `microtest`
 - `integration`
@@ -72,7 +75,9 @@ runtime styles are expressed through fixtures, resources, runtimes, or
 higher-layer packages. They are not separate families unless they define a
 different semantic contract for planning, reporting, and policy.
 
-Source: [Test Data And Selection](../architecture/test-data-and-selection.md), [Testing Models](../authoring/testing-models.md).
+Source: [Executable Test Families](../architecture/test-families.md),
+[Test Data And Selection](../architecture/test-data-and-selection.md),
+[Testing Models](../authoring/testing-models.md).
 
 ## Capability Profile
 
