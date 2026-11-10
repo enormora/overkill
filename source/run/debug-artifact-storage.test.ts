@@ -7,6 +7,7 @@ import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixtur
 import { createDebugArtifactStore } from './debug-artifact-storage.ts';
 import { mergeDebugArtifacts } from './debug-artifact-results.ts';
 import { executeRecordedRun } from './recorded-run.ts';
+import { createSupervisedRunState } from './supervised-run-state.ts';
 
 function assertStoredArtifact(
     scope: TestScope,
@@ -22,6 +23,33 @@ function assertStoredArtifact(
 }
 
 export const testNode = suite('debug artifact persistence', [
+    test('exhaustion finalizes a checkpoint while preserving completed evidence', async function (scope: TestScope) {
+        const { artifact } = await debugArtifactFixture('exhausted');
+        const checkpoint: TestDebugArtifact = {
+            ...artifact,
+            id: { ...artifact.id, sequence: 1 },
+            source: 'boundary-captured',
+            payload: { ...artifact.payload, verdict: 'inconclusive', outcome: null, completeness: 'incomplete' }
+        };
+        const state = createSupervisedRunState('all');
+        state.recordArtifact(artifact);
+        state.recordArtifact(checkpoint);
+        state.recordBoundaryFailure({
+            kind: 'process-exhaustion',
+            metric: 'activeResourceCount',
+            budget: 1,
+            observed: 2,
+            enforcement: 'sampled',
+            processUsageSamplingIntervalMilliseconds: 100,
+            samples: []
+        });
+        scope.assert.deepEqual(state.artifacts().slice(0, 1), [ artifact ]);
+        scope.assert.partialDeepEqual(state.artifacts().slice(1, 2), [ {
+            id: checkpoint.id,
+            payload: { kind: 'debug', verdict: 'process-exhausted', completeness: 'incomplete' }
+        } ]);
+        return scope.assert.collect();
+    }),
     test('storage uses identity-derived names and skips unchanged snapshots', async function (scope: TestScope) {
         const { artifact } = await debugArtifactFixture('../../outside');
         const writes: { readonly path: string; readonly content: string; }[] = [];

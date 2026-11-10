@@ -294,6 +294,14 @@ export const testNode = suite('generic adapter execution', [
                     'Adapter profiles do not support runtime capture, debugging, process budgets, or precise timings.'
             });
         }
+        await scope.assert.rejects(async function rejectDebugRequest() {
+            return coordinator.orchestrator.resolve({
+                config,
+                cwd: '/project',
+                engine: { kind: 'default' },
+                request: defaultRunRequest({ profile: 'types', debug: { mode: 'all', selectors: [] } })
+            });
+        }, { message: 'Debug mode requires runtime test bodies; type-test profiles use compiler diagnostics.' });
         scope.assert.equal(events.includes('load'), false);
         return scope.assert.collect();
     }),

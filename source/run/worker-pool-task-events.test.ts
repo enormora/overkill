@@ -247,7 +247,7 @@ async function reportedWorkerEventErrors(): Promise<WorkerPoolRunRuntime> {
     return runtime;
 }
 
-async function workerCheckpointCompletion(): Promise<{
+async function workerCheckpointCompletion(hasCompletedArtifact: boolean): Promise<{
     readonly completed: TestDebugArtifact;
     readonly retained: TestDebugArtifact | undefined;
     readonly end: Extract<ReporterEvent, { readonly kind: 'test-end'; }> | undefined;
@@ -267,7 +267,7 @@ async function workerCheckpointCompletion(): Promise<{
         eventMessage({
             ...endEventWithoutWorkId(),
             attempt: 0,
-            artifacts: [ completed ]
+            artifacts: hasCompletedArtifact ? [ completed ] : []
         }),
         taskRun,
         runtime
@@ -289,7 +289,7 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'worker completion replaces its checkpoint and retains placement identity',
             async body(scope: OverkillScope) {
-                const { completed, retained, end } = await workerCheckpointCompletion();
+                const { completed, retained, end } = await workerCheckpointCompletion(true);
                 scope.require.defined(retained);
                 scope.require.defined(end);
                 scope.assert.equal(retained.payload.completeness, 'incomplete');
@@ -297,6 +297,17 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(end.artifacts.filter(isTestDebugArtifact), [
                     { ...completed, id: { ...completed.id, sequence: retained.id.sequence } }
                 ]);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker completion retains its checkpoint when native evidence is missing',
+            async body(scope: OverkillScope) {
+                const { retained, end } = await workerCheckpointCompletion(false);
+                scope.require.defined(retained);
+                scope.require.defined(end);
+                scope.assert.deepEqual(end.artifacts.filter(isTestDebugArtifact), [ retained ]);
                 return scope.assert.collect();
             }
         }),
