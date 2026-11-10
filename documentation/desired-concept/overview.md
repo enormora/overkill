@@ -73,8 +73,9 @@ Core package families:
 - `@overkill-dev/baselines`: shared baseline model for snapshots and performance expectations
 - `@overkill-dev/bench`: benchmark-specific package family included in the
   standard distribution but not loaded by ordinary test-file imports
-- `@overkill-dev/type-test`: optional native type assertions and TSTyche
-  integration, installed separately from the standard distribution
+- `@overkill-dev/type-test`: optional native type assertions and an executable
+  family for original-source compiler analysis, installed separately from the
+  standard distribution
 - a first-party Stryker plugin
 - `@overkill-dev/eslint-rule-test` for ESLint rule-suite authoring rather than
   raw `RuleTester` as a core primitive

@@ -1,3 +1,4 @@
+import { caseBoundaryArtifacts } from './execution-observation.ts';
 import type { CaseReportingContext, ExecuteCaseInput } from './case-attempt-context.ts';
 import { executeTimedLeakCheckedCase } from './case-body-observation.ts';
 import {
@@ -57,7 +58,7 @@ async function reportTestEnd(
         property: input.result.property,
         benchmark: input.result.benchmark,
         attempt: input.attempt,
-        artifacts: [],
+        artifacts: caseBoundaryArtifacts(input.testCase.workId, { index: input.attempt }),
         case: input.testCase.id,
         definitionLocations: input.testCase.definitionLocations,
         kind: 'test-end',

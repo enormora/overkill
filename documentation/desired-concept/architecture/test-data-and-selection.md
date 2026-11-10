@@ -70,8 +70,11 @@ It must be a positive safe integer no greater than the profile soft timeout.
 
 ## Test Family
 
-Test family is not an annotation or a control. A run profile binds one family
-for the whole run. Mixed-family runs are invalid.
+Test family is not an annotation or a control. A run profile binds one executable
+family definition for the whole run; direct engine callers supply the same
+definition explicitly. Mixed-family runs are invalid. Optional packages supply
+imported definitions, while built-in strings resolve to supplied implementations.
+See [Executable Test Families](./test-families.md).
 
 The selected profile is the authority for family-specific policy: microtest
 capability restrictions, capture support, runtime/resource attachment, and
@@ -79,7 +82,8 @@ process model validation. Root authoring helpers should not force authors to
 choose a family-specific import path. When a higher-layer package needs an
 internal family marker, that marker is engine-owned and exists only to let
 planning reject incompatible cases before execution. It is not serialized as
-authored test data. The serialized run fact remains:
+authored test data. The serialized run fact contains the stable family
+identifier, not the executable definition:
 
 ```ts
 facts.execution.testFamily;

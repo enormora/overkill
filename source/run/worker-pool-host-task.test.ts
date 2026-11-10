@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -41,6 +43,7 @@ function workId(): TestWorkId {
 
 function command(): WorkerPoolCommand {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,
         snapshots: null,

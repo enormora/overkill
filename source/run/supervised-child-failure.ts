@@ -1,5 +1,5 @@
 import type { SupervisedChildProcess } from './supervised-child-process.ts';
-import { crashError } from './supervised-run-process-policy.ts';
+import { captureCrashEvidence } from './supervised-run-process-policy.ts';
 import type { SupervisedRunState } from './supervised-run-state.ts';
 
 type ProtocolInterruption = {
@@ -40,11 +40,19 @@ export function recordPrematureChildExit(
     state: SupervisedRunState,
     observedAtMicroseconds: number
 ): void {
+    state.recordBoundaryFailure({
+        kind: 'worker-crash',
+        reason: 'premature-exit',
+        exitCode: child.exitCode,
+        signal: child.signalCode,
+        coreDumpPath: null,
+        nativeAddons: null
+    });
     const code = String(child.exitCode);
     const signal = String(child.signalCode);
 
     state.recordRunnerError({
-        ...crashError(
+        ...captureCrashEvidence(
             state,
             `Supervised child terminated without successful protocol completion (code: ${code}, signal: ${signal}).`
         ),

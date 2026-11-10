@@ -1,6 +1,8 @@
 import { runIfMain } from '#test-runner';
+
 import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite,
     createTestCase,
     defineOutputRenderer,
@@ -32,6 +34,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
 
 function createDefaultMicrotestProfile(): NormalizedConfig['profiles'][string] {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
         coverage: defaultCoveragePolicy,
         execution: {

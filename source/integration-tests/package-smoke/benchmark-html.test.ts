@@ -4,6 +4,7 @@ import { createSuite, createTestCase, type TestScope } from '@overkill-dev/engin
 import type { createBenchmarkHtmlReporter } from '@overkill-dev/reporter-benchmark-html';
 import { createLineReporter } from '@overkill-dev/reporter-line';
 import { runIfMain } from '#test-runner';
+import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import { benchmarkHtmlTimelineFixture } from '../../test-support/benchmark-html-fixture.ts';
 
 async function outputPath(scope: TestScope): Promise<string> {
@@ -20,6 +21,7 @@ async function assertRenderedReport(
 ): Promise<void> {
     const outputFile = await outputPath(scope);
     const reporter = factory({ outputFile })({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }

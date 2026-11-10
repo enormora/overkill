@@ -2,7 +2,6 @@ import { interruptedPropertyEvidence } from '../engine/property-evidence.ts';
 import {
     caseIdentityKey,
     createDefaultWorkId,
-    workIdentityKey,
     type AttemptId,
     type CaseId,
     type WorkId
@@ -11,7 +10,12 @@ import type { PerTestResult, PropertyCaseEvidence, RunnerError, RunArtifact } fr
 import { caseAttemptHistory } from '../engine/test-attempt-history.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
-import type { BenchmarkExecutionResult } from '../engine/benchmark-result.ts';
+import {
+    createBoundaryArtifactCapture,
+    unknownBoundaryMetadata,
+    type BoundaryArtifactCapture,
+    type SupervisedBoundaryMetadata
+} from './boundary-artifact-capture.ts';
 import type { RunRequest } from './run-types.ts';
 import { createSupervisedOutputCapture } from './supervised-output-capture.ts';
 import { retainedRetryArtifacts } from './retry-artifact-retention.ts';
@@ -55,7 +59,7 @@ export type SupervisedCase = {
 
 export type ActiveSupervisedCase = SupervisedCase & {
     readonly property: PropertyCaseEvidence | null;
-    readonly benchmark: BenchmarkExecutionResult | null;
+    readonly benchmark: PerTestResult['benchmark'];
     readonly attempt: AttemptId;
     readonly startedAtMicroseconds: number;
 };
@@ -67,7 +71,7 @@ type TimingWindow = {
 
 export type SupervisedRunState = {
     readonly recordPropertyProgress: (key: string, attempt: number, evidence: PropertyCaseEvidence) => void;
-    readonly recordBenchmarkProgress: (key: string, result: BenchmarkExecutionResult) => void;
+    readonly recordBenchmarkProgress: (key: string, result: NonNullable<PerTestResult['benchmark']>) => void;
     readonly activeCases: ReadonlyMap<string, ActiveSupervisedCase>;
     readonly captureMode: (capture: RunRequest['capture']) => RunRequest['capture'];
     readonly addActiveCase: (
@@ -85,6 +89,7 @@ export type SupervisedRunState = {
         completedAtMicroseconds: number
     ) => void;
     readonly perTestResults: () => readonly PerTestResult[];
+    readonly terminalCases: () => readonly PerTestResult[];
     readonly beginOutputDraining: () => void;
     readonly recordCapturedOutput: (
         stream: 'stderr' | 'stdout',
@@ -96,6 +101,7 @@ export type SupervisedRunState = {
         result: PerTestResult,
         completedAtMicroseconds: number
     ) => void;
+    readonly recordBoundaryFailure: BoundaryArtifactCapture['recordFailure'];
     readonly recordArtifact: (artifact: RunArtifact) => void;
     readonly recordRunnerError: (error: RunnerError) => void;
     readonly recordRunnerErrors: (errors: readonly RunnerError[]) => void;
@@ -130,21 +136,6 @@ function terminalResult(
         workId: testCase.workId ?? createDefaultWorkId(testCase.id),
         durationMicroseconds: Math.max(0, completedAtMicroseconds - testCase.startedAtMicroseconds)
     };
-}
-
-function caseArtifact(work: WorkId, attempt: AttemptId, artifacts: readonly RunArtifact[]): readonly RunArtifact[] {
-    const key = workIdentityKey(work);
-
-    return artifacts.filter(function belongsToCase(artifact) {
-        if (artifact.id.scope.kind !== 'case' || artifact.id.attempt?.index !== attempt.index) {
-            return false;
-        }
-        return workIdentityKey({
-            case: artifact.id.scope.case,
-            runtimes: artifact.id.runtimes,
-            workload: artifact.id.workload
-        }) === key;
-    });
 }
 
 function singleAttribution<Value>(values: readonly Value[]): Value | null {
@@ -269,15 +260,27 @@ function outputCases(cases: OutputCaptureState): ReadonlyMap<string, ActiveSuper
     return cases.active.size === 0 && cases.terminalOutputDraining ? cases.outputDraining : cases.active;
 }
 
-export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): SupervisedRunState {
+export function createSupervisedRunState(
+    artifactPolicy: RetryArtifactPolicy,
+    outputLimitBytes = 1_048_576,
+    boundary: () => SupervisedBoundaryMetadata = unknownBoundaryMetadata
+): SupervisedRunState {
     const cases = {
         active: new Map<string, ActiveSupervisedCase>(),
         interruptedByPolicy: new Map<string, ActiveSupervisedCase>(),
         outputDraining: new Map<string, ActiveSupervisedCase>(),
+        pendingTerminal: new Set<string>(),
         terminalOutputDraining: false
     };
-    const artifacts: RunArtifact[] = [];
-    const outputCapture = createSupervisedOutputCapture();
+    const artifacts = createStoredRunValue<readonly RunArtifact[]>([]);
+    const captures = {
+        output: createSupervisedOutputCapture(outputLimitBytes),
+        boundary: createBoundaryArtifactCapture(artifacts, boundary, function activeBoundaryWork() {
+            return Array.from(cases.active.values(), function activeWork(active) {
+                return { work: active.workId ?? createDefaultWorkId(active.id), attempt: active.attempt };
+            });
+        })
+    };
     const perTest = new Map<string, PerTestResult>();
     const attemptResults = new Map<string, PerTestResult[]>();
     const runnerErrors: RunnerError[] = [];
@@ -290,6 +293,7 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             ? new Map([ ...cases.interruptedByPolicy, ...cases.active ])
             : cases.active;
         for (const [ key, testCase ] of interrupted) {
+            cases.pendingTerminal.add(key);
             const previous = attemptResults.get(key) ?? [];
             perTest.set(
                 key,
@@ -316,6 +320,7 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
         activeCase: ActiveSupervisedCase | undefined
     ): void {
         perTest.set(key, result);
+        cases.pendingTerminal.delete(key);
         if (activeCase !== undefined) {
             cases.outputDraining.set(key, activeCase);
         }
@@ -348,10 +353,16 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             cases.active.set(key, { ...testCase, property: null, benchmark: null, attempt, startedAtMicroseconds });
         },
         artifacts() {
-            return artifacts;
+            return artifacts.read();
         },
         caseArtifacts(work, attempt) {
-            return caseArtifact(work, attempt, artifacts);
+            return captures.boundary.forAttempt(work, attempt);
+        },
+        terminalCases() {
+            return Array.from(cases.pendingTerminal).flatMap(function pendingResult(key) {
+                const result = perTest.get(key);
+                return result === undefined ? [] : [ result ];
+            });
         },
         perTestResults() {
             const results = new Map(perTest);
@@ -371,17 +382,23 @@ export function createSupervisedRunState(artifactPolicy: RetryArtifactPolicy): S
             const activeWork = Array.from(captureWindow.values(), function capturedWork(testCase) {
                 return { attempt: testCase.attempt, work: testCase.workId ?? createDefaultWorkId(testCase.id) };
             });
-            artifacts.push(...outputCapture.record(activeWork, stream, chunk, capturedAtMicroseconds));
+            artifacts.write([
+                ...artifacts.read(),
+                ...captures.output.record(activeWork, stream, chunk, capturedAtMicroseconds)
+            ]);
         },
-        recordArtifact(artifact) {
-            artifacts.push(artifact);
-        },
+        recordBoundaryFailure: captures.boundary.recordFailure,
+        recordArtifact: captures.boundary.recordArtifact,
         recordTestAttemptResult(key, result, completion, completedAtMicroseconds) {
             const previous = attemptResults.get(key) ?? [];
             const results = [ ...previous, result ];
             attemptResults.set(key, results);
-            const retained = retainedRetryArtifacts(artifacts, [ caseAttemptHistory(result, results) ], artifactPolicy);
-            artifacts.splice(0, artifacts.length, ...retained);
+            const retained = retainedRetryArtifacts(
+                artifacts.read(),
+                [ caseAttemptHistory(result, results) ],
+                artifactPolicy
+            );
+            artifacts.write(retained);
             const activeCase = cases.active.get(key);
             if (activeCase !== undefined) {
                 timingWindows.push({

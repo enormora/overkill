@@ -1,10 +1,12 @@
 import { runIfMain } from '#test-runner';
+import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { ConfigError, defineConfig, normalizeConfig } from '../packages/run/config.entry-point.ts';
 import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
 
 const benchmarkPolicy = {
+    failureArtifacts: defaultFailureArtifactPolicy,
     garbageCollection: 'off',
     host: benchmarkHostPolicySchema.parse({}),
     baselines: { adapters: [], directory: 'test-baselines' },

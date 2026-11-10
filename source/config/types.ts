@@ -1,8 +1,8 @@
 import type { BenchmarkGarbageCollectionPolicy } from '../engine/benchmark-result.ts';
 import type { PropertyPolicy } from '../engine/property-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { AttachmentLimits } from '../engine/runtime-attachment.ts';
 import type { BenchmarkBaselinePolicy, OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
+import type { ProfileEvidencePolicy } from './evidence-policy.ts';
 import type { ReportingPolicy } from './reporting-schema.ts';
 import type { RunAdapterRegistration } from './adapter-profile.ts';
 import type { HistoryPolicy } from './history-policy.ts';
@@ -158,13 +158,14 @@ export type MicrotestProfileConfig = {
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'microtest';
     readonly runRecords: RunRecordProfilePolicy;
+    readonly failureArtifacts: ProfileEvidencePolicy['failureArtifacts'];
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
 
 export type IntegrationProfileConfig = {
     readonly baselines: OrdinaryBaselinePolicy;
-    readonly attachments: AttachmentLimits;
+    readonly attachments: ProfileEvidencePolicy['attachments'];
     readonly retries: IntegrationRetryPolicy | null;
     readonly execution: IntegrationExecution;
     readonly files: ProfileFiles;
@@ -172,6 +173,7 @@ export type IntegrationProfileConfig = {
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'integration';
     readonly runRecords: RunRecordProfilePolicy;
+    readonly failureArtifacts: ProfileEvidencePolicy['failureArtifacts'];
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
@@ -191,13 +193,14 @@ export type BenchmarkProfileConfig = {
     readonly garbageCollection: BenchmarkGarbageCollectionPolicy;
     readonly host: BenchmarkHostPolicy;
     readonly baselines: BenchmarkBaselinePolicy;
-    readonly attachments: AttachmentLimits;
+    readonly attachments: ProfileEvidencePolicy['attachments'];
     readonly execution: BenchmarkExecution;
     readonly files: ProfileFiles;
     readonly reporters: ReportingPolicy['reporters'];
     readonly processUsage: ProcessUsagePolicy;
     readonly testFamily: 'benchmark';
     readonly runRecords: RunRecordProfilePolicy;
+    readonly failureArtifacts: ProfileEvidencePolicy['failureArtifacts'];
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
@@ -216,6 +219,7 @@ export type PropertyProfileConfig = {
     readonly property: PropertyPolicy;
     readonly testFamily: 'property';
     readonly runRecords: RunRecordProfilePolicy;
+    readonly failureArtifacts: ProfileEvidencePolicy['failureArtifacts'];
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
 };
@@ -230,6 +234,7 @@ export type AdapterProfileConfig = {
     readonly reporters: ReportingPolicy['reporters'];
     readonly processUsage: ProcessUsagePolicy;
     readonly runRecords: RunRecordProfilePolicy;
+    readonly failureArtifacts: ProfileEvidencePolicy['failureArtifacts'];
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
     readonly testFamily: 'type-test';

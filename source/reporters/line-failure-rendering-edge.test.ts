@@ -43,6 +43,30 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'line failure formatter retains the summary of conflicting duplicate completions',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(
+                    formatFailure({
+                        kind: 'hedged-duplicate-conflict',
+                        summary: 'Duplicate attempts completed with conflicting outcomes.',
+                        artifact: {
+                            attempt: null,
+                            runtimes: [],
+                            scope: { kind: 'run' },
+                            sequence: 0,
+                            subtype: 'hedged-conflict',
+                            workload: null
+                        }
+                    }),
+                    [ 'Duplicate attempts completed with conflicting outcomes.' ]
+                );
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'line failure formatter renders scalar serialized value variants',
             annotations: {},

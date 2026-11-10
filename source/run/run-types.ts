@@ -18,6 +18,7 @@ import type {
     MicrotestProcessModel,
     MicrotestProfileConfig,
     NormalizedConfig,
+    ProfileConfig,
     ProcessBudgets,
     ProcessUsagePolicy,
     RunOrder,
@@ -224,6 +225,7 @@ type RunExecutionBaseFacts = {
     readonly processUsagePolicy: ProcessUsagePolicy;
     readonly scheduling: Scheduling;
     readonly testFamily: RunTestFamily;
+    readonly failureArtifacts: ProfileConfig['failureArtifacts'];
     readonly timingCollection: TimingCollectionMode;
     readonly timeoutPolicy: TimeoutPolicy;
     readonly verbose: false;

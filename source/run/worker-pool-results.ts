@@ -6,7 +6,7 @@ import type {
     RunResult,
     RunnerError
 } from './run-engine-primitives.ts';
-import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
+import { resultWithRetainedArtifacts, reportResultWithDelivery, reportTerminalCases } from './run-result-reporting.ts';
 import {
     collectedRunCaseEntries,
     createRunResultFromCollectedPlan
@@ -123,10 +123,28 @@ async function reportEmptyShardRunStart(
     });
 }
 
-async function reportFinalResult(result: RunResult, runtime: WorkerPoolRunRuntime): Promise<RunResult> {
+async function reportFinalResult(
+    result: RunResult,
+    runtime: WorkerPoolRunRuntime,
+    completedTaskRuns: readonly WorkerPoolTaskRun[]
+): Promise<RunResult> {
+    const terminalCases = [ ...completedTaskRuns, ...runtime.activeTasks ]
+        .filter(function retainedTask(task) {
+            return task.includeArtifacts.read();
+        })
+        .flatMap(function pendingTerminalCases(task) {
+            return task.state.terminalCases();
+        });
+    const terminalResult = await reportTerminalCases(
+        result,
+        terminalCases,
+        runtime.collectedPlan,
+        runtime.reporterDelivery
+    );
+
     return await reportResultWithDelivery(
         resultWithRetainedArtifacts(
-            result,
+            terminalResult,
             [],
             runtime
                 .resolvedRun
@@ -178,7 +196,17 @@ export async function finishWorkerPoolRun(
                 )
             }
         ),
-        [ ...runtime.runState.artifacts(), ...allTaskArtifacts(completedTaskRuns), ...taskArtifacts(runtime) ]
+        [
+            ...runtime.runState.artifacts(),
+            ...allTaskArtifacts(completedTaskRuns),
+            ...taskArtifacts(runtime),
+            ...runtime.taskResults.flatMap(function boundaryEvidence(taskResult) {
+                return taskResult.artifacts.filter(function runBoundary(artifact) {
+                    return artifact.id.scope.kind === 'run' &&
+                        (artifact.payload.kind === 'worker-crash' || artifact.payload.kind === 'process-exhaustion');
+                });
+            })
+        ]
     );
 
     return await reportFinalResult(
@@ -186,7 +214,8 @@ export async function finishWorkerPoolRun(
             placementTrace: workerPoolPlacementTrace(runtime).finish(),
             result
         }),
-        runtime
+        runtime,
+        completedTaskRuns
     );
 }
 

@@ -7,7 +7,7 @@ import {
     type SupervisedCase,
     type ActiveSupervisedCase
 } from './supervised-run-state.ts';
-import { crashError } from './supervised-run-process-policy.ts';
+import { captureCrashEvidence } from './supervised-run-process-policy.ts';
 import type { PlacementRecoveryDecision } from './placement-trace.ts';
 import type { WorkerPoolMessage } from './worker-pool-protocol.ts';
 import {
@@ -264,7 +264,7 @@ export function recordTaskCrash(
     taskRun.interruptionCause.write(cause);
     interruptTaskAttempts(taskRun, runtime, cause);
     recordWorkerCrashTrace(taskRun, runtime);
-    taskRun.state.recordRunnerError(crashError(taskRun.state, message));
+    taskRun.state.recordRunnerError(captureCrashEvidence(taskRun.state, message));
     taskRun.state.recordTerminalActiveCases(
         'crashed',
         Number(runtime.dependencies.wallClock.currentMonotonicMicroseconds)

@@ -1,4 +1,5 @@
 import type { Except } from 'type-fest';
+import type { BoundaryFailureArtifact, AdapterArtifact, CapturedOutputArtifact } from '../engine/run-artifact.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type {
     HedgedConflictArtifact,
@@ -6,7 +7,6 @@ import type {
     TestFailure,
     TestOutcome
 } from '../engine/run-result.ts';
-import type { AdapterArtifact, CapturedOutputArtifact } from '../engine/run-artifact.ts';
 import type { CoverageArtifact } from '../engine/coverage-artifact.ts';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 
@@ -47,5 +47,5 @@ type RecordedConflictArtifact = Except<HedgedConflictArtifact, 'payload'> & {
     };
 };
 
-type DiagnosticArtifact = CapturedOutputArtifact | RuntimeAttachmentArtifact;
+type DiagnosticArtifact = BoundaryFailureArtifact | CapturedOutputArtifact | RuntimeAttachmentArtifact;
 export type RunRecordArtifact = AdapterArtifact | CoverageArtifact | DiagnosticArtifact | RecordedConflictArtifact;

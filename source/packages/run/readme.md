@@ -333,6 +333,33 @@ which attachment files remain. Cancelled or matching hedged peers are discarded;
 conflicting executions retain their attachments in the conflict evidence.
 Microtest profiles reject attachment configuration.
 
+Profiles accept `failureArtifacts` to configure diagnostic limits independently
+of attachment storage:
+
+```ts
+failureArtifacts: {
+    capturedOutputBytes: 1_048_576,
+    serialization: { stringBytes: 8192, operandBytes: 65_536 },
+    rendering: { diffLines: 100, valueBytes: 8192 },
+}
+```
+
+Omitted fields retain their defaults. Limits must be positive safe integers.
+Serialization also supports `depth`, `visitedNodes`, `objectEntries`, and
+`arrayEntries`. Output shares its limit across stdout, stderr, and retries of
+one work item. Once truncated, further writes in that attempt are drained
+without adding more artifacts. Later attempts that write output retain one
+truncation marker each. Traces and structured resource logs use existing transcript and
+attachment APIs and their `attachments` limits.
+
+Crash and process-budget failures include typed `worker-crash` and
+`process-exhaustion` artifacts alongside runner errors. A single known owner
+receives case scope; shared failures produce one run-scoped artifact containing
+all active work and attempt identities. Available signals, worker metadata,
+budget observations, and bounded usage samples survive in machine-readable
+results and persisted records. Unavailable metadata is `null`. Ordinary
+microtest failures do not create separate artifact files.
+
 Coverage runs persist a `RunRecord` at `<runtimeStateDir>/runs/<id>.json`.
 The same ULID names the default `<runtimeStateDir>/runs/<id>/coverage`
 directory. Configured output directories keep raw data under `raw/<id>`.
@@ -501,7 +528,10 @@ diagnostic and changes successful exit status to failure; abort reporting and
 arbitrary `process.kill()` detection are not guaranteed. Supervised parents
 validate shared IPC payloads, terminate children on unexpected IPC, and require
 valid completion even after exit code zero. Receipt does not identify the sending
-test. Terminal child shutdown and output draining are bounded to one second. Final attempt capture remains open during draining without reviving execution. The CLI bin skeleton starts with `--permission-audit`, so CLI
+test. Terminal child shutdown allows one second for exit and output draining.
+Forced termination then waits for `close` for up to one additional second before
+completing the failed run. Final attempt capture remains open during draining
+without reviving execution. The CLI bin skeleton starts with `--permission-audit`, so CLI
 in-process microtests can observe extra permission-model diagnostics.
 Programmatic in-process callers get those audit diagnostics only if their own
 Node process was started with `--permission-audit`.

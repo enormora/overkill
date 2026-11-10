@@ -1,4 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createStoredValue, type StoredValue } from '../stored-value.ts';
+import { withSerializationBudget } from '../compare/serialization-context.ts';
+import { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from './failure-artifact-policy.ts';
+import { artifactsForAttempt, type BoundaryFailureArtifact } from './run-artifact.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -275,4 +279,64 @@ export function createExecutionObservation(): ExecutionObservation {
             }
         }
     };
+}
+
+type FailureArtifactContext = {
+    readonly policy: FailureArtifactPolicy;
+    readonly samplingIntervalMilliseconds: number | null;
+    readonly artifacts: StoredValue<readonly BoundaryFailureArtifact[]>;
+};
+const contextKey = Symbol.for('@overkill-dev/failure-artifact-context/v1');
+
+function isFailureArtifactStorage(value: unknown): value is AsyncLocalStorage<FailureArtifactContext> {
+    return value instanceof AsyncLocalStorage;
+}
+
+function sharedFailureArtifactStorage(): AsyncLocalStorage<FailureArtifactContext> {
+    const existing: unknown = Reflect.get(globalThis, contextKey);
+    if (isFailureArtifactStorage(existing)) {
+        return existing;
+    }
+    const created = new AsyncLocalStorage<FailureArtifactContext>();
+    Object.defineProperty(globalThis, contextKey, { value: created });
+    return created;
+}
+
+const contexts = sharedFailureArtifactStorage();
+
+export function withFailureArtifactContext<Value>(
+    policy: FailureArtifactPolicy,
+    operation: () => Value,
+    samplingIntervalMilliseconds: number | null
+): Value {
+    return contexts.run({
+        policy,
+        samplingIntervalMilliseconds,
+        artifacts: createStoredValue<readonly BoundaryFailureArtifact[]>([])
+    }, function withFailureSerialization() {
+        return withSerializationBudget(policy.serialization, operation);
+    });
+}
+
+export function currentFailureArtifactPolicy(): FailureArtifactPolicy {
+    return contexts.getStore()?.policy ?? defaultFailureArtifactPolicy;
+}
+
+export function recordBoundaryArtifact(artifact: BoundaryFailureArtifact): void {
+    const context = contexts.getStore();
+    if (context !== undefined) {
+        context.artifacts.write([ ...context.artifacts.read(), artifact ]);
+    }
+}
+
+export function boundaryArtifacts(): readonly BoundaryFailureArtifact[] {
+    return contexts.getStore()?.artifacts.read() ?? [];
+}
+
+export function caseBoundaryArtifacts(work: WorkId, attempt: AttemptId): readonly BoundaryFailureArtifact[] {
+    return artifactsForAttempt(boundaryArtifacts(), work, attempt);
+}
+
+export function currentProcessUsageSamplingInterval(): number | null {
+    return contexts.getStore()?.samplingIntervalMilliseconds ?? null;
 }

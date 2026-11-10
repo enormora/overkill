@@ -39,6 +39,23 @@ await writeFile('overkill.config.mjs','import {defineConfig} from '+JSON.stringi
     }}})+');');
 if(blocked){await writeFile(path.join(originalRoot,'custom-state'),'blocked');}
 const runners=[];
+function assertTimeoutEvidence(artifacts) {
+    assert.equal(artifacts.length,1);
+    const [artifact]=artifacts;
+    assert.equal(artifact.source,'boundary-captured');
+    assert.equal(artifact.id.subtype,'worker-crash');
+    assert.equal(artifact.id.scope.kind,'case');
+    assert.equal(artifact.id.scope.case.title,'second admitted case');
+    assert.deepEqual(artifact.id.attempt,{index:0});
+    assert.equal(artifact.payload.kind,'worker-crash');
+    assert.match(artifact.payload.reason,/hard timeout/);
+    assert.equal(artifact.payload.capture,'automatic');
+    assert.equal(artifact.payload.completeness,'best-effort');
+    assert.deepEqual(artifact.payload.activeWork,[{
+        work:{case:artifact.id.scope.case,runtimes:artifact.id.runtimes,workload:artifact.id.workload},
+        attempt:artifact.id.attempt
+    }]);
+}
 function runner() {
     const instance=strykerPlugins[0].factory({overkill:{configPath:'overkill.config.mjs',
         freshState:freshState==='true',seed:'42',
@@ -99,7 +116,11 @@ try {
                 assert.equal(document.campaign,campaigns[0]);
                 assert.equal(document.invocation,invocation);
                 assert.equal(document.execution.mutant,mutant.id);
-                assert.deepEqual(document.diagnostics.artifacts,[]);
+                if(timeout) {
+                    assertTimeoutEvidence(document.diagnostics.artifacts);
+                } else {
+                    assert.deepEqual(document.diagnostics.artifacts,[]);
+                }
                 if(forbiddenOutput) {
                     assert.ok(document.diagnostics.runnerErrors.some(error=>error.subtype==='runtime-policy'));
                 } else {

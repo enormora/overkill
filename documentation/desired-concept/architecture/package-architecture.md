@@ -806,11 +806,17 @@ able to wire in:
 Some integrations are part of the product shape even though they are not
 engine features.
 
+Optional execution families use the public engine contract in
+[Executable Test Families](./test-families.md). Definitions supply their
+implementation; the engine does not advertise an unavailable optional executor.
+
 The clearest current example is:
 
-- `@overkill-dev/type-test`, an optional native assertion and TSTyche adapter
-  package above the public engine and runner contracts; see
-  [Native Type-Test Integration](../authoring/testing-models.md#package-distribution)
+- `@overkill-dev/type-test`, an optional native assertion and compiler-analysis
+  package supplying an executable family through the public engine contract;
+  the runner consumes the same definition. No compiler dependency belongs in
+  the engine or ordinary authoring imports. See
+  [Native Type-Test Integration](../authoring/testing-models.md#package-and-family-selection)
 - `@overkill-dev/stryker-runner`, a first-party Stryker `TestRunner` plugin
   above the runner; see [Mutation Runner Contract](../authoring/higher-test-layers.md#mutation-runner-contract)
 - a first-party ESLint rule-testing adapter package rather than baking

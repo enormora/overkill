@@ -66,7 +66,8 @@ Configuration should mainly cover orchestration and package wiring:
   runner diagnostics)
 - run-record persistence defaults per profile
 - compact-history retention and maintenance policy
-- optional global assertion budget policy
+- profile-scoped `failureArtifacts` limits for captured output, assertion
+  serialization, and human diff rendering
 - mutation integration
 - type-test integration
 - browser or benchmark package wiring
@@ -99,6 +100,18 @@ Overkill should avoid:
 - CLI-only features that cannot also be expressed through the public
   programmatic API on the owning package
 - opaque framework behavior hidden behind configuration
+
+## Executable Test Families
+
+`profiles.<name>.testFamily` accepts an imported `TestFamily<Settings>` definition.
+The definition supplies validation and execution; the profile's `settings` must
+match its type. The standard distribution retains built-in string aliases for
+implementations it supplies. Optional families require explicit imports.
+
+See [Executable Test Families](./test-families.md) for the public definition,
+preparation, evidence, direct engine, lifetime, and transport contracts. The
+runner adapts named profiles to that engine-owned API; importing a family does
+not register global state or widen a closed configuration union.
 
 ## Recommended File Story
 

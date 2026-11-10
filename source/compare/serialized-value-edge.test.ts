@@ -6,12 +6,80 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { serializeValue, serializeValueWithBudget } from './serialized-value.ts';
 
+function inaccessibleProperties(cause: unknown): Record<string, unknown> {
+    return new Proxy({}, {
+        ownKeys() {
+            throw cause;
+        }
+    });
+}
+
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],
     title: 'source/compare/serialized-value-edge.test.ts',
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'serializeValue() retains diagnostics when property introspection throws a non-Error value',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.deepEqual(serializeValue(inaccessibleProperties(null)), {
+                    constructorName: 'Object',
+                    entries: [ {
+                        key: { kind: 'string', value: '<introspection>' },
+                        value: { kind: 'unavailable', reason: 'object introspection failed' }
+                    } ],
+                    kind: 'object',
+                    truncation: null
+                });
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'serializeValue() preserves repeated function references when function names are absent',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const callable = function (): null {
+                    return null;
+                };
+                Reflect.deleteProperty(callable, 'name');
+                Object.setPrototypeOf(callable, null);
+                scope.assert.deepEqual(serializeValue([ callable, callable ]), {
+                    kind: 'array',
+                    length: 2,
+                    entries: [
+                        { key: { kind: 'string', value: '0' }, value: { kind: 'function', id: 2, name: null } },
+                        { key: { kind: 'string', value: '1' }, value: { kind: 'circular', reference: 2 } }
+                    ],
+                    truncation: null
+                });
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'serializeValue() identifies instances of unnamed constructors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const unnamedConstructor = function (): null {
+                    return null;
+                };
+                Object.defineProperty(unnamedConstructor, 'name', { value: '' });
+                scope.assert.deepEqual(serializeValue(Object.create({ constructor: unnamedConstructor })), {
+                    constructorName: '(anonymous)',
+                    entries: [],
+                    kind: 'object',
+                    truncation: null
+                });
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'serializeValue() handles invalid dates and anonymous functions',

@@ -1,6 +1,8 @@
 import { runIfMain } from '#test-runner';
+
 import { fakeWorkerPoolRuntimeDependencies } from '../test-support/worker-pool-runtime-fixtures.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type CaseId,
@@ -202,6 +204,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                failureArtifacts: defaultFailureArtifactPolicy,
                 runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,
                 propertyPolicy: null,
@@ -429,6 +432,48 @@ function budgetedRuntime(taskRun: WorkerPoolTaskRun): WorkerPoolRunRuntime {
     };
 }
 
+type HedgedBudgetRun = {
+    readonly activeTask: WorkerPoolTaskRun;
+    readonly hedge: WorkerPoolTaskRun;
+    readonly runtime: WorkerPoolRunRuntime;
+};
+
+function hedgedBudgetRuntime(): HedgedBudgetRun {
+    const activeTask = createTaskRun(createSupervisedRunState('first-failure-and-final'));
+    const hedge = createTaskRun(createSupervisedRunState('first-failure-and-final'));
+    const runtime = { ...budgetedRuntime(activeTask), activeTasks: new Set([ activeTask, hedge ]) };
+    hedge.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0, {
+        index: 1
+    });
+
+    activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0, {
+        index: 0
+    });
+    activeTask.timeout.write(runtime.dependencies.wallClock.setTimeout(
+        activeTask.controller.abort.bind(activeTask.controller),
+        100
+    ));
+    return { activeTask, hedge, runtime };
+}
+
+function assertSharedExhaustion(scope: OverkillScope, runtime: WorkerPoolRunRuntime): void {
+    const artifacts = runtime.runState.artifacts();
+    scope.assert.equal(artifacts.length, 1);
+    const artifact = artifacts[0];
+    scope.require.defined(artifact);
+    scope.assert.equal(artifact.id.scope.kind, 'run');
+    scope.assert.equal(artifact.id.attempt, null);
+    if (artifact.payload.kind !== 'process-exhaustion') {
+        throw new Error('Expected pool exhaustion evidence.');
+    }
+    scope.assert.deepEqual(
+        artifact.payload.activeWork.map(function capturedAttempt(active) {
+            return active.attempt.index;
+        }),
+        [ 0, 1 ]
+    );
+}
+
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-execution-state.test.ts',
@@ -455,22 +500,15 @@ export const testNode = createOverkillSuite({
             ...testCaseMetadata,
             title: 'worker-pool process usage tracking stops active tasks on pool budget breach',
             async body(scope: OverkillScope) {
-                const activeTask = createTaskRun(createSupervisedRunState('first-failure-and-final'));
-                const runtime = budgetedRuntime(activeTask);
-
-                activeTask.state.addActiveCase(firstCaseIdentityKey(), { capture: null, id: firstCaseId() }, 0, {
-                    index: 0
-                });
-                activeTask.timeout.write(runtime.dependencies.wallClock.setTimeout(
-                    activeTask.controller.abort.bind(activeTask.controller),
-                    100
-                ));
+                const { activeTask, hedge, runtime } = hedgedBudgetRuntime();
                 await reportRunStart({ ...runtime, collectedPlan: { ...runtime.collectedPlan, files: [] } }, 0);
                 await startPoolProcessUsageTracking(runtime);
 
                 scope.assert.equal(runtime.terminalFailure.read(), true);
                 scope.assert.equal(activeTask.controller.signal.aborted, true);
                 scope.assert.equal(activeTask.state.perTestResults()[0]?.verdict, 'process-exhausted');
+                scope.assert.equal(hedge.controller.signal.aborted, true);
+                assertSharedExhaustion(scope, runtime);
 
                 return scope.assert.collect();
             }

@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+
 import {
     createWorkerMessagePortFixture as createFakePort,
     type WorkerMessagePortFixture as FakePort
@@ -7,6 +8,7 @@ import { createFakeHostChild, type FakeHostChild } from '../test-support/fake-wo
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ProcessUsageSnapshot, RunProcessUsage } from '../engine/process-usage.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -65,6 +67,7 @@ function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): 
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,
         snapshots: null,

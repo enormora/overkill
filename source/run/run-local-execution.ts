@@ -94,6 +94,12 @@ export async function executeLocalResolvedRun(
             seed: BigInt(resolvedRun.facts.reproducibility.seed),
             projectRoot: resolvedRun.facts.environment.projectRoot
         },
+        failureArtifacts: resolvedRun.facts.execution.failureArtifacts,
+        processUsageSamplingIntervalMilliseconds: resolvedRun
+            .facts
+            .execution
+            .processUsagePolicy
+            .samplingIntervalMilliseconds,
         runFacts: resolvedRun.facts,
         startedAt: currentRunStartTime(dependencies),
         timeoutPolicy: {

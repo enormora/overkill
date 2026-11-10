@@ -4,7 +4,7 @@ import type {
     ProcessUsageSnapshot,
     RunResult
 } from './run-engine-primitives.ts';
-import { resultWithRetainedArtifacts, reportResultWithDelivery } from './run-result-reporting.ts';
+import { resultWithRetainedArtifacts, reportResultWithDelivery, reportTerminalCases } from './run-result-reporting.ts';
 import { createRunResultFromCollectedPlan, emptyRunPlanStatus, collectedWorkloadInputs } from './collected-run-plan.ts';
 import type { RunRuntimeAttachments, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -16,9 +16,9 @@ import {
     type SupervisedChildProcess
 } from './supervised-child-process.ts';
 import {
-    crashError,
+    captureCrashEvidence,
     findProcessBudgetBreach,
-    processExhaustionError,
+    captureProcessExhaustionEvidence,
     type ProcessBudgetBreach
 } from './supervised-run-process-policy.ts';
 import {
@@ -155,6 +155,11 @@ function applyTestEndEvent(
     const workId = event.workId ?? createDefaultWorkId(event.case);
     const key = workIdentityKey(workId);
 
+    for (const artifact of event.artifacts) {
+        if (artifact.payload.kind === 'worker-crash' || artifact.payload.kind === 'process-exhaustion') {
+            state.recordArtifact(artifact);
+        }
+    }
     state.recordTestAttemptResult(
         key,
         {
@@ -303,10 +308,11 @@ function handleChildEvent(event: ReporterEvent, runtime: SupervisedRunRuntime): 
 
 function handleProcessBudgetBreach(
     breach: ProcessBudgetBreach,
-    runtime: SupervisedRunRuntime
+    runtime: SupervisedRunRuntime,
+    previousSample: ProcessUsageSnapshot | null
 ): void {
     runtime.terminalFailure.write(true);
-    const error = processExhaustionError(breach, runtime.state);
+    const error = captureProcessExhaustionEvidence(breach, runtime.state, previousSample);
     runtime.state.recordRunnerError(error);
     runtime.reporterEvents.add(recordReporterEventErrors(
         { error, kind: 'runner-error' },
@@ -329,19 +335,25 @@ function handleChildSample(sample: ProcessUsageSnapshot, runtime: SupervisedRunR
     if (replayUsesLocalProcessPolicy(runtime.resolvedRun)) {
         return;
     }
+    const previousSample = runtime.previousSample.read();
     const breach = findProcessBudgetBreach(
         runtime.resolvedRun.facts.execution.processUsagePolicy.budgets,
         sample,
-        runtime.previousSample.read()
+        previousSample
     );
     runtime.previousSample.write(sample);
 
     if (breach !== null) {
-        handleProcessBudgetBreach(breach, runtime);
+        handleProcessBudgetBreach(breach, runtime, previousSample);
     }
 }
 
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
+    for (const artifact of result.artifacts) {
+        if (artifact.payload.kind === 'worker-crash' || artifact.payload.kind === 'process-exhaustion') {
+            runtime.state.recordArtifact(artifact);
+        }
+    }
     for (const testResult of result.perTest) {
         runtime.state.removeActiveCase(workIdentityKey(testResult.workId));
     }
@@ -384,16 +396,13 @@ export function handleCollectionSample<CollectionValue>(
         return;
     }
 
-    const breach = findProcessBudgetBreach(
-        runtime.command.processBudgets,
-        sample,
-        runtime.previousSample.read()
-    );
+    const previousSample = runtime.previousSample.read();
+    const breach = findProcessBudgetBreach(runtime.command.processBudgets, sample, previousSample);
     runtime.previousSample.write(sample);
 
     if (breach !== null) {
         runtime.terminalFailure.write(true);
-        runtime.state.recordRunnerError(processExhaustionError(breach, runtime.state));
+        runtime.state.recordRunnerError(captureProcessExhaustionEvidence(breach, runtime.state, previousSample));
         kill(runtime.child);
     }
 }
@@ -469,6 +478,24 @@ async function reportFinalResult(result: RunResult, runtime: SupervisedRunRuntim
     return await reportResultWithDelivery(result, runtime.reporterDelivery);
 }
 
+function retainChildExitEvidence(runtime: SupervisedRunRuntime): void {
+    if (
+        runtime.state.artifacts().every(function capturedCrash(artifact) {
+            return !(artifact.payload.kind === 'worker-crash' && artifact.source === 'boundary-captured');
+        })
+    ) {
+        return;
+    }
+    runtime.state.recordBoundaryFailure({
+        kind: 'worker-crash',
+        reason: 'process-exit',
+        exitCode: runtime.child.exitCode,
+        signal: runtime.child.signalCode,
+        coreDumpPath: null,
+        nativeAddons: null
+    });
+}
+
 function recordUnexpectedChildExit(runtime: SupervisedRunRuntime): void {
     if (runtime.child.exitCode === null && runtime.child.signalCode === null) {
         return;
@@ -476,7 +503,7 @@ function recordUnexpectedChildExit(runtime: SupervisedRunRuntime): void {
     if (runtime.completedResult.read() === null && !runtime.terminalFailure.read()) {
         runtime.terminalFailure.write(true);
         runtime.state.recordRunnerError(
-            crashError(runtime.state, 'Supervised child exited before returning a result.')
+            captureCrashEvidence(runtime.state, 'Supervised child exited before returning a result.')
         );
         runtime.state.recordTerminalActiveCases(
             'crashed',
@@ -490,9 +517,16 @@ export async function finishSupervisedRuntime(
 ): Promise<RunResult> {
     runtime.timeout.clear();
     recordUnexpectedChildExit(runtime);
+    retainChildExitEvidence(runtime);
     await runtime.reporterEvents.wait();
 
     const result = await runtime.finalizeResult(selectRunResult(runtime, startedAtMicroseconds));
 
-    return await reportFinalResult(result, runtime);
+    const reportedResult = await reportTerminalCases(
+        result,
+        runtime.state.terminalCases(),
+        runtime.collectedPlan.read() ?? supervisedCollectedPlan(runtime.resolvedRun),
+        runtime.reporterDelivery
+    );
+    return await reportFinalResult(reportedResult, runtime);
 }

@@ -1,8 +1,10 @@
 import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
+
 import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -32,6 +34,7 @@ function lineReporterWithLog(log: Log): RealTimeReporter {
     };
 
     return createLineReporter(fakeDependencies)({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }
@@ -47,6 +50,7 @@ function narrowLineReporterWithLog(log: Log, wrap: boolean): RealTimeReporter {
     };
 
     return createLineReporter(fakeDependencies)({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }

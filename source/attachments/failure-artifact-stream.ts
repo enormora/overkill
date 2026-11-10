@@ -6,7 +6,7 @@ import {
     type RuntimeAttachments
 } from '../engine/runtime-attachment.ts';
 import { workIdentityKey, type AttemptId, type WorkId } from '../engine/identity.ts';
-import { currentAttachmentContext, type AttachmentContext } from './attachment-context.ts';
+import { currentAttachmentContext, currentAttachmentLimits, type AttachmentContext } from './attachment-context.ts';
 import { resourceFailureAttachments, type ResourceFailureContext } from './resource-failure-context.ts';
 
 export type FailureArtifactStream = {
@@ -75,6 +75,7 @@ type CaptureState = {
     readonly attachments: RuntimeAttachments;
     readonly metadata: AttachmentMetadata & { readonly kind: 'text'; };
     readonly queuedBytes: StoredValue<number>;
+    readonly maxQueuedBytes: number;
     readonly truncated: StoredValue<boolean>;
     readonly failure: StoredValue<Error | null>;
     readonly closed: StoredValue<boolean>;
@@ -128,7 +129,7 @@ function captureAcceptsWrite(state: CaptureState, chunk: string): boolean {
     return !state.closed.read() && !state.truncated.read() && state.failure.read() === null;
 }
 function queueCapture(state: CaptureState, chunk: string): void {
-    const available = defaultAttachmentLimits.maxInlineBytes - state.queuedBytes.read();
+    const available = state.maxQueuedBytes - state.queuedBytes.read();
     const limited = Buffer.byteLength(chunk) > available;
     const decoder = new TextDecoder();
     const prefix = limited
@@ -168,6 +169,7 @@ function createCaptureState(attachments: RuntimeAttachments, name: string, media
         metadata: { kind: 'text', name, mediaType },
         chunks: createStoredValue<readonly string[]>([]),
         queuedBytes: createStoredValue(0),
+        maxQueuedBytes: (currentAttachmentLimits() ?? defaultAttachmentLimits).maxInlineBytes,
         truncated: createStoredValue(false),
         failure: createStoredValue<Error | null>(null),
         closed: createStoredValue(false),

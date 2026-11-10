@@ -1,3 +1,4 @@
+import { defaultFailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 import { suite, test } from '../test/test.entry-point.ts';
 import {
     normalizeConfig,
@@ -46,6 +47,7 @@ export const testNode = suite('mutation microtest profile selection', [
                 loader: { sourceMaps: true, stripMode: 'strip-only' },
                 profiles: {
                     browser: {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         testFamily: 'microtest',
                         files: { sets: { unit: { include: [ 'source/**/*.test.ts' ] } } },
                         execution: { processModel, scheduling: 'concurrent', maxConcurrency: 3 },

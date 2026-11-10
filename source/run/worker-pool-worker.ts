@@ -125,6 +125,8 @@ async function runAssignment(
                 execution: engineExecution(task.command.scheduling, task.command.maxConcurrency),
                 outputRenderer: createPlainOutputRenderer(),
                 reporters: [ createWorkerPoolReporter(task) ],
+                failureArtifacts: task.command.failureArtifacts,
+                processUsageSamplingIntervalMilliseconds: task.command.processUsageSamplingIntervalMilliseconds,
                 retryPolicy: task.command.retryPolicy,
                 processBudgets: workerProcessBudgets(task.command),
                 processUsageTracker: createWorkerProcessUsageTracker(task.command),

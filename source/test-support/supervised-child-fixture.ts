@@ -1,4 +1,5 @@
 import { createDeterministicClock, type DeterministicClock } from '@enormora/clock';
+import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
 import type { RunProcessUsageTracker } from '../packages/engine/engine.entry-point.ts';
 import type { SupervisedChildDependencies, SupervisedChildHost } from '../run/supervised-child.ts';
 import type {
@@ -120,6 +121,7 @@ export function nativeChildDependencies(): SupervisedChildDependencies {
 
 export function supervisedChildCommand(kind: 'collect' | 'run', path: string): SupervisedChildCommand {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         retryPolicy: null,

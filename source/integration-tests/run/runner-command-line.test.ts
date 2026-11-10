@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite,
     createTestCase,
     defineOutputRenderer,
@@ -41,6 +43,7 @@ const memoryReporter = defineReporter(function createMemoryReporter(): Reporter 
 
 function createDefaultMicrotestProfile(): MicrotestProfileConfig {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
         coverage: defaultCoveragePolicy,
         execution: {
