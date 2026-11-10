@@ -104,6 +104,37 @@ export const testNode = suite('debug diagnostics', [
         }
     }),
     test({
+        title: 'oversized evidence is dropped without losing a body rejection',
+        async body(scope: TestScope) {
+            const oversized = 'x'.repeat(11 * 1024 * 1024);
+            const result = await executeProbe({ mode: 'all' }, function body(inner: TestScope) {
+                inner.debug.includeRecording({
+                    name: oversized,
+                    recorded() {
+                        throw new Error('Oversized provider must not run.');
+                    }
+                });
+                inner.assert.equal(1, 1, { message: oversized });
+                throw new Error('probe failed');
+            }, 1);
+            const artifact = debugArtifacts(result.artifacts)[0];
+            scope.require.defined(artifact);
+            scope.assert.equal(result.perTest[0]?.verdict, 'fail');
+            scope.assert.deepEqual(result.runnerErrors, []);
+            scope.assert.partialDeepEqual(artifact.payload, {
+                completeness: 'truncated',
+                droppedEntries: 2,
+                stats: { assertCount: 1 }
+            });
+            scope.assert.deepEqual(artifact.payload.recordings, []);
+            scope.assert.partialDeepEqual(artifact.payload.timeline.slice(-1), [ {
+                kind: 'rejection',
+                reason: { kind: 'error', message: 'probe failed' }
+            } ]);
+            return scope.assert.collect();
+        }
+    }),
+    test({
         title: 'provider failure fails the run and preserves the passing verdict',
         async body(scope: TestScope) {
             const result = await executeProbe({ mode: 'all' }, function body(inner: TestScope) {

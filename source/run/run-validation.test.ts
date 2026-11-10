@@ -13,6 +13,7 @@ import {
 import type { NormalizedConfig } from '../config/types.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 import { testNode as serialRequestTestNode } from './run-serial-request.test.ts';
+import { validateRunInput } from './run-validation.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;
@@ -47,6 +48,26 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         serialRequestTestNode,
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'programmatic debug requests validate their shape and selectors',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                const command = { config: defaultConfig, cwd: process.cwd(), engine: { kind: 'default' as const } };
+                const empty = { mode: 'selected', selectors: [] } as unknown as RunRequest['debug'];
+                scope.assert.throws(function validateEmptySelection() {
+                    validateRunInput({ ...command, request: { ...defaultRequest, debug: empty } });
+                }, { name: 'RunResolutionError' });
+                scope.assert.throws(function validateMalformedSelector() {
+                    validateRunInput({
+                        ...command,
+                        request: { ...defaultRequest, debug: { mode: 'selected', selectors: [ '' ] } }
+                    });
+                }, { message: 'Run filter expression must not be empty.' });
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'orchestrator.resolve() rejects invalid sharding',

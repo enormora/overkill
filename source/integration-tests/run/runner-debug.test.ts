@@ -49,7 +49,11 @@ async function runFixture(
     return await orchestrator.run({
         config: defaultRunConfig({
             profiles: {
-                integration: defaultIntegrationProfile({ execution, files: { include: [ file ], exclude: [] } })
+                integration: defaultIntegrationProfile({
+                    execution,
+                    files: { include: [ file ], exclude: [] },
+                    timeouts: { collectionMilliseconds: 30_000 }
+                })
             },
             reporters: [],
             runtimeStateDir

@@ -8,6 +8,7 @@ import {
     type TestDebugArtifact
 } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine, createTimedTestEngine } from '../test-support/create-test-engine.ts';
+import { defaultAttachmentLimits } from './runtime-attachment.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const options: ExecuteOptions = {
@@ -25,7 +26,115 @@ function artifactFrom(result: RunResult): TestDebugArtifact {
     }
     return artifact;
 }
+async function concurrentImportEvidence(specifier: string): Promise<RunResult> {
+    const engine = createTestEngine();
+    const secondStarted = Promise.withResolvers<undefined>();
+    const firstImported = Promise.withResolvers<undefined>();
+    const plan = engine.createTestPlan(engine.createRoot({
+        annotations: {},
+        controls: {},
+        title: 'root',
+        children: [
+            engine.createTestCase({
+                ...metadata,
+                title: 'importer',
+                async body(inner) {
+                    await secondStarted.promise;
+                    try {
+                        await import(specifier);
+                        inner.assert.equal(1, 1);
+                    } finally {
+                        firstImported.resolve(undefined);
+                    }
+                    return inner.assert.collect();
+                }
+            }),
+            engine.createTestCase({
+                ...metadata,
+                title: 'observer',
+                async body(inner) {
+                    secondStarted.resolve(undefined);
+                    await firstImported.promise;
+                    inner.assert.equal(1, 1);
+                    return inner.assert.collect();
+                }
+            })
+        ]
+    }));
+    return await engine.execute(plan, {
+        ...options,
+        execution: { mode: 'concurrent-in-process', maxConcurrency: 2 }
+    });
+}
 export const testNode = suite('debug lifecycle', [
+    test('concurrent debug scopes attribute module loads to the importing case', async function (scope: TestScope) {
+        const specifier = `data:text/javascript,export default ${JSON.stringify('debug-module')}`;
+        const result = await concurrentImportEvidence(specifier);
+        const artifacts = result.artifacts.filter(isTestDebugArtifact);
+        const [ importer, observer ] = [ 'importer', 'observer' ].map(function evidence(title) {
+            return artifacts.find(function (artifact) {
+                return artifact.id.scope.case.title === title;
+            });
+        });
+        scope.require.defined(importer);
+        scope.require.defined(observer);
+        scope.assert.equal(result.status, 'passed');
+        scope.assert.deepEqual(
+            importer
+                .payload
+                .moduleLoads
+                .filter(function imported(module) {
+                    return module.specifier === specifier;
+                })
+                .map(function phase(module) {
+                    return module.phase;
+                }),
+            [ 'resolve', 'load' ]
+        );
+        scope.assert.deepEqual(observer.payload.moduleLoads, []);
+        return scope.assert.collect();
+    }),
+    test(
+        'recording registration stops at the limit without reading discarded providers',
+        async function (scope: TestScope) {
+            const engine = createTestEngine();
+            const maximum = defaultAttachmentLimits.maxScopeAttachments;
+            const plan = engine.createTestPlan(engine.createRoot({
+                annotations: {},
+                controls: {},
+                title: 'root',
+                children: [ engine.createTestCase({
+                    ...metadata,
+                    title: 'recordings',
+                    body(inner) {
+                        for (let index = 0; index < maximum; index += 1) {
+                            inner.debug.includeRecording({
+                                name: String(index),
+                                recorded() {
+                                    return [ index ];
+                                }
+                            });
+                        }
+                        inner.debug.includeRecording({
+                            name: 'discarded',
+                            recorded() {
+                                throw new Error('Discarded providers must not run.');
+                            }
+                        });
+                        inner.assert.equal(1, 1);
+                        return inner.assert.collect();
+                    }
+                }) ]
+            }));
+            const result = await engine.execute(plan, options);
+            const artifact = artifactFrom(result);
+            scope.assert.equal(result.status, 'passed');
+            scope.assert.equal(artifact.payload.completeness, 'truncated');
+            scope.assert.equal(artifact.payload.droppedEntries, 1);
+            scope.assert.equal(artifact.payload.recordings.length, maximum);
+            return scope.assert.collect();
+        }
+    ),
     test('skipped cases retain identity without invented body measurements', async function (scope: TestScope) {
         const engine = createTestEngine();
         const plan = engine.createTestPlan(engine.createRoot({

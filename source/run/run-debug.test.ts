@@ -2,7 +2,8 @@ import { runIfMain } from '#test-runner';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defaultRunRequest, defaultMicrotestProfile } from '../test-support/run-command-factory.ts';
 import { passingResult, runCommandLine } from '../test-support/command-line-test-driver.ts';
-import { parseDebugRequest } from './run-debug.ts';
+import { createDefaultWorkId } from '../engine/identity.ts';
+import { parseDebugRequest, resolveDebugSelection } from './run-debug.ts';
 import { parseReplayDebugArguments } from './replay-debug-arguments.ts';
 import { copyRunRequest } from './request-snapshot.ts';
 import { resolveRunRecordPersistence } from './run-profile-facts.ts';
@@ -69,6 +70,26 @@ export const testNode = suite('debug requests', [
             operands: [ 'run-id' ]
         });
         scope.assert.deepEqual(parseDebugRequest(false, []), { mode: 'off', selectors: [] });
+        return scope.assert.collect();
+    }),
+    test('a case matching multiple debug selectors is captured once', function (scope: TestScope) {
+        const cases = [ 'matching', 'ordinary' ].map(function candidate(title) {
+            const id = { file: 'cases.test.ts', params: null, suite: [], title };
+            return { id, annotations: { ownership: [], tags: [] }, workId: createDefaultWorkId(id) };
+        });
+        const debug = parseDebugRequest(false, [ 'title=missing', 'title~match', 'title=matching' ]);
+        scope.assert.deepEqual(resolveDebugSelection(debug, cases), {
+            mode: 'selected',
+            work: cases.slice(0, 1).map(function (candidate) {
+                return candidate.workId;
+            })
+        });
+        return scope.assert.collect();
+    }),
+    test('replay rejects conflicting debug options before reading history', function (scope: TestScope) {
+        scope.assert.throws(function parseConflictingOptions() {
+            parseReplayDebugArguments([ 'run-id', '--debug', '--debug-scope', 'title=case' ]);
+        }, { message: '--debug and --debug-scope are mutually exclusive.' });
         return scope.assert.collect();
     })
 ]);
