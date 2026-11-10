@@ -22,15 +22,15 @@ function createAttempt(input: ExecuteCaseInput): DebugAttempt {
 }
 function moduleHooks(attempt: DebugAttempt): ModuleLoadingHooks {
     return {
-        resolve(specifier, context, nextResolve) {
+        resolve(specifier, _parentURL, nextResolve) {
             const start = process.hrtime.bigint();
-            const resolved = nextResolve(specifier, context);
+            const resolved = nextResolve();
             captureDebugModule(attempt, { phase: 'resolve', specifier, resolvedUrl: resolved.url, start });
             return resolved;
         },
-        load(url, context, nextLoad) {
+        load(url, nextLoad) {
             const start = process.hrtime.bigint();
-            const loaded = nextLoad(url, context);
+            const loaded = nextLoad();
             captureDebugModule(attempt, { phase: 'load', specifier: url, resolvedUrl: url, start });
             return loaded;
         }

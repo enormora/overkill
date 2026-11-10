@@ -111,15 +111,15 @@ export async function withFileModuleBoundary<Result>(
         }
 
         return await withModuleLoadingScope({
-            resolve(specifier, context, nextResolve) {
-                validateRequestedModule(specifier, context.parentURL);
-                const resolved = nextResolve(specifier, context);
+            resolve(specifier, parentURL, nextResolve) {
+                validateRequestedModule(specifier, parentURL);
+                const resolved = nextResolve();
                 validateModule(resolved.url);
                 return resolved;
             },
-            load(url, context, nextLoad) {
+            load(url, nextLoad) {
                 validateModule(url);
-                return nextLoad(url, context);
+                return nextLoad();
             }
         }, operation);
     });
