@@ -524,6 +524,8 @@ export type {
 
 export type { TestFamilyId } from '../../engine/identity.ts';
 
+export { inconclusivePropertyTrial } from '../../engine/property-inconclusive.ts';
+
 export { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
 export type {
     WorkerCrashArtifact,

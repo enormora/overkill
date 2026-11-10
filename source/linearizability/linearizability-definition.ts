@@ -1,3 +1,4 @@
+import type { PropertySampleScope } from '../packages/property/property.entry-point.ts';
 import type { ModelTransition } from '../packages/model/model.entry-point.ts';
 
 type ReturnedOutcome<Output> = { readonly kind: 'returned'; readonly value: Output; };
@@ -50,3 +51,12 @@ type Inconclusive = {
     readonly work: number;
 };
 export type LinearizabilityResult = Inconclusive | Linearizable | NotLinearizable;
+
+export type LinearizabilityProgram<Operation> = readonly (readonly Operation[])[];
+
+export type LinearizabilityDefinition<State, Operation, Output, System> = {
+    readonly model: LinearizabilityModel<State, Operation, Output>;
+    readonly maxWork: number;
+    readonly create: (sample: PropertySampleScope) => Promise<System> | System;
+    readonly run: (operation: Operation, system: System, signal: AbortSignal) => Output | Promise<Output>;
+};
