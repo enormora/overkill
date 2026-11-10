@@ -31,8 +31,7 @@ export {
     readTestBodyOrigin,
     isTableBodyOrigin
 } from '../../engine/test-body.ts';
-export type { TestBodyOrigin } from '../../engine/test-body.ts';
-export type { TestBodyFamilyAttachment } from '../../engine/test-body.ts';
+export type { TestBodyOrigin, TestBodyFamilyAttachment } from '../../engine/test-body.ts';
 
 export type {
     PropertyPolicy,
@@ -153,7 +152,11 @@ export type {
 } from '../../engine/coverage-artifact.ts';
 export type {
     TestPlanFromTestFilesFactory,
-    TestPlanFromTestFilesOptions
+    TestPlanFromTestFilesOptions,
+    TestPlan,
+    TestPlanCase,
+    TestPlanCaseBody,
+    TestPlanCaseExecution
 } from '../../engine/test-plan.ts';
 export { formatCaseId, workIdentityKey } from '../../engine/identity.ts';
 export { canonicalIdentityJson } from '../../canonical-identity.ts';
@@ -325,21 +328,28 @@ export type {
     SuiteRunCounts,
     TestContractFailure,
     TestFailure,
-    TestOutcome
+    TestOutcome,
+    HedgedConflictArtifact,
+    HedgedConflictArtifactPayload,
+    HedgedConflictEvidence,
+    RunArtifact,
+    PermissionDeniedRunnerError,
+    PermissionDeniedRunnerErrorCause,
+    PropertyCaseEvidence
 } from '../../engine/run-result.ts';
 export type { ProcessUsageSnapshot, RunProcessUsage, RunProcessUsageTracker } from '../../engine/process-usage.ts';
 export type {
     CapturedOutputArtifact,
     CapturedOutputArtifactPayload,
     RunArtifactId,
-    RunArtifactScope
+    RunArtifactScope,
+    AdapterArtifact,
+    WorkerCrashArtifact,
+    ProcessExhaustionArtifact,
+    BoundaryFailureArtifact,
+    TestDebugArtifact
 } from '../../engine/run-artifact.ts';
-export type {
-    HedgedConflictArtifact,
-    HedgedConflictArtifactPayload,
-    HedgedConflictEvidence,
-    RunArtifact
-} from '../../engine/run-result.ts';
+
 export type { AttemptId } from '../../engine/identity.ts';
 export type { TestRetryPolicy } from '../../engine/retry-policy.ts';
 export type {
@@ -409,10 +419,7 @@ export {
     isCaseRunnerError,
     isPermissionDeniedRunnerError
 } from '../../engine/run-result.ts';
-export type {
-    PermissionDeniedRunnerError,
-    PermissionDeniedRunnerErrorCause
-} from '../../engine/run-result.ts';
+
 export type {
     ResourceAttachedTestBody,
     ResourceFreeTestBody,
@@ -433,12 +440,6 @@ export type {
     TestControls,
     TestControlsInput
 } from '../../engine/test-data.ts';
-export type {
-    TestPlan,
-    TestPlanCase,
-    TestPlanCaseBody,
-    TestPlanCaseExecution
-} from '../../engine/test-plan.ts';
 
 export type { WorkloadInput, WorkloadParameters } from '../../engine/workload-input.ts';
 export {
@@ -474,7 +475,6 @@ export { createEngine } from '../../engine/standard-engine.ts';
 export type { TestContractFailureCode } from '../../engine/test-contract-failure-code.ts';
 
 export { propertyFailureIdentity, matchPropertyFailure, propertyTrialEvidence } from '../../engine/property-failure.ts';
-export type { PropertyCaseEvidence } from '../../engine/run-result.ts';
 
 export type {
     PropertyInvocationSummary,
@@ -499,8 +499,6 @@ export type {
 
 export { createRunResult } from '../../engine/execution-result.ts';
 export { singleAttemptResult } from '../../engine/run-result.ts';
-
-export type { AdapterArtifact } from '../../engine/run-artifact.ts';
 
 export { isTestControlError } from '../../engine/test-control-error.ts';
 
@@ -527,11 +525,6 @@ export type { TestFamilyId } from '../../engine/identity.ts';
 export { inconclusivePropertyTrial } from '../../engine/property-inconclusive.ts';
 
 export { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
-export type {
-    WorkerCrashArtifact,
-    ProcessExhaustionArtifact,
-    BoundaryFailureArtifact
-} from '../../engine/run-artifact.ts';
 
 export type {
     ExecuteDebugSelection,
@@ -542,5 +535,3 @@ export type {
 } from '../../engine/test-debug.ts';
 
 export { isTestDebugArtifact } from '../../engine/run-result.ts';
-
-export type { TestDebugArtifact } from '../../engine/run-artifact.ts';
