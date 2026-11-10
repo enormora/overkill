@@ -217,6 +217,40 @@ Size caps:
 
 All caps are configurable per profile.
 
+Profiles configure captured output, assertion serialization, and human rendering
+through `failureArtifacts`:
+
+```ts
+failureArtifacts: {
+    capturedOutputBytes: 1_048_576,
+    serialization: {
+        depth: 8,
+        visitedNodes: 2000,
+        objectEntries: 100,
+        arrayEntries: 100,
+        stringBytes: 8192,
+        operandBytes: 65_536,
+    },
+    rendering: { diffLines: 100, valueBytes: 8192 },
+}
+```
+
+Omitted fields receive their defaults. Limits are positive safe integers.
+Trace and resource evidence continue to use the integration or benchmark
+profile's `attachments` limits. Structured logs use JSON attachments; protocol
+traces use transcripts or streamed attachments. These do not add another
+logging API or enable attachments in restricted microtests.
+
+Captured output shares one byte budget across both streams and all retries of
+the same work item. Empty writes produce no artifacts. After truncation, further
+writes in that attempt are drained without producing more artifacts. A later
+attempt that writes output retains one truncation marker, so retry retention
+cannot hide that its output was omitted. Split UTF-8 characters are decoded
+across chunks within each stream and attempt. Captured-output payloads explicitly
+record `capture: 'automatic'` and `completeness: 'best-effort'`; `truncated`
+indicates a byte-limit omission. Human rendering caps never modify structured
+assertion evidence.
+
 ## Integration Resource Evidence
 
 Runner-managed integration execution prepares first-party HTTP transcripts,
@@ -441,6 +475,26 @@ those remain owned by their respective features.
 
 ## Process Crash Artifacts
 
+`WorkerCrashArtifact` is a native result variant with subtype and payload kind
+`worker-crash`. Process exhaustion uses `ProcessExhaustionArtifact`, with subtype
+and payload kind `process-exhaustion`. Neither requires attachment services or
+a standalone artifact file. Persisted run records include them when recording
+is active.
+
+Both carry a capture timestamp, nullable worker id and Node version, automatic
+capture provenance, best-effort completeness, and an `activeWork` array of
+`{ work: WorkId, attempt: AttemptId }` values. A single known owner gives the
+artifact case scope and that attempt. Multiple or unknown owners give it run
+scope and `attempt: null`; the active-work evidence preserves every known
+runtime, workload, and attempt without assigning blame to a sibling case.
+
+Crash evidence includes the reason, exit code, signal, core-dump path, and native
+addon metadata. Unavailable fields are explicitly `null`. A hard timeout retains
+that reason rather than claiming an unobserved signal or OOM. Direct engine
+supervision produces native evidence; parent-owned observations are
+boundary-captured. Exhaustion evidence includes at most the previous and latest
+usage samples; unavailable sampling intervals are `null`.
+
 When a worker process dies mid-test (segfault, OOM, native-addon crash):
 
 - the test is recorded as a runner error with subtype `crash`
@@ -469,19 +523,19 @@ When a supervised worker exceeds an enforced process budget:
 
 ```ts
 type ProcessExhaustion = {
+    readonly kind: 'process-exhaustion';
     readonly timestamp: string;
-    readonly metric:
-        | 'javaScriptEngineHeapBytes'
-        | 'residentSetBytes'
-        | 'residentSetGrowthBytesPerSecond'
-        | 'activeResourceCount'
-        | 'libuvHandleCount';
+    readonly metric: keyof ProcessBudgets;
     readonly budget: number;
     readonly observed: number;
     readonly enforcement: 'v8-heap-limit' | 'sampled' | 'post-test-diagnostic';
-    readonly processUsageSamplingIntervalMilliseconds: number;
-    readonly workerId: string;
-    readonly activeCase: CaseId;
+    readonly processUsageSamplingIntervalMilliseconds: number | null;
+    readonly workerId: string | null;
+    readonly nodeVersion: string | null;
+    readonly activeWork: readonly { readonly work: WorkId; readonly attempt: AttemptId; }[];
+    readonly samples: readonly ProcessUsageSnapshot[];
+    readonly capture: 'automatic';
+    readonly completeness: 'best-effort';
 };
 ```
 

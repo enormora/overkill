@@ -66,7 +66,8 @@ Configuration should mainly cover orchestration and package wiring:
   runner diagnostics)
 - run-record persistence defaults per profile
 - compact-history retention and maintenance policy
-- optional global assertion budget policy
+- profile-scoped `failureArtifacts` limits for captured output, assertion
+  serialization, and human diff rendering
 - mutation integration
 - type-test integration
 - browser or benchmark package wiring

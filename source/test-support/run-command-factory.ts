@@ -1,5 +1,6 @@
-import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
+import { defaultFailureArtifactPolicy } from '../engine/failure-artifact-policy.ts';
+import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import type { DefinedReporter } from '../engine/reporter.ts';
 import type { BenchmarkOrchestrator, RunCommand, RunExecutionFacts, RunRequest } from '../run/run-types.ts';
@@ -144,6 +145,7 @@ export function testRunExecutionFacts(command: RunCommand, profile: TestProfileC
         scheduling: profile.execution.scheduling,
         testFamily: profile.testFamily,
         runRecords: { persist: false, reasons: [] },
+        failureArtifacts: profile.failureArtifacts,
         timingCollection: resolveTimingCollection(command.request, profile),
         timeoutPolicy: profile.timeouts,
         verbose: command.request.verbose
@@ -289,6 +291,7 @@ export function defaultMicrotestProfile(
         processUsage: defaultRunProcessUsagePolicy(overrides.processUsage),
         testFamily: 'microtest',
         runRecords: { persist: 'on-demand' },
+        failureArtifacts: structuredClone(defaultFailureArtifactPolicy),
         timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy(overrides.timeouts)
     };
@@ -310,6 +313,7 @@ export function defaultIntegrationProfile(
         processUsage: defaultRunProcessUsagePolicy(overrides.processUsage),
         testFamily: 'integration',
         runRecords: { persist: 'on-demand' },
+        failureArtifacts: structuredClone(defaultFailureArtifactPolicy),
         timings: defaultTimingProfilePolicy(overrides.timings),
         timeouts: defaultRunTimeoutPolicy({
             collectionMilliseconds: defaultIntegrationCollectionTimeoutMilliseconds,

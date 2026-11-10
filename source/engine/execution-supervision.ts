@@ -15,17 +15,21 @@ import {
     type RunnerError,
     type TestFailure
 } from './run-result.ts';
-import type { ProcessUsageSnapshot } from './process-usage.ts';
+import type { ExecuteProcessBudgets, ProcessUsageSnapshot } from './process-usage.ts';
 import type { TestPlanCase } from './test-plan.ts';
 import {
     findProcessBudgetBreach,
-    type ExecuteProcessBudgets,
+    processExhaustionError,
+    type ProcessExhaustionCause,
     type ProcessBudgetBreach
 } from './execution-process-budget-breach.ts';
 import type { ExecutionGlobalErrorObserver } from './execution-global-error-observer.ts';
 import {
     createExecutionSupervision as createExecutionSupervisionState,
     createBenchmarkState,
+    crashError,
+    type CrashCause,
+    recordNativeBoundaryFailure,
     createCaseCompletion,
     scheduleSupervisionTimeout,
     clearSupervisionTimeout,
@@ -50,21 +54,6 @@ export type ExecutionSupervisionDependencies = {
     readonly wallClock: Clock;
 };
 type TestFailures = readonly [TestFailure, ...TestFailure[]];
-
-type ProcessExhaustionCause = ProcessBudgetBreach & {
-    readonly activeAttempts: readonly AttemptId[];
-    readonly activeCases: readonly TestPlanCase['id'][];
-    readonly activeWork: readonly WorkId[];
-    readonly enforcement: 'post-test-diagnostic' | 'sampled';
-};
-
-type CrashCause = {
-    readonly activeAttempts: readonly AttemptId[];
-    readonly activeCases: readonly TestPlanCase['id'][];
-    readonly activeWork: readonly WorkId[];
-    readonly reason: 'hard-timeout';
-    readonly termination: 'hard-timeout';
-};
 
 export type ExecutionSupervision = ExecutionSupervisionState;
 
@@ -270,44 +259,6 @@ function activeWorkIds(activeCases: ReadonlyMap<string, SupervisedActiveCase>): 
     });
 }
 
-function soleActiveAttempt(attempts: readonly AttemptId[]): AttemptId | null {
-    return attempts.length === 1 ? attempts[0] ?? null : null;
-}
-
-function processExhaustionError(cause: ProcessExhaustionCause): RunnerError {
-    const [ activeCase = null ] = cause.activeCases;
-    const [ activeWork = null ] = cause.activeWork;
-
-    return {
-        attributedToAttempt: soleActiveAttempt(cause.activeAttempts),
-        attributedTo: cause.activeCases.length === 1 ? activeCase : null,
-        attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
-        cause,
-        diagnostics: [
-            { label: 'metric', value: cause.metric },
-            { label: 'observed', value: String(cause.observed) },
-            { label: 'budget', value: String(cause.budget) }
-        ],
-        message: `Process budget exceeded: ${cause.metric} observed ${cause.observed}, budget ${cause.budget}.`,
-        subtype: 'process-exhaustion'
-    };
-}
-
-function crashError(cause: CrashCause): RunnerError {
-    const [ activeCase = null ] = cause.activeCases;
-    const [ activeWork = null ] = cause.activeWork;
-
-    return {
-        attributedToAttempt: soleActiveAttempt(cause.activeAttempts),
-        attributedTo: cause.activeCases.length === 1 ? activeCase : null,
-        attributedToWork: cause.activeWork.length === 1 ? activeWork : null,
-        cause,
-        diagnostics: [ { label: 'reason', value: cause.reason } ],
-        message: 'Test execution exceeded hard timeout.',
-        subtype: 'crash'
-    };
-}
-
 function completeActiveCasesAs(
     supervision: ExecutionSupervision,
     verdict: PerTestResult['verdict'],
@@ -343,6 +294,18 @@ function completeActiveCasesWithCrash(
     };
 
     if (cause.activeCases.length > 0) {
+        recordNativeBoundaryFailure(
+            {
+                kind: 'worker-crash',
+                reason: cause.reason,
+                exitCode: null,
+                signal: null,
+                coreDumpPath: null,
+                nativeAddons: null
+            },
+            supervision,
+            dependencies.wallClock
+        );
         supervision.recordRunnerError(crashError(cause));
         completeActiveCasesAs(supervision, 'crashed', dependencies);
     }
@@ -362,7 +325,8 @@ function completeActiveCasesAfterGlobalError(
 function completeActiveCasesWithProcessExhaustion(
     breach: ProcessBudgetBreach,
     supervision: ExecutionSupervision,
-    dependencies: ExecutionSupervisionDependencies
+    dependencies: ExecutionSupervisionDependencies,
+    previousSample: ProcessUsageSnapshot | null
 ): void {
     supervision.stopAcceptingCases();
 
@@ -376,6 +340,19 @@ function completeActiveCasesWithProcessExhaustion(
         enforcement: 'sampled'
     };
 
+    recordNativeBoundaryFailure(
+        {
+            kind: 'process-exhaustion',
+            metric: breach.metric,
+            budget: breach.budget,
+            observed: breach.observed,
+            enforcement: cause.activeCases.length === 0 ? 'post-test-diagnostic' : 'sampled',
+            processUsageSamplingIntervalMilliseconds: null,
+            samples: previousSample === null ? [ breach.sample ] : [ previousSample, breach.sample ]
+        },
+        supervision,
+        dependencies.wallClock
+    );
     if (cause.activeCases.length === 0) {
         supervision.recordRunnerError(processExhaustionError({
             ...cause,
@@ -544,7 +521,7 @@ export function recordProcessUsageSample(input: ProcessUsageSampleInput): boolea
         return false;
     }
 
-    completeActiveCasesWithProcessExhaustion(breach, input.supervision, input.dependencies);
+    completeActiveCasesWithProcessExhaustion(breach, input.supervision, input.dependencies, input.previousSample);
 
     return true;
 }

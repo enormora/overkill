@@ -1,4 +1,8 @@
 import { z } from 'zod/v4';
+import {
+    defaultFailureArtifactPolicy,
+    resolvedFailureArtifactPolicySchema
+} from '../engine/failure-artifact-policy.ts';
 import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { propertyPolicySchema } from '../config/property-policy.ts';
@@ -16,6 +20,7 @@ export const executionCommandFields = {
     benchmarkNormalization: benchmarkNormalizationContextSchema.nullable().default(null),
     benchmarkGarbageCollection: z.enum([ 'off', 'after-sample' ]).nullable().default(null),
     propertyPolicy: propertyPolicySchema.nullable().default(null),
+    failureArtifacts: resolvedFailureArtifactPolicySchema.prefault(defaultFailureArtifactPolicy),
     retryPolicy: z
         .strictObject({
             artifacts: z.enum([ 'first-failure-and-final', 'last-failure-and-final', 'all' ]),

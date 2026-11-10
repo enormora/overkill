@@ -1,6 +1,13 @@
 import { runIfMain } from '#test-runner';
 import { z } from 'zod/v4';
-import { createSuite, createTestCase, defineReporter, type TestScope } from '../packages/engine/engine.entry-point.ts';
+
+import {
+    defaultFailureArtifactPolicy,
+    createSuite,
+    createTestCase,
+    defineReporter,
+    type TestScope
+} from '../packages/engine/engine.entry-point.ts';
 import { attachmentRunFixture, localAttachmentRunFixture } from '../test-support/attachment-run-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { attachmentsForProducer } from '../attachments/attachment-context.ts';
@@ -34,6 +41,7 @@ function assertFinalReporter(scope: TestScope): void {
     }));
     scope.assert.equal(
         wrapped({
+            failureArtifacts: defaultFailureArtifactPolicy,
             relativizeLocationPath(location) {
                 return location.file;
             }

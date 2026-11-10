@@ -8,6 +8,7 @@ import {
     type DefinedOutputRenderer,
     type DefinedReporter,
     type FinalResultReporter,
+    type FailureArtifactPolicy,
     type NonEmptyReadonlyArray,
     type OutputLineIntent,
     type OutputRenderer,
@@ -26,6 +27,8 @@ import {
 } from './engine.entry-point.ts';
 
 type ExecuteOptionKeyByName = {
+    readonly failureArtifacts: true;
+    readonly processUsageSamplingIntervalMilliseconds: true;
     readonly execution: true;
     readonly finalizeResult: true;
     readonly outputRenderer: true;
@@ -110,6 +113,10 @@ describe('Reporter contract', function () {
         expect<LateManagedStdoutRealTimeReporter['onEvent']>().type.toBeAssignableFrom<
             (event: ReporterEvent) => ReporterOutput
         >();
+    });
+
+    test('accepts reporter contexts without diagnostic limits', function () {
+        expect<ReportingContext['failureArtifacts']>().type.toBe<FailureArtifactPolicy | undefined>();
     });
 
     test('exposes sink declarations for every supported sink kind', function () {

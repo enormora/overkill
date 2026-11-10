@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createRoot,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -73,6 +75,7 @@ function createEventLog(): EventLog {
 
 function command(): WorkerPoolCommand {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,
         snapshots: null,

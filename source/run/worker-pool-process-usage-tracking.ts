@@ -6,7 +6,8 @@ import {
 } from './worker-pool-runtime.ts';
 import {
     findProcessBudgetBreach,
-    processExhaustionError
+    captureProcessExhaustionEvidence,
+    type ProcessBudgetBreach
 } from './supervised-run-process-policy.ts';
 import {
     createSupervisedRunState,
@@ -48,11 +49,30 @@ function poolProcessBudgets(runtime: WorkerPoolRunRuntime): WorkerPoolCommand['p
 }
 
 function createActiveCaseState(runtime: WorkerPoolRunRuntime): SupervisedRunState {
-    const activeState = createSupervisedRunState('first-failure-and-final');
+    const activeState = createSupervisedRunState(
+        'first-failure-and-final',
+        runtime.resolvedRun.facts.execution.failureArtifacts.capturedOutputBytes,
+        function poolBoundary() {
+            const timestamp = new Date(runtime.dependencies.wallClock.currentUnixEpochMilliseconds);
+            return {
+                workerId: null,
+                nodeVersion: null,
+                timestamp: timestamp.toISOString(),
+                source: 'boundary-captured',
+                processUsageSamplingIntervalMilliseconds: runtime
+                    .resolvedRun
+                    .facts
+                    .execution
+                    .processUsagePolicy
+                    .samplingIntervalMilliseconds
+            };
+        }
+    );
 
     for (const taskRun of runtime.activeTasks) {
         for (const [ key, activeCase ] of taskRun.state.activeCases) {
-            activeState.addActiveCase(key, activeCase, activeCase.startedAtMicroseconds, activeCase.attempt);
+            const attemptKey = `${key}:${activeCase.attempt.index}`;
+            activeState.addActiveCase(attemptKey, activeCase, activeCase.startedAtMicroseconds, activeCase.attempt);
         }
     }
 
@@ -76,21 +96,28 @@ function stopActiveTasksForProcessExhaustion(runtime: WorkerPoolRunRuntime): voi
     }
 }
 
-function recordPoolProcessBudgetBreach(runtime: WorkerPoolRunRuntime, sample: PoolProcessUsageSample): void {
-    const breach = findProcessBudgetBreach(
-        poolProcessBudgets(runtime),
-        sample,
-        runtime.previousPoolSample.read()
-    );
-    runtime.previousPoolSample.write(sample);
+function recordPoolProcessExhaustion(
+    breach: ProcessBudgetBreach,
+    runtime: WorkerPoolRunRuntime,
+    previousSample: PoolProcessUsageSample | null
+): void {
+    runtime.terminalFailure.write(true);
+    const activeState = createActiveCaseState(runtime);
+    const error = captureProcessExhaustionEvidence(breach, activeState, previousSample);
+    for (const artifact of activeState.artifacts()) {
+        runtime.runState.recordArtifact(artifact);
+    }
+    runtime.runState.recordRunnerError(error);
+    runtime.reporterEvents.add(recordReporterEventErrors({ error, kind: 'runner-error' }, runtime));
+    stopActiveTasksForProcessExhaustion(runtime);
+}
 
+function recordPoolProcessBudgetBreach(runtime: WorkerPoolRunRuntime, sample: PoolProcessUsageSample): void {
+    const previousSample = runtime.previousPoolSample.read();
+    const breach = findProcessBudgetBreach(poolProcessBudgets(runtime), sample, previousSample);
+    runtime.previousPoolSample.write(sample);
     if (breach !== null) {
-        runtime.terminalFailure.write(true);
-        const activeState = createActiveCaseState(runtime);
-        const error = processExhaustionError(breach, activeState);
-        runtime.runState.recordRunnerError(error);
-        runtime.reporterEvents.add(recordReporterEventErrors({ error, kind: 'runner-error' }, runtime));
-        stopActiveTasksForProcessExhaustion(runtime);
+        recordPoolProcessExhaustion(breach, runtime, previousSample);
     }
 }
 

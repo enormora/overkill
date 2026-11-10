@@ -2,7 +2,11 @@ import { runIfMain } from '#test-runner';
 import type { RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { createDefaultWorkId, workIdentityKey } from '../engine/identity.ts';
-import { artifactIdentityProjection } from '../engine/run-artifact.ts';
+import {
+    artifactIdentityProjection,
+    artifactsForAttempt,
+    createBoundaryFailureArtifact
+} from '../engine/run-artifact.ts';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import { replayWorkUnitIdSchema } from './replay-placement-schema.ts';
 import { attachmentMatchesAttempt } from './attachment-results.ts';
@@ -75,6 +79,33 @@ export const testNode = suite('family identity', [
         };
         scope.assert.equal(attachmentMatchesAttempt(artifact, first, { index: 0 }), true);
         scope.assert.equal(attachmentMatchesAttempt(artifact, second, { index: 0 }), false);
+        scope.assert.deepEqual(artifactsForAttempt([ artifact ], first, { index: 0 }), [ artifact ]);
+        scope.assert.deepEqual(artifactsForAttempt([ artifact ], second, { index: 0 }), []);
+        return scope.assert.collect();
+    }),
+    test('retains family variants in boundary failure evidence', function (scope: TestScope) {
+        const artifact = createBoundaryFailureArtifact(
+            {
+                kind: 'worker-crash',
+                reason: 'worker closed',
+                exitCode: 1,
+                signal: null,
+                coreDumpPath: null,
+                nativeAddons: null
+            },
+            { timestamp: '2026-11-10T00:00:00Z', workerId: null, nodeVersion: null, source: 'native' },
+            [ { work: first, attempt: { index: 0 } } ],
+            0
+        );
+        scope.assert.deepEqual(artifact.id, {
+            attempt: { index: 0 },
+            familyVariant: first.familyVariant,
+            runtimes: [],
+            workload: null,
+            sequence: 0,
+            subtype: 'worker-crash',
+            scope: { kind: 'case', case: logical, activeCases: [ logical ], confidence: 'active-case' }
+        });
         return scope.assert.collect();
     }),
     test('normalizes recorded compiler units consistently with work identity', function (scope: TestScope) {

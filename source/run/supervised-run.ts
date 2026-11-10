@@ -165,7 +165,20 @@ async function createLiveRun(
         testFamily: command.testFamily
     }));
     const collectedSignal = createSignal();
-    const state = createSupervisedRunState(command.retryPolicy?.artifacts ?? 'first-failure-and-final');
+    const state = createSupervisedRunState(
+        command.retryPolicy?.artifacts ?? 'first-failure-and-final',
+        command.failureArtifacts.capturedOutputBytes,
+        function supervisedBoundary() {
+            const timestamp = new Date(dependencies.wallClock.currentUnixEpochMilliseconds);
+            return {
+                workerId: child.pid === undefined ? null : String(child.pid),
+                nodeVersion: null,
+                timestamp: timestamp.toISOString(),
+                source: 'boundary-captured',
+                processUsageSamplingIntervalMilliseconds: command.processUsageSamplingIntervalMilliseconds
+            };
+        }
+    );
     const terminalFailure = createStoredRunValue(false);
     const collectionTimeout = dependencies.wallClock.setTimeout(function killTimedOutCollection() {
         recordCollectionTimeout(child, state, terminalFailure, collectedSignal);

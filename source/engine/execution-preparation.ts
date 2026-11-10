@@ -8,7 +8,7 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from './execution-global-error-observer.ts';
-import { withExecutionObservation } from './execution-observation.ts';
+import { withFailureArtifactContext, withExecutionObservation } from './execution-observation.ts';
 import {
     executeOptionsWithDefaults,
     type ExecuteOptions as ExecuteOptionsDefinition,
@@ -72,7 +72,13 @@ export async function withPreparedExecution<Value>(
     return await withExecutionObservation(async function observeEngineExecution() {
         const prepared = prepareExecution(dependencies, options, testPlan);
         try {
-            return await execute(prepared);
+            return await withFailureArtifactContext(
+                prepared.options.failureArtifacts,
+                async function executeWithBudget() {
+                    return await execute(prepared);
+                },
+                prepared.options.processUsageSamplingIntervalMilliseconds
+            );
         } finally {
             prepared.asyncLeakMonitor.stop();
             prepared.globalErrorObserver.stop();

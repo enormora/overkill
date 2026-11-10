@@ -36,6 +36,8 @@ export const testNode = suite(
                     },
                     source: 'boundary-captured',
                     payload: {
+                        capture: 'automatic',
+                        completeness: 'best-effort',
                         kind: 'captured-output',
                         byteLength: 6,
                         text: 'prefix',

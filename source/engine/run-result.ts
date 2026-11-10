@@ -6,7 +6,12 @@ import type {
 import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
 import type { TestContractFailureCode } from './test-contract-failure-code.ts';
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
-import type { AdapterArtifact, CapturedOutputArtifact, RunArtifactId } from './run-artifact.ts';
+import type {
+    AdapterArtifact,
+    BoundaryFailureArtifact,
+    CapturedOutputArtifact,
+    RunArtifactId
+} from './run-artifact.ts';
 import type { RunTimings } from './run-timings.ts';
 import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
@@ -528,7 +533,7 @@ export type HedgedConflictArtifact = {
     readonly source: 'native';
 };
 
-type DiagnosticArtifact = CapturedOutputArtifact | RuntimeAttachmentArtifact;
+type DiagnosticArtifact = BoundaryFailureArtifact | CapturedOutputArtifact | RuntimeAttachmentArtifact;
 export type RunArtifact = AdapterArtifact | CoverageArtifact | DiagnosticArtifact | HedgedConflictArtifact;
 
 export type SuiteRunCounts = {

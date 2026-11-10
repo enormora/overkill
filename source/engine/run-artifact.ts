@@ -1,6 +1,14 @@
 import type { ReadonlyDeep, JsonValue, Except } from 'type-fest';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
-import type { AttemptId, CaseId, RuntimeId, WorkloadId, WorkId } from './identity.ts';
+import type { ExecuteProcessBudgets, ProcessUsageSnapshot } from './process-usage.ts';
+import {
+    workIdentityKey,
+    type AttemptId,
+    type CaseId,
+    type RuntimeId,
+    type WorkId,
+    type WorkloadId
+} from './identity.ts';
 
 export type RunArtifactScope = {
     readonly activeCases: readonly CaseId[];
@@ -15,7 +23,7 @@ type RunArtifactBaseId = {
     readonly familyVariant: WorkId['familyVariant'];
     readonly runtimes: readonly RuntimeId[];
     readonly sequence: number;
-    readonly subtype: 'adapter' | 'attachment' | 'coverage' | 'hedged-conflict' | 'log-capture' | 'witness';
+    readonly subtype: RunArtifactSubtype;
     readonly workload: WorkloadId | null;
 };
 
@@ -35,6 +43,8 @@ export type CapturedOutputArtifactPayload = {
     readonly byteLength: number;
     readonly capturedAtMicroseconds: number;
     readonly kind: 'captured-output';
+    readonly capture: 'automatic';
+    readonly completeness: 'best-effort';
     readonly stream: 'stderr' | 'stdout';
     readonly text: string;
     readonly truncated: boolean;
@@ -51,6 +61,132 @@ export type AdapterArtifact = {
     readonly payload: { readonly kind: 'adapter'; readonly adapter: string; readonly facts: ReadonlyDeep<JsonValue>; };
     readonly source: 'native';
 };
+
+export const runArtifactSubtypes = [
+    'adapter',
+    'attachment',
+    'coverage',
+    'hedged-conflict',
+    'log-capture',
+    'witness',
+    'worker-crash',
+    'process-exhaustion'
+] as const;
+type RunArtifactSubtype = (typeof runArtifactSubtypes)[number];
+export const boundaryUsageSampleLimit = 2;
+
+export type ActiveBoundaryWork = { readonly work: WorkId; readonly attempt: AttemptId; };
+export type BoundaryMetadata = {
+    readonly timestamp: string;
+    readonly workerId: string | null;
+    readonly nodeVersion: string | null;
+    readonly source: 'boundary-captured' | 'native';
+};
+type BoundaryEvidence = {
+    readonly timestamp: string;
+    readonly workerId: string | null;
+    readonly activeWork: readonly ActiveBoundaryWork[];
+    readonly capture: 'automatic';
+    readonly completeness: 'best-effort';
+};
+export type BoundaryFailure = {
+    readonly kind: 'process-exhaustion';
+    readonly metric: keyof ExecuteProcessBudgets;
+    readonly budget: number;
+    readonly observed: number;
+    readonly enforcement: 'post-test-diagnostic' | 'sampled' | 'v8-heap-limit';
+    readonly processUsageSamplingIntervalMilliseconds: number | null;
+    readonly samples: readonly ProcessUsageSnapshot[];
+} | {
+    readonly kind: 'worker-crash';
+    readonly reason: string;
+    readonly exitCode: number | null;
+    readonly signal: string | null;
+    readonly coreDumpPath: string | null;
+    readonly nativeAddons: readonly string[] | null;
+};
+type BoundaryArtifact<Failure extends BoundaryFailure> = {
+    readonly id: RunArtifactId & { readonly subtype: Failure['kind']; };
+    readonly source: BoundaryMetadata['source'];
+    readonly payload: BoundaryEvidence & Failure & { readonly nodeVersion: string | null; };
+};
+export type WorkerCrashArtifact = BoundaryArtifact<Extract<BoundaryFailure, { readonly kind: 'worker-crash'; }>>;
+export type ProcessExhaustionArtifact = BoundaryArtifact<
+    Extract<BoundaryFailure, { readonly kind: 'process-exhaustion'; }>
+>;
+export type BoundaryFailureArtifact = ProcessExhaustionArtifact | WorkerCrashArtifact;
+
+function boundaryIdentity(activeWork: readonly ActiveBoundaryWork[], sequence: number): RunArtifactId {
+    const [ active ] = activeWork;
+    return activeWork.length === 1 && active !== undefined
+        ? {
+            familyVariant: active.work.familyVariant,
+            attempt: active.attempt,
+            scope: {
+                kind: 'case',
+                case: active.work.case,
+                activeCases: [ active.work.case ],
+                confidence: 'active-case'
+            },
+            runtimes: active.work.runtimes,
+            workload: active.work.workload,
+            sequence,
+            subtype: 'worker-crash'
+        }
+        : {
+            familyVariant: null,
+            attempt: null,
+            scope: { kind: 'run' },
+            runtimes: [],
+            workload: null,
+            sequence,
+            subtype: 'worker-crash'
+        };
+}
+
+export function createBoundaryFailureArtifact(
+    failure: BoundaryFailure,
+    metadata: BoundaryMetadata,
+    activeWork: readonly ActiveBoundaryWork[],
+    sequence: number
+): BoundaryFailureArtifact {
+    const id = boundaryIdentity(activeWork, sequence);
+    const evidence: BoundaryEvidence & { readonly nodeVersion: string | null; } = {
+        timestamp: metadata.timestamp,
+        workerId: metadata.workerId,
+        nodeVersion: metadata.nodeVersion,
+        activeWork,
+        capture: 'automatic',
+        completeness: 'best-effort'
+    };
+    return failure.kind === 'worker-crash'
+        ? { id: { ...id, subtype: 'worker-crash' }, source: metadata.source, payload: { ...failure, ...evidence } }
+        : {
+            id: { ...id, subtype: 'process-exhaustion' },
+            source: metadata.source,
+            payload: { ...failure, ...evidence, samples: failure.samples.slice(-boundaryUsageSampleLimit) }
+        };
+}
+
+export function artifactsForAttempt<Artifact extends { readonly id: RunArtifactId; }>(
+    artifacts: readonly Artifact[],
+    work: WorkId,
+    attempt: AttemptId
+): readonly Artifact[] {
+    const key = workIdentityKey(work);
+    return artifacts.filter(function belongsToAttempt(artifact) {
+        if (artifact.id.scope.kind !== 'case' || artifact.id.attempt?.index !== attempt.index) {
+            return false;
+        }
+        const identity = {
+            familyVariant: artifact.id.familyVariant,
+            case: artifact.id.scope.case,
+            runtimes: artifact.id.runtimes,
+            workload: artifact.id.workload
+        };
+        return workIdentityKey(identity) === key;
+    });
+}
 
 export function artifactIdentityProjection(id: RunArtifactId): Except<RunArtifactId, 'familyVariant'> | RunArtifactId {
     const { familyVariant, ...neutral } = id;

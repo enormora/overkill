@@ -1,6 +1,8 @@
 import { runIfMain } from '#test-runner';
 import { createDeterministicClock } from '@enormora/clock';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -43,6 +45,7 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,
         snapshots: null,

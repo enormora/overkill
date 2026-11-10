@@ -115,6 +115,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             retries: profile.testFamily === 'integration' ? profile.retries : null,
             runRecords: { persist: false, reasons: [] },
             timingCollection: resolveTimingCollection(request, profile),
+            failureArtifacts: profile.failureArtifacts,
             timeoutPolicy: profile.timeouts,
             verbose: request.verbose
         },

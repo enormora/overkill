@@ -523,3 +523,10 @@ export type {
 } from '../../engine/test-family.ts';
 
 export type { TestFamilyId } from '../../engine/identity.ts';
+
+export { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
+export type {
+    WorkerCrashArtifact,
+    ProcessExhaustionArtifact,
+    BoundaryFailureArtifact
+} from '../../engine/run-artifact.ts';

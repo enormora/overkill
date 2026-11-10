@@ -1,7 +1,9 @@
 import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -44,6 +46,7 @@ export const testNode = createOverkillSuite({
                 const reporter = createTreeReporter({
                     stdoutConsole: { log: recorder.log }
                 }, { showPassing: true, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }
@@ -94,6 +97,7 @@ export const testNode = createOverkillSuite({
                 const reporter = createTreeReporter({
                     stdoutConsole: { log: recorder.log }
                 }, { showPassing: false, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }
@@ -137,6 +141,7 @@ export const testNode = createOverkillSuite({
                 const reporter = createTreeReporter({
                     stdoutConsole: { log: recorder.log }
                 }, { showPassing: true, verbose: false })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }

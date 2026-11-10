@@ -1,6 +1,8 @@
 import { runIfMain } from '#test-runner';
+
 import { doubleUsage, testDouble, type TestDouble } from '../packages/doubles/doubles.entry-point.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -24,6 +26,7 @@ function tapConsoleReporterWithLog(log: Log): FinalResultReporter {
     const fakeDependencies = { stdoutConsole: { log } } as unknown as TapConsoleReporterDependencies;
 
     return createTapConsoleReporter(fakeDependencies)({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }
@@ -34,6 +37,7 @@ function tapConsoleRealTimeReporterWithLog(log: Log): RealTimeReporter {
     const fakeDependencies = { stdoutConsole: { log } } as unknown as TapConsoleReporterDependencies;
 
     return createTapConsoleRealTimeReporter(fakeDependencies)({
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }

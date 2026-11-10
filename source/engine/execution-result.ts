@@ -1,3 +1,4 @@
+import { boundaryArtifacts } from './execution-observation.ts';
 import { workIdentityKey } from './identity.ts';
 import {
     runStatusFromPlan,
@@ -168,7 +169,7 @@ export function createRunResult(
     const summary = countOutcomes(testPlan, perTest);
 
     return {
-        artifacts: [],
+        artifacts: boundaryArtifacts(),
         bySuite: countSuites(testPlan, perTest),
         orphans: testPlan.orphans,
         perTest,

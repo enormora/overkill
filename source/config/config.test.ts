@@ -1,6 +1,8 @@
 import { runIfMain } from '#test-runner';
+
 import { selectTestProfile } from '../run/test-profile.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -19,6 +21,8 @@ import {
 } from './config.ts';
 import { normalizeCoveragePolicy } from './profile-normalization.ts';
 import type { MicrotestProfileConfig, ProfileConfig } from './types.ts';
+
+const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 
 type ConfigModule = {
     readonly config: unknown;
@@ -69,16 +73,16 @@ function requireMicrotestProfile(
 }
 
 export const testNode = createOverkillSuite({
-    definitionLocations: [ { kind: 'unknown' as const } ],
+    ...metadata,
+
     title: 'source/config/config.test.ts',
-    annotations: {},
-    controls: {},
+
     children: [
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'defineConfig() returns the project config unchanged',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 const projectConfig = { runtimeStateDir: 'target/overkill-state' };
 
@@ -88,10 +92,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() returns defaults when no config exists',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await createConfigModuleLoader({})({ configPath: null, cwd: configFixtureCwd });
 
@@ -111,10 +115,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() normalizes microtest coverage policy',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({
                     profiles: {
@@ -175,10 +179,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'coverage output directories require a loaded config file',
-            annotations: {},
-            controls: {},
+
             body(scope: OverkillScope) {
                 scope.assert.throws(function normalizeOutputWithoutConfig() {
                     normalizeCoveragePolicy({ outputDir: 'coverage' }, null);
@@ -188,18 +192,20 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() normalizes timing policies',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({
                     profiles: {
                         precise: {
+                            failureArtifacts: defaultFailureArtifactPolicy,
                             testFamily: 'microtest',
                             timings: { collection: 'precise' }
                         },
                         summary: {
+                            failureArtifacts: defaultFailureArtifactPolicy,
                             testFamily: 'microtest',
                             timings: { collection: 'summary' }
                         }
@@ -213,10 +219,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() discovers a native TypeScript named config export',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigFromModule(
                     'overkill.config.ts',
@@ -236,10 +242,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() discovers a JavaScript named config export',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({ runtimeStateDir: 'target/js-config-state' });
 
@@ -250,10 +256,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() loads microtest process usage policy',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({
                     profiles: {
@@ -295,10 +301,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() normalizes named profile overrides',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({
                     profiles: {
@@ -347,10 +353,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() normalizes unmeasured named profile overrides',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({
                     profiles: {
@@ -380,10 +386,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() inherits unmeasured named profile defaults',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 const config = await loadConfigValue({
                     profiles: {
@@ -402,10 +408,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() rejects unknown config keys',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({ include: [ 'source' ] });
@@ -415,10 +421,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() rejects profiles without a test family',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({
@@ -430,10 +436,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() rejects unsupported profile test families',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({
@@ -447,10 +453,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() rejects process budgets without measurement',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({
@@ -469,10 +475,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() rejects invalid process usage numbers',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({
@@ -492,10 +498,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() rejects unknown microtest profile keys',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({
@@ -516,10 +522,10 @@ export const testNode = createOverkillSuite({
             }
         }),
         createOverkillTestCase({
-            definitionLocations: [ { kind: 'unknown' as const } ],
+            ...metadata,
+
             title: 'loadConfig() rejects invalid profile names',
-            annotations: {},
-            controls: {},
+
             async body(scope: OverkillScope) {
                 await scope.assert.rejects(async function loadInvalidConfig() {
                     await loadConfigValue({

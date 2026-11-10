@@ -158,6 +158,7 @@ function validateAdapterProfile(profile: AdapterProfileConfig): void {
 }
 
 function validateProfile(profileName: string, profile: ProfileConfig): void {
+    propertyProfileSchema.unwrap().shape.failureArtifacts.parse(profile.failureArtifacts);
     if (profile.testFamily === 'type-test') {
         validateAdapterProfile(profile);
     } else if (profile.testFamily === 'benchmark') {

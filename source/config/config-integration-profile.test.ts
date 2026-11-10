@@ -1,7 +1,9 @@
 import { runIfMain } from '#test-runner';
+
 import { selectTestProfile } from '../run/test-profile.ts';
 import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -67,6 +69,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(profile);
                 scope.require.defined(microtestProfile);
                 scope.assert.deepEqual(profile, {
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
                     attachments: defaultAttachmentLimits,
                     retries: null,

@@ -168,6 +168,10 @@ function runRuntime(seed: SupervisedRunRuntimeSeed): SupervisedRunRuntime {
     };
 }
 
+export function runningSupervisedRuntime(): SupervisedRunRuntime {
+    return runRuntime(timeoutRuntime(childProcess({ exitCode: null, pid: 1, signalCode: null }).child).runtime);
+}
+
 function collectionRuntime(
     child: SupervisedChildProcess,
     terminalFailure: boolean,

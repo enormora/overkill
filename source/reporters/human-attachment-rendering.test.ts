@@ -1,6 +1,12 @@
 import { runIfMain } from '#test-runner';
+
 import type { WorkId } from '../engine/identity.ts';
-import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
+import {
+    defaultFailureArtifactPolicy,
+    createSuite,
+    createTestCase,
+    type TestScope
+} from '../packages/engine/engine.entry-point.ts';
 import type { AttachmentContent, RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { problemLines } from './human-reporter-rendering.ts';
@@ -99,6 +105,7 @@ function assertVariantEvidence(scope: TestScope): void {
         ]
     });
     const lines = problemLines(result, {
+        failureArtifacts: defaultFailureArtifactPolicy,
         relativizeLocationPath(location) {
             return location.file;
         }
@@ -192,6 +199,7 @@ export const testNode = createSuite({
                             } ]
                     });
                     const lines = problemLines(result, {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         relativizeLocationPath(location) {
                             return location.file;
                         }
@@ -233,6 +241,7 @@ export const testNode = createSuite({
                         summary: { failed: 1 }
                     });
                     const lines = problemLines(result, {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         relativizeLocationPath(location) {
                             return location.file;
                         }

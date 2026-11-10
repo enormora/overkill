@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type CaseId,
@@ -190,6 +192,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                failureArtifacts: defaultFailureArtifactPolicy,
                 runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,
                 propertyPolicy: null,

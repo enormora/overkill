@@ -1,13 +1,16 @@
-import type { BenchmarkExecutionEnvironment } from './benchmark-environment.ts';
+import {
+    executionArtifactPolicySchema,
+    defaultFailureArtifactPolicy,
+    type FailureArtifactPolicy
+} from './failure-artifact-policy.ts';
 import { createPlainOutputRenderer, type DefinedOutputRenderer } from './reporter-output.ts';
 import { validateReporterRunFacts, type DefinedReporter, type RunFacts } from './reporter.ts';
 import type { RunResult } from './run-result.ts';
-import type { RunProcessUsageTracker } from './process-usage.ts';
+import type { ExecuteProcessBudgets, RunProcessUsageTracker } from './process-usage.ts';
 import type {
     ExecuteTimeoutPolicy,
     ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
-import type { ExecuteProcessBudgets } from './execution-process-budget-breach.ts';
 import { assertRetryPolicy, assertRetryFamily, type TestRetryPolicy } from './retry-policy.ts';
 import type { PropertyRunContext } from './property-execution-host.ts';
 import type { TestPlan } from './test-plan.ts';
@@ -22,6 +25,8 @@ export type ExecuteExecution = {
 export type ExecuteResultFinalizer = (result: RunResult) => Promise<RunResult>;
 
 type CommonExecuteOptions = {
+    readonly failureArtifacts?: FailureArtifactPolicy;
+    readonly processUsageSamplingIntervalMilliseconds?: number | null;
     readonly retryPolicy: TestRetryPolicy | null;
     readonly execution: ExecuteExecution;
     readonly finalizeResult?: ExecuteResultFinalizer;
@@ -47,6 +52,8 @@ const defaultPropertySeed = 0n;
 const defaultPropertyRun: PropertyRunContext = { seed: defaultPropertySeed, projectRoot: null };
 
 type DefaultedExecuteOptions = CommonExecuteOptions & {
+    readonly failureArtifacts: FailureArtifactPolicy;
+    readonly processUsageSamplingIntervalMilliseconds: number | null;
     readonly seed: bigint;
     readonly propertyRun: PropertyRunContext;
     readonly finalizeResult: ExecuteResultFinalizer;
@@ -55,7 +62,7 @@ type DefaultedExecuteOptions = CommonExecuteOptions & {
 };
 
 export type NormalizedExecuteOptions = DefaultedExecuteOptions & {
-    readonly benchmarkEnvironment: BenchmarkExecutionEnvironment | null;
+    readonly benchmarkEnvironment: ExecutionSupervisionDependencies['benchmarkEnvironment'];
 };
 
 type RuntimePolicy = NonNullable<ExecutionSupervisionDependencies['runtimePolicy']>;
@@ -67,6 +74,8 @@ const keepResult: ExecuteResultFinalizer = async function keepResult(result) {
 
 function defaultExecuteOptions(): DefaultedExecuteOptions {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
+        processUsageSamplingIntervalMilliseconds: null,
         seed: 0n,
         propertyRun: defaultPropertyRun,
         execution: { mode: 'serial-in-process' },
@@ -87,6 +96,17 @@ function propertyRun(options: ExecuteOptions): PropertyRunContext {
     return hasPropertyRun(options) ? options.propertyRun : defaultPropertyRun;
 }
 
+function executionSamplingInterval(options: ExecuteOptions): number | null {
+    const interval = options.processUsageSamplingIntervalMilliseconds;
+    if (interval === undefined || interval === null) {
+        return null;
+    }
+    if (typeof interval !== 'number' || !Number.isSafeInteger(interval) || interval <= 0) {
+        throw new TypeError('Process usage sampling interval must be a positive safe integer.');
+    }
+    return interval;
+}
+
 function executionSeed(options: ExecuteOptions): bigint {
     if (Object.hasOwn(options, 'seed')) {
         const seed: unknown = Reflect.get(options, 'seed');
@@ -103,6 +123,10 @@ function executeOptionsWithProvidedDefaults(options: ExecuteOptions): DefaultedE
     const seed = executionSeed(options);
     return {
         ...options,
+        processUsageSamplingIntervalMilliseconds: executionSamplingInterval(options),
+        failureArtifacts: executionArtifactPolicySchema.parse(
+            options.failureArtifacts
+        ),
         seed,
         propertyRun: { ...propertyRun(options), seed },
         finalizeResult: options.finalizeResult ?? keepResult,
@@ -116,7 +140,7 @@ function executeOptionsWithProvidedDefaults(options: ExecuteOptions): DefaultedE
 export function executeOptionsWithDefaults(
     options: ExecuteOptions | undefined,
     testPlan: TestPlan,
-    benchmarkEnvironment: BenchmarkExecutionEnvironment | null
+    benchmarkEnvironment: ExecutionSupervisionDependencies['benchmarkEnvironment']
 ): NormalizedExecuteOptions {
     const normalized = options === undefined ? defaultExecuteOptions() : executeOptionsWithProvidedDefaults(options);
     assertRetryFamily(normalized.retryPolicy, testPlan);

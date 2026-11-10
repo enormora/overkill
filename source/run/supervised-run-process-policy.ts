@@ -92,6 +92,8 @@ function activeAttemptEvidence(
 }
 
 export function processExhaustionError(breach: ProcessBudgetBreach, state: SupervisedRunState): RunnerError {
+    const enforcement = state.activeCases.size === 0 ? 'post-test-diagnostic' : 'sampled';
+
     const activeCases = activeCaseIds(state);
     const activeWork = activeWorkIds(state);
     const [ activeCase = null ] = activeCases;
@@ -106,7 +108,7 @@ export function processExhaustionError(breach: ProcessBudgetBreach, state: Super
             activeCases,
             activeWork,
             activeAttempts: activeAttemptEvidence(state),
-            enforcement: activeCases.length === 0 ? 'post-test-diagnostic' : 'sampled'
+            enforcement
         },
         diagnostics: [
             { label: 'metric', value: breach.metric },
@@ -116,6 +118,24 @@ export function processExhaustionError(breach: ProcessBudgetBreach, state: Super
         message: `Process budget exceeded: ${breach.metric} observed ${breach.observed}, budget ${breach.budget}.`,
         subtype: 'process-exhaustion'
     };
+}
+
+export function captureProcessExhaustionEvidence(
+    breach: ProcessBudgetBreach,
+    state: SupervisedRunState,
+    previousSample: ProcessUsageSnapshot | null
+): RunnerError {
+    const enforcement = state.activeCases.size === 0 ? 'post-test-diagnostic' : 'sampled';
+    state.recordBoundaryFailure({
+        kind: 'process-exhaustion',
+        metric: breach.metric,
+        budget: breach.budget,
+        observed: breach.observed,
+        enforcement,
+        processUsageSamplingIntervalMilliseconds: null,
+        samples: previousSample === null ? [ breach.sample ] : [ previousSample, breach.sample ]
+    });
+    return processExhaustionError(breach, state);
 }
 
 type CrashCause = {
@@ -142,8 +162,23 @@ export function crashError(state: SupervisedRunState, reason: string): RunnerErr
     };
 }
 
+export function captureCrashEvidence(
+    state: SupervisedRunState,
+    reason: string
+): RunnerError & { readonly cause: CrashCause; } {
+    state.recordBoundaryFailure({
+        kind: 'worker-crash',
+        reason,
+        exitCode: null,
+        signal: null,
+        coreDumpPath: null,
+        nativeAddons: null
+    });
+    return crashError(state, reason);
+}
+
 export function hardTimeoutError(state: SupervisedRunState, timeoutMilliseconds: number): RunnerError {
-    const error = crashError(state, 'Supervised child exceeded hard timeout.');
+    const error = captureCrashEvidence(state, 'Supervised child exceeded hard timeout.');
     return {
         ...error,
         cause: {

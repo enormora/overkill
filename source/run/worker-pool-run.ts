@@ -70,7 +70,7 @@ export async function collectWorkerPoolRun(
         command,
         createdPool: null,
         dependencies,
-        runState: createSupervisedRunState('first-failure-and-final'),
+        runState: createSupervisedRunState('first-failure-and-final', command.failureArtifacts.capturedOutputBytes),
         timing
     });
 }
@@ -205,7 +205,10 @@ export async function executeWorkerPoolRun(
 ): Promise<RunResult> {
     return await executeWorkerPoolRunWithState(resolvedRun, dependencies, {
         ...options,
-        collectionRunState: createSupervisedRunState('first-failure-and-final'),
+        collectionRunState: createSupervisedRunState(
+            'first-failure-and-final',
+            resolvedRun.facts.execution.failureArtifacts.capturedOutputBytes
+        ),
         createdPool: null
     });
 }
@@ -231,7 +234,10 @@ export async function runWorkerPoolCommand(
     createResolvedRun: (collection: WorkerPoolCollectionResult) => Promise<ResolvedRun>,
     options: WorkerPoolExecutionOptions
 ): Promise<RunResult> {
-    const collectionRunState = createSupervisedRunState('first-failure-and-final');
+    const collectionRunState = createSupervisedRunState(
+        'first-failure-and-final',
+        command.failureArtifacts.capturedOutputBytes
+    );
     const timingOption = options.timing === null ? {} : { timing: options.timing };
     const poolOptions = {
         cwd: command.cwd,

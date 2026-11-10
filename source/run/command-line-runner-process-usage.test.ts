@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope,
@@ -199,6 +201,7 @@ function assertProcessUsageCommand(scope: OverkillScope, command: RunCommand): v
 
     scope.require.defined(profile);
     scope.assert.deepEqual(profile, {
+        failureArtifacts: defaultFailureArtifactPolicy,
         baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' },
         coverage: {
             outputDirectory: null,

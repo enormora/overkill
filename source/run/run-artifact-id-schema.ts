@@ -6,6 +6,7 @@ import {
     runtimeIdSchema,
     workloadIdSchema
 } from '../engine/identity-schema.ts';
+import { runArtifactSubtypes } from '../engine/run-artifact.ts';
 
 export const artifactIdentityFields = {
     familyVariant: familyVariantSchema.default(null),
@@ -16,13 +17,13 @@ export const artifactIdentityFields = {
 export const runArtifactIdSchema = z.union([
     z.strictObject({
         ...artifactIdentityFields,
-        subtype: z.enum([ 'adapter', 'attachment', 'coverage', 'hedged-conflict', 'log-capture', 'witness' ]),
+        subtype: z.enum(runArtifactSubtypes),
         attempt: z.null(),
         scope: z.strictObject({ kind: z.literal('run') })
     }),
     z.strictObject({
         ...artifactIdentityFields,
-        subtype: z.enum([ 'adapter', 'attachment', 'coverage', 'hedged-conflict', 'log-capture', 'witness' ]),
+        subtype: z.enum(runArtifactSubtypes),
         attempt: attemptIdSchema,
         scope: z.strictObject({
             activeCases: z.array(caseIdSchema),

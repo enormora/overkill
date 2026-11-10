@@ -1,4 +1,5 @@
 import colors from 'yoctocolors';
+import { currentFailureArtifactPolicy, withFailureArtifactContext } from '../engine/execution-observation.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type {
     ArrayDiffOperation,
@@ -13,11 +14,6 @@ import { formatAssertionSourceLocations, type ReportingContext } from '../engine
 import type { TestFailure } from '../engine/run-result.ts';
 import { formatSerializedValue, keyText } from './serialized-value-rendering.ts';
 
-const blockLineLimit = 100;
-const bytesPerKilobyte = 1024;
-const valueKilobytes = 8;
-const valueByteLimit = valueKilobytes * bytesPerKilobyte;
-
 type PropertySegment = Extract<DiffPathSegment, { readonly kind: 'property'; }>;
 
 type MapSegment = Extract<DiffPathSegment, { readonly kind: 'map-key' | 'map-value'; }>;
@@ -31,6 +27,7 @@ function byteLength(value: string): number {
 }
 
 function truncateBytes(value: string): string {
+    const valueByteLimit = currentFailureArtifactPolicy().rendering.valueBytes;
     if (byteLength(value) <= valueByteLimit) {
         return value;
     }
@@ -51,6 +48,7 @@ function truncateBytes(value: string): string {
 }
 
 function truncateLines(value: string): string {
+    const blockLineLimit = currentFailureArtifactPolicy().rendering.diffLines;
     const lines = value.split('\n');
 
     if (lines.length <= blockLineLimit) {
@@ -233,7 +231,7 @@ function failedCheckDetailLines(check: FailedCheck): readonly string[] {
             ...formatSerializedValueLines('expected', check.expected),
             ...formatSerializedValueLines('actual', check.actual)
         ]
-        : formatDiff(check.diff);
+        : truncateRenderedValue(formatDiff(check.diff).join('\n')).split('\n');
 }
 
 function formatFailedCheck(check: FailedCheck, context: ReportingContext): readonly string[] {
@@ -306,7 +304,7 @@ function formatTimeoutFailure(failure: Extract<TestFailure, { readonly kind: 'ti
     ];
 }
 
-export function formatFailure(failure: TestFailure, context: ReportingContext): readonly string[] {
+function renderFailure(failure: TestFailure, context: ReportingContext): readonly string[] {
     if (failure.kind === 'assertion') {
         return formatAssertionFailure(failure, context);
     }
@@ -324,4 +322,14 @@ export function formatFailure(failure: TestFailure, context: ReportingContext): 
     }
 
     return formatTestContractFailure(failure);
+}
+
+export function formatFailure(failure: TestFailure, context: ReportingContext): readonly string[] {
+    return withFailureArtifactContext(
+        context.failureArtifacts ?? currentFailureArtifactPolicy(),
+        function renderBoundedFailure() {
+            return renderFailure(failure, context);
+        },
+        null
+    );
 }

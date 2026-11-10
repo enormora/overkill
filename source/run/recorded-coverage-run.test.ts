@@ -80,6 +80,8 @@ function capturedArtifacts(): RunResult['artifacts'] {
                 byteLength: 3,
                 capturedAtMicroseconds: 0,
                 kind: 'captured-output' as const,
+                capture: 'automatic' as const,
+                completeness: 'best-effort' as const,
                 stream: 'stdout' as const,
                 text: 'log',
                 truncated: false
