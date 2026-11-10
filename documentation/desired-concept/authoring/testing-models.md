@@ -487,8 +487,8 @@ API may delegate to that same path; it must not implement a second pipeline.
 Existing root ownership, selection, and reporting contracts apply to both entry
 points. Source availability and compiler selection are explicit inputs.
 The concrete calls are `engine.prepareFamily`, `prepared.collect`, and the
-`engine.execute(collected, options)` overload defined by the family contract. Ordinary
-engine execution must not fall back to invoking static case bodies.
+`engine.execute(collected, options)` overload defined by the family contract.
+Prepared type-test execution must not fall back to invoking static case bodies.
 
 See [Executable Test Families](../architecture/test-families.md)
 for the shared contract, built-in aliases, settings, and process boundaries.

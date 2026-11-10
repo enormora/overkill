@@ -332,8 +332,12 @@ declare function execute(
 ```
 
 The existing `execute(testPlan, options)` overload remains the ordinary default
-runtime path. It rejects static markers and incompatible body requirements.
-There is no implicit optional-family lookup or runtime fallback.
+runtime path. It rejects incompatible explicit body-family requirements before
+execution. It does not inspect family-neutral bodies with a compiler. If such a
+body reaches a static reference during runtime execution, that reference throws;
+earlier body effects may already have happened. The guarantee that type-test
+bodies are never invoked requires explicitly selecting the analysis family.
+There is no implicit optional-family lookup or fallback from analysis to runtime.
 
 A direct consumer uses its own engine and existing engine execution options:
 
