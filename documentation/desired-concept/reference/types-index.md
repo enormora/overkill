@@ -2369,7 +2369,11 @@ type DebugStats = {
     readonly softTimeoutHeadroomMs: number | null;
 };
 type TestDebugArtifact = {
-    readonly id: ArtifactId & { readonly subtype: 'debug'; readonly attempt: AttemptId; readonly scope: Extract<ArtifactScope, { readonly kind: 'case'; }>; };
+    readonly id: ArtifactId & {
+        readonly subtype: 'debug';
+        readonly attempt: AttemptId;
+        readonly scope: Extract<ArtifactScope, { readonly kind: 'case'; }>;
+    };
     readonly source: 'native' | 'boundary-captured';
     readonly payload: {
         readonly kind: 'debug';

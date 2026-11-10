@@ -85,7 +85,7 @@ Application-owned handles register recordings explicitly on either test-scope fo
 ```ts
 scope.debug.includeRecording({
     name: 'http',
-    recorded: () => http.recorded(),
+    recorded: () => http.recorded()
 });
 ```
 
