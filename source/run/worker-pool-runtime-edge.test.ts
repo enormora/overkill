@@ -81,7 +81,13 @@ export const testNode = createOverkillSuite({
                         assignments: [
                             {
                                 lane: assignment.lane,
-                                unit: { key: 'missing', mode: 'file', runtimes: [], workload: null }
+                                unit: {
+                                    familyVariant: null,
+                                    key: 'missing',
+                                    mode: 'file',
+                                    runtimes: [],
+                                    workload: null
+                                }
                             }
                         ]
                     }));
@@ -93,14 +99,14 @@ export const testNode = createOverkillSuite({
                             { lane: 'shared', unit: unit.id },
                             {
                                 lane: 'shared',
-                                unit: { key: 'fresh', mode: 'file', runtimes: [], workload: null }
+                                unit: { familyVariant: null, key: 'fresh', mode: 'file', runtimes: [], workload: null }
                             }
                         ],
                         units: [
                             unit,
                             {
                                 ...unit,
-                                id: { key: 'fresh', mode: 'file', runtimes: [], workload: null },
+                                id: { familyVariant: null, key: 'fresh', mode: 'file', runtimes: [], workload: null },
                                 workerLifecycle: 'fresh-worker-per-unit'
                             }
                         ]

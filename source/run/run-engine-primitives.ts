@@ -1,5 +1,6 @@
 import type { AttachmentLimits as AttachmentLimitsDefinition } from '../engine/runtime-attachment.ts';
 import type {
+    TestFamilyId as TestFamilyIdDefinition,
     AttemptId as AttemptIdDefinition,
     WorkId as WorkIdDefinition,
     RuntimeId as RuntimeIdDefinition,
@@ -70,3 +71,5 @@ export type PropertyBodyDefinition = PropertyExecution['definition'];
 export type PropertyPolicy = Extract<PropertyExecution['policy'], { readonly kind: 'resolved'; }>['policy'];
 
 export type ExecuteDependencies = ExecuteDependenciesDefinition;
+
+export type TestFamilyId = TestFamilyIdDefinition;

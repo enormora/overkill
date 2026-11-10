@@ -66,7 +66,9 @@ export const testNode = suite('benchmark raw evidence', [
         scope.require.defined(artifact);
         scope.assert.deepEqual(recorded.rawSamples, {
             status: 'recorded',
-            reference: JSON.stringify(artifact.id),
+            reference: JSON.stringify(artifact.id, function omitNeutralVariant(key, value: unknown) {
+                return key === 'familyVariant' && value === null ? undefined : value;
+            }),
             reason: null
         });
         scope.assert.partialDeepEqual(artifact.payload.content, {

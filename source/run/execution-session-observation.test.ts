@@ -26,6 +26,7 @@ export const testNode = suite(
             const result = runResultFactory.build({
                 artifacts: [ {
                     id: {
+                        familyVariant: null,
                         attempt: null,
                         runtimes: [],
                         scope: { kind: 'run' },

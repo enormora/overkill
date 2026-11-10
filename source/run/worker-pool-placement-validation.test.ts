@@ -87,19 +87,10 @@ function createCollectedPlan(): WorkerPoolRunRuntime['collectedPlan'] {
 function firstWorkUnit(): WorkUnit {
     return {
         group: null,
-        id: {
-            key: integrationPath,
-            mode: 'file',
-            runtimes: [],
-            workload: null
-        },
+        id: { familyVariant: null, key: integrationPath, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
         work: [
-            {
-                case: firstCaseId(),
-                runtimes: [],
-                workload: null
-            }
+            { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null }
         ]
     };
 }
@@ -131,12 +122,7 @@ function placementPlanWithMissingUnit(): PlacementPlan {
         assignments: [
             {
                 lane: 'worker-1',
-                unit: {
-                    key: 'missing',
-                    mode: 'file',
-                    runtimes: [],
-                    workload: null
-                }
+                unit: { familyVariant: null, key: 'missing', mode: 'file', runtimes: [], workload: null }
             }
         ]
     };
@@ -176,12 +162,7 @@ function placementPlanWithMixedLaneLifecycles(): PlacementPlan {
 export function placementPlanWithGroupUnit(): PlacementPlan {
     const unit: WorkUnit = {
         ...firstWorkUnit(),
-        id: {
-            key: 'grouped',
-            mode: 'group',
-            runtimes: [],
-            workload: null
-        }
+        id: { familyVariant: null, key: 'grouped', mode: 'group', runtimes: [], workload: null }
     };
 
     return {

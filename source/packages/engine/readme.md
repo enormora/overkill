@@ -38,7 +38,7 @@ Top-level API:
 - `RequireAssertionFacade`, `FailedCheck`, `TestFailure`, `RunnerError`
 - `Diff`, `DiffPathSegment`, `SerializedValue`, `SerializationBudget`
 - `TestAnnotations`, `TestAnnotationsInput`, `TestControls`, `TestControlsInput`
-- `TestFamily`, `CaptureMode`
+- `TestFamilyId`, `CaptureMode`
 
 The top-level constructors share one default engine instance, including
 installed package copies in the same process. Use
@@ -285,3 +285,18 @@ Property invocation evidence includes a nullable `summary` with phase accounting
 seeds, input coverage, and exhaustive traversal state. `original` and `retained`
 observations are jointly present or jointly null. Progress snapshots use the same
 shape as final case and attempt results; historical summaries may be unavailable.
+
+## Family Definitions
+
+`defineTestFamily` creates a branded `TestFamily<Settings>` with an implementation
+ID/version, explicit module reference (or `null` for local use), supported
+features, a settings parser, and a lazy backend loader. Importing or inspecting a
+definition does not load its backend. Definitions do not register global state.
+
+`parseSettings` returns a deeply frozen JSON copy. Unsupported values and cycles
+are rejected; nested containers use the shared JSON snapshot depth limit of 64.
+`TestFamilyId` is the stable string stored in plans and results.
+
+Executable work, work units, and artifacts carry a nullable `familyVariant`.
+Non-null variants distinguish implementations' executable targets while retaining
+logical case identity. Neutral variants preserve existing identity keys.

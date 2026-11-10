@@ -1,6 +1,7 @@
 import { isAbsolute, relative, resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod/v4';
+import { familyVariantSchema } from '../../engine/identity-schema.ts';
 import {
     parseSerializedRunDiagnostics,
     workIdentityKey,
@@ -16,6 +17,7 @@ const caseSchema = z.strictObject({
     params: z.string().nullable()
 });
 const workSchema = z.strictObject({
+    familyVariant: familyVariantSchema.default(null),
     case: caseSchema,
     runtimes: z.array(
         z.strictObject({

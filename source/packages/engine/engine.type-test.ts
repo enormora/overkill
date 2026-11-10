@@ -45,7 +45,7 @@ import {
     type TestControls,
     type TestControlsInput,
     type TestFailure,
-    type TestFamily,
+    type TestFamilyId,
     type TestBodyResourceAttachments,
     type TestOutcome,
     type ThrowingTestBody,
@@ -308,7 +308,7 @@ describe('Test Data', function () {
             readonly duplicateExecution: 'forbidden' | 'idempotent' | null;
             readonly timeoutMilliseconds: number | null;
         }>();
-        expect<TestFamily>().type.toBe<'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test'>();
+        expect<TestFamilyId>().type.toBe<string>();
     });
 });
 

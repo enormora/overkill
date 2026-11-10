@@ -6,7 +6,7 @@ import type { BenchmarkCooldownResult } from '../engine/benchmark-result.ts';
 import { settleBenchmarkRuntime, type RuntimeCooldownOutcome } from './benchmark-runtime-cooldown.ts';
 
 const caseId = { file: 'cooldown.bench.ts', suite: [], title: 'cooldown', params: null };
-const workId = { case: caseId, workload: null, runtimes: [] };
+const workId = { familyVariant: null, case: caseId, workload: null, runtimes: [] };
 
 const initial: Extract<BenchmarkCooldownResult, { readonly mode: 'runtime'; }> = {
     mode: 'runtime',

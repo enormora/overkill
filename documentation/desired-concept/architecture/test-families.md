@@ -105,7 +105,8 @@ project root, not the definition package's directory.
 
 `parseSettings` runs before `load`, rejects invalid input, and returns normalized
 serializable settings. It must not load compiler projects or run test code.
-The engine freezes a copy of those settings. `load` lazily obtains the backend;
+`defineTestFamily` wraps the parser to validate, copy, and deeply freeze its
+normalized output before returning it. `load` lazily obtains the backend;
 importing assertion markers or inspecting definition metadata does not load it.
 
 Features declare compatibility, not permissions. Supplied profile policy and

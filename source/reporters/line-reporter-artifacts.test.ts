@@ -52,6 +52,7 @@ function suitePathFromTitles(
 function caseOutputArtifact(text: string): CapturedOutputArtifact {
     return {
         id: {
+            familyVariant: null,
             attempt: { index: 0 },
             runtimes: [],
             scope: {
@@ -93,6 +94,7 @@ function truncatedEmptyCaseOutputArtifact(): RunArtifact {
 function runOutputArtifact(text: string): RunArtifact {
     return {
         id: {
+            familyVariant: null,
             attempt: null,
             runtimes: [],
             scope: { kind: 'run' },
@@ -114,6 +116,7 @@ function runOutputArtifact(text: string): RunArtifact {
 
 const coverageArtifact: RunArtifact = {
     id: {
+        familyVariant: null,
         attempt: null,
         runtimes: [],
         scope: { kind: 'run' },

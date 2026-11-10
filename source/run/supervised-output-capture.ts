@@ -26,6 +26,7 @@ function caseAttribution(active: CapturedWork, activeCases: readonly WorkId['cas
     };
     return {
         id: {
+            familyVariant: active.work.familyVariant,
             attempt: active.attempt,
             runtimes: active.work.runtimes,
             scope,
@@ -39,7 +40,14 @@ function caseAttribution(active: CapturedWork, activeCases: readonly WorkId['cas
 function outputAttributions(activeWork: readonly CapturedWork[]): readonly OutputAttribution[] {
     if (activeWork.length === 0) {
         return [ {
-            id: { attempt: null, runtimes: [], scope: { kind: 'run' }, subtype: 'log-capture', workload: null },
+            id: {
+                familyVariant: null,
+                attempt: null,
+                runtimes: [],
+                scope: { kind: 'run' },
+                subtype: 'log-capture',
+                workload: null
+            },
             key: 'run'
         } ];
     }

@@ -109,6 +109,7 @@ export type {
     TestBody,
     TestCase,
     TestFamily,
+    TestFamilyId,
     TestNode,
     TestRandom,
     TestScope,

@@ -29,12 +29,13 @@ function workUnit(key: string, file: string | null, runtimeName: string): WorkUn
 
     return {
         group: null,
-        id: { key, mode: 'file', runtimes: [ runtime ], workload: null },
+        id: { familyVariant: null, key, mode: 'file', runtimes: [ runtime ], workload: null },
         order: 'plan',
         resourceConstraints: emptyWorkUnitResourceConstraints,
         scheduling: 'concurrent',
         work: [
             {
+                familyVariant: null,
                 case: { file, params: null, suite: [], title: key },
                 runtimes: [ runtime ],
                 workload: null

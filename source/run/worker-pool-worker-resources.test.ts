@@ -215,12 +215,7 @@ function runTask(plan: CollectedWorkerPlan, lifecycle: WorkerPoolLifecycleIdenti
         assignedUnits: [
             {
                 attempt: 'attempt-1',
-                traceUnit: {
-                    key: 'test.ts',
-                    mode: 'case',
-                    runtimes: [],
-                    workload: null
-                },
+                traceUnit: { familyVariant: null, key: 'test.ts', mode: 'case', runtimes: [], workload: null },
                 work: [ workId ]
             }
         ],

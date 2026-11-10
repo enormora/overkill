@@ -42,6 +42,7 @@ export function attachmentMatchesAttempt(
         return false;
     }
     const identity: WorkId = {
+        familyVariant: artifact.id.familyVariant,
         case: artifact.id.scope.case,
         runtimes: artifact.id.runtimes,
         workload: artifact.id.workload

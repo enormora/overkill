@@ -5,7 +5,7 @@ import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
 import { currentRunRecordVersion } from './run-record-format.ts';
 import { verdictSchema } from './run-artifact-schema.ts';
 
-const family = z.enum([ 'microtest', 'integration', 'benchmark', 'property', 'type-test' ]);
+const family = z.string();
 const execution = z.union([
     z.object({
         processModel: z.enum([ 'in-process', 'supervised-process' ]),

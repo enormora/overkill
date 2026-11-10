@@ -146,14 +146,9 @@ export function createCollectedPlanWithMissingResult(): CollectedRunPlan {
 function firstWorkUnit(): PlacementPlan['units'][number] {
     return {
         group: null,
-        id: {
-            key: integrationPath,
-            mode: 'file',
-            runtimes: [],
-            workload: null
-        },
+        id: { familyVariant: null, key: integrationPath, mode: 'file', runtimes: [], workload: null },
         ...defaultUnitPolicy,
-        work: [ { case: firstCaseId(), runtimes: [], workload: null } ]
+        work: [ { familyVariant: null, case: firstCaseId(), runtimes: [], workload: null } ]
     };
 }
 

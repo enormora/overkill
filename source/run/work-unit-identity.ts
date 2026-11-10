@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import {
     createCaseId,
     createDefaultWorkId,
@@ -33,7 +34,11 @@ function workloadIdentityKey(workload: WorkloadId | null): string {
 }
 
 function executionBucketKey(work: WorkId): string {
-    return JSON.stringify([ runtimeIdentitiesKey(work.runtimes), workloadIdentityKey(work.workload) ]);
+    return JSON.stringify([
+        runtimeIdentitiesKey(work.runtimes),
+        workloadIdentityKey(work.workload),
+        work.familyVariant === null ? null : [ work.familyVariant.family, work.familyVariant.key ]
+    ]);
 }
 
 function workUnitRuntimes(work: WorkId): readonly WorkId['runtimes'][number][] {
@@ -56,6 +61,7 @@ export function fileWorkUnitId(file: string, work: WorkId): WorkUnitId {
     return {
         key: file,
         mode: 'file',
+        familyVariant: work.familyVariant,
         runtimes: workUnitRuntimes(work),
         workload: work.workload
     };
@@ -65,6 +71,7 @@ export function caseWorkUnitId(work: WorkId): WorkUnitId {
     return {
         key: workIdentityKey(work),
         mode: 'case',
+        familyVariant: work.familyVariant,
         runtimes: workUnitRuntimes(work),
         workload: work.workload
     };
@@ -74,6 +81,7 @@ export function groupWorkUnitId(group: WorkGroup, work: WorkId): WorkUnitId {
     return {
         key: group.name,
         mode: 'group',
+        familyVariant: work.familyVariant,
         runtimes: workUnitRuntimes(work),
         workload: work.workload
     };
@@ -83,4 +91,13 @@ export function workFromCases(file: CollectedRunFile): readonly WorkId[] {
     return file.cases.map(function toWork(testCase) {
         return testCase.workId ?? collectedCaseDefaultWorkId(file.file, testCase);
     });
+}
+
+export function workUnitIdentityProjection(unit: WorkUnitId): Except<WorkUnitId, 'familyVariant'> | WorkUnitId {
+    const { familyVariant, ...neutral } = unit;
+    return familyVariant === null ? neutral : unit;
+}
+
+export function workUnitIdentityKey(unit: WorkUnitId): string {
+    return JSON.stringify(workUnitIdentityProjection(unit));
 }

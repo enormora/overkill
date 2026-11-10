@@ -340,6 +340,7 @@ export const testNode = createOverkillSuite({
                             kind: 'test-start',
                             suitePath: [],
                             workId: {
+                                familyVariant: null,
                                 case: { file: null, title: 'passes', params: null, suite: [] },
                                 runtimes: [],
                                 workload: null
@@ -359,6 +360,7 @@ export const testNode = createOverkillSuite({
                             verdict: 'pass',
                             durationMicroseconds: 0,
                             workId: {
+                                familyVariant: null,
                                 case: { file: null, title: 'passes', params: null, suite: [] },
                                 runtimes: [],
                                 workload: null

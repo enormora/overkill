@@ -27,7 +27,15 @@ const adapter: PerformanceBaselineAdapter = {
 };
 function samples(readings: readonly MetricReading[]): RuntimeAttachmentArtifact {
     return {
-        id: { subtype: 'attachment', scope: { kind: 'run' }, attempt: null, runtimes: [], workload: null, sequence: 0 },
+        id: {
+            familyVariant: null,
+            subtype: 'attachment',
+            scope: { kind: 'run' },
+            attempt: null,
+            runtimes: [],
+            workload: null,
+            sequence: 0
+        },
         source: 'native',
         payload: {
             kind: 'runtime-attachment',

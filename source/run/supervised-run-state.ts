@@ -140,6 +140,7 @@ function caseArtifact(work: WorkId, attempt: AttemptId, artifacts: readonly RunA
             return false;
         }
         return workIdentityKey({
+            familyVariant: artifact.id.familyVariant,
             case: artifact.id.scope.case,
             runtimes: artifact.id.runtimes,
             workload: artifact.id.workload

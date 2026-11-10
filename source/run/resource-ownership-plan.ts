@@ -4,6 +4,7 @@ import type { RuntimeId, WorkId, WorkloadId } from '../engine/identity.ts';
 type ResourceOwnerWorkUnitId = {
     readonly key: string;
     readonly mode: 'case' | 'file' | 'group';
+    readonly familyVariant: WorkId['familyVariant'];
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
 };

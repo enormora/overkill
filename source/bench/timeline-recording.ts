@@ -4,6 +4,7 @@ import {
     type PerformanceEntry as RuntimeEntry
 } from 'node:perf_hooks';
 import { setImmediate as nextTurn } from 'node:timers/promises';
+import { artifactIdentityProjection } from '../engine/run-artifact.ts';
 import type {
     BenchmarkTimelineEvent,
     BenchmarkTimelineEvidence,
@@ -107,7 +108,7 @@ async function publish(capture: TimelineCapture): Promise<BenchmarkTimelineEvide
     return {
         ...evidence,
         status: unavailable ? 'omitted' : 'recorded',
-        reference: JSON.stringify(artifact.id),
+        reference: JSON.stringify(artifactIdentityProjection(artifact.id)),
         reason: unavailable ? artifact.payload.content.reason : null
     };
 }

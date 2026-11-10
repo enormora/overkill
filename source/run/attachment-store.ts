@@ -54,9 +54,18 @@ export type AttachmentStoreOptions = {
 };
 function attachmentId(owner: AttachmentOwner, sequence: number): RuntimeAttachmentArtifact['id'] {
     if (owner.kind === 'run') {
-        return { attempt: null, runtimes: [], scope: { kind: 'run' }, sequence, subtype: 'attachment', workload: null };
+        return {
+            familyVariant: null,
+            attempt: null,
+            runtimes: [],
+            scope: { kind: 'run' },
+            sequence,
+            subtype: 'attachment',
+            workload: null
+        };
     }
     return {
+        familyVariant: owner.work.familyVariant,
         attempt: owner.attempt,
         runtimes: owner.work.runtimes,
         scope: { activeCases: [ owner.work.case ], case: owner.work.case, confidence: 'active-case', kind: 'case' },

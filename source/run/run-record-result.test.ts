@@ -91,6 +91,7 @@ function resultWithOpaqueEvidence(): RunResult {
         } ],
         artifacts: [ {
             id: {
+                familyVariant: null,
                 attempt: null,
                 runtimes: [],
                 scope: { kind: 'run' },
@@ -131,6 +132,7 @@ function resultWithOpaqueEvidence(): RunResult {
             source: 'native'
         }, {
             id: {
+                familyVariant: null,
                 attempt: null,
                 runtimes: [],
                 scope: { kind: 'run' },

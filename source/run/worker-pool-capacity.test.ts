@@ -21,12 +21,13 @@ import {
 function weightedWorkUnit(key: string, workerLifecycle: WorkerLifecycle, capacityWeight: number): WorkUnit {
     return {
         group: null,
-        id: { key, mode: 'file', runtimes: [], workload: null },
+        id: { familyVariant: null, key, mode: 'file', runtimes: [], workload: null },
         order: 'plan',
         resourceConstraints: { ...emptyWorkUnitResourceConstraints, capacityWeight },
         scheduling: 'concurrent',
         work: [
             {
+                familyVariant: null,
                 case: { file: key, params: null, suite: [], title: key },
                 runtimes: [],
                 workload: null

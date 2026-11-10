@@ -66,7 +66,7 @@ export const executionCommandFields = {
         title: z.string()
     }),
     scheduling: z.enum([ 'concurrent', 'serial' ]),
-    testFamily: z.enum([ 'benchmark', 'integration', 'microtest', 'property', 'type-test' ]),
+    testFamily: z.string(),
     timeoutMilliseconds: z.number()
 };
 

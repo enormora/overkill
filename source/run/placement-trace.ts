@@ -1,5 +1,6 @@
 import type { WorkId } from '../engine/identity.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { workUnitIdentityProjection } from './work-unit-identity.ts';
 import type { PlacementLane, WorkUnitId } from './run-types.ts';
 import type { WarmLaneAffinityKeyKind } from './worker-pool-warm-lane-affinity.ts';
 
@@ -208,13 +209,18 @@ export function createPlacementTraceRecorder(): PlacementTraceRecorder {
     };
 }
 
-export function traceUnitKey(unit: TraceWorkUnitId): string {
-    return JSON.stringify(unit);
-}
-
 export function isDynamicWorkUnitId(unit: TraceWorkUnitId): unit is DynamicWorkUnitId {
     return Object.hasOwn(unit, 'parent');
 }
+
+export function traceUnitKey(unit: TraceWorkUnitId): string {
+    return JSON.stringify(
+        isDynamicWorkUnitId(unit)
+            ? { ...unit, parent: workUnitIdentityProjection(unit.parent) }
+            : workUnitIdentityProjection(unit)
+    );
+}
+
 export function parentWorkUnitId(unit: TraceWorkUnitId): WorkUnitId {
     return isDynamicWorkUnitId(unit) ? unit.parent : unit;
 }

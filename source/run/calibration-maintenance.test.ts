@@ -15,7 +15,12 @@ const reference = {
     version: 1 as const,
     profile: 'bench',
     snapshot,
-    owners: [ { case: { file: 'old.bench.ts', suite: [], title: 'old', params: null }, workload: null, runtimes: [] } ]
+    owners: [ {
+        familyVariant: null,
+        case: { file: 'old.bench.ts', suite: [], title: 'old', params: null },
+        workload: null,
+        runtimes: []
+    } ]
 };
 function unexpectedOperation(): never {
     throw new Error('Unexpected maintenance operation.');

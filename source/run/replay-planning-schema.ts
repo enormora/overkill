@@ -29,7 +29,7 @@ const durationObservation = z.strictObject({
         processModel: z.enum([ 'in-process', 'supervised-process', 'worker-pool' ]),
         profile: z.string(),
         scheduling: z.enum([ 'concurrent', 'serial' ]),
-        testFamily: z.enum([ 'microtest', 'integration', 'benchmark', 'property', 'type-test' ]),
+        testFamily: z.string(),
         workerLifecycle: z.enum([ 'fresh-worker-per-unit', 'reuse' ]).nullable()
     })
 });
@@ -59,7 +59,7 @@ export const replayPlanningSchema: z.ZodType<ReplayPlanningFacts> = z.object({
         .nullable(),
     cases: z.array(z.object({ workId: workIdSchema, fileSet: z.string().nullable() })),
     execution: z.object({
-        testFamily: z.enum([ 'microtest', 'property', 'integration', 'benchmark', 'type-test' ]),
+        testFamily: z.string(),
         processModel: z.enum([ 'in-process', 'supervised-process', 'worker-pool' ]),
         dispatchPolicy: z.enum([ 'dynamic-lease', 'static-assignment' ]).nullable().default(null),
         scheduling: z.enum([ 'concurrent', 'serial' ]),

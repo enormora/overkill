@@ -5,6 +5,7 @@ import { deterministicCollectedRunPlan } from './deterministic-run-fixtures.ts';
 import { defaultMicrotestProfile } from './run-command-factory.ts';
 
 export const historyWork = {
+    familyVariant: null,
     case: { file: 'test.ts', params: null, suite: [], title: 'example' },
     runtimes: [],
     workload: null

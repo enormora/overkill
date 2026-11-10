@@ -16,6 +16,7 @@ import {
 import type { CollectedRunPlan, WorkUnitId } from './run-types.ts';
 
 const unit: WorkUnitId = {
+    familyVariant: null,
     key: 'source/example.test.ts',
     mode: 'file',
     runtimes: [],

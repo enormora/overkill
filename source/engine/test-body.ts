@@ -6,7 +6,7 @@ import {
     type PropertyBodyDefinition,
     type PropertyPolicyResolution
 } from './property-node.ts';
-import type { TestFamily } from './test-data.ts';
+import type { TestFamilyId } from './identity.ts';
 import type { WorkloadInput } from './workload-input.ts';
 
 type SourceBody = (...arguments_: readonly never[]) => unknown;
@@ -87,7 +87,7 @@ export function forwardTestBodyOrigin<Body extends SourceBody>(source: unknown, 
 const testBodyFamilyBrand = Symbol.for('@overkill-dev/engine/TestBodyFamily');
 
 export type TestBodyFamilyAttachment<Definition> = {
-    readonly family: TestFamily;
+    readonly family: TestFamilyId;
     readonly definition: Definition;
 };
 
@@ -133,7 +133,7 @@ export function forwardTestBodyFamily<Body extends (scope: never) => unknown>(
     return forwardTestBodyOrigin(source, body);
 }
 
-export function resolveTestBodyFamily(body: unknown, family: TestFamily | null): TestFamily | null {
+export function resolveTestBodyFamily(body: unknown, family: TestFamilyId | null): TestFamilyId | null {
     const attachment = readTestBodyFamily(body);
     if (attachment === null) {
         return family;

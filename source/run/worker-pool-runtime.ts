@@ -1,3 +1,4 @@
+import { workUnitIdentityKey } from './work-unit-identity.ts';
 import { replayPlacementPlan } from './replay-context.ts';
 import type {
     ReporterEvent,
@@ -184,7 +185,7 @@ export function workerPoolExecutionFacts(resolvedRun: ResolvedRun): WorkerPoolEx
 
 function unitsByKey(units: readonly WorkUnit[]): ReadonlyMap<string, WorkUnit> {
     return new Map(units.map(function toEntry(unit) {
-        return [ JSON.stringify(unit.id), unit ];
+        return [ workUnitIdentityKey(unit.id), unit ];
     }));
 }
 
@@ -192,7 +193,7 @@ function assignedUnits(plan: PlacementPlan): readonly WorkUnit[] {
     const units = unitsByKey(plan.units);
 
     return plan.assignments.map(function toUnit(assignment) {
-        const unit = units.get(JSON.stringify(assignment.unit));
+        const unit = units.get(workUnitIdentityKey(assignment.unit));
 
         if (unit === undefined) {
             throw new Error('Placement assignment referenced an unknown work unit.');

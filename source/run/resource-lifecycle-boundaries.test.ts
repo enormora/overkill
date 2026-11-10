@@ -83,6 +83,7 @@ function scenarioCase(title: string, scope: string, value: string, options: Scen
         suitePath: [ { definitionLocations: [ { kind: 'unknown' } ], title: 'suite' } ],
         testFamily: 'integration',
         workId: {
+            familyVariant: null,
             case: id,
             runtimes: [ { dimensions: {}, name: 'api', scenarios: { database: value }, variantId: null } ],
             workload: null

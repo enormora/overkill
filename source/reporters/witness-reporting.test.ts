@@ -11,6 +11,7 @@ export const testNode = suite('witness reporting', [
         const result = runResultFactory.build({
             artifacts: [ {
                 id: {
+                    familyVariant: null,
                     attempt: null,
                     runtimes: [],
                     sequence: 0,

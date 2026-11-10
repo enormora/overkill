@@ -36,6 +36,7 @@ function capturedDiagnosticReply(reply: ResultReply): ResultReply {
             ...reply.result,
             artifacts: [ {
                 id: {
+                    familyVariant: null,
                     attempt: { index: 0 },
                     runtimes: [],
                     sequence: 0,
@@ -127,6 +128,7 @@ export async function createMutationTranscriptFixture(scope: TestScope): Promise
             ...fixture.reply.result,
             artifacts: [ {
                 id: {
+                    familyVariant: null,
                     attempt: null,
                     runtimes: [],
                     sequence: 1,

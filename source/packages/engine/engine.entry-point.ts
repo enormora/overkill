@@ -155,7 +155,7 @@ export type {
     TestPlanFromTestFilesFactory,
     TestPlanFromTestFilesOptions
 } from '../../engine/test-plan.ts';
-export { formatCaseId, workIdentityKey, isCompilerWorkId } from '../../engine/identity.ts';
+export { formatCaseId, workIdentityKey } from '../../engine/identity.ts';
 export { canonicalIdentityJson } from '../../canonical-identity.ts';
 export { snapshotValidatedJson } from '../../attachments/json-snapshot.ts';
 export type {
@@ -431,8 +431,7 @@ export type {
     TestAnnotations,
     TestAnnotationsInput,
     TestControls,
-    TestControlsInput,
-    TestFamily
+    TestControlsInput
 } from '../../engine/test-data.ts';
 export type {
     TestPlan,
@@ -504,3 +503,23 @@ export { singleAttemptResult } from '../../engine/run-result.ts';
 export type { AdapterArtifact } from '../../engine/run-artifact.ts';
 
 export { isTestControlError } from '../../engine/test-control-error.ts';
+
+export { defineTestFamily, isDefinedTestFamily } from '../../engine/test-family.ts';
+export type {
+    TestFamily,
+    TestFamilyDefinition,
+    DefinedTestFamily,
+    FamilyValue,
+    FamilyModuleReference,
+    FamilyFeatures,
+    FamilyVariant,
+    FamilyPreparationInput,
+    FamilyBackend,
+    FamilyPreparation,
+    FamilyCollectionInput,
+    FamilyCollection,
+    FamilyEvent,
+    FamilyAnalysisContext
+} from '../../engine/test-family.ts';
+
+export type { TestFamilyId } from '../../engine/identity.ts';

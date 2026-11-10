@@ -1,11 +1,12 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { RunOrder, Scheduling, WorkerLifecycle, ProcessModel, ProfileConfig } from '../config/types.ts';
-import type { RuntimeId, WorkloadId, WorkId } from './run-engine-primitives.ts';
+import type { RunOrder, Scheduling, WorkerLifecycle, ProcessModel } from '../config/types.ts';
+import type { RuntimeId, WorkloadId, WorkId, TestFamilyId } from './run-engine-primitives.ts';
 import type { ResourceOwnershipPlan } from './resource-ownership-plan.ts';
 
 export type WorkUnitMode = 'case' | 'file' | 'group';
 
 export type WorkUnitId = {
+    readonly familyVariant: WorkId['familyVariant'];
     readonly key: string;
     readonly mode: WorkUnitMode;
     readonly runtimes: readonly RuntimeId[];
@@ -63,7 +64,7 @@ export type DurationHistoryObservation = {
         readonly processModel: ProcessModel;
         readonly profile: string;
         readonly scheduling: Scheduling;
-        readonly testFamily: ProfileConfig['testFamily'];
+        readonly testFamily: TestFamilyId;
         readonly workerLifecycle: WorkerLifecycle | null;
     };
     readonly observedAt: string;

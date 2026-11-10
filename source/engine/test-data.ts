@@ -1,7 +1,6 @@
 const captureModeValues = [ 'buffered', 'live' ] as const;
 const duplicateExecutionControlValues = [ 'forbidden', 'idempotent' ] as const;
 
-export type TestFamily = 'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test';
 export type CaptureMode = typeof captureModeValues[number];
 export type DuplicateExecutionControl = typeof duplicateExecutionControlValues[number];
 

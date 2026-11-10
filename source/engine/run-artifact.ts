@@ -1,5 +1,6 @@
-import type { ReadonlyDeep, JsonValue } from 'type-fest';
-import type { AttemptId, CaseId, RuntimeId, WorkloadId } from './identity.ts';
+import type { ReadonlyDeep, JsonValue, Except } from 'type-fest';
+import { canonicalIdentityJson } from '../canonical-identity.ts';
+import type { AttemptId, CaseId, RuntimeId, WorkloadId, WorkId } from './identity.ts';
 
 export type RunArtifactScope = {
     readonly activeCases: readonly CaseId[];
@@ -11,6 +12,7 @@ export type RunArtifactScope = {
 };
 
 type RunArtifactBaseId = {
+    readonly familyVariant: WorkId['familyVariant'];
     readonly runtimes: readonly RuntimeId[];
     readonly sequence: number;
     readonly subtype: 'adapter' | 'attachment' | 'coverage' | 'hedged-conflict' | 'log-capture' | 'witness';
@@ -49,3 +51,18 @@ export type AdapterArtifact = {
     readonly payload: { readonly kind: 'adapter'; readonly adapter: string; readonly facts: ReadonlyDeep<JsonValue>; };
     readonly source: 'native';
 };
+
+export function artifactIdentityProjection(id: RunArtifactId): Except<RunArtifactId, 'familyVariant'> | RunArtifactId {
+    const { familyVariant, ...neutral } = id;
+    return familyVariant === null ? neutral : id;
+}
+
+export function artifactReferenceKey(reference: unknown): string {
+    if (typeof reference === 'object' && reference !== null && Reflect.get(reference, 'familyVariant') === null) {
+        const entries = Object.entries(reference).filter(function retainedIdentityField([ key ]) {
+            return key !== 'familyVariant';
+        });
+        return canonicalIdentityJson(Object.fromEntries(entries));
+    }
+    return canonicalIdentityJson(reference);
+}

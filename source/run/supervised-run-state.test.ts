@@ -100,7 +100,10 @@ function assertRunCapturedOutput(
     scope.assert.deepEqual(artifact.id.runtimes, []);
     scope.assert.equal(artifact.id.workload, null);
     scope.assert.equal(artifact.payload.text, 'setup output');
-    scope.assert.deepEqual(state.caseArtifacts({ case: testCase, runtimes: [], workload: null }, { index: 0 }), []);
+    scope.assert.deepEqual(
+        state.caseArtifacts({ familyVariant: null, case: testCase, runtimes: [], workload: null }, { index: 0 }),
+        []
+    );
 }
 
 function propertyCheckpoint(): PropertyCaseEvidence {
@@ -291,7 +294,7 @@ export const testNode = createOverkillSuite({
                     {
                         capture: null,
                         id: testCase,
-                        workId: { case: testCase, runtimes: [ runtime ], workload: null }
+                        workId: { familyVariant: null, case: testCase, runtimes: [ runtime ], workload: null }
                     },
                     0,
                     { index: 0 }
