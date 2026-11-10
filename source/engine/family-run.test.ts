@@ -21,6 +21,8 @@ import {
     type TestScope,
     type WorkId
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as evidenceValidation } from './family-evidence-validation.test.ts';
+import { testNode as preparationValidation } from './family-preparation-validation.test.ts';
 
 const controller = new AbortController();
 const { signal } = controller;
@@ -225,6 +227,8 @@ async function assertSkippedSelection(scope: TestScope, engine: Engine, prepared
 }
 
 export const testNode = suite('engine family runs', [
+    preparationValidation,
+    evidenceValidation,
     test('collects exact variant work and reports analysis in execution order', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];
