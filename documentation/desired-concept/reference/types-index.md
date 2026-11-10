@@ -2518,6 +2518,7 @@ declare const gen: {
 
 type PropertySampleScope<Value = unknown> = TestScope & {
     readonly reconstructInput: () => Value;
+    readonly inconclusive: (reason: string) => never;
     readonly target: (label: string, score: number) => void;
     readonly cover: (label: string, condition: boolean) => void;
     readonly failureKey: (key: string) => void;
@@ -3237,6 +3238,13 @@ and abort signal. Results distinguish linearizable, not-linearizable, and
 inconclusive outcomes.
 
 Canonical: [Linearizability Checking Resolution](../authoring/higher-test-layers.md#linearizability-checking-resolution).
+
+`linearizability<State, Operation, Output, System>(definition)` returns
+`PropertyBody<LinearizabilityProgram<Operation>>`. `LinearizabilityProgram` is a
+readonly array of readonly operation lanes. `LinearizabilityDefinition` supplies
+`model`, positive safe-integer `maxWork`, `create(sample)`, and
+`run(operation, system, signal)`. Property samples expose
+`inconclusive(reason: string): never` for trial-local inconclusive termination.
 
 ## Content Snapshot Assertions
 

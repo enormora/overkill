@@ -129,7 +129,9 @@ test-linearizability-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
     rm -rf target/linearizability-package-smoke
     mkdir -p target/linearizability-package-smoke/node_modules/@overkill-dev
-    NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES=@overkill-dev/linearizability,@overkill-dev/model,@overkill-dev/property,@overkill-dev/engine,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run packtory pack @overkill-dev/linearizability --format folder --version 0.0.0 --vendor-dependencies --out target/linearizability-package-smoke/node_modules/@overkill-dev/linearizability
+    NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES=@overkill-dev/linearizability,@overkill-dev/assert,@overkill-dev/model,@overkill-dev/property,@overkill-dev/engine,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run packtory pack @overkill-dev/linearizability --format folder --version 0.0.0 --vendor-dependencies --out target/linearizability-package-smoke/node_modules/@overkill-dev/linearizability
+    ln -s linearizability/node_modules/@overkill-dev/engine target/linearizability-package-smoke/node_modules/@overkill-dev/engine
+    ln -s linearizability/node_modules/@overkill-dev/property target/linearizability-package-smoke/node_modules/@overkill-dev/property
     ln -s ../../../../linearizability-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
     node target/build/source/integration-tests/package-smoke/linearizability.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules

@@ -1,3 +1,4 @@
+import { assertionPasses } from '../assertion-protocol/evaluation.ts';
 import {
     matchPropertyFailure,
     propertyFailureIdentity,
@@ -159,13 +160,41 @@ async function replaceCounterexample<Value>(
     await publish(session);
 }
 
+function solelyInconclusive(trial: PropertyTrialResult): boolean {
+    if (trial.kind !== 'terminated') {
+        return false;
+    }
+    const { result } = trial;
+    return [
+        result.inconclusiveReason !== null,
+        result.bodyError === null,
+        result.cleanupErrors.length === 0,
+        result.contractFailures.length === 0,
+        result.runnerErrors.length === 0,
+        result.returnedAssertions.every(assertionPasses),
+        !result.requireFailed
+    ]
+        .every(Boolean);
+}
+
+async function retainTermination<Value>(session: ShrinkSession<Value>, observed: ObservedTrial): Promise<void> {
+    if (solelyInconclusive(observed.trial)) {
+        session.state.stop('interrupted');
+        await diagnose(session, 'inconclusive-trial', observed.observation);
+        return;
+    }
+    if (observed.trial.kind === 'terminated') {
+        session.state.replace({ ...session.state.retained(), trial: observed.trial }, session.state.observation());
+    }
+}
+
 async function acceptCandidate<Value>(
     session: ShrinkSession<Value>,
     candidate: GeneratedInput<Value>,
     observed: ObservedTrial
 ): Promise<boolean> {
     if (observed.trial.kind === 'terminated') {
-        session.state.replace({ ...session.state.retained(), trial: observed.trial }, session.state.observation());
+        await retainTermination(session, observed);
         return true;
     }
     const matched = matching(session, observed);
@@ -211,8 +240,7 @@ async function recordConfirmedInput<Value>(session: ShrinkSession<Value>, confir
 
 async function applyConfirmation<Value>(session: ShrinkSession<Value>, confirmation: ObservedTrial): Promise<void> {
     if (confirmation.trial.kind === 'terminated') {
-        session.state.stop('interrupted');
-        session.state.replace({ ...session.state.retained(), trial: confirmation.trial }, session.state.observation());
+        await retainTermination(session, confirmation);
         return;
     }
     if (matching(session, confirmation) !== null) {

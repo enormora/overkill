@@ -62,9 +62,10 @@ async function evaluatePropertyTrial(
         ? completedBody({ assertionResult: completion.value, context })
         : failedBody({ context, error: completion.error, testCase });
     const countFailure = recorder.validateAssertionCount(result.returnedAssertions.length);
-    const checked: ExecutedBody = countFailure === null || result.bodyError !== null || result.requireFailed
-        ? result
-        : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] };
+    const checked: ExecutedBody =
+        countFailure === null || result.inconclusiveReason !== null || result.bodyError !== null || result.requireFailed
+            ? result
+            : { ...result, contractFailures: [ ...result.contractFailures, countFailure ] };
     return classifyPropertyTrial(checked);
 }
 

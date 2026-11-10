@@ -86,6 +86,7 @@ export async function observePropertyTrial<Value>(
                 return await invocation.test(value, {
                     ...scope,
                     reconstructInput: tracking.reconstruction.input,
+                    inconclusive: tracking.reconstruction.inconclusive,
                     failureKey: tracking.key.set,
                     target: tracking.targets.target,
                     cover: context.observations.cover
