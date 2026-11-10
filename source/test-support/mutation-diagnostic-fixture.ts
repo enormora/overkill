@@ -45,6 +45,8 @@ function capturedDiagnosticReply(reply: ResultReply): ResultReply {
                 },
                 source: 'boundary-captured',
                 payload: {
+                    capture: 'automatic',
+                    completeness: 'best-effort',
                     kind: 'captured-output',
                     byteLength: 4,
                     text: 'log\n',

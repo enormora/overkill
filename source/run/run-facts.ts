@@ -93,6 +93,7 @@ function createRunExecutionFacts(
         processUsagePolicy: resolveProcessUsagePolicy(input.request, profile),
         scheduling: input.scheduling,
         testFamily: profile.testFamily,
+        failureArtifacts: profile.failureArtifacts,
         timingCollection: resolveTimingCollection(input.request, profile),
         timeoutPolicy: profile.timeouts,
         verbose: input.request.verbose

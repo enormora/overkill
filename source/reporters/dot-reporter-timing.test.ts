@@ -1,7 +1,9 @@
 import { runIfMain } from '#test-runner';
 import figures from 'figures';
 import colors from 'yoctocolors';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -52,6 +54,7 @@ export const testNode = createOverkillSuite({
             async body(scope: OverkillScope) {
                 const terminal = capturedOutput();
                 const reporter = createDotReporter({ interactive: false, stdout: terminal.output })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }

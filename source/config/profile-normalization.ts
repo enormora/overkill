@@ -14,8 +14,10 @@ import type {
     ProjectAdapterProfileConfig,
     ProjectIntegrationExecution,
     ProjectProfileFiles,
+    ProjectTimeoutConfig,
     ProjectTimingProfilePolicy
 } from './schema.ts';
+import { failureArtifactPolicySchema } from './evidence-policy.ts';
 import {
     defaultCoveragePolicy,
     defaultTimingProfilePolicy,
@@ -31,6 +33,7 @@ import type {
     IntegrationExecution,
     ProfileFileSet,
     ProfileFiles,
+    TimeoutPolicy,
     TimingProfilePolicy
 } from './types.ts';
 import {
@@ -248,8 +251,34 @@ export function normalizeAdapterProfile(profile: ProjectAdapterProfileConfig): A
         reporters: profile.reporters ?? null,
         execution: { processModel: 'in-process', maxConcurrency: 1, scheduling: 'serial' },
         processUsage: defaultProcessUsagePolicy,
+        failureArtifacts: failureArtifactPolicySchema.parse(profile.failureArtifacts),
         timings: defaultTimingProfilePolicy,
         runRecords: { persist: 'on-demand' },
         timeouts: { collectionMilliseconds: 60_000, softMilliseconds: 60_000, hardMilliseconds: 60_000 }
     };
+}
+
+function timeoutValue(value: number | undefined, fallback: number): number {
+    return value ?? fallback;
+}
+
+function assertValidTimeouts(timeouts: TimeoutPolicy): void {
+    if (timeouts.softMilliseconds > timeouts.hardMilliseconds) {
+        throw new ConfigError(
+            'Invalid profile timeouts: softMilliseconds must be less than or equal to hardMilliseconds.'
+        );
+    }
+}
+
+export function normalizeTimeouts(
+    timeouts: ProjectTimeoutConfig | undefined,
+    defaultPolicy: TimeoutPolicy
+): TimeoutPolicy {
+    const policy = {
+        collectionMilliseconds: timeoutValue(timeouts?.collectionMilliseconds, defaultPolicy.collectionMilliseconds),
+        hardMilliseconds: timeoutValue(timeouts?.hardMilliseconds, defaultPolicy.hardMilliseconds),
+        softMilliseconds: timeoutValue(timeouts?.softMilliseconds, defaultPolicy.softMilliseconds)
+    };
+    assertValidTimeouts(policy);
+    return policy;
 }

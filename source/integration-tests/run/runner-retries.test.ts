@@ -183,6 +183,26 @@ function assertHardTimeoutEvidence(scope: TestScope, result: RunResult): void {
     assertHardTimeoutAttribution(scope, result);
 }
 
+function isWorkerCrash(artifact: RunResult['artifacts'][number]): boolean {
+    return artifact.payload.kind === 'worker-crash';
+}
+
+function assertHardTimeoutEvent(scope: TestScope, result: RunResult, events: readonly ReporterEvent[]): void {
+    const completedEvent = events
+        .filter(function caseFinished(event) {
+            return event.kind === 'test-end';
+        })
+        .find(function finalAttempt(event) {
+            return event.completion === 'final';
+        });
+    scope.require.defined(completedEvent);
+    const artifacts = result.artifacts.filter(isWorkerCrash);
+    scope.assert.equal(artifacts.length, 1);
+    scope.assert.equal(completedEvent.verdict, 'crashed');
+    scope.assert.deepEqual(completedEvent.artifacts.filter(isWorkerCrash), artifacts);
+    scope.assert.equal(completedEvent.durationMicroseconds, result.perTest[0]?.attempts.at(-1)?.durationMicroseconds);
+}
+
 export const testNode = createSuite({
     ...metadata,
     title: 'source/integration-tests/run/runner-retries.test.ts',
@@ -214,13 +234,15 @@ export const testNode = createSuite({
                 ...metadata,
                 title: `hard timeout preserves retry evidence under ${execution.processModel}`,
                 async body(scope: TestScope) {
-                    const reporter = eventReporter(function ignoreEvent() {
-                        return undefined;
+                    const events: ReporterEvent[] = [];
+                    const reporter = eventReporter(function recordEvent(event) {
+                        events.push(event);
                     });
                     const result = await orchestrator.run(
                         retryCommand(execution, reporter, 'first-failure-and-final', hardTimeoutFixture)
                     );
                     assertHardTimeoutEvidence(scope, result);
+                    assertHardTimeoutEvent(scope, result, events);
                     return scope.assert.collect();
                 }
             });

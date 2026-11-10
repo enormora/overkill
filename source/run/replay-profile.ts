@@ -1,7 +1,8 @@
 import { z } from 'zod/v4';
 import { normalizeWorkDistribution } from '../config/work-distribution.ts';
 import { normalizedMicrotestProfileSchema } from '../config/normalized-microtest-schema.ts';
-import { integrationExecutionSchema, attachmentLimitsSchema } from '../config/schema.ts';
+import { integrationExecutionSchema } from '../config/schema.ts';
+import { attachmentLimitsSchema } from '../config/evidence-policy.ts';
 import { propertyPolicySchema } from '../config/property-policy.ts';
 import { propertyCorpusPolicySchema } from '../config/property-corpus.ts';
 import { benchmarkHostPolicySchema } from '../config/benchmark-host.ts';

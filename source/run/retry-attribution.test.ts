@@ -160,12 +160,13 @@ export const testNode = createSuite({
         }),
         createTestCase({
             ...metadata,
-            title: 'output cap is cumulative across retry attempts',
+            title: 'output cap is cumulative across retries and stops emitting after truncation',
             body(scope: TestScope) {
                 const state = createSupervisedRunState('all');
                 for (const [ index, bytes ] of [ [ 0, capturedOutputLimitBytes - 3 ], [ 1, 6 ], [ 2, 2 ] ] as const) {
                     startAttempt(state, work, index);
                     state.recordCapturedOutput('stdout', Buffer.alloc(bytes), index * 10);
+                    state.recordCapturedOutput('stderr', Buffer.alloc(0), index * 10);
                     finishAttempt(state, index, index === 2 ? 'pass' : 'fail');
                 }
                 assertCaptureSizes(scope, state);

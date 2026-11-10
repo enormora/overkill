@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunArtifact } from '../engine/run-result.ts';
 import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { boundaryFailureArtifactSchema } from './boundary-failure-artifact-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { artifactIdentityFields, runArtifactIdSchema } from './run-artifact-id-schema.ts';
@@ -32,6 +33,7 @@ const hedgeEvidenceSchema = z.strictObject({
     verdict: verdictSchema
 });
 export const runArtifactSchema: z.ZodType<RunArtifact> = z.union([
+    boundaryFailureArtifactSchema,
     z.strictObject({
         id: runArtifactIdSchema.and(z.object({ subtype: z.literal('adapter') })),
         payload: z.strictObject({ kind: z.literal('adapter'), adapter: z.string(), facts: z.json() }),
@@ -44,6 +46,8 @@ export const runArtifactSchema: z.ZodType<RunArtifact> = z.union([
             byteLength: z.number(),
             capturedAtMicroseconds: z.number(),
             kind: z.literal('captured-output'),
+            capture: z.literal('automatic').default('automatic'),
+            completeness: z.literal('best-effort').default('best-effort'),
             stream: z.enum([ 'stderr', 'stdout' ]),
             text: z.string(),
             truncated: z.boolean()

@@ -3,7 +3,8 @@ import { defaultRunRequest, defaultIntegrationProfile, defaultRunConfig } from '
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import type { RunCommand } from '../run/run-types.ts';
 import { validateRunInput } from '../run/run-validation.ts';
-import { attachmentLimitsSchema, integrationProfileSchema, microtestProfileSchema } from './schema.ts';
+import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
+import { attachmentLimitsSchema } from './evidence-policy.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const files = { include: [ 'source/**/*.integration.test.ts' ] };

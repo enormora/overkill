@@ -2,12 +2,11 @@ import {
     startProcessBudgetTracking,
     type ProcessBudgetTracking
 } from './execution-process-budget-tracking.ts';
-import type { ExecuteProcessBudgets } from './execution-process-budget-breach.ts';
 import type { ExecutionSupervision, ExecutionSupervisionDependencies } from './execution-supervision.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
 import { reportRunnerErrors } from './runner-error-reporting.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
-import type { RunProcessUsageTracker } from './process-usage.ts';
+import type { ExecuteProcessBudgets, RunProcessUsageTracker } from './process-usage.ts';
 
 type ExecutedTestPlan = {
     readonly reporterErrors: readonly RunnerError[];

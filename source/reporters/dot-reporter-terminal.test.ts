@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -53,6 +55,7 @@ export const testNode = createOverkillSuite({
                     interactive: true,
                     stdout: terminal.output
                 })({
+                    failureArtifacts: defaultFailureArtifactPolicy,
                     relativizeLocationPath(location) {
                         return location.file;
                     }

@@ -1,11 +1,10 @@
 import type { RunResult, RunnerError } from './run-result.ts';
-import type { ProcessUsageSnapshot, RunProcessUsageTracker } from './process-usage.ts';
+import type { ExecuteProcessBudgets, ProcessUsageSnapshot, RunProcessUsageTracker } from './process-usage.ts';
 import {
     recordProcessUsageSample,
     type ExecutionSupervision,
     type ExecutionSupervisionDependencies
 } from './execution-supervision.ts';
-import type { ExecuteProcessBudgets } from './execution-process-budget-breach.ts';
 
 type ProcessBudgetTrackingInput = {
     readonly dependencies: ExecutionSupervisionDependencies;

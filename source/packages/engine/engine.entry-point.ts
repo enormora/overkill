@@ -504,3 +504,10 @@ export { singleAttemptResult } from '../../engine/run-result.ts';
 export type { AdapterArtifact } from '../../engine/run-artifact.ts';
 
 export { isTestControlError } from '../../engine/test-control-error.ts';
+
+export { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
+export type {
+    WorkerCrashArtifact,
+    ProcessExhaustionArtifact,
+    BoundaryFailureArtifact
+} from '../../engine/run-artifact.ts';

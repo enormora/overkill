@@ -285,3 +285,20 @@ Property invocation evidence includes a nullable `summary` with phase accounting
 seeds, input coverage, and exhaustive traversal state. `original` and `retained`
 observations are jointly present or jointly null. Progress snapshots use the same
 shape as final case and attempt results; historical summaries may be unavailable.
+
+## Failure artifact policy
+
+`execute` accepts `failureArtifacts` with captured-output, assertion serialization,
+and human rendering limits. Omission uses `defaultFailureArtifactPolicy`.
+Concurrent and nested executions keep their serialization budgets isolated;
+diagnostic policy does not change collected test identity.
+
+Reporter contexts from older runners may omit `failureArtifacts`. Rendering then
+uses the active execution policy or its defaults.
+
+`RunArtifact` includes `WorkerCrashArtifact` and `ProcessExhaustionArtifact`.
+They preserve active `WorkId` and `AttemptId` evidence, unavailable metadata as
+`null`, and capture provenance. Case-owned artifacts accompany `test-end`;
+run-scoped artifacts accompany the final result. These variants need no
+attachment backend or standalone files. Existing runner-error classifications
+and case verdicts remain authoritative.

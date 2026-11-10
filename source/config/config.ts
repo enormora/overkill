@@ -3,9 +3,8 @@ import type { z } from 'zod/v4';
 import { parse } from '@schema-hub/zod-error-formatter';
 import { ordinaryBaselinePolicySchema, resolveStrictBaselines } from './baseline-policy.ts';
 import {
-    attachmentLimitsSchema,
     type ProjectAttachmentLimits as ParsedProjectAttachmentLimits,
-    type integrationProfileSchema,
+    integrationProfileSchema,
     projectConfigSchema,
     type ProjectAdapterProfileConfig,
     workerPoolProjectExecution,
@@ -55,6 +54,7 @@ import {
     normalizeProfileFiles,
     normalizeRequiredProfileFiles,
     normalizeTimings,
+    normalizeTimeouts,
     normalizedWorkDistribution
 } from './profile-normalization.ts';
 import { ConfigError } from './config-error.ts';
@@ -91,7 +91,7 @@ export type LoadedConfig = NormalizedConfig & { readonly configPath: string | nu
 export type ProjectIntegrationExecution = ParsedProjectIntegrationExecution & ProjectHostProcessGuard;
 type IntegrationArtifactSettings = Pick<
     z.input<typeof integrationProfileSchema>,
-    'attachments' | 'baselines' | 'retries'
+    'attachments' | 'baselines' | 'failureArtifacts' | 'retries'
 >;
 export type ProjectIntegrationProfileConfig = IntegrationArtifactSettings & {
     readonly coverage?: never;
@@ -292,29 +292,6 @@ function normalizeProcessUsage(
     return normalizeMeasuredProcessUsage(profile);
 }
 
-function timeoutValue(value: number | undefined, fallback: number): number {
-    return value ?? fallback;
-}
-
-function normalizeTimeouts(
-    timeouts: ProjectTimeoutConfig | undefined,
-    defaultPolicy: TimeoutPolicy
-): TimeoutPolicy {
-    return {
-        collectionMilliseconds: timeoutValue(timeouts?.collectionMilliseconds, defaultPolicy.collectionMilliseconds),
-        hardMilliseconds: timeoutValue(timeouts?.hardMilliseconds, defaultPolicy.hardMilliseconds),
-        softMilliseconds: timeoutValue(timeouts?.softMilliseconds, defaultPolicy.softMilliseconds)
-    };
-}
-
-function assertValidTimeouts(timeouts: TimeoutPolicy): void {
-    if (timeouts.softMilliseconds > timeouts.hardMilliseconds) {
-        throw new ConfigError(
-            'Invalid profile timeouts: softMilliseconds must be less than or equal to hardMilliseconds.'
-        );
-    }
-}
-
 function normalizeWorkerLifecycle(execution: ProjectIntegrationExecution | undefined): WorkerLifecycle {
     if (execution?.processModel !== 'worker-pool') {
         return defaultWorkerLifecycle;
@@ -393,13 +370,13 @@ function normalizeIntegrationExecution(
 function normalizeProfilePolicy(
     profile: Exclude<ProjectProfileConfig, ProjectAdapterProfileConfig>,
     defaults: TimeoutPolicy
-): Pick<ProfileConfig, 'processUsage' | 'reporters' | 'runRecords' | 'timeouts' | 'timings'> {
+): Pick<ProfileConfig, 'failureArtifacts' | 'processUsage' | 'reporters' | 'runRecords' | 'timeouts' | 'timings'> {
     const timeouts = normalizeTimeouts(profile.timeouts, defaults);
-    assertValidTimeouts(timeouts);
     return {
         reporters: profile.reporters ?? null,
         processUsage: normalizeProcessUsage(profile.processUsage),
         runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
+        failureArtifacts: integrationProfileSchema.unwrap().shape.failureArtifacts.parse(profile.failureArtifacts),
         timings: normalizeTimings(profile.timings),
         timeouts
     };
@@ -432,7 +409,7 @@ function normalizeIntegrationProfile(profile: ProjectIntegrationProfileConfig): 
     return {
         ...policy,
         baselines: ordinaryBaselinePolicySchema.parse(profile.baselines ?? {}),
-        attachments: attachmentLimitsSchema.parse(profile.attachments),
+        attachments: integrationProfileSchema.unwrap().shape.attachments.parse(profile.attachments),
         execution,
         files,
         retries: profile.retries === undefined ? null : {
@@ -467,7 +444,7 @@ function normalizeBenchmarkProfile(profile: ParsedBenchmarkProfile): BenchmarkPr
 
     return {
         ...policy,
-        attachments: attachmentLimitsSchema.parse(profile.attachments),
+        attachments: integrationProfileSchema.unwrap().shape.attachments.parse(profile.attachments),
         garbageCollection: profile.garbageCollection,
         baselines: profile.baselines,
         host: profile.host,

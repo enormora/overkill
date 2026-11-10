@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -22,6 +24,7 @@ type SupervisedChildMessageListener = (message: unknown) => void;
 
 function supervisedCollectCommand(): SupervisedCollectCommand {
     return {
+        failureArtifacts: defaultFailureArtifactPolicy,
         benchmarkNormalization: null,
         benchmarkGarbageCollection: null,
         retryPolicy: null,

@@ -25,7 +25,7 @@ import {
     type ReporterConsoleMethod
 } from './reporter-output-scope.ts';
 import { validateReporterSinks, type DefinedReporter, type Reporter, type ReporterEvent } from './reporter.ts';
-import { createReportingContext, type ReportingContext } from './reporting-context.ts';
+import { createRunReportingContext, type ReportingContext } from './reporting-context.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
 
 type RealTimeReporterInDispatch = Extract<Reporter, { readonly kind: 'real-time'; }>;
@@ -88,24 +88,6 @@ function hasTerminalSink(sink: Reporter['sinks'][number]): boolean {
 
 function hasTerminalReporter(reporter: Reporter): boolean {
     return reporter.sinks.some(hasTerminalSink);
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-    return typeof value === 'object' && value !== null;
-}
-
-function projectRootFromRunFacts(facts: unknown): string | null {
-    if (!isRecord(facts)) {
-        return null;
-    }
-
-    const { environment } = facts;
-
-    if (!isRecord(environment) || typeof environment.projectRoot !== 'string') {
-        return null;
-    }
-
-    return environment.projectRoot.trim().length === 0 ? null : environment.projectRoot;
 }
 
 function recordDeliveredRunnerErrorEvent(
@@ -510,8 +492,8 @@ async function createReporterDelivery(
     reporterDefinitions: readonly DefinedReporter[],
     outputRendererDefinition: DefinedOutputRenderer
 ): Promise<ReporterDelivery> {
-    const state = { projectRoot: null as string | null };
-    const reportingContext = createReportingContext(state);
+    const runReporting = createRunReportingContext();
+    const reportingContext = runReporting.context;
     const reporterCollector = createRuntimeReporterCollector();
 
     try {
@@ -540,7 +522,7 @@ async function createReporterDelivery(
         },
         async reportEvent(event) {
             if (event.kind === 'run-start') {
-                state.projectRoot = projectRootFromRunFacts(event.facts);
+                runReporting.observeFacts(event.facts);
             }
 
             return await reportEvent(context, event);

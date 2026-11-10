@@ -51,7 +51,11 @@ function outputAttributions(activeWork: readonly CapturedWork[]): readonly Outpu
     });
 }
 
-type OutputCaptureWindow = { readonly capturedAtMicroseconds: number; readonly availableBytes: number; };
+type OutputCaptureWindow = {
+    readonly capturedAtMicroseconds: number;
+    readonly availableBytes: number;
+    readonly decoder: TextDecoder;
+};
 
 function outputArtifact(
     id: CapturedOutputArtifact['id'],
@@ -63,11 +67,13 @@ function outputArtifact(
     return {
         id,
         payload: {
+            capture: 'automatic',
+            completeness: 'best-effort',
             byteLength,
             capturedAtMicroseconds: capture.capturedAtMicroseconds,
             kind: 'captured-output',
             stream,
-            text: Buffer.from(chunk.subarray(0, byteLength)).toString('utf8'),
+            text: capture.decoder.decode(chunk.subarray(0, byteLength), { stream: true }),
             truncated: byteLength < chunk.length
         },
         source: 'boundary-captured'
@@ -83,9 +89,17 @@ type SupervisedOutputCapture = {
     ) => readonly CapturedOutputArtifact[];
 };
 
-export function createSupervisedOutputCapture(): SupervisedOutputCapture {
+export function createSupervisedOutputCapture(limitBytes: number): SupervisedOutputCapture {
     const byteCounts = new Map<string, number>();
+    const truncated = new Set<string>();
+    const decoders = new Map<string, TextDecoder>();
     let sequence = 0;
+    function streamDecoder(attempt: string, stream: string): TextDecoder {
+        const key = `${attempt}:${stream}`;
+        const decoder = decoders.get(key) ?? new TextDecoder();
+        decoders.set(key, decoder);
+        return decoder;
+    }
     return {
         record(
             activeWork: readonly CapturedWork[],
@@ -93,18 +107,31 @@ export function createSupervisedOutputCapture(): SupervisedOutputCapture {
             chunk: Uint8Array,
             capturedAtMicroseconds: number
         ) {
-            return outputAttributions(activeWork).map(function recordOutput(attribution) {
+            if (chunk.length === 0) {
+                return [];
+            }
+            return outputAttributions(activeWork).flatMap(function recordOutput(attribution) {
+                const attemptKey = `${attribution.key}:${attribution.id.attempt?.index ?? 'run'}`;
+                if (truncated.has(attemptKey)) {
+                    return [];
+                }
                 const used = byteCounts.get(attribution.key) ?? 0;
-                const id: CapturedOutputArtifact['id'] = { ...attribution.id, sequence };
                 const artifact = outputArtifact(
-                    id,
+                    { ...attribution.id, sequence },
                     stream,
                     chunk,
-                    { capturedAtMicroseconds, availableBytes: Math.max(0, capturedOutputLimitBytes - used) }
+                    {
+                        capturedAtMicroseconds,
+                        availableBytes: Math.max(0, limitBytes - used),
+                        decoder: streamDecoder(attemptKey, stream)
+                    }
                 );
                 byteCounts.set(attribution.key, used + artifact.payload.byteLength);
+                if (artifact.payload.truncated) {
+                    truncated.add(attemptKey);
+                }
                 sequence += 1;
-                return artifact;
+                return [ artifact ];
             });
         }
     };

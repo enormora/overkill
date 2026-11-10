@@ -1,3 +1,10 @@
+export type ExecuteProcessBudgets = {
+    readonly activeResourceCount: number | null;
+    readonly javaScriptEngineHeapBytes: number | null;
+    readonly residentSetBytes: number | null;
+    readonly residentSetGrowthBytesPerSecond: number | null;
+};
+
 export type ProcessUsageSnapshot = {
     readonly activeResourceCount: number;
     readonly activeResourceTypes: readonly string[];

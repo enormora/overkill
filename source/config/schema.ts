@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { defaultAttachmentLimits } from '../engine/runtime-attachment.ts';
+import { attachmentLimitsSchema, failureArtifactPolicySchema } from './evidence-policy.ts';
 import { reporterSchema, outputRendererSchema } from './reporting-schema.ts';
 import { isRunAdapterRegistration, type RunAdapterRegistration } from './adapter-profile.ts';
 import { propertyCorpusPolicySchema } from './property-corpus.ts';
@@ -261,20 +261,11 @@ export const microtestProfileSchema = z
         processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('microtest'),
         runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
+        failureArtifacts: failureArtifactPolicySchema,
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
     .readonly();
-
-export const attachmentLimitsSchema = z
-    .strictObject({
-        maxInlineBytes: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxInlineBytes),
-        maxArtifactBytes: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxArtifactBytes),
-        maxScopeBytes: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxScopeBytes),
-        maxScopeAttachments: positiveSafeIntegerSchema.default(defaultAttachmentLimits.maxScopeAttachments)
-    })
-    .readonly()
-    .default(defaultAttachmentLimits);
 
 export type ProjectAttachmentLimits = z.input<typeof attachmentLimitsSchema>;
 
@@ -289,6 +280,7 @@ export const integrationProfileSchema = z
         processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('integration'),
         runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
+        failureArtifacts: failureArtifactPolicySchema,
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
@@ -306,6 +298,7 @@ const benchmarkProfileSchema = z
         processUsage: z.optional(processUsageSchema),
         testFamily: z.literal('benchmark'),
         runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
+        failureArtifacts: failureArtifactPolicySchema,
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
@@ -326,6 +319,7 @@ export const propertyProfileSchema = z
         }),
         testFamily: z.literal('property'),
         runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) })),
+        failureArtifacts: failureArtifactPolicySchema,
         timings: z.optional(timingProfilePolicySchema),
         timeouts: z.optional(timeoutSchema)
     })
@@ -336,6 +330,7 @@ export type ProjectPropertyProfileConfig = z.input<typeof propertyProfileSchema>
 const adapterProfileSchema = z
     .strictObject({
         testFamily: z.literal('type-test'),
+        failureArtifacts: failureArtifactPolicySchema,
         files: profileFilesSchema,
         adapter: z.custom<RunAdapterRegistration>(isRunAdapterRegistration, 'Attach a type-test adapter explicitly.'),
         settings: z.unknown(),

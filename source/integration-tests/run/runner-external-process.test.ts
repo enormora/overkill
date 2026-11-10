@@ -28,6 +28,7 @@ async function commandFor(scope: TestScope, boundary: Boundary): Promise<RunComm
                 commands: {
                     testFamily: 'benchmark',
                     files: { include: [ fixture ] },
+                    timeouts: { collectionMilliseconds: 30_000 },
                     execution: boundary === 'supervised-process'
                         ? { processModel: 'supervised-process' }
                         : { processModel: 'worker-pool', workerLifecycle: boundary }

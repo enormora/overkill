@@ -125,7 +125,9 @@ type ArtifactSubtype =
     | 'witness'
     | 'log-capture'
     | 'coverage'
-    | 'trace';
+    | 'trace'
+    | 'worker-crash'
+    | 'process-exhaustion';
 
 type ArtifactId =
     & {

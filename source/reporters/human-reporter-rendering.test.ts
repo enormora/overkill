@@ -1,5 +1,7 @@
 import { runIfMain } from '#test-runner';
+
 import {
+    defaultFailureArtifactPolicy,
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
@@ -35,6 +37,8 @@ function caseOutputArtifact(): RunArtifact {
             workload: null
         },
         payload: {
+            capture: 'automatic',
+            completeness: 'best-effort',
             byteLength: 13,
             capturedAtMicroseconds: 1,
             kind: 'captured-output',
@@ -62,6 +66,8 @@ function truncatedCaseOutputArtifact(): RunArtifact {
             workload: null
         },
         payload: {
+            capture: 'automatic',
+            completeness: 'best-effort',
             byteLength: 0,
             capturedAtMicroseconds: 2,
             kind: 'captured-output',
@@ -245,6 +251,7 @@ export const testNode = createOverkillSuite({
 
                 scope.assert.deepEqual(
                     problemLines(result, {
+                        failureArtifacts: defaultFailureArtifactPolicy,
                         relativizeLocationPath(location) {
                             return location.file;
                         }

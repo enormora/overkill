@@ -202,6 +202,7 @@ async function runFileUnit(request: FileUnitRunRequest): Promise<WorkerPoolRunOu
 }
 
 function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime): WorkerPoolTaskRun {
+    const workerId = createStoredRunValue<ReturnType<WorkerPoolTaskRun['workerId']['read']>>(null);
     return {
         activeAttempt: createStoredRunValue<TaskAttempt | null>(null),
         bufferedReporterEvents: createReporterEventBuffer(),
@@ -219,7 +220,19 @@ function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime
         reporterEventsBuffered: lease.members.length === 1 && unitCanUseBufferedHedging(runtime, lease.unit),
         requeuePendingCases: createStoredRunValue(false),
         state: createSupervisedRunState(
-            runtime.resolvedRun.facts.execution.retries?.artifacts ?? 'first-failure-and-final'
+            runtime.resolvedRun.facts.execution.retries?.artifacts ?? 'first-failure-and-final',
+            runtime.resolvedRun.facts.execution.failureArtifacts.capturedOutputBytes,
+            function workerBoundary() {
+                const timestamp = new Date(runtime.dependencies.wallClock.currentUnixEpochMilliseconds);
+                return {
+                    workerId: workerId.read(),
+                    nodeVersion: null,
+                    timestamp: timestamp.toISOString(),
+                    source: 'boundary-captured',
+                    processUsageSamplingIntervalMilliseconds:
+                        runtime.resolvedRun.facts.execution.processUsagePolicy.samplingIntervalMilliseconds
+                };
+            }
         ),
         startedCases: new Set(),
         timeout: createStoredRunValue<
@@ -227,7 +240,7 @@ function createTaskRun(lease: WorkerPoolUnitLease, runtime: WorkerPoolRunRuntime
         >(null),
         traceUnit: lease.traceUnit,
         unit: lease.unit,
-        workerId: createStoredRunValue<ReturnType<WorkerPoolTaskRun['workerId']['read']>>(null)
+        workerId
     };
 }
 

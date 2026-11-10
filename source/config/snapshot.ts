@@ -209,6 +209,11 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
             property: { ...profile.property },
             testFamily: profile.testFamily,
             runRecords: { ...profile.runRecords },
+            failureArtifacts: {
+                ...profile.failureArtifacts,
+                serialization: { ...profile.failureArtifacts.serialization },
+                rendering: { ...profile.failureArtifacts.rendering }
+            },
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
         };
@@ -225,6 +230,11 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
             processUsage: copyProcessUsagePolicy(profile.processUsage),
             testFamily: profile.testFamily,
             runRecords: { ...profile.runRecords },
+            failureArtifacts: {
+                ...profile.failureArtifacts,
+                serialization: { ...profile.failureArtifacts.serialization },
+                rendering: { ...profile.failureArtifacts.rendering }
+            },
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
         };
@@ -241,6 +251,11 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
             processUsage: copyProcessUsagePolicy(profile.processUsage),
             testFamily: profile.testFamily,
             runRecords: { ...profile.runRecords },
+            failureArtifacts: {
+                ...profile.failureArtifacts,
+                serialization: { ...profile.failureArtifacts.serialization },
+                rendering: { ...profile.failureArtifacts.rendering }
+            },
             timings: copyTimingProfilePolicy(profile.timings),
             timeouts: copyTimeoutPolicy(profile.timeouts)
         };
@@ -255,6 +270,11 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
         processUsage: copyProcessUsagePolicy(profile.processUsage),
         testFamily: profile.testFamily,
         runRecords: { ...profile.runRecords },
+        failureArtifacts: {
+            ...profile.failureArtifacts,
+            serialization: { ...profile.failureArtifacts.serialization },
+            rendering: { ...profile.failureArtifacts.rendering }
+        },
         timings: copyTimingProfilePolicy(profile.timings),
         timeouts: copyTimeoutPolicy(profile.timeouts)
     };
@@ -265,6 +285,7 @@ function copyAdapterProfile(profile: AdapterProfileConfig): AdapterProfileConfig
         ...profile,
         files: copyProfileFiles(profile.files),
         execution: { ...profile.execution },
+        failureArtifacts: structuredClone(profile.failureArtifacts),
         timeouts: { ...profile.timeouts },
         processUsage: copyProcessUsagePolicy(profile.processUsage),
         reporters: profile.reporters === null ? null : Array.from(profile.reporters)
