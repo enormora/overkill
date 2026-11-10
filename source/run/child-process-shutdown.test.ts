@@ -85,6 +85,21 @@ export const testNode = createSuite({
     ...metadata,
     children: [
         createTestCase({
+            title: 'termination waiting stays bounded when the child never closes',
+            ...metadata,
+            body(scope) {
+                const fixture = shutdownFixture();
+                startChildShutdown(fixture.child.child);
+                fixture.clock.advanceByMilliseconds(1000);
+                scope.assert.deepEqual({ ...fixture.counts }, { failures: 1, finishes: 0 });
+                fixture.clock.advanceByMilliseconds(1000);
+                scope.assert.deepEqual({ ...fixture.counts }, { failures: 1, finishes: 1 });
+                fixture.child.emit('close');
+                scope.assert.equal(fixture.counts.finishes, 1);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
             title: 'failure to signal a lingering child still closes transport and settles',
             ...metadata,
             body(scope) {
@@ -97,6 +112,7 @@ export const testNode = createSuite({
                 };
                 observeChildShutdown(child, fixture.clock, fixture.recordTimeout, fixture.recordFinished);
                 startChildShutdown(child);
+                fixture.clock.advanceByMilliseconds(1000);
                 fixture.clock.advanceByMilliseconds(1000);
                 scope.assert.deepEqual(fixture.counts, { failures: 1, finishes: 1 });
                 scope.assert.equal(fixture.child.closedTransports(), 1);
@@ -119,7 +135,7 @@ export const testNode = createSuite({
                     closedTransports: fixture.child.closedTransports()
                 }, {
                     failures: 1,
-                    finishes: 1,
+                    finishes: 0,
                     signals: [ 'SIGKILL' ],
                     closedTransports: 1
                 });
@@ -167,6 +183,7 @@ export const testNode = createSuite({
                     fixture.recordFinished();
                 });
                 startChildShutdown(child);
+                fixture.clock.advanceByMilliseconds(1000);
                 fixture.clock.advanceByMilliseconds(1000);
                 scope.assert.deepEqual(fixture.counts, { failures: 1, finishes: 1 });
                 return scope.assert.collect();

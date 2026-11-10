@@ -501,7 +501,10 @@ diagnostic and changes successful exit status to failure; abort reporting and
 arbitrary `process.kill()` detection are not guaranteed. Supervised parents
 validate shared IPC payloads, terminate children on unexpected IPC, and require
 valid completion even after exit code zero. Receipt does not identify the sending
-test. Terminal child shutdown and output draining are bounded to one second. Final attempt capture remains open during draining without reviving execution. The CLI bin skeleton starts with `--permission-audit`, so CLI
+test. Terminal child shutdown allows one second for exit and output draining.
+Forced termination then waits for `close` for up to one additional second before
+completing the failed run. Final attempt capture remains open during draining
+without reviving execution. The CLI bin skeleton starts with `--permission-audit`, so CLI
 in-process microtests can observe extra permission-model diagnostics.
 Programmatic in-process callers get those audit diagnostics only if their own
 Node process was started with `--permission-audit`.
