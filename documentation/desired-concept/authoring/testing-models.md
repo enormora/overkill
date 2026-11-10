@@ -315,19 +315,19 @@ inference-relevant modifiers preserved. It is not syntax equality and not a
 promise to decide mathematical equivalence of arbitrary conditional types.
 The following observable rules define its minimum contract:
 
-| Inputs | Equal? |
-| --- | --- |
-| `any` and `any`; `never` and `never`; `unknown` and `unknown` | Yes |
-| `any` and `unknown`; `never` and another type; literal and its widened primitive | No |
-| Identical union constituents in different orders | Yes |
-| `{ a: string } & { b: number }` and `{ a: string; b: number }` | Yes |
-| Optional property and required property including `undefined` | No |
-| Readonly member and mutable member | No |
-| Distinct declarations carrying private/protected or unique-symbol identity | No |
-| Function signatures differing only in parameter names | Yes |
-| Generic signatures differing only in bound parameter names | Yes |
-| Different `this`, rest/optional parameters, constraints, defaults, `const`, or `NoInfer` behavior | No |
-| Different overload order that changes inference | No |
+| Inputs                                                                                            | Equal? |
+| ------------------------------------------------------------------------------------------------- | ------ |
+| `any` and `any`; `never` and `never`; `unknown` and `unknown`                                     | Yes    |
+| `any` and `unknown`; `never` and another type; literal and its widened primitive                  | No     |
+| Identical union constituents in different orders                                                  | Yes    |
+| `{ a: string } & { b: number }` and `{ a: string; b: number }`                                    | Yes    |
+| Optional property and required property including `undefined`                                     | No     |
+| Readonly member and mutable member                                                                | No     |
+| Distinct declarations carrying private/protected or unique-symbol identity                        | No     |
+| Function signatures differing only in parameter names                                             | Yes    |
+| Generic signatures differing only in bound parameter names                                        | Yes    |
+| Different `this`, rest/optional parameters, constraints, defaults, `const`, or `NoInfer` behavior | No     |
+| Different overload order that changes inference                                                   | No     |
 
 Compare recursive structures cycle-safely. Uninstantiated generic types retain
 constraints and symbolic structure; do not replace them with `any` or assume

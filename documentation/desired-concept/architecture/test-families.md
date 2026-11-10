@@ -53,10 +53,7 @@ class instances, and compiler objects rather than coercing them.
 
 ```ts
 type TestFamilyId = string;
-type FamilyValue =
-    | null | boolean | number | string
-    | readonly FamilyValue[]
-    | { readonly [key: string]: FamilyValue; };
+type FamilyValue = null | boolean | number | string | readonly FamilyValue[] | { readonly [key: string]: FamilyValue; };
 
 type FamilyModuleReference = {
     readonly moduleUrl: string;
@@ -85,8 +82,7 @@ type DefinedTestFamily = {
     readonly features: FamilyFeatures;
 };
 
-type TestFamily<Settings extends FamilyValue> =
-    DefinedTestFamily & TestFamilyDefinition<Settings>;
+type TestFamily<Settings extends FamilyValue> = DefinedTestFamily & TestFamilyDefinition<Settings>;
 
 declare function defineTestFamily<Settings extends FamilyValue>(
     definition: TestFamilyDefinition<Settings>
@@ -127,8 +123,7 @@ exports. `DefinedTestFamily` is the branded non-generic metadata view of a famil
 it contains no callable backend accepting erased settings.
 
 ```ts
-type FamilySettingsOf<Family> =
-    Family extends TestFamily<infer Settings> ? Settings : never;
+type FamilySettingsOf<Family> = Family extends TestFamily<infer Settings> ? Settings : never;
 
 type FamilyProfileBinding<Family extends DefinedTestFamily> = {
     readonly testFamily: Family;
@@ -136,7 +131,8 @@ type FamilyProfileBinding<Family extends DefinedTestFamily> = {
 };
 
 type ProjectFamilyProfileConfig<Family extends DefinedTestFamily> =
-    FamilyProfileBinding<Family> & CommonFamilyProfileConfig;
+    & FamilyProfileBinding<Family>
+    & CommonFamilyProfileConfig;
 ```
 
 `CommonFamilyProfileConfig` owns the established profile fields `files`,

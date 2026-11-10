@@ -1466,11 +1466,11 @@ without becoming the required production compiler.
 
 ### Family Boundary Comparison
 
-| Design | Direct engine use | Project-wide checking | Distribution and transport |
-| --- | --- | --- | --- |
-| Bundle type tests and keep a closed family union | Available through a built-in implementation | Still needs a shared preparation boundary | Adds compiler integration to the standard installation; new families require core changes |
-| Import an executable family definition | Supplies implementation and typed settings explicitly | Preparation can retain one project for many selected cases | Optional package remains explicit; workers resolve the same definition through configuration or bootstrap |
-| Keep execution outside the engine and import completed checker results | Requires a second checking/reporting path | Fits batch checking | Duplicates result lifecycle and makes native selection and reporting harder to share |
+| Design                                                                 | Direct engine use                                     | Project-wide checking                                      | Distribution and transport                                                                                |
+| ---------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Bundle type tests and keep a closed family union                       | Available through a built-in implementation           | Still needs a shared preparation boundary                  | Adds compiler integration to the standard installation; new families require core changes                 |
+| Import an executable family definition                                 | Supplies implementation and typed settings explicitly | Preparation can retain one project for many selected cases | Optional package remains explicit; workers resolve the same definition through configuration or bootstrap |
+| Keep execution outside the engine and import completed checker results | Requires a second checking/reporting path             | Fits batch checking                                        | Duplicates result lifecycle and makes native selection and reporting harder to share                      |
 
 Choose executable definitions. Preserve built-in string aliases as convenience
 over the same contract, and retain engine-owned result delivery from the bundled

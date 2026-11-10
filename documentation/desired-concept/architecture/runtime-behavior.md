@@ -442,13 +442,13 @@ worker (only available in supervised profiles).
 
 Defaults by family:
 
-| Test family   | Soft timeout     | Hard timeout                                                  |
-| ------------- | ---------------- | ------------------------------------------------------------- |
-| `microtest`   | 0.5 s            | 1 s when supervised; not enforceable for CPU-bound in-process |
-| `integration` | 5 s              | 7 s when the profile owns a worker or process boundary        |
-| `property`    | 1 s              | 2 s when supervised                                           |
-| `benchmark`   | 40 s             | 60 s; explicit profiles may lower both limits                 |
-| `type-test`   | family preparation/check deadline | requires a terminable compiler boundary             |
+| Test family   | Soft timeout                      | Hard timeout                                                  |
+| ------------- | --------------------------------- | ------------------------------------------------------------- |
+| `microtest`   | 0.5 s                             | 1 s when supervised; not enforceable for CPU-bound in-process |
+| `integration` | 5 s                               | 7 s when the profile owns a worker or process boundary        |
+| `property`    | 1 s                               | 2 s when supervised                                           |
+| `benchmark`   | 40 s                              | 60 s; explicit profiles may lower both limits                 |
+| `type-test`   | family preparation/check deadline | requires a terminable compiler boundary                       |
 
 The type-test family does not invoke case bodies, so its deadlines cover compiler
 preparation and checking rather than an `AbortSignal` passed into a body. Family

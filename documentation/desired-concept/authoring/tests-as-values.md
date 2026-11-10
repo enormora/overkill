@@ -510,7 +510,7 @@ assertion construction site. That keeps reused tests and failures attributable
 to the authored callsite that selected the reusable behavior.
 
 For native type tests, tables and reused macro bodies follow the
-[Native Assertion Contract](./testing-models.md#generic-bodies-and-static-composition).
+[Static Bodies And Source Ownership](./testing-models.md#static-bodies-and-source-ownership).
 Runtime rows and generic applications do not specialize shared checker bodies;
 forwarded application locations do not establish assertion-body ownership.
 

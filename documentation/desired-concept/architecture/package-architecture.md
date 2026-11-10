@@ -816,7 +816,7 @@ The clearest current example is:
   package supplying an executable family through the public engine contract;
   the runner consumes the same definition. No compiler dependency belongs in
   the engine or ordinary authoring imports. See
-  [Native Type-Test Integration](../authoring/testing-models.md#package-distribution)
+  [Native Type-Test Integration](../authoring/testing-models.md#package-and-family-selection)
 - `@overkill-dev/stryker-runner`, a first-party Stryker `TestRunner` plugin
   above the runner; see [Mutation Runner Contract](../authoring/higher-test-layers.md#mutation-runner-contract)
 - a first-party ESLint rule-testing adapter package rather than baking
