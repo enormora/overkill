@@ -9,8 +9,9 @@ This file exists so reviewers do not have to chase types across the doc
 set, and so authoring documentation can cite a single source instead of
 re-stating fields.
 
-The shapes here are concept-level sketches, not contracts. The actual
-package types may add fields. If a type's canonical definition lives in a
+The shapes here are concept-level sketches. The public family API signatures in
+[Executable Test Families](../architecture/test-families.md) are normative and
+take precedence over these projections. The actual package types may add fields. If a type's canonical definition lives in a
 domain doc, that doc is named under the sketch.
 
 ## Status
@@ -46,23 +47,22 @@ type WorkloadId = {
     readonly params: Readonly<Record<string, string>>;
 };
 
-type OrdinaryWorkId = {
+type WorkId = {
     readonly case: CaseId;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
+    readonly familyVariant: {
+        readonly family: TestFamilyId;
+        readonly key: string;
+    } | null;
 };
-
-type WorkId =
-    | OrdinaryWorkId
-    | (OrdinaryWorkId & {
-        readonly compiler: { readonly name: 'typescript'; readonly version: string; };
-    });
 
 type WorkUnitId = {
     readonly mode: 'file' | 'case' | 'group';
     readonly key: string;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
+    readonly familyVariant: WorkId['familyVariant'];
 };
 
 type AttemptId = { readonly index: number; }; // 0-indexed
@@ -87,6 +87,7 @@ type ArtifactId = {
     readonly workload: WorkloadId | null;
     readonly attempt?: AttemptId;
     readonly subtype: ArtifactSubtype;
+    readonly familyVariant: WorkId['familyVariant'];
 };
 
 type CapturedOutputArtifact = {
@@ -219,7 +220,11 @@ type AuthoringControls = {
     readonly timeoutMilliseconds?: number;
 };
 
-type TestFamily = 'microtest' | 'integration' | 'property' | 'benchmark' | 'type-test';
+type TestFamilyId = string;
+
+type FamilyValue = import('@overkill-dev/engine').FamilyValue;
+
+type TestFamily<Settings extends FamilyValue> = import('@overkill-dev/engine').TestFamily<Settings>;
 
 type CaptureMode = 'buffered' | 'live';
 
@@ -236,6 +241,14 @@ type Capability = 'fs-read' | 'fs-write' | 'net' | 'child-process' | 'worker' | 
 Canonical: [Tests As Values](../authoring/tests-as-values.md) for `TestNode`/`TestCase`/`Suite`/`Table`,
 [Test Data And Selection](../architecture/test-data-and-selection.md) for test data, [Glossary](./glossary.md) for the
 enumerations.
+
+`TestFamily<Settings>` is an executable definition; `TestFamilyId` is its stable
+serialized identity. The family contract is defined in
+[Executable Test Families](../architecture/test-families.md).
+`ProjectFamilyProfileConfig<Family>` is the typed imported-family input below;
+`DefinedFamilyProfile` is its validated normalized representation. Built-in
+profile literals are aliases resolved to definitions, not an extensible string
+registry. The runner's family identity uses the same `TestFamilyId` type.
 
 `TestNode` is engine-branded. Shape-compatible plain objects are not valid
 run inputs unless they were created by engine-owned constructors.
@@ -890,7 +903,7 @@ type TestProfileConfig =
     | MicrotestProfileConfig
     | IntegrationProfileConfig
     | PropertyProfileConfig
-    | TypeTestProfileConfig;
+    | DefinedFamilyProfile;
 
 type MicrotestProfileConfig = {
     readonly testFamily: 'microtest';
@@ -928,13 +941,12 @@ type PropertyProfileConfig = {
     readonly coverage?: never;
 };
 
-type TypeTestProfileConfig = {
-    readonly testFamily: 'type-test';
-    readonly files: ProfileFiles;
-    readonly reporters?: ReadonlyArray<Reporter>;
-    readonly timings: TimingProfilePolicy | null;
-    readonly runRecords: RunRecordProfilePolicy;
-};
+type ProjectFamilyProfileConfig<Family extends DefinedTestFamily> =
+    import('@overkill-dev/run').ProjectFamilyProfileConfig<Family>;
+
+type DefinedTestFamily = import('@overkill-dev/engine').DefinedTestFamily;
+
+type DefinedFamilyProfile = import('@overkill-dev/run').DefinedFamilyProfile;
 
 type BenchmarkExecution =
     & (
@@ -1292,7 +1304,7 @@ type TestPlanCase = {
     readonly suitePath: ReadonlyArray<TestPlanSuitePathEntry>;
     readonly annotations: TestAnnotations;
     readonly controls: TestControls;
-    readonly testFamily: TestFamily | null;
+    readonly testFamily: TestFamilyId | null;
     readonly definitionLocations: NonEmptyReadonlyArray<SourceLocation>;
     readonly body: TestBody;
     readonly resourceAttachments: TestBodyResourceAttachments;
@@ -1324,7 +1336,7 @@ type RunExecutionBaseFacts = {
     readonly retries: IntegrationRetryPolicy | null;
     readonly runRecords: RunRecordPersistenceFacts;
     readonly scheduling: 'serial' | 'concurrent';
-    readonly testFamily: TestFamily;
+    readonly testFamily: TestFamilyId;
     readonly timingCollection: TimingCollectionMode;
     readonly timeoutPolicy: TimeoutPolicy;
     readonly verbose: boolean;
@@ -1380,10 +1392,7 @@ type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
 type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
 
 type RunFacts = {
-    readonly adapter: {
-        readonly id: string;
-        readonly facts: import('type-fest').ReadonlyDeep<import('type-fest').JsonValue>;
-    } | null;
+    readonly family: import('@overkill-dev/engine').FamilyRunFacts;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly cases: ReadonlyArray<RunCaseFacts>;
@@ -1427,7 +1436,7 @@ type DurationHistoryObservationMetadata = {
     readonly processModel: ProcessModel;
     readonly profile: string;
     readonly scheduling: Scheduling;
-    readonly testFamily: RunTestFamily;
+    readonly testFamily: TestFamilyId;
     readonly workerLifecycle: WorkerLifecycle | null;
 };
 
@@ -1606,7 +1615,7 @@ type CollectedRunCase = {
     readonly params: string | null;
     readonly resourceAttachments: TestBodyResourceAttachments;
     readonly suitePath: ReadonlyArray<TestPlanSuitePathEntry>;
-    readonly testFamily: TestFamily | null;
+    readonly testFamily: TestFamilyId | null;
     readonly title: string;
 };
 
@@ -1822,7 +1831,7 @@ type HistoryRunSummary = {
     readonly id: string;
     readonly startedAt: string;
     readonly profile: ProfileName;
-    readonly testFamily: TestFamily;
+    readonly testFamily: TestFamilyId;
     readonly status: HistoryRunStatus;
     readonly durationMicroseconds: number | null;
     readonly replay: HistoryReplayAvailability;

@@ -58,6 +58,8 @@ How the system is shaped.
 - [Composition Order](./architecture/composition-order.md) - reading aid
   threading plan-time and execution-time stages
 - [Configuration](./architecture/configuration.md)
+- [Executable Test Families](./architecture/test-families.md) - public family,
+  direct engine execution, evidence, and lifetime contracts
 - [Platform-First Implementation Notes](./architecture/platform-first-implementation-notes.md)
 - [Fast Feedback Loops](./architecture/fast-feedback-loops.md)
 - [Runtime Behavior](./architecture/runtime-behavior.md)

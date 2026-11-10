@@ -53,9 +53,13 @@ That means engine identity must stay generic. A higher-level package such as
 - runtime metadata
 - workload metadata
 
-`CaseId` stays logical. Runtime and workload dimensions belong to `WorkId`
-so the same source case can run in many executable variants without
-changing its logical test identity.
+`CaseId` stays logical. Runtime, workload, and family-variant dimensions belong
+to `WorkId`, so the same source case can run in many executable variants without
+changing its logical test identity. Family variants are defined by the public
+[family contract](./test-families.md#backend-preparation); compiler versions do
+not require a TypeScript-specific identity union. Work units and case artifacts
+retain the same variant to prevent cross-compiler collisions. Shared run artifacts
+use a null variant unless explicitly scoped to one compiler variant.
 
 So the rest of this document should be read primarily as the **default
 identity derivation for `@overkill-dev/test` and related first-party tooling**,
@@ -86,23 +90,22 @@ type WorkloadId = {
     readonly params: Readonly<Record<string, string>>;
 };
 
-type OrdinaryWorkId = {
+type WorkId = {
     readonly case: CaseId;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
+    readonly familyVariant: {
+        readonly family: TestFamilyId;
+        readonly key: string;
+    } | null;
 };
-
-type WorkId =
-    | OrdinaryWorkId
-    | (OrdinaryWorkId & {
-        readonly compiler: { readonly name: 'typescript'; readonly version: string; };
-    });
 
 type WorkUnitId = {
     readonly mode: 'file' | 'case' | 'group';
     readonly key: string;
     readonly runtimes: readonly RuntimeId[];
     readonly workload: WorkloadId | null;
+    readonly familyVariant: WorkId['familyVariant'];
 };
 
 type AttemptId = { readonly index: number; }; // 0-indexed
@@ -126,6 +129,7 @@ type ArtifactSubtype =
 
 type ArtifactId =
     & {
+        readonly familyVariant: WorkId['familyVariant'];
         readonly runtimes: readonly RuntimeId[];
         readonly workload: WorkloadId | null;
         readonly subtype: ArtifactSubtype;
@@ -272,8 +276,11 @@ Artifact identity preserves the attempt so that "first failure" and
 
 Sharding partitions the executable work set by hashing `WorkUnitId`. The
 hash contract is `xxh3-64-canonical-json-v1`: canonical JSON of
-the structured `WorkUnitId`, string values normalized to NFC, object keys
-sorted, then xxh3-64 with seed `0`. Two shards never share a work unit; the
+the structured `WorkUnitId` identity projection, string values normalized to NFC,
+object keys sorted, then xxh3-64 with seed `0`. The projection omits
+`familyVariant` when null, preserving existing unexpanded identity keys and shard
+assignments. A non-null variant contributes its family and key. The same neutral
+field omission applies to work and artifact identity keys. Two shards never share a work unit; the
 union covers everything. Reproducibility across CI machines depends on this
 stability.
 Case-scoped artifact identity therefore remains work-unit-stable.

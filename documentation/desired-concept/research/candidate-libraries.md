@@ -1414,6 +1414,92 @@ Source:
 
 - <https://github.com/evanw/node-source-map-support>
 
+## Type-Test Backend Findings
+
+Evaluation date: 2026-11-10. The settled contract is
+[Native Type-Test Integration](../authoring/testing-models.md#native-type-test-integration);
+the executable-family boundary is defined in
+[Executable Test Families](../architecture/test-families.md).
+
+### TSTyche And Equality
+
+[Issue #443](https://github.com/tstyche/tstyche/issues/443) reports TypeScript 7
+support in the TSTyche 8 beta. The supporting
+[implementation](https://github.com/tstyche/tstyche/pull/763) was merged in
+October 2026. Support for that compiler does not imply a public comparison API
+for another framework's assertions.
+
+TSTyche 6 replaced its private `isTypeIdenticalTo` dependency with structural
+comparison. Its [release notes](https://tstyche.org/releases/tstyche-6) describe
+normalization of intersections and comparison of `this`, `const` type
+parameters, and `NoInfer`. Equality therefore has an established implementation
+to investigate, not an assumed missing TypeScript primitive.
+
+In the inspected TypeScript 7 support revision, the
+[comparison implementation](https://github.com/tstyche/tstyche/blob/3529bc0d58acde979335f36a9897e2df1011f9e0/source/structure/Structure.ts)
+operates on compiler types through TSTyche's checker abstraction. Its
+[public API exports](https://github.com/tstyche/tstyche/blob/3529bc0d58acde979335f36a9897e2df1011f9e0/source/api.ts)
+do not expose that structure comparator or checker abstraction. Public reuse
+without invoking its source recognizer is not established. Do not import those
+private modules or treat a structural comparator as a trivial replacement for
+the compiler's relation API.
+
+Next dependency evaluation: check the exact supported release for a public
+original-program comparison interface, consider an upstream extraction or
+extension, and compare that maintenance cost with a focused implementation
+using public TypeScript APIs. Reuse remains preferred where it fits. Neither
+TSTyche retention nor removal is a prerequisite in the product contract.
+
+### TypeScript 7.1 API
+
+The [7.1 beta announcement](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/)
+documents sync and async compiler clients, explicit program/session disposal,
+snapshots, and default access to the actual filesystem. Original-source
+analysis needs no filesystem overlay or content mapper. The new API should be
+evaluated directly rather than assuming the older in-process API shape survives.
+
+The inspected [development checker API](https://github.com/microsoft/typescript-go/blob/main/_packages/native-preview/src/api/sync/api.ts)
+exposes type-node queries and assignability. Validate the exact prerelease's
+method surface, configuration/reference loading, diagnostics, and object
+lifetimes before promising compatibility. A pinned beta can test the design
+without becoming the required production compiler.
+
+### Family Boundary Comparison
+
+| Design | Direct engine use | Project-wide checking | Distribution and transport |
+| --- | --- | --- | --- |
+| Bundle type tests and keep a closed family union | Available through a built-in implementation | Still needs a shared preparation boundary | Adds compiler integration to the standard installation; new families require core changes |
+| Import an executable family definition | Supplies implementation and typed settings explicitly | Preparation can retain one project for many selected cases | Optional package remains explicit; workers resolve the same definition through configuration or bootstrap |
+| Keep execution outside the engine and import completed checker results | Requires a second checking/reporting path | Fits batch checking | Duplicates result lifecycle and makes native selection and reporting harder to share |
+
+Choose executable definitions. Preserve built-in string aliases as convenience
+over the same contract, and retain engine-owned result delivery from the bundled
+alternative. The existing adapter stages are a migration starting point, but
+their runner-only ownership and `'type-test'` special cases cannot be the final
+boundary.
+
+The chosen public contract leaves runtime collections with the engine's normal
+body executor and exposes an analysis evidence sink for static collections.
+Preparation is single-use and consumed by one ordered selection and execution;
+cleanup completes before final reporter delivery. This keeps the extension from
+becoming a second scheduler or an externally assembled `RunResult` pipeline.
+
+Type-contract probes accepted two custom families and a built-in profile in one
+configuration, and rejected swapped settings, missing fields, a bare optional
+family string, and incorrect direct-execution settings on TypeScript 6.0.3 and
+7.1.0-beta. Extracted family declaration blocks and an example provider also
+compiled against existing engine result types on both compilers.
+The relation-reference forms were also accepted through the existing engine
+assertion API, with incorrect arity and narrowing use rejected on both compilers.
+These validate public type contracts, not checker implementation or equality.
+
+The critical validation cases are ordinary supervised runtime execution,
+original-source type analysis of shared generic bodies, and direct engine
+execution without runner configuration. Settings must remain typed per profile.
+Executable objects must stay out of IPC and history. These needs justify the
+boundary; they do not justify a replacement scheduler, permission system, or
+general module loader.
+
 ## Shortlist
 
 If Overkill had to choose a strict shortlist today, it would be:

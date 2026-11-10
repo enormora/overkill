@@ -130,7 +130,10 @@ declared limits.
 
 Type tests verify type-level behavior rather than runtime behavior.
 
-They are a real test family for a TypeScript-first ecosystem, but Overkill should support them through adapter or integration layers rather than implementing its own type-test engine.
+They are a distinct execution family supplied by `@overkill-dev/type-test`.
+TypeScript owns language checking; Overkill owns native assertions, case
+ownership, planning, and reporting. Dependencies may supply comparison logic
+when their public APIs fit that boundary.
 
 Typical concerns:
 
@@ -142,7 +145,7 @@ Typical concerns:
 They should be able to participate in run planning, reporting, and selection even if the underlying checking engine is external.
 
 See [Native Type-Test Integration](#native-type-test-integration) for the
-authoring direction, programmatic API findings, and remaining backend prerequisite.
+authoring, original-source analysis, compiler compatibility, and package contract.
 
 ## Property-Based And Model-Based Tests
 
@@ -189,316 +192,389 @@ defaults.
 
 ## Native Type-Test Integration
 
-### Question And Direction
+### Direction
 
-Can regular Overkill cases contain native type assertions while TSTyche owns
-checking, without separate fixtures or duplicated test descriptions?
-
-That is the required authoring direction. Keep the existing low-level and
-high-level composition layers and assertion-reference style. The adapter
-owns source translation and result mapping; TSTyche owns type relationships
-and diagnostics. A dedicated `type-test` profile, frozen planning, independent
-runtime and compiler loops, and no coverage remain constraints.
-
-Native adapter binding:
+Type tests are first-class Overkill tests, authored with the existing engine,
+`test`, suite, table, macro, and assertion-reference APIs. TypeScript analyzes
+the original project. Overkill resolves assertion operands in that program and
+reports static evidence against the selected cases.
 
 ```ts
+import { test } from '@overkill-dev/test';
 import { sameType } from '@overkill-dev/type-test';
 
-test('preserves inference', (scope) => {
+function identity<Value>(value: Value): Value {
+    return value;
+}
+
+export const testNode = test('preserves inference', (scope) => {
     const result = identity('hello' as const);
     scope.assert(sameType<typeof result, 'hello'>());
     return scope.assert.collect();
 });
 ```
 
-The user writes one source file and one description. No TSTyche imports,
-external fixture references, or second test tree are required in user code.
+One source file and one description define each case. Checking must not create
+temporary checker files, in-memory replacement files, derived source projects,
+or generated code. Original paths, imports, lexical context, contextual typing,
+and nominal declaration identity remain intact. Ordinary compiler ASTs and
+caches are analysis data, not replacement source files.
+
+### Public Package API
+
+The root `@overkill-dev/type-test` export supplies `family`, `sameType`,
+`assignableTo`, and `assignableFrom`, plus the settings and reference types below.
+The initial catalog is deliberately these three relations. Existing ability
+bindings, the `_` placeholder, and the separate adapter/profile/check entry
+points are not part of this target API. Any migration compatibility exports must
+be temporary delegates to the same engine contract, not another checking path.
+
+```ts
+type CompilerSelection =
+    | { readonly kind: 'local'; }
+    | {
+        readonly kind: 'package';
+        readonly specifier: string;
+        readonly version: string;
+    };
+
+type CompilerPolicy = CompilerSelection | {
+    readonly kind: 'matrix';
+    readonly compilers: NonEmptyReadonlyArray<CompilerSelection>;
+};
+
+type TypeTestSettings = {
+    readonly projectConfigPath: string;
+    readonly compiler: CompilerPolicy;
+};
+
+type TypeRelationBindings = {
+    <Actual, Expected>(): TypeAssertionReference<readonly [], readonly [Actual, Expected]>;
+    readonly withActual: <Expected>() => TypeAssertionReference<readonly [actual: unknown], readonly [Expected]>;
+    readonly withExpected: <Actual>() => TypeAssertionReference<readonly [expected: unknown], readonly [Actual]>;
+    readonly expressions: TypeAssertionReference<readonly [actual: unknown, expected: unknown], readonly []>;
+};
+
+type TypeRelation = TypeRelationBindings & { readonly not: TypeRelationBindings; };
+
+declare const family: TestFamily<TypeTestSettings>;
+declare const sameType: TypeRelation;
+declare const assignableTo: TypeRelation;
+declare const assignableFrom: TypeRelation;
+```
+
+`TypeAssertionReference<Operands, Types>` is an engine-branded assert-only
+composite reference carrying the declared operand tuple and a type-only marker
+for the source type arguments. Those types are never recovered from a runtime
+object. Negation applies to the complete relation, not to compiler errors or
+unsupported evidence.
+
+```ts
+scope.assert(assignableTo<'hello', string>());
+scope.assert(assignableFrom<string, 'hello'>());
+scope.assert(sameType.withActual<string>(), value);
+scope.assert(assignableTo.not<number, string>());
+```
+
+`withActual<Expected>()` takes its actual operand from the following expression;
+`withExpected<Actual>()` takes its expected operand there. `expressions` takes
+both expressions, using their compiler types at those exact source locations.
+No expression is executed or widened to a declared type solely to make it fit.
+
+The family ID is `@overkill-dev/type-test`. Its execution mode is `analysis`,
+its profile option list is empty, and it supports in-process and supervised
+process execution. Worker-pool scheduling and hard deadlines on the in-process
+path are rejected. Compiler subprocess ownership follows the selected execution
+boundary and its deadline.
+
+Resolve `projectConfigPath` against the explicit project root and use that actual
+configuration. Missing configuration is an error; there is no inferred-project
+fallback. `local` resolves the installed `typescript` package from that root.
+`package` resolves an explicitly installed package specifier from the same root
+and requires its reported version to match `version` exactly. Package aliases
+allow a matrix, such as `typescript6` and `typescript7`. Checking never installs,
+downloads, or substitutes compilers. Provisioning is an explicit project setup
+step, and a missing or unsupported compiler is a preparation error.
+
+Deduplicate matrix entries only when their resolved compiler identity and
+fingerprint agree. Preserve first occurrence order. A version alone does not
+prove compiler identity. Exact prerelease packages can be used for compatibility
+evaluation only when explicitly supported by the integration; their existence
+does not imply production support for unstable APIs.
+
+### Relation Semantics
+
+`assignableTo<Actual, Expected>` asks the selected compiler whether `Actual` is
+assignable to `Expected` under the actual project options. `assignableFrom`
+reverses that direction. Preserve native `any` and `never` assignability rules;
+users can explicitly test them with `sameType`. Error-recovery types and missing
+symbols are invalid evidence, not instances of intentionally authored `any`.
+
+`sameType` means structural type equivalence with nominal identities and
+inference-relevant modifiers preserved. It is not syntax equality and not a
+promise to decide mathematical equivalence of arbitrary conditional types.
+The following observable rules define its minimum contract:
+
+| Inputs | Equal? |
+| --- | --- |
+| `any` and `any`; `never` and `never`; `unknown` and `unknown` | Yes |
+| `any` and `unknown`; `never` and another type; literal and its widened primitive | No |
+| Identical union constituents in different orders | Yes |
+| `{ a: string } & { b: number }` and `{ a: string; b: number }` | Yes |
+| Optional property and required property including `undefined` | No |
+| Readonly member and mutable member | No |
+| Distinct declarations carrying private/protected or unique-symbol identity | No |
+| Function signatures differing only in parameter names | Yes |
+| Generic signatures differing only in bound parameter names | Yes |
+| Different `this`, rest/optional parameters, constraints, defaults, `const`, or `NoInfer` behavior | No |
+| Different overload order that changes inference | No |
+
+Compare recursive structures cycle-safely. Uninstantiated generic types retain
+constraints and symbolic structure; do not replace them with `any` or assume
+that a macro invocation specializes their bodies. When supported public APIs
+cannot establish equivalence or inequality, report inconclusive with a reason.
+Negating inconclusive evidence remains inconclusive. Implementation must cover
+these rules before exposing a passing equality result for the affected form.
+Unsupported forms are explicit compatibility limits, never guessed verdicts.
+
+### Result And Diagnostic Contract
+
+Each selected non-skipped case must own at least one native assertion site.
+Zero sites produce the existing `no-assertions` test-contract failure. For a case
+with evidence, any failed relation makes it fail; otherwise any inconclusive
+relation makes it inconclusive; otherwise it passes. Retain diagnostics for all
+sites, including inconclusive sites in an already failing case. Each site counts
+once per owning case, regardless of shared compiler work.
+
+False relations produce ordinary assertion failures at the authored call site,
+with the relation, operand type descriptions, compiler identity, and source
+locations. Unsupported syntax or unresolved source ownership makes affected
+cases inconclusive. Project configuration, compiler loading, ordinary TypeScript
+diagnostics, input drift, and checker failures are infrastructure errors rather
+than invented relation failures. Selected unfinished cases are inconclusive and
+the run fails. A compiler error invalidating the program must not leave previously
+computed evidence reported as trustworthy passing assertions. Buffer assertion
+outcomes until post-check input validation succeeds; input drift produces run
+errors and inconclusive cases before any passing case-end evidence is delivered.
+
+Authored skipped cases stay skipped without body inspection. An empty selection
+passes with zero executed cases and no analysis execution. Unsupported todo or
+expected-failure controls are rejected; the package does not introduce its own
+versions of those controls. Precise expected-diagnostic assertions are outside
+the initial public catalog. Normal `@ts-expect-error` retains TypeScript's coarse
+meaning, including unused-directive diagnostics; it is not promoted into a
+precise Overkill diagnostic assertion.
 
 ### Native Assertion Contract
 
-#### References And Adapter Boundaries
+#### References And Checking
 
-Native type assertions reuse imported, engine-branded composite assertion
-references through `scope.assert(reference, ...operands)`. The package exposes
-generic reference factories and expression operands where its checker supports
-them. Type arguments and expressions are source inputs to
-the adapter, not runtime evidence of a type relationship. No separate static
-reference category or built-in type matcher methods are added to the engine.
+Native type assertions reuse engine-branded composite references through
+`scope.assert(reference, ...operands)`. Resolve references by package/export
+symbol identity, including import aliases. Read type arguments and expression
+types from their original AST nodes; runtime values do not establish type
+relationships. The engine does not gain built-in type matcher methods.
 
-The engine and runner must expose public, backend-independent contracts for
-adapter integration. TSTyche and other adapters must not need private core
-imports. The engine owns assertion boundaries, identities, and native results;
-the runner owns generic validation, collection, planning, and execution lowering.
-An adapter owns its supported bindings, source recognition, translation, and
-external checker invocation. Registration uses an explicit adapter value with
-validation, preparation, collection, lowering, and execution contracts.
+Supported references have an explicit, documented static interpretation.
+Dynamic reference selection, arbitrary wrappers, unsupported operand forms,
+and unresolved symbols produce diagnostics. A composite runtime reference does
+not automatically become a statically checkable assertion.
 
-`@overkill-dev/type-test` provides bindings for the full supported TSTyche
-assertion surface, with checking and diagnostics delegated to TSTyche. Concrete
-bindings and operand forms are documented in the optional package. This contract
-does not define a smaller Overkill type-assertion catalog or a public registry
-for user-defined matcher translations.
+Each reference invocation is one assertion boundary. Nested compiler diagnostics
+do not create cases or inflate assertion counts. Annotation messages must be
+statically identifiable. `scope.assert.collect()` remains the authored completion
+form; checking does not execute it. Static references are assert-only and do not
+establish runtime narrowing through `scope.require`.
 
-Supported references must resolve to adapter-owned package exports, including
-aliased imports. Being a composite reference does not by itself make a custom
-assertion statically translatable. Dynamic reference selection, arbitrary
-wrappers, and other indirection without supported source recognition must be
-rejected rather than silently omitted. Runtime custom assertions retain their
-existing protocol.
+The initial three-relation catalog is defined above. Further assertions require
+sound original-source analysis rather than parity with another framework. Assignability uses the compiler's public
+relation API. Equality needs a documented structural comparison contract that
+handles `any`, `never`, generics, overloads, readonly and optional members, and
+nominal declarations. Mutual assignability, formatted type strings, and compiler
+object identity are not substitutes for that contract. Invalid or unresolved
+operand types must not turn error-recovery types into successful checks.
 
-These bindings are assert-only: they do not provide runtime gating or narrowing
-through `scope.require`. Each reference invocation remains one assertion boundary;
-checker diagnostics nested within it do not create extra cases or boundaries.
-Annotations use the existing prefix assertion context. `scope.assert.collect()`
-remains the authored completion form; it is not executed to obtain checker
-results. Detailed empty, skipped, and expected-failure accounting belongs to the
-results and diagnostics milestone.
+For calls, constructors, inference, and generic instantiation, users can author
+the actual TypeScript expression and assert its inferred type. Do not simulate
+an unauthored call through hand-written overload selection or inference. Add a
+specialized ability assertion only when its semantics are supported through
+public APIs without generated source.
 
-A checker-backed case must reject runtime assertions mixed with static bindings.
-Local expressions remain valid TypeScript inputs, but neither their runtime
-values nor side effects are obtained by executing the case body. Runtime
-`fromThrowable` and `fromRejectable` bridges cannot check erased type arguments.
-If ordinary execution invokes a checker-only binding, it must fail clearly;
-it must never record a successful assertion as a fallback.
+Expected-diagnostic assertions must identify an authored source boundary and
+match the expected diagnostic; an unrelated error must not satisfy them. Define
+that boundary and its diagnostic ownership before exposing such an assertion.
+Ordinary `@ts-expect-error` only establishes that some error occurred on the next
+line and must not be presented as a precise diagnostic assertion.
 
-#### Generic Bodies And Static Composition
+The initial catalog has no dedicated JSX or decorator applicability assertions.
+The user's project may still contain TSX or decorators and is checked according
+to its compiler configuration. Stable supported TypeScript features and public
+compiler APIs define production support. Do not inspect private compiler fields
+or patch the compiler to extend the catalog.
 
-The same contract applies to low-level engine cases and high-level `test`,
-suite, table, and macro composition. Users author one source file and one
-description per case, without external fixtures, direct TSTyche imports, or a
-second test tree.
+#### Static Bodies And Source Ownership
 
-A generic body is checked as authored, under its declared constraints and in its
-original lexical context. Preserve contextual typing and expression diagnostics.
-For example, a check involving `T` inside a generic macro checks that generic
-body; calling the macro with `string` does not replace `T` with `string` in a
-new checker program.
+Case bodies are analyzed without execution. Module initialization and tree
+construction still run when users import modules or construct roots. Mixed
+runtime assertions and static references in one type-test case are rejected;
+ordinary expression evaluation inside the case is compiler input only.
+Accidentally invoking a static reference through runtime execution fails clearly.
 
-Tables retain ordinary row expansion and case naming. Their shared body sees
-the statically declared or inferred parameter type, not a separate type for each
-runtime row. Multiple rows can therefore own the same static assertion evidence.
-Row-specific type specialization requires an explicit static model outside this
-contract; it must not be inferred from runtime data.
+A generic body is checked under its authored constraints and original lexical
+context. Applying a macro with `string` does not specialize its generic callback
+into a new compiler input. Tables retain row expansion and names, but their
+shared body has its static parameter type, not a different type per runtime row.
+Shared assertion sites retain ownership across all selected cases using them.
 
-Macros remain ordinary functions returning test trees. Plain functions,
-`defineMacro`, and `defineParameterizedTestBody` follow the same static rule:
-reusing a body does not specialize it per application. Distinct authored bodies
-retain their own assertion sites, while shared sites retain ownership across all
-selected cases that use them. Macro application locations are useful attribution,
-but do not establish assertion-body ownership on their own.
+Source ownership is required for both direct engine roots and runner profiles.
+The engine captures source anchors and first-party wrappers forward original
+body metadata. Resolve those anchors through compiler symbols. Authoring call
+locations, macro application locations, and `Function.toString()` alone do not
+establish callback ownership. Unknown, ambiguous, evaluated, or generated
+callbacks without an original source body produce diagnostics.
 
-The engine captures authoring call locations and first-party wrappers forward
-original callback metadata. The adapter resolves those anchors through TypeScript
-symbols. Checking existing roots does not require import instrumentation,
-require hooks, ESM loaders, or a prepared-import API. `import.meta` belongs to
-the module containing it and cannot discover an arbitrary callback's source.
-Unknown or ambiguous provenance produces a diagnostic.
+Existing roots do not require prepared imports, require hooks, ESM loaders,
+module interception, or source rewriting. Projects that already compile their
+tests provide their original sources and ordinary source maps. Overkill does
+not generate those files or recover erased types from runtime functions.
 
-Decorator applicability uses a declaration callback whose parameter is applied
-as a decorator; each native assertion owns all its decorator sites. JSX checks
-retain the original `.tsx` extension and require project JSX compiler options.
-Projects precompile syntax unsupported by Node with ordinary source maps and
-run with source-map support. The adapter never transforms modules during loading. Generated projects retain
-compiler settings and bind the injected `tstyche` import to the adapter's installed
-checker through an explicit path mapping, including when dependencies are nested.
+Selection bounds assertion evaluation, not the compiler dependency graph. An
+unselected or unattached body's static assertions do not produce results, but
+normal TypeScript diagnostics elsewhere in the required project can still
+prevent checking. Runtime control flow does not decide which static assertions
+are checked within a selected body. Unsupported source forms and selected cases
+without assertion evidence must not silently pass.
 
-Selection bounds assertion evaluation: omit checks owned only by unselected or
-unreachable bodies. It does not bound the compiler dependency graph; invalid
-TypeScript outside a selected assertion can still prevent checking. Unsupported
-source ownership or assertion forms must produce diagnostics, not successful
-checks with missing evidence.
+### Package And Family Selection
 
-### Package Distribution
+Keep `@overkill-dev/type-test` as an optional package containing assertion
+references, an executable `family` value, typed settings, and compiler integration.
+It can be used with the public engine without the high-level DSL or runner.
+Compiler and checker dependencies belong here and load only when preparing a
+selected type-test run. `@overkill-dev/test` neither bundles nor re-exports it.
 
-Ship `@overkill-dev/type-test` as one optional package, installed alongside
-`@overkill-dev/test` or used with the lower-level engine and runner APIs.
-It owns native type-assertion references, typed profile wiring, programmatic
-adapter registration, source translation, generated-input management, and
-TSTyche execution. TSTyche and compiler-tooling dependencies belong here.
-The package does not require the high-level `@overkill-dev/test` distribution.
-Its programmatic checking API accepts engine roots and applies the same source
-ownership and planning rules as configured runs. Ordinary engine execution
-must not invoke static assertion markers as builder bodies.
+```ts
+import { defineConfig } from '@overkill-dev/test/config';
+import { family as typeTests } from '@overkill-dev/type-test';
 
-`@overkill-dev/test` continues to supply ordinary `test`, suite, table, and
-macro authoring plus the `overkill` binary. It neither includes the optional
-package nor re-exports it through a standard-distribution subpath. Native
-type assertions are imported from `@overkill-dev/type-test`; users keep the
-same Overkill composition and assertion style.
+export const config = defineConfig({
+    profiles: {
+        types: {
+            testFamily: typeTests,
+            files: { include: [ 'source/**/*.types.ts' ] },
+            settings: {
+                projectConfigPath: './tsconfig.json',
+                compiler: { kind: 'local' }
+            }
+        }
+    }
+});
+```
 
-`@overkill-dev/run` owns generic profile, planning, selection, and orchestration
-contracts; the engine owns nodes, identities, and native results. Neither
-depends on the optional package. Projects attach the adapter explicitly
-through its typed profile or programmatic registration API. Installing it
-does not register commands or widen configuration through module augmentation.
-Importing assertions has no registration side effects. The runner needs a
-generic adapter contract for validation, collection, execution lowering, and
-frozen facts; TSTyche-specific behavior stays in the optional package.
-The existing `overkill run --profile <name>` executes the selected type-test
-profile; a missing adapter produces an actionable configuration error.
+The imported value supplies the implementation. A bare `'type-test'` identifier
+is not an executable family selection. Imports do not mutate a registry,
+augment a global type union, or register commands. A missing package fails at
+its explicit import rather than being accepted as a dormant engine capability.
 
-The optional package's authoring and registration imports stay lightweight.
-Load checker and compiler modules only when resolving or executing a selected
-type-test run. Keep the TSTyche backend in this package; a separate backend
-package is unnecessary until another supported backend creates that need.
-Recognize assertion references by package and export identity, including import
-aliases, independently of which authoring layer constructs the case.
+The engine owns the public family execution contract. The runner adapts profiles
+to that contract and supplies discovery and orchestration. Family preparation
+and result delivery must work below the runner layer. Direct callers supply an
+engine-created plan, the same family value and settings, and execution options
+through the public engine execution API. Checking must not require loading
+project runner configuration or a `RunnerResult` wrapper. A package convenience
+API may delegate to that same path; it must not implement a second pipeline.
 
-### Public API Findings
+Existing root ownership, selection, and reporting contracts apply to both entry
+points. Source availability and compiler selection are explicit inputs.
+The concrete calls are `engine.prepareFamily`, `prepared.collect`, and the
+`engine.execute(collected, options)` overload defined by the family contract. Ordinary
+engine execution must not fall back to invoking static case bodies.
 
-TSTyche `7.2.5` exposes [`tstyche/api`](https://tstyche.org/guides/programmatic-usage):
-`Config`, `Runner.run(files)`, `FileLocation`, `EventEmitter`, and
-`CancellationToken`. Structured events include assertion results, diagnostics,
-and completion. `tstyche/tag` invokes the same file-oriented runner; it does
-not check an erased generic argument supplied by a runtime caller.
+See [Executable Test Families](../architecture/test-families.md)
+for the shared contract, built-in aliases, settings, and process boundaries.
 
-The public exports provide neither a custom assertion backend nor source-text
-or compiler-host input to `Runner`. Recognition expects direct imports from
-`tstyche`, so native assertion references need static translation. Compiler
-and matcher internals remain TSTyche-owned; translation does not require
-implementing type equality or assignability.
+### Compiler And Dependency Boundary
 
-TSTyche's supported [template mechanism](https://tstyche.org/guides/template-test-files)
-accepts generated text under the template's filename. A prototype imported
-real Overkill nodes without invoking bodies, translated inline assertions,
-and used public runner events to map results back to their source sites.
-Selecting the passing case excluded a failing case and an unreachable body;
-selecting the failing case produced a checker failure.
+TypeScript owns parsing, module resolution, inference, and language diagnostics.
+Overkill owns assertion interpretation, source ownership, and case attribution.
+Reuse TSTyche or another focused dependency when its supported public API can
+operate on the original program or its types. Retaining or removing TSTyche is
+not a product goal. Its runner and full matcher catalog do not define Overkill's
+public assertion contract.
 
-### Best-Effort Generated Input
+If no suitable public dependency interface exists, implement the necessary
+assertion comparison against public TypeScript APIs. Do not reimplement the
+TypeScript checker. Equality requires its own semantic validation and is not
+assumed to be a trivial wrapper around assignability.
 
-Use the existing public TSTyche API without waiting for upstream changes.
-Translate native assertions into adapter-owned, dot-prefixed sibling modules,
-preserving the source extension and relative import directory. Users continue
-to author ordinary Overkill cases. Never overwrite original source; exclude
-generated inputs from Overkill discovery and watch triggers, verify exclusion
-from ordinary project discovery, and clean up only artifacts owned by the run.
-If a project cannot safely accommodate generated input, report that limitation.
+Design compiler integration against the TypeScript 7.1 API as well as the
+supported stable compiler APIs. A pinned 7.1 prerelease can validate the design
+before its stable release; that does not imply production support for unstable
+compiler APIs. Keep compiler-specific AST, type, and session handling inside the
+package. Manage program/session disposal explicitly and do not mix types from
+different compiler programs or snapshots.
 
-Create an explicit checker configuration for each original project and compiler
-version. Preserve effective compiler options, project references, and resolution
-settings; rebase path-valued options where required and include generated inputs
-explicitly. Verify that TSTyche uses the expected configuration and compiler,
-rather than accepting its baseline fallback. An explicit derived configuration
-prevented the fallback in a prototype.
+Checking does not emit JavaScript, declarations, or compiler cache files and
+does not build referenced projects automatically. Respect the actual project's
+reference semantics; unavailable required build outputs produce a diagnostic.
+Existing project build artifacts remain ordinary compiler inputs.
 
-Maintain original-to-generated module and source-offset mappings. Rewrite direct
-self-imports and imports between translated modules when resolution is
-unambiguous. This can repair the direct self-import case without implementing a
-checker. Do not attempt a general project mirror or dependency graph merely to
-claim transparent equivalence.
+Backend evaluation and the distinction between TypeScript 7 support and a public
+reusable comparison API are recorded in
+[Type-Test Backend Findings](../research/candidate-libraries.md#type-test-backend-findings).
 
-Generated input still has a different module identity. Unrewritten self-imports,
-transitive references to original nominal declarations, package-specific
-resolution, and source-path-sensitive constructs can change the program being
-checked. Record generated-input provenance and known limitations in results and
-run records. Detected ambiguity makes affected checks inconclusive with source
-diagnostics. Configuration or transport failures fail the run. Missing assertion
-results never become successful checks.
+### Planning And Execution
 
-This is explicitly best-effort checking: undetected identity differences may
-produce false passes or false failures. The adapter does not promise equivalence
-to checking the original module. Improve supported cases through regression
-coverage; a future original-path API is optional and does not gate delivery.
+1. Collect the ordinary Overkill tree and validate it against the selected family.
+   Resolve original source bodies and assertion ownership without invoking them.
+2. Prepare the actual compiler project for each selected exact compiler version.
+   Preserve its compiler options, references, resolution settings, and original
+   source files. Compiler variants expand `WorkId.familyVariant`, not logical
+   `CaseId`.
+3. Freeze project inputs and expanded case identities before filtering, sharding,
+   and ordering. Collect evidence ownership for the selected plan. Never discover
+   extra cases from compiler traversal during execution.
+4. Read operand types and diagnostics from the original program and evaluate only
+   selected assertion sites. Reuse shared static evidence within that program
+   while retaining each selected case's ownership and selected result order.
+5. Return evidence through the engine's common assertion, result, reporter, timing,
+   and artifact contracts. The engine validates identities and completeness.
+   Compiler setup and unattributed project diagnostics remain run-level failures;
+   missing or ambiguous evidence never becomes a successful empty check.
+6. Dispose compiler resources on success, failure, and cancellation. Apply deadlines
+   to preparation and checking. A hard deadline requires an owned terminable
+   execution boundary; an in-process cancellation request cannot preempt arbitrary
+   synchronous compiler work.
 
-The internal generated-input component owns siblings for one callback lifetime.
-It accepts translated text with copied or anchored UTF-16 source ranges and the
-selected compiler API. Import ambiguity propagates through supplied translated
-modules; independent modules remain checkable. It does not discover a complete
-project dependency graph or provide native assertion recognition yet.
+Coverage, runtime/resource attachment, body retries, and ordinary case execution
+controls are unsupported for the type-test family. Reject them before checking.
+Compiler runs and runtime test loops remain independent. Watch reruns prepare or
+update real compiler projects without creating generated-file feedback loops.
 
-Generated names reserve the `.overkill-type-test-` prefix. Overkill discovery
-omits these names and rejects them as explicit run inputs. If ordinary project
-root discovery includes generated files, preparation fails and removes owned
-files. Projects must configure external watchers to ignore the same prefix;
-this component does not control external watchers. Cleanup preserves files
-whose identity or contents changed and reports the failure.
-
-The internal checked-input operation derives an owned sibling configuration per
-explicit project and selected compiler. It retains original roots, adds generated
-inputs explicitly, inherits compiler options, and copies project references.
-It returns buffered checker events and provenance only after project/compiler
-verification and cleanup succeed. Calls through this operation are serialized;
-unrelated direct TSTyche runs must not overlap them in the same process.
-
-### Planning And Execution Boundary
-
-1. Collect the ordinary Overkill tree, identify checker-backed cases, and
-   associate their bodies with stable source anchors. Preserve original
-   contextual typing; ordinary callsite locations, forwarded macro locations,
-   and function text alone do
-   not establish body ownership.
-2. Freeze selected case identities, assertion ownership, source fingerprints,
-   project configuration, generated-input policy, and concrete compiler
-   versions. Compiler variants belong in `WorkId`, not logical `CaseId`.
-3. Translate supported assertion references in their original lexical context.
-   Preserve native expression diagnostics and map generated offsets back to
-   original locations. Suppress checks owned only by unselected or unreachable
-   bodies; reject unsupported assertion forms rather than silently omitting them.
-4. Lower frozen type-test cases into external checker work instead of invoking
-   their ordinary builder bodies. Current body-family metadata alone does not
-   provide this execution path. Map checker evidence to the frozen cases.
-   Checker collection events do not create new Overkill cases. Shared source
-   evidence must retain its ownership when used by several selected cases.
-5. Deliver native results, diagnostics, counts, timings, and run records.
-   Setup failures fail the run as infrastructure errors; ordinary module
-   diagnostics fail compilation. Neither becomes a successful empty check
-   or an invented failure of a selected assertion.
-   Serialize or isolate checker runs where TSTyche's global event delivery
-   would mix concurrent results. Cancellation and cleanup remain explicit.
-
-Case bodies are not invoked by the type checker. Generic bodies, tables, and
-macros follow the [Native Assertion Contract](#native-assertion-contract).
-
-### Frozen Compiler Plans
+### Frozen Compiler Plans And Reproduction
 
 Compiler selection accepts one selection or an explicit non-empty matrix.
-Resolve local selections once, deduplicate exact versions, and expand executable
-work before selection. Logical case identity remains unchanged. Compiler
-programs, original configuration, assertion ownership, and observed filesystem
-inputs belong to one explicit preparation object retained through selection.
+Resolve local selections once, deduplicate matching compiler identities, and expand executable
+work before selection. Programs, original configuration, assertion ownership,
+and observed compiler inputs belong to the retained family preparation.
 
-The adapter preparation returns its expanded plan and a collection closure.
-The runner collects selected work during resolution and retains that collection
-for execution. Immutable adapter facts are available in `RunFacts.adapter`
-before `run-start`. Adapter facts are lossless JSON; bounded diagnostic
-serialization must not truncate reproducibility inputs.
+Record compiler and family implementation versions, configuration dependencies,
+effective options, original roots and references, source and declaration
+fingerprints, resolution metadata, and existence probes. Family facts are
+lossless JSON and are available before `run-start`. They contain identifiers
+and evidence descriptions, not live compiler objects or executable callbacks.
 
-Record configuration dependencies, effective options, original roots and
-references, loaded source and declaration fingerprints, resolution metadata,
-and existence probes. Revalidate at collection, lowering, and before and after
-checking. Detected drift invalidates the entire invocation, discards case
-evidence, and requires fresh collection. This is observed-input validation,
-not a hermetic snapshot or a guarantee against transient filesystem changes.
+Revalidate observed inputs before checking and after completion. Detected drift
+invalidates the invocation and requires fresh collection. This validates observed
+inputs; it is not a hermetic snapshot or a guarantee against transient changes.
+No generated-input policy or temporary-path provenance is needed.
 
-### Exact Selection
+Direct and runner execution share the same selected plan. Runtime and compiler
+expansion precede filtering; sharding precedes ordering. Seeded execution uses a
+resolved seed. Empty shards succeed without assertion evaluation. Unsupported
+nested assertion selectors are rejected rather than widened to an enclosing case.
 
-Direct engine-root checks accept explicit runner `selection`, `order`, `seed`,
-and `shard` values. Runtime and compiler expansion precede filtering; sharding
-precedes ordering. Seeded direct checks require a resolved seed. Empty shards
-succeed without checker execution. Unsupported nested assertion selectors are
-rejected rather than widened to an enclosing case.
-
-Selected plan and result order remain authoritative. External checker traversal
-may group shared static evidence independently of that order.
-
-### Rejected Approaches And Remaining Work
-
-- Fixture-backed bodies require a second authoring style and can duplicate
-  descriptions. They do not satisfy the native authoring requirement.
-- Re-exporting or wrapping TSTyche's runtime functions does not teach its
-  source recognizer Overkill syntax or recover erased type arguments.
-- Claiming transparent equivalence for sibling input is unsupported. Use the
-  documented best-effort contract and repair bounded cases instead.
-- Private matcher imports or a replacement checker violate the integration
-  boundary. Use the existing public runner and structured events.
-
-The native authoring contract is defined above; syntax translation is
-demonstrated, not a complete adapter. Package exports and full supported TSTyche
-bindings, public adapter hooks, source-anchor instrumentation across composition
-layers, generated-input mapping and configuration, diagnostic preservation,
-shared-body accounting, and lifecycle validation remain implementation tasks.
-Reconsider the generated-input strategy if supported projects cannot accommodate
-it reliably. Reconsider the static model if
-per-application generic or row-specific type specialization becomes a requirement.
+Historical results remain readable without executing family code. Reproduction
+requires a compatible explicitly resolved family, compiler, and original project
+inputs. Unknown or incompatible implementations produce diagnostics rather than
+falling back to runtime execution or a different compiler.

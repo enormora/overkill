@@ -268,15 +268,12 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
   runner can avoid evaluating the import graph of unselected tests. Until
   Node ships native `import defer`, Overkill can simulate the effect by
   keeping each test in its own module and lazy-importing on demand.
-- **Type-test integration via tstyche.** Type tests need a real `tsc`.
-  Overkill should not reimplement that loop. Integrate with
-  [tstyche](https://tstyche.org/), which already runs type tests with its
-  own incremental cache, and surface its results through the Overkill
-  reporter pipeline. The runtime test loop and the type-test loop stay
-  independent without Overkill owning a compile server. Native Overkill
-  assertions use best-effort generated input through the existing public
-  API, with explicit project configuration and documented identity limits.
-  Upstream changes are not a delivery prerequisite.
+- **Original-source type analysis.** The optional type-test family analyzes
+  the real TypeScript project, retaining compiler programs where reuse is useful.
+  Read assertion operands in their original lexical context without temporary
+  files, virtual replacement files, or code generation. Reuse public dependency
+  APIs where they fit; TypeScript owns language checking. Runtime and compiler
+  loops stay independent, and ordinary runtime imports do not load the checker.
   See [Native Type-Test Integration](../authoring/testing-models.md#native-type-test-integration).
 - **Pre-resolved file lists.** Save the result of glob expansion (and gitignore
   application) between runs. Re-validate via inotify/FSEvents or a short
