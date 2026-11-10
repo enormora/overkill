@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
 import { resolveSourceLocation, type TestBodyOrigin, type TestPlan } from '../engine/engine.entry-point.ts';
+import { rejectForeignCheckerBoundaries } from './checker-boundary-validation.ts';
 import type { SourceAnalysis } from './source-analysis.ts';
 import {
     replaceMappedSource,
@@ -212,7 +213,9 @@ function bodyOwnership(analysis: SourceAnalysis, plan: TestPlan): readonly BodyO
     for (const testCase of selected) {
         const body = ownedBody(analysis, testCase);
         const owners = bodies.get(body) ?? [];
-        owners.push(caseKey(testCase));
+        if (!owners.includes(caseKey(testCase))) {
+            owners.push(caseKey(testCase));
+        }
         bodies.set(body, owners);
     }
     return Array.from(bodies, function ownership([ body, owners ]) {
@@ -235,6 +238,7 @@ function translateFile(
     file: TypeScript.SourceFile,
     entries: readonly BodyOwnership[]
 ): NativeTranslation {
+    rejectForeignCheckerBoundaries(analysis, file);
     let expectName = '__overkillTypeExpect';
     while (file.text.includes(expectName)) {
         expectName += '_';

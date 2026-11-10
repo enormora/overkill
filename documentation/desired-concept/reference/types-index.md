@@ -3217,6 +3217,18 @@ Canonical: [Differential Testing Resolution](../authoring/higher-test-layers.md#
 - `DifferentialObservations<Input, Output>`: readonly tuple of at least two observations
 - `isTestControlError(error: unknown): boolean`: engine-owned control-error classifier
 
+## Linearizability Checking
+
+`@overkill-dev/linearizability` exports `checkLinearizability` and the
+`LinearizabilityOutcome`, `LinearizabilityObservation`, `LinearizabilityEvent`,
+`LinearizabilityTransition`, `LinearizabilityModel`, `LinearizabilityRequest`, and
+`LinearizabilityResult` types. Transitions reuse `ModelTransition` and add
+explicit alternative states. Requests require a history, model, work budget,
+and abort signal. Results distinguish linearizable, not-linearizable, and
+inconclusive outcomes.
+
+Canonical: [Linearizability Checking Resolution](../authoring/higher-test-layers.md#linearizability-checking-resolution).
+
 ## Content Snapshot Assertions
 
 ```ts

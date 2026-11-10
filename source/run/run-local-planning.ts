@@ -4,9 +4,8 @@ import { createRunFacts, resolveAttachmentPersistence } from './run-facts.ts';
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
 import { createRunResultFromCollectedPlan, collectedRunPlanFromTestPlanCases } from './collected-run-plan.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
-import { shardedLocalCases } from './run-local-sharding.ts';
+import { planTestSelection } from './test-plan-selection.ts';
 import {
-    orderedTestPlan,
     assertTestPlanMatchesTestFamily,
     assertTestPlanCasesMatchProfilePolicy
 } from './run-selection.ts';
@@ -146,18 +145,15 @@ export async function createShardedLocalResolvedRunFromTestPlan(
     input: ResolvedRunInput,
     selectedPlan: TestPlan
 ): Promise<ResolvedRun> {
-    const plannedCases = await shardedLocalCases(selectedPlan, input);
-    const firstCase = plannedCases[0];
-
-    if (firstCase === undefined) {
+    const selection = await planTestSelection(
+        { ...selectedPlan, discoveredCases: selectedPlan.cases },
+        { ...input.request, selection: { kind: 'all' } }
+    );
+    if (selection.kind === 'empty-shard') {
         return createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, selectedPlan);
     }
-
-    const orderedPlan = orderedTestPlan(
-        { ...selectedPlan, cases: [ firstCase, ...plannedCases.slice(1) ] },
-        input.request.order,
-        input.request.seed
-    );
-
-    return createLocalResolvedRunFromTestPlan(command, dependencies, input, orderedPlan);
+    return createLocalResolvedRunFromTestPlan(command, dependencies, input, {
+        ...selection.testPlan,
+        discoveredCases: selectedPlan.discoveredCases
+    });
 }

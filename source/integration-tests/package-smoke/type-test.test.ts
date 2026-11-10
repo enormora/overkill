@@ -18,7 +18,8 @@ function throwIfExecuted():void { throw new Error('Static bodies must not execut
 const consumerSource = `${engineCaseSource}
 import { checkTypeTests } from '@overkill-dev/type-test/check';
 const root=engine.createRoot({...metadata,title:'root',children:[node]});
-const result=await checkTypeTests({engine,root,selection:{kind:'all'},
+const result=await checkTypeTests({order:'plan',seed:{value:null},shard:{index:1,total:1},
+engine,root,selection:{kind:'all'},
     projectConfigPath:new URL('./tsconfig.json',import.meta.url).pathname,compiler:{kind:'local'}});
 if(result.status!=='passed'||result.summary.passed!==1) { throw new Error(JSON.stringify(result)); }
 if(!engine.isCompilerWorkId(result.perTest[0]!.workId)) { throw new Error('Missing compiler identity.'); }
