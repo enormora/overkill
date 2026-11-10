@@ -86,7 +86,12 @@ export function linearizability<State, Operation, Output, System>(
     if (!definitionSchema.safeParse(definition).success) {
         throw new TypeError('linearizability() requires create, run, model, and a positive safe-integer maxWork.');
     }
-    const snapshot = Object.freeze({ ...definition, model: Object.freeze({ ...definition.model }) });
+    const snapshot = Object.freeze({
+        create: definition.create,
+        run: definition.run,
+        maxWork: definition.maxWork,
+        model: Object.freeze({ initial: definition.model.initial, transition: definition.model.transition })
+    });
     const location = captureSourceLocation();
     return async function executeProgram(_program, sample) {
         const evidence = await evaluateProgram(snapshot, sample);

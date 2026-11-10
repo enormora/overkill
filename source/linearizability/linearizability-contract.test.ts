@@ -3,11 +3,28 @@ import { suite, test } from '../packages/test/test.entry-point.ts';
 import { gen, property } from '../packages/property/property.entry-point.ts';
 import {
     linearizability,
-    type LinearizabilityDefinition
+    type LinearizabilityDefinition,
+    type LinearizabilityModel,
+    type LinearizabilityObservation,
+    type LinearizabilityTransition
 } from '../packages/linearizability/linearizability.entry-point.ts';
 import { executePropertyNode, propertyExecutionDefaults } from '../test-support/property-execution.ts';
 
 type MalformedProgram = { readonly title: string; readonly input: () => unknown; };
+
+const readModel: LinearizabilityModel<number, number, number> = Object.defineProperties({
+    initial(): number {
+        return 0;
+    },
+    transition(
+        state: number,
+        observation: Readonly<LinearizabilityObservation<number, number>>
+    ): LinearizabilityTransition<number> {
+        const matches = observation.operation === 0 && observation.outcome.kind === 'returned' &&
+            observation.outcome.value === state;
+        return matches ? { kind: 'enabled', state } : { kind: 'disabled' };
+    }
+}, { initial: { enumerable: false }, transition: { enumerable: false } });
 
 function sparseArray(): unknown[] {
     const values: unknown[] = [];
@@ -60,6 +77,27 @@ const definition: LinearizabilityDefinition<number, number, unknown, null> = {
 };
 
 export const testNode = suite('linearizability authoring contracts', [
+    test('preserves non-enumerable model callbacks', async function (scope) {
+        const result = await executePropertyNode(
+            property({
+                title: 'non-enumerable model',
+                generator: gen.tuple(gen.tuple(gen.constant(0))),
+                test: linearizability({
+                    create() {
+                        return null;
+                    },
+                    run(operation: number) {
+                        return operation;
+                    },
+                    model: readModel,
+                    maxWork: 100
+                })
+            }),
+            propertyExecutionDefaults
+        );
+        scope.assert.equal(result.summary.passed, 1);
+        return scope.assert.collect();
+    }),
     test('rejects invalid budgets and callbacks before executing user code', function (scope) {
         const created: number[] = [];
         const declaration = {
