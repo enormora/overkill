@@ -3,7 +3,7 @@ import { currentExecutionSession } from './execution-session-context.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
 import { currentAttachmentCoordinator, type AttachmentCoordinator } from './attachment-coordinator-context.ts';
-import { runHasAttachmentScopes } from './run-facts.ts';
+import { runHasAttachmentScopes } from './run-diagnostics.ts';
 import type { RunRecordSession } from './run-record.ts';
 import type * as AttachmentRun from './attachment-run.ts';
 import { createStoredRunValue } from './supervised-run-state.ts';

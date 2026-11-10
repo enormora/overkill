@@ -187,7 +187,13 @@ function ignoreRead(): void {
 async function readContent(content: string | null, onRead: () => void, runId: string): Promise<ReplayRunRecord> {
     const runtime = fakeWorkerRuntime(createCollectedPlan());
     const run = runtime.resolvedRun;
-    return await readRecordedReplay({ cwd: run.cwd, config: run.config, signal: null, runId }, {
+    return await readRecordedReplay({
+        debug: { mode: 'off', selectors: [] },
+        cwd: run.cwd,
+        config: run.config,
+        signal: null,
+        runId
+    }, {
         ...runtime.dependencies,
         runtimeStateStore: {
             ...runtime.dependencies.runtimeStateStore,
@@ -201,7 +207,13 @@ async function readContent(content: string | null, onRead: () => void, runId: st
 async function prepareRecord(record: ReplayRunRecord): Promise<PreparedReplay> {
     const runtime = fakeWorkerRuntime(createCollectedPlan());
     const run = runtime.resolvedRun;
-    return await prepareRecordedReplay({ cwd: run.cwd, config: run.config, signal: null, runId: record.id }, {
+    return await prepareRecordedReplay({
+        debug: { mode: 'off', selectors: [] },
+        cwd: run.cwd,
+        config: run.config,
+        signal: null,
+        runId: record.id
+    }, {
         ...runtime.dependencies,
         runtimeStateStore: {
             ...runtime.dependencies.runtimeStateStore,

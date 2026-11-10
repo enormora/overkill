@@ -17,6 +17,7 @@ function replayProfile(command: ReplayWitnessCommand): string {
 
 export async function preparePropertyReplay(command: ReplayWitnessCommand): Promise<PreparedReplay> {
     const prepared = await prepareWitnessReplay({
+        debug: command.request.debug,
         cwd: command.cwd,
         config: command.config,
         signal: null,

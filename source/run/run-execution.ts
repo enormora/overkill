@@ -15,7 +15,8 @@ export type RunExecutionInvocation = RunInvocation & {
 };
 
 function requestedRunRecording(input: Awaited<ReturnType<typeof readResolvedRunInput>>): boolean {
-    return input.request.record || input.request.lastFailed || input.profile.runRecords.persist === 'always';
+    return input.request.debug.mode !== 'off' || input.request.record || input.request.lastFailed ||
+        input.profile.runRecords.persist === 'always';
 }
 
 async function executeCommand(

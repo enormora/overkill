@@ -230,9 +230,9 @@ If the user had explicitly enabled debug for this case - typically via
 `--debug-scope <selector>` or a narrowly filtered `--debug` run - a
 `TestDebugArtifact` (see [Test Debug Mode](./debug-mode.md))
 would also exist at
-`.overkill/runs/<run-id>/debug/<case-id>.debug.json`, with the
-timeline showing property trial counts up to the failure. The
-`RunFacts.debugMode` field records that debug data was collected.
+`.overkill/runs/<run-id>/debug/<work-id-derived>__attempt=0.debug.json`, with the
+timeline showing observed assertion calls up to the failure. The
+`RunFacts.execution.debug` field records that debug data was collected.
 
 Canonical: [Reproducibility](../architecture/reproducibility.md), [Failure Artifacts](./failure-artifacts.md),
 [Runtime Behavior](../architecture/runtime-behavior.md).

@@ -67,6 +67,7 @@ function workerPoolOptions(overrides: Partial<WorkerPoolCreationOptions> = {}): 
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,

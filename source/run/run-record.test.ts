@@ -1,5 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as debugArtifacts } from './debug-artifact-storage.test.ts';
 import { testNode as policy } from './run-record-policy.test.ts';
 import { testNode as session } from './run-record-session.test.ts';
 import { testNode as reasons } from './run-record-reasons.test.ts';
@@ -12,6 +13,6 @@ export const testNode = createSuite({
     title: 'run record persistence',
     annotations: {},
     controls: {},
-    children: [ session, policy, reasons, invocation, attachments, propertyWitnesses ]
+    children: [ debugArtifacts, session, policy, reasons, invocation, attachments, propertyWitnesses ]
 });
 await runIfMain(import.meta, testNode);

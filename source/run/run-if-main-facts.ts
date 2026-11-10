@@ -103,6 +103,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
             capture: request.capture,
             coverage: request.coverage,
             debug: request.debug,
+            debuggedCases: [],
             engine: { kind: 'default' },
             maxConcurrency: profile.execution.maxConcurrency,
             order: request.order,

@@ -2,276 +2,173 @@
 
 ## Purpose
 
-Any test - passing or failing - can be hard to reason about. A
-passing test that runs slowly, imports modules its peers don't, or
-just barely beats the soft deadline is suspicious. A failing test,
-especially one that hit the timeout, is even harder: the test failed,
-but _where_ did the time go? Which assertion, which awaited
-operation, which import? The runner observes most of that data
-per-test and discards it unless explicitly asked to keep it.
+Debug mode explicitly retains structured diagnostics for selected runtime tests,
+including passing tests. Diagnostics describe observations; they do not classify
+code quality or contribute to a test verdict. Observation overhead still consumes
+ordinary execution time.
 
-**Debug mode is the opt-in switch that keeps the data and emits it
-as a structured artifact**, regardless of outcome. For a soft-timeout
-failure the timeline turns "this test took too long" into "this
-specific awaited handle call took 480 ms of the 500 ms budget" -
-which is the difference between a guess and a fix.
-
-The mode is data, not advice. The runner does not annotate, score, or
-flag the artifact; the developer reads the timeline and draws the
-conclusion. A debug artifact never affects the verdict.
+Retained state means diagnostic snapshots. Processes, resources, and handles
+continue through their normal cleanup and disposal.
 
 ## Activation
 
-Activation is always explicit:
+- `--debug` records every test in the resolved executable work set.
+- `--debug-scope <selector>` records matching tests without narrowing execution.
+  It works independently of `--debug`, uses the `--filter` grammar, and may be
+  repeated. Repeated scopes are combined with OR.
+- Supplying both forms is a usage error.
 
-- `--debug-scope <selector>` debugs the tests matching the selector
-  (using the same selector grammar as `--filter`) without pulling
-  unrelated tests into debug mode and without narrowing what runs.
-  It is standalone - it does not require `--debug` - and it is
-  mutually exclusive with `--debug`: the two are CLI spellings of one
-  underlying setting (`RunFacts.debugMode` `'selected'` versus
-  `'all'`), so passing both is a usage error.
-- `--debug` debugs every test in the resolved set; pair with
-  `--filter`, `--title`, `--id`, or `--file` to scope
-  Per-test debug authoring is not part of the current concept. If it returns
-  later, it should be a run selection or debug policy feature, not a general
-  annotation field.
+Programmatic callers use `RunRequest.debug`:
 
-`--debug-scope` is the typical interactive form: "I want to know what
-this _one_ test is doing" while the rest of the run still executes
-around it. `--debug` is for run-wide investigations (e.g. "everything
-tagged slow").
+```ts
+type RunDebugRequest =
+    | { readonly mode: 'off' | 'all'; readonly selectors: readonly []; }
+    | { readonly mode: 'selected'; readonly selectors: NonEmptyReadonlyArray<string>; };
+```
 
-Activation does **not** change profile, capability boundaries, or
-scheduling. A debugged microtest is still a microtest with the same
-permissions; debug mode only widens what the runner _records_, not
-what the test may _do_. Activation is reflected in the run record
-(see `RunFacts.debugMode` / `RunFacts.debuggedCases`) so a replay or
-report can tell that the data was collected.
+Activation does not change profile, capabilities, process model, scheduling,
+ordering, sharding, or ordinary test selection. There is no per-test authoring
+annotation or configuration default that implicitly enables debug mode.
+Analysis-only type-test profiles reject runtime debug recording.
+
+`RunFacts.execution.debug` retains the request. `execution.debuggedCases` records
+the selected `WorkId` values, including runtime and workload identity. An explicit
+request persists a run record even when its debug scope matches no cases.
 
 ## Artifact Shape
 
+`TestDebugArtifact` is a native `RunArtifact` variant with subtype and payload kind
+`debug`. Its shared artifact ID supplies case, runtime, workload, and attempt
+identity. The payload has `schemaVersion: 1` and contains:
+
+- authoritative verdict, nullable outcome, and attempt duration in microseconds
+- a timeline of body start, assertion calls, requirements, `plan`, body completion,
+  and rejection; entries include assertion labels and source locations when available
+- named snapshots of application-owned recording providers
+- observed module resolution and load operations with durations
+- CPU, heap, sampled heap maximum, and active-resource deltas
+- assertion, requirement, recording-event, and observed-load counts; plan counts,
+  heap growth, active-resource growth, and effective soft-timeout headroom
+- completeness and dropped-entry metadata
+
+Timeline timestamps are decimal strings containing monotonic nanoseconds relative
+to body start. Arbitrary rejection reasons and recording events use the existing
+bounded `SerializedValue` representation, including bigint and cyclic values.
+Artifacts are JSON-safe before reporter delivery or process transport.
+
+A skipped case has an empty body timeline and unavailable body measurements.
+A policy failure can have a null outcome while retaining its authoritative verdict.
+
+## Measurement Semantics
+
+Native measurements are execution-window observations, not exclusive per-test
+accounting. Each available measurement identifies its scope, method, and observed
+overlapping work. CPU and heap values can include concurrent activity in the same
+thread. Active-resource deltas cover the current event loop and are observations
+rather than proof of a leak.
+
+Heap peak means the maximum of the recorded start and end samples, not the exact
+allocation peak. Unavailable readings carry a reason rather than a fabricated zero.
+
+Module hooks record observable resolution and load operations during the attempt.
+Their timings exclude module evaluation. Loader caches can bypass observations;
+absence of a load event does not establish a cache hit. Exact uncached-load counts
+and time unaccounted for by arbitrary awaited operations are unavailable.
+
+No arbitrary `await` instrumentation, runtime monkey-patching, CPU profiling, or
+benchmark-quality measurement is implied. Runner phase timings remain separate.
+
+## Recording Providers
+
+Application-owned handles register recordings explicitly on either test-scope form:
+
 ```ts
-type TestDebugArtifact = {
-    readonly case: CaseId;
-    readonly outcome: TestOutcome['kind']; // included so debug artifacts read standalone
-    readonly durationMicroseconds: number;
-    readonly cpuTimeMs: number;
-    readonly timeline: ReadonlyArray<TimelineEntry>;
-    readonly handleEvents?: ReadonlyArray<RecordedEvent>;
-    readonly moduleLoads: ReadonlyArray<{
-        readonly specifier: string;
-        readonly cachedHit: boolean;
-        readonly resolveMs: number;
-    }>;
-    readonly heap: { beforeBytes: number; afterBytes: number; peakBytes: number; };
-    readonly activeHandlesDelta: number;
-    readonly plan?: { declared: number; recorded: number; };
-    readonly stats: DebugStats;
-};
-
-// Pre-computed counts and ratios derived from the rest of the
-// artifact. Provided so reporters and CI scripts can scan one-line
-// summaries without iterating the timeline.
-type DebugStats = {
-    readonly assertCount: number;
-    readonly requireCount: number;
-    readonly handleCallCount: number;
-    readonly moduleLoadCount: number;
-    readonly uncachedModuleLoadCount: number;
-    readonly unaccountedGapMs: number; // wallTime minus measured handle + assertion time
-    readonly heapGrowthBytes: number; // afterBytes - beforeBytes
-    readonly handleLeakCount: number; // max(0, activeHandlesDelta)
-    readonly softTimeoutHeadroomMs: number; // softTimeout - wallTime; negative on timeout failures
-};
-
-// Discriminated union - same pattern as RecordedEvent in
-// capability-handles.md. `at` is monotonic nanoseconds since the
-// test body started; every variant carries it.
-type TimelineEntry =
-    | { readonly kind: 'body-start'; readonly at: bigint; }
-    | { readonly kind: 'assert'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
-    | { readonly kind: 'require'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
-    | { readonly kind: 'plan'; readonly at: bigint; readonly declared: number; }
-    | { readonly kind: 'body-end'; readonly at: bigint; }
-    | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown; };
+scope.debug.includeRecording({
+    name: 'http',
+    recorded: () => http.recorded(),
+});
 ```
 
-Both types are sketched in [Types Index](../reference/types-index.md).
+A provider returns an array of application-owned events. Registration is inert
+when debug is off. Debug mode snapshots registered providers once after attempt
+cleanup, preserving registration order, event order, and original timestamp data.
+It does not assume application timestamps share the engine clock. Repeated names
+remain separate registrations.
 
-The timeline records discrete events the runner already observes:
-body start, each `assert.*` / `require.*` call, `plan()`, body
-end or rejection. It deliberately does not record every `await`
-boundary - that would require source instrumentation incompatible
-with Node's strip-only path. The gaps between timeline entries are
-themselves the diagnostic for "where time went": a 480 ms gap
-between two adjacent entries is a 480 ms awaited operation. When
-the test uses capability handles with recording variants (see
-[Capability Handles](./capability-handles.md)), those events are included as
-`handleEvents` and pin the awaited operation down to a specific
-handle call; tests that do not use recording handles still receive
-the rest of the artifact.
+At most 100 providers can register per attempt, matching the existing scope
+attachment limit. Further registrations count as dropped entries.
+
+A provider exception produces an attributed artifact runner error and incomplete
+recording metadata. Other available diagnostics and the test verdict are preserved;
+the runner error fails the run.
+
+## Lifecycle And Limits
+
+Recording runs inside the retry loop and existing timeout and process boundaries.
+Body completion is distinct from completion of cleanup and resource disposal.
+The collector closes before test completion delivery, and late asynchronous work
+cannot append to a completed artifact.
+
+Diagnostic collection is bounded to 10 MiB per attempt. Limits apply before
+retaining event payloads or sending them over process boundaries. Truncation is
+explicit and retains counts and terminal metadata. Existing structured-value
+serialization limits also apply.
+
+Debug-off execution installs no debug module hooks, sampling timers, or recording
+providers, and does not create debug files or require run persistence.
 
 ## Storage
 
-Debug artifacts live alongside the run record:
+Runner-owned artifacts live alongside the run record:
 
 ```text
-.overkill/runs/<run-id>/debug/<case-id-derived>.debug.json
+.overkill/runs/<run-id>/debug/<work-id-derived>__attempt=0.debug.json
 ```
 
-They are garbage-collected with the rest of the run record per
-[Reproducibility § Retention And Maintenance](../architecture/reproducibility.md#retention-and-maintenance).
+The path follows configured `runtimeStateDir`. Names derive from full canonical
+work identity rather than display titles. Every debugged retry attempt is retained,
+independently of ordinary retry-artifact retention policy.
+Concurrent placement attempts use an additional placement sequence suffix so
+conflicting speculative executions retain separate diagnostics.
 
-This is deliberately **not** the default microtest path. A normal
-microtest run does not write one artifact file per test case, and it
-does not have to persist a run record unless another active workflow
-requires one. The ordinary path keeps failure data in memory and in the
-reporter/event stream only. Per-test debug files exist solely for tests the user
-explicitly put into debug mode (`--debug` or `--debug-scope`), and the
-expected microtest workflow is to scope that mode narrowly with
-`--debug-scope`, `--id`, `--title`, `--file`, or `--filter`.
+Writes use the existing atomic runtime-state store. Required artifact or record
+write failures fail the run through runner errors while preserving test outcomes.
+Run history pruning and clearing remove debug artifacts with their owning run.
+See [Reproducibility](../architecture/reproducibility.md#retention-and-maintenance).
+
+Direct engine execution returns artifacts in memory. Runner orchestration owns
+disk persistence and history policy.
 
 ## Reporter Interaction
 
-The default reporter adds a one-line summary on each debugged test:
+Completed artifacts travel through `test-end.artifacts` and the final run result.
+The default line reporter adds a compact wall-time, timeline-count, and heap
+summary, including the measurement scope. Dedicated reporters may render the full
+artifact; no additional reporter package is required.
 
-```text
-✓ users > round-trip [debug: 380 ms wall, 12 timeline entries, +3 KB heap]
-```
+Opt-in `debug-checkpoint` events carry incomplete snapshots for owned-boundary
+crash recovery. At most one checkpoint delivery is pending per attempt. Checkpoints
+are requested at body start, each 64 retained timeline entries, and every 50 ms
+through an unreferenced timer. They do not represent completed tests.
 
-Dedicated debug reporters (third-party, packaged separately) consume
-the full artifact for richer rendering. The artifact is always on
-disk; reporters are a presentation choice.
-
-## Overhead
-
-Debug mode is opt-in because it has cost:
-
-- timestamping each timeline entry is nanoseconds per event but
-  accumulates with high event counts
-- `process.memoryUsage()` and active-handle snapshots add a few
-  microseconds each
-- module-load tracking requires a `module.registerHooks#load` hook
-  for the run; that hook is not installed when debug is off
-
-These costs are negligible per test but can defeat the cold-start
-budget at scale. Debug mode is therefore never on by default and is
-not carried across `--watch` reruns unless the user passes `--debug`
-again.
-
-## Debugging Failing Tests And Timeouts
-
-Debug mode applies to failures the same way it applies to passes;
-the artifact is written either way. Two failure shapes are
-particularly worth debugging:
-
-- **Soft-timeout failures.** The test exceeded its deadline. The
-  timeline shows which awaited operation consumed the budget;
-  `handleEvents` (when present) name the specific handle call.
-  "This test is slow" becomes "this `http.request` call took 480
-  ms of the 500 ms budget."
-- **Assertion failures with surprising timing.** A `fail` outcome
-  sits next to a normal-looking timeline; that is information.
-  Conversely, a `fail` outcome with one giant gap before the
-  failing `assert` points at a slow setup operation that should
-  move out of the test body.
-
-For crash failures the artifact is best-effort: the runner flushes
-whatever it had recorded up to the crash, marked with a
-`rejection`-style final entry. The `WorkerCrash` artifact (see
-[Failure Artifacts § Process Crash Artifacts](./failure-artifacts.md#process-crash-artifacts)) remains the
-authoritative record.
+After abrupt termination, a parent retains received evidence as incomplete and
+adds rejection-style terminal evidence. Missing observations remain unavailable.
+The native worker-crash or process-exhaustion artifact remains authoritative.
 
 ## Debug Mode And Retries / Replay
 
-When integration-style tests retry (see
-[Failure Artifacts § Retry Interaction](./failure-artifacts.md#retry-interaction)), each attempt produces
-its own debug artifact: `<case-id>__attempt=0.debug.json`,
-`<case-id>__attempt=1.debug.json`, etc. The artifacts are siblings,
-not a merged log; comparing them is how you see whether a retry
-recovered cleanly or limped.
+Each retry produces its own artifact. Debug recording does not change retry
+eligibility, case counts, seeds, or executor placement.
 
-`overkill replay <run-id>` does **not** automatically re-emit debug
-artifacts for the replayed run. The original artifacts already exist
-in the source run's directory; replay reads them rather than
-regenerating them. To debug a replayed run from scratch, pass
-`--debug` (or `--debug-scope`) explicitly on the replay command -
-that produces a fresh set in the new run's directory.
-
-## Issues The Artifact Surfaces
-
-Debug mode does not classify tests as good or bad. The artifact is
-factual; the _patterns_ below are interpretation guidance - what
-specific values _can_ signal, not judgments the runner emits. CI
-post-processors, custom reporters, and reviewers turn these signals
-into action; the runner stays neutral.
-
-- `stats.assertCount === 0 && stats.requireCount === 0` - the test
-  produced no assertions. The engine already fails this case (see
-  [Assertions And Results § Zero-Assertion Detection As Default Failure](./assertions-and-results.md#zero-assertion-detection-as-default-failure)); the
-  artifact makes the absence visible across runs.
-- `stats.handleCallCount === 0` in a profile that expects effects:
-  the test exercised no recorded effects. Often intentional for
-  pure-logic tests; suspicious when the test title implies I/O.
-- `stats.unaccountedGapMs / durationMicroseconds > 0.5` - more than half of
-  the wall time was not captured by handle calls or assertion
-  activity. Suggests external I/O bypassing the handle layer, or
-  a slow synchronous block worth profiling.
-- `stats.uncachedModuleLoadCount` high - the test pulled in many
-  modules from cold; first-run cost may dominate. Look for imports
-  inside the body that should move to the file scope.
-- `stats.heapGrowthBytes > 0` - the test grew the heap and did not
-  return it. Not necessarily a leak (V8 GC is lazy), but worth
-  inspection when the value is large or grows across runs.
-- `stats.handleLeakCount > 0` - unfinished active handles after
-  the body returned. Same data the leak diagnostics in
-  [Runtime Behavior § Leaked Promises, Timers, And Handles](../architecture/runtime-behavior.md#leaked-promises-timers-and-handles)
-  use, surfaced for any test rather than only on failure.
-- `stats.softTimeoutHeadroomMs` close to zero or negative - the
-  test is fragile against slower machines or noisy CI hosts. A
-  test with 30 ms headroom against a 500 ms soft deadline will
-  flake on a busy laptop. Either profile a faster path or
-  re-categorise the test.
-- Large gaps between adjacent timeline entries - a single awaited
-  operation took the time. `handleEvents` near that gap pin it to
-  a specific handle call; absence of `handleEvents` says the
-  operation went through code the runner does not see (raw
-  `fetch`, raw `fs`, etc.).
-- `plan.declared !== plan.recorded` - `plan(n)` mismatch. The
-  engine fails the test for the same reason; the artifact makes
-  the count visible at a glance.
-
-These signals compose: a microtest with `handleCallCount: 0`,
-`unaccountedGapMs: 480 ms`, and `softTimeoutHeadroomMs: 20 ms` is
-almost certainly doing real I/O it should not be doing in that
-profile. The runner reports the numbers; the developer (or a
-linter) reads the pattern.
-
-## What This Is Not
-
-- **Not a profiler.** For CPU or call-frame analysis use Node
-  `--prof` or `--inspect`. Debug mode tells you what _the test_
-  did, not what V8 did.
-- **Not runner timing diagnostics.** [Run Timings](../architecture/run-timings.md)
-  records config, collection, worker, process, resource, reporter, and cleanup
-  overhead for a whole run. Debug mode records selected test timelines and may
-  include per-module load detail.
-- **Not a benchmark.** A single-run debug artifact is not
-  statistically meaningful; see [Benchmarking](./benchmarking.md) for
-  measurement-quality timing.
-- **Not advice.** No tips, hints, or recommended actions are
-  produced. The artifact reports facts; the developer interprets.
-- **Not a verdict input.** Whatever the artifact contains, it never
-  affects pass/fail.
+Replay clears inherited debug activation. Existing artifacts remain in the source
+run; replay does not copy or regenerate them automatically. Explicit `--debug` or
+`--debug-scope` on replay collects fresh artifacts in the new run. Programmatic
+replay requests supply an explicit `debug` value.
 
 ## Cross-References
 
-- Capability handle recording is owned by [Capability Handles](./capability-handles.md);
-  debug mode aggregates those events into the timeline rather than
-  duplicating the recording mechanism.
-- The module-load list overlaps with [Fast Feedback Loops § 4. Sharing parsed sources between tests in the same process](../architecture/fast-feedback-loops.md#4-sharing-parsed-sources-between-tests-in-the-same-process), but is
-  scoped per test rather than per run.
-- Heap and active-handle deltas extend the diagnostics in
-  [Runtime Behavior § Leaked Promises, Timers, And Handles](../architecture/runtime-behavior.md#leaked-promises-timers-and-handles),
-  made available even when the test passes.
+- [Capability Handles](./capability-handles.md): application-owned recording patterns.
+- [Failure Artifacts](./failure-artifacts.md): attribution, errors, and retention.
+- [Composition Order](../architecture/composition-order.md): attempt lifecycle.
+- [Run Timings](../architecture/run-timings.md): orchestration measurements.
+- [Types Index](../reference/types-index.md): public diagnostic contracts.

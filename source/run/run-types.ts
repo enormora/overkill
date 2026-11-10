@@ -105,8 +105,11 @@ type RunCapabilityRestrictionsRequest = { readonly mode: 'disabled' | 'enabled';
 export type RunSeed = { readonly value: bigint | null; };
 
 export type RunDebugRequest = {
-    readonly mode: 'off';
+    readonly mode: 'all' | 'off';
     readonly selectors: readonly [];
+} | {
+    readonly mode: 'selected';
+    readonly selectors: NonEmptyReadonlyArray<string>;
 };
 
 export type RunTestFamily = 'benchmark' | 'integration' | 'microtest' | 'property' | 'type-test';
@@ -217,6 +220,7 @@ type RunExecutionBaseFacts = {
     readonly capture: 'buffered' | 'live';
     readonly coverage: boolean;
     readonly debug: RunDebugRequest;
+    readonly debuggedCases: readonly WorkId[];
     readonly engine: RunEngineFacts;
     readonly maxConcurrency: MaxConcurrency;
     readonly order: RunOrder;

@@ -77,7 +77,8 @@ function createStoredValue<Value>(initialValue: Value): StoredValue<Value> {
 
 function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
     const observation = createExecutionObservation();
-    const activeCaseKeys = new Set<ActiveCaseContext>();
+    const active = { cases: new Set<ActiveCaseContext>(), observers: new Set<(work: WorkId) => void>() };
+
     const errors: RunnerError[] = [];
     const fatal = createStoredValue(false);
     const fatalHandlers = new Set<FatalErrorHandler>();
@@ -98,11 +99,23 @@ function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
 
     return {
         observation,
+        observeActiveWork(receive) {
+            for (const current of active.cases) {
+                receive(current.workId);
+            }
+            active.observers.add(receive);
+            return function stopObservingWork() {
+                active.observers.delete(receive);
+            };
+        },
         activeCaseStarted(key) {
-            activeCaseKeys.add(key);
+            active.cases.add(key);
+            for (const receive of active.observers) {
+                receive(key.workId);
+            }
         },
         activeCaseStopped(key) {
-            activeCaseKeys.delete(key);
+            active.cases.delete(key);
         },
         boundary,
         async fatalSignal() {
@@ -116,7 +129,7 @@ function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
             await currentFatalSignal.promise;
         },
         hasActiveCase(key) {
-            return activeCaseKeys.has(key);
+            return active.cases.has(key);
         },
         hasFatalError() {
             return fatal.read();
@@ -153,7 +166,8 @@ function createRunErrorScope(boundary: ExecutionBoundary): RunErrorScope {
         stop() {
             stopped.write(true);
             fatalHandlers.clear();
-            activeCaseKeys.clear();
+            active.cases.clear();
+            active.observers.clear();
             observation.stop();
         },
         takeErrors() {
@@ -418,4 +432,13 @@ export function createExecutionGlobalErrorObserver(boundary: ExecutionBoundary):
             return scope.takeErrors();
         }
     };
+}
+
+export function observeActiveCaseWork(receive: (work: WorkId) => void): () => void {
+    const scope = runScopeStorage.getStore();
+    return scope === undefined
+        ? function stopAbsentObserver() {
+            return undefined;
+        }
+        : scope.observeActiveWork(receive);
 }

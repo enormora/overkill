@@ -12,6 +12,8 @@ import {
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { microtestProfileSchema } from '../config/schema.ts';
 import { formatFailure } from '../reporters/line-failure-rendering.ts';
+import { testNode as debugLifecycle } from './test-debug-lifecycle.test.ts';
+import { testNode as debugDiagnostics } from './test-debug.test.ts';
 import { createReportingContext } from './reporting-context.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
@@ -44,6 +46,7 @@ async function failedComparison(
         }) ]
     }));
     return await engine.execute(plan, {
+        debug: { mode: 'off' },
         failureArtifacts: policy,
         execution: { mode: 'serial-in-process' },
         retryPolicy: null,
@@ -69,6 +72,8 @@ export const testNode = createSuite({
     ...metadata,
     title: 'failure artifact policy',
     children: [
+        debugDiagnostics,
+        debugLifecycle,
         createTestCase({
             ...metadata,
             title: 'legacy reporter contexts retain default failure rendering',

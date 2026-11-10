@@ -83,6 +83,7 @@ async function executeObservedBodyInMode(body: TestBody, execution: ExecuteExecu
             title: 'root'
         })),
         {
+            debug: { mode: 'off' },
             retryPolicy: null,
             execution,
             reporters: [ eventReporter(events) ],

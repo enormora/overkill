@@ -228,6 +228,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                debuggedCases: [],
                 failureArtifacts: defaultFailureArtifactPolicy,
                 runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,

@@ -1,5 +1,7 @@
 import { realpath } from 'node:fs/promises';
 import type { ConfigLoader } from '../config/config.ts';
+import { parseReplayDebugArguments } from './replay-debug-arguments.ts';
+import { debugRequestArguments } from './run-debug.ts';
 import {
     createCommandLineErrorResultFromUnknown,
     type CommandLineCommand
@@ -54,16 +56,20 @@ async function executeReplay(
     dependencies: ReplayCommandDependencies,
     context: Parameters<CommandLineCommand>[0]
 ): ReturnType<CommandLineCommand> {
-    if (context.arguments.length > 1) {
+    const parsed = parseReplayDebugArguments(context.arguments);
+    if (parsed.operands.length > 1) {
         throw argumentError('Replay accepts at most one run id.');
     }
-    if (context.arguments.length === 1) {
+    if (parsed.operands.length === 1) {
         return await dependencies.replayRecordedRun(context);
     }
     const id = await selectRun(dependencies, context);
     return id === null
         ? { exitCode: 0, runResult: null, stdoutLines: [], fallbackDiagnostics: [] }
-        : await dependencies.replayRecordedRun({ ...context, arguments: [ id ] });
+        : await dependencies.replayRecordedRun({
+            ...context,
+            arguments: [ id, ...debugRequestArguments(parsed.debug) ]
+        });
 }
 
 export function createReplayCommand(dependencies: ReplayCommandDependencies): CommandLineCommand {

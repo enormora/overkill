@@ -1,4 +1,5 @@
 import type { ReadonlyDeep, JsonValue } from 'type-fest';
+import type { TestDebugPayload } from './test-debug.ts';
 import type { ExecuteProcessBudgets, ProcessUsageSnapshot } from './process-usage.ts';
 import {
     workIdentityKey,
@@ -61,6 +62,7 @@ export type AdapterArtifact = {
 };
 
 export const runArtifactSubtypes = [
+    'debug',
     'adapter',
     'attachment',
     'coverage',
@@ -175,3 +177,9 @@ export function artifactsForAttempt<Artifact extends { readonly id: RunArtifactI
         return workIdentityKey(identity) === key;
     });
 }
+
+export type TestDebugArtifact = {
+    readonly id: CaseArtifactId & { readonly subtype: 'debug'; };
+    readonly source: 'boundary-captured' | 'native';
+    readonly payload: TestDebugPayload;
+};

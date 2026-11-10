@@ -1,4 +1,5 @@
 import type { ConfigLoader } from '../config/config.ts';
+import { parseReplayDebugArguments } from './replay-debug-arguments.ts';
 import type { ReplayOperations } from './replay-types.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';
 import {
@@ -37,10 +38,11 @@ async function deliverReplay(
     loadConfig: ConfigLoader,
     operations: ReplayOperations
 ): ReturnType<CommandLineCommand> {
-    const { target, profile } = operands(context, kind);
+    const parsed = parseReplayDebugArguments(context.arguments);
+    const { target, profile } = operands({ ...context, arguments: parsed.operands }, kind);
     const loaded = await loadConfig(context);
     const config = { ...loaded, reporters: loaded.reporters ?? [ await createDefaultDirectReporter() ] };
-    const input = { cwd: context.cwd, config, signal: null };
+    const input = { debug: parsed.debug, cwd: context.cwd, config, signal: null };
     const delivery = kind === 'record'
         ? await operations.replayWithReporterDelivery({ ...input, runId: target })
         : await operations.replayWitnessWithReporterDelivery({ ...input, path: target, profile });

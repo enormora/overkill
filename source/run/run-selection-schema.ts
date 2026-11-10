@@ -40,10 +40,9 @@ export const runSelectionSchema: z.ZodType<RunSelection> = z.discriminatedUnion(
 ]);
 
 export function parseRunSelection(value: unknown): RunSelection {
-    const selection = runSelectionSchema.parse(value);
-    const message = invalidRunSelectionMessage(selection);
+    const message = invalidRunSelectionMessage(value);
     if (message !== null) {
         throw new TypeError(message);
     }
-    return selection;
+    return runSelectionSchema.parse(value);
 }

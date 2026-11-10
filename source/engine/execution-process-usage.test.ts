@@ -187,6 +187,7 @@ async function executeSampledProcessExhaustion(): Promise<SampledProcessExhausti
         })
     );
     const result = await engine.execute(testPlan, {
+        debug: { mode: 'off' },
         retryPolicy: null,
         execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
         reporters: [ reporter ],
@@ -259,6 +260,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const result = await engine.execute(testPlan, {
+                    debug: { mode: 'off' },
                     retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [ reporter ],
@@ -366,6 +368,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const result = await engine.execute(testPlan, {
+                    debug: { mode: 'off' },
                     retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [],
@@ -409,6 +412,7 @@ export const testNode = createOverkillSuite({
                     })
                 );
                 const result = await engine.execute(testPlan, {
+                    debug: { mode: 'off' },
                     retryPolicy: null,
                     execution: { maxConcurrency: 'unlimited', mode: 'concurrent-in-process' },
                     reporters: [],

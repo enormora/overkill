@@ -4,6 +4,7 @@ import type { ReplayWitnessOperations } from './witness-replay-request.ts';
 import type { RunCommand, RunnerResult, RunReporterDeliveryResult } from './run-types.ts';
 
 export type ReplayContext = {
+    readonly debug: RunCommand['request']['debug'];
     readonly cwd: string;
     readonly config: NormalizedConfig;
     readonly signal: Readonly<AbortSignal> | null;

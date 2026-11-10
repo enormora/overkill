@@ -1,6 +1,8 @@
 import { command, flag, multioption, option, positional, string, type Type } from 'cmd-ts';
 import type { CommandLineRunner } from '../run/command-line.entry-point.ts';
+import { parseDebugRequest } from '../../run/run-debug.ts';
 import { profileSelectionType } from './command-line-selection.ts';
+import { runExecutionArguments } from './run-command-arguments.ts';
 
 type ReplaySeed = { readonly value: bigint | null; };
 type ReplayParsers = {
@@ -8,6 +10,8 @@ type ReplayParsers = {
     readonly seed: Type<string, ReplaySeed>;
 };
 type ReplayArguments = {
+    readonly debug: typeof runExecutionArguments.debug;
+    readonly debugScope: typeof runExecutionArguments.debugScope;
     readonly configPath: ReturnType<typeof multioption<ReplayParsers['config']>>;
     readonly path: ReturnType<typeof positional<typeof string>>;
     readonly profile: ReturnType<typeof multioption<typeof profileSelectionType>>;
@@ -17,6 +21,8 @@ type ReplayArguments = {
     readonly timings: ReturnType<typeof flag>;
 };
 type ReplayValues = {
+    readonly debug: boolean;
+    readonly debugScope: readonly string[];
     readonly configPath: string | null;
     readonly path: string;
     readonly profile: string | null;
@@ -34,6 +40,8 @@ export function createWitnessReplayCommand(
     return command({
         name: 'replay-witness',
         args: {
+            debug: runExecutionArguments.debug,
+            debugScope: runExecutionArguments.debugScope,
             configPath: multioption({
                 long: 'config',
                 type: parsers.config,
@@ -55,11 +63,13 @@ export function createWitnessReplayCommand(
             timings: flag({ long: 'timings' })
         },
         async handler(args) {
+            const debug = parseDebugRequest(args.debug, args.debugScope);
             const runner = await loadRunner();
             return await runner.replayWitness({
                 cwd,
                 configPath: args.configPath,
                 replayRequest: {
+                    debug,
                     path: args.path,
                     profile: args.profile,
                     seed: args.seed,

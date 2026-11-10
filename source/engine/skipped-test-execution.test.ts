@@ -179,6 +179,7 @@ export const testNode = createOverkillSuite({
                 const probe = createRuntimePolicyProbe();
                 const testPlan = createSkippedExecutionPlan(engine);
                 const result = await engine.execute(testPlan, {
+                    debug: { mode: 'off' },
                     retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ lifecycle.reporter ],

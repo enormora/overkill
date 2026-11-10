@@ -13,6 +13,13 @@ export function normalizeExecutionSessionOptions(
     supplied: RunExecutionSessionOptions,
     createSeed: () => bigint
 ): RunExecutionSessionOptions {
+    if (supplied.command.policy.request.debug.mode !== 'off') {
+        throw new RunResolutionError(
+            'Memory execution sessions do not support persisted debug recording.',
+            undefined,
+            'unsupported-request'
+        );
+    }
     if (supplied.command.policy.request.lastFailed) {
         throw new RunResolutionError(
             'Memory execution sessions do not support last-failed recording.',

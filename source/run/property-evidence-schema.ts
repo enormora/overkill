@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import { encodedPropertyInputSchema, propertyWitnessSchema } from '../engine/witness-file.ts';
 import type { PropertyCaseEvidence } from '../engine/run-result.ts';
-import { serializedValueSchema } from './serialized-value-schema.ts';
+import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
 
 const percentScale = 100;
 

@@ -302,3 +302,20 @@ They preserve active `WorkId` and `AttemptId` evidence, unavailable metadata as
 run-scoped artifacts accompany the final result. These variants need no
 attachment backend or standalone files. Existing runner-error classifications
 and case verdicts remain authoritative.
+
+### Debug diagnostics
+
+Supplied execution options require `debug: { mode: 'off' }`,
+`debug: { mode: 'all' }`, or `debug: { mode: 'selected', work: [...] }`.
+Calling `execute(plan)` keeps debug recording off. Selected identities never
+change which tests execute.
+
+Both test scopes expose `scope.debug.includeRecording({ name, recorded })`.
+The callback returns application-owned event arrays and is never invoked when
+debug is off. Provider failures are artifact runner errors; case verdicts remain
+intact.
+
+`TestDebugArtifact` is a typed, JSON-safe result artifact. Measurements identify
+shared observation windows and sampling limits. Incomplete `debug-checkpoint`
+events are diagnostic progress; completed evidence appears in `test-end.artifacts`
+and `RunResult.artifacts`. Direct engine execution keeps this evidence in memory.

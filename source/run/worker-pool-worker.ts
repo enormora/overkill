@@ -1,4 +1,4 @@
-import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import { resolveDebugSelection } from './run-debug.ts';
 import { withReplayWire } from './replay-wire.ts';
 import { createWorkerExecute } from './worker-execution-engine.ts';
 import {
@@ -121,9 +121,9 @@ async function runAssignment(
         'worker.assign-work',
         async function executeTimedWorkerAssignment() {
             return await execute(testPlan, {
+                debug: resolveDebugSelection(task.command.debug, testPlan.cases),
                 seed: BigInt(task.command.seed),
                 execution: engineExecution(task.command.scheduling, task.command.maxConcurrency),
-                outputRenderer: createPlainOutputRenderer(),
                 reporters: [ createWorkerPoolReporter(task) ],
                 failureArtifacts: task.command.failureArtifacts,
                 processUsageSamplingIntervalMilliseconds: task.command.processUsageSamplingIntervalMilliseconds,

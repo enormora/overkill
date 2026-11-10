@@ -59,6 +59,7 @@ export async function prepareRecordedReplay(
             },
             request: {
                 ...record.request,
+                debug: input.debug,
                 baselineUpdateMode: 'none',
                 seed: { value: BigInt(record.seed) },
                 record: true,
@@ -96,7 +97,7 @@ export async function prepareWitnessReplay(
                 capabilityRestrictions: { mode: 'enabled' },
                 capture: 'buffered',
                 coverage: false,
-                debug: { mode: 'off', selectors: [] },
+                debug: input.debug,
                 execution: { mode: 'profile-default' },
                 lastFailed: false,
                 measureProcessUsage: null,

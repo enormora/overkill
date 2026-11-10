@@ -25,7 +25,13 @@ async function recordedProject(scope: TestScope, workers: boolean): Promise<Reco
     return { project, record };
 }
 function input(saved: RecordedProject): ReplayRunCommand {
-    return { cwd: saved.project.cwd, config: saved.project.command.config, signal: null, runId: saved.record.id };
+    return {
+        debug: { mode: 'off', selectors: [] },
+        cwd: saved.project.cwd,
+        config: saved.project.command.config,
+        signal: null,
+        runId: saved.record.id
+    };
 }
 async function replaceRecord(saved: RecordedProject, value: unknown): Promise<void> {
     await writeFile(

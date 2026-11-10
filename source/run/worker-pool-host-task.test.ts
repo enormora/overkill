@@ -43,6 +43,7 @@ function workId(): TestWorkId {
 
 function command(): WorkerPoolCommand {
     return {
+        debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,

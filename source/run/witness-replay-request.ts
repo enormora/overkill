@@ -8,6 +8,7 @@ import type {
 } from './run-types.ts';
 
 export type ReplayWitnessRequest = {
+    readonly debug: RunRequest['debug'];
     readonly path: string;
     readonly profile: string | null;
     readonly seed: RunRequest['seed'];

@@ -2,6 +2,7 @@ import { workIdentityKey } from '../engine/identity.ts';
 import { artifactsForAttempt } from '../engine/run-artifact.ts';
 import { appendRunnerErrors } from '../engine/execution-result.ts';
 import type { RetryArtifactPolicy } from '../config/execution.ts';
+import { mergeDebugArtifacts } from './debug-artifact-results.ts';
 import { collectedRunCaseEntries } from './collected-run-plan.ts';
 import type { CollectedRunPlan } from './run-types.ts';
 import type {
@@ -21,7 +22,11 @@ export function resultWithRetainedArtifacts(
 ): RunResult {
     return {
         ...result,
-        artifacts: retainedRetryArtifacts([ ...result.artifacts, ...artifacts ], result.perTest, policy)
+        artifacts: retainedRetryArtifacts(
+            mergeDebugArtifacts([ ...result.artifacts, ...artifacts ]),
+            result.perTest,
+            policy
+        )
     };
 }
 

@@ -49,6 +49,7 @@ export async function executePropertyNode(
         { testFamily: 'property', propertyPolicy: request.policy, timeoutMilliseconds: 1000 }
     );
     return await createTestEngine().execute(plan, {
+        debug: { mode: 'off' },
         execution: request.execution,
         propertyRun: {
             ...hasReplay(request) ? { replay: request.replay } : {},

@@ -1,4 +1,5 @@
 import { createStoredValue } from '../stored-value.ts';
+import { debugBodyStarted, debugBodyCompleted } from './test-debug-recording.ts';
 import type { PerTestResult, RunnerError } from './run-result.ts';
 
 export type ExecutedCase = {
@@ -42,8 +43,11 @@ export function createCaseInterruption(completion: Promise<ExecutedCase> | null)
     return {
         result: terminal.read,
         async run(operation) {
+            debugBodyStarted();
             const body = completeBody(operation);
-            return interrupted === null ? await body : await Promise.race([ body, interrupted ]);
+            const result = interrupted === null ? await body : await Promise.race([ body, interrupted ]);
+            debugBodyCompleted(result);
+            return result;
         }
     };
 }

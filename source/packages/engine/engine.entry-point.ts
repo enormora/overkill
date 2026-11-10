@@ -511,3 +511,15 @@ export type {
     ProcessExhaustionArtifact,
     BoundaryFailureArtifact
 } from '../../engine/run-artifact.ts';
+
+export type {
+    ExecuteDebugSelection,
+    DebugRecordingProvider,
+    TestDebugScope,
+    TimelineEntry,
+    DebugStats
+} from '../../engine/test-debug.ts';
+
+export { isTestDebugArtifact } from '../../engine/run-result.ts';
+
+export type { TestDebugArtifact } from '../../engine/run-artifact.ts';

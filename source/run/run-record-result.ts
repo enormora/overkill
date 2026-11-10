@@ -10,8 +10,8 @@ import type {
     TestFailure,
     TestOutcome
 } from '../engine/run-result.ts';
+import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
 import { runDiagnosticsSchema } from './run-result-schema.ts';
-import { serializedValueSchema } from './serialized-value-schema.ts';
 import type {
     RunRecordArtifact,
     RunRecordTestAttempt,

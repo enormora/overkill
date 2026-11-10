@@ -101,6 +101,7 @@ export const testNode = suite('public replay execution', [
             const record = retainedRecord(files);
             replaying = true;
             const replayed = await orchestrator.replay({
+                debug: { mode: 'off', selectors: [] },
                 cwd: command.cwd,
                 config: command.config,
                 signal: null,

@@ -229,6 +229,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
         const startedAt = new Date(0);
 
         const result = await defaultRunEngine.execute(seeded.testPlan, {
+            debug: { mode: 'off' },
             retryPolicy: null,
             execution: profile.execution.scheduling === 'concurrent'
                 ? {

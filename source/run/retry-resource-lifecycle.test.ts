@@ -115,6 +115,7 @@ export const testNode = createSuite({
                     }) ]
                 }));
                 const result = await engine.execute(plan, {
+                    debug: { mode: 'off' },
                     execution: { mode: 'serial-in-process' },
                     reporters: [],
                     retryPolicy: { maxAttempts: 3 },
@@ -153,6 +154,7 @@ export const testNode = createSuite({
                     }) ]
                 }));
                 const result = await engine.execute(plan, {
+                    debug: { mode: 'off' },
                     execution: { mode: 'serial-in-process' },
                     reporters: [],
                     retryPolicy: { maxAttempts: 3 },
@@ -188,6 +190,7 @@ export const testNode = createSuite({
                     children: [ engine.createTestCase({ ...metadata, title: 'case', body }) ]
                 }));
                 const result = await engine.execute(plan, {
+                    debug: { mode: 'off' },
                     execution: { mode: 'serial-in-process' },
                     reporters: [],
                     retryPolicy: { maxAttempts: 3 },
@@ -231,6 +234,7 @@ export const testNode = createSuite({
                     })
                 );
                 const result = await engine.execute(plan, {
+                    debug: { mode: 'off' },
                     execution: { mode: 'serial-in-process' },
                     reporters: [],
                     retryPolicy: { maxAttempts: 3 },
@@ -283,6 +287,7 @@ export const testNode = createSuite({
                     })
                 );
                 const result = await engine.execute(plan, {
+                    debug: { mode: 'off' },
                     execution: { mode: 'serial-in-process' },
                     reporters: [],
                     retryPolicy: { maxAttempts: 3 },

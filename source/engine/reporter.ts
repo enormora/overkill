@@ -1,3 +1,4 @@
+import type { TestDebugArtifact } from './run-artifact.ts';
 import type {
     PropertyCaseEvidence,
     RunResult,
@@ -204,7 +205,10 @@ type TestReporterEvents = {
 };
 type TestReporterEvent = TestReporterEvents[keyof TestReporterEvents];
 
-export type ReporterEvent = RunReporterEvent | SuiteReporterEvent | TestReporterEvent;
+export type ReporterEvent = RunReporterEvent | SuiteReporterEvent | TestReporterEvent | {
+    readonly kind: 'debug-checkpoint';
+    readonly artifact: TestDebugArtifact;
+};
 
 type ManagedStandardOutputSinkPresence<
     FirstSink extends SinkDeclaration,

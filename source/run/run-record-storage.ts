@@ -1,9 +1,10 @@
+import { join, dirname } from 'node:path';
 import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-tracking.ts';
 import { withRunnerInfrastructure } from '../engine/execution-observation.ts';
 import type { RunResult } from '../engine/run-result.ts';
+import { createDebugArtifactStore, persistDebugResult } from './debug-artifact-storage.ts';
 import { createResultFromResolutionError } from './run-collection-error-result.ts';
 import { RunCollectionError } from './run-errors.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { runRecordPersistenceError, type RunRecordError, type RunRecordPhase } from './run-record-error.ts';
 import { recordedRunResult } from './run-record-result.ts';
 import type { RunRecord } from './run-record-types.ts';
@@ -47,9 +48,10 @@ function resultWithPersistenceError(result: RunResult, error: RunRecordError, ph
 export function createRunRecordStorage(
     filePath: string,
     initial: RunRecord,
-    store: Pick<RunOrchestratorDependencies['runtimeStateStore'], 'write'>
+    store: Parameters<typeof createDebugArtifactStore>[1]
 ): RunRecordStorage {
     let current = initial;
+    const debugArtifacts = createDebugArtifactStore(join(dirname(filePath), initial.id, 'debug'), store);
     const storage: RunRecordStorage = {
         async interrupt(error, placementTrace) {
             const crash = new RunCollectionError('Run interrupted before completion.', { cause: error }, 'crash');
@@ -80,13 +82,16 @@ export function createRunRecordStorage(
         },
         async result(result, status, metadata) {
             const phase = status === 'completed' ? 'complete' : 'checkpoint';
-
+            const persistedResult = await persistDebugResult(result, debugArtifacts, status === 'completed');
             try {
-                await storage.persist({ ...current, ...metadata, result: recordedRunResult(result), status }, phase);
-                return result;
+                await storage.persist(
+                    { ...current, ...metadata, result: recordedRunResult(persistedResult), status },
+                    phase
+                );
+                return persistedResult;
             } catch (error: unknown) {
                 const persistenceError = runRecordPersistenceError(filePath, phase, error);
-                const failure = resultWithPersistenceError(result, persistenceError, phase);
+                const failure = resultWithPersistenceError(persistedResult, persistenceError, phase);
                 await preserveFailure(storage, failure, status);
                 return failure;
             }

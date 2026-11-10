@@ -72,6 +72,7 @@ async function verifyCoverageReplay(scope: TestScope, empty: boolean): Promise<v
         await unlink(path.join(project.cwd, 'case.test.ts'));
     }
     const result = await orchestrator.replay({
+        debug: { mode: 'off', selectors: [] },
         cwd: project.cwd,
         config: project.command.config,
         signal: null,

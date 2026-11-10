@@ -5,6 +5,7 @@ import {
     normalizedMicrotestProfileSchema,
     normalizedProcessBudgetsSchema
 } from '../config/normalized-microtest-schema.ts';
+import { runDebugRequestSchema } from './run-debug.ts';
 import { executionCommandFields } from './run-command-schema.ts';
 import { runSelectionSchema } from './run-selection-schema.ts';
 import { fileModuleBoundarySchema } from './file-module-boundary.ts';
@@ -36,7 +37,7 @@ export const frozenMicrotestPolicySchema = z.strictObject({
         capabilityRestrictions: z.strictObject({ mode: z.enum([ 'disabled', 'enabled' ]) }),
         capture: z.literal('buffered'),
         coverage: z.boolean(),
-        debug: z.strictObject({ mode: z.literal('off'), selectors: z.tuple([]) }),
+        debug: runDebugRequestSchema,
         execution: z.discriminatedUnion('mode', [
             z.strictObject({ mode: z.literal('profile-default') }),
             z.strictObject({ mode: z.literal('serial') })
