@@ -8,7 +8,8 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { createEngine } from './engine.ts';
-import type { Execute, ExecuteOptions } from './execution.ts';
+import { testNode as familyTests } from './family-run.test.ts';
+import type { ExecutionDriver, ExecuteOptions } from './execution.ts';
 import { createPlainOutputRenderer } from './reporter-output.ts';
 import type { RunResult } from './run-result.ts';
 
@@ -18,6 +19,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        familyTests,
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'engine.execute() invokes the injected execute dependency',
@@ -25,7 +27,7 @@ export const testNode = createOverkillSuite({
             controls: {},
             async body(scope: OverkillScope) {
                 const expectedResult = runResultFactory.build({ totalWallTimeMicroseconds: 42 });
-                const execute = testDouble<Execute>({
+                const execute = testDouble<ExecutionDriver>({
                     fallback: rule.calls(async function executeInjectedPlan(): Promise<RunResult> {
                         return expectedResult;
                     })

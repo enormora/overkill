@@ -5,7 +5,7 @@ import { createDefaultWorkId } from '../engine/identity.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 import { executionCommandFields } from './run-command-schema.ts';
 import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
-import { supervisedChildMessageSchema } from './supervised-protocol-schema.ts';
+import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
 import { workerPoolHostCommandSchema, workerPoolHostMessageSchema } from './worker-pool-host-protocol-schema.ts';
 
 import type { SupervisedChildMessage } from './supervised-protocol.ts';

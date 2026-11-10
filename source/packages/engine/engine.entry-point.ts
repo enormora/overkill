@@ -125,12 +125,16 @@ export function createTestPlanFromTestFiles(
     return defaultEngine.createTestPlanFromTestFiles(options);
 }
 
-export async function execute(
-    testPlan: Parameters<Engine['execute']>[0],
-    options?: Parameters<Engine['execute']>[1]
-): ReturnType<Engine['execute']> {
-    return await defaultEngine.execute(testPlan, options);
-}
+export const execute: Engine['execute'] = defaultEngine.execute;
+export const prepareFamily: Engine['prepareFamily'] = defaultEngine.prepareFamily;
+
+export type {
+    CollectedFamilyRun,
+    FamilyExecuteOptions,
+    FamilyRunFacts,
+    PrepareFamilyRequest,
+    PreparedFamilyRun
+} from '../../engine/family-run.ts';
 
 export function ownsTestNode(value: unknown): value is TestNode {
     return defaultEngine.ownsTestNode(value);

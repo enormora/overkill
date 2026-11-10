@@ -1,5 +1,12 @@
 import type { Clock } from '@enormora/clock';
-import type { Execute } from './execution.ts';
+import type { Execute, ExecutionDriver } from './execution.ts';
+import {
+    createFamilyRuns,
+    type CollectedFamilyRun,
+    type PrepareFamilyRequest,
+    type PreparedFamilyRun
+} from './family-run.ts';
+import type { FamilyValue } from './test-family.ts';
 import { formatCaseId } from './identity.ts';
 import {
     createTestNodeOwner,
@@ -24,6 +31,7 @@ import {
 import {
     createTestPlanFactory,
     createTestPlanFromTestFilesFactory,
+    type TestPlan,
     type TestPlanFactory,
     type TestPlanFromTestFilesFactory
 } from './test-plan.ts';
@@ -41,14 +49,21 @@ export type Engine = {
     readonly createTestPlan: TestPlanFactory;
     readonly createTestPlanFromTestFiles: TestPlanFromTestFilesFactory;
     readonly execute: Execute;
+    readonly prepareFamily: <Settings extends FamilyValue>(
+        request: PrepareFamilyRequest<Settings>
+    ) => Promise<PreparedFamilyRun>;
     readonly formatCaseId: typeof formatCaseId;
     readonly ownsTestNode: (value: unknown) => value is TestNode;
 };
 
 export type EngineDependencies = {
-    readonly execute: Execute;
+    readonly execute: ExecutionDriver;
     readonly wallClock: Clock;
 };
+
+function isTestPlan(input: CollectedFamilyRun | TestPlan): input is TestPlan {
+    return Object.hasOwn(input, 'cases');
+}
 
 export function createEngineWithOwner(dependencies: EngineDependencies, owner: TestNodeOwner): Engine {
     const { execute } = dependencies;
@@ -59,8 +74,13 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
             constructedNodes.add(node);
         }
     });
-    const createTestPlan = createTestPlanFactory(owner, constructedNodes);
-    const createTestPlanFromTestFiles = createTestPlanFromTestFilesFactory(owner, nodeFactory.createRoot);
+    const planFromRoot = createTestPlanFactory(owner, constructedNodes);
+    const planFromFiles = createTestPlanFromTestFilesFactory(owner, nodeFactory.createRoot);
+
+    const plans = new WeakSet<TestPlan>();
+    const familyRuns = createFamilyRuns(function ownsPlan(plan) {
+        return plans.has(plan);
+    });
 
     return {
         createPropertyTestCase: nodeFactory.createPropertyTestCase,
@@ -72,9 +92,27 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
         createTestCase: nodeFactory.createTestCase,
         createThrowingTestCase: nodeFactory.createThrowingTestCase,
         createWorkloadTestCase: nodeFactory.createWorkloadTestCase,
-        createTestPlan,
-        createTestPlanFromTestFiles,
-        execute,
+        createTestPlan(root) {
+            const plan = planFromRoot(root);
+            plans.add(plan);
+            return plan;
+        },
+        createTestPlanFromTestFiles(options) {
+            const plan = planFromFiles(options);
+            plans.add(plan);
+            return plan;
+        },
+        prepareFamily: familyRuns.prepareFamily,
+        async execute(input, options?) {
+            if (isTestPlan(input)) {
+                return await execute(input, options);
+            }
+            const signal: unknown = options === undefined ? undefined : Reflect.get(options, 'signal');
+            if (!(signal instanceof AbortSignal)) {
+                throw new TypeError('Collected family execution requires an AbortSignal.');
+            }
+            return await execute(familyRuns.execution(input, signal), options);
+        },
         formatCaseId,
         ownsTestNode(value): value is TestNode {
             return isOwnedTestNode(value, owner);

@@ -5,8 +5,8 @@ import {
     caseIdSchema,
     runtimeIdSchema,
     workloadIdSchema
-} from '../engine/identity-schema.ts';
-import { runArtifactSubtypes } from '../engine/run-artifact.ts';
+} from './identity-schema.ts';
+import { runArtifactSubtypes } from './run-artifact.ts';
 
 export const artifactIdentityFields = {
     familyVariant: familyVariantSchema.default(null),

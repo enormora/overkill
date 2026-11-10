@@ -2,7 +2,7 @@ import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { InvocationDeadlineExceededError } from '../invocation-budget.ts';
 import { executionTermination } from '../execution-termination.ts';
 import { envelopeMessage } from './child-process-protocol.ts';
-import { supervisedChildMessageSchema } from './supervised-protocol-schema.ts';
+import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
 import { supervisedChildCorrelationId, type SupervisedChildMessage } from './supervised-protocol.ts';
 import { runExecutionFailure } from './execution-failure.ts';
 import type { RunExecutionReply } from './execution-session-types.ts';

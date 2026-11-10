@@ -11,7 +11,7 @@ import {
     type SupervisedChildCommand,
     type SupervisedAssignmentCommand
 } from './supervised-protocol.ts';
-import { supervisedChildMessageSchema } from './supervised-protocol-schema.ts';
+import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
 import type { StoredRunValue, SupervisedRunState } from './supervised-run-state.ts';
 
 type SupervisedTransport = {

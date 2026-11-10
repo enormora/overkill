@@ -20,6 +20,9 @@ Top-level API:
 - `createTable(options)`
 - `createTestPlan(root)`
 - `execute(testPlan)`
+- `defineTestFamily(definition)`
+- `prepareFamily(request)`
+- `execute(collectedFamilyRun, options)`
 - `createEngine()`
 - `formatCaseId(caseId)`
 - `workIdentityKey(workId)`
@@ -334,3 +337,28 @@ intact.
 shared observation windows and sampling limits. Incomplete `debug-checkpoint`
 events are diagnostic progress; completed evidence appears in `test-end.artifacts`
 and `RunResult.artifacts`. Direct engine execution keeps this evidence in memory.
+
+## Direct family execution
+
+Use an engine-created plan, an explicit family definition, and an absolute
+project root. Select work by its prepared identity. The engine rejects empty,
+unknown, or duplicate selections. Authored skips remain in the result.
+
+```ts
+await using prepared = await engine.prepareFamily({
+    testPlan,
+    testFamily,
+    settings,
+    projectRoot,
+    signal
+});
+const collected = await prepared.collect({
+    workIds: prepared.testPlan.cases.map(testCase => testCase.workId),
+    signal
+});
+const result = await engine.execute(collected, { ...executionOptions, signal });
+```
+
+Runtime families use ordinary body execution. Analysis families supply evidence
+through the engine and never invoke test bodies. Both use the same reporters.
+The top-level functions use the default engine.

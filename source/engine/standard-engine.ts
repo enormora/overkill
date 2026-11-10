@@ -53,6 +53,7 @@ const engineMethods: readonly (keyof Engine)[] = [
     'createTestPlan',
     'createTestPlanFromTestFiles',
     'execute',
+    'prepareFamily',
     'formatCaseId',
     'ownsTestNode'
 ];

@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { runnerErrorSchema } from '../engine/runner-error-schema.ts';
 import { workIdSchema, attemptIdSchema } from '../engine/identity-schema.ts';
 import type {
     WorkerPoolHostCommand,
@@ -7,7 +8,6 @@ import type {
 } from './worker-pool-host-protocol.ts';
 import { hostProcessSchema } from './run-command-schema.ts';
 import { workerPoolTaskSchema } from './worker-pool-task-schema.ts';
-import { runnerErrorSchema } from './run-result-schema.ts';
 import { processUsageSchema, processUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
 import { reporterEventSchema } from './reporter-event-schema.ts';
 

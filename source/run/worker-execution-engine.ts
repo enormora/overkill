@@ -1,6 +1,6 @@
 import type { Clock } from '@enormora/clock';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
-import { createExecute, type Execute } from '../engine/execution.ts';
+import { createExecute, type RuntimeExecute } from '../engine/execution.ts';
 import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environment.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
@@ -12,7 +12,7 @@ function readActiveResourceTypes(): readonly string[] {
     return process.getActiveResourcesInfo();
 }
 
-export async function createWorkerExecute(command: WorkerPoolCommand, wallClock: Clock): Promise<Execute> {
+export async function createWorkerExecute(command: WorkerPoolCommand, wallClock: Clock): Promise<RuntimeExecute> {
     let benchmarkEnvironment: BenchmarkExecutionEnvironment | null = null;
     if (command.testFamily === 'benchmark') {
         const { createBenchmarkExecutionEnvironment } = await import('./benchmark-execution-environment.ts');

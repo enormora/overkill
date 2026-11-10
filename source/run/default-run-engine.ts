@@ -57,6 +57,7 @@ export const defaultRunEngine: Engine = {
     createTestPlan: engine.createTestPlan,
     createTestPlanFromTestFiles: engine.createTestPlanFromTestFiles,
     execute: engine.execute,
+    prepareFamily: engine.prepareFamily,
     formatCaseId,
     ownsTestNode: engine.ownsTestNode
 };

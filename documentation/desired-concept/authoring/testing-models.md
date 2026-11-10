@@ -357,8 +357,8 @@ computed evidence reported as trustworthy passing assertions. Buffer assertion
 outcomes until post-check input validation succeeds; input drift produces run
 errors and inconclusive cases before any passing case-end evidence is delivered.
 
-Authored skipped cases stay skipped without body inspection. An empty selection
-passes with zero executed cases and no analysis execution. Unsupported todo or
+Authored skipped cases stay skipped without body inspection. The engine rejects empty
+selections. The runner handles empty shards before collection. Unsupported todo or
 expected-failure controls are rejected; the package does not introduce its own
 versions of those controls. Precise expected-diagnostic assertions are outside
 the initial public catalog. Normal `@ts-expect-error` retains TypeScript's coarse

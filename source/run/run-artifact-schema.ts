@@ -1,11 +1,12 @@
 import { z } from 'zod/v4';
+import { adapterArtifactSchema } from '../engine/adapter-artifact-schema.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
 import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { testOutcomeSchema } from '../engine/assertion-result-schema.ts';
+import { artifactIdentityFields, runArtifactIdSchema } from '../engine/run-artifact-id-schema.ts';
 import { debugArtifactSchema } from './debug-artifact-schema.ts';
 import { boundaryFailureArtifactSchema } from './boundary-failure-artifact-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
-import { testOutcomeSchema } from './assertion-result-schema.ts';
-import { artifactIdentityFields, runArtifactIdSchema } from './run-artifact-id-schema.ts';
 import { runtimeAttachmentArtifactSchema } from './attachment-wire-schema.ts';
 import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
@@ -36,11 +37,7 @@ const hedgeEvidenceSchema = z.strictObject({
 export const runArtifactSchema: z.ZodType<RunArtifact> = z.union([
     debugArtifactSchema,
     boundaryFailureArtifactSchema,
-    z.strictObject({
-        id: runArtifactIdSchema.and(z.object({ subtype: z.literal('adapter') })),
-        payload: z.strictObject({ kind: z.literal('adapter'), adapter: z.string(), facts: z.json() }),
-        source: z.literal('native')
-    }),
+    adapterArtifactSchema,
     runtimeAttachmentArtifactSchema,
     z.strictObject({
         id: runArtifactIdSchema.and(z.object({ subtype: z.literal('log-capture') })),

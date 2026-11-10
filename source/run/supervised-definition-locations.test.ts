@@ -9,7 +9,7 @@ import {
 import { createVirtualRunDiscovery } from '../test-support/virtual-run-discovery.ts';
 import type { SupervisedChildMessage } from './supervised-protocol.ts';
 import { runSupervisedChild, type SupervisedChildHost } from './supervised-child.ts';
-import { supervisedChildMessageSchema } from './supervised-protocol-schema.ts';
+import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
 
 const file = 'tests/authored.test.ts';
 const location = { kind: 'known', file, line: 1, column: 1 } as const;

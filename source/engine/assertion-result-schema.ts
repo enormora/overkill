@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import type { FailedCheck } from '../assertion-protocol/assertion-node-shape.ts';
-import type { TestOutcome } from '../engine/run-result.ts';
-import { sourceLocationsSchema } from '../engine/identity-schema.ts';
+import type { TestOutcome } from './run-result.ts';
+import { sourceLocationsSchema } from './identity-schema.ts';
 import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
 import { diffPathSchema, diffSchema } from './diff-schema.ts';
 import { runArtifactIdSchema } from './run-artifact-id-schema.ts';

@@ -9,7 +9,8 @@ import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { attachmentFixture, attachmentWork } from '../test-support/attachment-fixture.ts';
 import { defaultAttachmentLimits, type RuntimeAttachmentArtifact } from '../engine/runtime-attachment.ts';
 import { childProcessEnvelope, envelopeMessage } from './child-process-protocol.ts';
-import { supervisedChildMessageSchema, supervisedParentMessageSchema } from './supervised-protocol-schema.ts';
+import { supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
+import { supervisedChildMessageSchema } from './supervised-child-message-schema.ts';
 import type { SupervisedChildMessage } from './supervised-protocol.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
