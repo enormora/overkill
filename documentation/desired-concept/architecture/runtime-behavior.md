@@ -809,7 +809,9 @@ Result collection then happens in two layers:
   - each shard produces its own exit code and local reports/artifacts
   - any failing shard fails its CI job, so the overall workflow fails
 - **optional merge-results mode**
-  - each shard persists a completed `RunRecord` with populated `result`
+  - each shard runs with `--record-for-merge` and a shared explicit seed
+  - each shard persists a completed `RunRecord` with populated `result` and
+    defers compact-history contributions to the merge
   - a later `overkill merge-results ...` step validates those records,
     writes a non-replayable merged `RunRecord`, and delivers that merged
     result to final-result reporters

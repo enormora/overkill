@@ -7,11 +7,11 @@ import {
     type ProcessBudgets,
     type NormalizedConfig
 } from '../config/types.ts';
-import { runSelectionSchema } from './run-selection-schema.ts';
+import { runSelectionValidationMessage } from './run-selection-schema.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
-import { invalidRunSelectionMessage } from './run-selection-filters.ts';
+import { currentExecutionSession } from './execution-session-context.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
 const minimumSeedValue = 0n;
@@ -78,15 +78,10 @@ function validateRunProcessUsageRequest(request: RunRequest): void {
 }
 
 function validateRunSelection(request: RunRequest): void {
-    const message = invalidRunSelectionMessage(request.selection);
+    const message = runSelectionValidationMessage(request.selection);
 
     if (message !== null) {
         invalidRequest(message);
-    }
-
-    const parsed = runSelectionSchema.safeParse(request.selection);
-    if (!parsed.success) {
-        invalidRequest(parsed.error.message);
     }
 }
 
@@ -125,12 +120,29 @@ function validateRunRecordingRequest(request: RunRequest): void {
     }
 }
 
+function validateMergeRecordingRequest(request: RunRequest): void {
+    const recordForMerge: unknown = Reflect.get(request, 'recordForMerge');
+    if (recordForMerge === undefined || recordForMerge === false) {
+        return;
+    }
+    if (recordForMerge !== true) {
+        invalidRequest('Record for merge must be a boolean.');
+    }
+    if (request.shard.total === 1) {
+        invalidRequest('--record-for-merge requires more than one shard.');
+    }
+    if (request.record) {
+        invalidRequest('Choose either --record or --record-for-merge.');
+    }
+}
+
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
     validateRunRecordingRequest(request);
 
     validatePositiveSafeInteger(request.workers, 'Worker count');
     validateRunShard(request);
+    validateMergeRecordingRequest(request);
     validateRunSeed(request);
     validateRunSelection(request);
     validateTimingCollection(request);
@@ -219,6 +231,9 @@ export function assertProfileRequestSupported(
     namespace: Namespace,
     reporters: NormalizedConfig['reporters']
 ): void {
+    if (request.recordForMerge && (namespace !== 'test' || currentExecutionSession() !== null)) {
+        invalidRequest('--record-for-merge is only supported by ordinary runs outside execution sessions.');
+    }
     assertAdapterRequest(request, profile);
     assertBaselineRequest(request, profile, namespace);
     assertExecution(request, profile);

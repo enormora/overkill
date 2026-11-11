@@ -1,4 +1,3 @@
-import type { Except } from 'type-fest';
 import { command, flag, restPositionals, runSafely, string, subcommands } from 'cmd-ts';
 import type { CommandLineRunner, CommandLineRunnerResult } from '../run/command-line.entry-point.ts';
 import { createWitnessReplayCommand } from './witness-replay-command.ts';
@@ -83,6 +82,7 @@ export async function dispatchOverkillCommand(
         args: {
             ...sharedCommandArguments,
             coverage: flag({ long: 'coverage' }),
+            recordForMerge: flag({ long: 'record-for-merge' }),
             ...runExecutionArguments
         },
         async handler(args: RunCommandArguments<string>) {
@@ -119,9 +119,12 @@ export async function dispatchOverkillCommand(
                                 command({
                                     name: verb,
                                     args: { ...benchmarkCommandArguments, ...runExecutionArguments },
-                                    async handler(args: Except<RunCommandArguments<string | null>, 'coverage'>) {
+                                    async handler(args) {
                                         const runner = await loadRunner();
-                                        const request = createRunTestsRequest({ ...args, coverage: false }, cwd);
+                                        const request = createRunTestsRequest(
+                                            { ...args, coverage: false, recordForMerge: false },
+                                            cwd
+                                        );
                                         return await runner.bench.baseline[verb](request);
                                     }
                                 })
@@ -161,16 +164,20 @@ export async function dispatchOverkillCommand(
                 args: { ...benchmarkCommandArguments, ...runExecutionArguments },
                 async handler(args) {
                     const runner = await loadRunner();
-                    return await runner.bench.calibrate(createRunTestsRequest({ ...args, coverage: false }, cwd));
+                    return await runner.bench.calibrate(
+                        createRunTestsRequest({ ...args, coverage: false, recordForMerge: false }, cwd)
+                    );
                 }
             }),
             run: command({
                 name: 'run',
                 args: { ...benchmarkCommandArguments, ...runExecutionArguments },
-                async handler(args: Except<RunCommandArguments<string | null>, 'coverage'>) {
+                async handler(args) {
                     const runner = await loadRunner();
 
-                    return await runner.bench.runBenchmarks(createRunTestsRequest({ ...args, coverage: false }, cwd));
+                    return await runner.bench.runBenchmarks(
+                        createRunTestsRequest({ ...args, coverage: false, recordForMerge: false }, cwd)
+                    );
                 }
             })
         }

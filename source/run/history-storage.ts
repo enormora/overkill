@@ -50,6 +50,9 @@ export async function updateCompactHistory(
     record: HistoryRecord,
     context: HistoryUpdateContext
 ): Promise<void> {
+    if (record.request.recordForMerge) {
+        return;
+    }
     const { directory, policy, now, testFamily } = context;
     const source = await store.read(path.join(directory, 'history', 'index.json'));
     if (source !== null && historySchemaVersion(source) === 0) {

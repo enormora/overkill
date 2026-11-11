@@ -79,6 +79,7 @@ function coverageRequest(): RunRequest {
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         record: false,
+        recordForMerge: false,
         lastFailed: false,
         coverage: true,
         debug: { mode: 'off', selectors: [] },

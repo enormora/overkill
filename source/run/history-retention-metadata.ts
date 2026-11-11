@@ -43,7 +43,7 @@ export async function artifactMetadata(
 }
 
 function assertRecordCommitted(record: HistoryRecord, input: RecordCatalogInput): void {
-    if (record.status !== 'completed') {
+    if (record.status !== 'completed' || record.request.recordForMerge) {
         return;
     }
     const cutoff = Date.parse(input.now) - input.policy.staleIdentityRetentionDays * millisecondsPerDay;

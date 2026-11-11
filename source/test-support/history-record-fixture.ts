@@ -24,7 +24,7 @@ export function completedHistoryRecord(id: string): Extract<HistoryRecord, { rea
         ),
         status: 'completed',
         startedAt: historyTimestamp,
-        request: { profile: 'unit' },
+        request: { profile: 'unit', recordForMerge: false },
         execution: { processModel: 'in-process', scheduling: 'serial' },
         facts: { execution: { testFamily: 'microtest' } },
         result: {

@@ -159,12 +159,17 @@ retained record should include that persistence error in
 This is a repairable state, not a transactional promise: `overkill history
 compact` can rebuild the compact index from retained records.
 
-For optional `merge-results` workflows, every shard writes a completed
-`kind: 'single'` record with populated `result`. The merge command validates
-that the records describe the same planned run, combines their results, and
-writes a `kind: 'merged'` record under the same runtime-state directory. The
-shard records remain the primary execution facts; the merged record preserves
-their ids and input paths as lineage.
+For optional `merge-results` workflows, `--record-for-merge` or
+`RunRequest.recordForMerge` requests a completed `kind: 'single'` record with
+populated `result` for each shard. The persisted request identifies these records
+as merge inputs. Run summaries, case outcomes, and work durations from these
+inputs enter compact history through the aggregate. History repair skips the
+individual inputs. Detailed records remain subject to project retention.
+
+The merge command validates that the records describe the same planned run,
+combines their results, and writes a `kind: 'merged'` record under the same
+runtime-state directory. The shard records remain the primary execution facts.
+The merged record preserves their ids and input paths as lineage.
 
 Merge validation is strict about the run semantics: selected profile, seed,
 shard total, selected identities, loader configuration, and Overkill package
@@ -179,7 +184,7 @@ enough valid input to explain what happened.
 Compact history is the long-lived derived state under `runtimeStateDir`. It is
 not a replay source. It keeps useful data after detailed records are pruned:
 
-- run summaries for persisted runs
+- run summaries for persisted runs eligible for compact history
 - case-level outcome history keyed by `CaseId`
 - work-level duration history keyed by `WorkId`
 
@@ -256,7 +261,7 @@ pruning is optional maintenance and happens after final reporter output.
 
 Automatic maintenance:
 
-- runs only after persisted runs
+- runs only after persisted runs eligible for compact history
 - is lock-protected
 - is best-effort
 - has a default 100 ms cooperative budget, including lock waiting and scanning;

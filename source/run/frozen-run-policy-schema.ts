@@ -50,6 +50,7 @@ export const frozenMicrotestPolicySchema = z.strictObject({
         selection: runSelectionSchema,
         shard: z.strictObject({ index: z.number().int().positive(), total: z.number().int().positive() }),
         record: z.boolean(),
+        recordForMerge: z.boolean().default(false),
         lastFailed: z.boolean(),
         timingCollection: z.enum([ 'precise', 'profile-default' ]),
         verbose: z.literal(false),

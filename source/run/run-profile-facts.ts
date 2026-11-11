@@ -4,6 +4,7 @@ import type {
     ProcessUsagePolicy,
     ProfileConfig,
     RunRecordPersistenceFacts,
+    RunRecordPersistenceReason,
     Scheduling,
     TimingCollectionMode
 } from '../config/types.ts';
@@ -113,11 +114,15 @@ export function resolveRunRecordPersistence(request: RunRequest, profile: Profil
     if (currentExecutionSession() !== null) {
         return { persist: false, reasons: [] };
     }
-    const reasons = [
-        ...profile.runRecords.persist === 'always' ? [ 'profile' as const ] : [],
-        ...request.record ? [ 'request' as const ] : [],
-        ...request.lastFailed ? [ 'last-failed' as const ] : [],
-        ...request.coverage ? [ 'coverage' as const ] : []
+    const candidates: readonly (readonly [boolean, RunRecordPersistenceReason])[] = [
+        [ profile.runRecords.persist === 'always', 'profile' ],
+        [ request.record, 'request' ],
+        [ request.lastFailed, 'last-failed' ],
+        [ request.recordForMerge, 'merge' ],
+        [ request.coverage, 'coverage' ]
     ];
+    const reasons = candidates.flatMap(function requestedReason([ enabled, reason ]) {
+        return enabled ? [ reason ] : [];
+    });
     return { persist: reasons.length > 0, reasons };
 }

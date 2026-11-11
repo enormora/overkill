@@ -23,7 +23,7 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 const coverageFile = 'source/integration-tests/run/fixtures/coverage.test.ts';
 type MicrotestProcessModel = MicrotestExecution['processModel'];
 const processModels: readonly MicrotestProcessModel[] = [ 'in-process', 'supervised-process' ];
-type RecordedResult = { readonly record: RunRecord; readonly result: RunResult; };
+type RecordedResult = { readonly directory: string; readonly record: RunRecord; readonly result: RunResult; };
 
 async function singleRunRecord(directory: string): Promise<RunRecord> {
     const files = await readdir(path.join(directory, 'runs'));
@@ -61,7 +61,7 @@ async function withRecordedResult<Value>(
             engine: { kind: 'default' },
             request: defaultRunRequest({ coverage: true, paths: [ coverageFile ], ...request })
         });
-        return await work({ record: await singleRunRecord(directory), result });
+        return await work({ directory, record: await singleRunRecord(directory), result });
     } finally {
         await rm(directory, { force: true, recursive: true });
     }
@@ -126,7 +126,7 @@ export const testNode = createSuite({
             }),
             createTestCase({
                 definitionLocations: [ { kind: 'unknown' } ],
-                title: `${processModel} empty shards retain complete facts and returned outcomes`,
+                title: `${processModel} covered merge inputs retain complete facts and returned outcomes`,
                 annotations: {},
                 controls: {},
                 async body(scope: TestScope) {
@@ -134,12 +134,25 @@ export const testNode = createSuite({
                     for (const index of [ 1, 2 ]) {
                         await withRecordedResult(
                             processModel,
-                            { shard: { index, total: 2 } },
-                            async function assertShardRecord({ record, result }) {
+                            { recordForMerge: true, shard: { index, total: 2 } },
+                            async function assertShardRecord({ directory, record, result }) {
                                 scope.require.defined(record.facts);
+                                scope.require.defined(record.coverage);
                                 scope.assert.equal(record.status, 'completed');
+                                scope.assert.equal(record.request.recordForMerge, true);
+                                scope.assert.deepEqual(record.facts.execution.runRecords.reasons, [
+                                    'merge',
+                                    'coverage'
+                                ]);
                                 scope.assert.equal(record.result?.planStatus, result.planStatus);
                                 scope.assert.equal(record.facts.cases.length, result.summary.planned);
+                                const stateEntries = await readdir(directory);
+                                scope.assert.deepEqual(
+                                    stateEntries.filter(function historyEntry(entry) {
+                                        return entry === 'history' || entry === 'duration-history';
+                                    }),
+                                    []
+                                );
                                 counts.push(result.summary.planned);
                             }
                         );

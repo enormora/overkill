@@ -32,6 +32,7 @@ export const testNode = createSuite({
                             capture: 'buffered',
                             coverage: false,
                             record: false,
+                            recordForMerge: false,
                             lastFailed: false,
                             debug: {
                                 mode: 'off',

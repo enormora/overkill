@@ -158,6 +158,20 @@ export const testNode = suite('ordinary and reusable recording invocations', [
         });
         return scope.assert.collect();
     }),
+    test('merge recording requires a shard and excludes ordinary recording', async function (scope: TestScope) {
+        await withCoverageRecordFixture(config, [], async function execute(fixture) {
+            const { command, orchestrator } = recordedInvocation(fixture);
+            const request = { ...command.request, recordForMerge: true };
+            await scope.assert.rejects(async function recordWithoutShards() {
+                await orchestrator.run({ ...command, request: { ...request, record: false } });
+            }, { message: '--record-for-merge requires more than one shard.' });
+            await scope.assert.rejects(async function recordWithBothModes() {
+                await orchestrator.run({ ...command, request: { ...request, shard: { index: 1, total: 2 } } });
+            }, { message: 'Choose either --record or --record-for-merge.' });
+            scope.assert.equal(fixture.records.length, 0);
+        });
+        return scope.assert.collect();
+    }),
     test('persists the replay plan before any result exists', async function (scope: TestScope) {
         await withCoverageRecordFixture(config, [], async function execute(fixture) {
             const { command, orchestrator } = recordedInvocation(fixture);

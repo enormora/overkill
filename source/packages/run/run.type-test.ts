@@ -101,6 +101,7 @@ type RunRequestKeys = readonly [
     'paths',
     'profile',
     'record',
+    'recordForMerge',
     'lastFailed',
     'processBudgetOverrides',
     'processUsageSamplingIntervalMilliseconds',

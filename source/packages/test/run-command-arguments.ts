@@ -17,6 +17,7 @@ type RunShard = CommandLineRunTestsRequest['runRequest']['shard'];
 export type RunCommandArguments<Profile extends string | null> = {
     readonly configPath: string | null;
     readonly record: boolean;
+    readonly recordForMerge: boolean;
     readonly coverage: boolean;
     readonly lastFailed: boolean;
     readonly file: string | null;
@@ -33,7 +34,7 @@ export type RunCommandArguments<Profile extends string | null> = {
     readonly workers: CommandLineRunTestsRequest['runRequest']['workers'];
 };
 
-type RunOnlyArgument = 'coverage' | 'noCapture' | 'record' | 'timings' | 'workers';
+type RunOnlyArgument = 'coverage' | 'noCapture' | 'record' | 'recordForMerge' | 'timings' | 'workers';
 type ListControls = { readonly withLocations: boolean; readonly withOrphans: boolean; };
 export type ListCommandArguments<Profile extends string | null> = Except<
     ListControls & RunCommandArguments<Profile>,
@@ -87,6 +88,7 @@ export function createRunTestsRequest<Profile extends string | null>(
             capabilityRestrictions: { mode: 'enabled' },
             capture: args.noCapture ? 'live' : 'buffered',
             record: args.record,
+            recordForMerge: args.recordForMerge,
             coverage: args.coverage,
             debug: {
                 mode: 'off',

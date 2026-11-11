@@ -71,6 +71,7 @@ function createRunRequest(paths: readonly string[]): RunRequest {
         capabilityRestrictions: { mode: 'enabled' },
         capture: 'buffered',
         record: false,
+        recordForMerge: false,
         lastFailed: false,
         coverage: false,
         debug: { mode: 'off', selectors: [] },

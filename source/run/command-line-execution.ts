@@ -69,6 +69,7 @@ function createCommandFromListRequest(
             capture: 'buffered',
             coverage: false,
             record: false,
+            recordForMerge: false,
             lastFailed: request.listRequest.lastFailed,
             debug: {
                 mode: 'off',

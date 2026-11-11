@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { runIfMain } from '#test-runner';
-import type { RunRecord } from '../../packages/run/run.entry-point.ts';
+import { createHistory, normalizeConfig, type RunRecord } from '../../packages/run/run.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 
 const binary = fileURLToPath(new URL('../../packages/test/overkill.entry-point.ts', import.meta.url));
@@ -78,17 +78,15 @@ async function executeOverkill(directory: string): Promise<void> {
     });
 }
 
-async function readRunRecord(directory: string): Promise<RunRecord> {
+async function readRunRecords(directory: string): Promise<readonly RunRecord[]> {
     const folder = path.join(directory, '.overkill', 'runs');
     const entries = await readdir(folder);
     const names = entries.filter(function recordFile(name) {
         return name.endsWith('.json');
     });
-    const [ name ] = names;
-    if (names.length !== 1 || name === undefined) {
-        throw new Error('Expected one run record.');
-    }
-    return JSON.parse(await readFile(path.join(folder, name), 'utf8')) as RunRecord;
+    return await Promise.all(names.map(async function readRecord(name) {
+        return JSON.parse(await readFile(path.join(folder, name), 'utf8')) as RunRecord;
+    }));
 }
 
 function assertCompletedRecord(scope: TestScope, record: RunRecord): void {
@@ -106,11 +104,14 @@ function assertCompletedRecord(scope: TestScope, record: RunRecord): void {
 async function assertRecordedExecution(scope: TestScope, processModel: ExecutionMode): Promise<void> {
     const directory = await createRecordedProject(scope, processModel);
     await executeOverkill(directory);
-    const record = await readRunRecord(directory);
+    const records = await readRunRecords(directory);
+    scope.assert.equal(records.length, 1);
+    const [ record ] = records;
+    scope.require.defined(record);
     assertCompletedRecord(scope, record);
 }
 
-async function executeLastFailedCommand(directory: string, args: readonly string[]): Promise<number> {
+async function executeRunCommand(directory: string, args: readonly string[]): Promise<number> {
     return await new Promise<number>(function execute(resolve, reject) {
         execFile(process.execPath, [ binary, ...args, '--profile', 'tests' ], {
             cwd: directory,
@@ -175,21 +176,127 @@ async function assertLastFailedRecords(scope: TestScope, directory: string): Pro
 async function assertLastFailedExecution(scope: TestScope, mode: ExecutionMode): Promise<void> {
     const directory = await createRecordedProject(scope, mode);
     await writeLastFailedCase(directory, false);
-    scope.assert.equal(await executeLastFailedCommand(directory, [ 'run', '--record' ]), 1);
+    scope.assert.equal(await executeRunCommand(directory, [ 'run', '--record' ]), 1);
     await writeLastFailedCase(directory, true);
-    scope.assert.equal(await executeLastFailedCommand(directory, [ 'run', '--last-failed' ]), 0);
-    scope.assert.equal(await executeLastFailedCommand(directory, [ 'run', '--last-failed' ]), 0);
+    scope.assert.equal(await executeRunCommand(directory, [ 'run', '--last-failed' ]), 0);
+    scope.assert.equal(await executeRunCommand(directory, [ 'run', '--last-failed' ]), 0);
     await assertLastFailedRecords(scope, directory);
+}
+
+function assertShardSelection(scope: TestScope, empty: RunRecord, executed: RunRecord): void {
+    if (empty.version !== 2 || executed.version !== 2) {
+        throw new Error('Expected replay snapshots in merge inputs.');
+    }
+    scope.require.defined(empty.replayPlan);
+    scope.require.defined(executed.replayPlan);
+    scope.assert.notEqual(empty.id, executed.id);
+    scope.assert.notEqual(empty.request.shard.index, executed.request.shard.index);
+    scope.assert.deepEqual(empty.request.selection, executed.request.selection);
+    scope.assert.equal(executed.replayPlan.discoveredFiles[0]?.cases.length, 1);
+    scope.assert.deepEqual(empty.replayPlan.discoveredFiles, executed.replayPlan.discoveredFiles);
+}
+
+function assertShardOutcome(scope: TestScope, record: RunRecord, status: 'failed' | 'passed', planned: number): void {
+    scope.require.defined(record.facts);
+    scope.require.defined(record.result);
+    scope.assert.deepEqual({
+        recordStatus: record.status,
+        resultStatus: record.result.status,
+        identities: record.identities.length,
+        reasons: record.facts.execution.runRecords.reasons,
+        seed: record.seed
+    }, { recordStatus: 'completed', resultStatus: status, identities: planned, reasons: [ 'merge' ], seed: '42' });
+}
+
+async function assertShardRecords(scope: TestScope, directory: string): Promise<void> {
+    const records = await readRunRecords(directory);
+    const shards = records.filter(function mergeInput(record) {
+        return record.request.recordForMerge;
+    });
+    const empty = shards.find(function emptyShard(record) {
+        return record.result?.planStatus === 'empty-shard';
+    });
+    const executed = shards.find(function executedShard(record) {
+        return record.result?.perTest.length === 1;
+    });
+    scope.require.defined(empty);
+    scope.require.defined(executed);
+    scope.assert.deepEqual({ records: records.length, shards: shards.length }, { records: 3, shards: 2 });
+    assertShardOutcome(scope, empty, 'passed', 0);
+    assertShardOutcome(scope, executed, 'failed', 1);
+    assertShardSelection(scope, empty, executed);
+}
+
+async function readHistoryFiles(directory: string): Promise<readonly string[]> {
+    const stateDir = path.join(directory, '.overkill');
+    return await Promise.all([
+        readFile(path.join(stateDir, 'history', 'index.json'), 'utf8'),
+        readFile(path.join(stateDir, 'duration-history', 'work-durations.json'), 'utf8')
+    ]);
+}
+
+async function assertShardExitCodes(scope: TestScope, directory: string): Promise<void> {
+    const exitCodes: number[] = [];
+    for (const shard of [ '1/2', '2/2' ]) {
+        exitCodes.push(
+            await executeRunCommand(directory, [
+                'run',
+                '--shard',
+                shard,
+                '--seed',
+                '42',
+                '--title',
+                'persisted',
+                '--record-for-merge'
+            ])
+        );
+    }
+    scope.assert.deepEqual(
+        exitCodes.toSorted(function ascending(left, right) {
+            return left - right;
+        }),
+        [ 0, 1 ]
+    );
+}
+
+async function assertRetainedHistory(scope: TestScope, directory: string): Promise<void> {
+    const history = createHistory({ projectRoot: directory, config: normalizeConfig({}) });
+    const repaired = await history.compact();
+    const listed = await history.list();
+    const pruning = await history.prune({ dryRun: true });
+    scope.assert.deepEqual({
+        rebuilt: repaired.rebuiltRunCount,
+        summaries: listed.length,
+        pruned: pruning.paths
+    }, { rebuilt: 1, summaries: 1, pruned: [] });
+}
+
+async function assertShardExecution(scope: TestScope, mode: ExecutionMode): Promise<void> {
+    const directory = await createRecordedProject(scope, mode);
+    await writeLastFailedCase(directory, true);
+    scope.assert.equal(await executeRunCommand(directory, [ 'run', '--record' ]), 0);
+    const before = await readHistoryFiles(directory);
+    await writeLastFailedCase(directory, false);
+    await assertShardExitCodes(scope, directory);
+    await assertShardRecords(scope, directory);
+    scope.assert.deepEqual(await readHistoryFiles(directory), before);
+    await assertRetainedHistory(scope, directory);
 }
 
 export const testNode = suite(
     'run recording across execution boundaries',
-    ([ 'in-process', 'supervised-process', 'worker-pool' ] as const).map(function executionMode(mode) {
-        return test(mode, async function (scope: TestScope) {
-            await assertRecordedExecution(scope, mode);
-            await assertLastFailedExecution(scope, mode);
-            return scope.assert.collect();
-        });
+    ([ 'in-process', 'supervised-process', 'worker-pool' ] as const).flatMap(function executionMode(mode) {
+        return [
+            test(mode, async function (scope: TestScope) {
+                await assertRecordedExecution(scope, mode);
+                await assertLastFailedExecution(scope, mode);
+                return scope.assert.collect();
+            }),
+            test(`${mode} persists merge inputs without publishing shard history`, async function (scope: TestScope) {
+                await assertShardExecution(scope, mode);
+                return scope.assert.collect();
+            })
+        ];
     })
 );
 await runIfMain(import.meta, testNode);
