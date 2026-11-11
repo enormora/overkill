@@ -60,6 +60,7 @@ type RunnerErrorSubtypeByName = {
     readonly fixture: 'fixture';
     readonly loader: 'loader';
     readonly measurement: 'measurement';
+    readonly merge: 'merge';
     readonly permission: 'permission';
     readonly reporter: 'reporter';
     readonly processExhaustion: 'process-exhaustion';

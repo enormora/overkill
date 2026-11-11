@@ -52,7 +52,7 @@ async function benchmarkCommandResult(
 
 type ParsedBenchmark = { readonly command: 'bench'; readonly value: ParsedBenchmarkBaseline | ParsedBenchmarkRun; };
 type ParsedOrdinary = {
-    readonly command: 'list' | 'replay' | 'replay-witness' | 'run';
+    readonly command: 'list' | 'merge-results' | 'replay' | 'replay-witness' | 'run';
     readonly value: Promise<CommandLineRunnerResult>;
 };
 type ParsedCommandNamespace = {
@@ -260,6 +260,14 @@ export async function dispatchOverkillCommand(
                 seed: runSeedType
             }),
             corpus: createCorpusCommand(loadRunner, cwd, writePreview),
+            'merge-results': command({
+                name: 'merge-results',
+                args: { configPath: configPathArgument, paths: restPositionals({ type: string }) },
+                async handler(args) {
+                    const runner = await loadRunner();
+                    return await runner.mergeResults({ cwd, configPath: args.configPath, paths: args.paths });
+                }
+            }),
             history: historyCommand,
             baseline: createBaselineCommand(loadRunner, cwd),
             bench: benchmarkCommand,

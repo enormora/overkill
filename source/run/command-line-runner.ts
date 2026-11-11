@@ -38,6 +38,7 @@ import {
 } from './run-timing-collection.ts';
 
 export type CommandLineRunner = {
+    readonly mergeResults: CommandLineCommandNamespace['mergeResults'];
     readonly corpus: CommandLineCommandNamespace['corpus'];
     readonly history: HistoryCommands;
     readonly baseline: CommandLineBaselineCommands;
@@ -59,6 +60,7 @@ export function createCommandLineRunner(dependencies: CommandLineRunnerDependenc
     const commandNamespace = createCommandLineCommandNamespace(dependencies);
 
     return {
+        mergeResults: commandNamespace.mergeResults,
         corpus: commandNamespace.corpus,
         history: commandNamespace.history,
         baseline: commandNamespace.baseline,

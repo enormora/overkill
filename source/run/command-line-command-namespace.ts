@@ -1,4 +1,5 @@
 import type { ConfigLoader } from '../config/config.ts';
+import type { MergeResultsRequest } from './merge-results-command.ts';
 import type { ReplayCommands } from './replay-commands.ts';
 import type { CorpusCommands } from './corpus-commands.ts';
 import type {
@@ -17,6 +18,8 @@ export type CommandLineCommandLoaders = {
 };
 
 export type CommandLineCommandNamespace = {
+    readonly mergeResults: (request: MergeResultsRequest) => Promise<CommandLineRunnerResult>;
+
     readonly corpus: CorpusCommands;
     readonly history: HistoryCommands;
     readonly replayRun: CommandLineCommand;
@@ -79,6 +82,10 @@ function createHistoryRoutes(loadConfig: ConfigLoader): HistoryCommands {
 
 export function createCommandLineCommandNamespace(loaders: CommandLineCommandLoaders): CommandLineCommandNamespace {
     return {
+        async mergeResults(request) {
+            const { mergeResultsCommand } = await import('./merge-results-command.ts');
+            return await mergeResultsCommand(loaders.loadConfig, request);
+        },
         corpus: {
             async inspect(request) {
                 const { corpusCommands } = await import('./corpus-commands.ts');
