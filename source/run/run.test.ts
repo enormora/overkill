@@ -1,4 +1,10 @@
 import { runIfMain } from '#test-runner';
+import {
+    passingFixturePath,
+    expectedRunEnvironment,
+    expectedPassingFixtureCaseFact,
+    expectedPassingFixtureLiveCaseFact
+} from '../test-support/run-facts-expectations.ts';
 
 import {
     defaultFailureArtifactPolicy,
@@ -6,7 +12,6 @@ import {
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
-import { serializeValue } from '../compare/serialized-value.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createDeterministicRunOrchestrator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import {
@@ -17,7 +22,7 @@ import {
 import type { NormalizedConfig } from '../config/types.ts';
 import { testNode as runCollectionErrorReportingTestNode } from './run-collection-error-reporting.test.ts';
 import { RunResolutionError } from './run-errors.ts';
-import type { RunCaseFacts, RunCommand, RunRequest, RunFacts } from './run-types.ts';
+import type { RunCommand, RunRequest } from './run-types.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;
@@ -28,7 +33,6 @@ type RunCommandParts = {
 
 const emptyTestData = { annotations: {}, controls: {} };
 
-const passingFixturePath = 'source/integration-tests/run/fixtures/passing.test.ts';
 const microtestCaptureControlsFixturePath = 'source/integration-tests/run/fixtures/microtest-capture-controls.test.ts';
 
 const defaultConfig: NormalizedConfig = defaultRunConfig({
@@ -40,67 +44,6 @@ const defaultConfig: NormalizedConfig = defaultRunConfig({
 });
 
 const defaultRequest: RunRequest = defaultRunRequest({ paths: [ passingFixturePath ] });
-
-function expectedRunEnvironment(): RunFacts['environment'] {
-    return {
-        node: {
-            arch: 'x64',
-            platform: 'linux',
-            version: '26.1.1'
-        },
-        projectRoot: process.cwd(),
-        runtimeStateDir: '.overkill'
-    };
-}
-
-function plainData(value: unknown): unknown {
-    return structuredClone(value);
-}
-
-function expectedPassingFixtureAnnotations(): unknown {
-    return {
-        ownership: [],
-        tags: [ 'fast' ]
-    };
-}
-
-function expectedPassingFixtureControls(): unknown {
-    return {
-        capture: null,
-        duplicateExecution: null,
-        timeoutMilliseconds: null
-    };
-}
-
-function expectedPassingFixtureCaseId(): RunCaseFacts['id'] {
-    return { file: passingFixturePath, title: 'passes', params: null, suite: [ 'fixture' ] };
-}
-
-function expectedPassingFixtureCaseFact(): unknown {
-    const id = expectedPassingFixtureCaseId();
-
-    return {
-        annotations: serializeValue(expectedPassingFixtureAnnotations()),
-        controls: serializeValue(expectedPassingFixtureControls()),
-        propertyPolicy: null,
-        fileSet: null,
-        id,
-        workId: { familyVariant: null, case: expectedPassingFixtureCaseId(), runtimes: [], workload: null }
-    };
-}
-
-function expectedPassingFixtureLiveCaseFact(): unknown {
-    const id = expectedPassingFixtureCaseId();
-
-    return {
-        annotations: serializeValue(expectedPassingFixtureAnnotations()),
-        controls: serializeValue(expectedPassingFixtureControls()),
-        propertyPolicy: null,
-        fileSet: null,
-        id,
-        workId: { familyVariant: null, case: id, runtimes: [], workload: null }
-    };
-}
 
 function createRunCommand(overrides: RunCommandParts): RunCommand {
     return {
@@ -197,10 +140,12 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(Object.isFrozen(resolvedRun), true);
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts), true);
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts.cases), true);
-                scope.assert.deepEqual(plainData(resolvedRun.facts), {
+                scope.assert.equal(Object.isFrozen(resolvedRun.facts.reproducibility.selectedIdentities), true);
+                const expectedCase = expectedPassingFixtureCaseFact();
+                scope.assert.deepEqual(structuredClone<unknown>(resolvedRun.facts), {
                     adapter: null,
                     cases: [
-                        expectedPassingFixtureCaseFact()
+                        expectedCase
                     ],
                     benchmarkHost: null,
                     benchmarkCalibration: null,
@@ -249,6 +194,7 @@ export const testNode = createOverkillSuite({
                     },
                     loader: { sourceMaps: false, stripMode: 'strip-only' },
                     reproducibility: {
+                        selectedIdentities: [ expectedCase.workId ],
                         selection: { kind: 'all' },
                         seed: '42',
                         shard: { index: 1, total: 1 },
@@ -409,64 +355,69 @@ export const testNode = createOverkillSuite({
 
                 scope.require.defined(runStartEvent);
                 scope.assert.equal(runStartEvent.kind, 'run-start');
-                scope.assert.deepEqual(plainData(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null), {
-                    adapter: null,
-                    cases: [
-                        expectedPassingFixtureLiveCaseFact()
-                    ],
-                    benchmarkHost: null,
-                    benchmarkCalibration: null,
-                    benchmarkNormalization: null,
-                    benchmarkPlacement: null,
-                    coveragePolicy: null,
-                    durationHistory: null,
-                    environment: expectedRunEnvironment(),
-                    execution: {
-                        debuggedCases: [],
-                        failureArtifacts: defaultFailureArtifactPolicy,
-                        benchmarkGarbageCollection: null,
-                        propertyPolicy: null,
-                        attachments: null,
-                        retries: null,
-                        baselineUpdateMode: 'none',
-                        capture: 'buffered',
-                        coverage: false,
-                        debug: { mode: 'off', selectors: [] },
-                        engine: { kind: 'default' },
-                        maxConcurrency: 5,
-                        order: 'seeded',
-                        placementPlan: null,
-                        processModel: 'in-process',
-                        profile: 'microtest',
-                        processUsagePolicy: {
-                            budgets: {
-                                activeResourceCount: null,
-                                javaScriptEngineHeapBytes: null,
-                                residentSetBytes: null,
-                                residentSetGrowthBytesPerSecond: null
+                const expectedCase = expectedPassingFixtureLiveCaseFact();
+                scope.assert.deepEqual(
+                    structuredClone<unknown>(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null),
+                    {
+                        adapter: null,
+                        cases: [
+                            expectedCase
+                        ],
+                        benchmarkHost: null,
+                        benchmarkCalibration: null,
+                        benchmarkNormalization: null,
+                        benchmarkPlacement: null,
+                        coveragePolicy: null,
+                        durationHistory: null,
+                        environment: expectedRunEnvironment(),
+                        execution: {
+                            debuggedCases: [],
+                            failureArtifacts: defaultFailureArtifactPolicy,
+                            benchmarkGarbageCollection: null,
+                            propertyPolicy: null,
+                            attachments: null,
+                            retries: null,
+                            baselineUpdateMode: 'none',
+                            capture: 'buffered',
+                            coverage: false,
+                            debug: { mode: 'off', selectors: [] },
+                            engine: { kind: 'default' },
+                            maxConcurrency: 5,
+                            order: 'seeded',
+                            placementPlan: null,
+                            processModel: 'in-process',
+                            profile: 'microtest',
+                            processUsagePolicy: {
+                                budgets: {
+                                    activeResourceCount: null,
+                                    javaScriptEngineHeapBytes: null,
+                                    residentSetBytes: null,
+                                    residentSetGrowthBytesPerSecond: null
+                                },
+                                measure: false,
+                                samplingIntervalMilliseconds: 100
                             },
-                            measure: false,
-                            samplingIntervalMilliseconds: 100
+                            scheduling: 'concurrent',
+                            testFamily: 'microtest',
+                            runRecords: { persist: false, reasons: [] },
+                            timingCollection: 'summary',
+                            timeoutPolicy: {
+                                collectionMilliseconds: 1000,
+                                hardMilliseconds: 1000,
+                                softMilliseconds: 500
+                            },
+                            verbose: false
                         },
-                        scheduling: 'concurrent',
-                        testFamily: 'microtest',
-                        runRecords: { persist: false, reasons: [] },
-                        timingCollection: 'summary',
-                        timeoutPolicy: {
-                            collectionMilliseconds: 1000,
-                            hardMilliseconds: 1000,
-                            softMilliseconds: 500
-                        },
-                        verbose: false
-                    },
-                    loader: { sourceMaps: false, stripMode: 'strip-only' },
-                    reproducibility: {
-                        selection: { kind: 'all' },
-                        seed: '42',
-                        shard: { index: 1, total: 1 },
-                        shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
+                        loader: { sourceMaps: false, stripMode: 'strip-only' },
+                        reproducibility: {
+                            selectedIdentities: [ expectedCase.workId ],
+                            selection: { kind: 'all' },
+                            seed: '42',
+                            shard: { index: 1, total: 1 },
+                            shardHashAlgorithm: 'xxh3-64-canonical-json-v1'
+                        }
                     }
-                });
+                );
                 scope.assert.deepEqual(result.summary, {
                     crashed: 0,
                     defined: 2,
