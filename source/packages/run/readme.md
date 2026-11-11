@@ -721,6 +721,10 @@ Profiles accept `runRecords: { persist: 'on-demand' | 'always' }`, defaulting to
 one invocation. Coverage and resource attachment workflows require records
 independently of that default.
 
+`RunRequest.recordForMerge: true` persists a shard record and defers compact
+history. It requires `shard.total > 1` and `record: false`, including for
+profiles with `persist: 'always'`. Use the same explicit seed for every shard.
+
 Records live at `<runtimeStateDir>/runs/<id>.json`. Explicit recording starts
 before runner-owned imports. Artifact-only recording starts after collection
 identifies attachment scopes, before resources or cases execute. Reusable
@@ -739,7 +743,7 @@ and cleanup errors; escaping exceptions leave interrupted records.
 
 ## Compact history
 
-Persisted runs update run summaries and case outcomes under
+Persisted runs other than merge inputs update run summaries and case outcomes under
 `runtimeStateDir/history/index.json`. Duration history remains under
 `duration-history/work-durations.json`; ordinary unrecorded runs can warm it.
 
@@ -759,8 +763,9 @@ ordinary requests use `lastFailed: false`.
 
 ### Automatic maintenance
 
-Completed persisted attempts apply retention after reporting, cleanup, and
-ownership release. `history.automaticMaintenanceBudgetMilliseconds` defaults to
+Completed persisted attempts that contribute to compact history apply retention
+after reporting, cleanup, and ownership release. Merge inputs remain subject to
+project retention. `history.automaticMaintenanceBudgetMilliseconds` defaults to
 100; set it to zero to disable automatic maintenance. Explicit commands do not
 use this budget. Unrecorded runs do not start maintenance.
 

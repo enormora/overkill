@@ -110,6 +110,7 @@ export type RunSelection = {
 
 export type RunHistoryRequest = {
     readonly record: boolean;
+    readonly recordForMerge: boolean;
     readonly lastFailed: boolean;
 };
 

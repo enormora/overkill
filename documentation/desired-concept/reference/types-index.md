@@ -1189,6 +1189,7 @@ type RunRequest = {
     readonly processUsageSamplingIntervalMilliseconds: number | null;
     readonly timingCollection: TimingCollectionOverride;
     readonly record: boolean;
+    readonly recordForMerge: boolean;
     readonly seed: { readonly value: bigint | null; };
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly verbose: boolean;
@@ -1349,6 +1350,7 @@ type RunRecordPersistenceReason =
     | 'debug'
     | 'coverage'
     | 'last-failed'
+    | 'merge'
     | 'artifact';
 
 type RunRecordPersistenceFacts = {

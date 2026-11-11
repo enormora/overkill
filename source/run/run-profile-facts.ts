@@ -4,6 +4,7 @@ import type {
     ProcessUsagePolicy,
     ProfileConfig,
     RunRecordPersistenceFacts,
+    RunRecordPersistenceReason,
     Scheduling,
     TimingCollectionMode
 } from '../config/types.ts';
@@ -109,20 +110,23 @@ export function resolveTimingCollection(
     return profile.timings.collection;
 }
 
-function debugPersistenceReasons(request: RunRequest): readonly 'debug'[] {
-    return request.debug.mode === 'off' ? [] : [ 'debug' ];
-}
-
 export function resolveRunRecordPersistence(request: RunRequest, profile: ProfileConfig): RunRecordPersistenceFacts {
     if (currentExecutionSession() !== null) {
+        if (request.recordForMerge) {
+            invalidRequest('--record-for-merge is only supported by ordinary runs outside execution sessions.');
+        }
         return { persist: false, reasons: [] };
     }
-    const reasons = [
-        ...profile.runRecords.persist === 'always' ? [ 'profile' as const ] : [],
-        ...request.record ? [ 'request' as const ] : [],
-        ...request.lastFailed ? [ 'last-failed' as const ] : [],
-        ...request.coverage ? [ 'coverage' as const ] : [],
-        ...debugPersistenceReasons(request)
+    const candidates: readonly (readonly [boolean, RunRecordPersistenceReason])[] = [
+        [ profile.runRecords.persist === 'always', 'profile' ],
+        [ request.record, 'request' ],
+        [ request.lastFailed, 'last-failed' ],
+        [ request.recordForMerge, 'merge' ],
+        [ request.coverage, 'coverage' ],
+        [ request.debug.mode !== 'off', 'debug' ]
     ];
+    const reasons = candidates.flatMap(function requestedReason([ enabled, reason ]) {
+        return enabled ? [ reason ] : [];
+    });
     return { persist: reasons.length > 0, reasons };
 }

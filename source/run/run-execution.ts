@@ -5,7 +5,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 import type { CollectionSource as RunCollectionSource } from './run-collection-source.ts';
 import { emptyTimingSpanMetadata, type RunTimingMeasurement } from './run-timing-collection.ts';
 import { executePreparedInvocation } from './prepared-run.ts';
-import type { RunRecordSession } from './run-record.ts';
+import { resolveRunRecordPersistence } from './run-profile-facts.ts';
 import type { RunnerResult } from './run-types.ts';
 
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
@@ -13,11 +13,6 @@ type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 export type RunExecutionInvocation = RunInvocation & {
     readonly signal: Readonly<AbortSignal> | null;
 };
-
-function requestedRunRecording(input: Awaited<ReturnType<typeof readResolvedRunInput>>): boolean {
-    return input.request.debug.mode !== 'off' || input.request.record || input.request.lastFailed ||
-        input.profile.runRecords.persist === 'always';
-}
 
 async function executeCommand(
     invocation: RunExecutionInvocation,
@@ -41,24 +36,28 @@ async function executeCommand(
         engine: resolvedInput.engine,
         request: resolvedInput.request
     };
-    const shouldRecord = !resolvedInput.request.coverage &&
-        requestedRunRecording(resolvedInput);
-    const executeAttempt = async function executeAttempt(record: RunRecordSession | null): Promise<RunResult> {
-        return await executePreparedInvocation(invocation, {
-            command: resolvedCommand,
-            dependencies,
-            input: resolvedInput,
-            record,
-            source,
-            timing,
-            signal: invocation.signal
-        });
+    const shouldRecord = resolveRunRecordPersistence(resolvedInput.request, resolvedInput.profile).persist &&
+        !resolvedInput.request.coverage;
+    const execution = {
+        command: resolvedCommand,
+        dependencies,
+        input: resolvedInput,
+        source,
+        timing,
+        signal: invocation.signal
     };
     if (!shouldRecord) {
-        return await executeAttempt(null);
+        return await executePreparedInvocation(invocation, { ...execution, record: null });
     }
     const { executeRecordedRun } = await import('./recorded-run.ts');
-    return await executeRecordedRun(resolvedCommand.cwd, resolvedInput, dependencies, executeAttempt);
+    return await executeRecordedRun(
+        resolvedCommand.cwd,
+        resolvedInput,
+        dependencies,
+        async function executeAttempt(record) {
+            return await executePreparedInvocation(invocation, { ...execution, record });
+        }
+    );
 }
 
 export async function executeRunCommand(

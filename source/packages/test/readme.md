@@ -629,6 +629,16 @@ Profiles accept `runRecords: { persist: 'on-demand' | 'always' }`, defaulting to
 one invocation. Coverage and resource attachment workflows require records
 independently of that default.
 
+To retain shard records for a later merge, give each shard the same seed.
+
+```sh
+overkill run --profile unit --shard 1/2 --seed 42 --record-for-merge
+overkill run --profile unit --shard 2/2 --seed 42 --record-for-merge
+```
+
+`--record-for-merge` defers compact history and is mutually exclusive with
+`--record`. Copy each shard's completed record before local retention can prune it.
+
 Records live at `<runtimeStateDir>/runs/<id>.json`. Explicit recording starts
 before runner-owned imports. Artifact-only recording starts after collection
 identifies attachment scopes, before resources or cases execute. Reusable

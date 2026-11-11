@@ -1,10 +1,12 @@
 import { runIfMain } from '#test-runner';
 import { trackRunnerErrorDelivery } from '../engine/reporter-error-delivery-tracking.ts';
 import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
+import { createMemoryHistoryStorage } from '../test-support/memory-history-storage.ts';
 import { runRecordPolicyFixture } from '../test-support/run-record-policy-fixture.ts';
 import { runResultFactory } from '../test-support/run-result-factory.ts';
 import { runnerResult } from './runner-result.ts';
 import { executeRecordedRun } from './recorded-run.ts';
+import { readCompactHistory } from './history-storage.ts';
 
 type RunResult = Awaited<ReturnType<typeof executeRecordedRun>>;
 
@@ -86,6 +88,60 @@ export const testNode = suite('run record policy', [
         scope.assert.notEqual(fixture.writes[0]?.id, fixture.writes[2]?.id);
         return scope.assert.collect();
     }),
+    test(
+        'merge recording reports completion write failures without publishing history',
+        async function (scope: TestScope) {
+            const fixture = runRecordPolicyFixture('always', false);
+            const input = {
+                ...fixture.input,
+                request: { ...fixture.input.request, recordForMerge: true, shard: { index: 1, total: 2 } }
+            };
+            const history = createMemoryHistoryStorage();
+            const store = fixture.dependencies.runtimeStateStore;
+            let writes = 0;
+            const result = runnerResult(
+                await executeRecordedRun('/project', input, {
+                    ...fixture.dependencies,
+                    createHistoryStorage() {
+                        return history;
+                    },
+                    async maintainHistory() {
+                        return [ 'Unexpected maintenance' ];
+                    },
+                    runtimeStateStore: {
+                        ...store,
+                        async write(filePath, content) {
+                            writes += 1;
+                            if (writes === 2) {
+                                throw new Error('Completion write failed.');
+                            }
+                            await store.write(filePath, content);
+                        }
+                    }
+                }, async function execute() {
+                    return runResultFactory.build({ status: 'passed' });
+                })
+            );
+            const finalRecord = fixture.writes.at(-1);
+            const compactHistory = await readCompactHistory(history, '/project/.overkill');
+            scope.assert.deepEqual({
+                status: result.status,
+                runnerError: result.runnerErrors[0]?.subtype,
+                recordStatus: finalRecord?.status,
+                recordedResult: finalRecord?.result?.status,
+                compactHistory,
+                diagnostics: result.maintenanceDiagnostics
+            }, {
+                status: 'failed',
+                runnerError: 'runtime-state',
+                recordStatus: 'completed',
+                recordedResult: 'failed',
+                compactHistory: null,
+                diagnostics: []
+            });
+            return scope.assert.collect();
+        }
+    ),
     test('start write failure blocks execution and returns a runner error', async function (scope: TestScope) {
         const fixture = runRecordPolicyFixture('always', false);
         let executions = 0;

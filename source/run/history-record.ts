@@ -43,7 +43,7 @@ const fields = {
     kind: z.literal('single'),
     id: z.string().min(1),
     startedAt: z.iso.datetime({ offset: true }),
-    request: z.object({ profile: z.string() }),
+    request: z.object({ profile: z.string(), recordForMerge: z.boolean().default(false) }),
     execution,
     facts: z.object({ execution: z.object({ testFamily: family }) }).nullable()
 };

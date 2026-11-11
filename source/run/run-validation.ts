@@ -111,6 +111,22 @@ function assertValidRunProfileName(profileName: string): void {
     }
 }
 
+function validateMergeRecordingRequest(request: RunRequest): void {
+    const recordForMerge: unknown = Reflect.get(request, 'recordForMerge');
+    if (recordForMerge === undefined || recordForMerge === false) {
+        return;
+    }
+    if (recordForMerge !== true) {
+        invalidRequest('Record for merge must be a boolean.');
+    }
+    if (request.shard.total === 1) {
+        invalidRequest('--record-for-merge requires more than one shard.');
+    }
+    if (request.record) {
+        invalidRequest('Choose either --record or --record-for-merge.');
+    }
+}
+
 function validateRunRecordingRequest(request: RunRequest): void {
     if (typeof request.lastFailed !== 'boolean') {
         invalidRequest('Run lastFailed must be a boolean.');
@@ -118,6 +134,7 @@ function validateRunRecordingRequest(request: RunRequest): void {
     if (typeof request.record !== 'boolean') {
         invalidRequest('Record must be a boolean.');
     }
+    validateMergeRecordingRequest(request);
 }
 
 function validateRunDebugRequest(request: RunRequest): void {
@@ -199,6 +216,9 @@ function assertAdapterRequest(request: RunRequest, profile: ProfileConfig): void
     if (profile.testFamily !== 'type-test') {
         return;
     }
+    if (request.debug.mode !== 'off') {
+        invalidRequest('Debug mode requires runtime test bodies; type-test profiles use compiler diagnostics.');
+    }
     const unsupported = [
         request.capture !== 'buffered',
         request.measureProcessUsage === true,
@@ -226,8 +246,8 @@ export function assertProfileRequestSupported(
     namespace: Namespace,
     reporters: NormalizedConfig['reporters']
 ): void {
-    if (request.debug.mode !== 'off' && profile.testFamily === 'type-test') {
-        invalidRequest('Debug mode requires runtime test bodies; type-test profiles use compiler diagnostics.');
+    if (request.recordForMerge && namespace !== 'test') {
+        invalidRequest('--record-for-merge is only supported by ordinary runs outside execution sessions.');
     }
     assertAdapterRequest(request, profile);
     assertBaselineRequest(request, profile, namespace);

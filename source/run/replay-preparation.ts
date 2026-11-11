@@ -63,6 +63,7 @@ export async function prepareRecordedReplay(
                 baselineUpdateMode: 'none',
                 seed: { value: BigInt(record.seed) },
                 record: true,
+                recordForMerge: false,
                 lastFailed: false,
                 selection: recordedSelection(record.identities)
             }
@@ -107,6 +108,7 @@ export async function prepareWitnessReplay(
                 processBudgetOverrides: null,
                 processUsageSamplingIntervalMilliseconds: null,
                 record: true,
+                recordForMerge: false,
                 seed: { value: BigInt(witness.kind === 'property' ? witness.seed : '0') },
                 selection: {
                     kind: 'filter',

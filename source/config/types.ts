@@ -265,7 +265,15 @@ export type ConfigLoadRequest = {
     readonly cwd: string;
 };
 
-export type RunRecordPersistenceReason = 'artifact' | 'coverage' | 'debug' | 'last-failed' | 'profile' | 'request';
+export type RunRecordPersistenceReason = keyof {
+    readonly artifact: true;
+    readonly coverage: true;
+    readonly debug: true;
+    readonly 'last-failed': true;
+    readonly merge: true;
+    readonly profile: true;
+    readonly request: true;
+};
 export type RunRecordPersistenceFacts = {
     readonly persist: boolean;
     readonly reasons: readonly RunRecordPersistenceReason[];

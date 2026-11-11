@@ -19,12 +19,14 @@ function copyProcessBudgetOverrides(overrides: ProcessBudgets | null): ProcessBu
 }
 
 export function copyRunRequest(request: RunRequest): RunRequest {
+    const recordForMerge: unknown = Reflect.get(request, 'recordForMerge');
     return {
         baselineUpdateMode: request.baselineUpdateMode,
         capabilityRestrictions: { mode: request.capabilityRestrictions.mode },
         capture: request.capture,
         coverage: request.coverage,
         record: request.record,
+        recordForMerge: recordForMerge === true,
         lastFailed: request.lastFailed,
         debug: request.debug.mode === 'selected'
             ? { mode: 'selected', selectors: [ request.debug.selectors[0], ...request.debug.selectors.slice(1) ] }

@@ -67,6 +67,9 @@ export function createRunRecordSession(
         },
         async complete(result) {
             const completed = await completeRecord(result);
+            if (value.request.recordForMerge) {
+                return { ...completed, maintenanceDiagnostics: [] };
+            }
             maintenance = maintenance ?? dependencies.maintainHistory();
             return {
                 ...completed,

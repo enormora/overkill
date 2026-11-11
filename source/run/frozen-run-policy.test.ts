@@ -71,6 +71,16 @@ export const testNode = suite('frozen microtest policy', [
         scope.assert.deepEqual(parseFrozenMicrotestPolicy(JSON.parse(serialized)), policy);
         return scope.assert.collect();
     }),
+    test('decodes policies written before the merge intent field existed', async function (scope) {
+        const policy = await orchestrator.freezePolicy({
+            moduleBoundary: null,
+            command: command(),
+            source: { kind: 'memory' }
+        });
+        const { recordForMerge: _recordForMerge, ...legacyRequest } = policy.request;
+        scope.assert.deepEqual(parseFrozenMicrotestPolicy({ ...policy, request: legacyRequest }), policy);
+        return scope.assert.collect();
+    }),
     test('rejects malformed and conflicting discovery descriptors', async function (scope) {
         const policy = await orchestrator.freezePolicy({
             moduleBoundary: null,

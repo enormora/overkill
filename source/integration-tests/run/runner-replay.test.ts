@@ -98,6 +98,18 @@ export const testNode = suite('replay public execution boundaries', [
         await verifyEmptyReplay(scope);
         return scope.assert.collect();
     }),
+    test('replays records written before the merge intent field existed', async function (scope: TestScope) {
+        const project = await replayProject(scope, replayProfile('in-process'));
+        await writeReplayCase(project, replayPassingCase('retained case', true));
+        await executeOriginal(scope, project);
+        const [ original ] = await replayRecords(project);
+        scope.require.defined(original);
+        const { recordForMerge: _recordForMerge, ...request } = original.request;
+        const file = path.join(project.cwd, '.overkill', 'runs', `${original.id}.json`);
+        await writeFile(file, JSON.stringify({ ...original, request }));
+        await verifyReplay(scope, project);
+        return scope.assert.collect();
+    }),
     test('rejects inconsistent records before importing code', async function (scope) {
         await verifyInvalidRecord(scope);
         return scope.assert.collect();

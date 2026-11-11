@@ -47,6 +47,31 @@ async function writeLegacyDurationRecord(store: HistoryStorage): Promise<void> {
     await store.write(`${directory}/runs/old.json`, JSON.stringify(record));
 }
 
+async function writeMergeHistoryRecords(store: HistoryStorage): Promise<void> {
+    const legacy = completedHistoryRecord('legacy');
+    const shard = completedHistoryRecord('shard');
+    const mergeRequest = { ...shard.request, recordForMerge: true };
+    await store.write(
+        `${directory}/runs/legacy.json`,
+        JSON.stringify({
+            ...legacy,
+            request: { profile: legacy.request.profile }
+        })
+    );
+    await store.write(`${directory}/runs/shard.json`, JSON.stringify({ ...shard, request: mergeRequest }));
+    await store.write(
+        `${directory}/runs/interrupted.json`,
+        JSON.stringify({
+            ...shard,
+            id: 'interrupted',
+            request: mergeRequest,
+            status: 'interrupted',
+            facts: null,
+            result: null
+        })
+    );
+}
+
 export const testNode = suite('history schema compatibility', [
     test(
         'repair preserves summaries and counters after detailed records are pruned',
@@ -66,6 +91,25 @@ export const testNode = suite('history schema compatibility', [
             await repairHistory(store, repair);
         }, { name: 'UnsupportedHistoryVersionError' });
         scope.assert.equal(await store.read(`${directory}/history/index.json`), source);
+        return scope.assert.collect();
+    }),
+    test('repair skips merge inputs and ingests records without merge intent', async function (scope: TestScope) {
+        const store = createMemoryHistoryStorage();
+        await writeMergeHistoryRecords(store);
+        const repaired = await repairHistory(store, repair);
+        const index = await readCompactHistory(store, directory);
+        const durations = await readDurationState(store, directory, historyTimestamp);
+        scope.require.defined(index);
+        scope.require.defined(durations);
+        scope.assert.deepEqual({
+            rebuilt: repaired.rebuiltRunCount,
+            dataLoss: repaired.dataLoss,
+            summaries: index.summaries.length,
+            runId: index.summaries[0]?.id,
+            passes: index.cases[0]?.counters.passed,
+            receipts: index.receipts.length,
+            durations: durations.entries[0]?.count
+        }, { rebuilt: 1, dataLoss: false, summaries: 1, runId: 'legacy', passes: 1, receipts: 1, durations: 1 });
         return scope.assert.collect();
     }),
     test('older readable schemas repair before the next persisted run is ingested', async function (scope: TestScope) {

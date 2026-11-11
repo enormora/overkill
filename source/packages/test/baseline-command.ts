@@ -1,4 +1,5 @@
 import { command, flag, subcommands } from 'cmd-ts';
+import type { Except } from 'type-fest';
 import type { CommandLineRunner, CommandLineRunnerResult } from '../run/command-line.entry-point.ts';
 import {
     sharedCommandArguments,
@@ -17,7 +18,9 @@ const listArguments = {
     paths: sharedCommandArguments.paths,
     profile: sharedCommandArguments.profile
 };
-type BaselineHandler = (args: RunCommandArguments<string>) => Promise<CommandLineRunnerResult>;
+type BaselineHandler = (
+    args: Except<RunCommandArguments<string>, 'recordForMerge'>
+) => Promise<CommandLineRunnerResult>;
 type BaselineListHandler = (
     args: Pick<RunCommandArguments<string>, 'configPath' | 'paths' | 'profile'>
 ) => Promise<CommandLineRunnerResult>;
@@ -35,7 +38,7 @@ export function createBaselineCommand(loadRunner: () => Promise<CommandLineRunne
             args: executionArguments,
             async handler(args) {
                 const runner = await loadRunner();
-                return await runner.baseline[verb](createRunTestsRequest(args, cwd));
+                return await runner.baseline[verb](createRunTestsRequest({ ...args, recordForMerge: false }, cwd));
             }
         });
     }

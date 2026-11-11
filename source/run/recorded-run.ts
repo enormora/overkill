@@ -1,7 +1,7 @@
 import { recordUndeliveredRunnerError } from '../engine/reporter-error-delivery-tracking.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { createRunRecordDependencies } from './run-record-input.ts';
-import { currentExecutionSession } from './execution-session-context.ts';
+import { resolveRunRecordPersistence } from './run-profile-facts.ts';
 import { createResultFromResolutionError } from './run-collection-error-result.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -14,9 +14,7 @@ export type RunRecordExecutionDependencies = Pick<
 >;
 
 function recordingEnabled(input: ResolvedRunInput): boolean {
-    return currentExecutionSession() === null && !input.request.coverage &&
-        (input.request.debug.mode !== 'off' || input.request.lastFailed || input.request.record ||
-            input.profile.runRecords.persist === 'always');
+    return resolveRunRecordPersistence(input.request, input.profile).persist && !input.request.coverage;
 }
 
 async function completeFailedRecording(record: RunRecordSession, error: RunRecordError): Promise<RunResult> {

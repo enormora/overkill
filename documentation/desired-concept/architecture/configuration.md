@@ -284,6 +284,8 @@ So, for example:
 - `--timings` requests precise runner timing collection for this run
 - `--record` requests a detailed run record and compact-history update for
   this run
+- `--record-for-merge` requests a shard record and defers compact history to
+  the merge, including when the profile sets `runRecords.persist: 'always'`
 - `run({ profile: 'unit', coverage: true })` expresses the same coverage
   intent through `@overkill-dev/run`
 - an optional global assertion budget policy lives in configuration because

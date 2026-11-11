@@ -353,6 +353,7 @@ export function defaultRunRequest(overrides: Partial<RunRequest> = {}): RunReque
         capture: 'buffered',
         coverage: false,
         record: false,
+        recordForMerge: false,
         lastFailed: false,
         debug: {
             mode: 'off',

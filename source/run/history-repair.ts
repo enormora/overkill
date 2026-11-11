@@ -30,6 +30,7 @@ type RepairPart<T> = { readonly value: T; readonly dataLoss: boolean; readonly d
 type RepairState = {
     readonly index: CompactHistory;
     readonly durations: DurationHistoryState;
+    readonly rebuiltRunCount: number;
     readonly dataLoss: boolean;
     readonly diagnostics: readonly string[];
 };
@@ -101,6 +102,7 @@ async function repairState(store: HistoryStorage, context: RepairContext): Promi
     return {
         index: index.value,
         durations: durations.value,
+        rebuiltRunCount: 0,
         dataLoss: index.dataLoss || durations.dataLoss,
         diagnostics: [ ...index.diagnostics, ...durations.diagnostics ]
     };
@@ -140,6 +142,22 @@ function recoverRecord(state: RepairState, record: HistoryRecord, context: Repai
     return { ...state, durations, index: ingestCompactRecord(state.index, record, { ...context, testFamily }) };
 }
 
+async function rebuildRecord(
+    store: HistoryStorage,
+    context: RepairContext,
+    state: RepairState,
+    recordPath: string
+): Promise<RepairState> {
+    const source = await store.read(recordPath);
+    if (source === null) {
+        throw historyStateError(`Record disappeared during repair: ${recordPath}`);
+    }
+    const record = historyRecordSchema.parse(JSON.parse(source));
+    return record.request.recordForMerge
+        ? state
+        : recoverRecord({ ...state, rebuiltRunCount: state.rebuiltRunCount + 1 }, record, context);
+}
+
 async function rebuildRecords(
     store: HistoryStorage,
     context: RepairContext,
@@ -149,13 +167,9 @@ async function rebuildRecords(
     let state = await repairState(store, context);
     for (const recordPath of paths) {
         assertBudget(deadline);
-        const source = await store.read(recordPath);
-        if (source === null) {
-            throw historyStateError(`Record disappeared during repair: ${recordPath}`);
-        }
-        state = recoverRecord(state, historyRecordSchema.parse(JSON.parse(source)), context);
+        state = await rebuildRecord(store, context, state, recordPath);
     }
-    if (context.mode === 'automatic' && paths.length === 0 && state.index.summaries.length === 0) {
+    if (context.mode === 'automatic' && state.rebuiltRunCount === 0 && state.index.summaries.length === 0) {
         throw historyStateError('Retained records are insufficient for automatic repair.');
     }
     return state;
@@ -204,7 +218,7 @@ export async function repairHistory(store: HistoryStorage, context: RepairContex
             const state = await rebuildRecords(store, context, paths, deadline);
             assertBudget(deadline);
             await publishRepair(store, context, state, paths);
-            return { rebuiltRunCount: paths.length, diagnostics: state.diagnostics, dataLoss: state.dataLoss };
+            return { rebuiltRunCount: state.rebuiltRunCount, diagnostics: state.diagnostics, dataLoss: state.dataLoss };
         });
     } catch (error: unknown) {
         throw historyStateError(error);

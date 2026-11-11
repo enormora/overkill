@@ -20,6 +20,7 @@ export type RunCommandArguments<Profile extends string | null> = {
     readonly debugScope: readonly string[];
     readonly configPath: string | null;
     readonly record: boolean;
+    readonly recordForMerge: boolean;
     readonly coverage: boolean;
     readonly lastFailed: boolean;
     readonly file: string | null;
@@ -36,7 +37,16 @@ export type RunCommandArguments<Profile extends string | null> = {
     readonly workers: CommandLineRunTestsRequest['runRequest']['workers'];
 };
 
-type RunOnlyArgument = 'coverage' | 'debug' | 'debugScope' | 'noCapture' | 'record' | 'timings' | 'workers';
+type RunOnlyArgument = keyof {
+    readonly coverage: true;
+    readonly debug: true;
+    readonly debugScope: true;
+    readonly noCapture: true;
+    readonly record: true;
+    readonly recordForMerge: true;
+    readonly timings: true;
+    readonly workers: true;
+};
 type ListControls = { readonly withLocations: boolean; readonly withOrphans: boolean; };
 export type ListCommandArguments<Profile extends string | null> = Except<
     ListControls & RunCommandArguments<Profile>,
@@ -90,6 +100,7 @@ export function createRunTestsRequest<Profile extends string | null>(
             capabilityRestrictions: { mode: 'enabled' },
             capture: args.noCapture ? 'live' : 'buffered',
             record: args.record,
+            recordForMerge: args.recordForMerge,
             coverage: args.coverage,
             debug: parseDebugRequest(args.debug, args.debugScope),
             execution: { mode: 'profile-default' },

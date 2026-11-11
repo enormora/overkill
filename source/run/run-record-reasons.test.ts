@@ -19,6 +19,55 @@ const reasons = [
 ] as const;
 
 export const testNode = suite('recording requirements and failures', [
+    test('merge recording includes debug persistence in the shared session', async function (scope: TestScope) {
+        const fixture = runRecordPolicyFixture('on-demand', false);
+        const input = {
+            ...fixture.input,
+            request: {
+                ...fixture.input.request,
+                debug: { mode: 'all' as const, selectors: [] as const },
+                recordForMerge: true,
+                shard: { index: 1, total: 2 }
+            }
+        };
+        scope.assert.deepEqual(resolveRunRecordPersistence(input.request, input.profile), {
+            persist: true,
+            reasons: [ 'merge', 'debug' ]
+        });
+        await executeRecordedRun('/project', input, fixture.dependencies, async function execute(record) {
+            scope.assert.notEqual(record, null);
+            scope.assert.equal(fixture.writes[0]?.status, 'started');
+            return runResultFactory.build({ status: 'passed' });
+        });
+        scope.assert.equal(fixture.writes.at(-1)?.status, 'completed');
+        return scope.assert.collect();
+    }),
+    test(
+        'execution sessions reject merge recording even when coverage owns the record',
+        async function (scope: TestScope) {
+            const fixture = runRecordPolicyFixture('on-demand', false);
+            await scope.assert.rejects(async function mergeInsideSession() {
+                await withExecutionSession({
+                    data: null,
+                    lifecycle: { moduleUrl: 'file:///lifecycle.mjs', exportName: 'createLifecycle' }
+                }, async function executeMutation() {
+                    await executeRecordedRun(
+                        '/project',
+                        {
+                            ...fixture.input,
+                            request: { ...fixture.input.request, coverage: true, recordForMerge: true }
+                        },
+                        fixture.dependencies,
+                        async function execute() {
+                            return runResultFactory.build();
+                        }
+                    );
+                });
+            }, { message: '--record-for-merge is only supported by ordinary runs outside execution sessions.' });
+            scope.assert.deepEqual(fixture.writes, []);
+            return scope.assert.collect();
+        }
+    ),
     test('last-failed requires recording without explicit record', async function (scope: TestScope) {
         const fixture = runRecordPolicyFixture('on-demand', false);
         const input = { ...fixture.input, request: { ...fixture.input.request, lastFailed: true } };
