@@ -9,7 +9,7 @@ import {
     assertTestPlanMatchesTestFamily,
     assertTestPlanCasesMatchProfilePolicy
 } from './run-selection.ts';
-import type { ResolvedRun, RunCommand } from './run-types.ts';
+import type { ResolvedRun, RunCommand, RunFacts } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 
 type TestPlan = Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>['testPlan'];
@@ -51,6 +51,9 @@ export function createLocalResolvedRunFromTestPlan(
             benchmarkCalibration: input.benchmarkCalibration,
             benchmarkNormalization: input.benchmarkNormalization,
             benchmarkPlacement: null,
+            selectedIdentities: plannedTestPlan.cases.map(function identity(entry) {
+                return entry.workId;
+            }),
             cases: runCaseFactsFromTestPlan(plannedTestPlan, fileSetForDiscoveredFiles(input.files)),
             config: input.config,
             dependencies,
@@ -99,19 +102,26 @@ export function createEmptySelectionResult(
     ));
 }
 
+type EmptyShardSelection = {
+    readonly plan: TestPlan;
+    readonly identities: NonNullable<RunFacts['reproducibility']['selectedIdentities']>;
+};
+
 export function createEmptyShardResolvedRunFromTestPlan(
     command: RunCommand,
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput,
-    selectedPlan: TestPlan
+    selection: EmptyShardSelection
 ): ResolvedRun {
+    const selectedPlan = selection.plan;
     const collectedPlan = collectedRunPlanFromTestPlanCases(selectedPlan, []);
-    const facts = freezeValue(createRunFacts({
+    const baseFacts = createRunFacts({
         hostProcess: null,
         benchmarkHost: input.benchmarkHost,
         benchmarkCalibration: input.benchmarkCalibration,
         benchmarkNormalization: input.benchmarkNormalization,
         benchmarkPlacement: null,
+        selectedIdentities: selection.identities,
         cases: [],
         config: input.config,
         dependencies,
@@ -122,7 +132,8 @@ export function createEmptyShardResolvedRunFromTestPlan(
         request: input.request,
         scheduling: resolveRunScheduling(input.request, input.profile),
         workerCount: null
-    }));
+    });
+    const facts = freezeValue(baseFacts);
 
     return freezeValue(resolveRunDiagnostics({
         collectionRunnerErrors: [],
@@ -150,10 +161,32 @@ export async function createShardedLocalResolvedRunFromTestPlan(
         { ...input.request, selection: { kind: 'all' } }
     );
     if (selection.kind === 'empty-shard') {
-        return createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, selectedPlan);
+        return createEmptyShardResolvedRunFromTestPlan(
+            command,
+            dependencies,
+            input,
+            {
+                plan: selectedPlan,
+                identities: selectedPlan.cases.map(function identity(entry) {
+                    return entry.workId;
+                })
+            }
+        );
     }
-    return createLocalResolvedRunFromTestPlan(command, dependencies, input, {
+    const resolved = createLocalResolvedRunFromTestPlan(command, dependencies, input, {
         ...selection.testPlan,
         discoveredCases: selectedPlan.discoveredCases
+    });
+    return freezeValue({
+        ...resolved,
+        facts: {
+            ...resolved.facts,
+            reproducibility: {
+                ...resolved.facts.reproducibility,
+                selectedIdentities: selectedPlan.cases.map(function identity(entry) {
+                    return entry.workId;
+                })
+            }
+        }
     });
 }

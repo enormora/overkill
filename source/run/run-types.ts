@@ -277,6 +277,7 @@ type RunSingleProcessExecutionFacts = RunExecutionBaseFacts & {
 export type RunExecutionFacts = RunSingleProcessExecutionFacts | RunWorkerPoolExecutionFacts;
 
 export type RunReproducibilityFacts = {
+    readonly selectedIdentities: readonly WorkId[] | null;
     readonly selection: RunSelection;
     readonly seed: string;
     readonly shard: RunShard;

@@ -114,6 +114,9 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
             benchmarkCalibration: input.benchmarkCalibration,
             benchmarkNormalization: selectedNormalization(input, orderedCases),
             ...recordedFacts,
+            selectedIdentities: collectedRunCaseEntries(input.collectedPlan).map(function identity(entry) {
+                return entry.workId;
+            }),
             cases: collectedRunCaseFactsFromEntries(orderedCases, fileSetForDiscoveredFiles(input.files)),
             config: input.config,
             dependencies: input.dependencies,

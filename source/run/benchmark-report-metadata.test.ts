@@ -36,6 +36,7 @@ function metadataFacts(command: RunCommand): ResolvedRun['facts'] {
             maximumWorkers: 1,
             limits: [ { reason: 'measurement', maximumWorkers: 1 } ]
         },
+        selectedIdentities: [],
         cases: [],
         config: command.config,
         dependencies: {
