@@ -1,19 +1,24 @@
-import { executeFamilyAnalysis } from './family-evidence.ts';
-import type { CollectedFamilyRun, FamilyExecuteOptions, FamilyExecutionRequest } from './family-run.ts';
+import { executeFamilyWork } from './family-execution.ts';
+import {
+    disposeFamily,
+    rejectFamilyExecution,
+    type CollectedFamilyRun,
+    type FamilyExecuteOptions,
+    type FamilyExecutionRequest
+} from './family-run.ts';
 import type {
     ExecuteExecution as ExecuteExecutionDefinition,
     ExecuteOptions as ExecuteOptionsDefinition,
     NormalizedExecuteOptions
 } from './execution-options.ts';
 import { appendRunnerErrors, createRunResult, throwWithCleanupErrors } from './execution-result.ts';
-import { executeTestPlanCasesAndMeasureProcessUsage } from './execution-test-plan-process-usage.ts';
 import {
     createReporterDisposal,
     type ReporterDelivery,
     type ReporterDisposal
 } from './reporter-dispatcher.ts';
 import { reportRunnerErrors } from './runner-error-reporting.ts';
-import type { RunArtifact, RunResult } from './run-result.ts';
+import type { RunResult, RunnerError } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 import {
     withPreparedExecution,
@@ -39,37 +44,10 @@ type ExecutionReportingContext = {
     readonly reporterDelivery: ReporterDelivery;
 };
 
-type RuntimeWork = Awaited<ReturnType<typeof executeTestPlanCasesAndMeasureProcessUsage>>;
-type ExecutedWork = RuntimeWork & {
-    readonly executedTestPlan: RuntimeWork['executedTestPlan'] & { readonly artifacts: readonly RunArtifact[]; };
-};
-
-async function executeWork(input: ExecuteRunInput): Promise<ExecutedWork> {
-    const { family, testPlan, options, context: { dependencies, reporterDelivery } } = input;
-    if (family?.family.features.execution !== 'analysis') {
-        const runtime = await executeTestPlanCasesAndMeasureProcessUsage(
-            testPlan,
-            options,
-            dependencies,
-            reporterDelivery
-        );
-        return { ...runtime, executedTestPlan: { ...runtime.executedTestPlan, artifacts: [] } };
-    }
-    const analysisStarted = Number(dependencies.wallClock.currentMonotonicMicroseconds);
-    const evidence = await executeFamilyAnalysis(
-        testPlan,
-        reporterDelivery,
-        family.collection?.kind === 'analysis' ? family.collection.execute : null,
-        family.signal
-    );
-    return {
-        executedTestPlan: {
-            ...evidence,
-            testExecutionWallTimeMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds) -
-                analysisStarted
-        },
-        processUsage: null
-    };
+async function disposeFamilyBeforeDelivery(
+    input: ExecuteRunInput
+): Promise<readonly RunnerError[]> {
+    return await reportRunnerErrors(input.context.reporterDelivery, await disposeFamily(input.family));
 }
 
 async function createRunResultBeforeRunEnd(input: ExecuteRunInput): Promise<RunResult> {
@@ -85,7 +63,7 @@ async function createRunResultBeforeRunEnd(input: ExecuteRunInput): Promise<RunR
         reporterDelivery,
         options.runtimePolicy?.takePendingRunErrors() ?? []
     );
-    const { executedTestPlan, processUsage } = await executeWork(input);
+    const { executedTestPlan, processUsage } = await executeFamilyWork(input);
     const finalRuntimePolicyErrors = await reportRunnerErrors(
         reporterDelivery,
         options.runtimePolicy?.takeRunErrors() ?? []
@@ -95,6 +73,7 @@ async function createRunResultBeforeRunEnd(input: ExecuteRunInput): Promise<RunR
         dependencies.globalErrorObserver.takeErrors()
     );
     const reporterErrors = [
+        ...await disposeFamilyBeforeDelivery(input),
         ...startErrors,
         ...loadRuntimePolicyErrors,
         ...executedTestPlan.reporterErrors,
@@ -225,14 +204,21 @@ export function createExecute(dependencies: ExecuteDependencies): ExecutionDrive
         if (family === null) {
             validateRuntimePlan(testPlan);
         }
-        const resolvedOptions = family === null ? options : familyExecuteOptions(family, options);
-        return await withPreparedExecution(
-            dependencies,
-            resolvedOptions,
-            testPlan,
-            async function executePrepared(prepared) {
-                return await executeWithReporterDelivery(prepared, testPlan, family);
-            }
-        );
+        async function executeResolved(): Promise<RunResult> {
+            const resolvedOptions = family === null ? options : familyExecuteOptions(family, options);
+            return await withPreparedExecution(
+                dependencies,
+                resolvedOptions,
+                testPlan,
+                async function executePrepared(prepared) {
+                    return await executeWithReporterDelivery(prepared, testPlan, family);
+                }
+            );
+        }
+        try {
+            return await executeResolved();
+        } catch (error: unknown) {
+            return await rejectFamilyExecution(error, family);
+        }
     };
 }

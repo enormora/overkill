@@ -91,9 +91,9 @@ async function analyze(execute: Analyze, executionOptions: FamilyExecuteOptions)
         testFamily,
         settings: null,
         projectRoot: process.cwd(),
-        signal: executionOptions.signal
+        signal: controller.signal
     });
-    const collected = await prepared.collect({ workIds: [ workId ], signal: executionOptions.signal });
+    const collected = await prepared.collect({ workIds: [ workId ], signal: controller.signal });
     return await engine.execute(collected, executionOptions);
 }
 
@@ -226,6 +226,32 @@ export const testNode = suite('family evidence validation', [
                 throw new Error('Analysis should not begin with invalid options.');
             }, { ...options, propertyRun: { projectRoot: null, seed: 0n } });
         }, { message: /does not support runtime execution policy/u });
+        return scope.assert.collect();
+    }),
+    test('rejects late evidence and retains incomplete results', async function (scope) {
+        const captured = Promise.withResolvers<FamilyAnalysisContext>();
+        const result = await analyze(async function (context) {
+            captured.resolve(context);
+        }, options);
+        const context = await captured.promise;
+        await scope.assert.rejects(async function () {
+            await context.report({
+                kind: 'run-error',
+                error: {
+                    subtype: 'runtime-state',
+                    cause: null,
+                    diagnostics: [],
+                    attributedTo: null,
+                    attributedToAttempt: null,
+                    message: 'late'
+                }
+            });
+        }, { message: /already settled/u });
+        scope.assert.deepEqual([ result.status, result.summary.inconclusive, result.runnerErrors.length ], [
+            'failed',
+            1,
+            1
+        ]);
         return scope.assert.collect();
     }),
     test('preserves an analysis abort reason as a run error', async function (scope) {

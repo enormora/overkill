@@ -21,6 +21,7 @@ import {
     type TestScope,
     type WorkId
 } from '../packages/engine/engine.entry-point.ts';
+import { testNode as lifetimeTests } from './family-lifetime.test.ts';
 import { testNode as evidenceValidation } from './family-evidence-validation.test.ts';
 import { testNode as preparationValidation } from './family-preparation-validation.test.ts';
 
@@ -204,19 +205,6 @@ function assertAnalysisResults(
     );
 }
 
-async function assertInvalidSelections(scope: TestScope, prepared: PreparedFamilyRun): Promise<void> {
-    const { workId } = prepared.testPlan.cases[0];
-    await scope.assert.rejects(async function () {
-        await prepared.collect({ workIds: [], signal });
-    }, { message: /at least one/u });
-    await scope.assert.rejects(async function () {
-        await prepared.collect({ workIds: [ workId, workId ], signal });
-    }, { message: /duplicate/u });
-    await scope.assert.rejects(async function () {
-        await prepared.collect({ workIds: [ { ...workId, familyVariant: null } ], signal });
-    }, { message: /unknown/u });
-}
-
 async function assertSkippedSelection(scope: TestScope, engine: Engine, prepared: PreparedFamilyRun): Promise<void> {
     const workIds = prepared.testPlan.cases.flatMap(function skip(testCase) {
         return testCase.execution.kind === 'skip' ? [ testCase.workId ] : [];
@@ -227,7 +215,36 @@ async function assertSkippedSelection(scope: TestScope, engine: Engine, prepared
     scope.assert.equal(collected.facts.collection, null);
 }
 
+function runtimeFamily(): TestFamily<null> {
+    return defineTestFamily({
+        id: '@example/runtime',
+        version: '1',
+        module: null,
+        features: { execution: 'runtime', processModels: [ 'in-process' ], profileOptions: [] },
+        parseSettings() {
+            return null;
+        },
+        async load() {
+            return {
+                async prepare(input) {
+                    return {
+                        testPlan: input.testPlan,
+                        facts: null,
+                        async collect() {
+                            return { kind: 'runtime', facts: null };
+                        },
+                        async dispose() {
+                            return undefined;
+                        }
+                    };
+                }
+            };
+        }
+    });
+}
+
 export const testNode = suite('engine family runs', [
+    lifetimeTests,
     preparationValidation,
     evidenceValidation,
     test('collects exact variant work and reports analysis in execution order', async function (scope) {
@@ -247,18 +264,44 @@ export const testNode = suite('engine family runs', [
             ...options,
             reporters: [ recordEvents(events.push.bind(events)) ]
         });
-        scope.assert.deepEqual(Array.from(observed), [ 'parsed', 'loaded', 'two', 'one' ]);
+        scope.assert.deepEqual(Array.from(observed), [ 'parsed', 'loaded', 'two', 'one', 'disposed' ]);
         assertAnalysisResults(scope, result, workIds, events);
         return scope.assert.collect();
     }),
-    test('rejects invalid selections without calling collection and bypasses it for skips', async function (scope) {
+    ...[ 'duplicate', 'unknown' ].map(function invalidSelection(kind) {
+        return test(`rejects ${kind} work IDs before backend collection`, async function (scope) {
+            const engine = createTestEngine();
+            const observed: string[] = [];
+            await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
+            const { workId } = prepared.testPlan.cases[0];
+            const workIds = kind === 'duplicate' ? [ workId, workId ] : [ { ...workId, familyVariant: null } ];
+            await scope.assert.rejects(async function () {
+                await prepared.collect({ workIds, signal });
+            }, {
+                message: /unknown or duplicate/u
+            });
+            scope.assert.deepEqual(observed, [ 'parsed', 'loaded', 'disposed' ]);
+            return scope.assert.collect();
+        });
+    }),
+    test('invalid selection disposes preparation and prevents reuse', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];
-        {
-            await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
-            await assertInvalidSelections(scope, prepared);
-            await assertSkippedSelection(scope, engine, prepared);
-        }
+        await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
+        await scope.assert.rejects(async function () {
+            await prepared.collect({ workIds: [], signal });
+        }, { message: /at least one/u });
+        await scope.assert.rejects(async function () {
+            await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
+        }, { message: /consumed or disposed/u });
+        scope.assert.deepEqual(observed, [ 'parsed', 'loaded', 'disposed' ]);
+        return scope.assert.collect();
+    }),
+    test('bypasses backend collection for authored skips', async function (scope) {
+        const engine = createTestEngine();
+        const observed: string[] = [];
+        await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
+        await assertSkippedSelection(scope, engine, prepared);
         scope.assert.deepEqual(observed, [ 'parsed', 'loaded', 'disposed' ]);
         return scope.assert.collect();
     }),
@@ -284,37 +327,60 @@ export const testNode = suite('engine family runs', [
         );
         return scope.assert.collect();
     }),
+    test('cancels active runtime scopes without claiming a pass', async function (scope) {
+        const engine = createTestEngine();
+        const abort = new AbortController();
+        const testPlan = createPlan(engine, function body(caseScope) {
+            abort.abort('stop runtime');
+            caseScope.assert.equal(caseScope.signal.aborted, true);
+            return caseScope.assert.collect();
+        });
+        await using prepared = await engine.prepareFamily({
+            testPlan,
+            testFamily: runtimeFamily(),
+            settings: null,
+            projectRoot: process.cwd(),
+            signal
+        });
+        const collected = await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
+        const result = await engine.execute(collected, { ...options, signal: abort.signal });
+        scope.assert.deepEqual([ result.status, result.summary.inconclusive, result.runnerErrors[0]?.cause ], [
+            'failed',
+            1,
+            'stop runtime'
+        ]);
+        return scope.assert.collect();
+    }),
+    test('keeps cooperative abort throws out of assertion failures', async function (scope) {
+        const engine = createTestEngine();
+        const abort = new AbortController();
+        const testPlan = createPlan(engine, function body(caseScope) {
+            abort.abort('stop runtime');
+            throw caseScope.signal.reason;
+        });
+        await using prepared = await engine.prepareFamily({
+            testPlan,
+            testFamily: runtimeFamily(),
+            settings: null,
+            projectRoot: process.cwd(),
+            signal
+        });
+        const collected = await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
+        const result = await engine.execute(collected, { ...options, signal: abort.signal });
+        scope.assert.deepEqual([ result.status, result.summary.inconclusive, result.runnerErrors[0]?.cause ], [
+            'failed',
+            1,
+            'stop runtime'
+        ]);
+        return scope.assert.collect();
+    }),
     test('executes collected runtime bodies through the ordinary engine', async function (scope) {
         const engine = createTestEngine();
         const testPlan = createPlan(engine, function (caseScope) {
             caseScope.assert.fail({ message: 'ordinary assertion' });
             return caseScope.assert.collect();
         });
-        const testFamily = defineTestFamily({
-            id: '@example/runtime',
-            version: '1',
-            module: null,
-            features: { execution: 'runtime', processModels: [ 'in-process' ], profileOptions: [] },
-            parseSettings() {
-                return null;
-            },
-            async load() {
-                return {
-                    async prepare(input) {
-                        return {
-                            testPlan: input.testPlan,
-                            facts: null,
-                            async collect() {
-                                return { kind: 'runtime', facts: null };
-                            },
-                            async dispose() {
-                                return undefined;
-                            }
-                        };
-                    }
-                };
-            }
-        });
+        const testFamily = runtimeFamily();
         await using prepared = await engine.prepareFamily({
             testPlan,
             testFamily,

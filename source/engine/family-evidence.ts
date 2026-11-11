@@ -1,5 +1,5 @@
 import pLimit from 'p-limit';
-import { createFamilyEvidenceState, type FamilyEvidenceState } from './family-evidence-state.ts';
+import { createFamilyEvidenceState, completeFamilyResults, type FamilyEvidenceState } from './family-evidence-state.ts';
 import { familyEventSchema, type AnalysisEvent } from './family-evidence-schema.ts';
 import { workIdentityKey } from './identity.ts';
 import type { ReporterDelivery } from './reporter-dispatcher.ts';
@@ -164,25 +164,53 @@ export async function executeFamilyAnalysis(
     const state = createFamilyEvidenceState(testPlan);
     const delivery = createEvidenceDelivery(reporter);
     const serial = pLimit(1);
+    let accepting = true;
     async function report(event: FamilyEvent): Promise<void> {
         try {
+            signal.throwIfAborted();
             await accept(familyEventSchema.parse(event), state, delivery);
         } catch (error: unknown) {
             await delivery.error(evidenceError(error));
         }
     }
-    if (execute !== null) {
-        try {
-            await execute({
-                signal,
-                async report(event) {
-                    await serial(report, event);
-                }
-            });
-        } catch (error: unknown) {
-            await serial(delivery.error, evidenceError(error));
+    async function runBackend(): Promise<void> {
+        if (execute !== null) {
+            try {
+                signal.throwIfAborted();
+                await execute({
+                    signal,
+                    async report(event) {
+                        if (!accepting) {
+                            throw new TypeError('Family execution has already settled.');
+                        }
+                        await serial(report, event);
+                    }
+                });
+                signal.throwIfAborted();
+            } catch (error: unknown) {
+                accepting = false;
+                await serial(delivery.error, evidenceError(error));
+            } finally {
+                accepting = false;
+            }
         }
+        accepting = false;
+        await serial(async function drainReports() {
+            return undefined;
+        });
     }
-    const skipped = await serial(completeSkips, testPlan, delivery);
-    return { artifacts: state.artifacts(), perTest: state.results(skipped), reporterErrors: await delivery.finish() };
+    await runBackend();
+    async function finish(): Promise<AnalysisEvidence> {
+        const skipped = await serial(completeSkips, testPlan, delivery);
+        const results = state.results(skipped);
+        if (results.length !== testPlan.cases.length) {
+            await delivery.error(evidenceError(new Error('Family execution ended without complete evidence.')));
+        }
+        return {
+            artifacts: state.artifacts(),
+            perTest: completeFamilyResults(testPlan, results),
+            reporterErrors: await delivery.finish()
+        };
+    }
+    return await finish();
 }
