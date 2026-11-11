@@ -70,6 +70,7 @@ function createRecordedExitCodes(): RecordedExitCodes {
 
 function commandLineRunner(requestRecorder: RequestRecorder): CommandLineRunner {
     return {
+        mergeResults: unexpectedCommand,
         corpus: { inspect: unexpectedCommand, promote: unexpectedCommand, migrate: unexpectedCommand },
         history: {
             list: unexpectedCommand,

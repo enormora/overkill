@@ -90,10 +90,10 @@ type MergedRunRecord = {
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
     readonly lineage: NonEmptyReadonlyArray<{ readonly id: string; readonly path: string; }>;
-    readonly runtime: NonEmptyReadonlyArray<ResolvedRuntime>;
-    readonly versions: { engine: string; packages: Readonly<Record<string, string>>; };
+    readonly runtime: NonEmptyReadonlyArray<ResolvedRuntime | null>;
+    readonly versions: { engine: string | null; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
-    readonly result: RunResult;
+    readonly result: RunRecordResult;
 };
 
 type RunRecord = SingleRunRecord | MergedRunRecord;

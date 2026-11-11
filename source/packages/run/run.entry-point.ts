@@ -354,3 +354,6 @@ export {
     type TestPlanSelectionOptions
 } from '../../run/test-plan-selection.ts';
 export { expandRuntimeMatrices as expandTestPlanRuntimes } from '../../run/runtime-matrix-expansion.ts';
+
+export { mergeResults } from '../../run/merge-results.ts';
+export type { MergeResultsCommand, MergeResultsInput, MergedRunRecord } from '../../run/merge-results-types.ts';

@@ -181,7 +181,7 @@ const workGroupWorkerLifecycleSchema = z.union([
     z.literal('reuse')
 ]);
 
-const workGroupSchema = z
+export const workGroupSchema = z
     .strictObject({
         fileSets: z.tuple([ z.string() ]).rest(z.string()).readonly(),
         granularity: z.optional(workGroupGranularitySchema),

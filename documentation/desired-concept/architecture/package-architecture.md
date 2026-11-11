@@ -578,7 +578,7 @@ verbs too:
 - `history.list(options?)`, `history.prune(options?)`,
   `history.compact(options?)`, and `history.clear(options?)` - mirrors of the
   history subcommands
-- `mergeResults(inputs, options?)` - validate completed shard `RunRecord`s,
+- `mergeResults(command)` - validate completed shard `RunRecord`s,
   write a non-replayable merged `RunRecord`, and deliver final-result
   reporters
 - `baseline.update(request)`, `baseline.apply(request)`,

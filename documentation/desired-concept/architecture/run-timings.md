@@ -273,3 +273,10 @@ Runner timings explain orchestration overhead for a concrete run.
   module-load detail
 - [Benchmarking](../authoring/benchmarking.md) - measurement-quality
   performance workflows
+
+## Merged Results
+
+Merged summaries report cumulative shard durations, not elapsed CI time. Precise
+aggregates sum across shards; retained spans identify their source record and
+have no cross-shard relative offset. Their timestamp envelope is diagnostic
+metadata only. Aggregate process usage is unavailable.

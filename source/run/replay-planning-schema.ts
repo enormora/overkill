@@ -33,7 +33,7 @@ const durationObservation = z.strictObject({
         workerLifecycle: z.enum([ 'fresh-worker-per-unit', 'reuse' ]).nullable()
     })
 });
-export const replayPlanningSchema: z.ZodType<ReplayPlanningFacts> = z.object({
+export const replayPlanningFields = {
     reproducibility: z.strictObject({
         selection: runSelectionSchema,
         seed: z.string().regex(/^\d+$/u),
@@ -77,4 +77,5 @@ export const replayPlanningSchema: z.ZodType<ReplayPlanningFacts> = z.object({
             .nullable()
             .default(null)
     })
-});
+};
+export const replayPlanningSchema: z.ZodType<ReplayPlanningFacts> = z.object(replayPlanningFields);
