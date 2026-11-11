@@ -133,6 +133,7 @@ async function assertReplayCompatibility(scope: TestScope, input: IncompatibleCo
     const replay = await orchestrator.replayWitness({
         ...command,
         request: {
+            debug: { mode: 'off', selectors: [] },
             path: file,
             profile: 'laws',
             seed: { value: 42n },
@@ -170,6 +171,7 @@ export const testNode = suite(
                 const replay = await orchestrator.replayWitness({
                     ...command,
                     request: {
+                        debug: { mode: 'off', selectors: [] },
                         path: file,
                         profile: 'laws',
                         seed: { value: 42n },
@@ -195,6 +197,7 @@ export const testNode = suite(
                 const replay = await orchestrator.replayWitness({
                     ...command,
                     request: {
+                        debug: { mode: 'off', selectors: [] },
                         path: file,
                         profile: 'laws',
                         seed: { value: 42n },

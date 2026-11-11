@@ -9,6 +9,7 @@ import type {
     Table,
     TestBody,
     TestCase,
+    TestDebugScope,
     TestScope,
     TestRandom
 } from '../engine/engine.entry-point.ts';
@@ -212,6 +213,7 @@ describe('@overkill-dev/test standard subpaths', function () {
         expect<typeof throwingTest>().type.toBe<ThrowingTestAuthor>();
         expect<ThrowingTestBody>().type.toBe<(scope: ThrowingTestScope) => Promise<void> | void>();
         expect<ThrowingTestScope>().type.toBe<{
+            readonly debug: TestDebugScope;
             readonly seed: bigint;
             readonly random: TestRandom;
             readonly assert: AssertAssertionFacade;

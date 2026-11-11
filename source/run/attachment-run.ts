@@ -6,7 +6,7 @@ import { runWithAttachmentExecution } from './resource-lifecycle-state.ts';
 import { runWithAttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type { ResolvedRun } from './run-types.ts';
-import { runHasAttachmentScopes } from './run-facts.ts';
+import { runHasAttachmentScopes } from './run-diagnostics.ts';
 import { executeWithPropertyWitnesses } from './property-witness-storage.ts';
 
 type AttachmentCompletion = {

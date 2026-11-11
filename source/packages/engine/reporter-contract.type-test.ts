@@ -27,6 +27,7 @@ import {
 } from './engine.entry-point.ts';
 
 type ExecuteOptionKeyByName = {
+    readonly debug: true;
     readonly failureArtifacts: true;
     readonly processUsageSamplingIntervalMilliseconds: true;
     readonly execution: true;

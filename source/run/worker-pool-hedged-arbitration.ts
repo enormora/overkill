@@ -1,5 +1,11 @@
 import { workIdentityKey } from '../engine/identity.ts';
-import type { PerTestResult, RunResult, HedgedConflictArtifact, RunArtifact } from '../engine/run-result.ts';
+import {
+    isTestDebugArtifact,
+    type PerTestResult,
+    type RunResult,
+    type HedgedConflictArtifact,
+    type RunArtifact
+} from '../engine/run-result.ts';
 import {
     replayPlacementResult,
     isDeferredReplayTask,
@@ -192,6 +198,19 @@ function conflictArtifactId(result: PerTestResult, sequence: number): HedgedConf
 
 type ConflictExecutions = { readonly authority: WorkerPoolTaskRun; readonly conflicting: WorkerPoolTaskRun; };
 
+function retainConflictDiagnostics(runtime: WorkerPoolRunRuntime, executions: ConflictExecutions): void {
+    if (runtime.resolvedRun.request.debug.mode === 'off') {
+        return;
+    }
+    for (const task of [ executions.authority, executions.conflicting ]) {
+        for (const artifact of task.state.artifacts()) {
+            if (isTestDebugArtifact(artifact)) {
+                runtime.runState.recordArtifact(artifact);
+            }
+        }
+    }
+}
+
 function conflictArtifact(
     authoritativeResult: PerTestResult,
     conflictingResult: PerTestResult,
@@ -259,6 +278,7 @@ function conflictResult(
         conflicting: taskRun
     });
     runtime.runState.recordArtifact(artifact);
+    retainConflictDiagnostics(runtime, { authority: authority.taskRun, conflicting: taskRun });
     workerPoolPlacementTrace(runtime).recordDecision({
         authoritativeAttempt: authority.taskRun.members[0].attempt,
         conflictingAttempt: taskRun.members[0].attempt,

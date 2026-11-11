@@ -112,6 +112,9 @@ export function resolveTimingCollection(
 
 export function resolveRunRecordPersistence(request: RunRequest, profile: ProfileConfig): RunRecordPersistenceFacts {
     if (currentExecutionSession() !== null) {
+        if (request.recordForMerge) {
+            invalidRequest('--record-for-merge is only supported by ordinary runs outside execution sessions.');
+        }
         return { persist: false, reasons: [] };
     }
     const candidates: readonly (readonly [boolean, RunRecordPersistenceReason])[] = [
@@ -119,7 +122,8 @@ export function resolveRunRecordPersistence(request: RunRequest, profile: Profil
         [ request.record, 'request' ],
         [ request.lastFailed, 'last-failed' ],
         [ request.recordForMerge, 'merge' ],
-        [ request.coverage, 'coverage' ]
+        [ request.coverage, 'coverage' ],
+        [ request.debug.mode !== 'off', 'debug' ]
     ];
     const reasons = candidates.flatMap(function requestedReason([ enabled, reason ]) {
         return enabled ? [ reason ] : [];

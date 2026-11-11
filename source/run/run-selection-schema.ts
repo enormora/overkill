@@ -39,20 +39,10 @@ export const runSelectionSchema: z.ZodType<RunSelection> = z.discriminatedUnion(
     z.strictObject({ kind: z.literal('filter'), filter: filterSchema })
 ]);
 
-export function runSelectionValidationMessage(value: unknown): string | null {
-    const message = invalidRunSelectionMessage(value);
-    if (message !== null) {
-        return message;
-    }
-    const parsed = runSelectionSchema.safeParse(value);
-    return parsed.success ? null : parsed.error.message;
-}
-
 export function parseRunSelection(value: unknown): RunSelection {
-    const selection = runSelectionSchema.parse(value);
-    const message = invalidRunSelectionMessage(selection);
+    const message = invalidRunSelectionMessage(value);
     if (message !== null) {
         throw new TypeError(message);
     }
-    return selection;
+    return runSelectionSchema.parse(value);
 }

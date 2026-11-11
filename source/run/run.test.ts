@@ -210,6 +210,7 @@ export const testNode = createOverkillSuite({
                     durationHistory: null,
                     environment: expectedRunEnvironment(),
                     execution: {
+                        debuggedCases: [],
                         failureArtifacts: defaultFailureArtifactPolicy,
                         benchmarkGarbageCollection: null,
                         propertyPolicy: null,
@@ -421,6 +422,7 @@ export const testNode = createOverkillSuite({
                     durationHistory: null,
                     environment: expectedRunEnvironment(),
                     execution: {
+                        debuggedCases: [],
                         failureArtifacts: defaultFailureArtifactPolicy,
                         benchmarkGarbageCollection: null,
                         propertyPolicy: null,

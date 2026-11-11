@@ -1,3 +1,4 @@
+import { DebugArgumentError } from '../../run/run-debug.ts';
 import type {
     CommandLineExitCode,
     CommandLineRunner,
@@ -100,6 +101,10 @@ export async function runOverkillCommandLine(request: OverkillCommandLineRunRequ
     try {
         return await dispatchCommandLine(request);
     } catch (error: unknown) {
+        if (error instanceof DebugArgumentError) {
+            applyDiagnosticExit(request, error.message, wrapperExitCodes.argumentOrConfig);
+            return wrapperExitCodes.argumentOrConfig;
+        }
         applyDiagnosticExit(
             request,
             `Overkill internal error: ${formatUnknownError(error)}`,

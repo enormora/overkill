@@ -2,11 +2,30 @@ import colors from 'yoctocolors';
 import { workIdentityKey, formatCaseId, type RuntimeId, type WorkloadId } from '../engine/identity.ts';
 import { workloadLabel } from '../engine/workload-label.ts';
 import { formatDefinitionLocations, type ReportingContext } from '../engine/reporting-context.ts';
-import type { RunResult, RunnerError, RunArtifact } from '../engine/run-result.ts';
+import { isTestDebugArtifact, type RunResult, type RunnerError, type RunArtifact } from '../engine/run-result.ts';
 import { formatPropertyDiagnostics } from './failure-summary.ts';
 import { formatFailure } from './line-failure-rendering.ts';
 import { formatTimingSummary as formatRunTimingSummary } from './run-summary-rendering.ts';
 import { witnessReplayLines } from './witness-replay-lines.ts';
+
+const microsecondsPerMillisecond = 1000;
+function debugHeapDelta(growth: number | null): string {
+    if (growth === null) {
+        return 'heap unavailable';
+    }
+    const sign = growth >= 0 ? '+' : '';
+    return `${sign + growth.toString()} B heap (thread)`;
+}
+export function formatDebugSummary(artifacts: readonly RunArtifact[]): string {
+    const artifact = artifacts.find(isTestDebugArtifact);
+    if (artifact === undefined) {
+        return '';
+    }
+    const { payload } = artifact;
+    return ` [debug: ${
+        Math.round(payload.durationMicroseconds / microsecondsPerMillisecond)
+    } ms wall, ${payload.timeline.length} entries, ${debugHeapDelta(payload.stats.heapGrowthBytes)}]`;
+}
 
 const colorPalette = [
     colors.cyan,

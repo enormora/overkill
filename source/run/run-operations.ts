@@ -24,6 +24,7 @@ import type {
     RunnerResult,
     ResolvedRun,
     RunCommand,
+    RunCommandInput,
     FrozenRunCommand,
     RunReporterDeliveryResult,
     RunOperations as CommandOperations
@@ -111,7 +112,7 @@ async function runCommand(
     );
 }
 
-type RunOperations = CommandOperations<FrozenRunCommand | RunCommand>;
+type RunOperations = CommandOperations<FrozenRunCommand | RunCommandInput>;
 
 export function createRunOperations(
     dependencies: RunOrchestratorDependencies,

@@ -27,6 +27,7 @@ export async function executeEvidence(
     );
     const result = await runWithAttachmentExecution(fixture.execution, async function executeManagedResources() {
         return await engine.execute(plan, {
+            debug: { mode: 'off' },
             execution: { mode: 'serial-in-process' },
             reporters: [],
             runFacts: {},

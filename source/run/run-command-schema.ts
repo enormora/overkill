@@ -6,6 +6,7 @@ import {
 import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { propertyPolicySchema } from '../config/property-policy.ts';
+import { runDebugRequestSchema } from './run-debug.ts';
 import { snapshotRunSchema } from './snapshot-wire.ts';
 import { replayWireSchema } from './replay-wire.ts';
 
@@ -14,6 +15,7 @@ export const hostProcessSchema = z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
 export const executionCommandFields = {
+    debug: runDebugRequestSchema.default({ mode: 'off', selectors: [] }),
     snapshots: snapshotRunSchema.nullable().default(null),
     replay: replayWireSchema.nullable().default(null),
     seed: z.string().regex(/^\d+$/v),

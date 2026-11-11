@@ -1,3 +1,4 @@
+import { serializeValue } from '../compare/serialized-value.ts';
 import type { StoredValue } from '../stored-value.ts';
 import {
     createBoundaryFailureArtifact,
@@ -8,7 +9,10 @@ import {
     type WorkerCrashArtifact
 } from '../engine/run-artifact.ts';
 import type { AttemptId, WorkId } from '../engine/identity.ts';
-import type { RunArtifact } from '../engine/run-result.ts';
+import { isTestDebugArtifact, type RunArtifact } from '../engine/run-result.ts';
+import { mergeDebugArtifacts } from './debug-artifact-results.ts';
+
+const nanosecondsPerMicrosecond = 1000;
 
 export type SupervisedBoundaryMetadata = BoundaryMetadata & {
     readonly processUsageSamplingIntervalMilliseconds: number | null;
@@ -82,11 +86,42 @@ export function createBoundaryArtifactCapture(
                 }
                 : failure;
             artifacts.write([
-                ...artifacts.read(),
+                ...artifacts.read().map(function interruptDebug(artifact): RunArtifact {
+                    if (
+                        !isTestDebugArtifact(artifact) || artifact.source !== 'boundary-captured' ||
+                        artifact.payload.verdict !== 'inconclusive'
+                    ) {
+                        return artifact;
+                    }
+                    return {
+                        ...artifact,
+                        source: 'boundary-captured',
+                        payload: {
+                            ...artifact.payload,
+                            verdict: failure.kind === 'worker-crash' ? 'crashed' : 'process-exhausted',
+                            outcome: null,
+                            timeline: [ ...artifact.payload.timeline, {
+                                kind: 'rejection',
+                                atNanoseconds: BigInt(
+                                    Math.floor(artifact.payload.durationMicroseconds * nanosecondsPerMicrosecond)
+                                )
+                                    .toString(),
+                                declared: null,
+                                label: null,
+                                sourceLocations: [],
+                                reason: serializeValue(failure)
+                            } ]
+                        }
+                    };
+                }),
                 createBoundaryFailureArtifact(evidence, boundary, activeWork(), artifacts.read().length)
             ]);
         },
         recordArtifact(artifact) {
+            if (artifact.payload.kind === 'debug' && artifact.id.scope.kind === 'case') {
+                artifacts.write(mergeDebugArtifacts([ ...artifacts.read(), artifact ]));
+                return;
+            }
             if (artifact.payload.kind === 'worker-crash' || artifact.payload.kind === 'process-exhaustion') {
                 if (observed.has(artifact.payload.kind)) {
                     return;

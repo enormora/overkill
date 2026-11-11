@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import type { RunArtifact } from '../engine/run-result.ts';
 import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { debugArtifactSchema } from './debug-artifact-schema.ts';
 import { boundaryFailureArtifactSchema } from './boundary-failure-artifact-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
@@ -33,6 +34,7 @@ const hedgeEvidenceSchema = z.strictObject({
     verdict: verdictSchema
 });
 export const runArtifactSchema: z.ZodType<RunArtifact> = z.union([
+    debugArtifactSchema,
     boundaryFailureArtifactSchema,
     z.strictObject({
         id: runArtifactIdSchema.and(z.object({ subtype: z.literal('adapter') })),

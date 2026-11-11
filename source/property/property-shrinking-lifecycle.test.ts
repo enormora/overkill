@@ -48,6 +48,7 @@ async function executeShrinkDeadline(timeoutPolicy: NonNullable<ExecuteOptions['
         }
     );
     return await engine.execute(plan, {
+        debug: { mode: 'off' },
         execution: propertyExecutionDefaults.execution,
         propertyRun: { seed: 42n, projectRoot: process.cwd() },
         reporters: [],

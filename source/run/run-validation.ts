@@ -7,11 +7,11 @@ import {
     type ProcessBudgets,
     type NormalizedConfig
 } from '../config/types.ts';
-import { runSelectionValidationMessage } from './run-selection-schema.ts';
+import { parseDebugRequest, runDebugRequestSchema } from './run-debug.ts';
+import { parseRunSelection } from './run-selection-schema.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
-import { currentExecutionSession } from './execution-session-context.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
 const minimumSeedValue = 0n;
@@ -78,10 +78,10 @@ function validateRunProcessUsageRequest(request: RunRequest): void {
 }
 
 function validateRunSelection(request: RunRequest): void {
-    const message = runSelectionValidationMessage(request.selection);
-
-    if (message !== null) {
-        invalidRequest(message);
+    try {
+        parseRunSelection(request.selection);
+    } catch (error: unknown) {
+        invalidRequest(error instanceof Error ? error.message : String(error));
     }
 }
 
@@ -111,15 +111,6 @@ function assertValidRunProfileName(profileName: string): void {
     }
 }
 
-function validateRunRecordingRequest(request: RunRequest): void {
-    if (typeof request.lastFailed !== 'boolean') {
-        invalidRequest('Run lastFailed must be a boolean.');
-    }
-    if (typeof request.record !== 'boolean') {
-        invalidRequest('Record must be a boolean.');
-    }
-}
-
 function validateMergeRecordingRequest(request: RunRequest): void {
     const recordForMerge: unknown = Reflect.get(request, 'recordForMerge');
     if (recordForMerge === undefined || recordForMerge === false) {
@@ -136,13 +127,34 @@ function validateMergeRecordingRequest(request: RunRequest): void {
     }
 }
 
+function validateRunRecordingRequest(request: RunRequest): void {
+    if (typeof request.lastFailed !== 'boolean') {
+        invalidRequest('Run lastFailed must be a boolean.');
+    }
+    if (typeof request.record !== 'boolean') {
+        invalidRequest('Record must be a boolean.');
+    }
+    validateMergeRecordingRequest(request);
+}
+
+function validateRunDebugRequest(request: RunRequest): void {
+    const debug = runDebugRequestSchema.safeParse(request.debug);
+    if (!debug.success) {
+        invalidRequest(debug.error.message);
+    }
+    try {
+        parseDebugRequest(request.debug.mode === 'all', request.debug.selectors);
+    } catch (error: unknown) {
+        invalidRequest(error instanceof Error ? error.message : String(error));
+    }
+}
+
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
     validateRunRecordingRequest(request);
-
     validatePositiveSafeInteger(request.workers, 'Worker count');
+    validateRunDebugRequest(request);
     validateRunShard(request);
-    validateMergeRecordingRequest(request);
     validateRunSeed(request);
     validateRunSelection(request);
     validateTimingCollection(request);
@@ -204,6 +216,9 @@ function assertAdapterRequest(request: RunRequest, profile: ProfileConfig): void
     if (profile.testFamily !== 'type-test') {
         return;
     }
+    if (request.debug.mode !== 'off') {
+        invalidRequest('Debug mode requires runtime test bodies; type-test profiles use compiler diagnostics.');
+    }
     const unsupported = [
         request.capture !== 'buffered',
         request.measureProcessUsage === true,
@@ -231,7 +246,7 @@ export function assertProfileRequestSupported(
     namespace: Namespace,
     reporters: NormalizedConfig['reporters']
 ): void {
-    if (request.recordForMerge && (namespace !== 'test' || currentExecutionSession() !== null)) {
+    if (request.recordForMerge && namespace !== 'test') {
         invalidRequest('--record-for-merge is only supported by ordinary runs outside execution sessions.');
     }
     assertAdapterRequest(request, profile);

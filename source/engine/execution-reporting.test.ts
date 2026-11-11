@@ -311,6 +311,7 @@ export const testNode = createOverkillSuite({
                 );
 
                 const result = await engine.execute(testPlan, {
+                    debug: { mode: 'off' },
                     retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ realTimeReporter, finalResultReporter ],
@@ -434,6 +435,7 @@ export const testNode = createOverkillSuite({
                 );
 
                 await engine.execute(testPlan, {
+                    debug: { mode: 'off' },
                     retryPolicy: null,
                     execution: { mode: 'serial-in-process' },
                     reporters: [ realTimeReporter ],
@@ -481,6 +483,7 @@ export const testNode = createOverkillSuite({
 
                 await scope.assert.rejects(async function executeWithConflictingReporters() {
                     await engine.execute(testPlan, {
+                        debug: { mode: 'off' },
                         retryPolicy: null,
                         execution: { mode: 'serial-in-process' },
                         reporters: [

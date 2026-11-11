@@ -8,6 +8,7 @@ import type {
     RequireAssertionNode
 } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { recordDebugEntry, recordDebugAssertion } from './test-debug-recording.ts';
 import { createPropertyEvidenceRecorder } from './property-evidence.ts';
 import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
 import type { TestContractFailure } from './run-result.ts';
@@ -335,15 +336,18 @@ export function createAssertionRecorder(): AssertionRecorder {
 
         plan(count) {
             ensurePlanAllowed(count);
+            recordDebugEntry('plan', count);
             plannedCount = count;
         },
 
         recordAssert(assertion) {
+            recordDebugAssertion(assertion);
             builderAssertions.push(assertion);
             recordedAssertions.push({ assertion, builderAssertion: assertion });
         },
 
         recordPendingAssert() {
+            recordDebugEntry('assert', null);
             const builderIndex = builderAssertions.length;
             const recordIndex = recordedAssertions.length;
 
@@ -359,6 +363,7 @@ export function createAssertionRecorder(): AssertionRecorder {
         },
 
         recordRequire(assertion) {
+            recordDebugAssertion(assertion);
             recordedAssertions.push({ assertion, builderAssertion: null });
 
             if (!assertionPasses(assertion)) {

@@ -57,6 +57,7 @@ async function assertLifecycleEvidence(scope: TestScope): Promise<void> {
     );
     const result = await runWithAttachmentExecution(execution, async function executeLifecycle() {
         return engine.execute(plan, {
+            debug: { mode: 'off' },
             execution: { mode: 'serial-in-process' },
             reporters: [],
             retryPolicy: { maxAttempts: 1 },

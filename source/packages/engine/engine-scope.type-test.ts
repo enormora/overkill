@@ -52,6 +52,7 @@ type ExpectedAssertFacadeKeys = keyof {
 };
 type ExpectedTestScopeAssertContextKeys = ExpectedAssertFacadeKeys | 'collect';
 type ExpectedTestScopeKeys = keyof {
+    readonly debug: true;
     readonly seed: true;
     readonly random: true;
     readonly assert: true;

@@ -1,5 +1,5 @@
 import type { Clock } from '@enormora/clock';
-import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import { resolveDebugSelection } from './run-debug.ts';
 import { completeSupervisedExecutionSession, type ExecutionSessionPlanSelection } from './execution-session-child.ts';
 import type {
     RunResult,
@@ -252,9 +252,9 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
         const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
         return await execute(resolvedTestPlanDefinitionLocations(testPlan), {
+            debug: resolveDebugSelection(input.command.debug, testPlan.cases),
             seed: BigInt(input.command.seed),
             execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
-            outputRenderer: createPlainOutputRenderer(),
             reporters: [ createSupervisedChildReporter(input.host) ],
             failureArtifacts: input.command.failureArtifacts,
             processUsageSamplingIntervalMilliseconds: input.command.processUsageSamplingIntervalMilliseconds,

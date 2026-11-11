@@ -103,6 +103,7 @@ async function assertWitnessReplay(scope: TestScope, project: ReplayProject, fil
     const replay = await orchestrator.replayWitness({
         ...project.command,
         request: {
+            debug: { mode: 'off', selectors: [] },
             path: file,
             profile: 'cases',
             seed: { value: 42n },

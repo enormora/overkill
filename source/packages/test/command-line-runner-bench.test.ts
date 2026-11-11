@@ -379,7 +379,7 @@ export const testNode = createSuite({
                                 string,
                                 ...string[]
                             ])[],
-                            [ '--debug' ],
+                            ...verb === 'list' ? [ [ '--debug' ] as const ] : [],
                             [ '--measure-resource-usage' ],
                             [ '--resource-budget', 'residentSetBytes=1000' ],
                             ...(verb === 'run' ? [ [ '--with-locations' ], [ '--with-orphans' ] ] : [

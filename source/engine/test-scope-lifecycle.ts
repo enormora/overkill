@@ -1,4 +1,5 @@
 import type { AssertionResult } from '../assertion-protocol/assertion-node.ts';
+import { currentTestDebugScope } from './test-debug-recording.ts';
 import type { AssertionRecorder } from './assertion-recorder.ts';
 import {
     createAsyncControlState,
@@ -63,6 +64,7 @@ export function createTestScopeLifecycle(recorder: AssertionRecorder, context: C
     );
     const createScope = function createScope(signal: AbortSignal): TestScope {
         return {
+            debug: currentTestDebugScope(),
             seed,
             random: createTestRandom(seed),
             assert: assertContext,
@@ -112,6 +114,7 @@ export function createThrowingTestScope(
 ): ThrowingTestScope {
     const seed = deriveCaseSeed(context.seed, context.work);
     return {
+        debug: currentTestDebugScope(),
         seed,
         random: createTestRandom(seed),
         assert: createRecordingAssertFacade(

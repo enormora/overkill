@@ -1,3 +1,4 @@
+import { executeDebugSelectionSchema, type ExecuteDebugSelection } from './test-debug.ts';
 import {
     executionArtifactPolicySchema,
     defaultFailureArtifactPolicy,
@@ -25,6 +26,7 @@ export type ExecuteExecution = {
 export type ExecuteResultFinalizer = (result: RunResult) => Promise<RunResult>;
 
 type CommonExecuteOptions = {
+    readonly debug: ExecuteDebugSelection;
     readonly failureArtifacts?: FailureArtifactPolicy;
     readonly processUsageSamplingIntervalMilliseconds?: number | null;
     readonly retryPolicy: TestRetryPolicy | null;
@@ -74,6 +76,7 @@ const keepResult: ExecuteResultFinalizer = async function keepResult(result) {
 
 function defaultExecuteOptions(): DefaultedExecuteOptions {
     return {
+        debug: { mode: 'off' },
         failureArtifacts: defaultFailureArtifactPolicy,
         processUsageSamplingIntervalMilliseconds: null,
         seed: 0n,
@@ -123,6 +126,7 @@ function executeOptionsWithProvidedDefaults(options: ExecuteOptions): DefaultedE
     const seed = executionSeed(options);
     return {
         ...options,
+        debug: executeDebugSelectionSchema.parse(options.debug),
         processUsageSamplingIntervalMilliseconds: executionSamplingInterval(options),
         failureArtifacts: executionArtifactPolicySchema.parse(
             options.failureArtifacts

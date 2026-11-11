@@ -1,11 +1,10 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { realpathSync } from 'node:fs';
 import { realpath } from 'node:fs/promises';
-// eslint-disable-next-line node/no-unsupported-features/node-builtins -- Synchronous hooks are supported on the pinned Node version.
-import { registerHooks } from 'node:module';
 import { isAbsolute, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod/v4';
+import { withModuleLoadingScope } from '../module-loading-scope.ts';
 import { invalidRequest } from './run-errors.ts';
 import type { FileModuleBoundary } from './run-types.ts';
 
@@ -111,22 +110,17 @@ export async function withFileModuleBoundary<Result>(
             }
         }
 
-        const hooks = registerHooks({
-            resolve(specifier, context, nextResolve) {
-                validateRequestedModule(specifier, context.parentURL);
-                const resolved = nextResolve(specifier, context);
+        return await withModuleLoadingScope({
+            resolve(specifier, parentURL, nextResolve) {
+                validateRequestedModule(specifier, parentURL);
+                const resolved = nextResolve();
                 validateModule(resolved.url);
                 return resolved;
             },
-            load(url, context, nextLoad) {
+            load(url, nextLoad) {
                 validateModule(url);
-                return nextLoad(url, context);
+                return nextLoad();
             }
-        });
-        try {
-            return await operation();
-        } finally {
-            hooks.deregister();
-        }
+        }, operation);
     });
 }

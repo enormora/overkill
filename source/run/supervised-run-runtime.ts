@@ -156,7 +156,9 @@ function applyTestEndEvent(
     const key = workIdentityKey(workId);
 
     for (const artifact of event.artifacts) {
-        if (artifact.payload.kind === 'worker-crash' || artifact.payload.kind === 'process-exhaustion') {
+        if (
+            [ 'debug', 'worker-crash', 'process-exhaustion' ].includes(artifact.payload.kind)
+        ) {
             state.recordArtifact(artifact);
         }
     }
@@ -187,22 +189,30 @@ function applyTestEndEvent(
     state.removeActiveCase(key);
 }
 
+function applyProgressEvent(event: ReporterEvent, state: SupervisedRunState): void {
+    if (event.kind === 'property-progress') {
+        state.recordPropertyProgress(workIdentityKey(event.workId), event.attempt, event.property);
+    } else if (event.kind === 'benchmark-progress') {
+        state.recordBenchmarkProgress(workIdentityKey(event.workId), event.benchmark);
+    } else if (event.kind === 'runner-error') {
+        state.recordRunnerError(event.error);
+    }
+}
+
 export function applyEvent(
     event: ReporterEvent,
     state: SupervisedRunState,
     cases: ReadonlyMap<string, SupervisedCase>,
     observedAtMicroseconds: number
 ): void {
-    if (event.kind === 'test-start') {
+    if (event.kind === 'debug-checkpoint') {
+        state.recordArtifact(event.artifact);
+    } else if (event.kind === 'test-start') {
         applyTestStartEvent(event, state, cases, observedAtMicroseconds);
     } else if (event.kind === 'test-end') {
         applyTestEndEvent(event, state, observedAtMicroseconds);
-    } else if (event.kind === 'property-progress') {
-        state.recordPropertyProgress(workIdentityKey(event.workId), event.attempt, event.property);
-    } else if (event.kind === 'benchmark-progress') {
-        state.recordBenchmarkProgress(workIdentityKey(event.workId), event.benchmark);
-    } else if (event.kind === 'runner-error') {
-        state.recordRunnerError(event.error);
+    } else {
+        applyProgressEvent(event, state);
     }
 }
 
@@ -275,9 +285,16 @@ function childEventWithAttachments(event: ReporterEvent, runtime: SupervisedRunR
             ...runtime.attachments?.caseArtifacts(work, {
                 index: event.attempt
             }, null) ?? [],
-            ...runtime.state.caseArtifacts(work, {
-                index: event.attempt
-            })
+            ...runtime
+                .state
+                .caseArtifacts(work, {
+                    index: event.attempt
+                })
+                .filter(function retainedEvidence(artifact) {
+                    return artifact.payload.kind !== 'debug' || event.artifacts.every(function completedDebug(value) {
+                        return value.payload.kind !== 'debug';
+                    });
+                })
         ]
     };
 }
@@ -350,7 +367,9 @@ function handleChildSample(sample: ProcessUsageSnapshot, runtime: SupervisedRunR
 
 function handleCompletedResult(result: RunResult, runtime: SupervisedRunRuntime): void {
     for (const artifact of result.artifacts) {
-        if (artifact.payload.kind === 'worker-crash' || artifact.payload.kind === 'process-exhaustion') {
+        if (
+            [ 'debug', 'worker-crash', 'process-exhaustion' ].includes(artifact.payload.kind)
+        ) {
             runtime.state.recordArtifact(artifact);
         }
     }

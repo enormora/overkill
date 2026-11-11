@@ -44,6 +44,7 @@ import {
     type TestAnnotationsInput,
     type TestControls,
     type TestControlsInput,
+    type TestDebugScope,
     type TestFailure,
     type TestFamilyId,
     type TestBodyResourceAttachments,
@@ -351,6 +352,7 @@ describe('Assertion protocol', function () {
 
     test('exposes first-class throwing test body types', function () {
         expect<ThrowingTestScope>().type.toBe<{
+            readonly debug: TestDebugScope;
             readonly seed: bigint;
             readonly random: TestRandom;
             readonly assert: AssertAssertionFacade;

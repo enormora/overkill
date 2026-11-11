@@ -36,8 +36,8 @@ async function executeCommand(
         engine: resolvedInput.engine,
         request: resolvedInput.request
     };
-    const shouldRecord = !resolvedInput.request.coverage &&
-        resolveRunRecordPersistence(resolvedInput.request, resolvedInput.profile).persist;
+    const shouldRecord = resolveRunRecordPersistence(resolvedInput.request, resolvedInput.profile).persist &&
+        !resolvedInput.request.coverage;
     const execution = {
         command: resolvedCommand,
         dependencies,

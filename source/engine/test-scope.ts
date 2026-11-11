@@ -1,5 +1,6 @@
 import type { AssertAssertionNode, AssertionResult } from '../assertion-protocol/assertion-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import type { TestDebugScope } from './test-debug.ts';
 import type { InFlightTask } from './async-control.ts';
 import type { AssertAssertionFacade } from './assertion-facade.ts';
 import type { RequireAssertionFacade } from './require-assertion-facade.ts';
@@ -17,6 +18,7 @@ export type TestRandom = {
 };
 
 export type TestScope = {
+    readonly debug: TestDebugScope;
     readonly seed: bigint;
     readonly random: TestRandom;
     readonly assert: TestScopeAssertContext;
@@ -31,6 +33,7 @@ export type TestScope = {
 };
 
 export type ThrowingTestScope = {
+    readonly debug: TestDebugScope;
     readonly seed: bigint;
     readonly random: TestRandom;
     readonly assert: AssertAssertionFacade;

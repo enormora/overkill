@@ -30,6 +30,7 @@ type ProcessHookListeners = {
 };
 
 export type RunErrorScope = {
+    readonly observeActiveWork: (receive: (work: WorkId) => void) => () => void;
     readonly observation: ExecutionObservation;
     readonly activeCaseStarted: (key: ActiveCaseContext) => unknown;
     readonly activeCaseStopped: (key: ActiveCaseContext) => unknown;

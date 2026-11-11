@@ -84,6 +84,7 @@ export async function executeGarbageCollectionBenchmark(
             controls: {}
         })),
         {
+            debug: { mode: 'off' },
             execution: { mode: 'serial-in-process' },
             reporters: [],
             retryPolicy: null,

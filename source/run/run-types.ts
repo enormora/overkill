@@ -106,8 +106,11 @@ type RunCapabilityRestrictionsRequest = { readonly mode: 'disabled' | 'enabled';
 export type RunSeed = { readonly value: bigint | null; };
 
 export type RunDebugRequest = {
-    readonly mode: 'off';
+    readonly mode: 'all' | 'off';
     readonly selectors: readonly [];
+} | {
+    readonly mode: 'selected';
+    readonly selectors: NonEmptyReadonlyArray<string>;
 };
 
 export type RunTestFamily = TestFamilyId;
@@ -158,14 +161,22 @@ export type ProfileRunRequest<Profile extends string | null> = RunHistoryRequest
 
 export type RunRequest = ProfileRunRequest<string>;
 
-type OrdinaryRunCommand = {
+export type DebugRequestInput<Request extends { readonly debug: RunDebugRequest; }> = Readonly<
+    Except<Request, 'debug', { readonly requireExactProps: true; }> | Request
+>;
+
+type OrdinaryRunCommand<Request> = {
     readonly config: NormalizedConfig;
     readonly cwd: string;
     readonly engine: RunEngineSelection;
-    readonly request: RunRequest;
+    readonly request: Request;
 };
-type WitnessRunCommand = OrdinaryRunCommand & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
-export type RunCommand = OrdinaryRunCommand | WitnessRunCommand;
+type WitnessRunCommand<Request> = OrdinaryRunCommand<Request> & {
+    readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number];
+};
+type RunCommandFor<Request> = OrdinaryRunCommand<Request> | WitnessRunCommand<Request>;
+export type RunCommand = RunCommandFor<RunRequest>;
+export type RunCommandInput = RunCommandFor<DebugRequestInput<RunRequest>>;
 type ReplayRunFacts = OrdinaryRunFacts & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
 export type RunFacts = OrdinaryRunFacts | ReplayRunFacts;
 
@@ -218,6 +229,7 @@ type RunExecutionBaseFacts = {
     readonly capture: 'buffered' | 'live';
     readonly coverage: boolean;
     readonly debug: RunDebugRequest;
+    readonly debuggedCases: readonly WorkId[];
     readonly engine: RunEngineFacts;
     readonly maxConcurrency: MaxConcurrency;
     readonly order: RunOrder;
@@ -389,14 +401,14 @@ export type BenchmarkBaselineOrchestrator = {
 
 export type BenchmarkOrchestrator = {
     readonly calibrate: (
-        command: RunCommand,
+        command: RunCommandInput,
         options: RunInvocationTimingOptions
     ) => Promise<RunReporterDeliveryResult>;
     readonly baseline: BenchmarkBaselineOrchestrator;
-    readonly list: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>;
-    readonly run: (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunnerResult>;
+    readonly list: (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<ResolvedRun>;
+    readonly run: (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<RunnerResult>;
     readonly runWithReporterDelivery: (
-        command: RunCommand,
+        command: RunCommandInput,
         options: RunInvocationTimingOptions
     ) => Promise<RunReporterDeliveryResult>;
 };
@@ -474,7 +486,7 @@ export type FrozenMicrotestPolicy = {
 
 export type FreezePolicyInput = {
     readonly moduleBoundary: FileModuleBoundary | null;
-    readonly command: RunCommand;
+    readonly command: RunCommandInput;
     readonly source: RunPolicySource;
 };
 

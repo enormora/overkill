@@ -4,10 +4,10 @@ import { RunResolutionError } from './run-errors.ts';
 import { readResolvedRunInput } from './run-input-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { freezeValue } from './run-support.ts';
-import type { CollectedRun, FrozenRunCommand, InitializedRun, RunCommand } from './run-types.ts';
+import type { CollectedRun, FrozenRunCommand, InitializedRun, RunCommandInput } from './run-types.ts';
 
 export async function initializeRun(
-    suppliedCommand: FrozenRunCommand | RunCommand,
+    suppliedCommand: FrozenRunCommand | RunCommandInput,
     dependencies: RunOrchestratorDependencies
 ): Promise<InitializedRun> {
     const snapshot = snapshotRunCommand(suppliedCommand);

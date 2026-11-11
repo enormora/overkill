@@ -20,6 +20,7 @@ import { testNode as retryPromiseAttributionTestNode } from './retry-promise-att
 import { testNode as retryAdmissionTestNode } from './retry-admission.test.ts';
 
 const options: ExecuteOptions = {
+    debug: { mode: 'off' },
     execution: { mode: 'serial-in-process' },
     reporters: [],
     retryPolicy: { maxAttempts: 3 },

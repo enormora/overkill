@@ -53,6 +53,7 @@ export const testNode = suite('ordinary baseline failure boundaries', [
         const original = await fixture.entries();
         fixture.setActual(43);
         const result = await orchestrator.replay({
+            debug: { mode: 'off', selectors: [] },
             cwd: fixture.command.cwd,
             config: fixture.command.config,
             signal: null,

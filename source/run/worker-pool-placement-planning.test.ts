@@ -192,6 +192,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                debuggedCases: [],
                 failureArtifacts: defaultFailureArtifactPolicy,
                 runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,
