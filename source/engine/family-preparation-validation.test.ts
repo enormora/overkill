@@ -19,6 +19,7 @@ const controller = new AbortController();
 const { signal } = controller;
 const projectRoot = process.cwd();
 const options: FamilyExecuteOptions = {
+    debug: { mode: 'off' },
     signal,
     execution: { mode: 'serial-in-process' },
     retryPolicy: null,

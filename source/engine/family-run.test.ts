@@ -29,6 +29,7 @@ const { signal } = controller;
 const location = { kind: 'unknown' } as const;
 const nodeOptions = { definitionLocations: [ location ] as const, annotations: {}, controls: {} };
 const options: FamilyExecuteOptions = {
+    debug: { mode: 'off' },
     signal,
     execution: { mode: 'serial-in-process' },
     retryPolicy: null,

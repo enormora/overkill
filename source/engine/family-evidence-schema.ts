@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod/v4';
-import { adapterArtifactSchema } from './adapter-artifact-schema.ts';
+import { adapterArtifactSchema } from './artifact-schema.ts';
 import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { attemptIdSchema, caseIdSchema, workIdSchema } from './identity-schema.ts';
 import type { TestOutcome } from './run-result.ts';

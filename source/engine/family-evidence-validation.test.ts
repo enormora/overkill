@@ -21,6 +21,7 @@ const locations = [ { kind: 'unknown' } ] as const;
 const nodeOptions = { definitionLocations: locations, annotations: {}, controls: {} };
 const controller = new AbortController();
 const options: FamilyExecuteOptions = {
+    debug: { mode: 'off' },
     signal: controller.signal,
     execution: { mode: 'serial-in-process' },
     retryPolicy: null,

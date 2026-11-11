@@ -1,14 +1,23 @@
 import { z } from 'zod/v4';
-import { adapterArtifactSchema } from '../engine/adapter-artifact-schema.ts';
 import type { RunArtifact } from '../engine/run-result.ts';
 import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { testOutcomeSchema } from '../engine/assertion-result-schema.ts';
-import { artifactIdentityFields, runArtifactIdSchema } from '../engine/run-artifact-id-schema.ts';
-import { debugArtifactSchema } from './debug-artifact-schema.ts';
+import { adapterArtifactSchema, artifactIdentityFields, runArtifactIdSchema } from '../engine/artifact-schema.ts';
+import { testDebugPayloadSchema } from '../engine/test-debug.ts';
 import { boundaryFailureArtifactSchema } from './boundary-failure-artifact-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { runtimeAttachmentArtifactSchema } from './attachment-wire-schema.ts';
 import { benchmarkResultSchema } from './benchmark-result-schema.ts';
+
+export const debugArtifactSchema = z.strictObject({
+    id: runArtifactIdSchema.and(z.object({
+        subtype: z.literal('debug'),
+        attempt: attemptIdSchema,
+        scope: z.object({ kind: z.literal('case') })
+    })),
+    source: z.enum([ 'native', 'boundary-captured' ]),
+    payload: testDebugPayloadSchema
+});
 
 export const verdictSchema = z.enum([
     'pass',

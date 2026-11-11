@@ -268,6 +268,7 @@ export const testNode = createSuite({
                 });
                 const collected = await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
                 const result = await execute(collected, {
+                    debug: { mode: 'off' },
                     signal,
                     execution: { mode: 'serial-in-process' },
                     retryPolicy: null,

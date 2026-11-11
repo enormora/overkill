@@ -10,10 +10,9 @@ import {
     workIdSchema
 } from '../engine/identity-schema.ts';
 import { testOutcomeSchema } from '../engine/assertion-result-schema.ts';
-import { debugArtifactSchema } from './debug-artifact-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
 import { runResultSchema } from './run-result-schema.ts';
-import { runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
+import { debugArtifactSchema, runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
 import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
 const testFields = {
