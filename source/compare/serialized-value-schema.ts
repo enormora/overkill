@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import type { SerializedValue } from '../compare/serialized-value.ts';
+import type { SerializedValue } from './serialized-value.ts';
 
 export const serializedPropertyKeySchema = z.strictObject({ kind: z.enum([ 'string', 'symbol' ]), value: z.string() });
 const truncationSchema = z

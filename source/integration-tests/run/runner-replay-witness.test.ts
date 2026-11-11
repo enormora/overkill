@@ -83,6 +83,7 @@ async function verifyPropertyWitness(
 ): Promise<void> {
     const { project, file } = await retainedPropertyProject(scope, nested, mode);
     const result = await orchestrator.replayWitness({
+        debug: { mode: 'off', selectors: [] },
         cwd: project.cwd,
         config: project.command.config,
         signal: null,
@@ -98,6 +99,7 @@ async function verifyPropertyWitness(
 async function verifyRecordedWitness(scope: TestScope): Promise<void> {
     const { project, file } = await retainedPropertyProject(scope, false, 'in-process');
     await orchestrator.replayWitness({
+        debug: { mode: 'off', selectors: [] },
         cwd: project.cwd,
         config: project.command.config,
         signal: null,
@@ -110,6 +112,7 @@ async function verifyRecordedWitness(scope: TestScope): Promise<void> {
     });
     scope.require.defined(recorded);
     const result = await orchestrator.replay({
+        debug: { mode: 'off', selectors: [] },
         cwd: project.cwd,
         config: project.command.config,
         signal: null,
@@ -142,6 +145,7 @@ export const testNode = test('retained property', withProperties(async parent =>
 }));`
                 );
                 const result = await orchestrator.replayWitness({
+                    debug: { mode: 'off', selectors: [] },
                     cwd: project.cwd,
                     config: project.command.config,
                     signal: null,

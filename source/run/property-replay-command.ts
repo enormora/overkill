@@ -1,5 +1,6 @@
 import { invalidRequest } from './run-errors.ts';
 import { prepareWitnessReplay } from './replay-preparation.ts';
+import { requestedDebug } from './run-debug.ts';
 import type { PreparedReplay } from './replay-types.ts';
 import type { ReplayWitnessCommand } from './witness-replay-request.ts';
 
@@ -17,6 +18,7 @@ function replayProfile(command: ReplayWitnessCommand): string {
 
 export async function preparePropertyReplay(command: ReplayWitnessCommand): Promise<PreparedReplay> {
     const prepared = await prepareWitnessReplay({
+        debug: requestedDebug(command.request),
         cwd: command.cwd,
         config: command.config,
         signal: null,

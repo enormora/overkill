@@ -1,4 +1,5 @@
-import { caseBoundaryArtifacts } from './execution-observation.ts';
+import { withDebugAttempt } from './test-debug-context.ts';
+import { caseExecutionArtifacts } from './execution-observation.ts';
 import type { CaseReportingContext, ExecuteCaseInput } from './case-attempt-context.ts';
 import { executeTimedLeakCheckedCase } from './case-body-observation.ts';
 import {
@@ -10,7 +11,6 @@ import { reportRunnerErrorEvents } from './runner-error-reporting.ts';
 import type { PerTestResult, RunnerError } from './run-result.ts';
 import { retryPolicyAllowsAttempt } from './retry-policy.ts';
 import { caseAttemptHistory, resultWithAttemptHistory } from './test-attempt-history.ts';
-import type { TestPlanCase } from './test-plan.ts';
 
 export type ExecutionCaseDependencies = CaseReportingContext['dependencies'];
 
@@ -30,12 +30,12 @@ type ReportTestEndInput = {
     readonly completion: 'final' | 'retry';
     readonly attempt: number;
     readonly result: PerTestResult;
-    readonly testCase: TestPlanCase;
+    readonly testCase: ExecuteCaseInput['testCase'];
     readonly durationMicroseconds: number;
 };
 
 export async function reportTestStart(
-    testCase: TestPlanCase,
+    testCase: ExecuteCaseInput['testCase'],
     attempt: number,
     reporter: Pick<ReporterDelivery, 'reportEvent'>
 ): Promise<readonly RunnerError[]> {
@@ -58,7 +58,7 @@ async function reportTestEnd(
         property: input.result.property,
         benchmark: input.result.benchmark,
         attempt: input.attempt,
-        artifacts: caseBoundaryArtifacts(input.testCase.workId, { index: input.attempt }),
+        artifacts: caseExecutionArtifacts(input.testCase.workId, { index: input.attempt }),
         case: input.testCase.id,
         definitionLocations: input.testCase.definitionLocations,
         kind: 'test-end',
@@ -182,7 +182,7 @@ async function completeLogicalCase(input: ExecuteCaseInput, executed: ReportedCa
 }
 
 async function finishAttempt(input: ExecuteCaseInput, executed: ReportedCase, retry: boolean): Promise<ReportedCase> {
-    const completed = retry ? executed : await completeLogicalCase(input, executed);
+    const completed = executed;
     return {
         ...completed,
         reporterErrors: [
@@ -236,9 +236,20 @@ export async function executeCase(input: ExecuteCaseInput, started: boolean): Pr
             current.current.testCase,
             { index: current.current.attempt },
             async function observeCompleteAttempt() {
-                const executed = await executeAttempt(current.current, current.started);
-                const retryAllowed = canRetryCase(current.current, executed);
-                return { retry: retryAllowed, completed: await finishAttempt(current.current, executed, retryAllowed) };
+                const observed = await withDebugAttempt(current.current, async function runAttempt() {
+                    const executed = await executeAttempt(current.current, current.started);
+                    const retryAllowed = canRetryCase(current.current, executed);
+                    const attemptResult = retryAllowed
+                        ? executed
+                        : await completeLogicalCase(current.current, executed);
+                    return { retry: retryAllowed, completed: attemptResult };
+                }, function result(value) {
+                    return value.completed.result;
+                });
+                return {
+                    retry: observed.retry,
+                    completed: await finishAttempt(current.current, observed.completed, observed.retry)
+                };
             }
         );
         const history = appendAttempt(

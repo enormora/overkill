@@ -1,6 +1,6 @@
 import { assertReplaySelection, propertyReplayContext, freezeValue, resolveRunReporters } from './run-support.ts';
 import { resolveRunScheduling } from './run-profile-facts.ts';
-import { createRunFacts, resolveAttachmentPersistence } from './run-facts.ts';
+import { createRunFacts, resolveRunDiagnostics } from './run-facts.ts';
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
 import { createRunResultFromCollectedPlan, collectedRunPlanFromTestPlanCases } from './collected-run-plan.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
@@ -64,7 +64,7 @@ export function createLocalResolvedRunFromTestPlan(
         })
     });
 
-    return freezeValue(resolveAttachmentPersistence({
+    return freezeValue(resolveRunDiagnostics({
         collectionRunnerErrors: [],
         config: input.config,
         cwd: command.cwd,
@@ -124,7 +124,7 @@ export function createEmptyShardResolvedRunFromTestPlan(
         workerCount: null
     }));
 
-    return freezeValue(resolveAttachmentPersistence({
+    return freezeValue(resolveRunDiagnostics({
         collectionRunnerErrors: [],
         config: input.config,
         cwd: command.cwd,

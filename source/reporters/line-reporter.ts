@@ -23,6 +23,7 @@ import { createTerminalLineLogger, type TerminalLineLogger, visibleTerminalWidth
 import {
     contextPrefix,
     formatCountSummary,
+    formatDebugSummary,
     problemLines,
     type HumanReporterFormatOptions
 } from './human-reporter-rendering.ts';
@@ -276,7 +277,12 @@ export function createLineReporter(dependencies: LineReporterDependencies): Defi
             const definitionLocations = formatDefinitionLocations(event.definitionLocations, context);
 
             const retried = event.attempt === 0 ? '' : ` [${event.attempt + 1} attempts]`;
-            wrappedTerminal.line(symbol, `${message}${retried}${failureLocation(event, definitionLocations)}`);
+            wrappedTerminal.line(
+                symbol,
+                `${message}${retried}${failureLocation(event, definitionLocations)}${
+                    formatDebugSummary(event.artifacts)
+                }`
+            );
         }
 
         return {

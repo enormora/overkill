@@ -36,6 +36,7 @@ export const testNode = suite('witness replay command', [
             cwd: '/project',
             configPath: null,
             replayRequest: {
+                debug: { mode: 'off', selectors: [] },
                 path: 'failure.json',
                 profile: 'laws',
                 seed: { value: 42n },

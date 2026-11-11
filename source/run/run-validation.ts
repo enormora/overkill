@@ -7,11 +7,11 @@ import {
     type ProcessBudgets,
     type NormalizedConfig
 } from '../config/types.ts';
-import { runSelectionSchema } from './run-selection-schema.ts';
+import { parseDebugRequest, runDebugRequestSchema } from './run-debug.ts';
+import { parseRunSelection } from './run-selection-schema.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
 import { invalidRequest, RunResolutionError } from './run-errors.ts';
 import { validateRunEngineSelection } from './run-engine-selection.ts';
-import { invalidRunSelectionMessage } from './run-selection-filters.ts';
 import type { RunCommand, RunRequest } from './run-types.ts';
 
 const minimumSeedValue = 0n;
@@ -78,15 +78,10 @@ function validateRunProcessUsageRequest(request: RunRequest): void {
 }
 
 function validateRunSelection(request: RunRequest): void {
-    const message = invalidRunSelectionMessage(request.selection);
-
-    if (message !== null) {
-        invalidRequest(message);
-    }
-
-    const parsed = runSelectionSchema.safeParse(request.selection);
-    if (!parsed.success) {
-        invalidRequest(parsed.error.message);
+    try {
+        parseRunSelection(request.selection);
+    } catch (error: unknown) {
+        invalidRequest(error instanceof Error ? error.message : String(error));
     }
 }
 
@@ -125,11 +120,23 @@ function validateRunRecordingRequest(request: RunRequest): void {
     }
 }
 
+function validateRunDebugRequest(request: RunRequest): void {
+    const debug = runDebugRequestSchema.safeParse(request.debug);
+    if (!debug.success) {
+        invalidRequest(debug.error.message);
+    }
+    try {
+        parseDebugRequest(request.debug.mode === 'all', request.debug.selectors);
+    } catch (error: unknown) {
+        invalidRequest(error instanceof Error ? error.message : String(error));
+    }
+}
+
 function validateRunRequest(request: RunRequest): void {
     assertValidRunProfileName(request.profile);
     validateRunRecordingRequest(request);
-
     validatePositiveSafeInteger(request.workers, 'Worker count');
+    validateRunDebugRequest(request);
     validateRunShard(request);
     validateRunSeed(request);
     validateRunSelection(request);
@@ -219,6 +226,9 @@ export function assertProfileRequestSupported(
     namespace: Namespace,
     reporters: NormalizedConfig['reporters']
 ): void {
+    if (request.debug.mode !== 'off' && profile.testFamily === 'type-test') {
+        invalidRequest('Debug mode requires runtime test bodies; type-test profiles use compiler diagnostics.');
+    }
     assertAdapterRequest(request, profile);
     assertBaselineRequest(request, profile, namespace);
     assertExecution(request, profile);

@@ -15,7 +15,8 @@ export type RunRecordExecutionDependencies = Pick<
 
 function recordingEnabled(input: ResolvedRunInput): boolean {
     return currentExecutionSession() === null && !input.request.coverage &&
-        (input.request.lastFailed || input.request.record || input.profile.runRecords.persist === 'always');
+        (input.request.debug.mode !== 'off' || input.request.lastFailed || input.request.record ||
+            input.profile.runRecords.persist === 'always');
 }
 
 async function completeFailedRecording(record: RunRecordSession, error: RunRecordError): Promise<RunResult> {

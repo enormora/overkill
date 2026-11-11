@@ -52,6 +52,7 @@ async function executeRandomCases(
             controls: {}
         })),
         {
+            debug: { mode: 'off' },
             seed,
             execution,
             retryPolicy: null,
@@ -197,6 +198,7 @@ export const testNode = suite('case random streams', [
                 }) ]
             })),
             {
+                debug: { mode: 'off' },
                 seed: 42n,
                 execution: { mode: 'serial-in-process' },
                 retryPolicy: { maxAttempts: 2 },

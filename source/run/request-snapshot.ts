@@ -26,10 +26,9 @@ export function copyRunRequest(request: RunRequest): RunRequest {
         coverage: request.coverage,
         record: request.record,
         lastFailed: request.lastFailed,
-        debug: {
-            mode: request.debug.mode,
-            selectors: []
-        },
+        debug: request.debug.mode === 'selected'
+            ? { mode: 'selected', selectors: [ request.debug.selectors[0], ...request.debug.selectors.slice(1) ] }
+            : { mode: request.debug.mode, selectors: [] },
         execution: { mode: request.execution.mode },
         measureProcessUsage: request.measureProcessUsage,
         order: request.order,

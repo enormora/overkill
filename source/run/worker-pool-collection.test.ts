@@ -45,6 +45,7 @@ type InvalidOwnedPoolResult = {
 
 function workerPoolCommand(): WorkerPoolCommand {
     return {
+        debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,

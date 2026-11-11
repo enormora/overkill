@@ -279,15 +279,15 @@ See [Runtime Behavior § Process Budgets](../architecture/runtime-behavior.md#pr
 
 ## Lifecycle And Edge Cases
 
-| Flag                       | Behavior                                                             | Reference                                               |
-| -------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------- |
-| `--seed <n>`               | Override the run seed with a nonnegative base-10 integer.            | [Reproducibility](../architecture/reproducibility.md)   |
-| `--order <mode>`           | Choose `seeded` or `lexical`; default is `seeded`.                   | [Runtime Behavior](../architecture/runtime-behavior.md) |
-| `--record`                 | Persist a detailed run record and update compact history.            | [Reproducibility](../architecture/reproducibility.md)   |
-| `--debug`                  | Emit a structured debug artifact for every test in the resolved set. | [Test Debug Mode](../authoring/debug-mode.md)           |
-| `--debug-scope <selector>` | Emit a debug artifact for tests matching a selector.                 | same                                                    |
-| `--timings`                | Collect precise runner timing diagnostics for this run.              | [Run Timings](../architecture/run-timings.md)           |
-| `--verbose`                | Include per-file peak process usage and other expanded diagnostics.  | [Runtime Behavior](../architecture/runtime-behavior.md) |
+| Flag                       | Behavior                                                                                              | Reference                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `--seed <n>`               | Override the run seed with a nonnegative base-10 integer.                                             | [Reproducibility](../architecture/reproducibility.md)   |
+| `--order <mode>`           | Choose `seeded` or `lexical`; default is `seeded`.                                                    | [Runtime Behavior](../architecture/runtime-behavior.md) |
+| `--record`                 | Persist a detailed run record and update compact history.                                             | [Reproducibility](../architecture/reproducibility.md)   |
+| `--debug`                  | Emit a structured debug artifact for every test in the resolved set.                                  | [Test Debug Mode](../authoring/debug-mode.md)           |
+| `--debug-scope <selector>` | Emit a debug artifact for matching tests without filtering the run; repeat to combine scopes with OR. | same                                                    |
+| `--timings`                | Collect precise runner timing diagnostics for this run.                                               | [Run Timings](../architecture/run-timings.md)           |
+| `--verbose`                | Include per-file peak process usage and other expanded diagnostics.                                   | [Runtime Behavior](../architecture/runtime-behavior.md) |
 
 This list intentionally omits flags that are still under design (e.g.
 `--since <ref>`); when those land, this table is the

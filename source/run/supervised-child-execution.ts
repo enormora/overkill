@@ -1,13 +1,12 @@
 import type { Clock } from '@enormora/clock';
-import { createExecute } from '../engine/execution.ts';
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
+import { createExecute, type Execute, type ExecuteDependencies } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import { defineReporter } from '../engine/reporter.ts';
+import { defineReporter, type DefinedReporter } from '../engine/reporter.ts';
 import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
 import { withReplayWire } from './replay-wire.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
 import { createResourceLifecycleTiming, type ResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
-
-import type { DefinedReporter, Execute, ExecuteDependencies } from './run-engine-primitives.ts';
 
 export function createSupervisedResourceLifecycleTiming(
     clock: Clock,
@@ -79,6 +78,7 @@ export async function createSupervisedChildExecute(
                 plan,
                 options === undefined ? options : {
                     ...options,
+                    outputRenderer: createPlainOutputRenderer(),
                     runtimePolicy: snapshotRuntimePolicy(options.runtimePolicy ?? null, command.snapshots)
                 }
             );

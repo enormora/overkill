@@ -2,7 +2,7 @@ import { describe, expect, test } from 'tstyche';
 import type { RunResult } from '../engine/engine.entry-point.ts';
 import type {
     orchestrator,
-    RunCommand,
+    RunCommandInput,
     FrozenRunCommand,
     InitializedRun,
     CollectedRun,
@@ -29,7 +29,7 @@ describe('public runner lifecycle', function () {
     });
     test('exposes initialization and collected execution', function () {
         expect<typeof orchestrator.initialize>().type.toBe<
-            (command: FrozenRunCommand | RunCommand) => Promise<InitializedRun>
+            (command: FrozenRunCommand | RunCommandInput) => Promise<InitializedRun>
         >();
         expect<InitializedRun['collect']>().type.toBe<() => Promise<CollectedRun>>();
         expect<CollectedRunInvocation>().type.toBe<{ readonly selection: RunSelection; }>();

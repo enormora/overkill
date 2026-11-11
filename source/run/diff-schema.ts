@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 import type { Diff } from '../diff/diff-shape.ts';
-import { serializedPropertyKeySchema, serializedValueSchema } from './serialized-value-schema.ts';
+import { serializedPropertyKeySchema, serializedValueSchema } from '../compare/serialized-value-schema.ts';
 
 export const diffPathSchema = z.array(z.discriminatedUnion('kind', [
     z.strictObject({ kind: z.literal('byte'), offset: z.number() }),

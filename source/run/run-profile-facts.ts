@@ -109,6 +109,10 @@ export function resolveTimingCollection(
     return profile.timings.collection;
 }
 
+function debugPersistenceReasons(request: RunRequest): readonly 'debug'[] {
+    return request.debug.mode === 'off' ? [] : [ 'debug' ];
+}
+
 export function resolveRunRecordPersistence(request: RunRequest, profile: ProfileConfig): RunRecordPersistenceFacts {
     if (currentExecutionSession() !== null) {
         return { persist: false, reasons: [] };
@@ -117,7 +121,8 @@ export function resolveRunRecordPersistence(request: RunRequest, profile: Profil
         ...profile.runRecords.persist === 'always' ? [ 'profile' as const ] : [],
         ...request.record ? [ 'request' as const ] : [],
         ...request.lastFailed ? [ 'last-failed' as const ] : [],
-        ...request.coverage ? [ 'coverage' as const ] : []
+        ...request.coverage ? [ 'coverage' as const ] : [],
+        ...debugPersistenceReasons(request)
     ];
     return { persist: reasons.length > 0, reasons };
 }

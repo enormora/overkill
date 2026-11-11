@@ -19,6 +19,7 @@ async function witnessProject(scope: TestScope): Promise<ReplayProject> {
 }
 async function prepareInput(project: ReplayProject, file: string): Promise<PreparedReplay> {
     return await prepareWitnessReplay({
+        debug: { mode: 'off', selectors: [] },
         cwd: project.cwd,
         config: project.command.config,
         signal: null,
@@ -37,6 +38,7 @@ function profileCommand(config: ReplayWitnessCommand['config'], profile: string 
         config,
         engine: { kind: 'default' },
         request: {
+            debug: { mode: 'off', selectors: [] },
             path: 'missing.witness.json',
             profile,
             seed: { value: null },

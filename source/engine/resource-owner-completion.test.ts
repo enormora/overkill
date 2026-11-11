@@ -89,6 +89,7 @@ async function executeOwnedFixture(disposal: ResourceFixtureMode, owner: TestSco
         })
     });
     return await execute(plan, {
+        debug: { mode: 'off' },
         execution: { mode: 'serial-in-process' },
         reporters: [],
         retryPolicy: null,

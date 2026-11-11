@@ -5,6 +5,7 @@ import type { ExecuteOptions } from '../packages/engine/engine.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 
 const options: ExecuteOptions = {
+    debug: { mode: 'off' },
     execution: { mode: 'serial-in-process' },
     retryPolicy: null,
     reporters: [],

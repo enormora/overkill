@@ -1,8 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createStoredValue, type StoredValue } from '../stored-value.ts';
 import { withSerializationBudget } from '../compare/serialization-context.ts';
+import { type TestDebugArtifact, artifactsForAttempt, type BoundaryFailureArtifact } from './run-artifact.ts';
 import { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from './failure-artifact-policy.ts';
-import { artifactsForAttempt, type BoundaryFailureArtifact } from './run-artifact.ts';
+
 import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type { RunnerError } from './run-result.ts';
 import type { TestPlanCase } from './test-plan.ts';
@@ -284,7 +285,7 @@ export function createExecutionObservation(): ExecutionObservation {
 type FailureArtifactContext = {
     readonly policy: FailureArtifactPolicy;
     readonly samplingIntervalMilliseconds: number | null;
-    readonly artifacts: StoredValue<readonly BoundaryFailureArtifact[]>;
+    readonly artifacts: StoredValue<readonly (BoundaryFailureArtifact | TestDebugArtifact)[]>;
 };
 const contextKey = Symbol.for('@overkill-dev/failure-artifact-context/v1');
 
@@ -312,7 +313,7 @@ export function withFailureArtifactContext<Value>(
     return contexts.run({
         policy,
         samplingIntervalMilliseconds,
-        artifacts: createStoredValue<readonly BoundaryFailureArtifact[]>([])
+        artifacts: createStoredValue<readonly (BoundaryFailureArtifact | TestDebugArtifact)[]>([])
     }, function withFailureSerialization() {
         return withSerializationBudget(policy.serialization, operation);
     });
@@ -322,21 +323,36 @@ export function currentFailureArtifactPolicy(): FailureArtifactPolicy {
     return contexts.getStore()?.policy ?? defaultFailureArtifactPolicy;
 }
 
-export function recordBoundaryArtifact(artifact: BoundaryFailureArtifact): void {
+export function recordExecutionArtifact(artifact: BoundaryFailureArtifact | TestDebugArtifact): void {
     const context = contexts.getStore();
     if (context !== undefined) {
         context.artifacts.write([ ...context.artifacts.read(), artifact ]);
     }
 }
 
-export function boundaryArtifacts(): readonly BoundaryFailureArtifact[] {
+export function executionArtifacts(): readonly (BoundaryFailureArtifact | TestDebugArtifact)[] {
     return contexts.getStore()?.artifacts.read() ?? [];
 }
 
-export function caseBoundaryArtifacts(work: WorkId, attempt: AttemptId): readonly BoundaryFailureArtifact[] {
-    return artifactsForAttempt(boundaryArtifacts(), work, attempt);
+export function caseExecutionArtifacts(
+    work: WorkId,
+    attempt: AttemptId
+): readonly (BoundaryFailureArtifact | TestDebugArtifact)[] {
+    return artifactsForAttempt(executionArtifacts(), work, attempt);
 }
 
 export function currentProcessUsageSamplingInterval(): number | null {
     return contexts.getStore()?.samplingIntervalMilliseconds ?? null;
+}
+
+export function recordBoundaryArtifact(artifact: BoundaryFailureArtifact): void {
+    recordExecutionArtifact(artifact);
+}
+export function boundaryArtifacts(): readonly BoundaryFailureArtifact[] {
+    return executionArtifacts().filter(function boundaryArtifact(artifact): artifact is BoundaryFailureArtifact {
+        return artifact.payload.kind !== 'debug';
+    });
+}
+export function caseBoundaryArtifacts(work: WorkId, attempt: AttemptId): readonly BoundaryFailureArtifact[] {
+    return artifactsForAttempt(boundaryArtifacts(), work, attempt);
 }

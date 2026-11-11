@@ -75,7 +75,8 @@ type ArtifactSubtype =
     | 'witness'
     | 'log-capture'
     | 'coverage'
-    | 'trace';
+    | 'trace'
+    | 'debug';
 
 type ArtifactScope =
     | { readonly kind: 'run'; }
@@ -598,6 +599,7 @@ type TestRandom = {
 };
 
 type TestScope = {
+    readonly debug: TestDebugScope;
     readonly seed: bigint;
     readonly random: TestRandom;
     readonly assert: TestScopeAssertContext;
@@ -614,6 +616,7 @@ type TestScope = {
 type BuilderTestBody = (scope: TestScope) => AssertionResult | Promise<AssertionResult>;
 
 type ThrowingTestScope = {
+    readonly debug: TestDebugScope;
     readonly seed: bigint;
     readonly random: TestRandom;
     readonly assert: AssertAssertionFacade;
@@ -1190,10 +1193,7 @@ type RunRequest = {
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly verbose: boolean;
     readonly workers: number | null;
-    readonly debug: {
-        readonly mode: 'off' | 'all' | 'selected';
-        readonly selectors: ReadonlyArray<string>;
-    };
+    readonly debug: RunDebugRequest;
 };
 
 type RunExecutionRequest =
@@ -1327,7 +1327,8 @@ type RunExecutionBaseFacts = {
     readonly benchmarkGarbageCollection: BenchmarkGarbageCollectionPolicy | null;
     readonly baselineUpdateMode: 'none' | 'update' | 'apply' | 'bootstrap' | 'diff';
     readonly capture: 'buffered' | 'live';
-    readonly debug: { readonly mode: 'off' | 'all' | 'selected'; readonly selectors: ReadonlyArray<string>; };
+    readonly debug: RunDebugRequest;
+    readonly debuggedCases: readonly WorkId[];
     readonly maxConcurrency: MaxConcurrency;
     readonly order: 'plan' | 'seeded' | 'lexical';
     readonly placementPlan: PlacementPlan | null;
@@ -2325,43 +2326,84 @@ type ProcessExhaustion = BoundaryFailureEvidence & {
 };
 
 // see runtime-behavior.md § Test Debug Mode
-type TestDebugArtifact = {
-    readonly case: CaseId;
-    readonly outcome: TestOutcome['kind'];
-    readonly durationMicroseconds: number;
-    readonly cpuTimeMs: number;
-    readonly timeline: ReadonlyArray<TimelineEntry>;
-    readonly handleEvents?: ReadonlyArray<RecordedEvent>;
-    readonly moduleLoads: ReadonlyArray<{
-        readonly specifier: string;
-        readonly cachedHit: boolean;
-        readonly resolveMs: number;
-    }>;
-    readonly heap: { beforeBytes: number; afterBytes: number; peakBytes: number; };
-    readonly activeHandlesDelta: number;
-    readonly plan?: { declared: number; recorded: number; };
-    readonly stats: DebugStats;
+type RunDebugRequest =
+    | { readonly mode: 'off' | 'all'; readonly selectors: readonly []; }
+    | { readonly mode: 'selected'; readonly selectors: NonEmptyReadonlyArray<string>; };
+
+type ExecuteDebugSelection =
+    | { readonly mode: 'off' | 'all'; }
+    | { readonly mode: 'selected'; readonly work: readonly WorkId[]; };
+type DebugRecordingProvider = {
+    readonly name: string;
+    readonly recorded: () => readonly unknown[];
 };
-
-// Discriminated union; mirrors RecordedEvent's pattern.
-type TimelineEntry =
-    | { readonly kind: 'body-start'; readonly at: bigint; }
-    | { readonly kind: 'assert'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
-    | { readonly kind: 'require'; readonly at: bigint; readonly label?: string; readonly location?: SourceLocation; }
-    | { readonly kind: 'plan'; readonly at: bigint; readonly declared: number; }
-    | { readonly kind: 'body-end'; readonly at: bigint; }
-    | { readonly kind: 'rejection'; readonly at: bigint; readonly reason: unknown; };
-
+type TestDebugScope = {
+    readonly includeRecording: (provider: DebugRecordingProvider) => void;
+};
+type DebugMeasurement =
+    | { readonly availability: 'unavailable'; readonly reason: string; }
+    | {
+        readonly availability: 'available';
+        readonly value: number;
+        readonly method: string;
+        readonly scope: 'thread' | 'process';
+        readonly overlappingWork: readonly WorkId[];
+    };
+type TimelineEntry = {
+    readonly kind: 'body-start' | 'assert' | 'require' | 'plan' | 'body-end' | 'rejection';
+    readonly atNanoseconds: string;
+    readonly declared: number | null;
+    readonly label: string | null;
+    readonly sourceLocations: readonly SourceLocation[];
+    readonly reason: SerializedValue | null;
+};
 type DebugStats = {
     readonly assertCount: number;
     readonly requireCount: number;
     readonly handleCallCount: number;
     readonly moduleLoadCount: number;
-    readonly uncachedModuleLoadCount: number;
-    readonly unaccountedGapMs: number;
-    readonly heapGrowthBytes: number;
-    readonly handleLeakCount: number;
-    readonly softTimeoutHeadroomMs: number;
+    readonly uncachedModuleLoadCount: { readonly availability: 'unavailable'; readonly reason: string; };
+    readonly unaccountedGapMs: { readonly availability: 'unavailable'; readonly reason: string; };
+    readonly heapGrowthBytes: number | null;
+    readonly handleLeakCount: number | null;
+    readonly softTimeoutHeadroomMs: number | null;
+};
+type TestDebugArtifact = {
+    readonly id: ArtifactId & {
+        readonly subtype: 'debug';
+        readonly attempt: AttemptId;
+        readonly scope: Extract<ArtifactScope, { readonly kind: 'case'; }>;
+    };
+    readonly source: 'native' | 'boundary-captured';
+    readonly payload: {
+        readonly kind: 'debug';
+        readonly schemaVersion: 1;
+        readonly verdict: TestVerdict;
+        readonly outcome: TestOutcome['kind'] | null;
+        readonly durationMicroseconds: number;
+        readonly timeline: readonly TimelineEntry[];
+        readonly recordings: readonly {
+            readonly name: string;
+            readonly events: readonly SerializedValue[];
+            readonly error: SerializedValue | null;
+        }[];
+        readonly moduleLoads: readonly {
+            readonly phase: 'resolve' | 'load';
+            readonly specifier: string;
+            readonly resolvedUrl: string | null;
+            readonly atNanoseconds: string;
+            readonly durationMicroseconds: number;
+        }[];
+        readonly cpuTimeMs: DebugMeasurement;
+        readonly heapBeforeBytes: DebugMeasurement;
+        readonly heapAfterBytes: DebugMeasurement;
+        readonly sampledHeapPeakBytes: DebugMeasurement;
+        readonly activeHandlesDelta: DebugMeasurement;
+        readonly stats: DebugStats;
+        readonly plan: { readonly declared: number; readonly recorded: number; } | null;
+        readonly completeness: 'complete' | 'truncated' | 'incomplete';
+        readonly droppedEntries: number;
+    };
 };
 
 import type { JsonValue } from 'type-fest';

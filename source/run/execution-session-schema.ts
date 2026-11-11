@@ -27,12 +27,20 @@ export function normalizeExecutionSessionOptions(
             'unsupported-request'
         );
     }
+    const policy = parseFrozenMicrotestPolicy(supplied.command.policy);
+    if (policy.request.debug.mode !== 'off') {
+        throw new RunResolutionError(
+            'Memory execution sessions do not support persisted debug recording.',
+            undefined,
+            'unsupported-request'
+        );
+    }
     return {
         ...supplied,
         lifecycle: { ...supplied.lifecycle },
         command: {
             ...supplied.command,
-            policy: parseFrozenMicrotestPolicy(supplied.command.policy),
+            policy,
             invocation: {
                 seed: { value: supplied.command.invocation.seed.value ?? createSeed() },
                 selection: runSelectionSchema.parse(supplied.command.invocation.selection)

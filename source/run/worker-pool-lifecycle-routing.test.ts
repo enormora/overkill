@@ -97,6 +97,7 @@ function baseResolvedRun(): ResolvedRun {
                 runtimeStateDir: '.overkill'
             },
             execution: {
+                debuggedCases: [],
                 failureArtifacts: defaultFailureArtifactPolicy,
                 runRecords: { persist: false, reasons: [] },
                 benchmarkGarbageCollection: null,

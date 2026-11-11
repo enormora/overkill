@@ -1,5 +1,6 @@
 import type { Except } from 'type-fest';
 import { flag, multioption, oneOf, option, restPositionals, string, type Type } from 'cmd-ts';
+import { parseDebugRequest } from '../../run/run-debug.ts';
 import type { CommandLineListTestsRequest, CommandLineRunTestsRequest } from '../run/command-line.entry-point.ts';
 import { parseRunFilterExpression, type RunFilter } from '../run/filters.entry-point.ts';
 import { configPathArgument } from './command-line-config-path.ts';
@@ -15,6 +16,8 @@ type RunSeed = CommandLineRunTestsRequest['runRequest']['seed'];
 type RunShard = CommandLineRunTestsRequest['runRequest']['shard'];
 
 export type RunCommandArguments<Profile extends string | null> = {
+    readonly debug: boolean;
+    readonly debugScope: readonly string[];
     readonly configPath: string | null;
     readonly record: boolean;
     readonly coverage: boolean;
@@ -33,7 +36,7 @@ export type RunCommandArguments<Profile extends string | null> = {
     readonly workers: CommandLineRunTestsRequest['runRequest']['workers'];
 };
 
-type RunOnlyArgument = 'coverage' | 'noCapture' | 'record' | 'timings' | 'workers';
+type RunOnlyArgument = 'coverage' | 'debug' | 'debugScope' | 'noCapture' | 'record' | 'timings' | 'workers';
 type ListControls = { readonly withLocations: boolean; readonly withOrphans: boolean; };
 export type ListCommandArguments<Profile extends string | null> = Except<
     ListControls & RunCommandArguments<Profile>,
@@ -88,10 +91,7 @@ export function createRunTestsRequest<Profile extends string | null>(
             capture: args.noCapture ? 'live' : 'buffered',
             record: args.record,
             coverage: args.coverage,
-            debug: {
-                mode: 'off',
-                selectors: []
-            },
+            debug: parseDebugRequest(args.debug, args.debugScope),
             execution: { mode: 'profile-default' },
             measureProcessUsage: null,
             order: args.order,
@@ -209,6 +209,19 @@ export const benchmarkCommandArguments = {
 };
 
 export const runExecutionArguments = {
+    debug: flag({ long: 'debug' }),
+    debugScope: multioption({
+        long: 'debug-scope',
+        type: {
+            displayName: 'selector',
+            async from(values: readonly string[]) {
+                return values;
+            }
+        },
+        defaultValue() {
+            return [];
+        }
+    }),
     record: flag({ long: 'record' }),
     noCapture: flag({ long: 'no-capture' }),
     timings: flag({ long: 'timings' }),

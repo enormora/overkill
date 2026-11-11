@@ -1,6 +1,7 @@
 import type { Except } from 'type-fest';
 import { command, flag, restPositionals, runSafely, string, subcommands } from 'cmd-ts';
 import type { CommandLineRunner, CommandLineRunnerResult } from '../run/command-line.entry-point.ts';
+import { debugRequestArguments, parseDebugRequest } from '../../run/run-debug.ts';
 import { createWitnessReplayCommand } from './witness-replay-command.ts';
 import { configPathArgument, configPathType } from './command-line-config-path.ts';
 import { createCorpusCommand } from './corpus-command.ts';
@@ -86,9 +87,9 @@ export async function dispatchOverkillCommand(
             ...runExecutionArguments
         },
         async handler(args: RunCommandArguments<string>) {
+            const request = createRunTestsRequest(args, cwd);
             const runner = await loadRunner();
-
-            return await runner.runTests(createRunTestsRequest(args, cwd));
+            return await runner.runTests(request);
         }
     });
     const listCommand = command({
@@ -168,9 +169,9 @@ export async function dispatchOverkillCommand(
                 name: 'run',
                 args: { ...benchmarkCommandArguments, ...runExecutionArguments },
                 async handler(args: Except<RunCommandArguments<string | null>, 'coverage'>) {
+                    const request = createRunTestsRequest({ ...args, coverage: false }, cwd);
                     const runner = await loadRunner();
-
-                    return await runner.bench.runBenchmarks(createRunTestsRequest({ ...args, coverage: false }, cwd));
+                    return await runner.bench.runBenchmarks(request);
                 }
             })
         }
@@ -233,10 +234,20 @@ export async function dispatchOverkillCommand(
         cmds: {
             replay: command({
                 name: 'replay',
-                args: { configPath: configPathArgument, arguments: restPositionals({ type: string }) },
+                args: {
+                    configPath: configPathArgument,
+                    arguments: restPositionals({ type: string }),
+                    debug: runExecutionArguments.debug,
+                    debugScope: runExecutionArguments.debugScope
+                },
                 async handler(args) {
+                    const debug = parseDebugRequest(args.debug, args.debugScope);
                     const runner = await loadRunner();
-                    return await runner.replayRun({ cwd, configPath: args.configPath, arguments: args.arguments });
+                    return await runner.replayRun({
+                        cwd,
+                        configPath: args.configPath,
+                        arguments: [ ...args.arguments, ...debugRequestArguments(debug) ]
+                    });
                 }
             }),
             'replay-witness': createWitnessReplayCommand(loadRunner, cwd, {

@@ -116,6 +116,7 @@ async function executeWithPreciseTimings(
     }));
 
     await engine.execute(testPlan, {
+        debug: { mode: 'off' },
         retryPolicy: null,
         execution: { mode: 'serial-in-process' },
         async finalizeResult(result) {

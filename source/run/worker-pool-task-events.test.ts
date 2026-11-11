@@ -2,11 +2,14 @@ import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    isTestDebugArtifact,
     type PerTestResult,
     type ReporterEvent,
     type RunnerError,
+    type TestDebugArtifact,
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
+import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import type { WorkerPoolWorkDispatcher } from './worker-pool-dispatch-state.ts';
 import {
@@ -244,10 +247,70 @@ async function reportedWorkerEventErrors(): Promise<WorkerPoolRunRuntime> {
     return runtime;
 }
 
+async function workerCheckpointCompletion(hasCompletedArtifact: boolean): Promise<{
+    readonly completed: TestDebugArtifact;
+    readonly retained: TestDebugArtifact | undefined;
+    readonly end: Extract<ReporterEvent, { readonly kind: 'test-end'; }> | undefined;
+}> {
+    const runtime = hedgedRuntime();
+    const taskRun = taskRunWithLane('worker-1', runtime);
+    const { artifact } = await debugArtifactFixture('first');
+    const completed = { ...artifact, id: { ...artifact.id, scope: { ...artifact.id.scope, case: firstCaseId() } } };
+    const checkpoint: TestDebugArtifact = {
+        ...completed,
+        source: 'boundary-captured',
+        payload: { ...completed.payload, completeness: 'incomplete' }
+    };
+    handleWorkerMessage(eventMessage({ kind: 'debug-checkpoint', artifact: checkpoint }), taskRun, runtime);
+    const retained = taskRun.state.artifacts().find(isTestDebugArtifact);
+    handleWorkerMessage(
+        eventMessage({
+            ...endEventWithoutWorkId(),
+            attempt: 0,
+            artifacts: hasCompletedArtifact ? [ completed ] : []
+        }),
+        taskRun,
+        runtime
+    );
+    return {
+        completed,
+        retained,
+        end: Array.from(taskRun.bufferedReporterEvents).find(function (event) {
+            return event.kind === 'test-end';
+        })
+    };
+}
+
 export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-task-events.test.ts',
     children: [
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker completion replaces its checkpoint and retains placement identity',
+            async body(scope: OverkillScope) {
+                const { completed, retained, end } = await workerCheckpointCompletion(true);
+                scope.require.defined(retained);
+                scope.require.defined(end);
+                scope.assert.equal(retained.payload.completeness, 'incomplete');
+                scope.assert.equal(retained.id.sequence > 0, true);
+                scope.assert.deepEqual(end.artifacts.filter(isTestDebugArtifact), [
+                    { ...completed, id: { ...completed.id, sequence: retained.id.sequence } }
+                ]);
+                return scope.assert.collect();
+            }
+        }),
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'worker completion retains its checkpoint when native evidence is missing',
+            async body(scope: OverkillScope) {
+                const { retained, end } = await workerCheckpointCompletion(false);
+                scope.require.defined(retained);
+                scope.require.defined(end);
+                scope.assert.deepEqual(end.artifacts.filter(isTestDebugArtifact), [ retained ]);
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'worker-pool task events buffer starts and clear completed timeouts',

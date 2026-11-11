@@ -123,6 +123,7 @@ export const testNode = createSuite({
                     }));
                     await scope.assert.rejects(async function executeInvalidPolicy() {
                         await engine.execute(plan, {
+                            debug: { mode: 'off' },
                             execution: { mode: 'serial-in-process' },
                             reporters: [],
                             runFacts: {},
@@ -167,6 +168,7 @@ export const testNode = createSuite({
                         }) ]
                     }));
                     const result = await engine.execute(plan, {
+                        debug: { mode: 'off' },
                         execution,
                         reporters: [ reporter ],
                         retryPolicy: { maxAttempts: 3 },
@@ -208,6 +210,7 @@ export const testNode = createSuite({
                                 }) ]
                             }));
                             const result = await engine.execute(plan, {
+                                debug: { mode: 'off' },
                                 execution,
                                 reporters: [ processLimitReporter(probe, trigger) ],
                                 retryPolicy: { maxAttempts: 3 },

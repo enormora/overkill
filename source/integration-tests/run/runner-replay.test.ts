@@ -15,7 +15,13 @@ import {
 } from '../../test-support/replay-project-fixture.ts';
 
 function replayInput(project: ReplayProject, runId: string): ReplayRunCommand {
-    return { cwd: project.cwd, config: project.command.config, signal: null, runId };
+    return {
+        debug: { mode: 'off', selectors: [] },
+        cwd: project.cwd,
+        config: project.command.config,
+        signal: null,
+        runId
+    };
 }
 async function executeOriginal(scope: TestScope, project: ReplayProject): Promise<void> {
     const result = await executeReplayCli(project, [ 'run', '--profile', 'cases', '--record' ]);

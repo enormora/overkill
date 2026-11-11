@@ -34,7 +34,7 @@ export function retainedRetryArtifacts<Artifact extends RunArtifact>(
         selected.set(workIdentityKey(result.workId), retainedAttemptIndexes(result, policy));
     }
     return artifacts.filter(function selectedAttempt(artifact) {
-        if (artifact.id.scope.kind === 'run' || artifact.id.attempt === null) {
+        if (artifact.payload.kind === 'debug' || artifact.id.scope.kind === 'run' || artifact.id.attempt === null) {
             return true;
         }
         const key = workIdentityKey({

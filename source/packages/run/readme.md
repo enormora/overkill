@@ -929,3 +929,20 @@ selected subset through the original preparation. Adapter result artifacts
 also carry lossless JSON facts; assertion diagnostic budgets do not apply.
 
 Adapters can resolve package identity with `packageVersion(moduleUrl)`.
+
+### Debug mode
+
+`overkill run --debug` records diagnostics for all resolved runtime work.
+`--debug-scope 'title~request'` records only matching work without filtering the
+run. Repeat scopes to combine them with OR. The two activation forms are mutually
+exclusive and retain the selected profile, permissions, and scheduling.
+
+Programmatic requests use `debug: { mode: 'off', selectors: [] }`,
+`debug: { mode: 'all', selectors: [] }`, or
+`debug: { mode: 'selected', selectors: ['title~request'] }`. Explicit activation
+persists the run and per-attempt artifacts under
+`runtimeStateDir/runs/<run-id>/debug/`, including passing tests and every retry.
+
+Replay requires fresh explicit debug intent; it never inherits the source run's
+activation. Native measurements disclose scope and sampling limitations.
+Analysis-only type-test profiles reject runtime debug recording.

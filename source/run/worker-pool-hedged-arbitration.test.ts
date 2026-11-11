@@ -2,6 +2,7 @@ import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
+    isTestDebugArtifact,
     type PerTestResult,
     type HedgedConflictArtifactPayload,
     type TestOutcome,
@@ -10,6 +11,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { workIdentityKey } from '../engine/identity.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
+import { debugArtifactFixture } from '../test-support/debug-artifact-fixture.ts';
 import { createSupervisedRunState } from './supervised-run-state.ts';
 import {
     createCollectedPlan,
@@ -276,6 +278,30 @@ async function conflictingHedgedResult(
     return runtime;
 }
 
+async function conflictingDebugEvidence(): Promise<WorkerPoolRunRuntime> {
+    const base = hedgedRuntime();
+    const runtime: WorkerPoolRunRuntime = {
+        ...base,
+        resolvedRun: {
+            ...base.resolvedRun,
+            request: { ...base.resolvedRun.request, debug: { mode: 'all', selectors: [] } }
+        }
+    };
+    const authority = taskRunWithLane('worker-1', runtime);
+    const conflicting = taskRunWithLane('worker-2', runtime);
+    const { artifact } = await debugArtifactFixture('first');
+    const id = { ...artifact.id, scope: { ...artifact.id.scope, case: firstCaseId() } };
+    authority.state.recordArtifact({ ...artifact, id: { ...id, sequence: 1 } });
+    conflicting.state.recordArtifact({ ...artifact, id: { ...id, sequence: 2 } });
+    await recordCompletedHedgedTaskRun(
+        authorityMap(authority, runResult(passResult())),
+        runResult(failResult()),
+        conflicting,
+        runtime
+    );
+    return runtime;
+}
+
 async function firstHedgedAuthorityResult(): Promise<WorkerPoolRunRuntime> {
     const runtime = hedgedRuntime();
     const authorityTask = taskRunWithLane('worker-1', runtime);
@@ -387,6 +413,28 @@ export const testNode = createOverkillSuite({
     ...testCaseMetadata,
     title: 'source/run/worker-pool-hedged-arbitration.test.ts',
     children: [
+        createOverkillTestCase({
+            ...testCaseMetadata,
+            title: 'hedged conflicts retain debug evidence from both placements',
+            async body(scope: OverkillScope) {
+                const runtime = await conflictingDebugEvidence();
+                const artifacts = runtime.runState.artifacts();
+                scope.assert.deepEqual(
+                    artifacts.filter(isTestDebugArtifact).map(function placement(artifact) {
+                        return artifact.id.sequence;
+                    }),
+                    [ 1, 2 ]
+                );
+                scope.assert.equal(
+                    artifacts.some(function (artifact) {
+                        return artifact.payload.kind === 'hedged-conflict';
+                    }),
+                    true
+                );
+                scope.assert.equal(flattenPerTest(runtime)[0]?.verdict, 'fail');
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             ...testCaseMetadata,
             title: 'hedged conflicts preserve both retry chains while overriding the logical verdict',

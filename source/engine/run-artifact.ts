@@ -1,5 +1,6 @@
 import type { ReadonlyDeep, JsonValue, Except } from 'type-fest';
 import { canonicalIdentityJson } from '../canonical-identity.ts';
+import type { TestDebugPayload } from './test-debug.ts';
 import type { ExecuteProcessBudgets, ProcessUsageSnapshot } from './process-usage.ts';
 import {
     workIdentityKey,
@@ -63,6 +64,7 @@ export type AdapterArtifact = {
 };
 
 export const runArtifactSubtypes = [
+    'debug',
     'adapter',
     'attachment',
     'coverage',
@@ -188,6 +190,11 @@ export function artifactsForAttempt<Artifact extends { readonly id: RunArtifactI
     });
 }
 
+export type TestDebugArtifact = {
+    readonly id: CaseArtifactId & { readonly subtype: 'debug'; };
+    readonly source: 'boundary-captured' | 'native';
+    readonly payload: TestDebugPayload;
+};
 export function artifactIdentityProjection(id: RunArtifactId): Except<RunArtifactId, 'familyVariant'> | RunArtifactId {
     const { familyVariant, ...neutral } = id;
     return familyVariant === null ? neutral : id;

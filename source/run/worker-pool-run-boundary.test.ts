@@ -40,6 +40,7 @@ type RecordedPoolDependencies = {
 
 function workerPoolCommand(hostProcess: WorkerPoolCommand['hostProcess']): WorkerPoolCommand {
     return {
+        debug: { mode: 'off', selectors: [] },
         failureArtifacts: defaultFailureArtifactPolicy,
         capture: 'buffered',
         replay: null,

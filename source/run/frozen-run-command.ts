@@ -1,4 +1,5 @@
-import type { FrozenRunCommand, RunCommand } from './run-types.ts';
+import type { FrozenRunCommand, RunCommand, RunCommandInput } from './run-types.ts';
+import { commandWithDebug } from './run-debug.ts';
 import { frozenPolicyCommand, parseFrozenMicrotestPolicy } from './frozen-run-policy.ts';
 import { validateFrozenPolicySource } from './frozen-policy-validation.ts';
 import type { RunInvocation, RunInputResolutionDependencies } from './run-input-resolution.ts';
@@ -9,13 +10,13 @@ import { withFileModuleBoundary } from './file-module-boundary.ts';
 
 type PreparedRunCommand = { readonly command: RunCommand; readonly source: CollectionSource; };
 
-function isFrozenRunCommand(command: FrozenRunCommand | RunCommand): command is FrozenRunCommand {
+function isFrozenRunCommand(command: FrozenRunCommand | RunCommandInput): command is FrozenRunCommand {
     return Reflect.get(command, 'kind') === 'frozen-policy';
 }
 
-export function snapshotRunCommand(command: FrozenRunCommand | RunCommand): PreparedRunCommand {
+export function snapshotRunCommand(command: FrozenRunCommand | RunCommandInput): PreparedRunCommand {
     if (!isFrozenRunCommand(command)) {
-        return { command: { ...command }, source: selectedRunCollectionSource() };
+        return { command: commandWithDebug(command), source: selectedRunCollectionSource() };
     }
     const policy = parseFrozenMicrotestPolicy(command.policy);
     return {
@@ -25,7 +26,7 @@ export function snapshotRunCommand(command: FrozenRunCommand | RunCommand): Prep
 }
 
 export async function withRunCommandModuleBoundary<Result>(
-    command: FrozenRunCommand | RunCommand,
+    command: FrozenRunCommand | RunCommandInput,
     operation: () => Promise<Result>
 ): Promise<Result> {
     const boundary = isFrozenRunCommand(command) ? parseFrozenMicrotestPolicy(command.policy).moduleBoundary : null;
@@ -33,12 +34,12 @@ export async function withRunCommandModuleBoundary<Result>(
 }
 
 export async function prepareRunCommand(
-    command: FrozenRunCommand | RunCommand,
+    command: FrozenRunCommand | RunCommandInput,
     namespace: RunInvocation['namespace'],
     dependencies: RunInputResolutionDependencies
 ): Promise<PreparedRunCommand> {
     if (!isFrozenRunCommand(command)) {
-        return { command, source: selectedRunCollectionSource() };
+        return { command: commandWithDebug(command), source: selectedRunCollectionSource() };
     }
     if (namespace !== 'test') {
         invalidRequest('Frozen microtest policy cannot execute benchmarks.');

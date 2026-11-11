@@ -1,5 +1,5 @@
 import { createDefaultWorkId, workIdentityKey, type WorkId } from '../engine/identity.ts';
-import { permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
+import { isTestDebugArtifact, permissionDeniedRunnerErrorFromThrown, type RunnerError } from '../engine/run-result.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { applyEvent, collectedCasesByKey } from './supervised-run-runtime.ts';
 import {
@@ -21,6 +21,7 @@ import type {
     WorkerPoolWorkDispatcher
 } from './worker-pool-dispatch-state.ts';
 
+type TestDebugArtifact = Extract<RuntimeReporterEvent, { readonly kind: 'debug-checkpoint'; }>['artifact'];
 type RuntimeReporterEvent = Parameters<WorkerPoolRunRuntime['reporterDelivery']['reportEvent']>[0];
 type PlacementAttemptInterruptionCause = NonNullable<
     ReturnType<WorkerPoolTaskRun['interruptionCause']['read']>
@@ -311,14 +312,30 @@ function startTaskTimeout(taskRun: WorkerPoolTaskRun, runtime: WorkerPoolRunRunt
     }, remainingMilliseconds));
 }
 
-function eventWithTaskArtifacts(
-    event: RuntimeReporterEvent,
+function taskDebugArtifact(artifact: TestDebugArtifact, taskRun: WorkerPoolTaskRun): TestDebugArtifact {
+    const work = {
+        case: artifact.id.scope.case,
+        familyVariant: artifact.id.familyVariant,
+        runtimes: artifact.id.runtimes,
+        workload: artifact.id.workload
+    };
+    const member = taskRun.members.find(function ownsWork(candidate) {
+        return candidate.unit.work.some(function matches(entry) {
+            return workIdentityKey(entry) === workIdentityKey(work);
+        });
+    });
+    if (member === undefined) {
+        return artifact;
+    }
+    const attemptPrefix = 'attempt-';
+    return { ...artifact, id: { ...artifact.id, sequence: Number(member.attempt.slice(attemptPrefix.length)) } };
+}
+
+function completedTaskEvent(
+    event: Extract<RuntimeReporterEvent, { readonly kind: 'test-end'; }>,
     taskRun: WorkerPoolTaskRun,
     runtime: WorkerPoolRunRuntime
 ): RuntimeReporterEvent {
-    if (event.kind !== 'test-end') {
-        return event;
-    }
     const work = event.workId ?? createDefaultWorkId(event.case);
     runtime.attachments?.settleAttempt(
         work,
@@ -329,15 +346,35 @@ function eventWithTaskArtifacts(
     return {
         ...event,
         artifacts: [
-            ...event.artifacts,
+            ...event.artifacts.map(function attributeDebug(artifact) {
+                return isTestDebugArtifact(artifact) ? taskDebugArtifact(artifact, taskRun) : artifact;
+            }),
             ...runtime.attachments?.caseArtifacts(work, {
                 index: event.attempt
             }, taskRun) ?? [],
-            ...taskRun.state.caseArtifacts(work, {
-                index: event.attempt
-            })
+            ...taskRun
+                .state
+                .caseArtifacts(work, {
+                    index: event.attempt
+                })
+                .filter(function retainedEvidence(artifact) {
+                    return artifact.payload.kind !== 'debug' || event.artifacts.every(function completedDebug(value) {
+                        return value.payload.kind !== 'debug';
+                    });
+                })
         ]
     };
+}
+
+function eventWithTaskArtifacts(
+    event: RuntimeReporterEvent,
+    taskRun: WorkerPoolTaskRun,
+    runtime: WorkerPoolRunRuntime
+): RuntimeReporterEvent {
+    if (event.kind === 'debug-checkpoint') {
+        return { ...event, artifact: taskDebugArtifact(event.artifact, taskRun) };
+    }
+    return event.kind === 'test-end' ? completedTaskEvent(event, taskRun, runtime) : event;
 }
 
 function handleWorkerEvent(

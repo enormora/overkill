@@ -80,10 +80,7 @@ function resultWithArtifacts(result: RunResult, artifacts: readonly RunArtifact[
         return result;
     }
 
-    return {
-        ...result,
-        artifacts: [ ...result.artifacts, ...artifacts ]
-    };
+    return resultWithRetainedArtifacts(result, artifacts, 'all');
 }
 
 function finishPoolProcessUsage(runtime: WorkerPoolRunRuntime): RunProcessUsage | null {

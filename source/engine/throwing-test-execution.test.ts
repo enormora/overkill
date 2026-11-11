@@ -40,6 +40,7 @@ async function executeSingleThrowingBody(
             })
         ),
         {
+            debug: { mode: 'off' },
             runtimePolicy,
             execution: { mode: 'serial-in-process' },
             retryPolicy: null,

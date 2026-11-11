@@ -1,5 +1,6 @@
 import type { ConfigLoadRequest } from '../config/config.ts';
 import type {
+    DebugRequestInput,
     RunCommand,
     RunRequest,
     RunInvocationOptions,
@@ -8,6 +9,7 @@ import type {
 } from './run-types.ts';
 
 export type ReplayWitnessRequest = {
+    readonly debug: RunRequest['debug'];
     readonly path: string;
     readonly profile: string | null;
     readonly seed: RunRequest['seed'];
@@ -16,7 +18,7 @@ export type ReplayWitnessRequest = {
     readonly timingCollection: RunRequest['timingCollection'];
 };
 export type ReplayWitnessCommand = Pick<RunCommand, 'config' | 'cwd' | 'engine'> & {
-    readonly request: ReplayWitnessRequest;
+    readonly request: DebugRequestInput<ReplayWitnessRequest>;
 };
 export type ReplayWitnessOperations = {
     readonly replayWitness: (command: ReplayWitnessCommand, options: RunInvocationOptions) => Promise<RunnerResult>;
@@ -26,4 +28,6 @@ export type ReplayWitnessOperations = {
     ) => Promise<RunReporterDeliveryResult>;
 };
 
-export type CommandLineWitnessReplayRequest = ConfigLoadRequest & { readonly replayRequest: ReplayWitnessRequest; };
+export type CommandLineWitnessReplayRequest = ConfigLoadRequest & {
+    readonly replayRequest: DebugRequestInput<ReplayWitnessRequest>;
+};

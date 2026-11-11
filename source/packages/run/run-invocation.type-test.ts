@@ -6,7 +6,7 @@ import type {
     FrozenMicrotestPolicy,
     FrozenRunCommand,
     ResolvedRun,
-    RunCommand,
+    RunCommandInput,
     RunInvocationOptions,
     RunInvocationTimingOptions,
     RunOrchestrator,
@@ -21,11 +21,11 @@ describe('public runner invocation', function () {
             (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>
         >();
         expect<typeof orchestrator.resolve>().type.toBe<
-            (command: FrozenRunCommand | RunCommand, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
+            (command: FrozenRunCommand | RunCommandInput, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
         >();
         expect<typeof orchestrator.run>().type.toBe<
             (
-                command: FrozenRunCommand | RunCommand,
+                command: FrozenRunCommand | RunCommandInput,
                 options?: RunInvocationOptions | RunInvocationTimingOptions
             ) => Promise<RunnerResult>
         >();
@@ -36,13 +36,13 @@ describe('public runner invocation', function () {
     test('preserves benchmark invocation contracts', function () {
         expect<typeof orchestrator.bench>().type.toBe<BenchmarkOrchestrator>();
         expect<typeof orchestrator.bench.list>().type.toBe<
-            (command: RunCommand, options: RunInvocationTimingOptions) => Promise<ResolvedRun>
+            (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<ResolvedRun>
         >();
         expect<typeof orchestrator.bench.run>().type.toBe<
-            (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunnerResult>
+            (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<RunnerResult>
         >();
         expect<typeof orchestrator.bench.runWithReporterDelivery>().type.toBe<
-            (command: RunCommand, options: RunInvocationTimingOptions) => Promise<RunReporterDeliveryResult>
+            (command: RunCommandInput, options: RunInvocationTimingOptions) => Promise<RunReporterDeliveryResult>
         >();
     });
 });

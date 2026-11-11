@@ -1,5 +1,5 @@
-import type { TestPlan } from '../engine/test-plan.ts';
 import type { ProcessUsagePolicy } from '../config/types.ts';
+import { resolveDebugSelection } from './run-debug.ts';
 import { resolvedPropertyCorpus } from './property-corpus-execution.ts';
 import { reporterWithAttachments } from './attachment-reporter.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
@@ -17,10 +17,7 @@ import { createResourceLifecycleTiming } from './resource-lifecycle-timing.ts';
 type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 type RunProcessUsageTracker = ReturnType<RunOrchestratorDependencies['createProcessUsageTracker']>;
 type LocalResolvedRun = ResolvedRun & {
-    readonly plan: {
-        readonly kind: 'local';
-        readonly testPlan: TestPlan;
-    };
+    readonly plan: Extract<ResolvedRun['plan'], { readonly kind: 'local'; }>;
 };
 
 export type LocalExecutionOptions = {
@@ -70,6 +67,7 @@ export async function executeLocalResolvedRun(
 
     const corpus = await resolvedPropertyCorpus(resolvedRun);
     return await dependencies.execute(resolvedRun.plan.testPlan, {
+        debug: resolveDebugSelection(resolvedRun.request.debug, resolvedRun.plan.testPlan.cases),
         seed: BigInt(resolvedRun.facts.reproducibility.seed),
         execution: engineExecution(
             resolvedRun.facts.execution.scheduling,

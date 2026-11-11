@@ -16,7 +16,6 @@ import type {
     ReporterDispatcher as ReporterDispatcherDefinition
 } from '../engine/reporter-dispatcher.ts';
 import type {
-    DefinedReporter as DefinedReporterDefinition,
     ReporterEvent as ReporterEventDefinition
 } from '../engine/reporter.ts';
 import type {
@@ -43,7 +42,6 @@ export type PropertyCorpusSnapshot = PropertyCorpusSnapshotDefinition;
 
 export type Engine = EngineDefinition;
 export type Execute = ExecuteDefinition;
-export type DefinedReporter = DefinedReporterDefinition;
 export type PerTestResult = PerTestResultDefinition;
 export type ReporterDelivery = ReporterDeliveryDefinition;
 export type ReporterDispatcher = ReporterDispatcherDefinition;

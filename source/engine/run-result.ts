@@ -3,15 +3,17 @@ import type {
     NonEmptyReadonlyArray,
     ResolvableSourceLocation
 } from '../assertion-protocol/assertion-node-shape.ts';
-import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
-import type { TestContractFailureCode } from './test-contract-failure-code.ts';
-import type { AttemptId, CaseId, WorkId } from './identity.ts';
 import type {
+    TestDebugArtifact,
     AdapterArtifact,
     BoundaryFailureArtifact,
     CapturedOutputArtifact,
     RunArtifactId
 } from './run-artifact.ts';
+import type { PropertyInvocationEvidence } from './property-failure-evidence.ts';
+import type { TestContractFailureCode } from './test-contract-failure-code.ts';
+import type { AttemptId, CaseId, WorkId } from './identity.ts';
+
 import type { RunTimings } from './run-timings.ts';
 import type { RunProcessUsage } from './process-usage.ts';
 import type { CoverageArtifact, CoverageRunnerErrorCause } from './coverage-artifact.ts';
@@ -533,8 +535,13 @@ export type HedgedConflictArtifact = {
     readonly source: 'native';
 };
 
-type DiagnosticArtifact = BoundaryFailureArtifact | CapturedOutputArtifact | RuntimeAttachmentArtifact;
+type BoundaryDiagnosticArtifact = BoundaryFailureArtifact | CapturedOutputArtifact;
+type DiagnosticArtifact = BoundaryDiagnosticArtifact | RuntimeAttachmentArtifact | TestDebugArtifact;
 export type RunArtifact = AdapterArtifact | CoverageArtifact | DiagnosticArtifact | HedgedConflictArtifact;
+
+export function isTestDebugArtifact(artifact: RunArtifact): artifact is TestDebugArtifact {
+    return artifact.id.subtype === 'debug' && artifact.payload.kind === 'debug';
+}
 
 export type SuiteRunCounts = {
     readonly discovered: number;

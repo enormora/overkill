@@ -1,4 +1,5 @@
 import type { Clock } from '@enormora/clock';
+import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
 import { createExecute, type Execute } from '../engine/execution.ts';
 import type { BenchmarkExecutionEnvironment } from '../engine/benchmark-environment.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
@@ -35,6 +36,7 @@ export async function createWorkerExecute(command: WorkerPoolCommand, wallClock:
         return await withReplayWire(command.replay, async function executeAssignment() {
             return await execute(plan, {
                 ...options,
+                outputRenderer: createPlainOutputRenderer(),
                 runtimePolicy: snapshotRuntimePolicy(options.runtimePolicy ?? null, command.snapshots),
                 propertyRun: {
                     corpus: wirePropertyCorpus(command.replay),

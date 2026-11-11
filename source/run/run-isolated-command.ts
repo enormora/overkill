@@ -28,6 +28,7 @@ type SupervisedCommandBase = {
     readonly replay: SupervisedRunCommand['replay'];
     readonly seed: string;
     readonly propertyPolicy: SupervisedRunCommand['propertyPolicy'];
+    readonly debug: RunRequest['debug'];
     readonly failureArtifacts: SupervisedRunCommand['failureArtifacts'];
     readonly retryPolicy: SupervisedRunCommand['retryPolicy'];
     readonly capabilityRestrictions: SupervisedRunCommand['capabilityRestrictions'];
@@ -141,6 +142,7 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         ...runCollectionContext(input.source, input.command.cwd),
         scheduling: resolveRunScheduling(input.command.request, input.profile),
         testFamily: input.profile.testFamily,
+        debug: input.command.request.debug,
         failureArtifacts: input.profile.failureArtifacts,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds
@@ -218,6 +220,7 @@ export function createWorkerPoolCommand(
         benchmarkNormalization: input.benchmarkNormalization,
         benchmarkGarbageCollection: input.profile.testFamily === 'benchmark' ? input.profile.garbageCollection : null,
         attachmentEndpoint: null,
+        debug: input.command.request.debug,
         failureArtifacts: input.profile.failureArtifacts,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
         collectionTimeoutMilliseconds: input.profile.timeouts.collectionMilliseconds,

@@ -295,6 +295,17 @@ export const testNode = suite('public execution session boundaries', [
         }
         return scope.assert.collect();
     }),
+    test('rejects persisted debug recording in memory sessions', async function (scope) {
+        const options = await sessionOptions('in-process', passingFiles);
+        const request = { ...options.command.policy.request, debug: { mode: 'all', selectors: [] } } as const;
+        scope.assert.throws(function rejectDebug() {
+            return orchestrator.createExecutionSession({
+                ...options,
+                command: { ...options.command, policy: { ...options.command.policy, request } }
+            });
+        }, { message: 'Memory execution sessions do not support persisted debug recording.' });
+        return scope.assert.collect();
+    }),
     test('resolves omitted seed values before execution', async function (scope) {
         const options = await sessionOptions('in-process', passingFiles);
         const session = orchestrator.createExecutionSession({

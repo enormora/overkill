@@ -55,6 +55,7 @@ async function verifySimulationReplay(scope: TestScope, shared: boolean): Promis
     };
     await writeFile(path.join(project.cwd, 'simulation.json'), JSON.stringify(witness));
     const result = await orchestrator.replayWitness({
+        debug: { mode: 'off', selectors: [] },
         cwd: project.cwd,
         config: project.command.config,
         signal: null,
