@@ -364,7 +364,6 @@ closes the preparation. Execution disposes family resources before final deliver
 cleanup failures remain in the failed result. Explicit disposal cancels and awaits
 active work, and is a no-op after engine cleanup. Prepare again for each rerun.
 
-
 Runtime families use ordinary body execution. Analysis families supply evidence
 through the engine and never invoke test bodies. Both use the same reporters.
 The top-level functions use the default engine.
