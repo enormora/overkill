@@ -460,23 +460,36 @@ function createInconclusiveCaseResult(
         durationMicroseconds
     }, { index: 0 });
 }
-function completeUnexpectedBodyError(input: CaseBodyInput, error: unknown): void {
-    const durationMicroseconds = Number(input.dependencies.wallClock.currentMonotonicMicroseconds) -
-        input.activeCase.startedAtMicroseconds;
-
-    completeFinishedActiveCase(input, {
-        result: createInconclusiveCaseResult(input.testCase, error, durationMicroseconds),
-        runnerErrors: [],
-        durationMicroseconds
+function isCancelledCompletion(input: CaseBodyInput, result: PerTestResult): boolean {
+    if (result.outcome?.kind !== 'fail') {
+        return result.verdict === 'pass';
+    }
+    return result.outcome.failures.every(function cancellationFailure(failure) {
+        return failure.kind === 'body-error' && failure.error.thrown === input.controller.signal.reason;
     });
 }
+
+function cancelledCaseResult(input: CaseBodyInput, executed: ConcurrentCase): ConcurrentCase {
+    if (!input.supervision.wasCancelled() || !isCancelledCompletion(input, executed.result)) {
+        return executed;
+    }
+    return {
+        ...executed,
+        result: createInconclusiveCaseResult(
+            input.testCase,
+            new Error('Family execution was cancelled.'),
+            executed.durationMicroseconds
+        )
+    };
+}
+
 async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<ConcurrentCase> {
     const removeFatalHandler = input.dependencies.globalErrorObserver.onFatalError(function completeCrashedCases() {
         completeActiveCasesAfterGlobalError(input.supervision, input.dependencies);
     });
 
     try {
-        const executedCase = await runCaseWithSoftTimeout(input);
+        const executedCase = cancelledCaseResult(input, await runCaseWithSoftTimeout(input));
         completeFinishedActiveCase(input, executedCase);
         return executedCase;
     } catch (error: unknown) {
@@ -488,7 +501,7 @@ async function runCaseBodyUnderSupervision(input: CaseBodyInput): Promise<Concur
             durationMicroseconds
         };
 
-        completeUnexpectedBodyError(input, error);
+        completeFinishedActiveCase(input, fallbackCase);
         return fallbackCase;
     } finally {
         removeFatalHandler();

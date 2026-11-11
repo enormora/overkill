@@ -379,13 +379,17 @@ must preserve these public lifetime and source-validation guarantees.
 
 Before ownership transfers to the engine, a backend that fails preparation must
 dispose its partial resources before rejecting. Once returned, the engine owns
-its `dispose` call. Collection failure disposes preparation automatically.
+its `dispose` call. Collection failure, including invalid selection, disposes preparation automatically.
 Execution always disposes it before `run-end` and final result delivery, including
 cancellation and reporting failure. `reporter.dispose` and terminal output
 cleanup remain engine-owned and run after final delivery under their existing
 contract. `Symbol.asyncDispose` handles abandoned
 preparations and is idempotent after engine cleanup. Disposal runs exactly once
-and is not skipped because the cancellation signal is aborted.
+and is not skipped because the cancellation signal is aborted. Explicit disposal
+while collection or execution is active invalidates the preparation, requests
+cooperative cancellation, and awaits active backend work before cleanup.
+After engine cleanup, explicit disposal does not throw cleanup failures again;
+execution retains those failures in its returned result.
 
 Invalid configuration and pre-execution setup failures reject `prepareFamily`
 or `collect` with an error and preserved cause. The runner maps them through its

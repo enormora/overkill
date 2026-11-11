@@ -59,6 +59,8 @@ export type ActiveCase = {
 };
 
 export type ExecutionSupervision = {
+    readonly cancel: () => void;
+    readonly wasCancelled: () => boolean;
     readonly lifecycle: CaseExecutionLifecycle | null;
     readonly acceptsNewCases: () => boolean;
     readonly closedBoundaryVerdict: () => PerTestResult['verdict'];
@@ -75,8 +77,19 @@ export function createExecutionSupervision(): ExecutionSupervision {
     const activeCases = new Map<string, ActiveCase>();
     const runnerErrors: ExecutionSupervision['runnerErrors'][number][] = [];
     let acceptsNewCases = true;
+    let cancelled = false;
 
     return {
+        cancel() {
+            cancelled = true;
+            acceptsNewCases = false;
+            for (const active of activeCases.values()) {
+                active.abort();
+            }
+        },
+        wasCancelled() {
+            return cancelled;
+        },
         lifecycle: currentCaseExecutionLifecycle(),
         acceptsNewCases() {
             return acceptsNewCases;

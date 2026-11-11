@@ -1,5 +1,8 @@
 import { isAbsolute } from 'node:path';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
+import { familyRunnerError } from './family-completion.ts';
+import type { RunnerError } from './run-result.ts';
+import { createFamilyLifetime, rejectWithFamilyCleanup, type FamilyLifetime } from './family-lifetime.ts';
 import type { ExecuteOptions } from './execution-options.ts';
 import { workIdentityKey } from './identity.ts';
 import { hasAttachedResourceDescriptors } from './test-body-resource-attachment.ts';
@@ -56,6 +59,7 @@ type FamilyExecution = {
     readonly family: DefinedTestFamily;
     readonly collection: FamilyCollection | null;
     readonly run: CollectedFamilyRun;
+    readonly lifetime: FamilyLifetime;
 };
 
 export type FamilyExecutionRequest = FamilyExecution & { readonly signal: AbortSignal; };
@@ -199,42 +203,53 @@ function collectPreparedFamily(
 ): PreparedFamilyRun {
     const preparationFacts = snapshotFamilyValue(preparation.facts);
     const preparedPlan = preparation.testPlan;
+    const lifetime = createFamilyLifetime(preparation.dispose.bind(preparation));
     return Object.freeze<PreparedFamilyRun>({
         [preparedBrand]: true,
         testPlan: preparedPlan,
-        async [asyncDispose]() {
-            await preparation.dispose();
-        },
+        [asyncDispose]: lifetime.abandon,
         async collect(input) {
-            const testPlan = selectCases(preparedPlan, input);
-            const workIds = Object.freeze(
-                testPlan
-                    .cases
-                    .filter(function executable(testCase) {
-                        return testCase.execution.kind !== 'skip';
+            lifetime.claim('prepared', 'collecting');
+            const signal = AbortSignal.any([ input.signal, lifetime.signal ]);
+            async function collect(): Promise<CollectedFamilyRun> {
+                signal.throwIfAborted();
+                const testPlan = selectCases(preparedPlan, input);
+                const workIds = Object.freeze(
+                    testPlan
+                        .cases
+                        .filter(function executable(testCase) {
+                            return testCase.execution.kind !== 'skip';
+                        })
+                        .map(function identity(testCase) {
+                            return testCase.workId;
+                        })
+                );
+                const collection = workIds.length === 0 ? null : await collectFamily(
+                    preparation,
+                    { workIds, signal },
+                    family.features.execution
+                );
+                const run = Object.freeze<CollectedFamilyRun>({
+                    [collectedBrand]: true,
+                    testPlan,
+                    facts: Object.freeze({
+                        id: family.id,
+                        version: family.version,
+                        settings,
+                        preparation: preparationFacts,
+                        collection: collection?.facts ?? null
                     })
-                    .map(function identity(testCase) {
-                        return testCase.workId;
-                    })
-            );
-            const collection = workIds.length === 0 ? null : await collectFamily(
-                preparation,
-                { workIds, signal: input.signal },
-                family.features.execution
-            );
-            const run = Object.freeze<CollectedFamilyRun>({
-                [collectedBrand]: true,
-                testPlan,
-                facts: Object.freeze({
-                    id: family.id,
-                    version: family.version,
-                    settings,
-                    preparation: preparationFacts,
-                    collection: collection?.facts ?? null
-                })
-            });
-            executions.set(run, { family, collection, run });
-            return run;
+                });
+                signal.throwIfAborted();
+                lifetime.collected();
+                executions.set(run, { family, collection, run, lifetime });
+                return run;
+            }
+            try {
+                return await lifetime.observe(collect);
+            } catch (error: unknown) {
+                return await rejectWithFamilyCleanup(error, lifetime);
+            }
         }
     });
 }
@@ -275,8 +290,7 @@ async function acceptPreparation(
     try {
         return requireIssuedPlan(preparation.testPlan, issued, complete);
     } catch (error: unknown) {
-        await preparation.dispose();
-        throw error;
+        return await rejectWithFamilyCleanup(error, createFamilyLifetime(preparation.dispose.bind(preparation)));
     }
 }
 
@@ -288,7 +302,9 @@ async function prepareFamilyRun<Settings extends FamilyValue>(
     const testPlan = snapshotPlan(request.testPlan);
     validatePreparationPlan(testPlan, testFamily);
     const settings = testFamily.parseSettings(request.settings);
+    request.signal.throwIfAborted();
     const backend = await testFamily.load();
+    request.signal.throwIfAborted();
     const issued = new WeakSet([ testPlan ]);
     const preparation = await backend.prepare({
         testPlan,
@@ -302,6 +318,7 @@ async function prepareFamilyRun<Settings extends FamilyValue>(
         }
     });
     return await acceptPreparation(preparation, issued, function accept() {
+        request.signal.throwIfAborted();
         return collectPreparedFamily(preparation, testFamily, settings, executions);
     });
 }
@@ -326,7 +343,20 @@ export function createFamilyRuns(ownsPlan: (plan: TestPlan) => boolean): FamilyR
             if (execution === undefined) {
                 throw new TypeError('Expected a collected family run from this engine.');
             }
-            return { ...execution, signal };
+            execution.lifetime.claim('collected', 'executing');
+            return { ...execution, signal: AbortSignal.any([ signal, execution.lifetime.signal ]) };
         }
     };
+}
+
+export async function disposeFamily(family: FamilyExecutionRequest | null): Promise<readonly RunnerError[]> {
+    const errors = await family?.lifetime.disposeOnce() ?? [];
+    return errors.map(familyRunnerError);
+}
+
+export async function rejectFamilyExecution(error: unknown, family: FamilyExecutionRequest | null): Promise<never> {
+    if (family !== null) {
+        return await rejectWithFamilyCleanup(error, family.lifetime);
+    }
+    throw error;
 }

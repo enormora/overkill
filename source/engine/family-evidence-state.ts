@@ -141,3 +141,26 @@ export function createFamilyEvidenceState(testPlan: TestPlan): FamilyEvidenceSta
         }
     };
 }
+
+export function completeFamilyResults(plan: TestPlan, results: readonly PerTestResult[]): readonly PerTestResult[] {
+    const completed = new Map(results.map(function byWork(result) {
+        return [ workIdentityKey(result.workId), result ];
+    }));
+    return plan.cases.map(function complete(testCase) {
+        const result = completed.get(workIdentityKey(testCase.workId));
+        if (result !== undefined) {
+            return result;
+        }
+        const outcome = testCase.execution.kind === 'skip'
+            ? { kind: 'skip' as const, reason: testCase.execution.reason }
+            : { kind: 'inconclusive' as const, reason: 'Family execution ended without complete evidence.' };
+        return singleAttemptResult({
+            id: testCase.id,
+            workId: testCase.workId,
+            definitionLocations: testCase.definitionLocations,
+            outcome,
+            verdict: outcome.kind,
+            durationMicroseconds: 0
+        }, { index: 0 });
+    });
+}
