@@ -7,7 +7,7 @@ import type { MergeResultsCommand, MergeResultsInput } from './merge-results-typ
 
 export type MergeSource = { readonly path: string; readonly record: MergeRecord; };
 
-export async function mergeInputOperation<Value>(path: string, operation: () => Promise<Value>): Promise<Value> {
+async function mergeInputOperation<Value>(path: string, operation: () => Promise<Value>): Promise<Value> {
     try {
         return await operation();
     } catch (error: unknown) {
