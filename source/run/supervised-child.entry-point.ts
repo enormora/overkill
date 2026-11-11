@@ -1,6 +1,6 @@
 import { createClock } from '@enormora/clock';
 import { createChildProcessOutbox } from './child-process-outbox.ts';
-import { supervisedParentMessageSchema } from './supervised-protocol-schema.ts';
+import { supervisedParentMessageSchema } from './supervised-parent-message-schema.ts';
 import {
     envelopeMessage
 } from './child-process-protocol.ts';

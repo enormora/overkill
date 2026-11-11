@@ -3,8 +3,7 @@ import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { frozenSupervisedCommandSchema, sessionSupervisedCommandSchema } from './frozen-supervised-command-schema.ts';
 import type {
     SupervisedChildCommand,
-    SupervisedAssignmentCommand,
-    SupervisedChildMessage
+    SupervisedAssignmentCommand
 } from './supervised-protocol.ts';
 import {
     supervisedCommandFields,
@@ -13,12 +12,8 @@ import {
 } from './run-command-schema.ts';
 import {
     assignedPropertyPoliciesSchema,
-    collectedRunPlanSchema,
     workloadInputsSchema
 } from './collected-run-plan-schema.ts';
-import { reporterEventSchema } from './reporter-event-schema.ts';
-import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
-import { processUsageSnapshotSchema, runTimingSpanSchema } from './run-runtime-schema.ts';
 import { attachmentEndpointSchema } from './attachment-wire-schema.ts';
 
 const commandSchema: z.ZodType<SupervisedChildCommand> = z.union([
@@ -46,16 +41,4 @@ const assignmentSchema: z.ZodType<SupervisedAssignmentCommand> = z.union([
 export const supervisedParentMessageSchema: z.ZodType<SupervisedAssignmentCommand | SupervisedChildCommand> = z.union([
     commandSchema,
     assignmentSchema
-]);
-export const supervisedChildMessageSchema: z.ZodType<SupervisedChildMessage> = z.discriminatedUnion('kind', [
-    z.strictObject({ kind: z.enum([ 'execution-data', 'execution-checkpoint' ]), data: z.json() }),
-    z.strictObject({
-        kind: z.literal('collected'),
-        collectedPlan: collectedRunPlanSchema,
-        runnerErrors: z.array(runnerErrorSchema)
-    }),
-    z.strictObject({ kind: z.literal('event'), event: reporterEventSchema }),
-    z.strictObject({ kind: z.literal('result'), result: runResultSchema }),
-    z.strictObject({ kind: z.literal('sample'), sample: processUsageSnapshotSchema }),
-    z.strictObject({ kind: z.literal('timing'), span: runTimingSpanSchema })
 ]);

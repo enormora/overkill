@@ -218,9 +218,9 @@ The engine validates plan ownership, identity, and expansion before exposing the
 preparation. Facts are immutable JSON. A backend may retain a compiler program,
 but it cannot place live handles in facts.
 
-Collection receives an ordered exact subset of prepared work IDs. Duplicates
-and unknown IDs are rejected before calling the backend. An empty subset is
-valid. Collection freezes selected assertion ownership and returns either runtime
+Collection receives an ordered exact subset of prepared work IDs. Empty selections,
+duplicates, and unknown IDs are rejected before calling the backend. The
+runner handles empty shards before engine collection. Collection freezes selected assertion ownership and returns either runtime
 work for the engine or analysis work for the supplied analysis executor. Its
 kind must match the definition's execution feature. Collection must not create
 new variants or evaluate case outcomes. The engine retains the selected plan;
@@ -255,8 +255,8 @@ validates case IDs, work IDs, attempt identity, and result completeness.
 
 The engine completes authored skipped work without body inspection. It omits
 skipped IDs from backend collection and execution while retaining them in the
-selected plan. Empty or entirely skipped selections bypass backend collection
-and analysis execution.
+selected plan. Entirely skipped selections bypass backend collection and
+analysis execution and have `null` collection facts.
 It must not invent successful completion for work interrupted by cancellation.
 Missing case-end evidence, duplicate events, unknown IDs, and contradictory
 outcomes become run errors. The engine synthesizes inconclusive results for
@@ -264,7 +264,8 @@ selected unfinished work and gives the run a failing exit status. It does not
 turn infrastructure failure into a failed type assertion or an intentional skip.
 
 The sink translates accepted events into ordinary reporter events and retains
-results in selected-plan order. Event arrival order may reflect analysis order;
+results in selected-plan order. Analysis artifacts use the common adapter
+artifact shape. Event arrival order may reflect analysis order;
 reporters receive actual starts, progress, and completions. A failing reporter
 is an engine-owned delivery error, not checker evidence. Backends await `report`
 to preserve ordering and backpressure. Background reports after execution settles

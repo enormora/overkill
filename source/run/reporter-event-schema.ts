@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { runnerErrorSchema } from '../engine/runner-error-schema.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import type { ReporterEvent } from '../engine/reporter.ts';
 import {
@@ -8,11 +9,10 @@ import {
     suitePathSchema,
     workIdSchema
 } from '../engine/identity-schema.ts';
-import { debugArtifactSchema } from './debug-artifact-schema.ts';
+import { testOutcomeSchema } from '../engine/assertion-result-schema.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
-import { runResultSchema, runnerErrorSchema } from './run-result-schema.ts';
-import { runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
-import { testOutcomeSchema } from './assertion-result-schema.ts';
+import { runResultSchema } from './run-result-schema.ts';
+import { debugArtifactSchema, runArtifactSchema, verdictSchema } from './run-artifact-schema.ts';
 import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
 const testFields = {

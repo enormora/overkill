@@ -1,3 +1,5 @@
+import { executeFamilyAnalysis } from './family-evidence.ts';
+import type { CollectedFamilyRun, FamilyExecuteOptions, FamilyExecutionRequest } from './family-run.ts';
 import type {
     ExecuteExecution as ExecuteExecutionDefinition,
     ExecuteOptions as ExecuteOptionsDefinition,
@@ -11,7 +13,7 @@ import {
     type ReporterDisposal
 } from './reporter-dispatcher.ts';
 import { reportRunnerErrors } from './runner-error-reporting.ts';
-import type { RunResult } from './run-result.ts';
+import type { RunArtifact, RunResult } from './run-result.ts';
 import type { TestPlan } from './test-plan.ts';
 import {
     withPreparedExecution,
@@ -29,6 +31,7 @@ type ExecuteRunInput = {
     readonly options: NormalizedExecuteOptions;
     readonly reporterDisposal: ReporterDisposal;
     readonly testPlan: TestPlan;
+    readonly family: FamilyExecutionRequest | null;
 };
 
 type ExecutionReportingContext = {
@@ -36,12 +39,41 @@ type ExecutionReportingContext = {
     readonly reporterDelivery: ReporterDelivery;
 };
 
-async function createRunResultBeforeRunEnd(
-    testPlan: TestPlan,
-    options: NormalizedExecuteOptions,
-    dependencies: PreparedExecution['dependencies'],
-    reporterDelivery: ReporterDelivery
-): Promise<RunResult> {
+type RuntimeWork = Awaited<ReturnType<typeof executeTestPlanCasesAndMeasureProcessUsage>>;
+type ExecutedWork = RuntimeWork & {
+    readonly executedTestPlan: RuntimeWork['executedTestPlan'] & { readonly artifacts: readonly RunArtifact[]; };
+};
+
+async function executeWork(input: ExecuteRunInput): Promise<ExecutedWork> {
+    const { family, testPlan, options, context: { dependencies, reporterDelivery } } = input;
+    if (family?.family.features.execution !== 'analysis') {
+        const runtime = await executeTestPlanCasesAndMeasureProcessUsage(
+            testPlan,
+            options,
+            dependencies,
+            reporterDelivery
+        );
+        return { ...runtime, executedTestPlan: { ...runtime.executedTestPlan, artifacts: [] } };
+    }
+    const analysisStarted = Number(dependencies.wallClock.currentMonotonicMicroseconds);
+    const evidence = await executeFamilyAnalysis(
+        testPlan,
+        reporterDelivery,
+        family.collection?.kind === 'analysis' ? family.collection.execute : null,
+        family.signal
+    );
+    return {
+        executedTestPlan: {
+            ...evidence,
+            testExecutionWallTimeMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds) -
+                analysisStarted
+        },
+        processUsage: null
+    };
+}
+
+async function createRunResultBeforeRunEnd(input: ExecuteRunInput): Promise<RunResult> {
+    const { testPlan, options, context: { dependencies, reporterDelivery } } = input;
     const startedAtMicroseconds = Number(dependencies.wallClock.currentMonotonicMicroseconds);
     const startErrors = await reporterDelivery.reportEvent({
         facts: options.runFacts,
@@ -53,12 +85,7 @@ async function createRunResultBeforeRunEnd(
         reporterDelivery,
         options.runtimePolicy?.takePendingRunErrors() ?? []
     );
-    const { executedTestPlan, processUsage } = await executeTestPlanCasesAndMeasureProcessUsage(
-        testPlan,
-        options,
-        dependencies,
-        reporterDelivery
-    );
+    const { executedTestPlan, processUsage } = await executeWork(input);
     const finalRuntimePolicyErrors = await reportRunnerErrors(
         reporterDelivery,
         options.runtimePolicy?.takeRunErrors() ?? []
@@ -75,22 +102,18 @@ async function createRunResultBeforeRunEnd(
         ...finalGlobalErrorObserverErrors
     ];
 
-    return createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
+    const result = createRunResult(testPlan, executedTestPlan.perTest, reporterErrors, {
         completedAtMicroseconds: Number(dependencies.wallClock.currentMonotonicMicroseconds),
         planStatus: 'planned',
         processUsage,
         startedAtMicroseconds,
         testExecutionWallTimeMicroseconds: executedTestPlan.testExecutionWallTimeMicroseconds
     });
+    return { ...result, artifacts: [ ...result.artifacts, ...executedTestPlan.artifacts ] };
 }
 
 async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
-    const result = await createRunResultBeforeRunEnd(
-        input.testPlan,
-        input.options,
-        input.context.dependencies,
-        input.context.reporterDelivery
-    );
+    const result = await createRunResultBeforeRunEnd(input);
 
     input.context.dependencies.globalErrorObserver.stop();
     input.context.dependencies.asyncLeakMonitor.stop();
@@ -107,9 +130,23 @@ async function executeRun(input: ExecuteRunInput): Promise<RunResult> {
     return appendRunnerErrors(resultForFinalReporting, [ ...finalReporterErrors, ...disposeErrors ]);
 }
 
-export type Execute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
+export type RuntimeExecute = (testPlan: TestPlan, options?: ExecuteOptions) => Promise<RunResult>;
 
-async function executeWithReporterDelivery(prepared: PreparedExecution, testPlan: TestPlan): Promise<RunResult> {
+export type Execute = {
+    (run: CollectedFamilyRun, options: FamilyExecuteOptions): Promise<RunResult>;
+    (testPlan: TestPlan, options?: ExecuteOptions): Promise<RunResult>;
+};
+
+export type ExecutionDriver = (
+    input: FamilyExecutionRequest | TestPlan,
+    options?: ExecuteOptions
+) => Promise<RunResult>;
+
+async function executeWithReporterDelivery(
+    prepared: PreparedExecution,
+    testPlan: TestPlan,
+    family: FamilyExecutionRequest | null
+): Promise<RunResult> {
     const reporterDelivery = await prepared.dependencies.reporterDispatcher.createDelivery(
         prepared.options.reporters,
         prepared.options.outputRenderer
@@ -121,7 +158,8 @@ async function executeWithReporterDelivery(prepared: PreparedExecution, testPlan
                 context: { dependencies: prepared.dependencies, reporterDelivery },
                 options: prepared.options,
                 reporterDisposal,
-                testPlan
+                testPlan,
+                family
             });
         });
     } catch (error: unknown) {
@@ -129,10 +167,72 @@ async function executeWithReporterDelivery(prepared: PreparedExecution, testPlan
     }
 }
 
-export function createExecute(dependencies: ExecuteDependencies): Execute {
-    return async function execute(testPlan, options) {
-        return await withPreparedExecution(dependencies, options, testPlan, async function executePrepared(prepared) {
-            return await executeWithReporterDelivery(prepared, testPlan);
-        });
+function validateAnalysisOptions(options: ExecuteOptions): void {
+    const runtimePolicies = [
+        options.runtimePolicy,
+        options.timeoutPolicy,
+        options.processBudgets,
+        options.processUsageTracker
+    ];
+    if (
+        runtimePolicies.some(function enabled(value) {
+            return value !== null && value !== undefined;
+        }) || Object.hasOwn(options, 'propertyRun')
+    ) {
+        throw new TypeError('Analysis execution does not support runtime execution policy.');
+    }
+}
+
+function familyExecuteOptions(family: FamilyExecutionRequest, options: ExecuteOptions | undefined): ExecuteOptions {
+    if (options === undefined) {
+        throw new TypeError('Collected family execution requires execution options.');
+    }
+    const { features } = family.family;
+    if (options.retryPolicy !== null && !features.profileOptions.includes('retries')) {
+        throw new TypeError('The selected family does not support retries.');
+    }
+    if (features.execution === 'analysis') {
+        validateAnalysisOptions(options);
+    }
+    return { ...options, runFacts: { ...options.runFacts, family: family.run.facts } };
+}
+
+function isFamilyExecution(input: FamilyExecutionRequest | TestPlan): input is FamilyExecutionRequest {
+    return Object.hasOwn(input, 'run');
+}
+
+const ordinaryFamilies: ReadonlySet<string | null> = new Set([
+    null,
+    'microtest',
+    'integration',
+    'property',
+    'benchmark'
+]);
+
+function validateRuntimePlan(plan: TestPlan): void {
+    for (const testCase of plan.cases) {
+        if (testCase.execution.kind !== 'skip' && !ordinaryFamilies.has(testCase.testFamily)) {
+            throw new TypeError(`Case requires explicit preparation for family "${testCase.testFamily}".`);
+        }
+    }
+}
+
+export function createExecute(dependencies: ExecuteDependencies): ExecutionDriver {
+    return async function execute(input, options) {
+        const { family, testPlan } = isFamilyExecution(input)
+            ? { family: input, testPlan: input.run.testPlan }
+            : { family: null, testPlan: input };
+        if (family === null) {
+            validateRuntimePlan(testPlan);
+        }
+        const resolvedOptions = family === null ? options : familyExecuteOptions(family, options);
+        return await withPreparedExecution(
+            dependencies,
+            resolvedOptions,
+            testPlan,
+            async function executePrepared(prepared) {
+                return await executeWithReporterDelivery(prepared, testPlan, family);
+            }
+        );
     };
 }

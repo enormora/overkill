@@ -15,9 +15,11 @@ import {
     createWorkloadTestCase,
     createTestPlan,
     createTestPlanFromTestFiles,
+    defineTestFamily,
     execute,
     formatCaseId,
     ownsTestNode,
+    prepareFamily,
     serializeValue,
     type Engine,
     type RunResult,
@@ -210,12 +212,74 @@ async function executeSmokePlan(engine: Engine): Promise<RunResult> {
     return engine.execute(engine.createTestPlan(root));
 }
 
+const smokeRuntimeFamily = defineTestFamily({
+    id: '@example/package-smoke',
+    version: '1',
+    module: null,
+    features: { execution: 'runtime', processModels: [ 'in-process' ], profileOptions: [] },
+    parseSettings() {
+        return null;
+    },
+    async load() {
+        return {
+            async prepare({ testPlan }) {
+                return {
+                    testPlan,
+                    facts: null,
+                    async collect() {
+                        return { kind: 'runtime', facts: null };
+                    },
+                    async dispose() {
+                        return undefined;
+                    }
+                };
+            }
+        };
+    }
+});
+
 export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     title: 'package smoke',
     annotations: {},
     controls: {},
     children: [
+        createTestCase({
+            title: 'packaged engine prepares and executes a family through top-level exports',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            async body(scope) {
+                const testPlan = createTestPlan(createSmokeRoot([ createSkippedTestCase({
+                    title: 'planned skip',
+                    annotations: {},
+                    controls: {},
+                    definitionLocations: [ { kind: 'unknown' } ],
+                    reason: 'smoke case'
+                }) ]));
+                const controller = new AbortController();
+                const { signal } = controller;
+                await using prepared = await prepareFamily({
+                    testPlan,
+                    testFamily: smokeRuntimeFamily,
+                    settings: null,
+                    projectRoot: process.cwd(),
+                    signal
+                });
+                const collected = await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
+                const result = await execute(collected, {
+                    debug: { mode: 'off' },
+                    signal,
+                    execution: { mode: 'serial-in-process' },
+                    retryPolicy: null,
+                    reporters: [],
+                    runFacts: {},
+                    startedAt: '2026-01-01T00:00:00.000Z'
+                });
+                scope.assert.equal(result.summary.skipped, 1);
+                return scope.assert.collect();
+            }
+        }),
         createTestCase({
             title: 'packaged engine parses simulation witnesses',
             annotations: {},
@@ -258,7 +322,8 @@ export const testNode = createSuite({
                     createTestPlanFromTestFiles,
                     execute,
                     formatCaseId,
-                    ownsTestNode
+                    ownsTestNode,
+                    prepareFamily
                 };
 
                 const definedBefore = createTestPlan(createSmokeRoot([ testNode ])).defined;

@@ -1,6 +1,6 @@
 import type { Clock } from '@enormora/clock';
 import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
-import { createExecute, type Execute, type ExecuteDependencies } from '../engine/execution.ts';
+import { createExecute, type RuntimeExecute, type ExecuteDependencies } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter, type DefinedReporter } from '../engine/reporter.ts';
 import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
@@ -59,7 +59,7 @@ async function supervisedBenchmarkEnvironment(
 export async function createSupervisedChildExecute(
     wallClock: Clock,
     command: SupervisedExecutionCommand
-): Promise<Execute> {
+): Promise<RuntimeExecute> {
     const benchmarkEnvironment = await supervisedBenchmarkEnvironment(command);
     const execute = createExecute({
         benchmarkEnvironment,

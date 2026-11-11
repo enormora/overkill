@@ -1,4 +1,4 @@
-import { supervisedParentMessageSchema } from '../run/supervised-protocol-schema.ts';
+import { supervisedParentMessageSchema } from '../run/supervised-parent-message-schema.ts';
 import type { RunnerError } from '../packages/engine/engine.entry-point.ts';
 import type { ProcessUsageSnapshot } from '../engine/process-usage.ts';
 import {

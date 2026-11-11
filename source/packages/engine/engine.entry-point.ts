@@ -14,8 +14,6 @@ import type {
     WorkloadTestCaseOptions
 } from '../../engine/test-node.ts';
 
-export type { TestRandom } from '../../engine/test-scope.ts';
-
 export type {
     AttachmentMetadata,
     AttachmentWriter,
@@ -40,8 +38,6 @@ export type {
     PropertyBodyDefinition,
     PropertyPolicyResolution
 } from '../../engine/property-node.ts';
-export type { PropertyTestCaseExecution } from '../../engine/test-node.ts';
-export type { PropertyTestCaseOptions } from '../../engine/test-node.ts';
 
 export function createPropertyTestCase(options: PropertyTestCaseOptions): ReturnType<Engine['createPropertyTestCase']> {
     return defaultEngine.createPropertyTestCase(options);
@@ -55,7 +51,6 @@ export function createBenchmarkTestCase(
 
 export { attachBenchmarkCalibrationBody, readBenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
 export type { BenchmarkCalibrationBody } from '../../engine/benchmark-node.ts';
-export type { BenchmarkBody, BenchmarkScope, BenchmarkTestCaseOptions } from '../../engine/test-node.ts';
 export { maximumRetainedSamples, minimumInferentialSamples } from '../../engine/benchmark-limits.ts';
 export { benchmarkLifecycleVersion } from '../../engine/benchmark-result.ts';
 export { resolveBenchmarkGarbageCollection } from '../../engine/benchmark-garbage-collection.ts';
@@ -125,12 +120,16 @@ export function createTestPlanFromTestFiles(
     return defaultEngine.createTestPlanFromTestFiles(options);
 }
 
-export async function execute(
-    testPlan: Parameters<Engine['execute']>[0],
-    options?: Parameters<Engine['execute']>[1]
-): ReturnType<Engine['execute']> {
-    return await defaultEngine.execute(testPlan, options);
-}
+export const execute: Engine['execute'] = defaultEngine.execute;
+export const prepareFamily: Engine['prepareFamily'] = defaultEngine.prepareFamily;
+
+export type {
+    CollectedFamilyRun,
+    FamilyExecuteOptions,
+    FamilyRunFacts,
+    PrepareFamilyRequest,
+    PreparedFamilyRun
+} from '../../engine/family-run.ts';
 
 export function ownsTestNode(value: unknown): value is TestNode {
     return defaultEngine.ownsTestNode(value);
@@ -168,23 +167,29 @@ export type {
     RuntimeScenarioBindings,
     TestId,
     WorkId,
-    WorkloadId
+    WorkloadId,
+    AttemptId,
+    TestFamilyId
 } from '../../engine/identity.ts';
-export type {
-    DefinedReporter,
-    DirectorySinkDeclaration,
-    FileSinkDeclaration,
-    FinalResultReporter,
-    MemorySinkDeclaration,
-    ManagedStandardOutputSinkDeclaration,
-    RealTimeReporter,
-    Reporter,
-    ReporterEvent,
-    RunFacts,
-    SinkDeclaration,
-    RawStandardOutputSinkDeclaration,
-    StandardOutputSinkDeclaration,
-    StreamSinkDeclaration
+export {
+    type DefinedReporter,
+    type DirectorySinkDeclaration,
+    type FileSinkDeclaration,
+    type FinalResultReporter,
+    type MemorySinkDeclaration,
+    type ManagedStandardOutputSinkDeclaration,
+    type RealTimeReporter,
+    type Reporter,
+    type ReporterEvent,
+    type RunFacts,
+    type SinkDeclaration,
+    type RawStandardOutputSinkDeclaration,
+    type StandardOutputSinkDeclaration,
+    type StreamSinkDeclaration,
+    defineReporter,
+    isReporter,
+    ReporterSinkConflictError,
+    validateReporterSinks
 } from '../../engine/reporter.ts';
 export type { ReporterDispatcher, ReporterDispatcherDependencies } from '../../engine/reporter-dispatcher.ts';
 export type { ReportingContext } from '../../engine/reporting-context.ts';
@@ -194,12 +199,6 @@ export {
     formatSourceLocation,
     relativizeSourceLocationPath
 } from '../../engine/reporting-context.ts';
-export {
-    defineReporter,
-    isReporter,
-    ReporterSinkConflictError,
-    validateReporterSinks
-} from '../../engine/reporter.ts';
 export {
     createPlainOutputRenderer,
     defineOutputRenderer,
@@ -307,35 +306,40 @@ export type {
     InstanceOfAssertionNode,
     TypeAssertionNode
 } from '../../assertion-protocol/assertions/type-shape.ts';
-export type {
-    AssertionTestFailure,
-    BodyErrorTestFailure,
-    CaseRunnerErrorOptions,
-    CoverageRunnerError,
-    FailOutcome,
-    HedgedDuplicateConflictFailure,
-    InconclusiveOutcome,
-    OrphanedNode,
-    PassOutcome,
-    PerTestResult,
-    TestAttemptResult,
-    RetrySummary,
-    RunPlanStatus,
-    RunResult,
-    RunnerError,
-    RunSummary,
-    SkipOutcome,
-    SuiteRunCounts,
-    TestContractFailure,
-    TestFailure,
-    TestOutcome,
-    HedgedConflictArtifact,
-    HedgedConflictArtifactPayload,
-    HedgedConflictEvidence,
-    RunArtifact,
-    PermissionDeniedRunnerError,
-    PermissionDeniedRunnerErrorCause,
-    PropertyCaseEvidence
+export {
+    type AssertionTestFailure,
+    type BodyErrorTestFailure,
+    type CaseRunnerErrorOptions,
+    type CoverageRunnerError,
+    type FailOutcome,
+    type HedgedDuplicateConflictFailure,
+    type InconclusiveOutcome,
+    type OrphanedNode,
+    type PassOutcome,
+    type PerTestResult,
+    type TestAttemptResult,
+    type RetrySummary,
+    type RunPlanStatus,
+    type RunResult,
+    type RunnerError,
+    type RunSummary,
+    type SkipOutcome,
+    type SuiteRunCounts,
+    type TestContractFailure,
+    type TestFailure,
+    type TestOutcome,
+    type HedgedConflictArtifact,
+    type HedgedConflictArtifactPayload,
+    type HedgedConflictEvidence,
+    type RunArtifact,
+    type PermissionDeniedRunnerError,
+    type PermissionDeniedRunnerErrorCause,
+    type PropertyCaseEvidence,
+    CaseRunnerError,
+    isCaseRunnerError,
+    isPermissionDeniedRunnerError,
+    singleAttemptResult,
+    isTestDebugArtifact
 } from '../../engine/run-result.ts';
 export type { ProcessUsageSnapshot, RunProcessUsage, RunProcessUsageTracker } from '../../engine/process-usage.ts';
 export type {
@@ -350,7 +354,6 @@ export type {
     TestDebugArtifact
 } from '../../engine/run-artifact.ts';
 
-export type { AttemptId } from '../../engine/identity.ts';
 export type { TestRetryPolicy } from '../../engine/retry-policy.ts';
 export type {
     AmbientNoiseEstimate,
@@ -376,6 +379,11 @@ export type {
     RequireAssertionNode
 } from '../../assertion-protocol/assertion-node.ts';
 export type {
+    PropertyTestCaseExecution,
+    PropertyTestCaseOptions,
+    BenchmarkBody,
+    BenchmarkScope,
+    BenchmarkTestCaseOptions,
     BuilderTestCaseExecution,
     RootOptions,
     BodyTestCaseExecution,
@@ -401,6 +409,7 @@ export type {
     ThrowingTestCaseOptions
 } from '../../engine/test-node.ts';
 export type {
+    TestRandom,
     TestScopeAssertContext,
     TestBody,
     TestScope,
@@ -414,11 +423,6 @@ export {
     hasTestBodyResourceAttachments,
     readTestBodyResourceAttachments
 } from '../../engine/test-body-resource-attachment.ts';
-export {
-    CaseRunnerError,
-    isCaseRunnerError,
-    isPermissionDeniedRunnerError
-} from '../../engine/run-result.ts';
 
 export type {
     ResourceAttachedTestBody,
@@ -498,7 +502,6 @@ export type {
 } from '../../engine/witness-file.ts';
 
 export { createRunResult } from '../../engine/execution-result.ts';
-export { singleAttemptResult } from '../../engine/run-result.ts';
 
 export { isTestControlError } from '../../engine/test-control-error.ts';
 
@@ -520,8 +523,6 @@ export type {
     FamilyAnalysisContext
 } from '../../engine/test-family.ts';
 
-export type { TestFamilyId } from '../../engine/identity.ts';
-
 export { inconclusivePropertyTrial } from '../../engine/property-inconclusive.ts';
 
 export { defaultFailureArtifactPolicy, type FailureArtifactPolicy } from '../../engine/failure-artifact-policy.ts';
@@ -533,5 +534,3 @@ export type {
     TimelineEntry,
     DebugStats
 } from '../../engine/test-debug.ts';
-
-export { isTestDebugArtifact } from '../../engine/run-result.ts';

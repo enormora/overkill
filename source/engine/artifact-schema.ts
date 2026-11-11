@@ -5,8 +5,8 @@ import {
     caseIdSchema,
     runtimeIdSchema,
     workloadIdSchema
-} from '../engine/identity-schema.ts';
-import { runArtifactSubtypes } from '../engine/run-artifact.ts';
+} from './identity-schema.ts';
+import { runArtifactSubtypes } from './run-artifact.ts';
 
 export const artifactIdentityFields = {
     familyVariant: familyVariantSchema.default(null),
@@ -33,3 +33,9 @@ export const runArtifactIdSchema = z.union([
         })
     })
 ]);
+
+export const adapterArtifactSchema = z.strictObject({
+    id: runArtifactIdSchema.and(z.object({ subtype: z.literal('adapter') })),
+    payload: z.strictObject({ kind: z.literal('adapter'), adapter: z.string(), facts: z.json() }),
+    source: z.literal('native')
+});

@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 import { boundaryUsageSampleLimit, type BoundaryFailureArtifact } from '../engine/run-artifact.ts';
 import { attemptIdSchema, workIdSchema } from '../engine/identity-schema.ts';
-import { runArtifactIdSchema } from './run-artifact-id-schema.ts';
+import { runArtifactIdSchema } from '../engine/artifact-schema.ts';
 import { processUsageSnapshotSchema } from './run-runtime-schema.ts';
 
 const evidence = {

@@ -6,7 +6,17 @@ import type { WorkId, TestFamilyId } from './identity.ts';
 import type { PerTestResult, RunArtifact, RunnerError } from './run-result.ts';
 
 const familyBrand: unique symbol = Symbol('TestFamily');
-const definitions = new WeakSet();
+const familyDefinitionsKey = Symbol.for('@overkill-dev/engine/TestFamilyDefinitions');
+
+function familyDefinitions(): WeakSet<DefinedTestFamily> {
+    const existing: unknown = Reflect.get(globalThis, familyDefinitionsKey);
+    if (existing instanceof WeakSet) {
+        return existing;
+    }
+    const definitions = new WeakSet<DefinedTestFamily>();
+    Reflect.set(globalThis, familyDefinitionsKey, definitions);
+    return definitions;
+}
 type FamilyScalar = boolean | number | string | null;
 type FamilyArray = readonly FamilyValue[];
 type FamilyRecord = { readonly [key: string]: FamilyValue; };
@@ -135,11 +145,22 @@ function validateFamilyValue(value: unknown): void {
     });
 }
 
-function freezeSettings(value: FamilyValue): void {
+function freezeFamilyValue(value: FamilyValue): void {
     if (typeof value === 'object' && value !== null) {
-        Object.values(value).forEach(freezeSettings);
+        Object.values(value).forEach(freezeFamilyValue);
         Object.freeze(value);
     }
+}
+
+export function snapshotFamilyValue<Value extends FamilyValue>(value: Value): Value {
+    try {
+        snapshotValidatedJson(value, validateFamilyValue);
+    } catch (error: unknown) {
+        throw new TypeError('Family settings require lossless, acyclic JSON.', { cause: error });
+    }
+    const snapshot = structuredClone(value);
+    freezeFamilyValue(snapshot);
+    return snapshot;
 }
 
 const metadataSchema = z.object({
@@ -166,7 +187,8 @@ const metadataSchema = z.object({
 });
 
 export function isDefinedTestFamily(value: unknown): value is DefinedTestFamily {
-    return typeof value === 'object' && value !== null && definitions.has(value);
+    const definitions: unknown = Reflect.get(globalThis, familyDefinitionsKey);
+    return definitions instanceof WeakSet && typeof value === 'object' && value !== null && definitions.has(value);
 }
 
 export function defineTestFamily<Settings extends FamilyValue>(
@@ -190,17 +212,10 @@ export function defineTestFamily<Settings extends FamilyValue>(
         }),
         parseSettings(input) {
             const parsed = parse(input);
-            try {
-                snapshotValidatedJson(parsed, validateFamilyValue);
-            } catch (error: unknown) {
-                throw new TypeError('Family settings require lossless, acyclic JSON.', { cause: error });
-            }
-            const settings = structuredClone(parsed);
-            freezeSettings(settings);
-            return settings;
+            return snapshotFamilyValue(parsed);
         },
         load
     };
-    definitions.add(family);
+    familyDefinitions().add(family);
     return Object.freeze(family);
 }

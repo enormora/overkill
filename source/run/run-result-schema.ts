@@ -1,38 +1,14 @@
 import { z } from 'zod/v4';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
-import { attemptIdSchema, caseIdSchema, sourceLocationsSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { sourceLocationsSchema, caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
+import { testOutcomeSchema } from '../engine/assertion-result-schema.ts';
+import { runnerErrorSchema } from '../engine/runner-error-schema.ts';
 import type { RunnerResult } from './run-types.ts';
 import { propertyEvidenceSchema } from './property-evidence-schema.ts';
-import { testOutcomeSchema } from './assertion-result-schema.ts';
 import { runArtifactSchema, testAttemptSchema, verdictSchema } from './run-artifact-schema.ts';
 import { processUsageSchema, runTimingsSchema } from './run-runtime-schema.ts';
 import { benchmarkResultSchema } from './benchmark-result-schema.ts';
 
-export const runnerErrorSchema: z.ZodType<RunnerError> = z.strictObject({
-    attributedToAttempt: attemptIdSchema.nullable(),
-    attributedTo: caseIdSchema.nullable(),
-    attributedToWork: workIdSchema.nullable().default(null),
-    cause: z.unknown(),
-    diagnostics: z.array(z.strictObject({ label: z.string(), value: z.string() })),
-    message: z.string(),
-    subtype: z.enum([
-        'artifact',
-        'attribution-drift',
-        'coverage',
-        'crash',
-        'fixture',
-        'loader',
-        'measurement',
-        'permission',
-        'reporter',
-        'process-exhaustion',
-        'runtime-state',
-        'witness-replay',
-        'runtime-policy',
-        'uncaught-exception',
-        'unhandled-rejection'
-    ])
-});
 const diagnosticFields = {
     artifacts: z.array(runArtifactSchema),
     perTest: z.array(z.strictObject({
