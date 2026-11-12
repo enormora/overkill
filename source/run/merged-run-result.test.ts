@@ -12,6 +12,27 @@ export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     children: [
         createTestCase({
+            title: 'retains empty-selection failure when every shard selected no tests',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            body(scope) {
+                const first = mergeRecordFixture('first', 1, 0);
+                const second = mergeRecordFixture('second', 2, 0);
+                const result = mergedRunResult([ {
+                    path: '/first',
+                    record: { ...first, result: { ...first.result, planStatus: 'empty-shard' } }
+                }, {
+                    path: '/second',
+                    record: { ...second, result: { ...second.result, planStatus: 'empty-selection' } }
+                } ]);
+                scope.assert.equal(result.planStatus, 'empty-selection');
+                scope.assert.equal(result.status, 'failed');
+                scope.assert.equal(result.summary.planned, 0);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
             title: 'retains serialized error causes and failed status',
             annotations: {},
             controls: {},

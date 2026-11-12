@@ -1,12 +1,16 @@
-import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, mkdtempDisposable, writeFile, mkdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { mergeRecordFixture } from '../test-support/merge-record-fixture.ts';
 import { createSuite, createTestCase } from '../packages/engine/engine.entry-point.ts';
 import { defaultRunConfig } from '../test-support/run-command-factory.ts';
-import { mergeResults } from '../packages/run/run.entry-point.ts';
-import type { NormalizedConfig } from '../config/types.ts';
+import {
+    mergeResults,
+    RunCollectionError,
+    RunResolutionError,
+    type NormalizedConfig
+} from '../packages/run/run.entry-point.ts';
 import { mergeResultsCommand } from './merge-results-command.ts';
 
 async function populateMergeDirectory(directory: string): Promise<void> {
@@ -101,6 +105,98 @@ export const testNode = createSuite({
                 } finally {
                     await rm(directory, { recursive: true, force: true });
                 }
+            }
+        }),
+        createTestCase({
+            title: 'preserves invalid-request errors when an operand has the wrong kind',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            async body(scope) {
+                await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merge-kind-'));
+                await writeFile(join(directory.path, 'record.json'), JSON.stringify(mergeRecordFixture('first', 1, 2)));
+                for (
+                    const input of [
+                        { kind: 'file', path: '.' },
+                        { kind: 'directory', path: 'record.json' }
+                    ] as const
+                ) {
+                    await scope.assert.rejects(async function () {
+                        return await mergeResults({
+                            config: defaultRunConfig({}),
+                            cwd: directory.path,
+                            inputs: [ input ]
+                        });
+                    }, {
+                        type: RunResolutionError,
+                        message: `Merge input is not a ${input.kind}: ${join(directory.path, input.path)}`
+                    });
+                }
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            title: 'rejects directories without direct JSON records',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            async body(scope) {
+                await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merge-empty-'));
+                await writeFile(join(directory.path, 'notes.txt'), 'not a run record');
+                await scope.assert.rejects(async function () {
+                    return await mergeResults({
+                        config: defaultRunConfig({}),
+                        cwd: directory.path,
+                        inputs: [ { kind: 'directory', path: '.' } ]
+                    });
+                }, {
+                    type: RunResolutionError,
+                    message: 'Merge results requires at least one run-record file.'
+                });
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            title: 'reports malformed records as collection errors with the input path',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            async body(scope) {
+                await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merge-invalid-'));
+                const file = join(directory.path, 'record.json');
+                await writeFile(file, '{');
+                await scope.assert.rejects(async function () {
+                    return await mergeResults({
+                        config: defaultRunConfig({}),
+                        cwd: directory.path,
+                        inputs: [ { kind: 'file', path: 'record.json' } ]
+                    });
+                }, { type: RunCollectionError, message: `Cannot read merge input: ${await realpath(file)}` });
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
+            title: 'orders equal shard indices by canonical input path',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            async body(scope) {
+                await using directory = await mkdtempDisposable(join(tmpdir(), 'overkill-merge-order-'));
+                await writeFile(join(directory.path, 'b.json'), JSON.stringify(mergeRecordFixture('second', 1, 3)));
+                await writeFile(join(directory.path, 'a.json'), JSON.stringify(mergeRecordFixture('first', 1, 2)));
+                const merged = await mergeResults({
+                    config: defaultRunConfig({}),
+                    cwd: directory.path,
+                    inputs: [ { kind: 'file', path: 'b.json' }, { kind: 'file', path: 'a.json' } ]
+                });
+                scope.assert.deepEqual(
+                    merged.lineage.map(function identity(source) {
+                        return source.id;
+                    }),
+                    [ 'first', 'second' ]
+                );
+                scope.assert.equal(merged.result.summary.passed, 5);
+                return scope.assert.collect();
             }
         }),
         createTestCase({
