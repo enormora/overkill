@@ -4,6 +4,7 @@ import type {
     BenchmarkOrchestrator,
     FreezePolicyInput,
     FrozenMicrotestPolicy,
+    ConfiguredRunCommand,
     FrozenRunCommand,
     ResolvedRun,
     RunCommandInput,
@@ -21,11 +22,14 @@ describe('public runner invocation', function () {
             (input: FreezePolicyInput) => Promise<FrozenMicrotestPolicy>
         >();
         expect<typeof orchestrator.resolve>().type.toBe<
-            (command: FrozenRunCommand | RunCommandInput, options?: RunInvocationTimingOptions) => Promise<ResolvedRun>
+            (
+                command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput,
+                options?: RunInvocationTimingOptions
+            ) => Promise<ResolvedRun>
         >();
         expect<typeof orchestrator.run>().type.toBe<
             (
-                command: FrozenRunCommand | RunCommandInput,
+                command: ConfiguredRunCommand | FrozenRunCommand | RunCommandInput,
                 options?: RunInvocationOptions | RunInvocationTimingOptions
             ) => Promise<RunnerResult>
         >();
