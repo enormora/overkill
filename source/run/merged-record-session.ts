@@ -1,6 +1,6 @@
 import { createClock } from '@enormora/clock';
 import { createReporterDispatcher, type ReporterDelivery } from '../engine/reporter-dispatcher.ts';
-import { createBriefFinalResultReporter } from '../packages/reporter-brief/reporter-brief.entry-point.ts';
+import { createBriefFinalResultReporter } from '../reporters/brief-final-result-reporter.ts';
 import { createMergedRecordStorage } from './merged-record-storage.ts';
 import { maintainHistory } from './history-maintenance.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
