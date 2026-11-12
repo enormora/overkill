@@ -8,6 +8,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { createPermissionDenialRuntimePolicy } from './capability-policy.ts';
 import { RunCollectionError } from './run-errors.ts';
+import { permissionAuditEnabled } from './permission-denial-runtime-policy.ts';
 
 type PermissionDiagnosticChannel = { readonly publish: (message: unknown) => void; };
 
@@ -83,6 +84,25 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'permission audit mode follows Node option quoting and command-line precedence',
+            annotations: {},
+            controls: {},
+            body(scope: OverkillScope) {
+                scope.assert.false(permissionAuditEnabled([], ''));
+                scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], ''));
+                scope.assert.true(permissionAuditEnabled([], '"--permission-audit" --trace-warnings'));
+                scope.assert.true(permissionAuditEnabled([ '--permission_audit=false' ], ''));
+                scope.assert.false(permissionAuditEnabled([ '--no-permission-audit' ], '--permission-audit'));
+                scope.assert.true(permissionAuditEnabled([ '--permission-audit' ], '--no-permission-audit'));
+                scope.assert.false(permissionAuditEnabled([ '--permission-audit', '--no-permission-audit' ], ''));
+                scope.assert.false(permissionAuditEnabled([], '--title="example --permission-audit"'));
+                scope.assert.false(permissionAuditEnabled([], '--title="example \\" --permission-audit"'));
+
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'permission denial runtime policy records run-scope Node permission diagnostics',

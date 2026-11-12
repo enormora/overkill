@@ -157,6 +157,7 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
     node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
+    node target/build/source/integration-tests/package-smoke/test-binary-permissions.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules

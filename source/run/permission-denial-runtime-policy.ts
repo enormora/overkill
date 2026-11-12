@@ -2,11 +2,13 @@ import diagnosticsChannel from 'node:diagnostics_channel';
 import { workIdentityKey } from '../engine/identity.ts';
 import {
     permissionDeniedRunnerErrorFromDiagnostic,
+    type PermissionDeniedRunnerError,
     type PermissionDeniedRunnerErrorPhase,
     type RunnerError
 } from '../engine/run-result.ts';
 import { createExecutionObservation, type ExecutionObservation } from '../engine/execution-observation.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
+import { readProcessEnvironment } from './node-host-readers.ts';
 
 const permissionDiagnosticsCapabilities: Readonly<Record<string, string>> = {
     'node:permission-model:child': 'child-process',
@@ -19,8 +21,31 @@ const permissionDiagnosticsCapabilities: Readonly<Record<string, string>> = {
     'node:permission-model:worker': 'worker'
 };
 
+export function permissionAuditEnabled(nodeArguments: readonly string[], nodeOptions: string): boolean {
+    const environmentArguments = (nodeOptions.match(/(?:[^ "]|"(?:[^"\\]|\\.)*")+/gu) ?? [])
+        .map(function unquoteArgument(argument) {
+            return argument.replaceAll(/"(?<value>(?:[^"\\]|\\.)*)"/gu, function unquote(_match, value: string) {
+                return value.replaceAll(/\\(?<escaped>.)/gu, '$<escaped>');
+            });
+        });
+    const auditOption = [ ...environmentArguments, ...nodeArguments ]
+        .map(function normalizeOption(argument) {
+            return argument.split('=', 1)[0]?.replaceAll('_', '-');
+        })
+        .findLast(function changesAuditMode(argument) {
+            return argument === '--permission-audit' || argument === '--no-permission-audit';
+        });
+
+    return auditOption === '--permission-audit';
+}
+
 function permissionDiagnosticsPhase(loadComplete: boolean): PermissionDeniedRunnerErrorPhase {
     return loadComplete ? 'out-of-test' : 'load';
+}
+
+function isAuditedBootstrapRead(error: PermissionDeniedRunnerError): boolean {
+    return error.cause.phase !== 'body' && error.cause.capability === 'fs-read' &&
+        permissionAuditEnabled(process.execArgv, readProcessEnvironment(process).NODE_OPTIONS ?? '');
 }
 
 function permissionWasDropped(message: unknown): boolean {
@@ -40,8 +65,16 @@ function ignorePermissionDropDiagnostics(
 export function createPermissionDiagnosticsSubscriptions(
     observation: ExecutionObservation,
     phase: () => PermissionDeniedRunnerErrorPhase,
-    recordError: (error: RunnerError) => void
+    recordError: (error: RunnerError) => void,
+    auditDiagnostics: 'ignore' | 'report'
 ): void {
+    if (
+        auditDiagnostics === 'ignore' &&
+        permissionAuditEnabled(process.execArgv, readProcessEnvironment(process).NODE_OPTIONS ?? '')
+    ) {
+        return;
+    }
+
     for (const [ name, capability ] of Object.entries(permissionDiagnosticsCapabilities)) {
         const channel = diagnosticsChannel.channel(name);
         const listener = ignorePermissionDropDiagnostics(function recordDiagnostic(message: unknown): void {
@@ -60,7 +93,9 @@ export function createPermissionDiagnosticsSubscriptions(
                 hook: null,
                 phase: observation.hasActiveAttempt() ? 'body' : phase()
             });
-            recordError(observation.attribute(error));
+            if (!isAuditedBootstrapRead(error)) {
+                recordError(observation.attribute(error));
+            }
         });
         channel.subscribe(listener);
 
@@ -100,7 +135,8 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
         },
         function recordWithoutThrowing(error) {
             tryRecordPermissionError(record, error);
-        }
+        },
+        'ignore'
     );
 
     return {

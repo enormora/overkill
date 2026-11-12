@@ -203,9 +203,13 @@ event still carries the `permission` subtype so consumers can distinguish Node
 permission failures from other runtime policy diagnostics.
 
 When Node runs with `--permission-audit`, permission diagnostics describe
-effects that would have been denied in enforce mode. Overkill records those as
-`permission` runner errors as well, but audit mode does not by itself prevent
-the effect.
+effects that would have been denied in enforce mode. Restricted microtests
+record those as `permission` runner errors, but audit mode does not itself
+prevent the effect. Unrestricted profiles ignore audit diagnostics; successful
+integration filesystem and subprocess operations remain successful through
+the CLI. Audited bootstrap reads outside active attempts are allowed, matching
+the capability monitor's read policy. Actual permission denials still produce
+`permission` runner errors.
 
 Imports are not violations by themselves. Executing imported code may perform a
 restricted effect, and body-time dynamic import in supervised strict mode is

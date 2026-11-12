@@ -391,7 +391,8 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
                 recordPermissionError(error);
             } catch {
             }
-        }
+        },
+        'report'
     );
 
     return {
