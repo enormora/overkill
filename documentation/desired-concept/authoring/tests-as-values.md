@@ -663,10 +663,43 @@ seed and the resulting permutation.
 
 ## Cross-References
 
-### Explicit Lazy Dependencies
+### Deferred Module Evaluation
+
+`import defer` allows an execution dependency's synchronous initialization to
+wait until a namespace member is first accessed. This supports host-side tests
+with expensive initialization while preserving a synchronous test body:
+
+```ts
+import defer * as heavy from './heavy-module.ts';
+
+export const testNode = suite('heavy', [
+    test('uses heavy', (scope) => {
+        scope.assert.equal(heavy.compute(), 42);
+        return scope.assert.collect();
+    })
+]);
+```
+
+The module graph is loaded and linked up front. Only synchronous evaluation is
+deferred; asynchronous dependencies and their required dependencies evaluate
+eagerly. Accessing the namespace during collection also triggers evaluation.
+Test definitions remain fully collected before selection.
+
+Use this form where the declared runtime/loader supports it. TypeScript accepts
+and preserves the syntax rather than downleveling it; native execution or an
+explicit compatible transform is required. Do not assume support from the
+project's Node version or silently add a loader. See the
+[TypeScript documentation](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-9.html#support-for-import-defer)
+and [proposal semantics](https://github.com/tc39/proposal-defer-import-eval#semantics).
+
+Browser delivery must also support the syntax and the complete module graph.
+Deferred evaluation does not make Node-only imports browser-compatible or
+transfer host modules into a browser realm.
+
+### Dynamic Execution Dependencies
 
 Definition collection remains authoritative and complete before selection.
-Body-only dependencies can load explicitly when a selected body executes:
+Body-only dependencies can also load asynchronously when a selected body executes:
 
 ```ts
 export const testNode = suite('heavy', [

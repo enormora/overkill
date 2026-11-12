@@ -251,9 +251,12 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
   also the fastest.
 - **Tests-as-values + explicit lazy execution dependencies.** Evaluate the
   authoritative definition catalog before selection. Expensive body-only
-  dependencies may load when selected bodies execute, including explicit
-  implementation references across realms. This does not defer test discovery,
-  hide constructed nodes, or assume unsupported module syntax.
+  dependencies can use `import defer` for deferred synchronous evaluation on a
+  compatible runtime/loader, or `import()` for asynchronous loading. The former
+  still loads/links its graph and does not defer asynchronous dependencies.
+  Cross-realm implementations use explicit references. These forms do not defer
+  test discovery, hide constructed nodes, or make incompatible imports portable.
+  See [Deferred Module Evaluation](../authoring/tests-as-values.md#deferred-module-evaluation).
 - **Original-source type analysis.** The optional type-test family analyzes
   the real TypeScript project, retaining compiler programs where reuse is useful.
   Read assertion operands in their original lexical context without temporary
