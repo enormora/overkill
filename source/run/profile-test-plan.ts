@@ -6,11 +6,12 @@ import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 
-import type { DefinitionLocationCapture } from './definition-location-capture.ts';
+import { snapshotProfileFamily } from './family-profile-transport.ts';
 import { resolveRunEngine } from './run-engine-selection.ts';
 import {
     createRunTestPlanFromDirectEntrypoint,
     createRunTestPlanFromFiles,
+    type RunTestPlanInput,
     type RunTestPlanCollectionSource
 } from './run-test-plan.ts';
 
@@ -18,7 +19,7 @@ import type { RunOrchestratorDependencies } from './run-orchestrator-dependencie
 
 export type LocalTestPlanInput = Pick<ResolvedRunInput, 'files' | 'profile' | 'projectRoot'> & {
     readonly command: RunCommand;
-    readonly definitionLocationCapture: DefinitionLocationCapture;
+    readonly definitionLocationCapture: RunTestPlanInput['definitionLocationCapture'];
     readonly dependencies: RunOrchestratorDependencies;
     readonly source: RunTestPlanCollectionSource;
 };
@@ -61,9 +62,16 @@ export async function createProfileTestPlan(input: LocalTestPlanInput, signal: A
     const engine = await resolveRunEngine(input.command.engine, input.dependencies);
     const collected = await readTestPlan(input, engine);
     assertTestPlanMatchesTestFamily(collected, profileFamilyId(input.profile));
+    const definition = snapshotProfileFamily({
+        profile: input.profile,
+        source: input.source,
+        profileName: input.command.request.profile,
+        projectRoot: input.projectRoot,
+        definitionLocationCapture: input.definitionLocationCapture
+    });
     const preparation = await prepareProfileFamily(engine, collected, input.profile, {
         projectRoot: input.projectRoot,
         signal
     });
-    return { testPlan: preparation.prepared.testPlan, preparation };
+    return { testPlan: preparation.prepared.testPlan, preparation: { ...preparation, definition } };
 }

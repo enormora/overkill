@@ -1,4 +1,4 @@
-import { isFamilyPlan, recollectProfileFamily } from './family-profile-run.ts';
+import { isFamilyPlan, recollectProfileFamily, resolveFamilyRun } from './family-profile-run.ts';
 import { parseRunSelection } from './run-selection-schema.ts';
 import {
     createEmptySelectionResult,
@@ -66,14 +66,19 @@ async function planSelectedInvocation(
     const { testPlan } = plan;
     const cases = selectedNonEmptyTestPlanCases({ ...testPlan, discoveredCases: testPlan.cases }, request.selection);
     if (cases === null) {
+        const resolved = createEmptyShardResolvedRunFromTestPlan(
+            { ...command, request },
+            dependencies,
+            runInput,
+            { plan: testPlan, identities: [] }
+        );
         return {
             kind: 'empty-selection',
-            resolved: createEmptyShardResolvedRunFromTestPlan(
-                { ...command, request },
-                dependencies,
-                runInput,
-                { plan: testPlan, identities: [] }
-            ),
+            resolved: isFamilyPlan(plan)
+                ? await resolveFamilyRun(plan.family.preparation, async function emptyFamilySelection() {
+                    return resolved;
+                })
+                : resolved,
             result: createEmptySelectionResult(testPlan, dependencies)
         };
     }

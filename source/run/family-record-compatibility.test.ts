@@ -1,7 +1,7 @@
 import { runIfMain } from '#test-runner';
 import { isDefinedFamilyProfile, type DefinedFamilyProfile } from '../config/types.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
-import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
+import { defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
 import { family } from '../integration-tests/run/fixtures/imported-runtime-family.ts';
 import { completedHistoryRecord } from '../test-support/history-record-fixture.ts';
@@ -9,11 +9,11 @@ import { historyRecordSchema } from './history-record.ts';
 import { recordedReplayProfile } from './run-record-input.ts';
 import { restoreFamilyReplayProfile } from './replay-family-profile.ts';
 
-function familyProfile(): DefinedFamilyProfile {
+function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
     const config = normalizeConfig({
         profiles: {
             custom: {
-                testFamily: family,
+                testFamily: definition,
                 settings: null,
                 files: { include: [ 'custom.ts' ] },
                 execution: { processModel: 'in-process', scheduling: 'serial' }
@@ -29,7 +29,7 @@ function familyProfile(): DefinedFamilyProfile {
 
 export const testNode = suite('family record compatibility', [
     test('serializes a family profile without executable definitions', async function (scope) {
-        const profile = familyProfile();
+        const profile = familyProfile(family);
         const serialized = JSON.stringify(recordedReplayProfile(profile));
         const restored = await restoreFamilyReplayProfile(JSON.parse(serialized), profile);
         scope.assert.equal(restored.testFamily, family);
@@ -38,8 +38,23 @@ export const testNode = suite('family record compatibility', [
         scope.assert.equal(serialized.includes('load'), false);
         return scope.assert.collect();
     }),
+    test('restores a named family module when no current configuration supplies it', async function (scope) {
+        const saved = recordedReplayProfile(familyProfile(family));
+        const restored = await restoreFamilyReplayProfile(saved, undefined);
+        scope.assert.equal(restored.testFamily, family);
+        scope.assert.equal(restored.settings, null);
+        return scope.assert.collect();
+    }),
+    test('requires explicit configuration when the recorded definition has no module', async function (scope) {
+        const local = defineTestFamily({ ...family, module: null });
+        const saved = recordedReplayProfile(familyProfile(local));
+        await scope.assert.rejects(async function restoreLocalOnlyFamily() {
+            await restoreFamilyReplayProfile(saved, undefined);
+        }, { message: 'Recorded family requires an explicit compatible configuration.' });
+        return scope.assert.collect();
+    }),
     test('rejects a changed implementation version before backend loading', async function (scope) {
-        const profile = familyProfile();
+        const profile = familyProfile(family);
         const changed = defineTestFamily({
             ...family,
             version: '2',

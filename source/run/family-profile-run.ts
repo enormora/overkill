@@ -7,7 +7,7 @@ import { prepareDefinedFamily, type Engine } from '../engine/engine.ts';
 import { familySettings, type ProfileConfig } from '../config/types.ts';
 import { builtinTestFamily } from '../engine/builtin-test-families.ts';
 import { bindFamilySettings, type BoundFamilySettings } from '../engine/test-family.ts';
-import { workIdentityKey } from '../engine/identity.ts';
+import { preparedFamilyMetadata, selectedPreparedPlan } from './prepared-family-plan.ts';
 import { validateRecordedFamilyFacts } from './replay-family-validation.ts';
 import type { LocalFamilyRunPlan, RunnerFamilyPreparation } from './family-profile-types.ts';
 import type {
@@ -56,7 +56,7 @@ async function prepareFamilyBinding(
             signal
         });
     });
-    return { engine, prepared, sourcePlan: testPlan, binding, projectRoot, signal };
+    return { engine, prepared, sourcePlan: testPlan, binding, projectRoot, signal, definition: null };
 }
 
 export async function prepareProfileFamily(
@@ -73,8 +73,17 @@ export async function prepareProfileFamily(
 
 async function collectSelectedFamily(preparation: RunnerFamilyPreparation, run: ResolvedRun): Promise<ResolvedRun> {
     if (run.plan.kind !== 'local') {
+        const facts = { ...preparation.prepared.facts, collection: null };
+        validateRecordedFamilyFacts(facts);
         await disposePreparedFamily(preparation.prepared);
-        return { ...run, facts: { ...run.facts, family: { ...preparation.prepared.facts, collection: null } } };
+        return {
+            ...run,
+            facts: { ...run.facts, family: facts },
+            plan: {
+                ...run.plan,
+                collectedPlan: { ...run.plan.collectedPlan, family: preparedFamilyMetadata(preparation, facts) }
+            }
+        };
     }
     const { testPlan } = run.plan;
     const collected = await withFamilySetupDiagnostics(async function collectBackend(): Promise<CollectedFamilyRun> {
@@ -135,20 +144,6 @@ export async function resolveFamilyRun(
     }
 }
 
-function selectedPreparedPlan(prepared: PreparedFamilyRun, selection: TestPlan): TestPlan {
-    const available = new Map(prepared.testPlan.cases.map(function identity(testCase) {
-        return [ workIdentityKey(testCase.workId), testCase ] as const;
-    }));
-    function select(testCase: TestPlan['cases'][number]): TestPlan['cases'][number] {
-        const current = available.get(workIdentityKey(testCase.workId));
-        if (current === undefined) {
-            throw new TypeError('Prepared family work changed between invocations.');
-        }
-        return current;
-    }
-    return { ...prepared.testPlan, cases: [ select(selection.cases[0]), ...selection.cases.slice(1).map(select) ] };
-}
-
 export async function recollectProfileFamily(
     previous: RunnerFamilyPreparation,
     selection: TestPlan,
@@ -159,9 +154,12 @@ export async function recollectProfileFamily(
         projectRoot: previous.projectRoot,
         signal
     });
-    return await resolveFamilyRun(fresh, async function selectFreshPreparation() {
-        return resolve(selectedPreparedPlan(fresh.prepared, selection));
-    });
+    return await resolveFamilyRun(
+        { ...fresh, definition: previous.definition },
+        async function selectFreshPreparation() {
+            return resolve(selectedPreparedPlan(fresh.prepared, selection));
+        }
+    );
 }
 
 export async function disposeResolvedFamily(run: ResolvedRun): Promise<void> {

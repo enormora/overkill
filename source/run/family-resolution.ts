@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import type { RunnerError } from '../engine/run-result.ts';
 import { builtinTestFamily } from '../engine/builtin-test-families.ts';
 import {
     bindFamilySettings,
@@ -8,7 +9,7 @@ import {
 } from '../engine/test-family.ts';
 import type { FamilyPreparationFacts } from '../engine/family-run.ts';
 import type { NormalizedConfig } from '../config/types.ts';
-import type { FamilyResolutionSource, FrozenFamilyDefinition } from './family-catalog.ts';
+import type { FamilyResolutionSource, FrozenFamilyDefinition, CollectedFamilyMetadata } from './family-catalog.ts';
 import { RunCollectionError } from './run-errors.ts';
 
 type FamilyResolutionDependencies = {
@@ -108,4 +109,21 @@ export function assertFrozenFamilyPreparation(expected: FamilyPreparationFacts, 
             'loader'
         );
     }
+}
+
+export function validateFrozenFamilyCollection(
+    metadata: CollectedFamilyMetadata,
+    actual: CollectedFamilyMetadata | null,
+    runnerErrors: readonly RunnerError[]
+): CollectedFamilyMetadata {
+    if (actual === null || runnerErrors.length > 0) {
+        throw new RunCollectionError('Selected family collection did not return complete facts.', {
+            cause: runnerErrors
+        }, 'loader');
+    }
+    assertFrozenFamilyPreparation(metadata.facts, actual.facts);
+    if (!isDeepStrictEqual(metadata.definition.checkpoint, actual.definition.checkpoint)) {
+        throw new TypeError('Frozen family work changed; collect a new run.');
+    }
+    return actual;
 }

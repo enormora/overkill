@@ -10,6 +10,7 @@ import { createTestEngine } from '../test-support/create-test-engine.ts';
 import { bindFamilySettings, type BoundFamilySettings } from '../engine/test-family.ts';
 import { family as runtimeFamily } from '../integration-tests/run/fixtures/imported-runtime-family.ts';
 import { family as analysisFamily } from '../integration-tests/run/fixtures/imported-analysis-family.ts';
+import { testNode as recordPlanTestNode } from './prepared-family-plan.test.ts';
 import { familyCatalog, type CollectedFamilyMetadata, type FrozenFamilyDefinition } from './family-catalog.ts';
 import { registerImportedHostFamilyPlan, transferHostFamilyPlan } from './host-family-plan.ts';
 
@@ -94,6 +95,7 @@ function observedRuntimeCollection(record: (event: string) => void): TestFamily<
 }
 
 export const testNode = suite('host family catalogs', [
+    recordPlanTestNode,
     ...[ runtimeFamily, analysisFamily ].map(function familyCollection(family) {
         return test(`collects exact selected facts for ${family.id} without invoking bodies`, async function (scope) {
             const context = await prepareHost(family);

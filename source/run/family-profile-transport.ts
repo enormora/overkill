@@ -24,7 +24,7 @@ function definitionSource(
     family: DefinedTestFamily,
     source: RunCollectionSource,
     profile: string
-): FamilyResolutionSource {
+): FamilyResolutionSource | null {
     const configuration = configurationSource(source);
     if (configuration.kind === 'config-file' && configuration.resolvedPath !== null) {
         return { kind: 'config-file', configPath: configuration.resolvedPath, profile };
@@ -32,7 +32,7 @@ function definitionSource(
     if (family.module !== null) {
         return { kind: 'module', module: family.module };
     }
-    return invalidRequest('The selected family has no importable configuration or module for isolated execution.');
+    return null;
 }
 
 function recordedDefinition(source: RunCollectionSource): FrozenFamilyDefinition | null {
@@ -51,7 +51,7 @@ function validateRecordedDefinition(
     }
 }
 
-export function freezeProfileFamily(input: FamilyTransportInput): FrozenFamilyDefinition | null {
+export function snapshotProfileFamily(input: FamilyTransportInput): FrozenFamilyDefinition | null {
     const { profile, source, profileName, projectRoot, definitionLocationCapture } = input;
     if (typeof profile.testFamily === 'string') {
         return null;
@@ -61,7 +61,8 @@ export function freezeProfileFamily(input: FamilyTransportInput): FrozenFamilyDe
         validateRecordedDefinition(profile.testFamily, profile.settings, previous);
         return { ...previous, projectRoot, selection: null };
     }
-    return {
+    const resolution = definitionSource(profile.testFamily, source, profileName);
+    return resolution === null ? null : {
         id: profile.testFamily.id,
         version: profile.testFamily.version,
         settings: profile.settings,
@@ -70,6 +71,14 @@ export function freezeProfileFamily(input: FamilyTransportInput): FrozenFamilyDe
         definitionLocationCapture,
         checkpoint: null,
         selection: null,
-        source: definitionSource(profile.testFamily, source, profileName)
+        source: resolution
     };
+}
+
+export function freezeProfileFamily(input: FamilyTransportInput): FrozenFamilyDefinition | null {
+    const definition = snapshotProfileFamily(input);
+    if (typeof input.profile.testFamily !== 'string' && definition === null) {
+        invalidRequest('The selected family has no importable configuration or module for isolated execution.');
+    }
+    return definition;
 }

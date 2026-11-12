@@ -1,9 +1,8 @@
-import { isDeepStrictEqual } from 'node:util';
+import { currentReplayWire } from './replay-wire.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import { validateRecordedFamilyFacts } from './replay-family-validation.ts';
-import { assertFrozenFamilyPreparation } from './family-resolution.ts';
+import { validateFrozenFamilyCollection } from './family-resolution.ts';
 import type { CollectedFamilyMetadata } from './family-catalog.ts';
-import { RunCollectionError } from './run-errors.ts';
 import type { RunCollectionSource, ResolvedRun, RunCommand } from './run-types.ts';
 import {
     createSupervisedCollectCommand,
@@ -34,24 +33,6 @@ function familySource(family: CollectedFamilyMetadata, cwd: string): RunCollecti
             }
         }
         : { kind: 'configured-files' };
-}
-
-function validateSelectedFamily(
-    metadata: CollectedFamilyMetadata,
-    actual: CollectedFamilyMetadata | null,
-    runnerErrors: ResolvedRun['collectionRunnerErrors']
-): CollectedFamilyMetadata {
-    if (actual === null || runnerErrors.length > 0) {
-        throw new RunCollectionError('Selected family collection did not return complete facts.', {
-            cause: runnerErrors
-        }, 'loader');
-    }
-    assertFrozenFamilyPreparation(metadata.facts, actual.facts);
-    if (!isDeepStrictEqual(metadata.definition.checkpoint, actual.definition.checkpoint)) {
-        throw new TypeError('Frozen family work changed; collect a new run.');
-    }
-    validateRecordedFamilyFacts(actual.facts);
-    return actual;
 }
 
 async function collectSelectedFamily(
@@ -86,12 +67,15 @@ async function collectSelectedFamily(
                     source,
                     normalization: input.benchmarkNormalization
                 }),
+                replay: currentReplayWire(),
                 family
             },
             input.dependencies,
             null
         );
-    return validateSelectedFamily(metadata, collection.collectedPlan.family, collection.runnerErrors);
+    const actual = validateFrozenFamilyCollection(metadata, collection.collectedPlan.family, collection.runnerErrors);
+    validateRecordedFamilyFacts(actual.facts);
+    return actual;
 }
 
 export async function resolveSelectedFamilyFacts(
