@@ -24,6 +24,40 @@ export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     children: [
         createTestCase({
+            title: 'rejects a historical input with a regeneration diagnostic through the API and CLI',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            async body(scope) {
+                const directory = await mkdtemp(join(tmpdir(), 'overkill-merge-historical-'));
+                try {
+                    const historical = structuredClone(mergeRecordFixture('historical', 1, 1));
+                    Reflect.deleteProperty(historical.facts.reproducibility, 'selectedIdentities');
+                    await writeFile(join(directory, 'historical.json'), JSON.stringify(historical));
+                    await scope.assert.rejects(async function historicalMerge() {
+                        await mergeResults({
+                            config: defaultRunConfig({}),
+                            cwd: directory,
+                            inputs: [ { kind: 'file', path: 'historical.json' } ]
+                        });
+                    }, { message: /selected-identities: missing-evidence.*Regenerate shard records/u });
+                    const result = await mergeResultsCommand(async function config() {
+                        return { ...defaultRunConfig({}), configPath: null };
+                    }, { cwd: directory, configPath: null, paths: [ 'historical.json' ] });
+                    scope.assert.deepEqual({
+                        exitCode: result.exitCode,
+                        runResult: result.runResult,
+                        regeneration: result.fallbackDiagnostics.some(function regeneration(message) {
+                            return message.includes('Regenerate shard records with selection evidence.');
+                        })
+                    }, { exitCode: 2, runResult: null, regeneration: true });
+                    return scope.assert.collect();
+                } finally {
+                    await rm(directory, { recursive: true, force: true });
+                }
+            }
+        }),
+        createTestCase({
             title: 'rejects incompatible inputs through the public API and CLI',
             annotations: {},
             controls: {},
