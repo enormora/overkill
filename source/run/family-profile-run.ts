@@ -7,8 +7,8 @@ import { prepareDefinedFamily, type Engine } from '../engine/engine.ts';
 import { familySettings, type ProfileConfig } from '../config/types.ts';
 import { builtinTestFamily } from '../engine/builtin-test-families.ts';
 import { bindFamilySettings, type BoundFamilySettings } from '../engine/test-family.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
 import { workIdentityKey } from '../engine/identity.ts';
+import { validateRecordedFamilyFacts } from './replay-family-validation.ts';
 import type { LocalFamilyRunPlan, RunnerFamilyPreparation } from './family-profile-types.ts';
 import type {
     ResolvedRun,
@@ -23,6 +23,8 @@ export function isFamilyPlan(plan: ResolvedRunPlan): plan is LocalFamilyRunPlan 
 export function isAnalysisFamilyPlan(plan: ResolvedRunPlan): plan is LocalFamilyRunPlan {
     return isFamilyPlan(plan) && plan.family.preparation.binding.testFamily.features.execution === 'analysis';
 }
+
+type TestPlan = RunnerFamilyPreparation['sourcePlan'];
 
 type FamilyPreparationContext = { readonly projectRoot: string; readonly signal: AbortSignal; };
 
@@ -72,7 +74,7 @@ export async function prepareProfileFamily(
 async function collectSelectedFamily(preparation: RunnerFamilyPreparation, run: ResolvedRun): Promise<ResolvedRun> {
     if (run.plan.kind !== 'local') {
         await disposePreparedFamily(preparation.prepared);
-        return run;
+        return { ...run, facts: { ...run.facts, family: { ...preparation.prepared.facts, collection: null } } };
     }
     const { testPlan } = run.plan;
     const collected = await withFamilySetupDiagnostics(async function collectBackend(): Promise<CollectedFamilyRun> {
@@ -83,8 +85,9 @@ async function collectSelectedFamily(preparation: RunnerFamilyPreparation, run: 
             signal: preparation.signal
         });
     });
+    validateRecordedFamilyFacts(collected.facts);
     const plan: LocalFamilyRunPlan = { ...run.plan, family: { preparation, collected } };
-    return { ...run, plan };
+    return { ...run, facts: { ...run.facts, family: collected.facts }, plan };
 }
 
 async function preparationCleanup(prepared: PreparedFamilyRun): Promise<readonly unknown[]> {

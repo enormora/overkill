@@ -1,6 +1,3 @@
-import type {
-    NonEmptyReadonlyArray
-} from '../assertion-protocol/assertion-node-shape.ts';
 import { resolveSourceLocations } from '../assertion-protocol/source-location.ts';
 import { createCaseId, createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
 import {
@@ -11,7 +8,8 @@ import {
     type RunnerError
 } from '../engine/run-result.ts';
 import { summaryRunTimings } from '../engine/run-timings.ts';
-import type { RunProcessUsage, TestPlan } from './run-engine-primitives.ts';
+import { familyCatalog } from './family-catalog.ts';
+import type { NonEmptyReadonlyArray, RunProcessUsage, TestPlan } from './run-engine-primitives.ts';
 import { selectedCollectedRunPlan } from './run-selection.ts';
 import { testCasePropertySummary } from './property-collection.ts';
 import { caseDataFacts } from './run-case-facts.ts';
@@ -263,6 +261,7 @@ export function collectedRunPlanFromTestPlanCases(
     cases: readonly TestPlan['cases'][number][]
 ): CollectedRunPlan {
     return {
+        family: familyCatalog(testPlan),
         defined: testPlan.defined,
         discoveredFiles: collectedRunFilesFromCases(testPlan.discoveredCases),
         files: collectedRunFilesFromCases(cases),

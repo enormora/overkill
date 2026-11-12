@@ -93,6 +93,7 @@ function passingFixtureTestNode(): TestNode {
 function directSource(testNode: TestNode): DirectEntrypointCollectionSource {
     return {
         kind: 'direct-entrypoint',
+        configuration: { kind: 'memory' },
         root: { annotations: {}, controls: {}, title: '/project' },
         testNode
     };

@@ -4,7 +4,7 @@ import type { RuntimeId, WorkId } from '../engine/identity.ts';
 import type { RunnerError, RunResult } from '../engine/run-result.ts';
 import type { SerializedValue } from '../compare/serialized-value.ts';
 import type { CoveragePolicy, LoaderConfig, ProfileConfig } from '../config/types.ts';
-import type { currentRunRecordVersion } from './run-record-format.ts';
+import type { currentRunRecordVersion, previousRunRecordVersion } from './run-record-format.ts';
 import type { RunRecordArtifact, RunRecordTestAttempt, RunRecordTestOutcome } from './run-record-outcomes.ts';
 import type { PlacementTrace } from './placement-trace.ts';
 import type { RunEngineFacts, RunEnvironmentFacts, RunFacts, RunRequest, CollectedRunPlan } from './run-types.ts';
@@ -44,13 +44,13 @@ export type RunRecordRequest = Except<RunRequest, 'seed'> & {
     readonly seed: { readonly value: string; };
 };
 
-type RunRecordInputs = {
+type RunRecordInputs<Facts> = {
     readonly coverage: RunRecordCoverage | null;
     readonly cwd: string;
     readonly engine: RunEngineFacts;
     readonly environment: RunEnvironmentFacts;
     readonly execution: ProfileConfig['execution'];
-    readonly facts: RunFacts | null;
+    readonly facts: Facts | null;
     readonly id: string;
     readonly identities: readonly WorkId[];
     readonly kind: 'single';
@@ -64,18 +64,23 @@ type RunRecordInputs = {
     readonly versions: RunRecordVersions;
 };
 
-type RunRecordFormat = { readonly version: 1; } | {
-    readonly version: typeof currentRunRecordVersion;
+type ReplayableRecordFormat<Version extends number> = {
+    readonly version: Version;
     readonly replayPlan: CollectedRunPlan | null;
     readonly replayProfile: unknown;
     readonly replayWitness: WitnessFile | null;
 };
+type LegacyRecordFormat = ReplayableRecordFormat<typeof previousRunRecordVersion> | { readonly version: 1; };
+type CurrentRecordFormat = ReplayableRecordFormat<typeof currentRunRecordVersion>;
+type CurrentRecordInputs = CurrentRecordFormat & RunRecordInputs<RunFacts>;
+type LegacyRecordInputs = LegacyRecordFormat & RunRecordInputs<Except<RunFacts, 'family'>>;
+type VersionedRecordInputs = CurrentRecordInputs | LegacyRecordInputs;
 
-type CompletedRunRecord = RunRecordFormat & RunRecordInputs & {
+type CompletedRunRecord = VersionedRecordInputs & {
     readonly result: RunRecordResult;
     readonly status: 'completed';
 };
-type StartedRunRecord = RunRecordFormat & RunRecordInputs & {
+type StartedRunRecord = VersionedRecordInputs & {
     readonly result: RunRecordResult | null;
     readonly status: 'interrupted' | 'started';
 };

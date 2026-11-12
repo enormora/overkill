@@ -202,7 +202,9 @@ function copyDefinedFamilyProfile(profile: DefinedFamilyProfile): DefinedFamilyP
     return {
         ...profile,
         testFamily: profile.testFamily,
-        execution: copyMicrotestExecution(profile.execution),
+        execution: profile.execution.processModel === 'worker-pool'
+            ? copyIntegrationExecution(profile.execution)
+            : copyMicrotestExecution(profile.execution),
         files: copyProfileFiles(profile.files),
         reporters: copyReporters(profile.reporters),
         processUsage: copyProcessUsagePolicy(profile.processUsage),

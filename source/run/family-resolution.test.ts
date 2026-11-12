@@ -1,0 +1,194 @@
+import { runIfMain } from '#test-runner';
+import { defaultRunRequest } from '../test-support/run-command-factory.ts';
+import { suite, test } from '../packages/test/test.entry-point.ts';
+import { defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
+import { normalizeConfig } from '../packages/run/run.entry-point.ts';
+import { snapshotRunCommand } from './frozen-run-command.ts';
+import { assertFrozenFamilyPreparation, resolveFrozenFamily } from './family-resolution.ts';
+import type { FrozenFamilyDefinition } from './family-catalog.ts';
+
+function definition(version: string): TestFamily<null> {
+    return defineTestFamily({
+        id: '@example/checker',
+        version,
+        module: null,
+        features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
+        parseSettings(input: unknown) {
+            if (input !== null) {
+                throw new TypeError('Expected null settings.');
+            }
+            return null;
+        },
+        async load() {
+            throw new Error('Resolution must not load the backend.');
+        }
+    });
+}
+
+const frozen: FrozenFamilyDefinition = {
+    projectRoot: '/project',
+    definitionLocationCapture: 'disabled',
+    processModel: 'in-process',
+    selection: null,
+    checkpoint: null,
+    source: { kind: 'module', module: { moduleUrl: 'file:///checker.ts', exportName: 'family' } },
+    id: '@example/checker',
+    version: '1',
+    settings: null
+};
+
+export const testNode = suite('frozen family resolution', [
+    test('retains an explicit configuration source through command normalization', function (scope) {
+        const source = {
+            kind: 'config-file',
+            request: { cwd: '/project', configPath: 'overkill.config.ts' },
+            resolvedPath: '/project/overkill.config.ts'
+        } as const;
+        const snapshot = snapshotRunCommand({
+            kind: 'configured',
+            source,
+            command: {
+                cwd: '/project',
+                engine: { kind: 'default' },
+                request: defaultRunRequest({ profile: 'unit' }),
+                config: normalizeConfig({
+                    profiles: { unit: { testFamily: 'microtest', files: { include: [ 'unit.ts' ] } } }
+                })
+            }
+        });
+        scope.assert.equal(snapshot.source.kind, 'configured-source');
+        scope.assert.equal(snapshot.command.request.profile, 'unit');
+        return scope.assert.collect();
+    }),
+    test('rejects changed preparation evidence', function (scope) {
+        const expected = {
+            id: frozen.id,
+            version: frozen.version,
+            settings: null,
+            preparation: { fingerprint: 'original' }
+        };
+        scope.assert.throws(function validateChangedPreparation() {
+            assertFrozenFamilyPreparation(expected, { ...expected, preparation: { fingerprint: 'changed' } });
+        }, { message: 'Frozen family preparation changed; collect a new run.' });
+        return scope.assert.collect();
+    }),
+    test('resolves a named branded definition without loading its backend', async function (scope) {
+        const family = definition('1');
+        const binding = await resolveFrozenFamily(frozen, 'in-process', {
+            async loadConfig() {
+                throw new Error('Unexpected configuration load.');
+            },
+            async importModule() {
+                return { family };
+            }
+        });
+        scope.assert.equal(binding.testFamily, family);
+        scope.assert.equal(binding.settings, null);
+        return scope.assert.collect();
+    }),
+    ...[
+        { name: 'a changed version', exported: definition('2'), processModel: 'in-process' },
+        {
+            name: 'a factory export',
+            exported() {
+                return definition('1');
+            },
+            processModel: 'in-process'
+        },
+        { name: 'an unbranded export', exported: { id: frozen.id, version: '1' }, processModel: 'in-process' },
+        { name: 'unsupported placement', exported: definition('1'), processModel: 'worker-pool' }
+    ]
+        .map(function invalidResolution(scenario) {
+            return test(`rejects ${scenario.name}`, async function (scope) {
+                await scope.assert.rejects(async function resolve() {
+                    await resolveFrozenFamily(
+                        frozen,
+                        scenario.processModel === 'worker-pool' ? 'worker-pool' : 'in-process',
+                        {
+                            async loadConfig() {
+                                throw new Error('Unexpected configuration load.');
+                            },
+                            async importModule() {
+                                return { family: scenario.exported };
+                            }
+                        }
+                    );
+                }, { message: 'Failed to resolve the frozen test family.' });
+                return scope.assert.collect();
+            });
+        }),
+    test('rejects changed settings normalization before backend loading', async function (scope) {
+        const original = definition('1');
+        const family = defineTestFamily({
+            id: original.id,
+            version: original.version,
+            module: null,
+            features: original.features,
+            parseSettings() {
+                return { revision: 2 };
+            },
+            async load() {
+                throw new Error('Resolution must not load the backend.');
+            }
+        });
+        await scope.assert.rejects(async function resolveChangedSettings() {
+            await resolveFrozenFamily({ ...frozen, settings: { revision: 1 } }, 'in-process', {
+                async loadConfig() {
+                    throw new Error('Unexpected configuration load.');
+                },
+                async importModule() {
+                    return { family };
+                }
+            });
+        }, { message: 'Failed to resolve the frozen test family.' });
+        return scope.assert.collect();
+    }),
+    test('does not fall back to module resolution after configuration failure', async function (scope) {
+        let imports = 0;
+        await scope.assert.rejects(async function resolve() {
+            await resolveFrozenFamily(
+                { ...frozen, source: { kind: 'config-file', configPath: '/config.ts', profile: 'types' } },
+                'in-process',
+                {
+                    async loadConfig() {
+                        throw new Error('Configuration changed.');
+                    },
+                    async importModule() {
+                        imports += 1;
+                        return { family: definition('1') };
+                    }
+                }
+            );
+        }, { message: 'Failed to resolve the frozen test family.' });
+        scope.assert.equal(imports, 0);
+        return scope.assert.collect();
+    }),
+    test('resolves a local definition through its explicit configuration', async function (scope) {
+        const family = definition('1');
+        const config = normalizeConfig({
+            profiles: {
+                types: {
+                    testFamily: family,
+                    settings: null,
+                    files: { include: [ 'types.ts' ] }
+                }
+            }
+        });
+        const binding = await resolveFrozenFamily(
+            { ...frozen, source: { kind: 'config-file', configPath: '/config.ts', profile: 'types' } },
+            'in-process',
+            {
+                async loadConfig() {
+                    return config;
+                },
+                async importModule() {
+                    throw new Error('Unexpected module load.');
+                }
+            }
+        );
+        scope.assert.equal(binding.testFamily, family);
+        return scope.assert.collect();
+    })
+]);
+
+await runIfMain(import.meta, testNode);

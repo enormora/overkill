@@ -77,7 +77,7 @@ export const testNode = suite('imported analysis profile configuration', [
                     }
                 }
             });
-        }, { message: 'Imported families currently require in-process execution.' });
+        }, { message: 'The selected family does not support the configured process model.' });
         scope.assert.throws(function validateRuntimeMeasurement() {
             validateNormalizedConfig({
                 ...config,
@@ -114,21 +114,26 @@ export const testNode = suite('imported analysis profile configuration', [
         }, { message: 'The selected family does not support the configured process model.' });
         return scope.assert.collect();
     }),
-    test('retains ordinary runtime placement defaults and rejects unsupported imported hosts', function (scope) {
-        for (const processModels of [ [ 'in-process' ], [ 'in-process', 'supervised-process' ] ] as const) {
-            const runtime = defineTestFamily({
-                ...family,
-                id: '@example/runtime-placement',
-                features: { execution: 'runtime', processModels, profileOptions: [] }
-            });
-            scope.assert.throws(function normalizeDefaultRuntimePlacement() {
-                normalizeConfig({ profiles: { types: { ...definition, testFamily: runtime } } });
-            }, {
-                message: processModels.length === 1
-                    ? 'The selected family does not support the configured process model.'
-                    : 'Imported families currently require in-process execution.'
-            });
-        }
+    test('retains runtime placement defaults and validates family capabilities', function (scope) {
+        const runtime = defineTestFamily({
+            ...family,
+            id: '@example/runtime-placement',
+            features: {
+                execution: 'runtime',
+                processModels: [ 'in-process', 'supervised-process' ],
+                profileOptions: []
+            }
+        });
+        const config = normalizeConfig({ profiles: { types: { ...definition, testFamily: runtime } } });
+        scope.assert.equal(registeredProfile(config).execution.processModel, 'supervised-process');
+        scope.assert.equal(registeredProfile(config).testFamily, runtime);
+        const local = defineTestFamily({
+            ...runtime,
+            features: { ...runtime.features, processModels: [ 'in-process' ] }
+        });
+        scope.assert.throws(function normalizeUnsupportedDefaultPlacement() {
+            normalizeConfig({ profiles: { types: { ...definition, testFamily: local } } });
+        }, { message: 'The selected family does not support the configured process model.' });
         return scope.assert.collect();
     }),
     ...scenarios.flatMap(function (scenario) {

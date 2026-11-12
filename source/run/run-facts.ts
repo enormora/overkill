@@ -4,6 +4,7 @@ import {
     type ProfileConfig,
     type Scheduling
 } from '../config/types.ts';
+import { profileFamilyFacts } from './family-run-facts.ts';
 
 import { debuggedWork, runHasAttachmentScopes } from './run-diagnostics.ts';
 import {
@@ -133,6 +134,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
     const profile = selectProfile(input.request.profile, input.config);
 
     return {
+        family: profileFamilyFacts(profile),
         adapter: null,
         benchmarkHost: input.benchmarkHost,
         benchmarkPlacement: input.benchmarkPlacement,

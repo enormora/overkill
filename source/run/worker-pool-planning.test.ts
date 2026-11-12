@@ -107,6 +107,7 @@ function collectedCase(
 
 function createCollectedPlan(): CollectedRunPlan {
     return {
+        family: null,
         defined: 2,
         discoveredFiles: [],
         files: [

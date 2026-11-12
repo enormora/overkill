@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import { z } from 'zod/v4';
 import { caseIdSchema, workIdSchema } from '../engine/identity-schema.ts';
 import { serializedValueSchema } from '../compare/serialized-value-schema.ts';
@@ -5,7 +6,7 @@ import { loaderSchema, integrationExecutionSchema, workGroupSchema } from '../co
 import { normalizedMicrotestProfileSchema } from '../config/normalized-microtest-schema.ts';
 import { propertyPolicySchema } from '../engine/property-policy.ts';
 import { runDebugRequestSchema } from './run-debug.ts';
-import { replayPlanningFields } from './replay-planning-schema.ts';
+import { hasRecordedWorkerCapacity, replayPlanningFields } from './replay-planning-schema.ts';
 import type { RunFacts } from './run-types.ts';
 
 const engine = z.discriminatedUnion('kind', [
@@ -100,4 +101,5 @@ const baseFacts = {
         })
     ])
 };
-export const mergeFactsSchema: z.ZodType<RunFacts> = z.object(baseFacts);
+export type MergeRunFacts = Except<RunFacts, 'family'> & { readonly family: RunFacts['family'] | null; };
+export const mergeFactsSchema: z.ZodType<MergeRunFacts> = z.object(baseFacts).refine(hasRecordedWorkerCapacity);

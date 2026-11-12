@@ -127,7 +127,7 @@ export const testNode = suite('frozen policy transport', [
                 baselines: { adapters: [], directory: 'test-baselines', snapshots: false, stale: 'fail' }
             },
             policy.files,
-            { source: { kind: 'frozen-policy', policy }, normalization: null }
+            { projectRoot: process.cwd(), source: { kind: 'frozen-policy', policy }, normalization: null }
         );
         const wire = JSON.stringify(command);
         const transported: unknown = JSON.parse(wire);

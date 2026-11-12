@@ -336,7 +336,7 @@ export const familyProfileSchema = z
         testFamily: z.custom<DefinedTestFamily>(isDefinedTestFamily, 'Import a defined test family for testFamily.'),
         settings: z.unknown(),
         files: profileFilesSchema,
-        execution: z.optional(microtestExecutionSchema),
+        execution: z.optional(z.union([ microtestExecutionSchema, integrationExecutionSchema ])),
         reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
         processUsage: z.optional(processUsageSchema),
         failureArtifacts: failureArtifactPolicySchema,

@@ -1,12 +1,12 @@
 import { z } from 'zod/v4';
 import { workIdSchema, runtimeIdSchema } from '../engine/identity-schema.ts';
-import { currentRunRecordVersion } from './run-record-format.ts';
+import { currentRunRecordVersion, previousRunRecordVersion } from './run-record-format.ts';
 import { mergeFactsSchema } from './merge-facts-schema.ts';
 import { runResultSchema } from './run-result-schema.ts';
 import { parseSerializedRunDiagnostics } from './run-record-result.ts';
 
 export const mergeRecordSchema = z.object({
-    version: z.union([ z.literal(1), z.literal(currentRunRecordVersion) ]),
+    version: z.union([ z.literal(1), z.literal(previousRunRecordVersion), z.literal(currentRunRecordVersion) ]),
     kind: z.literal('single'),
     status: z.literal('completed'),
     id: z.string().min(1),

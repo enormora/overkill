@@ -121,6 +121,7 @@ export type {
     CollectedFamilyRun,
     FamilyExecuteOptions,
     FamilyRunFacts,
+    FamilyPreparationFacts,
     PrepareFamilyRequest,
     PreparedFamilyRun
 } from '../../engine/family-run.ts';

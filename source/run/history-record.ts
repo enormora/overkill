@@ -2,7 +2,7 @@ import type { ReadonlyDeep } from 'type-fest';
 import { z } from 'zod';
 import { workIdSchema } from '../engine/identity-schema.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
-import { currentRunRecordVersion } from './run-record-format.ts';
+import { currentRunRecordVersion, previousRunRecordVersion } from './run-record-format.ts';
 import { verdictSchema } from './run-artifact-schema.ts';
 
 const family = z.string();
@@ -37,7 +37,7 @@ const result = z.object({
         .readonly()
 });
 const fields = {
-    version: z.union([ z.literal(1), z.literal(currentRunRecordVersion) ]),
+    version: z.union([ z.literal(1), z.literal(previousRunRecordVersion), z.literal(currentRunRecordVersion) ]),
     replayPlan: collectedRunPlanSchema.nullable().default(null),
     replayProfile: z.unknown().default(null),
     kind: z.literal('single'),

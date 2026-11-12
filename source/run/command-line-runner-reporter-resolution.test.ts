@@ -1,5 +1,12 @@
 import { runIfMain } from '#test-runner';
 import {
+    type LoadedConfig,
+    type ConfiguredRunCommand,
+    type RunCommand,
+    type RunRequest,
+    RunResolutionError
+} from '../packages/run/run.entry-point.ts';
+import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
     type TestScope as OverkillScope,
@@ -14,15 +21,13 @@ import {
     defaultMicrotestProfile,
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
-import type { LoadedConfig } from '../config/config-loader.ts';
+import { snapshotRunCommand } from './frozen-run-command.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
-import { RunResolutionError } from './run-errors.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';
 
 type ReporterLoader = {
     readonly createDefaultReporter: () => Promise<DefinedReporter>;
@@ -33,6 +38,8 @@ type CommandLineScenario = {
     readonly command: RunCommand;
     readonly result: CommandLineRunnerResult;
 };
+
+type ConfiguredRunOrchestrator = CommandLineRunnerDependencies['orchestrator'];
 
 const plainOutputRenderer = defineFixedOutputRenderer({
     render(intent): string {
@@ -84,7 +91,8 @@ function loadedConfig(
     };
 }
 
-function selectedProfileReporters(command: RunCommand): readonly DefinedReporter[] {
+function selectedProfileReporters(suppliedCommand: ConfiguredRunCommand | RunCommand): readonly DefinedReporter[] {
+    const { command } = snapshotRunCommand(suppliedCommand);
     const { reporters } = selectTestProfile(command.request.profile, command.config);
 
     if (reporters === null) {
@@ -134,7 +142,8 @@ function createRunnerDependencies(
                 throw new Error('Resolve is not used by the command-line runner.');
             },
             run,
-            async runWithReporterDelivery(command) {
+            async runWithReporterDelivery(suppliedCommand) {
+                const { command } = snapshotRunCommand(suppliedCommand);
                 const result = await run(command);
 
                 return {
@@ -158,7 +167,7 @@ async function runScenario(
         config,
         defaultReporterLoader,
         async function runCommand(command) {
-            receivedCommands.push(command);
+            receivedCommands.push(snapshotRunCommand(command).command);
 
             return await run(command);
         }

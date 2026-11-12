@@ -1,7 +1,7 @@
 import type { Clock } from '@enormora/clock';
 import type { RuntimeExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
-import { createHostExecutionDriver, type HostExecutionInput } from './host-family-plan.ts';
+import { createHostExecutionDriver, type HostExecutionInput } from './host-family-execution.ts';
 import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
 import { withReplayWire, wirePropertyCorpus } from './replay-wire.ts';
 import type { WorkerPoolCommand } from './worker-pool-protocol.ts';

@@ -72,13 +72,15 @@ export async function runObservedWorkerCollection<Value>(collect: () => Promise<
 async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<TestPlan> {
     const engine = await resolveHostEngine(command.engine, loadRunEngineModule);
     return await createHostTestPlan({
+        processModel: 'worker-pool',
         command: { ...command, propertyPolicy: null },
         engine,
-        async collect(policy) {
+        async collect(policy, replay) {
             return await createRunTestPlan({
-                replay: command.replay,
+                replay,
                 cwd: command.cwd,
-                definitionLocationCapture: command.definitionLocationCapture,
+                definitionLocationCapture: command.family?.definitionLocationCapture ??
+                    command.definitionLocationCapture,
                 discoverRunFiles: runDiscovery.discoverRunFiles,
                 engine,
                 loadRunTestModules,

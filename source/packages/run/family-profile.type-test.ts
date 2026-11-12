@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'tstyche';
 import { z } from 'zod/v4';
 import { defineTestFamily } from '../engine/engine.entry-point.ts';
+import { orchestrator, type ConfiguredRunCommand } from './run.entry-point.ts';
 import { defineConfig, type FamilySettingsOf } from './config.entry-point.ts';
 
 const numericSettings = z.strictObject({ iterations: z.number() });
@@ -60,4 +61,11 @@ describe('family profile settings', function () {
             }
         });
     });
+});
+
+declare const configuredCommand: ConfiguredRunCommand;
+test('explicit configuration sources are accepted by ordinary operations', function () {
+    expect(orchestrator.run).type.toBeCallableWith(configuredCommand);
+    expect(orchestrator.resolve).type.toBeCallableWith(configuredCommand);
+    expect(orchestrator.initialize).type.toBeCallableWith(configuredCommand);
 });

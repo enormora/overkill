@@ -6,6 +6,7 @@ import {
     type CollectedFamilyRun,
     type FamilyExecuteOptions,
     type FamilyRunFacts,
+    type FamilyPreparationFacts,
     type PreparedFamilyRun,
     type TestPlan,
     type TestFamily,
@@ -85,4 +86,9 @@ test('preparation infers the settings contract from the definition', function ()
 test('collected execution requires a signal', function () {
     expect(execute).type.toBeCallableWith(collectedRun, executeOptions);
     expect(execute).type.not.toBeCallableWith(collectedRun);
+});
+
+test('prepared facts are available without collection evidence', function () {
+    expect<PreparedFamilyRun['facts']>().type.toBe<FamilyPreparationFacts>();
+    expect<keyof FamilyPreparationFacts>().type.not.toBeAssignableFrom<'collection'>();
 });

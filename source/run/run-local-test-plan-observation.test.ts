@@ -36,6 +36,7 @@ export const testNode = createTestCase({
                 request: defaultRunRequest({ paths: [ 'source/integration-tests/run/fixtures/passing.test.ts' ] })
             }, {
                 kind: 'direct-entrypoint',
+                configuration: { kind: 'memory' },
                 root: { annotations: {}, controls: {}, title: '/project' },
                 testNode: node
             });

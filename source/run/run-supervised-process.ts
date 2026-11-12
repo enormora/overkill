@@ -104,6 +104,7 @@ export async function createSupervisedResolvedRun(
         async function collectTimedSupervisedRun() {
             return await collectSupervisedRun(
                 createSupervisedCollectCommand(command, input.profile, input.files, {
+                    projectRoot: input.projectRoot,
                     source,
                     normalization: input.benchmarkNormalization
                 }),
@@ -113,6 +114,7 @@ export async function createSupervisedResolvedRun(
         }
     ) ?? collectSupervisedRun(
         createSupervisedCollectCommand(command, input.profile, input.files, {
+            projectRoot: input.projectRoot,
             source,
             normalization: input.benchmarkNormalization
         }),
@@ -136,6 +138,7 @@ async function runSupervisedExecution(execution: SupervisedExecution): Promise<R
 
     return await runSupervisedCommand(
         createSupervisedRunCommand(command, input.profile, input.files, {
+            projectRoot: input.projectRoot,
             source,
             normalization: input.benchmarkNormalization
         }),

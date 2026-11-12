@@ -936,7 +936,34 @@ The runner uses the engine's preparation, exact collection, execution, and
 disposal contract. Each reusable invocation creates a fresh preparation.
 Inspection and empty selections release preparations without executing bodies.
 The former runner adapter hooks are removed; historical adapter facts remain
-readable. Imported families currently require in-process placement.
+readable.
+
+Imported families support their declared process models. Supervised and worker-pool
+execution require an importable configuration or the definition's explicit module
+reference. The CLI supplies configuration provenance automatically. Programmatic
+callers can retain it explicitly:
+
+```ts
+await orchestrator.run({
+    kind: 'configured',
+    command,
+    source: {
+        kind: 'config-file',
+        request: { cwd: projectRoot, configPath },
+        resolvedPath: configPath
+    }
+});
+```
+
+Use the absolute resolved configuration path. Configuration replay takes precedence;
+a mismatch fails without trying another implementation. Definitions without a
+replayable source remain local. Workers validate the exact implementation version,
+normalized settings, preparation facts, and frozen catalog before execution.
+
+`RunFacts.family` retains preparation and selected collection facts. New records
+use version `3`; historical versions `1` and `2` remain inspectable without
+importing family modules. Reproduction requires the recorded implementation
+version and compatible inputs. Changed implementations require a new run.
 
 ### Debug mode
 

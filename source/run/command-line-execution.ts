@@ -6,7 +6,7 @@ import {
     createCommandLineListConfig,
     type CommandLineConfigDependencies
 } from './command-line-config.ts';
-import type { RunCommand } from './run-types.ts';
+import type { ConfiguredRunCommand, RunCommand } from './run-types.ts';
 import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import {
     commandLineExitCodes,
@@ -23,11 +23,11 @@ import type { RunInvocationTimingOptions } from './run-timing-collection.ts';
 export type CommandLineExecutionDependencies = CommandLineConfigDependencies & {
     readonly orchestrator: {
         readonly resolve: (
-            command: RunCommand,
+            command: ConfiguredRunCommand | RunCommand,
             options: RunInvocationTimingOptions
         ) => ReturnType<RunOrchestrator['resolve']>;
         readonly runWithReporterDelivery: (
-            command: RunCommand,
+            command: ConfiguredRunCommand | RunCommand,
             options: RunInvocationTimingOptions
         ) => ReturnType<RunOrchestrator['runWithReporterDelivery']>;
     };
@@ -111,6 +111,21 @@ function runRequestExitCode(request: RunCommand['request'], result: RunResult): 
     return request.lastFailed && code === commandLineExitCodes.noTestsCollected ? commandLineExitCodes.pass : code;
 }
 
+function configuredCommand(command: RunCommand, loaded: LoadedConfig): ConfiguredRunCommand | RunCommand {
+    if (loaded.configPath === null) {
+        return command;
+    }
+    return {
+        kind: 'configured',
+        command,
+        source: {
+            kind: 'config-file',
+            request: { cwd: command.cwd, configPath: loaded.configPath },
+            resolvedPath: loaded.configPath
+        }
+    };
+}
+
 export async function runTestsWithLoadedConfig(
     request: CommandLineRunTestsRequest,
     dependencies: CommandLineExecutionDependencies,
@@ -118,7 +133,10 @@ export async function runTestsWithLoadedConfig(
     options: RunInvocationTimingOptions
 ): Promise<CommandLineRunnerResult> {
     const command = await createCommandFromRequest(request, loadedConfig, dependencies);
-    const runResult = await dependencies.orchestrator.runWithReporterDelivery(command, options);
+    const runResult = await dependencies.orchestrator.runWithReporterDelivery(
+        configuredCommand(command, loadedConfig),
+        options
+    );
 
     return {
         exitCode: runRequestExitCode(command.request, runResult.result),
@@ -138,7 +156,9 @@ export async function listTestsWithLoadedConfig(
     loadedConfig: LoadedConfig
 ): Promise<CommandLineRunnerResult> {
     const command = createCommandFromListRequest(request, loadedConfig);
-    const resolvedRun = await dependencies.orchestrator.resolve(command, { timing: null });
+    const resolvedRun = await dependencies.orchestrator.resolve(configuredCommand(command, loadedConfig), {
+        timing: null
+    });
 
     if (resolvedRun.collectionRunnerErrors.length > 0) {
         return {

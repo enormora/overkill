@@ -51,8 +51,7 @@ export function createReplayOperations(dependencies: RunOrchestratorDependencies
         command: ReplayWitnessCommand | ReplayWitnessInput,
         ...options: readonly [] | readonly [RunInvocationOptions]
     ): ReturnType<ReplayOperations['replayWitnessWithReporterDelivery']> {
-        const { prepareWitnessReplay } = await import('./replay-preparation.ts');
-        const { preparePropertyReplay } = await import('./property-replay-command.ts');
+        const { prepareWitnessReplay, preparePropertyReplay } = await import('./witness-replay-preparation.ts');
         const invocation = options[0] ?? { signal: null, timing: null };
         const prepared = isWitnessReplayCommand(command)
             ? await preparePropertyReplay(command)

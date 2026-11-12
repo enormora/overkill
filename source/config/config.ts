@@ -2,12 +2,12 @@ import type { z } from 'zod/v4';
 import { parse } from '@schema-hub/zod-error-formatter';
 import {
     normalizeProfilePolicy,
+    normalizeIntegrationExecution,
     assertValidProfileName,
     assertValidWorkDistribution,
     normalizeCoveragePolicy,
     normalizeProfileFiles,
-    normalizeRequiredProfileFiles,
-    normalizedWorkDistribution
+    normalizeRequiredProfileFiles
 } from './profile-normalization.ts';
 import {
     normalizeDefinedFamilyProfile,
@@ -20,7 +20,6 @@ import {
     integrationProfileSchema,
     microtestProfileSchema,
     projectConfigSchema,
-    workerPoolProjectExecution,
     type Config as ParsedProjectConfig,
     type ProjectBenchmarkProfileConfig,
     type ProjectPropertyProfileConfig as PropertyProfileInput,
@@ -50,29 +49,19 @@ import type {
     NormalizedConfig,
     ProfileConfig,
     ProfilesConfig,
-    PropertyProfileConfig,
-    WorkerLifecycle,
-    WorkerPoolAssignmentPolicy,
-    WorkerPoolHedgingPolicy
+    PropertyProfileConfig
 } from './types.ts';
 import { ordinaryBaselinePolicySchema, resolveStrictBaselines } from './baseline-policy.ts';
 import { ConfigError } from './config-error.ts';
 import { validateBenchmarkExecution } from './benchmark-execution.ts';
 import {
     defaultBenchmarkTimeoutPolicy,
-    defaultIntegrationProcessModel,
-    defaultIntegrationScheduling,
     defaultIntegrationTimeoutPolicy,
     normalizeHistoryPolicy,
     defaultLoader,
     defaultOutputRenderer,
     defaultTimeoutPolicy,
-    defaultWorkerLifecycle,
-    defaultWorkerPoolAssignmentPolicy,
-    defaultWorkerPoolDispatchPolicy,
-    defaultWorkerPoolHedgingPolicy,
-    normalizeMicrotestExecution,
-    normalizedMaxConcurrency
+    normalizeMicrotestExecution
 } from './defaults.ts';
 
 type ParsedProfiles = NonNullable<ParsedProjectConfig['profiles']>;
@@ -126,34 +115,6 @@ export type Config = {
     readonly runtimeStateDir?: ParsedProjectConfig['runtimeStateDir'];
 };
 
-function normalizeWorkerLifecycle(execution: ProjectIntegrationExecution | undefined): WorkerLifecycle {
-    if (execution?.processModel !== 'worker-pool') {
-        return defaultWorkerLifecycle;
-    }
-
-    return execution.workerLifecycle ?? defaultWorkerLifecycle;
-}
-
-function normalizeWorkerPoolAssignmentPolicy(
-    execution: ProjectIntegrationExecution | undefined
-): WorkerPoolAssignmentPolicy {
-    if (execution?.processModel !== 'worker-pool') {
-        return defaultWorkerPoolAssignmentPolicy;
-    }
-
-    return execution.assignmentPolicy ?? defaultWorkerPoolAssignmentPolicy;
-}
-
-function normalizeWorkerPoolHedgingPolicy(
-    execution: ProjectIntegrationExecution | undefined
-): WorkerPoolHedgingPolicy {
-    if (execution?.processModel !== 'worker-pool') {
-        return defaultWorkerPoolHedgingPolicy;
-    }
-
-    return execution.hedging ?? defaultWorkerPoolHedgingPolicy;
-}
-
 function assertValidWorkerPoolHedging(execution: IntegrationExecution): void {
     if (
         execution.processModel === 'worker-pool' &&
@@ -162,43 +123,6 @@ function assertValidWorkerPoolHedging(execution: IntegrationExecution): void {
     ) {
         throw new ConfigError('Invalid worker-pool hedging: hedging requires dynamic-lease dispatch.');
     }
-}
-
-function normalizeWorkerPoolExecution(
-    execution: ProjectIntegrationExecution | undefined,
-    scheduling: IntegrationExecution['scheduling']
-): IntegrationExecution {
-    const workerPoolExecution = workerPoolProjectExecution(execution);
-
-    return {
-        assignmentPolicy: normalizeWorkerPoolAssignmentPolicy(execution),
-        dispatchPolicy: workerPoolExecution?.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy,
-        hedging: normalizeWorkerPoolHedgingPolicy(execution),
-        hostProcess: { kind: 'direct' },
-        maxConcurrency: normalizedMaxConcurrency(workerPoolExecution),
-        maxWorkers: workerPoolExecution?.maxWorkers ?? null,
-        processModel: 'worker-pool',
-        scheduling,
-        workDistribution: normalizedWorkDistribution(execution),
-        workerLifecycle: normalizeWorkerLifecycle(execution)
-    };
-}
-
-function normalizeIntegrationExecution(
-    execution: ProjectIntegrationExecution | undefined
-): IntegrationExecution {
-    const processModel = execution?.processModel ?? defaultIntegrationProcessModel;
-    const scheduling = execution?.scheduling ?? defaultIntegrationScheduling;
-
-    if (processModel === 'worker-pool') {
-        return normalizeWorkerPoolExecution(execution, scheduling);
-    }
-
-    return {
-        maxConcurrency: normalizedMaxConcurrency(execution),
-        processModel,
-        scheduling
-    };
 }
 
 function normalizeMicrotestProfile(
