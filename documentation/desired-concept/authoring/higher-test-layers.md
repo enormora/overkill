@@ -775,21 +775,21 @@ following checks. Reuse established scanners, validators, parsers, and reader
 automation rather than implementing competing engines. These are ordinary
 integration assertions with resources where needed, not new test families.
 
-| Check group | Supported authoring and evidence |
-| --- | --- |
-| Automated accessibility | Explicit scanner checkpoints with selected rules, violations, incomplete findings, and covered targets |
-| Accessible semantics | Authored role/name/description/state, landmark/heading, and relationship expectations |
-| Keyboard/focus journeys | Native Tab/Shift+Tab, activation, modal focus entry/containment/restoration, escape behavior, skip-to-main links, route/form-error focus |
-| Contrast and targets | Supported text/non-text contrast and touch-target geometry checks in explicit rendered states; preserve scanner limitations |
-| Preferences and adaptation | Light/dark, forced colors, reduced motion, text enlargement, zoom/reflow, and touch conditions with authored behavior expectations |
-| Actual screen readers | Reader setup/navigation, bounded announcement transcripts, and assertions for validated OS/browser/reader combinations |
-| HTML conformance | Validate original response source and rendered-DOM checkpoints separately |
-| CSS conformance | Validate declared external/inline/generated stylesheet inputs with source and coverage provenance |
-| ARIA rules | Scanner-backed role/property/state/relationship checks, distinct from interaction correctness |
-| Microformats | Parse supported formats and assert extracted entities/properties, including URL/base handling |
-| Structured data | Extract/process JSON-LD, Microdata, and RDFa; check declared schema.org vocabulary/profiles and authored facts |
-| Discoverability/SEO | Assert status/redirects, title/description/language, canonical/hreflang, robots directives, crawlable links, and structured metadata |
-| Named audit integrations | Adapt selected external audits with explicit tool/rule versions, configuration, input, and findings |
+| Check group                | Supported authoring and evidence                                                                                                         |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Automated accessibility    | Explicit scanner checkpoints with selected rules, violations, incomplete findings, and covered targets                                   |
+| Accessible semantics       | Authored role/name/description/state, landmark/heading, and relationship expectations                                                    |
+| Keyboard/focus journeys    | Native Tab/Shift+Tab, activation, modal focus entry/containment/restoration, escape behavior, skip-to-main links, route/form-error focus |
+| Contrast and targets       | Supported text/non-text contrast and touch-target geometry checks in explicit rendered states; preserve scanner limitations              |
+| Preferences and adaptation | Light/dark, forced colors, reduced motion, text enlargement, zoom/reflow, and touch conditions with authored behavior expectations       |
+| Actual screen readers      | Reader setup/navigation, bounded announcement transcripts, and assertions for validated OS/browser/reader combinations                   |
+| HTML conformance           | Validate original response source and rendered-DOM checkpoints separately                                                                |
+| CSS conformance            | Validate declared external/inline/generated stylesheet inputs with source and coverage provenance                                        |
+| ARIA rules                 | Scanner-backed role/property/state/relationship checks, distinct from interaction correctness                                            |
+| Microformats               | Parse supported formats and assert extracted entities/properties, including URL/base handling                                            |
+| Structured data            | Extract/process JSON-LD, Microdata, and RDFa; check declared schema.org vocabulary/profiles and authored facts                           |
+| Discoverability/SEO        | Assert status/redirects, title/description/language, canonical/hreflang, robots directives, crawlable links, and structured metadata     |
+| Named audit integrations   | Adapt selected external audits with explicit tool/rule versions, configuration, input, and findings                                      |
 
 Heavier audits run at meaningful authored checkpoints with explicit readiness
 conditions, not as automatic initial/final scans. Shared macros may apply the
@@ -902,7 +902,7 @@ the recommended unit/integration split deliberately avoids. Framework-specific
 mounting and rendering are consumer setup rather than another Overkill product
 mode. General browser execution remains available to those consumers.
 
-### Assumptions And Invalidation
+### Browser Integration Constraints
 
 This boundary assumes that ordinary tests and explicit consumer fixtures can
 host custom rendering without framework-specific engine behavior. A demonstrated

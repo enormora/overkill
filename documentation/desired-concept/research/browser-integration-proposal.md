@@ -22,14 +22,14 @@ assertions, results, artifacts, baselines, profiles, selection, and reporting.
 No browser test family, alternate assertion system, browser-specific hooks,
 second scenario system, or second benchmark engine is proposed.
 
-| Concern | Existing owner | Proposed extension |
-| --- | --- | --- |
-| Browser execution | Engine bodies and runner placement | Browser-compatible dependencies and placement adapter |
-| Browser/server/build lifetime | Resources and runtime graphs | Factories with explicit owner and consumer realms |
-| Continuous app expectations | Attempt lifecycle, checks, runtime policies | Resource-owned observations and durable outcomes |
-| Startup/scenarios | Simulation definitions and resource bindings | Optional HTML/configuration assembly with ordinary app assets |
-| Performance | Workloads, strategies, collectors, lifecycle, budgets | Runtime-aware clocks/collectors and semantic provenance |
-| Evidence | Transcripts, attachments, failure preparation | Browser signals and finalization through supported closure events |
+| Concern                       | Existing owner                                        | Proposed extension                                                |
+| ----------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- |
+| Browser execution             | Engine bodies and runner placement                    | Browser-compatible dependencies and placement adapter             |
+| Browser/server/build lifetime | Resources and runtime graphs                          | Factories with explicit owner and consumer realms                 |
+| Continuous app expectations   | Attempt lifecycle, checks, runtime policies           | Resource-owned observations and durable outcomes                  |
+| Startup/scenarios             | Simulation definitions and resource bindings          | Optional HTML/configuration assembly with ordinary app assets     |
+| Performance                   | Workloads, strategies, collectors, lifecycle, budgets | Runtime-aware clocks/collectors and semantic provenance           |
+| Evidence                      | Transcripts, attachments, failure preparation         | Browser signals and finalization through supported closure events |
 
 The engine does not interpret locators, DOM APIs, CDP, BiDi, axe, or Lighthouse.
 Adapters own that interpretation. Runner placement owns imports, collection,
@@ -146,11 +146,11 @@ D24 selects explicitly provider-native action/locator APIs. Overkill owns the
 surrounding test contracts. The alternatives below explain that boundary;
 a controller-independent action API is not the selected design.
 
-| Design | Public promise | Consequence |
-| --- | --- | --- |
-| Explicit native-client integrations | Each exposes its named client's API and behavior, such as Playwright or a BiDi client | Native handles are appropriate; changing client can require test changes |
-| Controller-independent automation | Overkill owns the public page/locator/action contract | Wrap adapters; define waiting, input, navigation, error, and compatibility semantics |
-| Split by use case | Hide launcher details for browser-local tests; use explicit integrations for host automation | Browser-local test portability does not imply portable host-controller code |
+| Design                              | Public promise                                                                               | Consequence                                                                          |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Explicit native-client integrations | Each exposes its named client's API and behavior, such as Playwright or a BiDi client        | Native handles are appropriate; changing client can require test changes             |
+| Controller-independent automation   | Overkill owns the public page/locator/action contract                                        | Wrap adapters; define waiting, input, navigation, error, and compatibility semantics |
+| Split by use case                   | Hide launcher details for browser-local tests; use explicit integrations for host automation | Browser-local test portability does not imply portable host-controller code          |
 
 Illustrative native integration body:
 
@@ -212,19 +212,22 @@ Illustrative authoring, not final adapter API:
 
 ```ts
 export const testNode = suite('checkout', [
-    test('shows declined-payment recovery', withRuntime(
-        checkoutRuntime.scenario({ payments: 'declined' }),
-        async (scope) => {
-            const { page } = scope.runtimes.browser;
-            await page.goto(scope.runtimes.app.url);
-            await page.getByRole('button', { name: 'Pay' }).click();
-            await scope.assert(
-                visible,
-                page.getByRole('alert', { name: 'Payment declined' })
-            );
-            return scope.assert.collect();
-        }
-    ))
+    test(
+        'shows declined-payment recovery',
+        withRuntime(
+            checkoutRuntime.scenario({ payments: 'declined' }),
+            async (scope) => {
+                const { page } = scope.runtimes.browser;
+                await page.goto(scope.runtimes.app.url);
+                await page.getByRole('button', { name: 'Pay' }).click();
+                await scope.assert(
+                    visible,
+                    page.getByRole('alert', { name: 'Payment declined' })
+                );
+                return scope.assert.collect();
+            }
+        )
+    )
 ]);
 ```
 
@@ -246,15 +249,15 @@ Observer implementations follow the same realm rules as D11 resources: reference
 implementation modules for cross-realm execution; inline callbacks are limited
 to compatible same-realm execution. Never serialize observer closures.
 
-| Operation | Contract |
-| --- | --- |
-| Install | After resource acquisition, before dependent acquisition or consumer admission |
-| Report check | Durably record an authored resource expectation result |
-| Report observation failure | Preserve inability to observe/enforce as infrastructure evidence |
-| Request stop | Record cause first, then request cancellation and bounded retirement |
-| Prepare live evidence | Capture data requiring live handles before disposal |
-| Finalize | Close the interval, drain supported delivery, check missing expectations, freeze completeness |
-| Dispose observer | Release listener/infrastructure ownership exactly once |
+| Operation                  | Contract                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| Install                    | After resource acquisition, before dependent acquisition or consumer admission                |
+| Report check               | Durably record an authored resource expectation result                                        |
+| Report observation failure | Preserve inability to observe/enforce as infrastructure evidence                              |
+| Request stop               | Record cause first, then request cancellation and bounded retirement                          |
+| Prepare live evidence      | Capture data requiring live handles before disposal                                           |
+| Finalize                   | Close the interval, drain supported delivery, check missing expectations, freeze completeness |
+| Dispose observer           | Release listener/infrastructure ownership exactly once                                        |
 
 A post-acquisition observer cannot observe earlier acquisition effects. Browser
 factories must create an unstarted context/session, install guards, then create
@@ -324,13 +327,13 @@ The exact findings-inspection API remains implementation-design work.
 
 ### Result Semantics Resolved By D02
 
-| Event | Result domain |
-| --- | --- |
-| Authored app expectation violated, including unexpected app warning | Failed resource check in the ordinary attempt outcome |
-| Intentionally expected denied request | Passing predeclared bounded expectation under D33; operation remains blocked |
-| Required observer/enforcer unavailable or loses evidence | Infrastructure error and incomplete affected verification |
-| Runner execution restriction violated | Existing permission/runtime-policy runner error |
-| Resource/observer cleanup or artifact delivery fails | Existing infrastructure/artifact error alongside original outcome |
+| Event                                                               | Result domain                                                                |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Authored app expectation violated, including unexpected app warning | Failed resource check in the ordinary attempt outcome                        |
+| Intentionally expected denied request                               | Passing predeclared bounded expectation under D33; operation remains blocked |
+| Required observer/enforcer unavailable or loses evidence            | Infrastructure error and incomplete affected verification                    |
+| Runner execution restriction violated                               | Existing permission/runtime-policy runner error                              |
+| Resource/observer cleanup or artifact delivery fails                | Existing infrastructure/artifact error alongside original outcome            |
 
 Strict runner-console violations retain their runtime-policy domain. Authored
 app/resource expectations use failed resource checks, as resolved in D02.
@@ -340,15 +343,15 @@ Do not silently change retry eligibility through a new failure label.
 
 ### Standard Preset Enabled By Default
 
-| Signal | Proposed behavior | Narrow customization |
-| --- | --- | --- |
-| Outbound app request | Allow loopback destinations; prevent/report other destinations without explicit permission | Explicit permitted integrations or independent egress control |
-| App console warning/error | Fail the app expectation with original message/source/target | Typed matchers, exclusions, bounded expected diagnostics |
-| Unhandled app exception/rejection | Retain attributed failure and native details | Expected negative-path windows |
-| Request failure/unexpected HTTP status | Opt-in expectation; intended 4xx/5xx are not automatically violations | Method/route/status/scenario matching |
-| Dialog/popup/download/permission | Observe; opt-in checks and handling policy | Explicit app expectations |
-| Hydration diagnostics | Catch console/error signals first | Optional framework/version-specific adapters |
-| Dependency escape | Record requests beyond declared app/service boundaries | Simulator/controller evidence |
+| Signal                                 | Proposed behavior                                                                          | Narrow customization                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Outbound app request                   | Allow loopback destinations; prevent/report other destinations without explicit permission | Explicit permitted integrations or independent egress control |
+| App console warning/error              | Fail the app expectation with original message/source/target                               | Typed matchers, exclusions, bounded expected diagnostics      |
+| Unhandled app exception/rejection      | Retain attributed failure and native details                                               | Expected negative-path windows                                |
+| Request failure/unexpected HTTP status | Opt-in expectation; intended 4xx/5xx are not automatically violations                      | Method/route/status/scenario matching                         |
+| Dialog/popup/download/permission       | Observe; opt-in checks and handling policy                                                 | Explicit app expectations                                     |
+| Hydration diagnostics                  | Catch console/error signals first                                                          | Optional framework/version-specific adapters                  |
+| Dependency escape                      | Record requests beyond declared app/service boundaries                                     | Simulator/controller evidence                                 |
 
 This is a visible resource/runtime preset, enabled by default on first-party
 app/browser-session resources as resolved in D04/D25, not ambient global
@@ -542,7 +545,7 @@ Illustrative use of the ordinary facade:
 ```ts
 benchmark('checkout response', {
     kind: 'responsiveness',
-    workloads: [workload('declined', { cartItems: 3 })],
+    workloads: [ workload('declined', { cartItems: 3 }) ],
     measurement: rawMeasurement(checkoutMeasurement),
     measure: withRuntime(checkoutRuntime.scenario({ payments: 'declined' }), async (context) => {
         const page = await context.runtimes.browser.context.newPage();
@@ -571,14 +574,14 @@ cold or independent samples. The workload declares and establishes its reset.
 
 ### Measurement Endpoints
 
-| Metric | Start/end contract | Important distinction |
-| --- | --- | --- |
-| Browser function duration | Same-realm invocation to return/awaited completion | Excludes result transport |
-| Controller command duration | Host command start to controller completion | Includes IPC, actionability/waiting, remote latency |
-| Native input timing | Correlated browser input to supported Event Timing endpoint | Not necessarily final asynchronous app result |
-| Action-to-authored-effect | Explicit input/marker or labelled command to app mark/DOM predicate | State evidence; rendering strength depends on endpoint |
-| Rendering evidence | Supported marker/window to engine frame/trace endpoint | Backend-specific; not automatically physical display observation |
-| Navigation timing | Document/navigation origin to defined FP/FCP/LCP endpoint | Not automatically a fresh metric for SPA updates |
+| Metric                      | Start/end contract                                                  | Important distinction                                            |
+| --------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Browser function duration   | Same-realm invocation to return/awaited completion                  | Excludes result transport                                        |
+| Controller command duration | Host command start to controller completion                         | Includes IPC, actionability/waiting, remote latency              |
+| Native input timing         | Correlated browser input to supported Event Timing endpoint         | Not necessarily final asynchronous app result                    |
+| Action-to-authored-effect   | Explicit input/marker or labelled command to app mark/DOM predicate | State evidence; rendering strength depends on endpoint           |
+| Rendering evidence          | Supported marker/window to engine frame/trace endpoint              | Backend-specific; not automatically physical display observation |
+| Navigation timing           | Document/navigation origin to defined FP/FCP/LCP endpoint           | Not automatically a fresh metric for SPA updates                 |
 
 Arm observers before input. Endpoints must transition or be correlated to the
 action, not already be true. Define timeout and cancellation. Network-idle is
@@ -597,20 +600,20 @@ Keep input responsiveness and authored-effect latency separate. See
 
 ### Metric Catalog
 
-| Family | Useful metrics | Required limitations/provenance |
-| --- | --- | --- |
-| Function/action | Local execution, command span, effect span | Endpoints, clocks, IPC/wait inclusion |
-| Native input | Input delay, processing, event interaction duration | Correlation, thresholds, rounding, omitted short events |
-| Main-thread health | Long tasks, long animation frames | Thresholded diagnostics, not every dropped frame |
-| Callback pacing | rAF interval distribution | Visible/active document; not compositor/display frame truth |
-| Rendering | Style/layout/paint/composite time, supported frame evidence | Engine/trace schema, target, observation window |
-| CSS animations | Completion/duration/cancellation; supported frame quality | Completion and compositor smoothness differ |
-| Scroll | Displacement, endpoint latency, supported frame evidence | Native input/path; compositor versus main thread |
-| Navigation | FP/FCP, defined LCP, navigation phases | Document identity and endpoint finalization |
-| Requests | Started/completed/failed counts, bytes, cache behavior before endpoint | Accounting scope/source and completeness |
-| Memory | JS heap, page estimate, process RSS, sampled peak, allocations | Distinct quantities, owners and methods |
-| CPU | Main-thread, worker evidence, renderer/browser process CPU | Shared-process attribution limits |
-| Audits | Lighthouse findings and selected numeric observations | Scores/findings are not universal timing or field-user evidence |
+| Family             | Useful metrics                                                         | Required limitations/provenance                                 |
+| ------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Function/action    | Local execution, command span, effect span                             | Endpoints, clocks, IPC/wait inclusion                           |
+| Native input       | Input delay, processing, event interaction duration                    | Correlation, thresholds, rounding, omitted short events         |
+| Main-thread health | Long tasks, long animation frames                                      | Thresholded diagnostics, not every dropped frame                |
+| Callback pacing    | rAF interval distribution                                              | Visible/active document; not compositor/display frame truth     |
+| Rendering          | Style/layout/paint/composite time, supported frame evidence            | Engine/trace schema, target, observation window                 |
+| CSS animations     | Completion/duration/cancellation; supported frame quality              | Completion and compositor smoothness differ                     |
+| Scroll             | Displacement, endpoint latency, supported frame evidence               | Native input/path; compositor versus main thread                |
+| Navigation         | FP/FCP, defined LCP, navigation phases                                 | Document identity and endpoint finalization                     |
+| Requests           | Started/completed/failed counts, bytes, cache behavior before endpoint | Accounting scope/source and completeness                        |
+| Memory             | JS heap, page estimate, process RSS, sampled peak, allocations         | Distinct quantities, owners and methods                         |
+| CPU                | Main-thread, worker evidence, renderer/browser process CPU             | Shared-process attribution limits                               |
+| Audits             | Lighthouse findings and selected numeric observations                  | Scores/findings are not universal timing or field-user evidence |
 
 Do not hard-code 16.67 ms as universal frame time. Record refresh assumptions,
 variable-refresh limitations, active/foreground state, headed/headless mode,
@@ -1193,44 +1196,44 @@ reason to leave the feature catalog only in research.
 The register records design decisions and technical validation topics.
 Canonical concept documents define the settled contracts.
 
-| ID | Decision | Working recommendation |
-| --- | --- | --- |
-| D01 | Resolved: prevention and failure for guard-enabled sessions | Prevent disallowed requests and fail owning tests; reject admission if requested protection is unavailable; activation remains D04 |
-| D02 | Resolved: resource expectations versus runtime-policy errors | App guard violations are failed checks; guard failures remain infrastructure errors and runner restrictions retain policy semantics |
-| D03 | Partly resolved: service-worker/cache/remote compatibility | Protected service-worker journeys and warm-cache benchmarks are in scope with compatible enforcement; remote details remain open |
-| D04 | Resolved: standard guard preset/default activation | App/session resources guard by default, including benchmark use; D25 distinguishes bare execution hosts |
-| D05 | Resolved: default destinations and deny precedence | Loopback allowed by default; external grants explicit; inherited explicit deny wins over test-local grants |
-| D06 | Partly resolved: expected diagnostics and matcher composition | Bounded count-checked expectations selected; exact syntax/composition remain open; no retroactive deletion |
-| D07 | Resolved: fail-fast scope and retry eligibility | Stop affected sessions/tests; unrelated work continues; no automatic retries of app-guard failures |
-| D08 | Partly resolved: isolation and lifetime evidence | Fresh browser context/session per integration-test attempt; process reuse allowed; sample reset and shared finalization remain separate |
-| D09 | Resolved: collection policy | Browser-free catalogue by default; one collection browser through explicit configuration opt-in; placement/reference details remain open |
-| D10 | Partly resolved: controller/protocol/browser compatibility | Classic command adapter excluded; assess Playwright public BiDi paths before adding clients for demonstrated gaps; exact matrix remains open |
-| D11 | Resolved: cross-realm resource declaration | One portable declaration referencing owner/consumer modules; same-realm inline resources allowed; no duplicate profile binding system |
-| D12 | Resolved: HTML-host helper | Provide optional safe document/config assembly; consumer owns app mapping, markup/assets, builds, and may use existing SSR |
-| D13 | Partly resolved: scenario routing/reproduction | Request-routed test fixtures reject missing identity, including default; fixed-scenario servers bind at startup; exact helper/reproduction schema remains open |
-| D14 | Resolved: action-to-result meaning | Correlated browser input to authored DOM condition/app mark; host-command and rendering measurements stay separate; no timing substitution |
-| D15 | Resolved: metric groups and provenance | Canonical collector catalog covers local timing, input, paint, requests, rendering, CPU/memory and named audits; exact platform/tool support requires validation |
-| D16 | Partly resolved: sample state and sampling defaults | Browser workloads require declared retained/reset state, with presets; numerical sampling defaults remain open |
-| D17 | Resolved: diagnostic rerun activation | Richer benchmark reruns are opt-in; original failure retained; measurement identities remain distinct |
-| D18 | Capability absence and baseline mismatch | Required missing metrics fail gates; no silent substitution/skip |
-| D19 | Resolved: quality integration catalog and evidence contract | Canonical advanced accessibility, HTML/CSS/ARIA, semantic-data and SEO checks; exact implementation/platform/rule versions require validation |
-| D20 | Partly resolved: additional execution workflows | Controller-free capture deferred; workers managed by authored workloads; first-party extension resources included; standalone test export rejected; extension details remain open |
-| D21 | Collection/resource boundary details | Specify opt-in collection bootstrap, owner/consumer reference resolution, and selected execution preparation within the chosen one-declaration model |
-| D22 | Partly resolved: catalogs and capability outcomes | Missing required functional capabilities fail compatibility unless an intentional skip is authored; exact catalog/skip API remains open |
-| D23 | Resolved: standalone resource observation delivery | Closing a standalone session with failed guards throws structured findings and preserves other errors; managed execution uses ordinary result semantics |
-| D24 | Resolved: native public automation APIs | Provider-native actions/locators with prominent integration identity; Overkill owns surrounding test contracts, without cross-controller source guarantees |
-| D25 | Resolved: guard ownership across browser modes | Bare execution stays lightweight; app/session resources guard by default and compose into either placement |
-| D26 | Resolved: forbidden cached requests | Forbidden app request attempts fail even without outbound traffic; require reliable observation alongside prevention |
-| D27 | Resolved: fine-grained HTTPS prevention | Capability-based URL-path/method enforcement; reject unsupported policies; TLS inspection requires explicit configuration |
-| D28 | Resolved: native application boundary | First-party browser focus, including compatible mobile browsers; consumer resources may wrap native tools |
-| D29 | Resolved: default transport boundary | Standard HTTP(S)/WebSocket guard; other transports require explicit validated capabilities |
-| D30 | Resolved: browser test-harness delivery | Overkill-owned harness server/channel through replaceable existing-tool integrations; no application build prerequisite |
-| D31 | Resolved: document-bound browser bodies | Replacing the execution document before completion fails the attempt; use host-driven tests for navigation/reload journeys |
-| D32 | Resolved: browser-local native input assistance | Optional first-party bounded provider-specific keyboard/pointer bridge, without general controller RPC or universal locator APIs |
-| D33 | Resolved: intentional denial outcome | Exact predeclared bounded denial expectations may pass while requests stay blocked; missing/excess or unexpected denials fail |
-| D34 | Resolved: independent placement and collectors | Compatible mixed-placement suites/files; explicit import boundaries; one shared sampling/execution model |
-| D35 | Resolved: browser mode names | Browser-executed and Host-driven browser automation, defined by authored body location |
-| D36 | Resolved: browser family boundary | Integration correctness or benchmark performance; never browser microtest/property, with no automatic reclassification |
+| ID  | Decision                                                      | Working recommendation                                                                                                                                                            |
+| --- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D01 | Resolved: prevention and failure for guard-enabled sessions   | Prevent disallowed requests and fail owning tests; reject admission if requested protection is unavailable; activation remains D04                                                |
+| D02 | Resolved: resource expectations versus runtime-policy errors  | App guard violations are failed checks; guard failures remain infrastructure errors and runner restrictions retain policy semantics                                               |
+| D03 | Partly resolved: service-worker/cache/remote compatibility    | Protected service-worker journeys and warm-cache benchmarks are in scope with compatible enforcement; remote details remain open                                                  |
+| D04 | Resolved: standard guard preset/default activation            | App/session resources guard by default, including benchmark use; D25 distinguishes bare execution hosts                                                                           |
+| D05 | Resolved: default destinations and deny precedence            | Loopback allowed by default; external grants explicit; inherited explicit deny wins over test-local grants                                                                        |
+| D06 | Partly resolved: expected diagnostics and matcher composition | Bounded count-checked expectations selected; exact syntax/composition remain open; no retroactive deletion                                                                        |
+| D07 | Resolved: fail-fast scope and retry eligibility               | Stop affected sessions/tests; unrelated work continues; no automatic retries of app-guard failures                                                                                |
+| D08 | Partly resolved: isolation and lifetime evidence              | Fresh browser context/session per integration-test attempt; process reuse allowed; sample reset and shared finalization remain separate                                           |
+| D09 | Resolved: collection policy                                   | Browser-free catalogue by default; one collection browser through explicit configuration opt-in; placement/reference details remain open                                          |
+| D10 | Partly resolved: controller/protocol/browser compatibility    | Classic command adapter excluded; assess Playwright public BiDi paths before adding clients for demonstrated gaps; exact matrix remains open                                      |
+| D11 | Resolved: cross-realm resource declaration                    | One portable declaration referencing owner/consumer modules; same-realm inline resources allowed; no duplicate profile binding system                                             |
+| D12 | Resolved: HTML-host helper                                    | Provide optional safe document/config assembly; consumer owns app mapping, markup/assets, builds, and may use existing SSR                                                        |
+| D13 | Partly resolved: scenario routing/reproduction                | Request-routed test fixtures reject missing identity, including default; fixed-scenario servers bind at startup; exact helper/reproduction schema remains open                    |
+| D14 | Resolved: action-to-result meaning                            | Correlated browser input to authored DOM condition/app mark; host-command and rendering measurements stay separate; no timing substitution                                        |
+| D15 | Resolved: metric groups and provenance                        | Canonical collector catalog covers local timing, input, paint, requests, rendering, CPU/memory and named audits; exact platform/tool support requires validation                  |
+| D16 | Partly resolved: sample state and sampling defaults           | Browser workloads require declared retained/reset state, with presets; numerical sampling defaults remain open                                                                    |
+| D17 | Resolved: diagnostic rerun activation                         | Richer benchmark reruns are opt-in; original failure retained; measurement identities remain distinct                                                                             |
+| D18 | Capability absence and baseline mismatch                      | Required missing metrics fail gates; no silent substitution/skip                                                                                                                  |
+| D19 | Resolved: quality integration catalog and evidence contract   | Canonical advanced accessibility, HTML/CSS/ARIA, semantic-data and SEO checks; exact implementation/platform/rule versions require validation                                     |
+| D20 | Partly resolved: additional execution workflows               | Controller-free capture deferred; workers managed by authored workloads; first-party extension resources included; standalone test export rejected; extension details remain open |
+| D21 | Collection/resource boundary details                          | Specify opt-in collection bootstrap, owner/consumer reference resolution, and selected execution preparation within the chosen one-declaration model                              |
+| D22 | Partly resolved: catalogs and capability outcomes             | Missing required functional capabilities fail compatibility unless an intentional skip is authored; exact catalog/skip API remains open                                           |
+| D23 | Resolved: standalone resource observation delivery            | Closing a standalone session with failed guards throws structured findings and preserves other errors; managed execution uses ordinary result semantics                           |
+| D24 | Resolved: native public automation APIs                       | Provider-native actions/locators with prominent integration identity; Overkill owns surrounding test contracts, without cross-controller source guarantees                        |
+| D25 | Resolved: guard ownership across browser modes                | Bare execution stays lightweight; app/session resources guard by default and compose into either placement                                                                        |
+| D26 | Resolved: forbidden cached requests                           | Forbidden app request attempts fail even without outbound traffic; require reliable observation alongside prevention                                                              |
+| D27 | Resolved: fine-grained HTTPS prevention                       | Capability-based URL-path/method enforcement; reject unsupported policies; TLS inspection requires explicit configuration                                                         |
+| D28 | Resolved: native application boundary                         | First-party browser focus, including compatible mobile browsers; consumer resources may wrap native tools                                                                         |
+| D29 | Resolved: default transport boundary                          | Standard HTTP(S)/WebSocket guard; other transports require explicit validated capabilities                                                                                        |
+| D30 | Resolved: browser test-harness delivery                       | Overkill-owned harness server/channel through replaceable existing-tool integrations; no application build prerequisite                                                           |
+| D31 | Resolved: document-bound browser bodies                       | Replacing the execution document before completion fails the attempt; use host-driven tests for navigation/reload journeys                                                        |
+| D32 | Resolved: browser-local native input assistance               | Optional first-party bounded provider-specific keyboard/pointer bridge, without general controller RPC or universal locator APIs                                                  |
+| D33 | Resolved: intentional denial outcome                          | Exact predeclared bounded denial expectations may pass while requests stay blocked; missing/excess or unexpected denials fail                                                     |
+| D34 | Resolved: independent placement and collectors                | Compatible mixed-placement suites/files; explicit import boundaries; one shared sampling/execution model                                                                          |
+| D35 | Resolved: browser mode names                                  | Browser-executed and Host-driven browser automation, defined by authored body location                                                                                            |
+| D36 | Resolved: browser family boundary                             | Integration correctness or benchmark performance; never browser microtest/property, with no automatic reclassification                                                            |
 
 ## Alternatives And Invalidation
 

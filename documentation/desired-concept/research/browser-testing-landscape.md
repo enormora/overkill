@@ -28,17 +28,17 @@ This section is a proposal for discussion. It extends the settled two-mode
 and component-testing boundary without declaring every candidate an initial
 release commitment.
 
-| Offering | First-party responsibility | Reused implementation |
-| --- | --- | --- |
-| Real-browser execution | Overkill tests/assertions, browser collection/execution integration, native-input integration, results | Existing transforms/dev servers and browser controllers |
-| Full-app automation | Typed resources, scenarios, lifecycle, identity, evidence, assertion adapters | Playwright initially; assess its public BiDi paths before adding another client for demonstrated gaps |
-| Deterministic app environments | Compose app assets, server, simulation, startup config, and browser; capture reproduction facts | Consumer application builds and server integrations |
-| Visual and layout verification | Baseline review/update policy, attribution, focused geometry assertions | Controller screenshots, existing image comparison libraries, optional review services |
-| Accessible app journeys | Reusable keyboard/focus checks, supported preference variants, reader resources, and structured evidence | Controller-native input, established scanners, optional platform-validated screen-reader adapters |
-| Document and semantic checks | Typed assertion/reporting integration with explicit source/state and rule provenance | HTML/CSS validators, ARIA rule engines, microformats/structured-data parsers, focused SEO audits |
-| Browser benchmarks | Existing benchmark workloads, repeatable measurements, metrics, budgets, baselines | Browser APIs, controller metrics, focused measurement/audit tools |
-| Cross-environment execution | Browser/device/preference matrices, exact selection, remote lifecycle, merged evidence | Browser controllers, grids, cloud sessions, provider tunnels |
-| Debugging and failure evidence | Capture/retention policy, console/network transcripts, artifact attribution and reporter links | Screenshots, recordings, traces, existing viewers |
+| Offering                       | First-party responsibility                                                                               | Reused implementation                                                                                 |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Real-browser execution         | Overkill tests/assertions, browser collection/execution integration, native-input integration, results   | Existing transforms/dev servers and browser controllers                                               |
+| Full-app automation            | Typed resources, scenarios, lifecycle, identity, evidence, assertion adapters                            | Playwright initially; assess its public BiDi paths before adding another client for demonstrated gaps |
+| Deterministic app environments | Compose app assets, server, simulation, startup config, and browser; capture reproduction facts          | Consumer application builds and server integrations                                                   |
+| Visual and layout verification | Baseline review/update policy, attribution, focused geometry assertions                                  | Controller screenshots, existing image comparison libraries, optional review services                 |
+| Accessible app journeys        | Reusable keyboard/focus checks, supported preference variants, reader resources, and structured evidence | Controller-native input, established scanners, optional platform-validated screen-reader adapters     |
+| Document and semantic checks   | Typed assertion/reporting integration with explicit source/state and rule provenance                     | HTML/CSS validators, ARIA rule engines, microformats/structured-data parsers, focused SEO audits      |
+| Browser benchmarks             | Existing benchmark workloads, repeatable measurements, metrics, budgets, baselines                       | Browser APIs, controller metrics, focused measurement/audit tools                                     |
+| Cross-environment execution    | Browser/device/preference matrices, exact selection, remote lifecycle, merged evidence                   | Browser controllers, grids, cloud sessions, provider tunnels                                          |
+| Debugging and failure evidence | Capture/retention policy, console/network transcripts, artifact attribution and reporter links           | Screenshots, recordings, traces, existing viewers                                                     |
 
 The simulation layer should help applications following a runtime startup
 pattern such as `window.startApp(config)`. An optional HTML-host helper should
@@ -105,21 +105,21 @@ The useful unification is by independent capabilities. A screenshot service,
 a browser protocol, and a test runner solve different problems even when all
 three appear in one workflow.
 
-| Capability | Representative prior art | Proposed Overkill role |
-| --- | --- | --- |
-| Execute test modules in actual browsers | Buster, Karma, Web Test Runner, Vitest Browser Mode | Own test semantics and browser execution integration; reuse serving/transformation infrastructure and browser controllers. |
-| Drive complete application journeys | Playwright, Selenium, WebdriverIO, Cypress, TestCafe | Own Overkill test lifecycle and evidence; expose established automation clients through adapters. |
-| Compare appearance | Gemini, BackstopJS, reg-suit, Percy, Argos | Own baseline identity, intentional updates, and reporting; reuse capture and comparison implementations. |
-| Check responsive layout constraints | Galen | Consider explicit geometry assertions alongside visual baselines; do not require a new specification language. |
-| Verify accessible interactions and states | axe, Pa11y, Guidepup, WAI practices | Combine scanner adapters, authored journeys, and optional assistive-technology integrations; keep their evidence distinct. |
-| Validate documents and structured meaning | Nu Html Checker, microformats parsers, structured-data validators | Adapt validators; distinguish source, rendered DOM, vocabulary, and application-specific expectations. |
-| Check discoverability and web best practices | Lighthouse, crawler-facing metadata checks | Use focused audits and assertions; do not equate audit scores with search ranking. |
-| Measure frontend performance | Browsertime, sitespeed.io, WebPageTest, Lighthouse CI | Extend existing benchmark workloads, metrics, budgets, and evidence. |
-| Control dependencies and reproduce network behavior | Polly.JS, WireMock, Hoverfly, VCR, Betamax | Reuse the existing resource/scenario/transcript direction and focused external adapters. |
-| Provision deterministic full-app environments | Application builds, configurable app servers, simulation scenarios | Compose build/server/browser resources and effective scenario configuration; keep application composition and compiler choices with the consumer. |
-| Explore or generate journeys | Midscene, Meticulous, Selenium IDE, AI testing services | Potential optional authoring/action integrations; do not promise a recorder, crawler, agent, or self-healing engine. |
-| Run across environments | BrowserStack, Sauce Labs, Selenium Grid | Own selection and identity; reuse remote sessions, provider infrastructure, and tunnels. |
-| Investigate failures and iterate | Cypress open mode, Wallaby, controller traces | Own attribution and reporter links; reuse capture and viewers before considering a dedicated UI. |
+| Capability                                          | Representative prior art                                           | Proposed Overkill role                                                                                                                            |
+| --------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Execute test modules in actual browsers             | Buster, Karma, Web Test Runner, Vitest Browser Mode                | Own test semantics and browser execution integration; reuse serving/transformation infrastructure and browser controllers.                        |
+| Drive complete application journeys                 | Playwright, Selenium, WebdriverIO, Cypress, TestCafe               | Own Overkill test lifecycle and evidence; expose established automation clients through adapters.                                                 |
+| Compare appearance                                  | Gemini, BackstopJS, reg-suit, Percy, Argos                         | Own baseline identity, intentional updates, and reporting; reuse capture and comparison implementations.                                          |
+| Check responsive layout constraints                 | Galen                                                              | Consider explicit geometry assertions alongside visual baselines; do not require a new specification language.                                    |
+| Verify accessible interactions and states           | axe, Pa11y, Guidepup, WAI practices                                | Combine scanner adapters, authored journeys, and optional assistive-technology integrations; keep their evidence distinct.                        |
+| Validate documents and structured meaning           | Nu Html Checker, microformats parsers, structured-data validators  | Adapt validators; distinguish source, rendered DOM, vocabulary, and application-specific expectations.                                            |
+| Check discoverability and web best practices        | Lighthouse, crawler-facing metadata checks                         | Use focused audits and assertions; do not equate audit scores with search ranking.                                                                |
+| Measure frontend performance                        | Browsertime, sitespeed.io, WebPageTest, Lighthouse CI              | Extend existing benchmark workloads, metrics, budgets, and evidence.                                                                              |
+| Control dependencies and reproduce network behavior | Polly.JS, WireMock, Hoverfly, VCR, Betamax                         | Reuse the existing resource/scenario/transcript direction and focused external adapters.                                                          |
+| Provision deterministic full-app environments       | Application builds, configurable app servers, simulation scenarios | Compose build/server/browser resources and effective scenario configuration; keep application composition and compiler choices with the consumer. |
+| Explore or generate journeys                        | Midscene, Meticulous, Selenium IDE, AI testing services            | Potential optional authoring/action integrations; do not promise a recorder, crawler, agent, or self-healing engine.                              |
+| Run across environments                             | BrowserStack, Sauce Labs, Selenium Grid                            | Own selection and identity; reuse remote sessions, provider infrastructure, and tunnels.                                                          |
+| Investigate failures and iterate                    | Cypress open mode, Wallaby, controller traces                      | Own attribution and reporter links; reuse capture and viewers before considering a dedicated UI.                                                  |
 
 Complete application journeys can involve multiple pages and origins,
 authentication/session persistence, uploads/downloads, permissions, native
@@ -152,14 +152,14 @@ See [Cypress core concepts](https://docs.cypress.io/app/core-concepts/introducti
 
 Other apparent modes vary independent axes:
 
-| Axis | Choices worth distinguishing |
-| --- | --- |
+| Axis        | Choices worth distinguishing                                                                                                                                            |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Test target | Full app, browser module, worker/service worker, extension, native app, desktop UI. Browser workers and extensions need explicit context support before being promised. |
-| Environment | Real browser, DOM emulation, HTML parsing, real mobile browser, native mobile app. Emulation does not establish rendering or native-input behavior. |
-| Authoring | TypeScript tests, BDD specifications, recorded steps, generated journeys, natural-language/AI actions. |
-| Observation | Assertions, layout geometry, screenshots, DOM/accessibility structures, speech output, network behavior, performance measurements. |
-| Placement | Local launch, remote session, cloud device, manually opened/captured browser, static/offline test page. |
-| Workflow | Headless CI, headed debugging, watch feedback, assisted manual evaluation, scheduled monitoring. |
+| Environment | Real browser, DOM emulation, HTML parsing, real mobile browser, native mobile app. Emulation does not establish rendering or native-input behavior.                     |
+| Authoring   | TypeScript tests, BDD specifications, recorded steps, generated journeys, natural-language/AI actions.                                                                  |
+| Observation | Assertions, layout geometry, screenshots, DOM/accessibility structures, speech output, network behavior, performance measurements.                                      |
+| Placement   | Local launch, remote session, cloud device, manually opened/captured browser, static/offline test page.                                                                 |
+| Workflow    | Headless CI, headed debugging, watch feedback, assisted manual evaluation, scheduled monitoring.                                                                        |
 
 Native mobile apps, OS-wide image automation, DOM emulation presets, recorders,
 BDD languages, hosted test management, and AI self-healing are candidates for
@@ -199,13 +199,13 @@ Compatibility with existing foreign suites is a separate product decision.
 The selected feature is verification of app journeys under accessibility
 requirements, not one scan of the initial DOM.
 
-| Evidence | Examples | Reuse and limits |
-| --- | --- | --- |
-| Automated state analysis | Roles/names, applicable ARIA rules, contrast findings, target-size findings | Reuse axe or another supported rule engine; record rules and states actually evaluated. |
-| Interactive behavior | Tab/Shift+Tab, activation, skip links, focus entry/containment/restoration, route changes, validation errors | Use controller-native actions and authored app expectations; do not infer the intended order of every app automatically. |
-| User preferences and adaptation | Light/dark, forced colors, reduced motion, larger text, zoom/reflow, touch input | Record how each condition was applied. Viewport resizing and CSS transforms do not establish actual browser zoom or OS behavior. |
-| Assistive technology | Screen-reader navigation, names, announcements, live-region updates | Adapt existing libraries/providers for validated OS/browser/reader combinations. Accessibility-tree snapshots are different evidence. |
-| Human evaluation | Usability and checks requiring contextual judgment | Preserve explicit scope and evidence; automated success does not establish complete conformance. |
+| Evidence                        | Examples                                                                                                     | Reuse and limits                                                                                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Automated state analysis        | Roles/names, applicable ARIA rules, contrast findings, target-size findings                                  | Reuse axe or another supported rule engine; record rules and states actually evaluated.                                               |
+| Interactive behavior            | Tab/Shift+Tab, activation, skip links, focus entry/containment/restoration, route changes, validation errors | Use controller-native actions and authored app expectations; do not infer the intended order of every app automatically.              |
+| User preferences and adaptation | Light/dark, forced colors, reduced motion, larger text, zoom/reflow, touch input                             | Record how each condition was applied. Viewport resizing and CSS transforms do not establish actual browser zoom or OS behavior.      |
+| Assistive technology            | Screen-reader navigation, names, announcements, live-region updates                                          | Adapt existing libraries/providers for validated OS/browser/reader combinations. Accessibility-tree snapshots are different evidence. |
+| Human evaluation                | Usability and checks requiring contextual judgment                                                           | Preserve explicit scope and evidence; automated success does not establish complete conformance.                                      |
 
 The WAI modal pattern specifies focus movement, tab containment, and focus
 restoration, illustrating why scanning alone is insufficient. See
@@ -283,11 +283,11 @@ do not establish generic BiDi compatibility. Existing clients such as
 
 Three concerns should be evaluated separately:
 
-| Concern | Working support recommendation |
-| --- | --- |
-| Deliver Overkill tests to a browser | The browser integration provides a browser-loadable test graph and bootstrap using existing transformation/serving tooling. |
-| Build the application under test | Compose a consumer build command, existing dev server, bundler API, or prebuilt artifact as a resource. Do not make Overkill a general application build system. |
-| Configure a deterministic app session | Use explicit server/startup configuration and scenario-aware endpoints; record the scenario and supplied build identity for reproduction. |
+| Concern                               | Working support recommendation                                                                                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deliver Overkill tests to a browser   | The browser integration provides a browser-loadable test graph and bootstrap using existing transformation/serving tooling.                                      |
+| Build the application under test      | Compose a consumer build command, existing dev server, bundler API, or prebuilt artifact as a resource. Do not make Overkill a general application build system. |
+| Configure a deterministic app session | Use explicit server/startup configuration and scenario-aware endpoints; record the scenario and supplied build identity for reproduction.                        |
 
 Two application patterns need to fit:
 
@@ -370,162 +370,162 @@ current support status should be made from its inclusion.
 
 ### Browser test execution and automation
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [Buster.JS](https://busterjs.readthedocs.io/en/develop/) | Browser-executed tests and generic captured-browser sessions. |
-| [Karma](https://github.com/karma-runner/karma) | Execute JavaScript tests across connected real browsers. |
-| [Web Test Runner](https://github.com/modernweb-dev/web) | Browser execution with separate framework, launcher, and server integrations. |
-| [Playwright](https://github.com/microsoft/playwright) | Browser control library plus a separate full test runner. |
-| [Puppeteer](https://github.com/puppeteer/puppeteer) | Browser control through CDP or BiDi. |
-| [Selenium](https://github.com/SeleniumHQ/selenium) | Browser automation clients, drivers, and Grid infrastructure. |
-| [WebdriverIO / WDIO](https://github.com/webdriverio/webdriverio) | Automation framework with browser and mobile integrations. |
-| [WebDriver](https://github.com/w3c/webdriver) | Remote-control protocol specification, not a test runner. |
-| [WebDriver BiDi](https://github.com/w3c/webdriver-bidi) | Bidirectional browser-control protocol, not an execution family. |
-| [TestCafe](https://github.com/DevExpress/testcafe) | Browser test runner with its own automation and authoring model. |
-| [Cypress](https://github.com/cypress-io/cypress) | Integrated browser testing, command queues, waiting, and debugging. |
-| [Nightwatch](https://github.com/nightwatchjs/nightwatch) | Browser automation framework and integrated testing workflow. |
-| [Nightmare](https://github.com/segment-boneyard/nightmare) | Historical high-level browser automation library; consult archived source. |
-| [CasperJS](https://github.com/casperjs/casperjs) | Scripted browser navigation/testing built around older browser engines. |
-| [PhantomJS](https://github.com/ariya/phantomjs) | Scriptable headless WebKit engine. |
-| [SlimerJS](https://github.com/laurentj/slimerjs) | Scriptable browser engine and page interaction. |
-| [Capybara](https://github.com/teamcapybara/capybara) | Ruby acceptance-testing API with interchangeable drivers. |
-| [Selenide](https://github.com/selenide/selenide) | Java browser-testing API above Selenium. |
-| [Geb](https://github.com/geb/geb) | Browser automation library; inspect its dedicated documentation before API reuse. |
-| [Protractor](https://github.com/angular/protractor) | Angular-oriented end-to-end testing prior art. |
-| [DalekJS](https://github.com/dalekjs/dalek) | Historical browser automation framework; repository recommends TestCafe. |
-| [Chimp](https://github.com/xolvio/chimp) | Current README describes app-development tooling; historical browser-testing identity needs a version. |
+| Project/source                                                   | Distinct purpose or review limit                                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [Buster.JS](https://busterjs.readthedocs.io/en/develop/)         | Browser-executed tests and generic captured-browser sessions.                                          |
+| [Karma](https://github.com/karma-runner/karma)                   | Execute JavaScript tests across connected real browsers.                                               |
+| [Web Test Runner](https://github.com/modernweb-dev/web)          | Browser execution with separate framework, launcher, and server integrations.                          |
+| [Playwright](https://github.com/microsoft/playwright)            | Browser control library plus a separate full test runner.                                              |
+| [Puppeteer](https://github.com/puppeteer/puppeteer)              | Browser control through CDP or BiDi.                                                                   |
+| [Selenium](https://github.com/SeleniumHQ/selenium)               | Browser automation clients, drivers, and Grid infrastructure.                                          |
+| [WebdriverIO / WDIO](https://github.com/webdriverio/webdriverio) | Automation framework with browser and mobile integrations.                                             |
+| [WebDriver](https://github.com/w3c/webdriver)                    | Remote-control protocol specification, not a test runner.                                              |
+| [WebDriver BiDi](https://github.com/w3c/webdriver-bidi)          | Bidirectional browser-control protocol, not an execution family.                                       |
+| [TestCafe](https://github.com/DevExpress/testcafe)               | Browser test runner with its own automation and authoring model.                                       |
+| [Cypress](https://github.com/cypress-io/cypress)                 | Integrated browser testing, command queues, waiting, and debugging.                                    |
+| [Nightwatch](https://github.com/nightwatchjs/nightwatch)         | Browser automation framework and integrated testing workflow.                                          |
+| [Nightmare](https://github.com/segment-boneyard/nightmare)       | Historical high-level browser automation library; consult archived source.                             |
+| [CasperJS](https://github.com/casperjs/casperjs)                 | Scripted browser navigation/testing built around older browser engines.                                |
+| [PhantomJS](https://github.com/ariya/phantomjs)                  | Scriptable headless WebKit engine.                                                                     |
+| [SlimerJS](https://github.com/laurentj/slimerjs)                 | Scriptable browser engine and page interaction.                                                        |
+| [Capybara](https://github.com/teamcapybara/capybara)             | Ruby acceptance-testing API with interchangeable drivers.                                              |
+| [Selenide](https://github.com/selenide/selenide)                 | Java browser-testing API above Selenium.                                                               |
+| [Geb](https://github.com/geb/geb)                                | Browser automation library; inspect its dedicated documentation before API reuse.                      |
+| [Protractor](https://github.com/angular/protractor)              | Angular-oriented end-to-end testing prior art.                                                         |
+| [DalekJS](https://github.com/dalekjs/dalek)                      | Historical browser automation framework; repository recommends TestCafe.                               |
+| [Chimp](https://github.com/xolvio/chimp)                         | Current README describes app-development tooling; historical browser-testing identity needs a version. |
 
 ### Visual comparison, geometry, and review
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [Galen Framework](https://github.com/galenframework/galen) | Responsive layout specifications using element geometry. |
-| [Gemini / gemini-test](https://github.com/gemini-testing/gemini) | Screenshot regression testing. |
-| [Hermione / Testplane](https://github.com/gemini-testing/hermione) | Browser testing framework; current README identifies it as Testplane. |
-| [BackstopJS](https://github.com/garris/BackstopJS) | Scenario-driven screenshot regression and reports. |
-| [PhantomCSS](https://github.com/HuddleEng/PhantomCSS) | Historical visual regression testing. |
-| [Needle](https://github.com/python-needle/needle) | Selenium-based visual comparison. |
-| [CSS Critic](https://github.com/cburgmer/csscritic) | CSS appearance regression testing. |
-| [reg-suit](https://github.com/reg-viz/reg-suit) | Image comparison workflow and difference reports. |
-| [Visual Regression Tracker](https://github.com/Visual-Regression-Tracker/Visual-Regression-Tracker) | Baseline acceptance and image comparison service. |
-| [Argos](https://github.com/argos-ci/argos) | Visual testing and review platform. |
-| [Lost Pixel](https://github.com/lost-pixel/lost-pixel) | Visual regression for application pages and story collections. |
-| [Creevey](https://github.com/creevey/creevey) | Cross-browser screenshot testing for Storybook. |
-| [WebdriverCSS](https://github.com/webdriverio/webdrivercss) | Screenshot comparison integrated with WebdriverIO. |
-| [ODiff](https://github.com/dmtrKovalenko/odiff) | Native image comparison implementation. |
-| [pixelmatch](https://github.com/mapbox/pixelmatch) | Pixel comparison with anti-aliasing and perceptual color handling. |
-| [looks-same](https://github.com/gemini-testing/looks-same) | PNG comparison accounting for human color perception. |
-| [aShot](https://github.com/pazone/ashot) | WebDriver screenshot capture and comparison utilities. |
-| [nightwatch-vrt](https://github.com/Crunch-io/nightwatch-vrt) | Screenshot assertions extending Nightwatch. |
-| [jest-image-snapshot](https://github.com/americanexpress/jest-image-snapshot) | Jest matcher connecting image comparison and snapshot workflows. |
-| [Applitools](https://applitools.com/) | Vendor visual analysis and broader automated-testing platform. |
-| [Chromatic](https://www.chromatic.com/) | Hosted visual, interaction, accessibility, and review workflows. |
-| [Percy](https://www.browserstack.com/percy) | Screenshot baselines and visual review service. |
-| [VisWiz.io](https://www.viswiz.io/) | Hosted visual regression comparison. |
-| [Happo.io](https://happo.io/) | Cross-browser screenshots, visual regression, and accessibility offerings. |
+| Project/source                                                                                      | Distinct purpose or review limit                                           |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [Galen Framework](https://github.com/galenframework/galen)                                          | Responsive layout specifications using element geometry.                   |
+| [Gemini / gemini-test](https://github.com/gemini-testing/gemini)                                    | Screenshot regression testing.                                             |
+| [Hermione / Testplane](https://github.com/gemini-testing/hermione)                                  | Browser testing framework; current README identifies it as Testplane.      |
+| [BackstopJS](https://github.com/garris/BackstopJS)                                                  | Scenario-driven screenshot regression and reports.                         |
+| [PhantomCSS](https://github.com/HuddleEng/PhantomCSS)                                               | Historical visual regression testing.                                      |
+| [Needle](https://github.com/python-needle/needle)                                                   | Selenium-based visual comparison.                                          |
+| [CSS Critic](https://github.com/cburgmer/csscritic)                                                 | CSS appearance regression testing.                                         |
+| [reg-suit](https://github.com/reg-viz/reg-suit)                                                     | Image comparison workflow and difference reports.                          |
+| [Visual Regression Tracker](https://github.com/Visual-Regression-Tracker/Visual-Regression-Tracker) | Baseline acceptance and image comparison service.                          |
+| [Argos](https://github.com/argos-ci/argos)                                                          | Visual testing and review platform.                                        |
+| [Lost Pixel](https://github.com/lost-pixel/lost-pixel)                                              | Visual regression for application pages and story collections.             |
+| [Creevey](https://github.com/creevey/creevey)                                                       | Cross-browser screenshot testing for Storybook.                            |
+| [WebdriverCSS](https://github.com/webdriverio/webdrivercss)                                         | Screenshot comparison integrated with WebdriverIO.                         |
+| [ODiff](https://github.com/dmtrKovalenko/odiff)                                                     | Native image comparison implementation.                                    |
+| [pixelmatch](https://github.com/mapbox/pixelmatch)                                                  | Pixel comparison with anti-aliasing and perceptual color handling.         |
+| [looks-same](https://github.com/gemini-testing/looks-same)                                          | PNG comparison accounting for human color perception.                      |
+| [aShot](https://github.com/pazone/ashot)                                                            | WebDriver screenshot capture and comparison utilities.                     |
+| [nightwatch-vrt](https://github.com/Crunch-io/nightwatch-vrt)                                       | Screenshot assertions extending Nightwatch.                                |
+| [jest-image-snapshot](https://github.com/americanexpress/jest-image-snapshot)                       | Jest matcher connecting image comparison and snapshot workflows.           |
+| [Applitools](https://applitools.com/)                                                               | Vendor visual analysis and broader automated-testing platform.             |
+| [Chromatic](https://www.chromatic.com/)                                                             | Hosted visual, interaction, accessibility, and review workflows.           |
+| [Percy](https://www.browserstack.com/percy)                                                         | Screenshot baselines and visual review service.                            |
+| [VisWiz.io](https://www.viswiz.io/)                                                                 | Hosted visual regression comparison.                                       |
+| [Happo.io](https://happo.io/)                                                                       | Cross-browser screenshots, visual regression, and accessibility offerings. |
 
 ### Accessibility, performance, and document analysis
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [axe-core](https://github.com/dequelabs/axe-core) | Embeddable automated accessibility rule engine. |
-| [axe-playwright](https://github.com/abhinaba-ghosh/axe-playwright) | Bridge from Playwright to axe-core. |
-| [Pa11y](https://github.com/pa11y/pa11y) | Page accessibility checking through CLI or Node APIs. |
-| [Lighthouse CI / lighthouserc](https://github.com/GoogleChrome/lighthouse-ci) | Configuration and workflow for repeated audits and assertions. |
-| [Lighthouse](https://github.com/GoogleChrome/lighthouse) | Performance, accessibility, SEO, and web-practice audits. |
-| [playwright-lighthouse](https://github.com/abhinaba-ghosh/playwright-lighthouse) | Connect Lighthouse auditing to a Playwright workflow. |
-| [Browsertime](https://github.com/sitespeedio/browsertime) | Browser performance measurement infrastructure. |
-| [sitespeed.io](https://github.com/sitespeedio/sitespeed.io) | Web performance collection, analysis, and reporting. |
-| [WebPageTest](https://www.webpagetest.org/) | Primary homepage was inaccessible during this review; detailed integration assessment remains open. |
-| [Nu Html Checker](https://github.com/validator/validator) | HTML/CSS/SVG checks from an existing validator. |
-| [microformats parser](https://github.com/microformats/microformat-node) | Extract microformats for explicit application expectations. |
-| [Structured Data Testing Tool](https://github.com/iaincollins/structured-data-testing-tool) | CLI/library checks for structured data. |
+| Project/source                                                                              | Distinct purpose or review limit                                                                    |
+| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [axe-core](https://github.com/dequelabs/axe-core)                                           | Embeddable automated accessibility rule engine.                                                     |
+| [axe-playwright](https://github.com/abhinaba-ghosh/axe-playwright)                          | Bridge from Playwright to axe-core.                                                                 |
+| [Pa11y](https://github.com/pa11y/pa11y)                                                     | Page accessibility checking through CLI or Node APIs.                                               |
+| [Lighthouse CI / lighthouserc](https://github.com/GoogleChrome/lighthouse-ci)               | Configuration and workflow for repeated audits and assertions.                                      |
+| [Lighthouse](https://github.com/GoogleChrome/lighthouse)                                    | Performance, accessibility, SEO, and web-practice audits.                                           |
+| [playwright-lighthouse](https://github.com/abhinaba-ghosh/playwright-lighthouse)            | Connect Lighthouse auditing to a Playwright workflow.                                               |
+| [Browsertime](https://github.com/sitespeedio/browsertime)                                   | Browser performance measurement infrastructure.                                                     |
+| [sitespeed.io](https://github.com/sitespeedio/sitespeed.io)                                 | Web performance collection, analysis, and reporting.                                                |
+| [WebPageTest](https://www.webpagetest.org/)                                                 | Primary homepage was inaccessible during this review; detailed integration assessment remains open. |
+| [Nu Html Checker](https://github.com/validator/validator)                                   | HTML/CSS/SVG checks from an existing validator.                                                     |
+| [microformats parser](https://github.com/microformats/microformat-node)                     | Extract microformats for explicit application expectations.                                         |
+| [Structured Data Testing Tool](https://github.com/iaincollins/structured-data-testing-tool) | CLI/library checks for structured data.                                                             |
 
 ### Remote infrastructure and execution feedback
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [BrowserStack](https://www.browserstack.com/) | Remote browser and device infrastructure with testing services. |
-| [Sauce Labs](https://saucelabs.com/) | Remote browsers/devices and provider connection infrastructure. |
-| [LambdaTest](https://www.testmuai.com/) | Original URL redirects to TestMu AI; verify current provider contracts before integration. |
-| [TestingBot](https://testingbot.com/) | Remote browser/device sessions and parallel execution. |
-| [CrossBrowserTesting](https://crossbrowsertesting.com/) | Original hostname was unavailable; historical provider identity needs an archival source. |
-| [Wallaby](https://wallabyjs.com/) | Continuous editor feedback for JavaScript/TypeScript tests. |
-| [puppeteer-cluster](https://github.com/thomasdondorf/puppeteer-cluster) | Pooled browser jobs and browser recovery; compare with existing runner scheduling. |
-| [playwright-video](https://github.com/qawolf/playwright-video) | Historical page-video helper; assess current controller-native capture first. |
-| [webdriver-manager](https://github.com/angular/webdriver-manager) | Driver installation/startup tooling, not a testing mode. |
-| [webdriverio-devtools](https://github.com/webdriverio/devtools) | Current linked repository is debugging tooling; historical protocol package identity needs a version. |
+| Project/source                                                          | Distinct purpose or review limit                                                                      |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [BrowserStack](https://www.browserstack.com/)                           | Remote browser and device infrastructure with testing services.                                       |
+| [Sauce Labs](https://saucelabs.com/)                                    | Remote browsers/devices and provider connection infrastructure.                                       |
+| [LambdaTest](https://www.testmuai.com/)                                 | Original URL redirects to TestMu AI; verify current provider contracts before integration.            |
+| [TestingBot](https://testingbot.com/)                                   | Remote browser/device sessions and parallel execution.                                                |
+| [CrossBrowserTesting](https://crossbrowsertesting.com/)                 | Original hostname was unavailable; historical provider identity needs an archival source.             |
+| [Wallaby](https://wallabyjs.com/)                                       | Continuous editor feedback for JavaScript/TypeScript tests.                                           |
+| [puppeteer-cluster](https://github.com/thomasdondorf/puppeteer-cluster) | Pooled browser jobs and browser recovery; compare with existing runner scheduling.                    |
+| [playwright-video](https://github.com/qawolf/playwright-video)          | Historical page-video helper; assess current controller-native capture first.                         |
+| [webdriver-manager](https://github.com/angular/webdriver-manager)       | Driver installation/startup tooling, not a testing mode.                                              |
+| [webdriverio-devtools](https://github.com/webdriverio/devtools)         | Current linked repository is debugging tooling; historical protocol package identity needs a version. |
 
 ### Generated, recorded, AI-assisted, and specification-driven testing
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [Midscene](https://github.com/web-infra-dev/midscene) | Natural-language visual actions/assertions; agent API can use an existing Playwright page. |
-| [Selenium IDE](https://github.com/SeleniumHQ/selenium-ide) | Record and replay browser interactions. |
-| [Meticulous](https://www.meticulous.ai/) | Vendor-generated and maintained visual browser tests. |
-| [Testim](https://www.testim.io/test-automation-tool/) | Vendor test authoring and execution platform; detailed API compatibility remains unassessed. |
-| [mabl](https://www.mabl.com/) | Vendor agentic test platform. |
-| [Functionize](https://www.functionize.com/) | Vendor app-test generation, execution, and maintenance. |
-| [Autify](https://autify.com/) | Vendor AI-assisted quality/test authoring platform. |
-| [Testsigma](https://testsigma.com/) | Vendor test generation, execution, and diagnosis. |
-| [testRigor](https://testrigor.com/) | Plain-language end-to-end test authoring. |
-| [Momentic](https://momentic.ai/) | Vendor AI exploration, reproduction, and regression-test generation. |
-| [QA Wolf](https://github.com/qawolf/qawolf) | Local flow tooling plus a managed test-generation/execution platform. |
-| [TestComplete](https://smartbear.com/product/testcomplete/) | Desktop, web, and mobile test automation. |
-| [Tricentis Tosca](https://www.tricentis.com/products/automate-continuous-testing-tosca) | Codeless enterprise end-to-end automation; supplied name was trice-tosca. |
-| [Ranorex](https://www.ranorex.com/) | Desktop, web, and mobile GUI automation; supplied name was renorex. |
-| [Katalon Studio](https://katalon.com/katalon-studio) | Integrated no-code, low-code, and code-based test tooling. |
-| [vStellar](https://vstellar.io/) | Visual test authoring platform spanning web, mobile, API, and performance. |
-| [Serenity BDD](https://github.com/serenity-bdd/serenity-core) | Acceptance-testing framework; separate language/reporting layer from browser control. |
-| [Robot Framework](https://github.com/robotframework/robotframework) | Generic acceptance/automation framework with library integrations. |
-| [Gauge](https://github.com/getgauge/gauge) | Specification-driven acceptance-testing framework. |
-| [Vedro](https://vedro.io/docs/quick-start) | Python scenarios, contexts, and effects; an authoring model rather than a browser protocol. |
-| [Sahi](https://github.com/sahipro/sahi) | Primary site/repository unavailable during this review; detailed claims remain unverified. |
-| [RedwoodHQ](https://github.com/primatest/RedwoodHQ) | Primary site/repository unavailable during this review; detailed claims remain unverified. |
+| Project/source                                                                          | Distinct purpose or review limit                                                             |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [Midscene](https://github.com/web-infra-dev/midscene)                                   | Natural-language visual actions/assertions; agent API can use an existing Playwright page.   |
+| [Selenium IDE](https://github.com/SeleniumHQ/selenium-ide)                              | Record and replay browser interactions.                                                      |
+| [Meticulous](https://www.meticulous.ai/)                                                | Vendor-generated and maintained visual browser tests.                                        |
+| [Testim](https://www.testim.io/test-automation-tool/)                                   | Vendor test authoring and execution platform; detailed API compatibility remains unassessed. |
+| [mabl](https://www.mabl.com/)                                                           | Vendor agentic test platform.                                                                |
+| [Functionize](https://www.functionize.com/)                                             | Vendor app-test generation, execution, and maintenance.                                      |
+| [Autify](https://autify.com/)                                                           | Vendor AI-assisted quality/test authoring platform.                                          |
+| [Testsigma](https://testsigma.com/)                                                     | Vendor test generation, execution, and diagnosis.                                            |
+| [testRigor](https://testrigor.com/)                                                     | Plain-language end-to-end test authoring.                                                    |
+| [Momentic](https://momentic.ai/)                                                        | Vendor AI exploration, reproduction, and regression-test generation.                         |
+| [QA Wolf](https://github.com/qawolf/qawolf)                                             | Local flow tooling plus a managed test-generation/execution platform.                        |
+| [TestComplete](https://smartbear.com/product/testcomplete/)                             | Desktop, web, and mobile test automation.                                                    |
+| [Tricentis Tosca](https://www.tricentis.com/products/automate-continuous-testing-tosca) | Codeless enterprise end-to-end automation; supplied name was trice-tosca.                    |
+| [Ranorex](https://www.ranorex.com/)                                                     | Desktop, web, and mobile GUI automation; supplied name was renorex.                          |
+| [Katalon Studio](https://katalon.com/katalon-studio)                                    | Integrated no-code, low-code, and code-based test tooling.                                   |
+| [vStellar](https://vstellar.io/)                                                        | Visual test authoring platform spanning web, mobile, API, and performance.                   |
+| [Serenity BDD](https://github.com/serenity-bdd/serenity-core)                           | Acceptance-testing framework; separate language/reporting layer from browser control.        |
+| [Robot Framework](https://github.com/robotframework/robotframework)                     | Generic acceptance/automation framework with library integrations.                           |
+| [Gauge](https://github.com/getgauge/gauge)                                              | Specification-driven acceptance-testing framework.                                           |
+| [Vedro](https://vedro.io/docs/quick-start)                                              | Python scenarios, contexts, and effects; an authoring model rather than a browser protocol.  |
+| [Sahi](https://github.com/sahipro/sahi)                                                 | Primary site/repository unavailable during this review; detailed claims remain unverified.   |
+| [RedwoodHQ](https://github.com/primatest/RedwoodHQ)                                     | Primary site/repository unavailable during this review; detailed claims remain unverified.   |
 
 ### Dependency control, emulation, and adjacent tooling
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [Polly.JS](https://github.com/Netflix/pollyjs) | Record, replay, and stub HTTP interactions in Node and browsers. |
-| [WireMock](https://github.com/wiremock/wiremock) | External API simulation and mocking. |
-| [Hoverfly](https://github.com/SpectoLabs/hoverfly) | API simulation, capture, and dependency replacement. |
-| [VCR](https://github.com/vcr/vcr) | Recorded HTTP cassettes for replay in Ruby tests. |
-| [Cheerio](https://cheerio.js.org/) | HTML/XML parsing and manipulation; not a rendering browser. |
-| [jsdom](https://github.com/jsdom/jsdom) | DOM/HTML emulation in Node; not real layout or rendering evidence. |
-| [Zombie.js](https://github.com/assaf/zombie) | Node-based simulated browser/testing environment. |
-| [HtmlUnit](https://github.com/HtmlUnit/htmlunit) | Browser emulation in Java. |
-| [Syn](https://github.com/bitovi/syn) | Synthetic browser input/event tooling; native-input equivalence requires separate evidence. |
-| [web-component-tester](https://github.com/Polymer/web-component-tester) | Component testing prior art; first-party component API excluded for Overkill. |
-| [open-wc](https://github.com/open-wc/open-wc) | Web-component development/testing conventions and tools; component API excluded. |
-| [TestProf](https://github.com/test-prof/test-prof) | Analyze test-suite performance; distinct from measuring application performance. |
-| [Tridactyl](https://github.com/tridactyl/tridactyl) | Keyboard-driven Firefox extension; an interaction example, not a test framework. |
+| Project/source                                                          | Distinct purpose or review limit                                                            |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [Polly.JS](https://github.com/Netflix/pollyjs)                          | Record, replay, and stub HTTP interactions in Node and browsers.                            |
+| [WireMock](https://github.com/wiremock/wiremock)                        | External API simulation and mocking.                                                        |
+| [Hoverfly](https://github.com/SpectoLabs/hoverfly)                      | API simulation, capture, and dependency replacement.                                        |
+| [VCR](https://github.com/vcr/vcr)                                       | Recorded HTTP cassettes for replay in Ruby tests.                                           |
+| [Cheerio](https://cheerio.js.org/)                                      | HTML/XML parsing and manipulation; not a rendering browser.                                 |
+| [jsdom](https://github.com/jsdom/jsdom)                                 | DOM/HTML emulation in Node; not real layout or rendering evidence.                          |
+| [Zombie.js](https://github.com/assaf/zombie)                            | Node-based simulated browser/testing environment.                                           |
+| [HtmlUnit](https://github.com/HtmlUnit/htmlunit)                        | Browser emulation in Java.                                                                  |
+| [Syn](https://github.com/bitovi/syn)                                    | Synthetic browser input/event tooling; native-input equivalence requires separate evidence. |
+| [web-component-tester](https://github.com/Polymer/web-component-tester) | Component testing prior art; first-party component API excluded for Overkill.               |
+| [open-wc](https://github.com/open-wc/open-wc)                           | Web-component development/testing conventions and tools; component API excluded.            |
+| [TestProf](https://github.com/test-prof/test-prof)                      | Analyze test-suite performance; distinct from measuring application performance.            |
+| [Tridactyl](https://github.com/tridactyl/tridactyl)                     | Keyboard-driven Firefox extension; an interaction example, not a test framework.            |
 
 ### Native device and desktop automation
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [Appium](https://github.com/appium/appium) | Native, hybrid, mobile-web, and desktop automation. |
-| [Detox](https://github.com/wix/Detox) | Device/simulator app testing. |
-| [Maestro](https://github.com/mobile-dev-inc/Maestro) | UI journeys for Android, iOS, and web apps. |
-| [SikuliX](https://github.com/RaiMan/SikuliX1) | Image-driven desktop automation; current repository points to Oculix successor. |
-| [scrcpy](https://github.com/Genymobile/scrcpy) | Android display/control tooling. |
-| [Appium Desktop](https://github.com/appium/appium-desktop) | Older GUI tooling; README directs users to CLI Appium and Inspector. |
-| [Appium Inspector](https://github.com/appium/appium-inspector) | Inspect application elements through Appium. |
-| [Appium WebDriverAgent](https://github.com/appium/WebDriverAgent) | iOS control implementation; moved to the Appium iOS monorepo. |
-| [adb-enhanced](https://github.com/ashishb/adb-enhanced) | Android device-control commands. |
+| Project/source                                                    | Distinct purpose or review limit                                                |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [Appium](https://github.com/appium/appium)                        | Native, hybrid, mobile-web, and desktop automation.                             |
+| [Detox](https://github.com/wix/Detox)                             | Device/simulator app testing.                                                   |
+| [Maestro](https://github.com/mobile-dev-inc/Maestro)              | UI journeys for Android, iOS, and web apps.                                     |
+| [SikuliX](https://github.com/RaiMan/SikuliX1)                     | Image-driven desktop automation; current repository points to Oculix successor. |
+| [scrcpy](https://github.com/Genymobile/scrcpy)                    | Android display/control tooling.                                                |
+| [Appium Desktop](https://github.com/appium/appium-desktop)        | Older GUI tooling; README directs users to CLI Appium and Inspector.            |
+| [Appium Inspector](https://github.com/appium/appium-inspector)    | Inspect application elements through Appium.                                    |
+| [Appium WebDriverAgent](https://github.com/appium/WebDriverAgent) | iOS control implementation; moved to the Appium iOS monorepo.                   |
+| [adb-enhanced](https://github.com/ashishb/adb-enhanced)           | Android device-control commands.                                                |
 
 ### Additional source identities
 
-| Project/source | Distinct purpose or review limit |
-| --- | --- |
-| [VLM-Diff](https://github.com/shidesheng0218/vlm-diff) | DOM/pixel comparison with optional model-assisted interpretation. |
-| [Guidepup](https://github.com/guidepup/guidepup) | Screen-reader automation for supported environments. |
-| [Microformats](https://microformats.org/) and [HTML5 Doctor explanation](https://html5doctor.com/microformats/) | Semantic conventions and background; distinct from ARIA and schema.org. |
-| [schema.org](https://schema.org/), [JSON-LD](https://json-ld.org/), [Microdata](https://html.spec.whatwg.org/multipage/microdata.html) | Vocabulary and serialization/embedding formats; not browser controllers. |
-| [TestCafe live mode](https://testcafe.io/documentation/402831/guides/basic-guides/live-mode) | Interactive rerun workflow; detailed current-page review remains open. |
-| [Betamax Python documentation](https://betamax.readthedocs.io/en/latest/introduction.html) | HTTP recording exists under this name; intended Java/Python project identity remains unresolved. |
-| playwalk; k visual; click interceptor; dynamic-html-snapshots; waffle; cdp-agent | No unique intended project established. Omitted from capability decisions. |
+| Project/source                                                                                                                         | Distinct purpose or review limit                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| [VLM-Diff](https://github.com/shidesheng0218/vlm-diff)                                                                                 | DOM/pixel comparison with optional model-assisted interpretation.                                |
+| [Guidepup](https://github.com/guidepup/guidepup)                                                                                       | Screen-reader automation for supported environments.                                             |
+| [Microformats](https://microformats.org/) and [HTML5 Doctor explanation](https://html5doctor.com/microformats/)                        | Semantic conventions and background; distinct from ARIA and schema.org.                          |
+| [schema.org](https://schema.org/), [JSON-LD](https://json-ld.org/), [Microdata](https://html.spec.whatwg.org/multipage/microdata.html) | Vocabulary and serialization/embedding formats; not browser controllers.                         |
+| [TestCafe live mode](https://testcafe.io/documentation/402831/guides/basic-guides/live-mode)                                           | Interactive rerun workflow; detailed current-page review remains open.                           |
+| [Betamax Python documentation](https://betamax.readthedocs.io/en/latest/introduction.html)                                             | HTTP recording exists under this name; intended Java/Python project identity remains unresolved. |
+| playwalk; k visual; click interceptor; dynamic-html-snapshots; waffle; cdp-agent                                                       | No unique intended project established. Omitted from capability decisions.                       |
 
 ## Remaining Technical Validation
 

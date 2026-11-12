@@ -122,13 +122,13 @@ enforceable hard deadline merely by declaring supervised support.
 Browser placement is an execution-target requirement, not a test family and
 not the family's `execution: 'runtime' | 'analysis'` discriminator.
 
-| Family | Browser-executed | Host-driven browser automation |
-| --- | --- | --- |
-| Integration | Supported with compatible imports/resources | Supported through provider-native controller integrations |
-| Benchmark | Supported with runtime-aware sampling/collectors | Supported, including locally measured browser operations |
-| Microtest | Rejected | Rejected as a browser-testing workload |
-| Property | Rejected | Rejected as a browser-testing workload |
-| Analysis/type-test | No runtime body | No runtime body; may analyze source referring to browser APIs |
+| Family             | Browser-executed                                 | Host-driven browser automation                                |
+| ------------------ | ------------------------------------------------ | ------------------------------------------------------------- |
+| Integration        | Supported with compatible imports/resources      | Supported through provider-native controller integrations     |
+| Benchmark          | Supported with runtime-aware sampling/collectors | Supported, including locally measured browser operations      |
+| Microtest          | Rejected                                         | Rejected as a browser-testing workload                        |
+| Property           | Rejected                                         | Rejected as a browser-testing workload                        |
+| Analysis/type-test | No runtime body                                  | No runtime body; may analyze source referring to browser APIs |
 
 A browser environment makes a correctness test an integration test regardless
 of body size, whether it mounts an app, or whether provisioning happens outside

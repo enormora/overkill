@@ -22,10 +22,10 @@ not environment-driven runtime branches.
 Browser support uses the existing engine and orchestration path. The two modes
 name the authored body's placement, not separate engines or test families:
 
-| Mode | Body owner | Browser role |
-| --- | --- | --- |
-| Browser-executed | Browser document | Runs the body and authored assertion recorder through the harness |
-| Host-driven browser automation | Execution host | Runs the app or explicitly requested browser-local operations |
+| Mode                           | Body owner       | Browser role                                                      |
+| ------------------------------ | ---------------- | ----------------------------------------------------------------- |
+| Browser-executed               | Browser document | Runs the body and authored assertion recorder through the harness |
+| Host-driven browser automation | Execution host   | Runs the app or explicitly requested browser-local operations     |
 
 The execution host may be local or remote. Both modes can use the same
 controller-backed browser provisioning. Browser-executed bodies do not require
@@ -719,11 +719,11 @@ assigned work unit:
 
 `workDistribution` describes how selected work is packed before placement:
 
-| Work distribution | Description                                         |
-| ----------------- | --------------------------------------------------- |
-| `file` | One unit per source file within each compatible placement/runtime/workload/family-variant partition |
-| `case` | One unit per selected executable case within its resolved partition |
-| `group` | Named file-set groups decide the initial shape within compatible partitions |
+| Work distribution | Description                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `file`            | One unit per source file within each compatible placement/runtime/workload/family-variant partition |
+| `case`            | One unit per selected executable case within its resolved partition                                 |
+| `group`           | Named file-set groups decide the initial shape within compatible partitions                         |
 
 Resource scopes lower into lifecycle and placement constraints before work
 units are assigned:

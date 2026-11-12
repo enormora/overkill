@@ -766,12 +766,12 @@ automation**. They describe the benchmark body's execution, not the metric
 source. Keep body placement, measured target, collector owner, required
 capabilities, and measurement endpoints separate in the resolved strategy.
 
-| Workload | Body placement | Measurement and collector |
-| --- | --- | --- |
-| Browser function microbenchmark | Browser-executed | Realm-local clock around the function; return readings after measurement |
-| Navigation/request budget | Host-driven browser automation | Controller drives navigation; supported network collector observes the target |
-| Browser-local work with network/rendering metrics | Browser-executed | Browser body plus host-owned protocol collectors, admitted before work begins |
-| Locally timed function from a host journey | Host-driven browser automation | Explicit browser-local measured operation; clock endpoints inside the browser |
+| Workload                                          | Body placement                 | Measurement and collector                                                     |
+| ------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
+| Browser function microbenchmark                   | Browser-executed               | Realm-local clock around the function; return readings after measurement      |
+| Navigation/request budget                         | Host-driven browser automation | Controller drives navigation; supported network collector observes the target |
+| Browser-local work with network/rendering metrics | Browser-executed               | Browser body plus host-owned protocol collectors, admitted before work begins |
+| Locally timed function from a host journey        | Host-driven browser automation | Explicit browser-local measured operation; clock endpoints inside the browser |
 
 A function microbenchmark is still in the benchmark family, never the microtest
 family. In-browser execution does not preclude DevTools/BiDi collection. A
@@ -931,19 +931,19 @@ Maintain adapters for these metric groups, with explicit browser/protocol/tool
 compatibility rather than promising every metric on every target. Collector
 location does not constrain the benchmark body's placement.
 
-| Metric group | Source/capability | Meaning and boundary |
-| --- | --- | --- |
-| Function execution | Browser-local clock | Local measured region; exclude result transport unless explicitly requested |
-| User/application marks | Supported browser timing APIs | Named app intervals, with document/clock identity |
-| Input and authored effect | Correlated native input, browser events/marks/DOM condition | Distinguish input responsiveness, final app result, and presentation |
-| Navigation and paint | Navigation/paint/LCP APIs or validated protocol collector | Defined FP/FCP/LCP endpoint; document-scoped, not automatically reset by SPA routes |
-| Resource timing | Browser resource entries | Buffered resource observations with frame/cross-origin/completeness limits, not every network request |
-| Request accounting | Supported controller/protocol events | Starts/completions/failures/bytes/cache before an explicit endpoint; redirects/workers/SW and background traffic require declared scope |
-| Main-thread and callback pacing | Long-task/long-animation-frame observations, animation callbacks | Thresholded stalls and callback intervals, not direct physical/compositor frame counts |
-| Rendering, CSS animations, scrolling | Supported native input, engine tracing/profiling | Layout/style/paint/compositing and movement/completion evidence with engine/window provenance |
-| Memory | Supported browser/engine/process collectors | Heap, page estimate, RSS, allocations, sampled peak, and endpoint delta are distinct quantities |
-| CPU | Supported engine/process/worker attribution | Browser/renderer/worker scopes are distinct from Node harness CPU; shared-process totals do not establish exact worker use |
-| Named external audits | Resource-owned audit integration | Versioned findings/numeric observations, kept distinct from direct timings and field-user evidence |
+| Metric group                         | Source/capability                                                | Meaning and boundary                                                                                                                    |
+| ------------------------------------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Function execution                   | Browser-local clock                                              | Local measured region; exclude result transport unless explicitly requested                                                             |
+| User/application marks               | Supported browser timing APIs                                    | Named app intervals, with document/clock identity                                                                                       |
+| Input and authored effect            | Correlated native input, browser events/marks/DOM condition      | Distinguish input responsiveness, final app result, and presentation                                                                    |
+| Navigation and paint                 | Navigation/paint/LCP APIs or validated protocol collector        | Defined FP/FCP/LCP endpoint; document-scoped, not automatically reset by SPA routes                                                     |
+| Resource timing                      | Browser resource entries                                         | Buffered resource observations with frame/cross-origin/completeness limits, not every network request                                   |
+| Request accounting                   | Supported controller/protocol events                             | Starts/completions/failures/bytes/cache before an explicit endpoint; redirects/workers/SW and background traffic require declared scope |
+| Main-thread and callback pacing      | Long-task/long-animation-frame observations, animation callbacks | Thresholded stalls and callback intervals, not direct physical/compositor frame counts                                                  |
+| Rendering, CSS animations, scrolling | Supported native input, engine tracing/profiling                 | Layout/style/paint/compositing and movement/completion evidence with engine/window provenance                                           |
+| Memory                               | Supported browser/engine/process collectors                      | Heap, page estimate, RSS, allocations, sampled peak, and endpoint delta are distinct quantities                                         |
+| CPU                                  | Supported engine/process/worker attribution                      | Browser/renderer/worker scopes are distinct from Node harness CPU; shared-process totals do not establish exact worker use              |
+| Named external audits                | Resource-owned audit integration                                 | Versioned findings/numeric observations, kept distinct from direct timings and field-user evidence                                      |
 
 For network budgets choose an explicit endpoint such as FCP, finalized LCP, or
 an app mark, and state whether requests must start or complete before it.
