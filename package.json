@@ -19,6 +19,9 @@
         "url": "https://github.com/enormora/overkill/issues"
     },
     "homepage": "https://github.com/enormora/overkill#readme",
+    "scripts": {
+        "postinstall": "patch-package --error-on-fail"
+    },
     "dependencies": {
         "@enormora/clock": "0.0.3",
         "@inquirer/select": "5.2.8",
@@ -84,6 +87,7 @@
         "dependency-cruiser": "18.7.2",
         "jscpd": "5.4.3",
         "knip": "6.44.2",
+        "patch-package": "8.0.1",
         "rust-just": "1.59.0"
     },
     "engines": {
