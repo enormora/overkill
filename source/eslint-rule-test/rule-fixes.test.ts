@@ -5,6 +5,16 @@ const byteOrderMarkCodePoint = 65_279;
 const byteOrderMark = String.fromCodePoint(byteOrderMarkCodePoint);
 
 export const testNode = suite('ESLint fix application', [
+    test('prefers the shorter edit when overlapping ranges start together', function (scope) {
+        scope.assert.equal(
+            applyRuleEdits('start rest', [
+                { range: [ 0, 6 ], text: 'long' },
+                { range: [ 0, 5 ], text: 'short' }
+            ]),
+            'short rest'
+        );
+        return scope.assert.collect();
+    }),
     test('preserves byte order marks and applies source-relative ranges', function (scope) {
         scope.assert.equal(
             applyRuleEdits(`${byteOrderMark}first`, [ { range: [ 0, 5 ], text: 'second' } ]),

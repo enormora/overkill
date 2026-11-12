@@ -1,4 +1,5 @@
 import type { Rule } from 'eslint';
+import { createRoot, createTestPlan, execute, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { gen } from '../packages/property/property.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { defineRuleTests } from '../packages/eslint-rule-test/eslint-rule-test.entry-point.ts';
@@ -17,6 +18,24 @@ const generation = {
 } as const;
 
 export const testNode = suite('ESLint control and fixer contracts', [
+    test('does not resume rule evaluation after a required assertion halts it', async function (scope) {
+        let continued = false;
+        const result = await execute(createTestPlan(createRoot({
+            title: 'required control',
+            annotations: {},
+            controls: {},
+            children: [ test('required assertion', function (inner: TestScope) {
+                observeRule(function requireValue() {
+                    inner.require.defined(undefined);
+                }, inner.signal);
+                continued = true;
+                return inner.assert.collect();
+            }) ]
+        })));
+        scope.assert.equal(result.summary.failed, 1);
+        scope.assert.false(continued);
+        return scope.assert.collect();
+    }),
     test('fails oscillating fixes only when convergence is requested', async function (scope) {
         const rule: Rule.RuleModule = {
             meta: { schema: [], fixable: 'code', messages: { change: 'change' } },
