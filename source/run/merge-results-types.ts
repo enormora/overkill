@@ -6,7 +6,7 @@ import type { ResolvedRuntime, RunRecordResult, RunRecordVersions } from './run-
 
 type MergeFile = { readonly kind: 'file'; readonly path: string; };
 type MergeDirectory = { readonly kind: 'directory'; readonly path: string; };
-export type MergeResultsInput = MergeDirectory | MergeFile;
+export type MergeResultsInput = MergeDirectory | MergeFile | { readonly kind: 'path'; readonly path: string; };
 export type MergeResultsCommand = {
     readonly config: NormalizedConfig;
     readonly cwd: string;

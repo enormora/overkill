@@ -6,6 +6,7 @@ describe('merge results', function () {
         expect<typeof mergeResults>().type.toBe<(command: MergeResultsCommand) => Promise<MergedRunRecord>>();
         expect<ReturnType<typeof mergeResults>>().type.toBe<Promise<MergedRunRecord>>();
         expect<MergeResultsCommand['inputs'][0]>().type.toBe<MergeResultsInput>();
+        expect<{ readonly kind: 'path'; readonly path: string; }>().type.toBeAssignableTo<MergeResultsInput>();
         expect<MergedRunRecord['kind']>().type.toBe<'merged'>();
     });
 });
