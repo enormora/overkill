@@ -92,12 +92,16 @@ export const testNode = createSuite({
             body(scope) {
                 const span = { ...cleanupSpan, label: 'dispose database', processId: null, workerId: null };
                 const { precise } = mergedRunTimings([ source('first', span) ]);
-                scope.assert.deepEqual(precise?.slowestSpans, [ {
+                if (precise === null) {
+                    throw new Error('Expected precise merged timing evidence.');
+                }
+                const qualifiedSpans: readonly RunTimingSpan[] = [ {
                     ...span,
                     label: 'first: dispose database',
                     processId: 'first/coordinator',
                     startOffsetMicroseconds: null
-                } ]);
+                } ];
+                scope.assert.deepEqual(precise.slowestSpans, qualifiedSpans);
                 return scope.assert.collect();
             }
         })
