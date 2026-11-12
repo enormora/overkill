@@ -47,6 +47,56 @@ const collected: CollectedFamilyMetadata = {
 };
 
 export const testNode = suite('frozen family resolution', [
+    ...([ 'builtin', 'config-file' ] as const).map(function builtinSource(kind) {
+        return test(`resolves a built-in definition through ${kind}`, async function (scope) {
+            const binding = await resolveFrozenFamily(
+                {
+                    ...frozen,
+                    id: 'microtest',
+                    source: kind === 'builtin'
+                        ? { kind, id: 'microtest' }
+                        : { kind, configPath: '/config.ts', profile: 'unit' }
+                },
+                'in-process',
+                {
+                    async loadConfig() {
+                        return normalizeConfig({ profiles: { unit: { testFamily: 'microtest' } } });
+                    },
+                    async importModule() {
+                        throw new Error('Built-in resolution must not import a module.');
+                    }
+                }
+            );
+            scope.assert.equal(binding.testFamily.id, 'microtest');
+            scope.assert.equal(binding.settings, null);
+            return scope.assert.collect();
+        });
+    }),
+    test('rejects changed configuration settings before backend loading', async function (scope) {
+        await scope.assert.rejects(async function resolveChangedConfiguration() {
+            await resolveFrozenFamily(
+                {
+                    ...frozen,
+                    settings: 'changed',
+                    source: { kind: 'config-file', configPath: '/config.ts', profile: 'unit' }
+                },
+                'in-process',
+                {
+                    async loadConfig() {
+                        return normalizeConfig({
+                            profiles: {
+                                unit: { testFamily: definition('1'), settings: null, files: { include: [ 'unit.ts' ] } }
+                            }
+                        });
+                    },
+                    async importModule() {
+                        throw new Error('Configuration resolution must not fall back to a module.');
+                    }
+                }
+            );
+        }, { message: 'Failed to resolve the frozen test family.' });
+        return scope.assert.collect();
+    }),
     test('accepts complete collection facts with unchanged frozen evidence', function (scope) {
         scope.assert.equal(validateFrozenFamilyCollection(collected, collected, []), collected);
         return scope.assert.collect();

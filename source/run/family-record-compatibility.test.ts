@@ -1,6 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { isDefinedFamilyProfile, type DefinedFamilyProfile } from '../config/types.ts';
-import { suite, test } from '../packages/test/test.entry-point.ts';
+import { suite, test, type TestScope } from '../packages/test/test.entry-point.ts';
 import { defineTestFamily, type TestFamily } from '../packages/engine/engine.entry-point.ts';
 import { normalizeConfig } from '../packages/run/run.entry-point.ts';
 import { family } from '../integration-tests/run/fixtures/imported-runtime-family.ts';
@@ -28,6 +28,21 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
 }
 
 export const testNode = suite('family record compatibility', [
+    test('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
+        const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles.custom;
+        scope.require.defined(current);
+        await scope.assert.rejects(async function restoreChangedKind() {
+            await restoreFamilyReplayProfile(recordedReplayProfile(familyProfile(family)), current);
+        }, { message: 'Recorded family configuration changed; collect a new run.' });
+        return scope.assert.collect();
+    }),
+    test('rejects changed configured settings before backend loading', async function (scope) {
+        const profile = familyProfile(family);
+        await scope.assert.rejects(async function restoreChangedSettings() {
+            await restoreFamilyReplayProfile(recordedReplayProfile(profile), { ...profile, settings: 'changed' });
+        }, { message: 'Recorded family configuration settings changed; collect a new run.' });
+        return scope.assert.collect();
+    }),
     test('serializes a family profile without executable definitions', async function (scope) {
         const profile = familyProfile(family);
         const serialized = JSON.stringify(recordedReplayProfile(profile));
