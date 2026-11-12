@@ -10,8 +10,8 @@ export const ruleTests = defineRuleTests({
     name: 'no-foo',
     rule,
     configs: { modern: { languageOptions: { ecmaVersion: 'latest' } } },
-    valid: ['bar()'],
-    invalid: [{ code: 'foo()', errors: [{ messageId: 'unexpectedFoo' }] }]
+    valid: [ 'bar()' ],
+    invalid: [ { code: 'foo()', errors: [ { messageId: 'unexpectedFoo' } ] } ]
 });
 ```
 
