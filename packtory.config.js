@@ -122,6 +122,16 @@ export const configuration = {
             bundlePeerDependencies: [ '@overkill-dev/engine' ]
         },
         {
+            name: 'eslint-rule-test',
+            description: 'ESLint rule examples and generated properties.',
+            bundlePeerDependencies: [
+                '@overkill-dev/engine',
+                '@overkill-dev/assert',
+                '@overkill-dev/test',
+                '@overkill-dev/property'
+            ]
+        },
+        {
             name: 'doubles',
             description: 'Explicit Overkill test doubles.',
             bundlePeerDependencies: [ '@overkill-dev/engine' ]

@@ -1040,6 +1040,11 @@ Recommended direction:
   compatibility reference for `@overkill-dev/eslint-rule-test`
 - keep Overkill's public rule-test authoring surface macro/suite-based
   rather than exposing raw `RuleTester` as the first-class primitive
+- use public ESLint `Linter` for in-memory example and property execution;
+  native `RuleTester` reads source files when formatting failures, while the
+  TypeScript wrapper does not expose every ESLint 10 rule-context API in its types
+- use Overkill generators and TypeScript syntax tools for source construction,
+  with Ajv Draft-04 validation for generated rule options
 
 ## HTML, XML, And Machine-Readable Reporting
 

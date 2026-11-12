@@ -60,8 +60,15 @@ export const testNode = suite('property authoring', [
             Object.keys(leaf).toSorted(function compareExportNames(left, right) {
                 return left.localeCompare(right);
             }),
-            [ 'defineCodec', 'gen', 'property', 'relation', 'sampleGenerator', 'withProperties' ]
+            [ 'defineCodec', 'gen', 'isGenerator', 'property', 'relation', 'sampleGenerator', 'withProperties' ]
         );
+        scope.assert.equal(leaf.isGenerator, standard.isGenerator);
+        scope.assert.true(leaf.isGenerator(leaf.gen.constant(1)));
+        scope.assert.false(leaf.isGenerator({
+            map() {
+                return 1;
+            }
+        }));
         scope.assert.equal(leaf.property, standard.property);
         scope.assert.equal(leaf.withProperties, standard.withProperties);
         return scope.assert.collect();
