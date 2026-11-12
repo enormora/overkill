@@ -3,7 +3,6 @@ import {
     type MicrotestProfileConfig,
     type NormalizedConfig
 } from '../run/run.entry-point.ts';
-import { profileFamilyId } from '../../config/types.ts';
 
 export type SelectedMicrotestProfile = {
     readonly name: string;
@@ -18,7 +17,7 @@ function namedMicrotestProfile(config: NormalizedConfig, name: string): Selected
     }
 
     if (profile.testFamily !== 'microtest') {
-        const family = profileFamilyId(profile);
+        const family = typeof profile.testFamily === 'string' ? profile.testFamily : profile.testFamily.id;
         throw new RunResolutionError(
             `Profile "${name}" has testFamily "${family}". Stryker requires a Node microtest profile.`,
             undefined,
