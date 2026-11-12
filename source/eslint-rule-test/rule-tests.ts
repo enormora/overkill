@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineMacro, suite, test } from '../packages/test/test.entry-point.ts';
+import { defineMacro, suite, test } from '../authoring/test-node-authoring.ts';
 import { nativeRule } from './rule-implementation.ts';
 import { configuredGeneration, mergeConfig, selectConfigs } from './configuration-selection.ts';
 import { invalidExamples, validExamples } from './rule-examples.ts';

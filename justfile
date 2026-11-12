@@ -1,6 +1,6 @@
 export PATH := './node_modules/.bin:' + env_var('PATH')
 package-smoke-packages := '@overkill-dev/eslint-rule-test,@overkill-dev/linearizability,@overkill-dev/differential,@overkill-dev/model,@overkill-dev/reporter-benchmark-html,@overkill-dev/baselines,@overkill-dev/bench,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/doubles,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/type-test,@overkill-dev/property,@overkill-dev/test,@overkill-dev/reporter-line,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-opentelemetry,@overkill-dev/output-renderer-github-actions'
-eslint-rule-smoke-packages := '@overkill-dev/eslint-rule-test,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/test,@overkill-dev/bench,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run,@overkill-dev/baselines,@overkill-dev/doubles,@overkill-dev/property,@overkill-dev/output-renderer-github-actions,@overkill-dev/reporter-benchmark-html,@overkill-dev/reporter-brief,@overkill-dev/reporter-dot,@overkill-dev/reporter-line'
+eslint-rule-smoke-packages := '@overkill-dev/eslint-rule-test,@overkill-dev/engine,@overkill-dev/assert,@overkill-dev/property,@overkill-dev/simulation,@overkill-dev/resources,@overkill-dev/run'
 mutation-smoke-packages := '@overkill-dev/engine,@overkill-dev/run,@overkill-dev/stryker-runner,@overkill-dev/reporter-line'
 packtory-node-options := '--max-old-space-size-percentage=75'
 

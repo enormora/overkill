@@ -127,8 +127,10 @@ export const configuration = {
             bundlePeerDependencies: [
                 '@overkill-dev/engine',
                 '@overkill-dev/assert',
-                '@overkill-dev/test',
-                '@overkill-dev/property'
+                '@overkill-dev/property',
+                '@overkill-dev/simulation',
+                '@overkill-dev/resources',
+                '@overkill-dev/run'
             ]
         },
         {
