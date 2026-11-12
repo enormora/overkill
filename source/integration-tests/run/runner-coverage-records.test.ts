@@ -9,7 +9,7 @@ import {
 } from '../../packages/engine/engine.entry-point.ts';
 import {
     orchestrator,
-    type RunRecord,
+    type SingleRunRecord,
     type RunRequest,
     type MicrotestExecution
 } from '../../packages/run/run.entry-point.ts';
@@ -23,9 +23,9 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 const coverageFile = 'source/integration-tests/run/fixtures/coverage.test.ts';
 type MicrotestProcessModel = MicrotestExecution['processModel'];
 const processModels: readonly MicrotestProcessModel[] = [ 'in-process', 'supervised-process' ];
-type RecordedResult = { readonly directory: string; readonly record: RunRecord; readonly result: RunResult; };
+type RecordedResult = { readonly directory: string; readonly record: SingleRunRecord; readonly result: RunResult; };
 
-async function singleRunRecord(directory: string): Promise<RunRecord> {
+async function singleRunRecord(directory: string): Promise<SingleRunRecord> {
     const files = await readdir(path.join(directory, 'runs'));
     const records = files.filter(function isRecord(file) {
         return file.endsWith('.json');
@@ -34,7 +34,7 @@ async function singleRunRecord(directory: string): Promise<RunRecord> {
     if (file === undefined || records.length !== 1) {
         throw new Error('Expected exactly one run record.');
     }
-    return JSON.parse(await readFile(path.join(directory, 'runs', file), 'utf8')) as RunRecord;
+    return JSON.parse(await readFile(path.join(directory, 'runs', file), 'utf8')) as SingleRunRecord;
 }
 
 async function withRecordedResult<Value>(

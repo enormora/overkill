@@ -5,7 +5,7 @@ import { runIfMain } from '#test-runner';
 import { defaultHistoryPolicy } from '../../config/history-policy.ts';
 import {
     orchestrator,
-    type RunRecord,
+    type SingleRunRecord,
     type RunRequest,
     type CoveragePolicy,
     type NormalizedConfig,
@@ -150,7 +150,7 @@ async function assertCoverageRecord(
     execution: CoverageExecution
 ): Promise<void> {
     const recordPath = `${path.dirname(path.resolve(artifact.payload.directory))}.json`;
-    const record = JSON.parse(await readFile(recordPath, 'utf8')) as RunRecord;
+    const record = JSON.parse(await readFile(recordPath, 'utf8')) as SingleRunRecord;
     scope.require.defined(record.facts);
     scope.assert.deepEqual({
         coverage: record.request.coverage,
@@ -253,7 +253,7 @@ async function latestCrashRawDirectory(): Promise<string> {
 
 async function assertCompletedCrashRecord(scope: TestScope, rawDirectory: string): Promise<void> {
     const recordPath = `${path.resolve(rawDirectory, '../..')}.json`;
-    const record = JSON.parse(await readFile(recordPath, 'utf8')) as RunRecord;
+    const record = JSON.parse(await readFile(recordPath, 'utf8')) as SingleRunRecord;
     scope.assert.equal(record.status, 'completed');
     scope.require.defined(record.result);
     scope.assert.partialDeepEqual(record.result, {

@@ -250,6 +250,7 @@ export type {
 export type {
     ResolvedRuntime,
     RunRecord,
+    SingleRunRecord,
     RunRecordCoverage,
     RunRecordRequest,
     RunRecordResult,

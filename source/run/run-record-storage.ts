@@ -7,16 +7,16 @@ import { createResultFromResolutionError } from './run-collection-error-result.t
 import { RunCollectionError } from './run-errors.ts';
 import { runRecordPersistenceError, type RunRecordError, type RunRecordPhase } from './run-record-error.ts';
 import { recordedRunResult } from './run-record-result.ts';
-import type { RunRecord } from './run-record-types.ts';
+import type { SingleRunRecord } from './run-record-types.ts';
 
 export type RunRecordStorage = {
-    readonly interrupt: (error: unknown, placementTrace: RunRecord['placementTrace']) => Promise<void>;
-    readonly current: () => RunRecord;
-    readonly persist: (value: RunRecord, phase: RunRecordPhase) => Promise<void>;
+    readonly interrupt: (error: unknown, placementTrace: SingleRunRecord['placementTrace']) => Promise<void>;
+    readonly current: () => SingleRunRecord;
+    readonly persist: (value: SingleRunRecord, phase: RunRecordPhase) => Promise<void>;
     readonly result: (
         result: RunResult,
         status: 'completed' | 'started',
-        metadata: Pick<RunRecord, 'placementTrace'>
+        metadata: Pick<SingleRunRecord, 'placementTrace'>
     ) => Promise<RunResult>;
 };
 
@@ -47,7 +47,7 @@ function resultWithPersistenceError(result: RunResult, error: RunRecordError, ph
 
 export function createRunRecordStorage(
     filePath: string,
-    initial: RunRecord,
+    initial: SingleRunRecord,
     store: Parameters<typeof createDebugArtifactStore>[1]
 ): RunRecordStorage {
     let current = initial;

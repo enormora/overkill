@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { runIfMain } from '#test-runner';
-import { createHistory, normalizeConfig, type RunRecord } from '../../packages/run/run.entry-point.ts';
+import { createHistory, normalizeConfig, type SingleRunRecord } from '../../packages/run/run.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 
 const binary = fileURLToPath(new URL('../../packages/test/overkill.entry-point.ts', import.meta.url));
@@ -78,18 +78,18 @@ async function executeOverkill(directory: string): Promise<void> {
     });
 }
 
-async function readRunRecords(directory: string): Promise<readonly RunRecord[]> {
+async function readSingleRunRecords(directory: string): Promise<readonly SingleRunRecord[]> {
     const folder = path.join(directory, '.overkill', 'runs');
     const entries = await readdir(folder);
     const names = entries.filter(function recordFile(name) {
         return name.endsWith('.json');
     });
     return await Promise.all(names.map(async function readRecord(name) {
-        return JSON.parse(await readFile(path.join(folder, name), 'utf8')) as RunRecord;
+        return JSON.parse(await readFile(path.join(folder, name), 'utf8')) as SingleRunRecord;
     }));
 }
 
-function assertCompletedRecord(scope: TestScope, record: RunRecord): void {
+function assertCompletedRecord(scope: TestScope, record: SingleRunRecord): void {
     const { facts } = record;
     if (facts === null) {
         throw new Error('Completed execution requires run facts.');
@@ -104,7 +104,7 @@ function assertCompletedRecord(scope: TestScope, record: RunRecord): void {
 async function assertRecordedExecution(scope: TestScope, processModel: ExecutionMode): Promise<void> {
     const directory = await createRecordedProject(scope, processModel);
     await executeOverkill(directory);
-    const records = await readRunRecords(directory);
+    const records = await readSingleRunRecords(directory);
     scope.assert.equal(records.length, 1);
     const [ record ] = records;
     scope.require.defined(record);
@@ -183,7 +183,7 @@ async function assertLastFailedExecution(scope: TestScope, mode: ExecutionMode):
     await assertLastFailedRecords(scope, directory);
 }
 
-function assertSharedSelection(scope: TestScope, empty: RunRecord, executed: RunRecord): void {
+function assertSharedSelection(scope: TestScope, empty: SingleRunRecord, executed: SingleRunRecord): void {
     scope.require.defined(empty.facts);
     scope.require.defined(executed.facts);
     scope.require.defined(empty.facts.reproducibility.selectedIdentities);
@@ -192,7 +192,7 @@ function assertSharedSelection(scope: TestScope, empty: RunRecord, executed: Run
     scope.assert.deepEqual(executed.facts.reproducibility.selectedIdentities, executed.identities);
 }
 
-function assertShardSelection(scope: TestScope, empty: RunRecord, executed: RunRecord): void {
+function assertShardSelection(scope: TestScope, empty: SingleRunRecord, executed: SingleRunRecord): void {
     if (empty.version !== 2 || executed.version !== 2) {
         throw new Error('Expected replay snapshots in merge inputs.');
     }
@@ -206,7 +206,12 @@ function assertShardSelection(scope: TestScope, empty: RunRecord, executed: RunR
     scope.assert.deepEqual(empty.replayPlan.discoveredFiles, executed.replayPlan.discoveredFiles);
 }
 
-function assertShardOutcome(scope: TestScope, record: RunRecord, status: 'failed' | 'passed', planned: number): void {
+function assertShardOutcome(
+    scope: TestScope,
+    record: SingleRunRecord,
+    status: 'failed' | 'passed',
+    planned: number
+): void {
     scope.require.defined(record.facts);
     scope.require.defined(record.result);
     scope.assert.deepEqual({
@@ -219,7 +224,7 @@ function assertShardOutcome(scope: TestScope, record: RunRecord, status: 'failed
 }
 
 async function assertShardRecords(scope: TestScope, directory: string): Promise<void> {
-    const records = await readRunRecords(directory);
+    const records = await readSingleRunRecords(directory);
     const shards = records.filter(function mergeInput(record) {
         return record.request.recordForMerge;
     });

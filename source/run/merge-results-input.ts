@@ -2,7 +2,7 @@ import { readFile, readdir, realpath, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { RunnerError } from '../engine/run-result.ts';
 import { RunCollectionError, RunResolutionError, invalidRequest } from './run-errors.ts';
-import { mergeRecordSchema, type MergeRecord } from './merge-results-schema.ts';
+import { mergeRecordSchema, mergedRecordSchema, type MergeRecord } from './merge-results-schema.ts';
 import type { MergeResultsCommand, MergeResultsInput } from './merge-results-types.ts';
 
 export type MergeInputRead = { readonly sources: readonly MergeSource[]; readonly errors: readonly RunnerError[]; };
@@ -47,9 +47,7 @@ async function inputFiles(cwd: string, input: MergeResultsInput): Promise<readon
         return await realpath(resolve(target, entry.name));
     }));
 }
-async function readSource(path: string): Promise<MergeSource> {
-    return { path, record: mergeRecordSchema.parse(JSON.parse(await readFile(path, 'utf8'))) };
-}
+
 function shardOrder(left: MergeSource, right: MergeSource): number {
     const indexDifference = left.record.facts.reproducibility.shard.index -
         right.record.facts.reproducibility.shard.index;
@@ -67,12 +65,34 @@ async function discoverInput(cwd: string, input: MergeResultsInput): Promise<Mer
         return { paths: [], errors: [ { ...failure.runnerError(), subtype: 'merge' } ] };
     }
 }
-async function decodeSource(path: string): Promise<MergeInputRead> {
+async function decodedSources(path: string, explicit: boolean): Promise<MergeInputRead> {
+    const value: unknown = JSON.parse(await readFile(path, 'utf8'));
+    if (!explicit && mergedRecordSchema.safeParse(value).success) {
+        return { sources: [], errors: [] };
+    }
+    return { sources: [ { path, record: mergeRecordSchema.parse(value) } ], errors: [] };
+}
+async function decodeSource(path: string, explicit: boolean): Promise<MergeInputRead> {
     try {
-        return { sources: [ await readSource(path) ], errors: [] };
+        return await decodedSources(path, explicit);
     } catch (error: unknown) {
         const failure = new RunCollectionError(`Cannot read merge input: ${path}`, { cause: error }, 'merge');
         return { sources: [], errors: [ { ...failure.runnerError(), subtype: 'merge' } ] };
+    }
+}
+async function matchesExplicitPath(cwd: string, input: MergeResultsInput, path: string): Promise<boolean> {
+    const target = resolve(cwd, input.path);
+    const metadata = await stat(target);
+    return metadata.isFile() && await realpath(target) === path;
+}
+async function explicitFile(cwd: string, input: MergeResultsInput, path: string): Promise<boolean> {
+    if (input.kind === 'directory') {
+        return false;
+    }
+    try {
+        return await matchesExplicitPath(cwd, input, path);
+    } catch {
+        return false;
     }
 }
 export async function readMergeSources(command: MergeResultsCommand): Promise<MergeInputRead> {
@@ -88,10 +108,15 @@ export async function readMergeSources(command: MergeResultsCommand): Promise<Me
             .toSorted(function alphabetical(left, right) {
                 return left.localeCompare(right);
             })
-            .map(decodeSource)
+            .map(async function decode(path) {
+                const explicit = await Promise.all(command.inputs.map(async function explicitInput(input) {
+                    return await explicitFile(command.cwd, input, path);
+                }));
+                return await decodeSource(path, explicit.includes(true));
+            })
     );
     const sources = records
-        .flatMap(function decodedSources(record) {
+        .flatMap(function inputSources(record) {
             return record.sources;
         })
         .toSorted(shardOrder);

@@ -4,7 +4,7 @@ import type { RunResult } from '../engine/run-result.ts';
 import { recordedRunPlan } from './recorded-run-plan.ts';
 import { updateCompactHistory } from './history-storage.ts';
 import { createRunRecordStorage } from './run-record-storage.ts';
-import type { RunRecord, RunRecordCoverage } from './run-record-types.ts';
+import type { SingleRunRecord, RunRecordCoverage } from './run-record-types.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import { initialRecord, type RunRecordDependencies } from './run-record-input.ts';
 import type { RunFacts, RunnerResult, CollectedRunPlan, ResolvedRun } from './run-types.ts';
@@ -15,7 +15,7 @@ export type RunRecordSession = {
     readonly id: string;
     readonly interrupt: (error: unknown) => Promise<void>;
     readonly path: string;
-    readonly retainPlacementTrace: (trace: RunRecord['placementTrace']) => void;
+    readonly retainPlacementTrace: (trace: SingleRunRecord['placementTrace']) => void;
     readonly recordResolvedRun: (run: ResolvedRun) => Promise<void>;
     readonly recordFacts: (facts: RunFacts, replayPlan: CollectedRunPlan | null) => Promise<void>;
     readonly start: (coverage: RunRecordCoverage | null) => Promise<void>;
@@ -47,7 +47,7 @@ export function createRunRecordSession(
     });
 
     let releaseOwner: (() => Promise<void>) | null = null;
-    let placementTrace: RunRecord['placementTrace'] = null;
+    let placementTrace: SingleRunRecord['placementTrace'] = null;
     let maintenance: Promise<readonly string[]> | null = null;
     async function completeRecord(result: RunResult): Promise<RunResult> {
         try {

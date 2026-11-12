@@ -6,6 +6,7 @@ import type {
     RunSelection,
     SerializedValue,
     RunRecord,
+    SingleRunRecord,
     RunRecordRequest,
     RunRecordResult,
     ResolvedRuntime
@@ -43,7 +44,7 @@ describe('@overkill-dev/run recording', function () {
         expect<RunRecordRequest['seed']>().type.toBe<{ readonly value: string; }>();
         expect<RunRecord['facts']>().type.toBe<RunFacts | null>();
         expect<RunRecord['versions']['engine']>().type.toBe<string | null>();
-        expect<RunRecord['runtime']>().type.toBe<ResolvedRuntime | null>();
+        expect<SingleRunRecord['runtime']>().type.toBe<ResolvedRuntime | null>();
         expect<Extract<RunRecord, { readonly status: 'completed'; }>['result']>().type.toBe<RunRecordResult>();
         expect<RunRecordResult['runnerErrors'][number]['cause']>().type.toBe<SerializedValue>();
     });
