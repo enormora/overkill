@@ -9,15 +9,15 @@ export type ProjectFamilyProfileConfig<Family extends DefinedTestFamily> = Commo
     readonly testFamily: Family;
     readonly settings: NoInfer<FamilySettingsOf<Family>>;
 };
-export type CheckedProfiles<Profiles extends ProjectProfilesConfig> = {
+type CheckedProfiles<Profiles extends ProjectProfilesConfig> = {
     readonly [Name in keyof Profiles]: Profiles[Name]['testFamily'] extends DefinedTestFamily
         ? ProjectFamilyProfileConfig<Profiles[Name]['testFamily']>
         : Profiles[Name];
 };
 
-export type ConfigGlobals = Except<Config, 'profiles'>;
+type ConfigGlobals = Except<Config, 'profiles'>;
 type BuiltinProfiles = Readonly<Record<string, Exclude<ProjectProfileConfig, ProjectDefinedFamilyProfile>>>;
-export type BuiltinConfig = ConfigGlobals & { readonly profiles?: BuiltinProfiles; };
+type BuiltinConfig = ConfigGlobals & { readonly profiles?: BuiltinProfiles; };
 
 type DefineConfig = {
     <const Profiles extends ProjectProfilesConfig>(
