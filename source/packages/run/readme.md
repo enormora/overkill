@@ -954,3 +954,32 @@ persists the run and per-attempt artifacts under
 Replay requires fresh explicit debug intent; it never inherits the source run's
 activation. Native measurements disclose scope and sampling limitations.
 Analysis-only type-test profiles reject runtime debug recording.
+
+## Merge shard results
+
+`mergeResults` reads completed single run records without executing test modules:
+
+```ts
+import { mergeResults } from '@overkill-dev/run';
+
+const merged = await mergeResults({
+    config,
+    cwd: process.cwd(),
+    inputs: [ { kind: 'directory', path: 'downloaded-shards' } ]
+});
+```
+
+The corresponding command is `overkill merge-results <paths...>`. Operands may
+be files or directories. Directories contribute immediate regular `*.json` files;
+subdirectories and other extensions are ignored. Repeated paths are read once.
+
+This milestone returns an in-memory aggregate and maps its status to the CLI
+exit code. Callers must supply a complete, compatible set of shards. Cross-record
+compatibility checks, incomplete aggregates, persisted merged records, compact
+history updates, and final-result reporter delivery remain separate milestones.
+The command currently has no success output.
+
+Discovery and definition counts remain global; execution counts sum across
+shards. Timing durations represent cumulative shard time, not elapsed CI time.
+Process usage is unavailable on the aggregate. Artifact references and serialized
+diagnostics remain unchanged; merge does not copy artifacts or merge coverage.

@@ -76,6 +76,7 @@ export function createNodeCommandLineRunner(options: NodeCommandLineRunnerOption
     };
 
     return {
+        mergeResults: nodeCommandNamespace.mergeResults,
         corpus: nodeCommandNamespace.corpus,
         history: nodeCommandNamespace.history,
         baseline: nodeCommandNamespace.baseline,
@@ -141,6 +142,7 @@ async function loadDefaultRunner(): Promise<CommandLineRunner> {
 const commandNamespace = createCommandLineCommandNamespace(commandLoaders);
 
 export const commandLineRunner: CommandLineRunner = {
+    mergeResults: commandNamespace.mergeResults,
     corpus: commandNamespace.corpus,
     history: commandNamespace.history,
     baseline: commandNamespace.baseline,

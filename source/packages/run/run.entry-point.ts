@@ -351,3 +351,6 @@ export type {
     CommonFamilyProfileConfig
 } from '../../config/profile-config.ts';
 export type { DefinedFamilyProfile } from '../../config/types.ts';
+
+export { mergeResults } from '../../run/merge-results.ts';
+export type { MergeResultsCommand, MergeResultsInput, MergedRunRecord } from '../../run/merge-results-types.ts';
