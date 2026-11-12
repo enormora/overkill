@@ -17,6 +17,119 @@ should mean the same thing on a developer machine and in CI; workflow-
 specific choices belong in explicit commands or explicit configuration,
 not environment-driven runtime branches.
 
+## Browser Execution And Placement
+
+Browser support uses the existing engine and orchestration path. The two modes
+name the authored body's placement, not separate engines or test families:
+
+| Mode                           | Body owner       | Browser role                                                      |
+| ------------------------------ | ---------------- | ----------------------------------------------------------------- |
+| Browser-executed               | Browser document | Runs the body and authored assertion recorder through the harness |
+| Host-driven browser automation | Execution host   | Runs the app or explicitly requested browser-local operations     |
+
+The execution host may be local or remote. Both modes can use the same
+controller-backed browser provisioning. Browser-executed bodies do not require
+an application, advanced guards, native input, or DevTools simply to execute.
+Those capabilities are composed only when requested by their resources/checks.
+Browser correctness tests are integration tests. Browser benchmarks retain the
+benchmark family; microtest/property bodies never run in browser runtimes.
+
+Keep these parts of the resolved plan independent:
+
+- body placement and its importable implementation;
+- browser/app/extension target and resource ownership;
+- collector owner, measured target, endpoints, and required capabilities;
+- process supervision, resource isolation, concurrency, and remote assignment.
+
+A host protocol collector can observe a browser-executed body. A host-driven
+body can ask for a locally timed browser operation. Neither changes body
+placement. Browser/protocol capabilities are validated requirements of the
+chosen adapter and target, distinct from the closed permission enumeration
+used by microtest runtime policy.
+
+### Planning And Mixed Suites
+
+Existing runtime descriptors carry body-target requirements into ordinary
+collection and placement. Record one resolved placement per executable work
+item. A suite is a logical hierarchy, not a promise that every child executes
+in one realm, process, page, or remote session. Integration cases may mix the
+two modes within an integration suite; benchmarks may do the same within a
+benchmark suite. This does not permit mixing incompatible families in a profile.
+
+Partition work units by compatible placement, runtime/resource identity,
+workload, and family variant. File/group distribution cannot put incompatible
+body targets into one indivisible execution unit. Mandatory sharing/ordering
+requirements that cannot be satisfied together fail planning rather
+than silently dropping isolation or moving a body. A file may produce multiple
+units, while reporters preserve its logical hierarchy and work identities.
+Affinity keys remain soft placement preferences and do not create mandatory
+co-location or planning failures.
+
+An in-process host executes locally owned work and supervises the browser
+adapter; it does not put a browser document inside Node. Supervised processes
+and worker pools own controller/harness work according to declared lifetimes.
+Remote assignment must establish controller, harness/result, and app reachability
+separately. Existing family restrictions on process models, retries, hedging,
+and resource sharing still apply. Benchmark serialization applies to the actual
+measured browser/device/renderer, not merely to the local worker count.
+
+Freeze placement and implementation identity before dispatch. Executors verify
+them during recollection along with exact selected work. Scheduling may change
+the eligible lane/host, but cannot silently change body placement, collector
+semantics, or the selected browser target. Retain placement in run facts,
+artifacts, and reproduction data. See [Artifact Identity](./artifact-identity.md).
+
+### Module Boundaries
+
+Same-file mixed placement is supported when the collection graph and delivered
+execution graphs are compatible with their declared realms. Selection does not
+prevent a module's top-level imports from evaluating. A Node-only controller
+import can break browser loading; a top-level DOM import can break default host
+collection. Do not infer ownership by trying imports in several realms.
+
+For incompatible graphs, compose the logical suite from explicit module/export
+references whose implementations load only in their declared execution realm.
+The references carry portable inputs, not captured closures or native handles.
+Collection still happens in the declared collection environment: browser-free
+by default, or the one explicitly designated collection browser. This does not
+introduce per-target discovery or silently merge independently generated catalogs.
+Definitions must expose enough metadata there to freeze all selected work.
+
+No automatic closure extraction, implicit serialization, or universal ban on
+mixed files is part of the contract. Separating modules is recommended when
+dependencies or lifecycle differ, not merely because two modes share a suite.
+
+### Document Lifetime
+
+Browser-executed bodies are bound to their execution document. Replacing that
+document before completion fails the attempt. Host-owned resource cleanup still
+runs; cleanup within the destroyed document cannot be promised. Host-driven
+bodies handle app navigation/reload journeys. Stale document events cannot
+complete another attempt or authorize replay of input commands.
+
+### Browser Channels And Remote Evidence
+
+Validate three independent routes before affected work: controller commands,
+harness/results, and app/assets/APIs. A working control socket does not prove
+that a remote browser can reach the local harness or scenario server. Publish
+browser-reachable addresses through resources and reuse provider/tunnel
+implementations rather than making bind addresses part of app configuration.
+
+Fence messages by run, assignment, session, target/document, work, and attempt;
+benchmark evidence also names phase/invocation. Use explicit message sequence/
+completion identity so duplicate or stale messages cannot complete another
+attempt. Reject frozen catalog/module/build drift. Validate and bound payloads
+before ordinary engine/reporting delivery; native handles and callback closures
+do not cross this channel.
+
+Disconnection cannot imply success, authorize replay of input/navigation, or
+silently switch to observation-only. Reconnection is usable only where a
+validated sequence/completeness contract preserves required evidence and the
+original deadlines; never retry side-effecting commands merely because their
+acknowledgment is missing. Otherwise report infrastructure/incomplete affected
+work and retire owned sessions with bounded cleanup. Preserve last received
+evidence and errors. Generic shard merging cannot repair missing channel events.
+
 ## Console Output Capture
 
 Tests routinely call `console.log`, `console.error`, `process.stdout.write`.
@@ -189,10 +302,12 @@ as runtime state policy even before capability-restricted execution exists.
 A run that collects zero tests is a **failure** by default. This catches
 typos in patterns, broken filters, and accidentally-empty test sets.
 
-There is no escape hatch in the current concept. A workflow that may
-legitimately have zero matching tests should make that decision before
-invoking Overkill rather than teaching the runner to treat an empty
-selection as success.
+There is no general `allowEmpty` escape hatch. Keep known workflow outcomes
+distinct: an empty shard succeeds with `planStatus: 'empty-shard'`; a readable
+`--last-failed` history with no matching cases succeeds as a recorded
+`empty-selection`. Ordinary no-match discovery/filter mistakes still fail.
+See [Run Counts](./run-counts.md#summaryplanned) and
+[Compact History](./reproducibility.md#compact-history) for those explicit workflows.
 
 ## Unhandled Rejections And Uncaught Exceptions
 
@@ -604,11 +719,11 @@ assigned work unit:
 
 `workDistribution` describes how selected work is packed before placement:
 
-| Work distribution | Description                                         |
-| ----------------- | --------------------------------------------------- |
-| `file`            | One unit per source file per runtime/workload       |
-| `case`            | One unit per selected case per runtime/workload     |
-| `group`           | Named file-set groups decide the initial unit shape |
+| Work distribution | Description                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| `file`            | One unit per source file within each compatible placement/runtime/workload/family-variant partition |
+| `case`            | One unit per selected executable case within its resolved partition                                 |
+| `group`           | Named file-set groups decide the initial shape within compatible partitions                         |
 
 Resource scopes lower into lifecycle and placement constraints before work
 units are assigned:
@@ -703,8 +818,10 @@ granularity, scheduling, order, and worker lifecycle for that group.
 
 Default group behavior is intentionally conservative:
 
-- `granularity: 'group'` makes one indivisible unit per group per
-  runtime/workload
+- `granularity: 'group'` makes one indivisible unit per group within each
+  compatible body-placement/runtime/workload/family-variant partition;
+  mandatory sharing/ordering requirements that prevent this partitioning fail
+  compatibility rather than merge incompatible targets
 - `scheduling: 'profile-default'` means concurrent profiles still run cases
   concurrently inside the group unless the group opts into serial execution
 - `order: 'profile-default'` means the profile's run order still applies
@@ -1129,8 +1246,9 @@ The core rule is the same as for local multi-process runs:
 
 - collection authority belongs to the coordinator
 - the coordinator freezes `RunFacts`
-- remote workers execute assigned plan items; they do not recollect or
-  mutate the plan
+- remote workers execute assigned plan items without independent discovery or
+  plan mutation; execution re-import/recollection only validates frozen work
+  and implementation identities, never adds or removes selected cases
 
 Minimal remote-execution sketch:
 

@@ -2736,6 +2736,26 @@ Canonical: [Deterministic Simulation Testing](../authoring/deterministic-simulat
 
 ## Resource And Runtime Descriptors
 
+Runtime descriptors carry body-target requirements separately from resource
+owners and metric collectors. Browser-executed and Host-driven browser
+automation are integration/benchmark placements, never microtest/property
+targets or new families. Collector capabilities cannot silently change body
+placement. Module/export references deliver incompatible implementations to
+their declared realm; native handles/closures are not serialized. See
+[Browser Execution And Placement](../architecture/runtime-behavior.md#browser-execution-and-placement)
+for the shared planning contract. The resource types below do not by themselves
+establish cross-realm compatibility.
+
+`withResourceChecks(resource, observer)` adds the shared observer lifecycle and
+durable findings ledger. It does not reuse body assertion counts or resettable
+transcripts. `withFailureArtifacts(resource, prepare)` handles provisional
+live evidence; finalized closure evidence uses the same attempt ownership.
+`withWitnessReplay(resource, restore)` receives a fresh owner handle, validated
+simulation witness, signed nullable seed, and signal before handle projection.
+See [Resource-Owned Checks And Observers](../architecture/package-architecture.md#resource-owned-checks-and-observers)
+and [Witness Replay](../architecture/reproducibility.md#replay-witnesses-for-properties-and-simulations)
+for the owning lifecycle and compatibility contracts.
+
 ```ts
 type ResourceScope = 'per-run' | 'per-file' | 'per-suite' | 'per-case' | 'shared-per-worker';
 
@@ -3179,10 +3199,14 @@ sample explicitly defines them.
   illustrative `saveUser` example
 - `arbitrary.user`, `arbitrary.bytes`, `gen.user`: placeholder generator
   references in property-test snippets
-- `linearizability`, `browserBenchmark`:
-  settled helper names for higher-layer families; owning
+- `linearizability`:
+  a settled helper name for a higher-layer family; owning
   documentation defines the package home and concept-level semantics, but
   this index does not own their full signatures
+
+Browser benchmarks use ordinary `benchmark`/`workload` authoring with browser
+runtime and measurement strategies; no separate `browserBenchmark` helper is
+part of the desired API.
 
 ## Benchmark HTML Reporting
 

@@ -65,10 +65,11 @@ Those should remain visible runner concepts rather than hidden defaults.
 
 ## Browser And Workflow Tests
 
-These tests validate UI, CLI, or multi-step workflows. The primary browser
-meaning should be: run tests in real browsers for frontend code. That is
-closer to the `karma` / `@web/test-runner` family than to building a full
-Playwright replacement.
+These tests validate UI, CLI, or multi-step workflows. Browser correctness
+tests belong to the integration family, whether their bodies run inside a
+browser document or drive a browser from the host. Browser performance
+workloads belong to the benchmark family. Microtests and property tests never
+execute in browser runtimes.
 
 The central model is runtime-driven execution, often with:
 
@@ -79,8 +80,8 @@ The central model is runtime-driven execution, often with:
 
 Concrete browser-layer needs include:
 
-- browser-executed microtests or component-style tests
-- page objects as test-facing handles only in richer adapter-driven layers
+- browser-executed integration bodies with browser-compatible imports
+- host-driven browser automation using provider-native handles
 - transport-level request and event transcripts
 - explicit attachments such as accessibility scan JSON
 - visual baselines across browser and resolution matrices
@@ -88,12 +89,17 @@ Concrete browser-layer needs include:
 These should be modeled above the engine through browser-oriented runtimes,
 fixtures, and baseline adapters.
 
-The important boundary is:
+The two modes are **Browser-executed** and **Host-driven browser automation**.
+They share browser provisioning, resource lifetimes, checks, collectors, and
+results. Neither is a separate test family. Overkill owns the surrounding test
+contracts and adapts existing controllers rather than building a locator/action
+framework. Component logic should be unit tested without a real DOM; browser
+integration guidance targets the fully rendered app, with no first-party
+component-mounting DSL.
 
-- Overkill should have a first-party browser-execution story
-- richer end-to-end browser automation should come through integrations or
-  adapters, with Playwright the obvious example, rather than through
-  Overkill reimplementing that entire stack
+Body placement and measurement capabilities are independent. See
+[Browser Testing Product Boundary](./higher-test-layers.md#browser-testing-product-boundary)
+and [Browser Execution And Placement](../architecture/runtime-behavior.md#browser-execution-and-placement).
 
 ## Baseline-Driven Tests
 

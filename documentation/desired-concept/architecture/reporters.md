@@ -137,12 +137,13 @@ type ReporterEvent =
         startedAt: string;
     }
     | { kind: 'suite-start'; suitePath: ReadonlyArray<string>; }
-    | { kind: 'test-start'; case: CaseId; attempt: number; }
-    | { kind: 'test-progress'; case: CaseId; attempt: number; note: string; }
+    | { kind: 'test-start'; case: CaseId; workId: WorkId; attempt: number; }
+    | { kind: 'test-progress'; case: CaseId; workId: WorkId; attempt: number; note: string; }
     | {
         kind: 'test-end';
         completion: 'retry' | 'final';
         case: CaseId;
+        workId: WorkId;
         attempt: number;
         outcome: TestOutcome | null;
         verdict: TestVerdict;
@@ -162,6 +163,11 @@ is diagnostic, not a completed case: it must not advance final counts or emit
 a final failure annotation. Only `completion: 'final'` contributes to final
 progress. Recovered cases remain visible through attempt history and retry
 summaries; reporter errors still independently fail the run.
+
+Every test/evidence event identifies the executable `WorkId`, not only its
+logical `CaseId`. Runtime, workload, family, and body-placement variants may
+share a case. Reporters retain that identity through progress, retries, artifacts,
+and final counts rather than merging variants by display title or arrival order.
 
 `run-start.root` carries the execution root name and resolved annotations for display.
 The root is not a suite path segment. `suite-start` and `suite-end` identify

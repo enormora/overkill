@@ -16,6 +16,22 @@ speed are consequences.
 
 Source: [Microtests And Capabilities](../authoring/microtests-and-capabilities.md).
 
+## Browser-executed
+
+A browser mode in which the authored integration or benchmark body executes
+inside a browser document. The body is document-bound. It may use optional
+host-owned collectors and provider-specific native-input assistance.
+
+## Host-driven Browser Automation
+
+A browser mode in which the authored integration or benchmark body executes
+on an execution host and drives the browser through provider-native handles.
+The host may be remote. Browser-local measured operations do not change the
+body's placement to Browser-executed.
+
+Both modes use the same resource, runtime, measurement, and reporting concepts.
+See [Browser Execution And Placement](../architecture/runtime-behavior.md#browser-execution-and-placement).
+
 ## Test Macro
 
 A function that takes parameters and returns a `TestNode` such as a

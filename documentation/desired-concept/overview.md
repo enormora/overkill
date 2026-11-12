@@ -90,12 +90,10 @@ Core package families:
 Future package families already counted into the concept:
 
 - browser and visual testing
-  - primarily meaning "run tests in real browsers" for frontend code,
-    built on the shared runtime, baseline, artifact, and reporter model
-    rather than on browser-only engine semantics
-  - richer browser automation should come through adapters/integrations
-    such as Playwright rather than through Overkill trying to replace an
-    end-to-end browser framework
+  - browser-executed integration bodies and host-driven browser automation,
+    built on shared resources, runtimes, baselines, artifacts, and reporters
+  - provider-native controllers such as Playwright through explicit
+    integrations, without a competing action/locator framework
 - property-based and model-based testing
   - centered on integrated shrinking, replayable witnesses, persistent
     corpora, first-class edge cases, and finite-domain exhaustive modes
@@ -164,18 +162,28 @@ They may also justify controlled retries and richer failure artifacts in ways th
 
 ### Browser Tests
 
-Browser testing should mean two distinct things, with one of them primary:
+The two modes describe where the authored body runs:
 
-- primary: run tests in real browsers for frontend code, closer to the
-  `karma` / `@web/test-runner` family than to a full browser-automation
-  framework
-- secondary: integrate richer browser workflows such as page objects,
-  screenshots, traces, or end-to-end flows through adapters
+- **Browser-executed**: the integration or benchmark body runs inside a browser
+  document, using the Overkill-owned harness and browser-compatible imports.
+- **Host-driven browser automation**: the body runs on the execution host and
+  uses provider-native controllers such as Playwright.
 
-The concept should therefore not assume that Overkill is building a
-Playwright replacement. The first-party browser story should start from
-browser-executed tests, while broader browser automation remains
-integration-driven.
+Both use shared provisioning and may combine browser-local and host-owned
+collectors. A controller can observe a browser-executed body; a host-driven
+benchmark can time a browser-local function without including transport.
+Compatible placements may share a suite or file within the same family.
+Browser correctness tests are integration tests; microtest/property bodies
+never execute in browser runtimes. Browser performance remains in the benchmark
+family. Execution strategy negotiates isolation and scheduling without silently
+changing body placement or measurement semantics.
+
+Browser integration guidance targets the fully rendered application.
+Overkill does not offer framework-specific component mounting or a dedicated
+component-testing DSL. Users can supply their own rendering setup through
+ordinary browser tests, including JSX/TSX modules when supported by their build
+integration. See the
+[browser testing product boundary](./authoring/higher-test-layers.md#browser-testing-product-boundary).
 
 ### Benchmarks
 

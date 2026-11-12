@@ -431,6 +431,21 @@ In that shape, the runtime contributes identity and planning data. It does
 not itself imply side effects. Side effects enter through resources and their
 acquisition/disposal callbacks.
 
+Runtime descriptors also declare the authored body's execution target. Browser
+modes are Browser-executed and Host-driven browser automation. Target metadata
+is not an acquired browser/controller handle, and must be readable during the
+declared collection phase without importing target implementations. Conflicting
+body-target requirements fail planning. Browser engines/versions are independent
+runtime dimensions, not synonyms for body placement.
+
+Collector ownership and measured target are separate requirements. The same
+browser provisioning can execute a body, serve a host-driven app journey, or
+support host-owned instrumentation of an in-browser body. Browser packages own
+provider adapters; resources own lifetimes; the shared executor dispatches body
+placements; the benchmark package owns sampling and budgets. No browser test
+family, controller-independent action DSL, or parallel sampling engine is added.
+See [Browser Execution And Placement](./runtime-behavior.md#browser-execution-and-placement).
+
 Runtime matrices are code-first descriptors. `defineRuntimeMatrix(...)`
 declares one public runtime name and a closed set of variant ids:
 
@@ -470,6 +485,14 @@ form part of the resource cache key. Request-routed bindings are forwarded to
 keys include dependency handle identity and split when they consume distinct
 request-routed views.
 
+Cross-realm resources keep one portable declaration with explicit references
+to owner and consumer implementation modules. Reading metadata does not import
+those implementations. Existing wrappers compose the declaration, rather than
+requiring duplicate profile bindings. Simple same-realm resources may retain
+inline callbacks. Cross-realm placement must validate implementation availability
+and the consumer projection before execution; native handles and closures do
+not become serializable merely because the descriptor is portable.
+
 Runtime and resource wrappers are composable values:
 
 ```ts
@@ -508,10 +531,101 @@ This package family is the main place for supporting:
 - simulated HTTP server resources created from `@overkill-dev/simulation`
   definitions
 
-This should not be read as a commitment to build a first-party replacement
-for Playwright. The broader browser-automation shapes belong behind browser
-adapter/integration packages; the shared resource/runtime layer only needs to
-be strong enough to host them cleanly.
+Both browser modes are first-party integration/benchmark workflows through
+provider adapters, with no attempt to replace Playwright's native action API.
+Microtest/property bodies never execute in browser runtimes. Accessibility,
+document/semantic/SEO checks use imported assertions/macros and optional tool
+resources over this shared model, as specified in
+[Accessibility And Page Audits](../authoring/higher-test-layers.md#accessibility-and-page-audits).
+
+### Portable Implementation References
+
+Bodies, resource owners/consumer projections, and resource observers use the
+same explicit module-reference contract across execution realms. A reference
+names an absolute `moduleUrl` and `exportName`; family references retain their
+existing compatible shape. The owning descriptor also declares the execution
+realm, input schema, and implementation/build identity. Resolve relative project
+inputs against the explicit project root before freezing facts, not a worker's
+ambient working directory. Do not infer modules from package/factory names.
+
+Reading metadata must not import implementation modules or acquire resources.
+Validate selected realm support and portable inputs before admitting effects.
+Native handles, functions, captured closures, cyclic objects, and non-finite
+numbers are not transport metadata. Same-realm inline bodies/resources remain
+valid where their ordinary contract permits them.
+
+The chosen loader/harness maps the logical module URL/export to its actual
+delivered graph with frozen build identity and source-map provenance. Executors
+validate the named export, version/build, inputs, and selected work before use.
+Changed graphs require fresh preparation/collection; do not silently reuse a
+catalog or substitute another implementation. Late module-load failures remain
+setup/infrastructure failures, not invented body assertions. Body references
+do not introduce distributed discovery or automatic closure extraction.
+
+### Resource-Owned Checks And Observers
+
+`withResourceChecks(resource, observer)` composes an observer into an existing
+resource descriptor, alongside `withFailureArtifacts`. The observer receives
+the actual owner handle; consumer projections need not expose it. Cross-realm
+observers use portable implementation references; inline callbacks are limited
+to compatible same-realm execution. This is a shared resource capability, not
+browser-specific test hooks or another assertion language.
+
+An observer can record checks, record observation/enforcement errors, request
+cancellation, prepare live evidence, finalize its interval, and dispose its
+own listeners/infrastructure. Installation follows acquisition and precedes
+dependent/consumer admission. It cannot observe earlier acquisition effects.
+Protected factories therefore allocate without starting observed activity,
+install guards, then start; launch modes with already-active pages/workers need
+an earlier validated boundary or reject required startup coverage.
+
+Failed or partial installation admits no consumer. Release installed listeners
+and enforcement infrastructure exactly once, clean up acquired owners normally,
+and retain installation plus cleanup errors together. An interrupted installation
+cannot become a successful unobserved session.
+
+Use a durable resource-owned ledger independent of body assertion recorders
+and resettable transcripts. Preserve resource, run, work, attempt, and target
+ownership; a host callback's current async context does not identify browser
+activity. Shared observers partition attributable attempt evidence from lifetime
+evidence. Unknown/late ownership never becomes whichever sibling is active.
+
+For attempt-owned resources the lifecycle is:
+
+1. Allocate/acquire and install observation before consumer activity.
+2. Record findings durably; on fail-fast record the cause before requesting
+   cancellation and bounded retirement of affected work.
+3. After the body settles or supervision closes the attempt, prepare available
+   provisional evidence needing live handles. If termination made required
+   finalization impossible, retain incomplete evidence rather than claim success.
+4. Run consumer cleanup and dispose the observed resource while observation
+   remains active for supported close-time activity.
+5. Drain documented delivery/fence boundaries, verify expected counts, finalize
+   completeness, and preserve body/cleanup/transport/capture errors together.
+6. Dispose observers exactly once, then choose retry eligibility, promote
+   required evidence, and publish the final attempt outcome.
+
+Use a fresh bounded cleanup signal when the body signal has aborted. Never
+detach listeners merely because cancellation was requested. Required lost or
+unfinished observation prevents success. Hard retirement requires a responsive
+supervisor outside the blocked body; same-thread execution cannot preempt an
+arbitrary synchronous loop.
+
+Shared resource owners retain their existing declared scope. Finalize an
+attempt's fenced ledger slice before that attempt's outcome without disposing
+the shared owner early; finalize lifetime evidence at owner closure. Ambiguous
+late events remain shared/run evidence and incomplete affected verification.
+Benchmark ledgers additionally retain warmup/measured phase and invocation
+identity; delayed events cannot be assigned to the currently active sample.
+
+Engine-managed sessions merge failed resource checks into ordinary outcomes
+without affecting body plans or assertion counts. Infrastructure/capture errors
+stay separate. Closing a standalone session with failed checks throws structured
+findings while preserving other body/cleanup errors; no event callback delivers
+failure by an out-of-band throw. Direct callers and runner-managed execution
+use the same observer lifecycle. See
+[Assertions And Results](../authoring/assertions-and-results.md#resource-owned-checks)
+and [Integration Resource Evidence](../authoring/failure-artifacts.md#integration-resource-evidence).
 
 Capability-handle or “world” style architecture remains compatible with this
 package family, but Overkill should not ship a first-class production-facing
