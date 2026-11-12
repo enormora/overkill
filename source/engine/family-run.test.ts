@@ -24,6 +24,7 @@ import {
 import { testNode as lifetimeTests } from './family-lifetime.test.ts';
 import { testNode as evidenceValidation } from './family-evidence-validation.test.ts';
 import { testNode as preparationValidation } from './family-preparation-validation.test.ts';
+import { withCaseExecutionLifecycle } from './case-execution-lifecycle.ts';
 
 const controller = new AbortController();
 const { signal } = controller;
@@ -325,6 +326,68 @@ export const testNode = suite('engine family runs', [
             }),
             [ 'runtime-state', 'reporter' ]
         );
+        return scope.assert.collect();
+    }),
+    test('retains only observed runtime results when execution policy stops admission', async function (scope) {
+        const engine = createTestEngine();
+        const executed: string[] = [];
+        const testPlan = engine.createTestPlan(engine.createRoot({
+            ...nodeOptions,
+            title: 'root',
+            children: [ 'first', 'second' ].map(function failingCase(title) {
+                return engine.createTestCase({
+                    ...nodeOptions,
+                    title,
+                    body(caseScope) {
+                        executed.push(title);
+                        caseScope.assert.fail({ message: 'mutant killed' });
+                        return caseScope.assert.collect();
+                    }
+                });
+            })
+        }));
+        await using prepared = await engine.prepareFamily({
+            testPlan,
+            testFamily: runtimeFamily(),
+            settings: null,
+            projectRoot: process.cwd(),
+            signal
+        });
+        const collected = await prepared.collect({
+            workIds: prepared.testPlan.cases.map(function (testCase) {
+                return testCase.workId;
+            }),
+            signal
+        });
+        const result = await withCaseExecutionLifecycle({
+            async enter() {
+                return undefined;
+            },
+            async complete() {
+                return 'stop';
+            }
+        }, async function executeUntilStopped() {
+            return await engine.execute(collected, options);
+        });
+        scope.assert.deepEqual({
+            executed,
+            titles: result.perTest.map(function caseTitle(entry) {
+                return entry.id.title;
+            }),
+            planned: result.summary.planned,
+            failed: result.summary.failed,
+            inconclusive: result.summary.inconclusive,
+            skipped: result.summary.skipped,
+            errors: result.runnerErrors
+        }, {
+            executed: [ 'first' ],
+            titles: [ 'first' ],
+            planned: 2,
+            failed: 1,
+            inconclusive: 0,
+            skipped: 0,
+            errors: []
+        });
         return scope.assert.collect();
     }),
     test('cancels active runtime scopes without claiming a pass', async function (scope) {

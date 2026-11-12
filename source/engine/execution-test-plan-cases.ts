@@ -27,6 +27,7 @@ import {
 import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
 export type ExecutedTestPlan = {
+    readonly stoppedByPolicy: boolean;
     readonly perTest: readonly PerTestResult[];
     readonly reporterErrors: readonly RunnerError[];
     readonly testExecutionWallTimeMicroseconds: number;
@@ -156,20 +157,21 @@ async function serialTestPlanReporterErrors(
     ];
 }
 
-async function completeSerialCase(input: ExecuteTestPlanCasesInput, state: SerialCaseExecutionState): Promise<void> {
+async function completeSerialCase(input: ExecuteTestPlanCasesInput, state: SerialCaseExecutionState): Promise<boolean> {
     const result = state.perTest.at(-1);
     const { lifecycle } = input.supervision;
     const errors = Array.from(new Set([ ...state.reportedRunnerErrors, ...input.supervision.runnerErrors ]));
-    if (
-        lifecycle !== null && result !== undefined &&
-        await lifecycle.complete(result, errors) === 'stop'
-    ) {
+    const stopped = lifecycle !== null && result !== undefined &&
+        await lifecycle.complete(result, errors) === 'stop';
+    if (stopped) {
         input.supervision.stopAcceptingCases();
     }
+    return stopped;
 }
 
 async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<ExecutedTestPlan> {
     let state = initialSerialCaseExecutionState();
+    let stoppedByPolicy = false;
 
     for (const testCase of input.testPlan.cases) {
         if (
@@ -181,11 +183,12 @@ async function executeTestPlanCases(input: ExecuteTestPlanCasesInput): Promise<E
 
         state = await executeSerialTestPlanCase(input, state, testCase);
         if (input.supervision.lifecycle !== null) {
-            await completeSerialCase(input, state);
+            stoppedByPolicy = await completeSerialCase(input, state);
         }
     }
 
     return {
+        stoppedByPolicy,
         perTest: state.perTest,
         reporterErrors: await serialTestPlanReporterErrors(input, state),
         testExecutionWallTimeMicroseconds: testExecutionWallTimeMicroseconds(state.timingWindows)
@@ -346,6 +349,7 @@ async function executeConcurrentTestPlanCases(
     );
 
     return {
+        stoppedByPolicy: false,
         perTest: concurrentCaseExecution.perTest,
         reporterErrors: [
             ...concurrentCaseExecution.startReporterErrors,
