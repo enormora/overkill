@@ -139,12 +139,14 @@ test-linearizability-package-smoke: compile
     rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-eslint-rule-package-smoke: compile
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
     rm -rf target/eslint-rule-package-smoke
     mkdir -p target/eslint-rule-package-smoke/node_modules/@overkill-dev
     NODE_OPTIONS="${NODE_OPTIONS:-} {{packtory-node-options}}" PACKTORY_INCLUDED_PACKAGES={{eslint-rule-smoke-packages}} packtory pack @overkill-dev/eslint-rule-test --format folder --version 0.0.0 --vendor-dependencies --out target/eslint-rule-package-smoke/node_modules/@overkill-dev/eslint-rule-test
     ln -sfn eslint-rule-test/node_modules/@overkill-dev/engine target/eslint-rule-package-smoke/node_modules/@overkill-dev/engine
-    cp target/build/source/integration-tests/package-smoke/eslint-rule-test.test.js target/eslint-rule-package-smoke/consumer.test.mjs
-    node target/eslint-rule-package-smoke/consumer.test.mjs
+    ln -s ../../../../eslint-rule-package-smoke/node_modules target/build/source/integration-tests/package-smoke/node_modules
+    node target/build/source/integration-tests/package-smoke/eslint-rule-test.test.js
+    rm -rf target/build/source/integration-tests/package-smoke/node_modules
 
 test-mutation-package-smoke: (_pack-smoke-packages mutation-smoke-packages)
     node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
