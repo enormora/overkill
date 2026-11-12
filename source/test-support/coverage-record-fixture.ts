@@ -116,6 +116,7 @@ async function createCoverageRecordFixture(
             benchmarkCalibration: null,
             benchmarkNormalization: null,
             benchmarkPlacement: null,
+            selectedIdentities: [],
             cases: [],
             config: input.config,
             dependencies,

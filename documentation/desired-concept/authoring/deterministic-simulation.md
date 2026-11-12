@@ -213,9 +213,32 @@ HTTP server definition into a resource descriptor. It owns `listen`, teardown,
 host, port, and the exposed `baseUrl`. The adapter receives an explicit local
 address request such as `{ kind: 'loopback', port: 0 }`; with port `0`, the
 operating system assigns an unused port atomically. The first HTTP adapter uses
-URL-based request-routed scenarios only. `baseUrl` routes to `default`;
-`scenarioUrl(...)` adds an internal query parameter and the adapter removes
-that parameter before invoking the handler.
+URL-based request-routed scenarios only. Request-routed test fixtures require
+explicit scenario identity, including `default`; reject missing or unknown
+identity rather than silently falling back. Generated default-view and
+`scenarioUrl(...)` request URLs carry that identity. The adapter removes its
+internal selector before invoking the handler. Generic URL path resolution
+does not preserve query selectors, so callers must use the request URL builder
+or an explicitly supported routing strategy for subsequent requests.
+
+A fixed-scenario server instead binds identity at startup and needs no
+per-request selector. These are distinct routing contracts. In particular,
+a query-selected request URL is not a generic API base URL that can silently
+preserve identity through arbitrary path construction.
+
+## Optional HTML Host
+
+The simulation layer provides an optional helper to assemble consumer-owned
+markup and asset references with safely embedded scenario-derived startup
+configuration and an explicit invocation, such as `window.startApp(config)`.
+The application owns the scenario-to-configuration mapping and its build.
+Existing SSR/template systems may supply the entire document instead.
+
+The helper must support correct HTML/script encoding and a CSP-compatible
+external configuration/module alternative. It does not prescribe a framework,
+root element, global function name, template language, or application bundler.
+The ordinary application artifact can be reused across runtime configurations;
+dedicated deterministic entry points remain a consumer option when needed.
 
 ## Scenario Timing
 

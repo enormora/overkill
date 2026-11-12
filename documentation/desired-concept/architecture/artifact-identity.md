@@ -15,6 +15,21 @@ value derived from declared parts. Reporters, baseline systems, and IDE
 integrations consume the structure directly; path representations are
 _derived_ from the identity, not the other way around.
 
+## Browser Placement And Measurement Identity
+
+Resolved runtime identity distinguishes the authored body target and the selected
+browser environment. Browser-executed and host-driven cases cannot collide in
+execution buckets, assignment validation, artifacts, or reproduction merely
+because they share a file and title. Record placement once through the existing
+runtime/work identity rather than adding a second browser case hierarchy.
+
+Benchmark comparison also retains measured target scope, collector/algorithm,
+endpoints, reset/cache policy, and instrumentation. Body placement does not
+establish metric equivalence. Concrete session/document/process IDs and varying
+availability/completeness are run evidence, not stable baseline keys. Switching
+body placement does not silently approve comparison; the comparison contract
+must establish compatible semantics and selected runtime identity.
+
 ## Identity Layers
 
 Overkill distinguishes:

@@ -11,6 +11,12 @@ and speed are _consequences_ of the boundary: a test denied filesystem
 writes, network access, child processes, and addons cannot accidentally
 become an integration test or a slow test.
 
+Microtest and property bodies never execute in browser runtimes. A correctness
+test requiring a browser environment belongs to the integration family,
+including pure-looking functions whose purpose is to verify real-browser
+behavior. Browser performance workloads belong to the benchmark family.
+Browser provisioning outside the body does not make a browser test a microtest.
+
 A test is a microtest if and only if it runs in a microtest _capability
 profile_. Two tests with identical bodies but different profiles are
 different tests.

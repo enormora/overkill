@@ -971,8 +971,14 @@ be files or directories. Directories contribute immediate regular `*.json` files
 subdirectories and other extensions are ignored. Repeated paths are read once.
 
 This milestone returns an in-memory aggregate and maps its status to the CLI
-exit code. Callers must supply a complete, compatible set of shards. Cross-record
-compatibility checks, incomplete aggregates, persisted merged records, compact
+exit code. Callers must supply a complete set of shards. Compatibility checks reject
+different profiles or test families, seeds, shard totals, selected work identities,
+loader configuration, engine versions, or recorded `@overkill-dev/*` versions.
+Identity evidence covers the complete selection before sharding, including empty
+shards. Older records without this evidence must be regenerated for merging;
+they remain readable for replay. Node, host, and third-party package metadata may differ.
+
+Incomplete aggregates, persisted merged records, compact
 history updates, and final-result reporter delivery remain separate milestones.
 The command currently has no success output.
 

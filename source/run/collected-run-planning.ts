@@ -85,7 +85,7 @@ export async function planCollectedInvocation(
                 { ...command, request },
                 dependencies,
                 runInput,
-                testPlan
+                { plan: testPlan, identities: [] }
             ),
             result: createEmptySelectionResult(testPlan, dependencies)
         };

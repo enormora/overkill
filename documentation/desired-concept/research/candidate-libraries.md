@@ -1329,7 +1329,8 @@ Why it matters:
 Important caveat:
 
 - Node intentionally ignores `tsconfig.json`
-- non-erasable TypeScript syntax still needs `--experimental-transform-types` or a third-party tool
+- Node 26 removed `--experimental-transform-types`; non-erasable syntax and
+  TSX/JSX require an explicit external transform or precompiled input
 
 Assessment:
 
