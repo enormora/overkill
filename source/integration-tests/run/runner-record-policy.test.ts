@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { runIfMain } from '#test-runner';
+import { currentRunRecordVersion } from '../../run/run-record-format.ts';
 import { createHistory, normalizeConfig, type SingleRunRecord } from '../../packages/run/run.entry-point.ts';
 import { suite, test, type TestScope } from '../../packages/test/test.entry-point.ts';
 
@@ -193,7 +194,7 @@ function assertSharedSelection(scope: TestScope, empty: SingleRunRecord, execute
 }
 
 function assertShardSelection(scope: TestScope, empty: SingleRunRecord, executed: SingleRunRecord): void {
-    if (empty.version !== 2 || executed.version !== 2) {
+    if (empty.version !== currentRunRecordVersion || executed.version !== currentRunRecordVersion) {
         throw new Error('Expected replay snapshots in merge inputs.');
     }
     scope.require.defined(empty.replayPlan);
