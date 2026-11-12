@@ -88,6 +88,24 @@ records directly when a test genuinely needs result-history details.
 
 ## Runtime Architecture
 
+### Browser scope boundaries
+
+- Browser correctness tests belong to integration. Microtest/property bodies
+  never execute in browser runtimes, even when provisioning is external.
+- No first-party component-mounting DSL or universal locator/action API.
+  Consumers may supply rendering setup and use provider-native controllers.
+- No standalone runnable browser-test export. Browser execution remains
+  connected to an Overkill run; offline result/report viewing is supported.
+- Native mobile/desktop application automation stays consumer-composed.
+  Compatible mobile browsers and explicitly supported browser extensions are
+  within browser scope.
+
+Where: [Browser Testing Product Boundary](../authoring/higher-test-layers.md#browser-testing-product-boundary).
+
+Alternative: Browser-executed integration bodies and Host-driven browser
+automation through shared runtime/resources and provider integrations; browser
+performance uses the benchmark family.
+
 ### No persistent runner daemon
 
 Overkill does not ship a long-lived `overkill daemon` socket-based
@@ -137,8 +155,8 @@ impact analysis is not part of the settled concept.
 
 Overkill does not ship its own strip cache or bytecode cache.
 
-Why: Node's module compile cache covers bytecode reuse, and the strip
-cost is single-digit milliseconds per file. A custom warm cache would
+Why: Node's module compile cache covers bytecode reuse. Any additional strip
+cache needs measured evidence on the pinned runtime. A custom warm cache would
 need to clear [Principles § Cold Start Is The Budget](./principles.md#cold-start-is-the-budget) - it cannot
 penalize the cold path.
 
@@ -208,13 +226,13 @@ runner-owned V8 orchestration and an external reporting integration.
 
 ### No coverage outside microtest profiles
 
-Coverage is restricted to microtest profiles. Integration, property,
-type-test, and browser profiles reject `--coverage`; benchmark commands reject
-coverage because instrumentation distorts measurements.
+Coverage is restricted to microtest profiles. Integration (including both
+browser modes), property, and type-test profiles reject `--coverage`; benchmark
+commands reject coverage because it changes the measured workload.
 
 Why: integration tests broad-path through code (their coverage reads
-as "everything was hit," uninformative); benchmarks cannot be
-instrumented without distorting timing; browser tests have their own
+as "everything was hit," uninformative); coverage instrumentation changes
+benchmark timing; browser tests have their own
 coverage story via the browser's instrumentation. Restricting to
 microtests keeps the API surface small.
 

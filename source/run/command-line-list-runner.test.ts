@@ -158,6 +158,7 @@ export function createResolvedRun(
             execution: testRunExecutionFacts(command, profile),
             loader: command.config.loader,
             reproducibility: {
+                selectedIdentities: [],
                 selection: command.request.selection,
                 seed: '42',
                 shard: command.request.shard,

@@ -37,6 +37,7 @@ export type RunFactsInput = {
     readonly benchmarkPlacement: RunFacts['benchmarkPlacement'];
     readonly benchmarkCalibration: RunFacts['benchmarkCalibration'];
     readonly benchmarkNormalization: RunFacts['benchmarkNormalization'];
+    readonly selectedIdentities: readonly RunCaseFacts['workId'][];
     readonly cases: readonly RunCaseFacts[];
     readonly config: NormalizedConfig;
     readonly dependencies: RunFactsDependencies;
@@ -152,6 +153,7 @@ export function createRunFacts(input: RunFactsInput): RunFacts {
         execution: createRunExecutionFacts(input, profile),
         loader: input.config.loader,
         reproducibility: {
+            selectedIdentities: input.selectedIdentities,
             selection: input.request.selection,
             seed: resolvedSeed(input.request, input.dependencies).toString(),
             shard: input.request.shard,

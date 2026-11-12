@@ -76,6 +76,14 @@ rule in `@overkill-dev/eslint-plugin` (see
 [Higher Test Layers § Static Authoring Rules](../authoring/higher-test-layers.md#static-authoring-rules)),
 which inspects source rather than a run.
 
+Collection owns one authoritative catalog and constructed/reached snapshot.
+Browser/worker execution re-import validates frozen selected work; it does not
+add discovered/planned/defined counts or merge execution-realm orphan sets into
+the catalog. Runtime expansion contributes each distinct `WorkId` once, and
+mixed-placement completions retain that work identity. Duplicate, stale, or
+unfinished completion evidence cannot increment final counts. Verify this for
+both browser modes, matrices, retries, and remote result delivery.
+
 ## Data Model
 
 Run counts add three fields to `RunResult.summary`: `discovered`,

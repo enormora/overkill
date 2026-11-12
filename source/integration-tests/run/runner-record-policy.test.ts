@@ -183,12 +183,22 @@ async function assertLastFailedExecution(scope: TestScope, mode: ExecutionMode):
     await assertLastFailedRecords(scope, directory);
 }
 
+function assertSharedSelection(scope: TestScope, empty: RunRecord, executed: RunRecord): void {
+    scope.require.defined(empty.facts);
+    scope.require.defined(executed.facts);
+    scope.require.defined(empty.facts.reproducibility.selectedIdentities);
+    scope.require.defined(executed.facts.reproducibility.selectedIdentities);
+    scope.assert.deepEqual(empty.facts.reproducibility.selectedIdentities, executed.identities);
+    scope.assert.deepEqual(executed.facts.reproducibility.selectedIdentities, executed.identities);
+}
+
 function assertShardSelection(scope: TestScope, empty: RunRecord, executed: RunRecord): void {
     if (empty.version !== 2 || executed.version !== 2) {
         throw new Error('Expected replay snapshots in merge inputs.');
     }
     scope.require.defined(empty.replayPlan);
     scope.require.defined(executed.replayPlan);
+    assertSharedSelection(scope, empty, executed);
     scope.assert.notEqual(empty.id, executed.id);
     scope.assert.notEqual(empty.request.shard.index, executed.request.shard.index);
     scope.assert.deepEqual(empty.request.selection, executed.request.selection);

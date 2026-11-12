@@ -43,6 +43,26 @@ Sources:
 - [Rust by Example - Unit testing with `Result`](https://doc.rust-lang.org/rust-by-example/testing/unit_testing.html)
 - [elm-test - `Test` and `Expect`](https://package.elm-lang.org/packages/elm-explorations/test/latest/Test)
 
+## Resource-Owned Checks
+
+Resource checks contribute ordinary structured failed checks to the attempt
+outcome through a durable ledger, not through the body's assertion recorder.
+Preserve the originating resource and work/attempt/target identity. A body
+failure, `require` short-circuit, invalid builder return, caught controller
+error, or transcript reset cannot discard recorded findings.
+
+Resource checks do not satisfy `plan(n)`, zero-assertion detection, or the
+builder return contract. Passing resource activity is summarized rather than
+recording an authored assertion for every event. Observation/enforcement loss
+is infrastructure failure, not a passing check or an application assertion.
+Predeclared bounded expected events are recognized at occurrence; they do not
+erase failures retroactively or grant permissions.
+
+No successful final verdict or retry decision precedes required observation
+finalization. Shared-resource lifetime evidence retains its separate owner
+boundary. See [Resource-Owned Checks And Observers](../architecture/package-architecture.md#resource-owned-checks-and-observers)
+for installation, cleanup, disposal, and direct-API delivery.
+
 ## Why A First-Party Assertion Layer Still Makes Sense
 
 Assertion tracking is hard to do well if assertions are entirely external.

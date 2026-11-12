@@ -137,9 +137,9 @@ canonical statement of the rule lives in
 assertions, so `scope.plan(1)` would still pass - but it is not
 load-bearing for property tests.
 
-The engine is at this point done with the test. Whatever happens
-next - verdict derivation, identity attachment, artifact paths,
-reporter dispatch - is orchestration.
+This body outcome remains provisional until required cleanup and resource
+observation finalization complete. Identity was already frozen before execution;
+later stages derive paths and reporter delivery from it, not new case identity.
 
 Canonical: [Assertions And Results](./assertions-and-results.md), specifically [§ Protocol Layer](./assertions-and-results.md#protocol-layer-structured-outcomes).
 
@@ -168,8 +168,15 @@ The test's stable identity is computed once at collection (see
 const caseId: CaseId = {
     file: 'source/users.test.ts',
     suite: [ 'users' ],
-    name: 'round-trip preserves values'
-    // no params, no runtime, no workload
+    title: 'round-trip preserves values',
+    params: null
+};
+
+const workId: WorkId = {
+    case: caseId,
+    runtimes: [],
+    workload: null,
+    familyVariant: null
 };
 ```
 
@@ -179,7 +186,11 @@ seed and shrunk counterexample - alongside the failure. Its
 
 ```ts
 const witnessId: ArtifactId = {
-    case: caseId,
+    scope: { kind: 'case', case: caseId },
+    runtimes: workId.runtimes,
+    workload: workId.workload,
+    familyVariant: workId.familyVariant,
+    attempt: { index: 0 },
     subtype: 'witness'
 };
 ```
@@ -187,7 +198,7 @@ const witnessId: ArtifactId = {
 Path derivation (canonical rule in [Artifact Identity § Path Derivation](../architecture/artifact-identity.md#path-derivation)):
 
 ```text
-.overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
+.overkill/witnesses/<run-id>/<work-and-artifact-derived>__attempt=0.witness.json
 ```
 
 Canonical: [Artifact Identity](../architecture/artifact-identity.md).
@@ -202,12 +213,14 @@ Canonical: [Failure Artifacts](./failure-artifacts.md).
 
 ## Stage 6 - Run Record
 
-When the active workflow persists a run record (see [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), also [Types Index](../reference/types-index.md)), run completion writes it to
+Producing this confirmed replayable property witness requires a persisted run
+record even without `--record` (see [Reproducibility § Run Record Shape](../architecture/reproducibility.md#run-record-shape), also [Types Index](../reference/types-index.md)). Run completion writes it to
 `.overkill/runs/<run-id>.json`. The relevant per-test entry:
 
 ```ts
 {
     id: caseId,
+    workId,
     outcome: {
         kind: 'fail',
         failures: [
@@ -221,8 +234,8 @@ When the active workflow persists a run record (see [Reproducibility § Run Reco
 }
 ```
 
-The witness path appears in the run's `artifacts` array under the
-same `ArtifactId`. Replay (`overkill replay <run-id>`) reads the
+The witness path is attached under the same work/attempt-aware `ArtifactId`.
+Replay (`overkill replay <run-id>`) reads the
 record; replay-witness (`overkill replay-witness <path>`) reads the
 witness directly.
 
@@ -249,8 +262,8 @@ prints the failure inline:
     expected: "Adäle"
     actual:   "Adäle"
 
-  Replay this exact failure:
-    overkill replay-witness .overkill/witnesses/source/users.test__users__round-trip-preserves-values.witness.json
+  Replay the retained input:
+    overkill replay-witness .overkill/witnesses/<run-id>/<work-and-artifact-derived>__attempt=0.witness.json
 ```
 
 The diff shape from stage 1 is what the reporter renders; the

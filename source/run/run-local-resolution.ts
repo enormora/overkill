@@ -33,7 +33,10 @@ export async function createLocalResolvedRun(
     return await resolveFamilyRun(preparation, async function selectLocalPlan() {
         const cases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
         if (cases === null && input.request.lastFailed) {
-            return createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, testPlan);
+            return createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, {
+                plan: testPlan,
+                identities: []
+            });
         }
         return await createShardedLocalResolvedRunFromTestPlan(
             command,
@@ -68,7 +71,7 @@ export async function createLocalRunOrEmptySelectionResultFromInput(
         const cases = selectedNonEmptyTestPlanCases(testPlan, input.request.selection);
         assertReplaySelection(command, cases !== null);
         return cases === null
-            ? createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, testPlan)
+            ? createEmptyShardResolvedRunFromTestPlan(command, dependencies, input, { plan: testPlan, identities: [] })
             : await createShardedLocalResolvedRunFromTestPlan(command, dependencies, input, { ...testPlan, cases });
     });
     return {

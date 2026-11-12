@@ -103,6 +103,20 @@ Overkill should avoid:
 
 ## Executable Test Families
 
+Browser mode is not a profile family or process model. The modes are
+Browser-executed and Host-driven browser automation; existing runtime
+descriptors carry per-body target requirements. An integration or benchmark
+profile can select cases using both. Browser correctness requires integration;
+microtest/property profiles reject browser targets, even without an attached
+app/session resource. Benchmark profiles retain the `overkill bench` namespace.
+
+Profile execution policy constrains supervision, isolation, and scheduling.
+It does not silently move a body between host and browser or replace a required
+collector. Browser harness/adapter wiring must also be available to direct
+programmatic callers. Collection remains browser-free by default, with one
+designated collection browser only through explicit opt-in. See
+[Browser Execution And Placement](./runtime-behavior.md#browser-execution-and-placement).
+
 `profiles.<name>.testFamily` accepts an imported `TestFamily<Settings>` definition.
 The definition supplies validation and execution; the profile's `settings` must
 match its type. The standard distribution retains built-in string aliases for

@@ -46,6 +46,21 @@ A reproducible run captures, at minimum:
   configuration fingerprints, resolution inputs, and assertion ownership
 
 Together these form a `RunFacts` value preserved as part of the run record.
+
+Browser facts additionally preserve body placement, module/export and harness
+graph/build identity, browser/controller/protocol versions, guard policy and
+required coverage, scenario/startup configuration, and measurement/collector/
+reset/instrumentation semantics. Keep temporary addresses, session credentials,
+and target/process IDs out of stable comparison keys; rebind permitted endpoints
+explicitly during reproduction. Persist logical configuration without secrets.
+
+Reproduction validates the current implementation/build and frozen selected
+catalog before admission. A changed module graph, incompatible browser/collector,
+or unavailable guard capability requires fresh preparation or a clear failure,
+not silent metric substitution. Records keep incomplete/truncated evidence and
+attempt/session/document provenance. Historical readers remain versioned and do
+not load browser/controller packages merely to inspect old results. Reproducing
+intent does not claim identical browser scheduling or timings across machines.
 `RunFacts` is a serializable snapshot with run-level domains and a
 `cases` projection. It is not attached to each executable case. The
 executable `TestPlan` is in-memory only because it contains callable test
@@ -173,7 +188,13 @@ The merged record preserves their ids and input paths as lineage.
 
 Merge validation is strict about the run semantics: selected profile, seed,
 shard total, selected identities, loader configuration, and Overkill package
-versions must agree. Host metadata such as platform or Node runtime details
+versions must agree. `RunFacts.reproducibility.selectedIdentities` records the
+complete selected `WorkId` set after expansion and before sharding, including
+on empty shards. Identity comparison ignores array order and retains runtime,
+workload, and family variants. Historical records decode absent evidence as
+`null` for replay; merging requires regenerated records with explicit evidence.
+Version comparison covers the engine version and recorded `@overkill-dev/*`
+package keys and values; other dependency versions may differ. Host metadata such as platform or Node runtime details
 may differ and is preserved as metadata. Missing shards, duplicate executed
 work identities, unreadable records, or incompatible facts produce a merge
 runner error. The merge still writes an incomplete failure record when it has
@@ -460,7 +481,10 @@ Use complete run recording when reproducing that enclosing run is necessary.
 Simulation witnesses select one owning resource and restore through
 `withWitnessReplay(resource, restore)` before projecting its fresh handle. The
 callback receives the witness, a signed `bigint | null` seed, and cancellation
-signal. Disposal follows normal ownership rules, including restore failures.
+signal together with the fresh owner handle in one context. The resource may
+declare one restore callback; absent/ambiguous owning resources or incompatible
+producer/payload state fail before projecting the handle. Disposal follows
+normal ownership rules, including restore failures.
 The built-in HTTP adapter restores scenarios and reruns the current handler;
 transcripts are diagnostics. Unsupported producer inputs fail replay.
 

@@ -612,16 +612,15 @@ The design goal is:
 
 This is the cleanest form of the "API-First" principle the overview names.
 
-## Drawbacks And Mitigations
+## Composition And Validation
 
-### "Where do I put a one-off setup statement?"
+### Shared Setup
 
-Some legitimate setup is genuinely one-time and shared across the file. The
-answer is _not_ a `before(...)` hook. It is a fixture scoped to the suite, or
-an explicit constant inside the suite construction:
+Effectful setup and teardown use resources with explicit file/suite lifetimes.
+Pure fixture data may be constructed alongside the suite declaration:
 
 ```ts
-const fixtures = loadFixtures(); // executes at module load and is visible
+const fixtures = { a: { id: '1' }, b: { id: '2' } };
 
 export const testNode = suite('users', [
     test('a', (scope) => {
@@ -635,39 +634,35 @@ export const testNode = suite('users', [
 ]);
 ```
 
-If the load is expensive, wrap it in a lazy fixture that the suite declares.
-Hooks remain rejected.
+Pure execution dependencies may defer initialization until the body. First-party
+setup/teardown hooks are outside this authoring model.
 
-### "What about long suites?"
+### Suite Composition
 
-A suite of 200 tests in one file becomes a 200-element array. That is fine.
-If the array is unwieldy, split into sub-suites or generate via `table` /
-macros. Both are pure tree operations.
+Large suites compose smaller suite values, tables, and macros. These remain
+ordinary tree operations with explicit children and no registration side effects.
 
-### "How do I see test errors at registration time?"
+### Definition Validation
 
-In imperative runners, a typo in a test title is visible immediately when the
-file loads. With tests-as-values, the file loads even if a test value is
-malformed. Mitigation: validate the suite structurally in development mode
-on load (cheap), and provide a typed builder so most errors are caught by
-TypeScript itself.
+Typed constructors and structural validation reject malformed test values and
+suite structure before execution.
 
 Reachable suites and tables must expand to at least one executable case.
 Planning rejects empty reachable suites and tables before execution.
 
-### "What about randomized test order?"
+### Execution Order
 
-The suite array has natural order. Randomized order is a runner concern,
-applied to the resolved plan. Reproducibility is preserved by reporting the
-seed and the resulting permutation.
+Suite arrays define structural order. The runner applies configured execution
+ordering to the resolved plan and records the seed and realized order for
+reproduction.
 
 ## Cross-References
 
-### `import defer`
+### Deferred Module Evaluation
 
-TC39 `import defer` (Stage 3 as of May 2026, supported syntactically in
-TypeScript 5.9, not yet in V8) lets a module declare that an import should
-not be evaluated until first access. Combined with tests-as-values:
+`import defer` allows an execution dependency's synchronous initialization to
+wait until a namespace member is first accessed. This supports host-side tests
+with expensive initialization while preserving a synchronous test body:
 
 ```ts
 import defer * as heavy from './heavy-module.ts';
@@ -680,12 +675,42 @@ export const testNode = suite('heavy', [
 ]);
 ```
 
-The import graph for `heavy-module.ts` is _not_ evaluated when the test file
-is imported for listing. It only evaluates when the test body runs. Until V8
-ships native support, Overkill can simulate this by keeping each test in its
-own module and lazy-importing on demand from the runner. Tests-as-values
-makes the simulation transparent because the test definitions are pure data
-that doesn't need the implementation modules to exist.
+The module graph is loaded and linked up front. Only synchronous evaluation is
+deferred; asynchronous dependencies and their required dependencies evaluate
+eagerly. Accessing the namespace during collection also triggers evaluation.
+Test definitions remain fully collected before selection.
+
+Use this form where the declared runtime/loader supports it. TypeScript accepts
+and preserves the syntax rather than downleveling it; native execution or an
+explicit compatible transform is required. Do not assume support from the
+project's Node version or silently add a loader. See the
+[TypeScript documentation](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-9.html#support-for-import-defer)
+and [proposal semantics](https://github.com/tc39/proposal-defer-import-eval#semantics).
+
+Browser delivery must also support the syntax and the complete module graph.
+Deferred evaluation does not make Node-only imports browser-compatible or
+transfer host modules into a browser realm.
+
+### Dynamic Execution Dependencies
+
+Definition collection remains authoritative and complete before selection.
+Body-only dependencies can also load asynchronously when a selected body executes:
+
+```ts
+export const testNode = suite('heavy', [
+    test('uses heavy', async (scope) => {
+        const heavy = await import('./heavy-module.ts');
+        scope.assert.equal(heavy.compute(), 42);
+        return scope.assert.collect();
+    })
+]);
+```
+
+The heavy dependency is not evaluated during listing. Browser delivery may
+still transform/resolve its graph before execution without evaluating it.
+Cross-realm bodies can use explicit implementation references with readable
+definition metadata. Neither form authorizes lazy discovery of additional tests
+after selection or automatic serialization of closures.
 
 ### Assertions And Results § Protocol Layer
 

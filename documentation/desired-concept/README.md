@@ -105,6 +105,8 @@ Optional background and comparison material, not part of the settled concept
 surface.
 
 - [Research Landscape](./research/research-landscape.md)
+- [Browser Testing Landscape](./research/browser-testing-landscape.md)
+- [Unified Browser Integration Proposal](./research/browser-integration-proposal.md)
 - [Candidate Libraries](./research/candidate-libraries.md)
 
 ## How To Contribute To This Documentation

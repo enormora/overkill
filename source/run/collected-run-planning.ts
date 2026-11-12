@@ -72,7 +72,7 @@ async function planSelectedInvocation(
                 { ...command, request },
                 dependencies,
                 runInput,
-                testPlan
+                { plan: testPlan, identities: [] }
             ),
             result: createEmptySelectionResult(testPlan, dependencies)
         };

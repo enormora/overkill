@@ -117,6 +117,31 @@ and cannot enable coverage, capture, resources, or body retries. Process support
 is checked independently: a synchronous in-process checker cannot promise an
 enforceable hard deadline merely by declaring supervised support.
 
+## Browser Compatibility
+
+Browser placement is an execution-target requirement, not a test family and
+not the family's `execution: 'runtime' | 'analysis'` discriminator.
+
+| Family             | Browser-executed                                 | Host-driven browser automation                                |
+| ------------------ | ------------------------------------------------ | ------------------------------------------------------------- |
+| Integration        | Supported with compatible imports/resources      | Supported through provider-native controller integrations     |
+| Benchmark          | Supported with runtime-aware sampling/collectors | Supported, including locally measured browser operations      |
+| Microtest          | Rejected                                         | Rejected as a browser-testing workload                        |
+| Property           | Rejected                                         | Rejected as a browser-testing workload                        |
+| Analysis/type-test | No runtime body                                  | No runtime body; may analyze source referring to browser APIs |
+
+A browser environment makes a correctness test an integration test regardless
+of body size, whether it mounts an app, or whether provisioning happens outside
+the body. Do not weaken microtest/property policy or reclassify selected work
+automatically. Browser resource descriptors cannot bypass family validation.
+
+Integration and benchmark suites may each mix compatible body placements, while
+remaining within their own selected family. Family validation still applies to
+the collected definitions before case filtering; selecting only one child does
+not repair a module containing incompatible family declarations. Optional
+families do not gain browser support merely by declaring runtime execution.
+See [Browser Execution And Placement](./runtime-behavior.md#browser-execution-and-placement).
+
 ## Configuration Type Contract
 
 `FamilySettingsOf<Family>` and `ProjectFamilyProfileConfig<Family>` are runner
@@ -292,9 +317,11 @@ are invalid.
 
 Runtime collections expose no custom execution callback. The engine executes
 their existing bodies through normal scheduling, retries, scopes, and supervision.
-This prevents the initial extension contract from becoming a second runtime
-scheduler. A custom external runtime driver would need its own separately
-specified contract; it is not implied by custom family support.
+This prevents the family extension contract from becoming a second runtime
+scheduler. Browser execution adapters extend the shared executor/placement
+contract in [Runtime Behavior](./runtime-behavior.md#browser-execution-and-placement),
+not a family's custom execution callback. Custom family support alone does not
+authorize another external runtime driver.
 
 Shared compiler startup/checking time belongs in run timings. Per-case duration
 measures attributable evidence evaluation and must not charge the entire shared
@@ -452,31 +479,16 @@ recorded meaning or claiming that old generated-input checks used this contract.
 
 ## Delivery Boundaries
 
-Implement the dependent milestones in this order:
+Built-in policy and command behavior remain part of each family definition.
+An optional family does not gain benchmark commands or microtest permissions
+by choosing a familiar identifier. The custom-family surface supports ordinary
+engine runtime execution and project-wide analysis, with shared worker/bootstrap
+resolution and versioned records. It does not replace worker protocols or
+introduce another scheduler.
 
-1. Public family definitions, generic work/work-unit identity, and the single-use
-   preparation/collection contract, with the engine-owned evidence sink.
-2. Typed profile binding and direct-engine execution, including error delivery,
-   disposal, and settings rejection.
-3. Built-in aliases and policy migration, then worker/bootstrap resolution and
-   versioned record compatibility.
-4. Dependency/compiler compatibility assessment against the specified relation
-   semantics, followed by the original-source type-test backend and package API.
-5. Exact selection, diagnostics, cancellation/drift behavior, reproduction, and
-   end-to-end acceptance across direct and runner entry points.
-
-Each milestone includes its acceptance checks before the next starts. The ordered
-implementation checklist is [issue #194](https://github.com/enormora/overkill/issues/194).
-Implementation choices inside a backend may vary without reopening these public
-contracts. If a required semantic rule cannot be supported through public APIs,
-report that blocker explicitly rather than silently weakening the rule.
-
-Implement and validate the family API before migrating the type-test backend.
-Preserve built-in policy and command behavior through their definitions; an
-optional family does not gain benchmark commands or microtest permissions by
-choosing a familiar identifier. The initial custom-family surface supports
-ordinary engine runtime execution and project-wide analysis, not arbitrary
-replacement worker protocols.
+Backend implementation choices may vary while preserving these public contracts.
+Required semantics must be supported through public APIs or reported as unavailable,
+without silently weakening the contract.
 
 The normative type-test settings, assertion catalog, and diagnostic contract are
 in [Native Type-Test Integration](../authoring/testing-models.md#native-type-test-integration).

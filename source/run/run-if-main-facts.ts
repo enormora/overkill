@@ -124,6 +124,9 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
         },
         loader: input.config.loader,
         reproducibility: {
+            selectedIdentities: input.testPlan.cases.map(function identity(entry) {
+                return entry.workId;
+            }),
             selection: request.selection,
             seed: String(input.seed.value),
             shard: request.shard,
