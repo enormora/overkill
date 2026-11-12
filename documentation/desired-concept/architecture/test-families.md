@@ -460,31 +460,16 @@ recorded meaning or claiming that old generated-input checks used this contract.
 
 ## Delivery Boundaries
 
-Implement the dependent milestones in this order:
+Built-in policy and command behavior remain part of each family definition.
+An optional family does not gain benchmark commands or microtest permissions
+by choosing a familiar identifier. The custom-family surface supports ordinary
+engine runtime execution and project-wide analysis, with shared worker/bootstrap
+resolution and versioned records. It does not replace worker protocols or
+introduce another scheduler.
 
-1. Public family definitions, generic work/work-unit identity, and the single-use
-   preparation/collection contract, with the engine-owned evidence sink.
-2. Typed profile binding and direct-engine execution, including error delivery,
-   disposal, and settings rejection.
-3. Built-in aliases and policy migration, then worker/bootstrap resolution and
-   versioned record compatibility.
-4. Dependency/compiler compatibility assessment against the specified relation
-   semantics, followed by the original-source type-test backend and package API.
-5. Exact selection, diagnostics, cancellation/drift behavior, reproduction, and
-   end-to-end acceptance across direct and runner entry points.
-
-Each milestone includes its acceptance checks before the next starts. The ordered
-implementation checklist is [issue #194](https://github.com/enormora/overkill/issues/194).
-Implementation choices inside a backend may vary without reopening these public
-contracts. If a required semantic rule cannot be supported through public APIs,
-report that blocker explicitly rather than silently weakening the rule.
-
-Implement and validate the family API before migrating the type-test backend.
-Preserve built-in policy and command behavior through their definitions; an
-optional family does not gain benchmark commands or microtest permissions by
-choosing a familiar identifier. The initial custom-family surface supports
-ordinary engine runtime execution and project-wide analysis, not arbitrary
-replacement worker protocols.
+Backend implementation choices may vary while preserving these public contracts.
+Required semantics must be supported through public APIs or reported as unavailable,
+without silently weakening the contract.
 
 The normative type-test settings, assertion catalog, and diagnostic contract are
 in [Native Type-Test Integration](../authoring/testing-models.md#native-type-test-integration).

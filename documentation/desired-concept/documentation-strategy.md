@@ -127,6 +127,10 @@ The documentation should avoid:
 - leading with every advanced utility
 - assuming users want framework-level ceremony for small tests
 - mixing settled product guidance with exploratory or research-stage notes
+- presenting concepts as Q&A or discussion transcripts instead of declarative
+  contracts and explicit non-goals
+- embedding project plans, milestone order, or completion checklists in desired
+  concept documents; those belong in the implementation issue
 
 Overkill should feel smaller than its internal architecture.
 

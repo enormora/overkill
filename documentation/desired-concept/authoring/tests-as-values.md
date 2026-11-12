@@ -612,16 +612,15 @@ The design goal is:
 
 This is the cleanest form of the "API-First" principle the overview names.
 
-## Drawbacks And Mitigations
+## Composition And Validation
 
-### "Where do I put a one-off setup statement?"
+### Shared Setup
 
-Some legitimate setup is genuinely one-time and shared across the file. The
-answer is _not_ a `before(...)` hook. It is a fixture scoped to the suite, or
-an explicit constant inside the suite construction:
+Effectful setup and teardown use resources with explicit file/suite lifetimes.
+Pure fixture data may be constructed alongside the suite declaration:
 
 ```ts
-const fixtures = loadFixtures(); // executes at module load and is visible
+const fixtures = { a: { id: '1' }, b: { id: '2' } };
 
 export const testNode = suite('users', [
     test('a', (scope) => {
@@ -635,31 +634,27 @@ export const testNode = suite('users', [
 ]);
 ```
 
-If the load is expensive, wrap it in a lazy fixture that the suite declares.
-Hooks remain rejected.
+Pure execution dependencies may defer initialization until the body. First-party
+setup/teardown hooks are outside this authoring model.
 
-### "What about long suites?"
+### Suite Composition
 
-A suite of 200 tests in one file becomes a 200-element array. That is fine.
-If the array is unwieldy, split into sub-suites or generate via `table` /
-macros. Both are pure tree operations.
+Large suites compose smaller suite values, tables, and macros. These remain
+ordinary tree operations with explicit children and no registration side effects.
 
-### "How do I see test errors at registration time?"
+### Definition Validation
 
-In imperative runners, a typo in a test title is visible immediately when the
-file loads. With tests-as-values, the file loads even if a test value is
-malformed. Mitigation: validate the suite structurally in development mode
-on load (cheap), and provide a typed builder so most errors are caught by
-TypeScript itself.
+Typed constructors and structural validation reject malformed test values and
+suite structure before execution.
 
 Reachable suites and tables must expand to at least one executable case.
 Planning rejects empty reachable suites and tables before execution.
 
-### "What about randomized test order?"
+### Execution Order
 
-The suite array has natural order. Randomized order is a runner concern,
-applied to the resolved plan. Reproducibility is preserved by reporting the
-seed and the resulting permutation.
+Suite arrays define structural order. The runner applies configured execution
+ordering to the resolved plan and records the seed and realized order for
+reproduction.
 
 ## Cross-References
 

@@ -1,15 +1,14 @@
 # Unified Browser Integration Proposal
 
-## Status And Closing Question
+## Status And Scope
 
-Detailed proposal for discussion, 2026-11-11. This is not the settled public
-API or an implementation claim. The [landscape](./browser-testing-landscape.md)
-records prior art and agreed product boundaries. Resolve the decision register
-before promoting proposed contracts into canonical concept documents.
+Research notes from the browser product discussion, 2026-11-11. Canonical
+concept documents define the public contracts; this file preserves alternatives
+and rationale. The [landscape](./browser-testing-landscape.md) records prior art
+and agreed product boundaries.
 
-Closing question: how can browser execution, app automation, continuous app
-checks, simulation, and performance share ordinary Overkill authoring and
-lifecycle without creating another test framework?
+Browser execution, app automation, continuous app checks, simulation, and
+performance share ordinary Overkill authoring and lifecycle contracts.
 
 Breaking changes are permitted. Prefer changes that remove duplication or
 make evidence accurate. Node-specific implementation restrictions are not
@@ -1191,7 +1190,8 @@ reason to leave the feature catalog only in research.
 
 ## Decision Register
 
-Resolve one decision at a time with context/alternatives, not a bulk questionnaire.
+The register records design decisions and technical validation topics.
+Canonical concept documents define the settled contracts.
 
 | ID | Decision | Working recommendation |
 | --- | --- | --- |
@@ -1231,24 +1231,6 @@ Resolve one decision at a time with context/alternatives, not a bulk questionnai
 | D34 | Resolved: independent placement and collectors | Compatible mixed-placement suites/files; explicit import boundaries; one shared sampling/execution model |
 | D35 | Resolved: browser mode names | Browser-executed and Host-driven browser automation, defined by authored body location |
 | D36 | Resolved: browser family boundary | Integration correctness or benchmark performance; never browser microtest/property, with no automatic reclassification |
-
-## Proposed Milestone Shape
-
-Publish only after relevant decisions. Preserve checked progress in issue #194.
-
-- [ ] Resource-owned observations, durable outcomes, cancellation, finalization.
-- [ ] Browser-compatible engine/authoring and explicit resource/placement realms.
-- [ ] Browser-free catalogues, optional single collection browser, frozen identity, exact execution.
-- [ ] Browser/session resources, isolation and runtime/device/preference matrices.
-- [ ] Controller clients, capabilities, remote reachability and fenced evidence.
-- [ ] Request prevention/detection, console/error guards, bounded expectations.
-- [ ] Simulation HTML host, startup configuration, build/server composition.
-- [ ] Runtime-aware measurement, async collectors, semantic metric identity.
-- [ ] Browser functions, action/effect latency, navigation/request accounting.
-- [ ] Rendering, memory, CPU, worker collectors with explicit coverage limits.
-- [ ] Sampling/reset/cache/instrumentation compatibility and baseline validation.
-- [ ] Visual/layout, accessibility journeys, document/semantic/SEO adapters.
-- [ ] Shared artifacts, direct API parity, guidance and acceptance scenarios.
 
 ## Alternatives And Invalidation
 

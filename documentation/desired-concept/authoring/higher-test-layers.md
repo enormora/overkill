@@ -637,9 +637,7 @@ tests without changing the whole mental model.
 
 ## Browser Testing Product Boundary
 
-### Question And Answer
-
-Which browser testing modes should Overkill offer directly?
+### Browser Modes
 
 The two modes are **Browser-executed** and **Host-driven browser automation**.
 The former runs the authored body inside a browser document; the latter runs
@@ -917,12 +915,9 @@ override the settled scope above.
 
 ## Mutation Runner Contract
 
-### Question And Answer
+### Integration Ownership
 
-How should the first-party mutation integration execute selected microtests
-without making mutation testing an engine concern?
-
-Ship `@overkill-dev/stryker-runner` as a Stryker `TestRunner` plugin above
+The first-party `@overkill-dev/stryker-runner` is a Stryker `TestRunner` plugin above
 `@overkill-dev/run`. Stryker owns source mutation, sandboxing, mutant planning,
 scores, thresholds, incremental reports, and mutant parallelism. The adapter
 owns Overkill configuration loading, identity translation, execution, and
@@ -1345,18 +1340,14 @@ it is not an adapter implementation detail.
 
 ## Property-Based Testing Resolution
 
-### Question And Constraints
+### Contract Boundaries
 
-What authoring, execution, shrinking, and replay contract defines property
-testing in Overkill?
-
-The existing concept requires integrated shrinking, dependent generators,
+Property testing provides integrated shrinking, dependent generators,
 deterministic reproduction, witnesses, and reuse by `@overkill-dev/model`.
-The property family remains separate from microtests, with microtest-like
-capability restrictions. The initial shrinking deep dive expanded into the
-property family contract through the decisions recorded below.
+The property family is separate from microtests, with microtest-like capability
+restrictions.
 
-### Resolution
+### Authoring And Generators
 
 Public generators use fluent composition. Primitive constructors live under
 `gen`; generator values expose `map`, `flatMap`, and `filter`. Custom domain
