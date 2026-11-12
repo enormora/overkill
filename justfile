@@ -109,6 +109,7 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-output.test.ts
     node source/integration-tests/run/runner-command-line.test.ts
     node source/integration-tests/run/runner-capability-policy.test.ts
+    node source/integration-tests/run/runner-permission-audit.test.ts
     node source/integration-tests/run/runner-process-policy.test.ts
 
 test-unit-with-coverage:

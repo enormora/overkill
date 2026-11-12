@@ -43,9 +43,13 @@ function permissionDiagnosticsPhase(loadComplete: boolean): PermissionDeniedRunn
     return loadComplete ? 'out-of-test' : 'load';
 }
 
-function isAuditedBootstrapRead(error: PermissionDeniedRunnerError): boolean {
+export function readPermissionAuditEnabled(): boolean {
+    return permissionAuditEnabled(process.execArgv, readProcessEnvironment(process).NODE_OPTIONS ?? '');
+}
+
+function isAuditedBootstrapRead(error: PermissionDeniedRunnerError, auditEnabled: boolean): boolean {
     return error.cause.phase !== 'body' && error.cause.capability === 'fs-read' &&
-        permissionAuditEnabled(process.execArgv, readProcessEnvironment(process).NODE_OPTIONS ?? '');
+        auditEnabled;
 }
 
 function permissionWasDropped(message: unknown): boolean {
@@ -62,16 +66,18 @@ function ignorePermissionDropDiagnostics(
     };
 }
 
+export type PermissionDiagnosticsOptions = {
+    readonly auditDiagnostics: 'ignore' | 'report';
+    readonly auditEnabled: boolean;
+};
+
 export function createPermissionDiagnosticsSubscriptions(
     observation: ExecutionObservation,
     phase: () => PermissionDeniedRunnerErrorPhase,
     recordError: (error: RunnerError) => void,
-    auditDiagnostics: 'ignore' | 'report'
+    options: PermissionDiagnosticsOptions
 ): void {
-    if (
-        auditDiagnostics === 'ignore' &&
-        permissionAuditEnabled(process.execArgv, readProcessEnvironment(process).NODE_OPTIONS ?? '')
-    ) {
+    if (options.auditDiagnostics === 'ignore' && options.auditEnabled) {
         return;
     }
 
@@ -93,7 +99,7 @@ export function createPermissionDiagnosticsSubscriptions(
                 hook: null,
                 phase: observation.hasActiveAttempt() ? 'body' : phase()
             });
-            if (!isAuditedBootstrapRead(error)) {
+            if (!isAuditedBootstrapRead(error, options.auditEnabled)) {
                 recordError(observation.attribute(error));
             }
         });
@@ -136,7 +142,7 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
         function recordWithoutThrowing(error) {
             tryRecordPermissionError(record, error);
         },
-        'ignore'
+        { auditDiagnostics: 'ignore', auditEnabled: readPermissionAuditEnabled() }
     );
 
     return {

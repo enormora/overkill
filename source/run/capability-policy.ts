@@ -11,7 +11,8 @@ import type { RunnerError } from '../engine/run-result.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
 import {
     createPermissionDenialRuntimePolicy as createPermissionDenialRuntimePolicyCore,
-    createPermissionDiagnosticsSubscriptions
+    createPermissionDiagnosticsSubscriptions,
+    readPermissionAuditEnabled
 } from './permission-denial-runtime-policy.ts';
 import {
     createSnapshotCheckpoints,
@@ -392,7 +393,7 @@ export function createRuntimeCapabilityPolicy(options: CapabilityPolicyOptions):
             } catch {
             }
         },
-        'report'
+        { auditDiagnostics: 'report', auditEnabled: readPermissionAuditEnabled() }
     );
 
     return {
