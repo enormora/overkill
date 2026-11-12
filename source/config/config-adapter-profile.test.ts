@@ -2,11 +2,12 @@ import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
+import { bindFamilySettings } from '../engine/test-family.ts';
 import { normalizeConfig } from './config.ts';
 import { projectConfigSchema } from './schema.ts';
 import { copyConfig } from './snapshot.ts';
 import { validateNormalizedConfig } from './validation.ts';
-import { isDefinedFamilyProfile, type NormalizedConfig, type DefinedFamilyProfile } from './types.ts';
+import { familySettings, isDefinedFamilyProfile, type NormalizedConfig, type DefinedFamilyProfile } from './types.ts';
 
 const family = defineTestFamily({
     id: '@example/checker',
@@ -44,6 +45,92 @@ function registeredProfile(config: NormalizedConfig): DefinedFamilyProfile {
 const unsupportedPolicies = Object.entries({ coverage: {}, retries: { maxAttempts: 2 }, attachments: {} });
 
 export const testNode = suite('imported analysis profile configuration', [
+    test('rejects missing, forged, and mismatched normalized settings bindings', function (scope) {
+        const config = normalizeConfig({ profiles: { types: definition } });
+        const profile = registeredProfile(config);
+        const missing = { ...profile };
+        Reflect.deleteProperty(missing, familySettings);
+        for (
+            const invalid of [
+                missing,
+                { ...profile, [familySettings]: { ...profile[familySettings] } },
+                { ...profile, settings: 'different' },
+                { ...profile, testFamily: defineTestFamily({ ...family, id: '@example/another-checker' }) }
+            ]
+        ) {
+            scope.assert.throws(function validateUnboundSettings() {
+                validateNormalizedConfig({ ...config, profiles: { ...config.profiles, types: invalid } });
+            }, { message: 'Imported profile settings must be normalized with their family.' });
+        }
+        return scope.assert.collect();
+    }),
+    test('rejects unsupported normalized placement and analysis process measurement', function (scope) {
+        const config = normalizeConfig({ profiles: { types: definition } });
+        const profile = registeredProfile(config);
+        scope.assert.throws(function validateHostPlacement() {
+            validateNormalizedConfig({
+                ...config,
+                profiles: {
+                    types: {
+                        ...profile,
+                        execution: { ...profile.execution, processModel: 'supervised-process' }
+                    }
+                }
+            });
+        }, { message: 'Imported families currently require in-process execution.' });
+        scope.assert.throws(function validateRuntimeMeasurement() {
+            validateNormalizedConfig({
+                ...config,
+                profiles: {
+                    types: {
+                        ...profile,
+                        processUsage: { ...profile.processUsage, measure: true }
+                    }
+                }
+            });
+        }, { message: 'Analysis profiles do not support runtime process usage policy.' });
+        return scope.assert.collect();
+    }),
+    test('validates normalized placement against the bound family capabilities', function (scope) {
+        const config = normalizeConfig({ profiles: { types: definition } });
+        const hosted = defineTestFamily({
+            ...family,
+            id: '@example/hosted-checker',
+            features: { ...family.features, processModels: [ 'worker-pool' ] }
+        });
+        const binding = bindFamilySettings(hosted, 'accepted');
+        scope.assert.throws(function validateUnsupportedPlacement() {
+            validateNormalizedConfig({
+                ...config,
+                profiles: {
+                    types: {
+                        ...registeredProfile(config),
+                        testFamily: hosted,
+                        settings: binding.settings,
+                        [familySettings]: binding
+                    }
+                }
+            });
+        }, { message: 'The selected family does not support the configured process model.' });
+        return scope.assert.collect();
+    }),
+    test('retains ordinary runtime placement defaults and rejects unsupported imported hosts', function (scope) {
+        for (const processModels of [ [ 'in-process' ], [ 'in-process', 'supervised-process' ] ] as const) {
+            const runtime = defineTestFamily({
+                ...family,
+                id: '@example/runtime-placement',
+                features: { execution: 'runtime', processModels, profileOptions: [] }
+            });
+            scope.assert.throws(function normalizeDefaultRuntimePlacement() {
+                normalizeConfig({ profiles: { types: { ...definition, testFamily: runtime } } });
+            }, {
+                message: processModels.length === 1
+                    ? 'The selected family does not support the configured process model.'
+                    : 'Imported families currently require in-process execution.'
+            });
+        }
+        return scope.assert.collect();
+    }),
     ...scenarios.flatMap(function (scenario) {
         return [
             test(`normalizes ${scenario.name} without loading`, function (scope) {

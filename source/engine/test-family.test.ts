@@ -49,7 +49,18 @@ const invalidSettings = [
         })()
     },
     { name: 'negative zero', value: -0 },
-    { name: 'undefined', value: undefined }
+    { name: 'undefined', value: undefined },
+    { name: 'non-enumerable properties', value: Object.defineProperty({}, 'hidden', { value: null }) },
+    { name: 'symbol properties', value: { [Symbol('hidden')]: null } },
+    { name: 'additional array properties', value: Object.assign([ null ], { additional: null }) },
+    {
+        name: 'nonstandard array prototypes',
+        value: (function () {
+            const value = [ null ];
+            Reflect.setPrototypeOf(value, null);
+            return value;
+        })()
+    }
 ];
 
 const invalidDefinitions = [
@@ -69,6 +80,33 @@ const invalidDefinitions = [
 ];
 
 export const testNode = suite('executable family definitions', [
+    test('rejects copied definitions when binding settings', function (scope) {
+        const family = defineTestFamily(settingsDefinition(function () {
+            return null;
+        }));
+        scope.assert.throws(function bindUnissuedDefinition() {
+            bindFamilySettings({ ...family }, null);
+        }, { message: 'Settings require a defined test family.' });
+        return scope.assert.collect();
+    }),
+    test('rejects accessor settings without invoking their getters', function (scope) {
+        let reads = 0;
+        const settings = Object.defineProperty({}, 'value', {
+            enumerable: true,
+            get() {
+                reads += 1;
+                return null;
+            }
+        });
+        const family = defineTestFamily(settingsDefinition(function () {
+            return settings;
+        }));
+        scope.assert.throws(function rejectAccessor() {
+            family.parseSettings(null);
+        }, { message: 'Family settings require lossless, acyclic JSON.' });
+        scope.assert.equal(reads, 0);
+        return scope.assert.collect();
+    }),
     test('binds normalized settings independently without loading backends', function (scope) {
         let loads = 0;
         const family = defineTestFamily({

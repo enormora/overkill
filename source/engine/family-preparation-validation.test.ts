@@ -125,6 +125,36 @@ function runtimeFamily(): TestFamily<null> {
 }
 
 export const testNode = suite('family preparation validation', [
+    test('rejects analysis collections that lose their execution callback', async function (scope) {
+        const engine = createTestEngine();
+        const testFamily = defineAnalysis(async function prepareMalformedCollection(input) {
+            return {
+                ...await prepareRuntime(input),
+                async collect() {
+                    const collection = {
+                        kind: 'analysis' as const,
+                        facts: null,
+                        async execute() {
+                            return undefined;
+                        }
+                    };
+                    Reflect.deleteProperty(collection, 'execute');
+                    return collection;
+                }
+            };
+        });
+        await using prepared = await engine.prepareFamily({
+            testPlan: plan(engine, 'ordinary'),
+            testFamily,
+            settings: null,
+            projectRoot,
+            signal
+        });
+        await scope.assert.rejects(async function collectWithoutExecutor() {
+            await prepared.collect({ workIds: [ prepared.testPlan.cases[0].workId ], signal });
+        }, { message: 'Analysis collection requires an execute callback.' });
+        return scope.assert.collect();
+    }),
     rejectPolicy('capture', /does not support capture/u),
     rejectPolicy('foreign', /requires test family/u),
     rejectPolicy('resources', /does not support resources/u),
