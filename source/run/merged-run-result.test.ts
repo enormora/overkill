@@ -12,6 +12,23 @@ export const testNode = createSuite({
     definitionLocations: [ { kind: 'unknown' } ],
     children: [
         createTestCase({
+            title: 'keeps an empty shard successful when no shard selected work',
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            body(scope) {
+                const record = mergeRecordFixture('empty', 1, 0);
+                const result = mergedRunResult([ {
+                    path: '/empty',
+                    record: { ...record, result: { ...record.result, planStatus: 'empty-shard' } }
+                } ]);
+                scope.assert.equal(result.planStatus, 'empty-shard');
+                scope.assert.equal(result.status, 'passed');
+                scope.assert.equal(result.summary.planned, 0);
+                return scope.assert.collect();
+            }
+        }),
+        createTestCase({
             title: 'retains empty-selection failure when every shard selected no tests',
             annotations: {},
             controls: {},
