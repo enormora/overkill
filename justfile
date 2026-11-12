@@ -109,6 +109,7 @@ test-runner-integration: test-mutation-integration
     node source/integration-tests/run/runner-output.test.ts
     node source/integration-tests/run/runner-command-line.test.ts
     node source/integration-tests/run/runner-capability-policy.test.ts
+    node source/integration-tests/run/runner-permission-audit.test.ts
     node source/integration-tests/run/runner-process-policy.test.ts
 
 test-unit-with-coverage:
@@ -157,6 +158,7 @@ test-package-smoke: (_pack-smoke-packages package-smoke-packages)
     node target/build/source/integration-tests/package-smoke/stryker-accuracy.test.js
     node target/build/source/integration-tests/package-smoke/stryker-persistence.test.js
     node target/build/source/integration-tests/package-smoke/test-binary.test.js
+    node target/build/source/integration-tests/package-smoke/test-binary-permissions.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-attachments.test.js
     node target/build/source/integration-tests/package-smoke/test-binary-coverage.test.js
     rm -rf target/build/source/integration-tests/package-smoke/node_modules

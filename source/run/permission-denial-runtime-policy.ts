@@ -2,11 +2,13 @@ import diagnosticsChannel from 'node:diagnostics_channel';
 import { workIdentityKey } from '../engine/identity.ts';
 import {
     permissionDeniedRunnerErrorFromDiagnostic,
+    type PermissionDeniedRunnerError,
     type PermissionDeniedRunnerErrorPhase,
     type RunnerError
 } from '../engine/run-result.ts';
 import { createExecutionObservation, type ExecutionObservation } from '../engine/execution-observation.ts';
 import type { TestRuntimePolicy } from '../engine/case-execution-context.ts';
+import { readProcessEnvironment } from './node-host-readers.ts';
 
 const permissionDiagnosticsCapabilities: Readonly<Record<string, string>> = {
     'node:permission-model:child': 'child-process',
@@ -19,8 +21,35 @@ const permissionDiagnosticsCapabilities: Readonly<Record<string, string>> = {
     'node:permission-model:worker': 'worker'
 };
 
+export function permissionAuditEnabled(nodeArguments: readonly string[], nodeOptions: string): boolean {
+    const environmentArguments = (nodeOptions.match(/(?:[^ "]|"(?:[^"\\]|\\.)*")+/gu) ?? [])
+        .map(function unquoteArgument(argument) {
+            return argument.replaceAll(/"(?<value>(?:[^"\\]|\\.)*)"/gu, function unquote(_match, value: string) {
+                return value.replaceAll(/\\(?<escaped>.)/gu, '$<escaped>');
+            });
+        });
+    const auditOption = [ ...environmentArguments, ...nodeArguments ]
+        .map(function normalizeOption(argument) {
+            return argument.split('=', 1)[0]?.replaceAll('_', '-');
+        })
+        .findLast(function changesAuditMode(argument) {
+            return argument === '--permission-audit' || argument === '--no-permission-audit';
+        });
+
+    return auditOption === '--permission-audit';
+}
+
 function permissionDiagnosticsPhase(loadComplete: boolean): PermissionDeniedRunnerErrorPhase {
     return loadComplete ? 'out-of-test' : 'load';
+}
+
+export function readPermissionAuditEnabled(): boolean {
+    return permissionAuditEnabled(process.execArgv, readProcessEnvironment(process).NODE_OPTIONS ?? '');
+}
+
+function isAuditedBootstrapRead(error: PermissionDeniedRunnerError, auditEnabled: boolean): boolean {
+    return error.cause.phase !== 'body' && error.cause.capability === 'fs-read' &&
+        auditEnabled;
 }
 
 function permissionWasDropped(message: unknown): boolean {
@@ -37,11 +66,21 @@ function ignorePermissionDropDiagnostics(
     };
 }
 
+export type PermissionDiagnosticsOptions = {
+    readonly auditDiagnostics: 'ignore' | 'report';
+    readonly auditEnabled: boolean;
+};
+
 export function createPermissionDiagnosticsSubscriptions(
     observation: ExecutionObservation,
     phase: () => PermissionDeniedRunnerErrorPhase,
-    recordError: (error: RunnerError) => void
+    recordError: (error: RunnerError) => void,
+    options: PermissionDiagnosticsOptions
 ): void {
+    if (options.auditDiagnostics === 'ignore' && options.auditEnabled) {
+        return;
+    }
+
     for (const [ name, capability ] of Object.entries(permissionDiagnosticsCapabilities)) {
         const channel = diagnosticsChannel.channel(name);
         const listener = ignorePermissionDropDiagnostics(function recordDiagnostic(message: unknown): void {
@@ -60,7 +99,9 @@ export function createPermissionDiagnosticsSubscriptions(
                 hook: null,
                 phase: observation.hasActiveAttempt() ? 'body' : phase()
             });
-            recordError(observation.attribute(error));
+            if (!isAuditedBootstrapRead(error, options.auditEnabled)) {
+                recordError(observation.attribute(error));
+            }
         });
         channel.subscribe(listener);
 
@@ -100,7 +141,8 @@ export function createPermissionDenialRuntimePolicy(): TestRuntimePolicy {
         },
         function recordWithoutThrowing(error) {
             tryRecordPermissionError(record, error);
-        }
+        },
+        { auditDiagnostics: 'ignore', auditEnabled: readPermissionAuditEnabled() }
     );
 
     return {
