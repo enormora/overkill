@@ -1,0 +1,42 @@
+diff --git a/node_modules/packtory/package-surface/public-module-usage.js b/node_modules/packtory/package-surface/public-module-usage.js
+index 0b30913..43708ee 100644
+--- a/node_modules/packtory/package-surface/public-module-usage.js
++++ b/node_modules/packtory/package-surface/public-module-usage.js
+@@ -1,6 +1,6 @@
+ import { ts as typescript } from 'ts-morph';
+ import { isCodeFile } from "../common/code-files.js";
+-import { resolvePublicModuleInputFilePath } from "./public-specifiers.js";
++import { indexPublicModules } from "./package-surface-index.js";
+ function* collectModuleSpecifiers(bundle) {
+     for (const resource of bundle.contents) {
+         const { targetFilePath, content } = resource.fileDescription;
+@@ -23,14 +23,14 @@ function createUsageRecorder() {
+         }
+     };
+ }
+-function recordConsumerPublicModuleUsage(recorder, bundles, consumer) {
++function recordConsumerPublicModuleUsage(recorder, bundles, consumer, publicModulesByBundle) {
+     const specifiers = collectModuleSpecifiers(consumer);
+     for (const specifier of specifiers) {
+         const otherBundles = bundles.filter(function (bundle) {
+             return bundle.name !== consumer.name;
+         });
+         for (const target of otherBundles) {
+-            const inputFilePath = resolvePublicModuleInputFilePath(target, specifier);
++            const inputFilePath = publicModulesByBundle.get(target).get(specifier);
+             if (inputFilePath !== undefined) {
+                 recorder.recordUsage(target.name, inputFilePath);
+             }
+@@ -39,8 +39,11 @@ function recordConsumerPublicModuleUsage(recorder, bundles, consumer) {
+ }
+ export function collectPublicModuleUsage(bundles) {
+     const recorder = createUsageRecorder();
++    const publicModulesByBundle = new Map(bundles.map(function (bundle) {
++        return [bundle, indexPublicModules(bundle).inputFilePathBySpecifier];
++    }));
+     for (const consumer of bundles) {
+-        recordConsumerPublicModuleUsage(recorder, bundles, consumer);
++        recordConsumerPublicModuleUsage(recorder, bundles, consumer, publicModulesByBundle);
+     }
+     return recorder.usages;
+ }

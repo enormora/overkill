@@ -934,7 +934,9 @@ The clearest current example is:
 - `@overkill-dev/stryker-runner`, a first-party Stryker `TestRunner` plugin
   above the runner; see [Mutation Runner Contract](../authoring/higher-test-layers.md#mutation-runner-contract)
 - a first-party ESLint rule-testing adapter package rather than baking
-  `RuleTester` compatibility into the core authoring layer
+  `RuleTester` compatibility into the core authoring layer; bound definitions
+  share configuration matrices and examples between ordinary example suites
+  and generated properties
 - a separate `@overkill-dev/eslint-plugin` for static enforcement of
   Overkill-specific authoring conventions
 - an easy-to-enable coverage story based on explicit tooling rather than built-in default behavior

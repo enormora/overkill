@@ -9,16 +9,19 @@ import * as leaf from '@overkill-dev/property';
 import * as standard from '@overkill-dev/test/property';
 
 assert.deepEqual(leaf.sampleGenerator(standard.gen.constant(7), {seed: 42n, count: 2, size: 3, depth: 0}), [7, 7]);
+assert.equal(leaf.isGenerator(standard.gen.constant(7)), true);
+assert.equal(standard.isGenerator(leaf.gen.constant(7)), true);
+assert.equal(leaf.isGenerator({}), false);
 assert.equal(typeof standard.relation({
     transform: Number, run: Number, check() { throw new Error('deferred'); }
 }), 'function');
 function rejectExecution() { throw new Error('Authoring evaluated a callback.'); }
 const generator = leaf.gen.constant(null).map(rejectExecution);
 assert.deepEqual(Object.keys(leaf).sort(), [
-    'defineCodec', 'gen', 'property', 'relation', 'sampleGenerator', 'withProperties'
+    'defineCodec', 'gen', 'isGenerator', 'property', 'relation', 'sampleGenerator', 'withProperties'
 ]);
 assert.deepEqual(Object.keys(standard).sort(), [
-    'defineCodec', 'gen', 'property', 'relation', 'sampleGenerator', 'withProperties'
+    'defineCodec', 'gen', 'isGenerator', 'property', 'relation', 'sampleGenerator', 'withProperties'
 ]);
 const leafBackend = new URL('../../property/generator.js', import.meta.resolve('@overkill-dev/property'));
 const { prepareGenerator: leafCompiler } = await import(leafBackend);
@@ -150,7 +153,7 @@ const { test } = await import('@overkill-dev/test');
 const node = test('nested', property.withProperties(() => { throw new Error('Body executed during authoring.'); }));
 assert.equal(node.kind, 'test');
 assert.deepEqual(Object.keys(property).sort(), [
-    'defineCodec', 'gen', 'property', 'relation', 'sampleGenerator', 'withProperties'
+    'defineCodec', 'gen', 'isGenerator', 'property', 'relation', 'sampleGenerator', 'withProperties'
 ]);
 const real = property.gen.record({ name: property.gen.string(), active: property.gen.boolean() });
 const declared = property.property({
@@ -200,6 +203,7 @@ const root = await import('@overkill-dev/test');
 assert.equal('property' in root, false);
 assert.equal('withProperties' in root, false);
 assert.equal('gen' in root, false);
+assert.equal('isGenerator' in root, false);
 assert.equal(loaded.some(url => /fast-check/.test(url)), false);
 assert.equal(loaded.some(url => /\\/property\\/|\\/property\\.entry-point\\.js/.test(url)), false);
 await import('@overkill-dev/test/property');

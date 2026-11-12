@@ -263,12 +263,13 @@ RuleTester-style case objects into ordinary Overkill tests.
 Example direction:
 
 ```ts
-import { eslintRuleSuite } from '@overkill-dev/eslint-rule-test';
+import { defineRuleTests } from '@overkill-dev/eslint-rule-test';
 import rule from '../src/rules/no-foo.ts';
 
-export const testNode = eslintRuleSuite({
+export const ruleTests = defineRuleTests({
     name: 'no-foo',
     rule,
+    configs: {},
     languageOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module'
@@ -281,6 +282,8 @@ export const testNode = eslintRuleSuite({
         }
     ]
 });
+
+export const testNode = ruleTests.examples();
 ```
 
 This same adapter pattern should also cover domain-specific assertion
@@ -317,6 +320,31 @@ include compatibility with familiar `RuleTester`-style imports, a typed
 `ruleTest` surface that always attaches parser-service resources, or a preset
 that records ESLint diagnostics as domain-specific assertion output. The
 facade remains adapter-owned and lowers to ordinary Overkill nodes.
+
+#### Bound Definitions And Configuration Expansion
+
+The adapter's primary authoring surface is `defineRuleTests({ name, rule,
+configs, valid, invalid })`. It returns independent `examples()` and
+`properties()` suite builders over the same definition. Neither method
+registers state for the other. Export their roots from separate modules selected
+by microtest and property profiles respectively.
+
+Named linter configurations are reusable plain values. Cases select all named
+configurations by default; `defaultConfigs` narrows the suite default. Per-case
+`configs` replaces that selection with `'all'`, a nonempty list of names, or
+`'base'` for one execution without a named overlay. Configuration expansion
+happens before execution and does not introduce runtime/resource identities.
+
+Property construction automatically supplies syntax-aware JavaScript/TypeScript
+inputs and schema-valid rule options. Eligible authored examples provide seeds
+and retain expectations only for their exact original inputs. Generated inputs
+check crash freedom and syntax preservation of fixes and suggestions; bounded
+fix convergence is explicit opt-in. Diagnostic correctness needs an authored
+oracle and is not inferred from a rule implementation.
+
+Unsupported automatic generation fails construction with an explicit generator
+override available. Search exhaustion uses the existing inconclusive contract.
+Property owns exploration, shrinking, corpora, witnesses and reproduction.
 
 ### Static Authoring Rules
 

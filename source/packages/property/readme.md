@@ -16,7 +16,8 @@ original declaration; configured rewrapping is rejected during collection. Base 
 
 Generator values are owned by Overkill. Custom generators compose its fluent
 `map`, `flatMap`, `filter`, and `withCodec` surfaces. Sampling callbacks and
-unbranded objects are not generators.
+unbranded objects are not generators. `isGenerator(value)` checks the runtime
+brand and generator contract when accepting extension inputs.
 Their private runtime symbol and shared declaration identity remain compatible
 across leaf and standard package copies.
 
