@@ -124,10 +124,10 @@ export const configuration = {
         {
             name: 'eslint-rule-test',
             description: 'ESLint rule examples and generated properties.',
+            bundleDependencies: [ '@overkill-dev/property' ],
             bundlePeerDependencies: [
                 '@overkill-dev/engine',
                 '@overkill-dev/assert',
-                '@overkill-dev/property',
                 '@overkill-dev/simulation',
                 '@overkill-dev/resources',
                 '@overkill-dev/run'
