@@ -1,6 +1,11 @@
-import type { RunFacts } from '../run/run-types.ts';
 import { createRunReportingContext, type RunReportingContext } from './reporting-context.ts';
-import { validateReporterRunFacts, validateReporterSinks, type DefinedReporter, type Reporter } from './reporter.ts';
+import {
+    validateReporterRunFacts,
+    validateReporterSinks,
+    type DefinedReporter,
+    type Reporter,
+    type RunFacts
+} from './reporter.ts';
 import type { OutputRenderer, DefinedOutputRenderer } from './reporter-output.ts';
 
 export type FinalDelivery = { readonly facts: RunFacts; readonly fallback: DefinedReporter; };
