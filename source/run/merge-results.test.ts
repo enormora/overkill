@@ -62,49 +62,48 @@ export const testNode = createSuite({
             }
         }),
         createTestCase({
-            title: 'rejects incompatible inputs through the public API and CLI',
+            title: 'retains compatible inputs through the public API and CLI',
             annotations: {},
             controls: {},
             definitionLocations: [ { kind: 'unknown' } ],
             async body(scope) {
-                const directory = await mkdtemp(join(tmpdir(), 'overkill-merge-conflict-'));
-                try {
-                    const record = mergeRecordFixture('first', 1, 1);
-                    await writeFile(join(directory, 'first.json'), JSON.stringify(record));
-                    await writeFile(
-                        join(directory, 'second.json'),
-                        JSON.stringify({
-                            ...record,
-                            facts: {
-                                ...record.facts,
-                                reproducibility: {
-                                    ...record.facts.reproducibility,
-                                    seed: '999'
-                                }
+                await using temporary = await mkdtempDisposable(join(tmpdir(), 'overkill-merge-conflict-'));
+                const directory = temporary.path;
+                const record = mergeRecordFixture('first', 1, 1);
+                await writeFile(join(directory, 'first.json'), JSON.stringify(record));
+                await writeFile(
+                    join(directory, 'second.json'),
+                    JSON.stringify({
+                        ...record,
+                        facts: {
+                            ...record.facts,
+                            reproducibility: {
+                                ...record.facts.reproducibility,
+                                seed: '999'
                             }
-                        })
-                    );
-                    await scope.assert.rejects(async function incompatibleMerge() {
-                        await mergeResults({
-                            config: defaultRunConfig({}),
-                            cwd: directory,
-                            inputs: [ { kind: 'directory', path: '.' } ]
-                        });
-                    }, { message: /seed/u });
-                    const result = await mergeResultsCommand(async function config() {
-                        return { ...defaultRunConfig({}), configPath: null };
-                    }, { cwd: directory, configPath: null, paths: [ '.' ] });
-                    scope.assert.deepEqual({
-                        exitCode: result.exitCode,
-                        runResult: result.runResult,
-                        diagnostic: result.fallbackDiagnostics.some(function seed(message) {
-                            return message.includes('seed');
-                        })
-                    }, { exitCode: 2, runResult: null, diagnostic: true });
-                    return scope.assert.collect();
-                } finally {
-                    await rm(directory, { recursive: true, force: true });
-                }
+                        }
+                    })
+                );
+                const merged = await mergeResults({
+                    config: defaultRunConfig({}),
+                    cwd: directory,
+                    inputs: [ { kind: 'directory', path: '.' } ]
+                });
+                scope.assert.deepEqual({ status: merged.result.status, passed: merged.result.summary.passed }, {
+                    status: 'failed',
+                    passed: 1
+                });
+                const result = await mergeResultsCommand(async function config() {
+                    return { ...defaultRunConfig({}), configPath: null };
+                }, { cwd: directory, configPath: null, paths: [ '.' ] });
+                scope.assert.deepEqual({
+                    exitCode: result.exitCode,
+                    runResult: result.runResult?.status,
+                    diagnostic: result.fallbackDiagnostics.some(function seed(message) {
+                        return message.includes('seed');
+                    })
+                }, { exitCode: 2, runResult: 'failed', diagnostic: true });
+                return scope.assert.collect();
             }
         }),
         createTestCase({

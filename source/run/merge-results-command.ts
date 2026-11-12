@@ -1,5 +1,6 @@
 import type { ConfigLoader, ConfigLoadRequest } from '../config/config-loader.ts';
 import {
+    commandLineExitCodes,
     createCommandLineErrorResultFromUnknown,
     readExitCodeFromRunResult,
     formatRunnerErrorDiagnostics,
@@ -8,7 +9,6 @@ import {
 import { invalidRequest } from './run-errors.ts';
 import { mergeResults } from './merge-results.ts';
 import type { MergeResultsInput } from './merge-results-types.ts';
-import { classifyMergeInput } from './merge-results-input.ts';
 
 export type MergeResultsRequest = ConfigLoadRequest & { readonly paths: readonly string[]; };
 async function executeMergeCommand(
@@ -20,16 +20,19 @@ async function executeMergeCommand(
         return invalidRequest('Merge results requires at least one path.');
     }
     const config = await loadConfig(request);
-    async function classify(path: string): Promise<MergeResultsInput> {
-        return await classifyMergeInput(request.cwd, path);
+    function classify(path: string): MergeResultsInput {
+        return { kind: 'path', path };
     }
     const merged = await mergeResults({
         config,
         cwd: request.cwd,
-        inputs: [ await classify(first), ...await Promise.all(remaining.map(classify)) ]
+        inputs: [ classify(first), ...remaining.map(classify) ]
+    });
+    const incomplete = merged.result.runnerErrors.some(function mergeError(error) {
+        return error.subtype === 'merge';
     });
     return {
-        exitCode: readExitCodeFromRunResult(merged.result),
+        exitCode: incomplete ? commandLineExitCodes.runnerError : readExitCodeFromRunResult(merged.result),
         fallbackDiagnostics: formatRunnerErrorDiagnostics(merged.result.runnerErrors),
         runResult: merged.result,
         stdoutLines: []

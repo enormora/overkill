@@ -981,8 +981,17 @@ Identity evidence covers the complete selection before sharding, including empty
 shards. Older records without this evidence must be regenerated for merging;
 they remain readable for replay. Node, host, and third-party package metadata may differ.
 
-Incomplete aggregates, persisted merged records, compact
-history updates, and final-result reporter delivery remain separate milestones.
+Incomplete merges return a failed record when at least one eligible input remains.
+The first eligible record in shard-index/path order supplies the reference;
+incompatible records contribute diagnostics but no counts. Duplicate executed
+identities retain all available outcomes, so incomplete totals can count repeated
+work. Missing or repeated shard indices and unreadable records are merge errors.
+The command exits with status 2 for merge errors, including when a shard exhausted
+resources. Without eligible input, merging fails with a collection error.
+
+Inputs with `kind: 'path'` automatically detect files and directories.
+Persisted merged records, compact history updates, and final-result reporter
+delivery remain separate milestones.
 The command currently has no success output.
 
 Discovery and definition counts remain global; execution counts sum across

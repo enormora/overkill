@@ -1274,6 +1274,7 @@ declare function withFileModuleBoundary<Result>(
 ): Promise<Result>;
 
 type MergeResultsInput =
+    | { readonly kind: 'path'; readonly path: string; }
     | { readonly kind: 'file'; readonly path: string; }
     | { readonly kind: 'directory'; readonly path: string; };
 

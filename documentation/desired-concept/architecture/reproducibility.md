@@ -198,7 +198,13 @@ package keys and values; other dependency versions may differ. Host metadata suc
 may differ and is preserved as metadata. Missing shards, duplicate executed
 work identities, unreadable records, or incompatible facts produce a merge
 runner error. The merge still writes an incomplete failure record when it has
-enough valid input to explain what happened.
+enough valid input to explain what happened. The first eligible record in shard-index
+and canonical-path order supplies the reference; incompatible records contribute
+diagnostics rather than counts. Duplicate executions retain all observed outcomes,
+so incomplete totals may include repeated work. Repeated shard indices also fail
+the merge, including empty shards. With no eligible reference, merging fails
+without fabricating aggregate facts. Merge errors select CLI exit status 2 even
+when an input reports process exhaustion.
 
 ## Compact History
 
