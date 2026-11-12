@@ -42,8 +42,7 @@ import {
     selectedCollectedRunPlan,
     selectedTestPlan,
     assertCollectedRunPlanMatchesTestFamily,
-    assertTestPlanMatchesTestFamily,
-    resolveTestPlanCollectionPolicy
+    assertTestPlanMatchesTestFamily
 } from './run-selection.ts';
 
 type RunCommandParts = {
@@ -211,26 +210,6 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
-        createOverkillTestCase({
-            annotations: {},
-            controls: {},
-            definitionLocations: [ { kind: 'unknown' } ],
-            title: 'property collection rejects missing profile policy',
-            body(scope) {
-                const plan = testPlanForCase(createOverkillTestCase({
-                    annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ], title: 'case',
-                    body(caseScope) { return caseScope.assert.collect(); }
-                }));
-                scope.assert.throws(function missingPolicy() {
-                    resolveTestPlanCollectionPolicy(plan, {
-                        testFamily: 'property',
-                        propertyPolicy: null,
-                        timeoutMilliseconds: 1000
-                    });
-                }, { message: 'Property collection requires profile policy.' });
-                return scope.assert.collect();
-            }
-        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'assertTestPlanMatchesTestFamily() rejects microtest cases with resource descriptors',

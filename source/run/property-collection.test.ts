@@ -5,6 +5,7 @@ import {
     createTestCase,
     createSkippedTestCase,
     ownsTestNode,
+    stampTestNodeFamily,
     type TestNode,
     type TestPlan,
     type TestScope
@@ -13,9 +14,9 @@ import { suite, test } from '../packages/test/test.entry-point.ts';
 import { property, withProperties } from '../packages/test/property.entry-point.ts';
 import { defaultPropertyPolicy, resolvePropertyPolicy } from '../engine/property-policy.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
-import { stampTestNodeFamily } from '../engine/test-node.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
 import { collectedRunPlanSchema } from './collected-run-plan-schema.ts';
+import { resolveTestPlanCollectionPolicy } from './run-selection.ts';
 import {
     resolveTestPlanPropertyPolicy,
     testCasePropertyPolicy,
@@ -33,6 +34,17 @@ function unexpectedBody(): never {
 }
 
 export const testNode = suite('property collection', [
+    test('rejects missing profile policy before collection', function (scope) {
+        const plan = planFor(test('ordinary', unexpectedBody));
+        scope.assert.throws(function missingPolicy() {
+            resolveTestPlanCollectionPolicy(plan, {
+                testFamily: 'property',
+                propertyPolicy: null,
+                timeoutMilliseconds: 1000
+            });
+        }, { message: 'Property collection requires profile policy.' });
+        return scope.assert.collect();
+    }),
     test('rejects malformed property declarations at the policy boundary', function (scope) {
         for (
             const declaration of [ null, { kind: 'property', settingsDeclarations: [] }, {
