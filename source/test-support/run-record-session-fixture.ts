@@ -23,6 +23,7 @@ export const facts = createRunFacts({
     benchmarkCalibration: null,
     benchmarkNormalization: null,
     benchmarkPlacement: null,
+    selectedIdentities: [],
     cases: [],
     config: input.config,
     dependencies: {

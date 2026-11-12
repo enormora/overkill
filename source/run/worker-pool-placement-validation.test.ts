@@ -255,6 +255,7 @@ function workerPoolResolvedRun(placement: PlacementPlan): WorkerPoolRunRuntime['
             },
             loader: { sourceMaps: false, stripMode: 'strip-only' },
             reproducibility: {
+                selectedIdentities: [],
                 selection: { kind: 'all' },
                 seed: '42',
                 shard: { index: 1, total: 1 },

@@ -1411,6 +1411,7 @@ type RunFacts = {
     readonly reproducibility: {
         readonly seed: string;
         readonly shard: { readonly index: number; readonly total: number; };
+        readonly selectedIdentities: readonly WorkId[] | null;
         readonly shardHashAlgorithm: 'xxh3-64-canonical-json-v1';
     };
 };

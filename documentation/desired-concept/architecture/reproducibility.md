@@ -173,7 +173,13 @@ The merged record preserves their ids and input paths as lineage.
 
 Merge validation is strict about the run semantics: selected profile, seed,
 shard total, selected identities, loader configuration, and Overkill package
-versions must agree. Host metadata such as platform or Node runtime details
+versions must agree. `RunFacts.reproducibility.selectedIdentities` records the
+complete selected `WorkId` set after expansion and before sharding, including
+on empty shards. Identity comparison ignores array order and retains runtime,
+workload, and family variants. Historical records decode absent evidence as
+`null` for replay; merging requires regenerated records with explicit evidence.
+Version comparison covers the engine version and recorded `@overkill-dev/*`
+package keys and values; other dependency versions may differ. Host metadata such as platform or Node runtime details
 may differ and is preserved as metadata. Missing shards, duplicate executed
 work identities, unreadable records, or incompatible facts produce a merge
 runner error. The merge still writes an incomplete failure record when it has

@@ -170,6 +170,7 @@ function createResolvedRun(testPlan: TestPlan): ResolvedRun {
             },
             loader: config.loader,
             reproducibility: {
+                selectedIdentities: [],
                 selection: request.selection,
                 seed: '42',
                 shard: request.shard,

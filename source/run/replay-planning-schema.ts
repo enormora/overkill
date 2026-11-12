@@ -35,6 +35,7 @@ const durationObservation = z.strictObject({
 });
 export const replayPlanningFields = {
     reproducibility: z.strictObject({
+        selectedIdentities: z.array(workIdSchema).nullable().default(null),
         selection: runSelectionSchema,
         seed: z.string().regex(/^\d+$/u),
         shard: z.strictObject({ index: z.number().int().positive(), total: z.number().int().positive() }),
