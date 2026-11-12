@@ -663,29 +663,26 @@ seed and the resulting permutation.
 
 ## Cross-References
 
-### `import defer`
+### Explicit Lazy Dependencies
 
-TC39 `import defer` (Stage 3 as of May 2026, supported syntactically in
-TypeScript 5.9, not yet in V8) lets a module declare that an import should
-not be evaluated until first access. Combined with tests-as-values:
+Definition collection remains authoritative and complete before selection.
+Body-only dependencies can load explicitly when a selected body executes:
 
 ```ts
-import defer * as heavy from './heavy-module.ts';
-
 export const testNode = suite('heavy', [
-    test('uses heavy', (scope) => {
+    test('uses heavy', async (scope) => {
+        const heavy = await import('./heavy-module.ts');
         scope.assert.equal(heavy.compute(), 42);
         return scope.assert.collect();
     })
 ]);
 ```
 
-The import graph for `heavy-module.ts` is _not_ evaluated when the test file
-is imported for listing. It only evaluates when the test body runs. Until V8
-ships native support, Overkill can simulate this by keeping each test in its
-own module and lazy-importing on demand from the runner. Tests-as-values
-makes the simulation transparent because the test definitions are pure data
-that doesn't need the implementation modules to exist.
+The heavy dependency is not evaluated during listing. Browser delivery may
+still transform/resolve its graph before execution without evaluating it.
+Cross-realm bodies can use explicit implementation references with readable
+definition metadata. Neither form authorizes lazy discovery of additional tests
+after selection or automatic serialization of closures.
 
 ### Assertions And Results § Protocol Layer
 

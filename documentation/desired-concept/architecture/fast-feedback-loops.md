@@ -8,7 +8,7 @@ before running 500 tests in under a second is the wrong shape. The user will, in
 practice, run the suite less often, lose trust in the inner loop, and stop relying on
 tests as a thinking tool.
 
-This document captures the concrete engineering knobs available in modern Node 26-era runtimes (May 2026)
+This document captures the concrete engineering knobs available in the pinned Node 26 runtime
 that a test runner can pull _today_ to keep the cold path short and the hot path
 sharable. Companion to [Platform-First Implementation Notes](./platform-first-implementation-notes.md) and
 [Package Architecture § Standard Distribution](./package-architecture.md#standard-distribution).
@@ -24,15 +24,15 @@ research.
 
 ## 1. Node native type stripping (Node 26-era baseline)
 
-Status as of May 2026:
+Use the pinned runtime's [TypeScript support](https://nodejs.org/api/typescript.html):
 
 - `--experimental-strip-types` was unflagged by default in Node 22.18.0 / 23.6.0.
-- Type stripping was marked **stable** in Node 24.3.0 (and 22.18.0 LTS) and
-  promoted in the v25.2.0 release notes (Nov 2025). No experimental warning is
-  emitted.
-- `--experimental-transform-types` is still flagged. It enables `enum`,
-  `namespace`, parameter properties (`constructor(private foo: T)`), import
-  elision rewrites and JSX/TSX transformation.
+- Type stripping is stable in Node 25.2.0 / 24.12.0. Earlier releases removed
+  the warning separately; lack of a warning did not establish stable support.
+- Node 26 removed `--experimental-transform-types`. Non-erasable syntax needs
+  an explicitly configured external transform or precompiled JavaScript.
+- `.tsx` and JSX transformation are not supported by Node's type stripper.
+  Browser harness transforms are a separate explicit integration.
 - `--no-strip-types` disables the feature.
 - Decorators are TC39 Stage 3, not yet implemented in V8, and currently a parser
   error in Node’s type stripper. Node will not transform them until the runtime
@@ -47,10 +47,9 @@ Performance characteristics:
 - The transformer is `amaro`, which wraps `@swc/wasm-typescript`. Whitespace-
   preserving stripping makes source maps unnecessary for line-accurate stack
   traces in the strip-only mode.
-- Per-file overhead is approximately on par with native SWC (single-digit ms on
-  typical files), and an order of magnitude faster than `tsc` and faster than
-  the full esbuild parse + emit, because no JS AST is reconstructed for
-  erasable syntax.
+- Strip-only mode avoids JavaScript generation for erasable syntax. Measure
+  its actual overhead on the pinned runtime rather than assuming a universal
+  per-file cost or ranking against other tools.
 - Node v24+ ships a **module compile cache** (`require(esm)` related work) that
   caches V8 bytecode. It does **not** cache the strip output.
 
@@ -59,9 +58,9 @@ Practical bottom line for Overkill:
 - Strip-only mode is the default fast path. The `node test/foo.test.ts`
   invocation works directly; no loader required.
 - For any code that uses enums, parameter properties, namespaces or JSX, Overkill
-  must either flag the file (a lint or fail-fast diagnostic) or fall through to
-  a transform path. Most modern TS code is already erasable, especially after
-  the `--erasableSyntaxOnly` tsc check landed in TS 5.8.
+  reports a clear unsupported-syntax diagnostic unless the project explicitly
+  configured a compatible transform. No automatic fallback changes the loader.
+  Validate the native path with TypeScript's `erasableSyntaxOnly` setting.
 
 ## 2. Node Built-Ins First
 
@@ -76,29 +75,17 @@ The current concept should stay conservative here:
 External tools may still matter for edge cases, but the baseline concept
 should not assume an Overkill-owned loader pipeline.
 
-## 3. TS execution alternatives — concrete startup numbers
+## 3. Execution-Path Comparisons
 
-Approximate cold-start of a single trivial `.ts` file (2026 measurements, modern
-laptop, no network):
+Native stripping is the default supported Node path. Explicit project transforms
+and precompiled JavaScript are alternative inputs, not automatic fallbacks.
+Browser harness delivery owns its separate transform requirements.
 
-| Runner                                    | Startup      | Notes                                             |
-| ----------------------------------------- | ------------ | ------------------------------------------------- |
-| `bun ./foo.test.ts`                       | ~8–15 ms     | JavaScriptCore, full TS (enums, decorators, JSX). |
-| `deno test foo.test.ts`                   | ~30–60 ms    | V8 + native TS, full syntax.                      |
-| `node ./foo.test.ts` (native strip)       | ~40–60 ms    | Erasable syntax only.                             |
-| `tsx ./foo.test.ts`                       | ~60–80 ms    | esbuild transform on top of Node startup.         |
-| `node --import @swc-node/register foo.ts` | ~80–100 ms   | SWC native binary.                                |
-| `ts-node --swc foo.ts`                    | ~150–200 ms  | SWC + ts-node bookkeeping.                        |
-| `ts-node --transpileOnly foo.ts`          | ~250–400 ms  | TypeScript compiler, no checking.                 |
-| `ts-node foo.ts`                          | ~600–1500 ms | Full type checking.                               |
-
-Two consequences:
-
-- The native Node path is within a small constant factor of Bun for cold
-  `.ts` execution and is the right baseline for Overkill, given the
-  platform-first stance.
-- Anything that requires `tsx`, `ts-node` or a bundled CLI is already in the
-  “noticeable warm-up” bucket Overkill wants to avoid.
+Startup guardrails measure the actual root import and CLI workloads on the
+pinned runtime, recording platform, tool versions, loader, and cold/warm cache
+state. Keep those measurements in benchmark artifacts and checked-in budgets.
+Unsourced cross-tool timing estimates are not acceptance criteria or evidence
+that a particular transform is too expensive.
 
 ## 4. Sharing parsed sources between tests in the same process
 
@@ -116,8 +103,8 @@ Inside a single Node process:
   `vm.Script#createCachedData()` and `vm.SourceTextModule#createCachedData()`
   exist for advanced cases but are not needed in the common path.
 - The strip output itself is not cached across processes by Node. The
-  per-file strip cost is single-digit milliseconds; in practice the compile
-  cache plus in-memory module cache cover the common case.
+  compile cache and in-memory module cache should be measured before introducing
+  another cache layer.
 - If native type stripping fails, the runner should surface the module-load
   failure directly. Supporting non-erasable TypeScript syntax requires a
   deliberate Node or project-level transform outside Overkill's default path.
@@ -212,7 +199,8 @@ That's it. No flag, no `--experimental-*`, no loader. Caveats:
 - Node evaluates the direct entrypoint once before `runIfMain(...)` can create
   an isolation boundary. Use `overkill run <file>` when that bootstrap import
   must also be isolated.
-- Files must use erasable syntax. Otherwise: `node --experimental-transform-types ./foo.test.ts`.
+- Files on the native path must use erasable syntax. Non-erasable syntax and
+  TSX/JSX require an explicit project transform or precompiled entrypoint.
 - ESM extensions: `.ts` is treated as ESM by default if the nearest
   `package.json` has `"type": "module"`, otherwise as CJS. This mirrors `.js`
   behaviour. `.mts` is always ESM, `.cts` always CJS, regardless of
@@ -261,13 +249,11 @@ keeping the cold path short and not requiring a hot daemon to feel fast.
   test files directly through Node's native type stripping; never emit a
   temporary file, never call `vm.runInThisContext`. The simplest path is
   also the fastest.
-- **Tests-as-values + lazy-shake.** Tests are described as data structures
-  rather than registered side-effectfully via `it()`. Combined with
-  `import defer` (TC39 Stage 3, supported syntactically by TypeScript 5.9 and
-  via `acorn-import-defer` in Webpack; not yet native in V8 / Node) the
-  runner can avoid evaluating the import graph of unselected tests. Until
-  Node ships native `import defer`, Overkill can simulate the effect by
-  keeping each test in its own module and lazy-importing on demand.
+- **Tests-as-values + explicit lazy execution dependencies.** Evaluate the
+  authoritative definition catalog before selection. Expensive body-only
+  dependencies may load when selected bodies execute, including explicit
+  implementation references across realms. This does not defer test discovery,
+  hide constructed nodes, or assume unsupported module syntax.
 - **Original-source type analysis.** The optional type-test family analyzes
   the real TypeScript project, retaining compiler programs where reuse is useful.
   Read assertion operands in their original lexical context without temporary

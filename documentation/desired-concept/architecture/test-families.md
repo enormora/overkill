@@ -117,6 +117,31 @@ and cannot enable coverage, capture, resources, or body retries. Process support
 is checked independently: a synchronous in-process checker cannot promise an
 enforceable hard deadline merely by declaring supervised support.
 
+## Browser Compatibility
+
+Browser placement is an execution-target requirement, not a test family and
+not the family's `execution: 'runtime' | 'analysis'` discriminator.
+
+| Family | Browser-executed | Host-driven browser automation |
+| --- | --- | --- |
+| Integration | Supported with compatible imports/resources | Supported through provider-native controller integrations |
+| Benchmark | Supported with runtime-aware sampling/collectors | Supported, including locally measured browser operations |
+| Microtest | Rejected | Rejected as a browser-testing workload |
+| Property | Rejected | Rejected as a browser-testing workload |
+| Analysis/type-test | No runtime body | No runtime body; may analyze source referring to browser APIs |
+
+A browser environment makes a correctness test an integration test regardless
+of body size, whether it mounts an app, or whether provisioning happens outside
+the body. Do not weaken microtest/property policy or reclassify selected work
+automatically. Browser resource descriptors cannot bypass family validation.
+
+Integration and benchmark suites may each mix compatible body placements, while
+remaining within their own selected family. Family validation still applies to
+the collected definitions before case filtering; selecting only one child does
+not repair a module containing incompatible family declarations. Optional
+families do not gain browser support merely by declaring runtime execution.
+See [Browser Execution And Placement](./runtime-behavior.md#browser-execution-and-placement).
+
 ## Configuration Type Contract
 
 `FamilySettingsOf<Family>` and `ProjectFamilyProfileConfig<Family>` are runner
@@ -273,9 +298,11 @@ are invalid.
 
 Runtime collections expose no custom execution callback. The engine executes
 their existing bodies through normal scheduling, retries, scopes, and supervision.
-This prevents the initial extension contract from becoming a second runtime
-scheduler. A custom external runtime driver would need its own separately
-specified contract; it is not implied by custom family support.
+This prevents the family extension contract from becoming a second runtime
+scheduler. Browser execution adapters extend the shared executor/placement
+contract in [Runtime Behavior](./runtime-behavior.md#browser-execution-and-placement),
+not a family's custom execution callback. Custom family support alone does not
+authorize another external runtime driver.
 
 Shared compiler startup/checking time belongs in run timings. Per-case duration
 measures attributable evidence evaluation and must not charge the entire shared

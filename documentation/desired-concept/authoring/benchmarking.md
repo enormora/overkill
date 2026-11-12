@@ -759,11 +759,104 @@ Examples:
 - interaction responsiveness
 - bundle or output size budgets that influence page performance
 
-The implementation direction is:
+### Body Placement And Collector Capabilities
+
+The two browser modes are **Browser-executed** and **Host-driven browser
+automation**. They describe the benchmark body's execution, not the metric
+source. Keep body placement, measured target, collector owner, required
+capabilities, and measurement endpoints separate in the resolved strategy.
+
+| Workload | Body placement | Measurement and collector |
+| --- | --- | --- |
+| Browser function microbenchmark | Browser-executed | Realm-local clock around the function; return readings after measurement |
+| Navigation/request budget | Host-driven browser automation | Controller drives navigation; supported network collector observes the target |
+| Browser-local work with network/rendering metrics | Browser-executed | Browser body plus host-owned protocol collectors, admitted before work begins |
+| Locally timed function from a host journey | Host-driven browser automation | Explicit browser-local measured operation; clock endpoints inside the browser |
+
+A function microbenchmark is still in the benchmark family, never the microtest
+family. In-browser execution does not preclude DevTools/BiDi collection. A
+controller may provision and observe both modes. Conversely, host-driven
+automation can cover both local function timing and app journeys, but timing
+the host's `page.evaluate(...)` call measures transport/serialization as well.
+Choose an explicit browser-local strategy when those costs must be excluded.
+There is no automatic metric equivalence or silent strategy substitution.
+
+One benchmark suite and file may contain cases with both body placements.
+Use ordinary `benchmark`, `workload`, runtime wrappers, `sample.measure`,
+`sample.cleanup`, budgets, and baselines. Runtime descriptors carry body-target
+requirements; measurement strategies declare collector/target requirements.
+The planner validates their composition per work item and separates incompatible
+placement buckets. It does not change a body placement because a collector
+happens to live on the host. This does not mix benchmark and integration
+families in one profile or make a file a shared browser-session boundary.
+
+The module graph must work in the declared collection and execution realms.
+Keep a shared declaration module portable; use explicit module/export references
+for incompatible host/browser implementations. No automatic closure extraction
+or serialization is implied. Splitting files can improve readability, but is
+required only where an actual module/lifecycle constraint makes inline mixing
+incompatible. See [Browser Execution And Placement](../architecture/runtime-behavior.md#browser-execution-and-placement).
+
+### Sampling And Measurement Admission
+
+Use one sampling lifecycle across placements. Resources own browser/controller/
+collector lifetimes; the shared benchmark engine owns warmup, samples, cleanup,
+budgets, and outcomes. Extend the common measurement contract for asynchronous
+collector readiness, start/stop, target markers, and finalization rather than
+adding a second browser sampling loop. Ready acknowledgments precede measured
+work. Retain warmup/measured phase and invocation identity for every reading.
+
+Existing synchronous measurement regions retain their synchronous path; async
+collector readiness must not add Promise boundaries inside a tight measured
+loop. Cooldown probes and explicitly requested GC apply to the measured runtime,
+not automatically to the Node host. Unsupported required target cooldown/GC
+capabilities fail compatibility. Never replace browser GC or target settling
+with a host-only operation or silently enable forced collection.
+
+Each invocation has one preparation/readiness, measured interval, stopping,
+and finalization sequence. If only some collectors become ready, do not start
+the workload; clean up everything already acquired. Cancellation requests
+stopping, then uses a separate bounded cleanup signal to stop/finalize all
+started collectors exactly once, retaining the original error and cleanup
+errors. Caller-owned resources keep their declared lifetime; a collector cannot
+dispose a shared browser simply because its own readiness failed.
+
+Finalize and attribute readings before aggregation. Late, duplicate, wrong-
+document, or previous-invocation readings cannot populate the current sample.
+Unknown ownership remains incomplete lifetime evidence, not a discarded bad
+sample followed by a passing budget. Required collector failure invalidates the
+measurement. Optional diagnostic unavailability is reported explicitly; cleanup
+or transport failures still retain their infrastructure classification. No
+unrequested diagnostic rerun replaces the original measured outcome.
+
+Distinguish collector startup/shutdown wall time from the actual measured
+interval. Browser-local timings use a realm-local clock; cross-clock metrics
+require supported conversion/correlation with stated uncertainty. A returned
+number without the requested provenance is not a replacement for the metric.
+Required unavailable, incomplete, overflowed, or unattributable readings cannot
+satisfy budgets. Readiness, control loss, and finalization failures remain
+infrastructure evidence rather than fabricated zero samples.
+
+Declare measured target scope, collector/tool version, endpoints, reset/cache
+state, and instrumentation as semantic comparison identity. Keep concrete
+session/process IDs and per-run completeness separate. Host CPU calibration
+does not automatically normalize browser/remote-target timings merely because
+a metric is named `durationMicroseconds`; browser measurements remain raw unless
+an explicitly valid normalization model is chosen.
+
+Mixed placement does not imply concurrent samples. Resolve isolation against
+the actual browser/device/renderer/GPU/desktop owner and shared backend state.
+Local worker count alone cannot establish remote target isolation. Existing
+benchmark serial sampling, hedging restrictions, cleanup, and opt-in diagnostic
+rerun policies apply to both modes. Heavier instrumentation defines a distinct
+measured variant rather than silently replacing a lighter baseline.
+
+### Package Ownership
 
 - a dedicated package above `@overkill-dev/bench`:
   `@overkill-dev/browser-bench`
-- driven by Playwright or another browser controller
+- browser-executed benchmark bodies or host-driven journeys through Playwright
+  or another explicit browser controller
 - with metric collection via browser APIs, WebDriver BiDi where it is
   sufficient, DevTools Protocol surfaces where deeper engine-specific
   metrics are needed, or Lighthouse-style analysis where appropriate
@@ -772,18 +865,18 @@ The package split should be:
 
 - `@overkill-dev/bench` owns the generic workload, measurement, budgets,
   baseline, and reporting contracts
-- `@overkill-dev/browser-bench` owns browser runtime provisioning, page-flow
-  workloads, browser-specific metric collectors, and browser-specific
-  artifact capture
+- `@overkill-dev/browser-bench` consumes shared browser resources and runtimes
+  and owns page-flow measurement strategies, browser-specific metric
+  collectors, and browser-specific artifact integration
 
 Concept sketch for `@overkill-dev/browser-bench`:
 
-- benchmark author declares a browser workload through a helper such as
-  `browserBenchmark(...)`
+- benchmark author uses ordinary `benchmark(...)` and `workload(...)` with
+  browser resources/runtimes and a browser measurement strategy
 - that workload may represent cold page load, route transition, typed
   interaction flow, or repeated render/update loop
-- the package provisions a controlled browser runtime and page/session
-  lifecycle around that workload
+- the package composes shared browser resources for the controlled runtime and
+  page/session lifecycle around that workload
 - metrics may come from portable browser surfaces first, with deeper
   engine-specific adapters layered where needed
 - artifacts may include traces, screenshots, filmstrips, performance-event
@@ -795,10 +888,17 @@ Concept sketch for `@overkill-dev/browser-bench`:
 This keeps browser benchmarking inside one benchmark family while still
 giving it a real package boundary and room for browser-specific mechanics.
 
+Authored workloads may create workers and measure startup-to-result or
+worker-local computation without a dedicated worker execution placement.
+Record those boundaries separately; main-thread round trips include messaging
+and cannot stand in for computation-only measurements. Cross-realm timestamps
+require explicit compatible clocks or conversion.
+
 The benchmark layer should therefore be **adapter-agnostic** at the concept
 level:
 
-- BiDi-first where portable browser automation and event streams are enough
+- prefer portable metric/event capabilities, including supported BiDi surfaces,
+  where their semantics and coverage meet the requested measurement
 - CDP where richer Chromium-specific performance metrics or tracing are
   required
 - Lighthouse-style adapters where page-flow auditing is the better fit
@@ -813,11 +913,76 @@ Relevant platform/tooling influences:
 - Chrome DevTools performance analysis workflows
 - Lighthouse user-flow / timespan style page-performance measurement
 
+Browser action-to-result latency starts at the correlated browser input event
+and ends at an explicitly authored DOM condition or application mark. This
+measures application response, not physical pixel presentation. Host command
+duration, including controller waiting and remote latency, and supported
+rendering/presentation evidence remain separate metrics. If input timing cannot
+be established, the application-latency metric is unavailable rather than
+silently replaced by host timing.
+
+Portable and explicitly engine-specific browser collectors are both supported
+directions. Preserve their source, target, algorithm, and environment provenance.
+Unsupported required metrics cannot satisfy their budgets.
+
+### Browser Collector Catalog
+
+Maintain adapters for these metric groups, with explicit browser/protocol/tool
+compatibility rather than promising every metric on every target. Collector
+location does not constrain the benchmark body's placement.
+
+| Metric group | Source/capability | Meaning and boundary |
+| --- | --- | --- |
+| Function execution | Browser-local clock | Local measured region; exclude result transport unless explicitly requested |
+| User/application marks | Supported browser timing APIs | Named app intervals, with document/clock identity |
+| Input and authored effect | Correlated native input, browser events/marks/DOM condition | Distinguish input responsiveness, final app result, and presentation |
+| Navigation and paint | Navigation/paint/LCP APIs or validated protocol collector | Defined FP/FCP/LCP endpoint; document-scoped, not automatically reset by SPA routes |
+| Resource timing | Browser resource entries | Buffered resource observations with frame/cross-origin/completeness limits, not every network request |
+| Request accounting | Supported controller/protocol events | Starts/completions/failures/bytes/cache before an explicit endpoint; redirects/workers/SW and background traffic require declared scope |
+| Main-thread and callback pacing | Long-task/long-animation-frame observations, animation callbacks | Thresholded stalls and callback intervals, not direct physical/compositor frame counts |
+| Rendering, CSS animations, scrolling | Supported native input, engine tracing/profiling | Layout/style/paint/compositing and movement/completion evidence with engine/window provenance |
+| Memory | Supported browser/engine/process collectors | Heap, page estimate, RSS, allocations, sampled peak, and endpoint delta are distinct quantities |
+| CPU | Supported engine/process/worker attribution | Browser/renderer/worker scopes are distinct from Node harness CPU; shared-process totals do not establish exact worker use |
+| Named external audits | Resource-owned audit integration | Versioned findings/numeric observations, kept distinct from direct timings and field-user evidence |
+
+For network budgets choose an explicit endpoint such as FCP, finalized LCP, or
+an app mark, and state whether requests must start or complete before it.
+ResourceTiming and controller request accounting are different strategies.
+Declare frames/workers/SW, redirects, cached responses, failures, buffer loss,
+and cross-origin coverage. Harness/control traffic has its own role and cannot
+silently become application request evidence. A required missing count is not
+zero. Do not offer retired first-meaningful-paint terminology as a current
+Lighthouse metric.
+
+Do not equate DOM visibility or animation callbacks with pixels reaching a
+display. CSS compositor animations may stay smooth while the main thread stalls;
+animation completion does not prove smoothness. Record foreground/visibility,
+refresh assumptions, and headed/headless state; do not assume a universal
+16.67 ms frame interval. Touch/scroll input and active instrumentation belong
+in measurement identity where they change the workload.
+
+CPU/memory results retain actual target ownership, process sharing, method, and
+sampling interval. Endpoint heap delta is not peak usage or allocation rate.
+Do not silently enable forced GC or isolation headers to obtain a metric.
+Unavailable supported-attempt data remains unavailable, with completeness
+evidence; it does not become a low-usage result.
+
+Browser benchmark workloads declare their retained/reset browser and application
+state policy explicitly, using supplied presets where suitable. The state
+policy participates in measurement identity. A fresh page alone does not imply
+a cold context, process, cache, or backend.
+
+Heavier diagnostic reruns after browser benchmark failures are opt-in. They
+retain the original failed result and have separate measurement/attempt identity;
+they do not replace the measured failure.
+
 Sources:
 
 - <https://www.w3.org/TR/webdriver-bidi/>
 - <https://chromedevtools.github.io/devtools-protocol/tot/Performance/>
 - <https://developer.chrome.com/docs/devtools/performance/overview>
+- <https://www.w3.org/TR/resource-timing/>
+- <https://www.w3.org/TR/long-animation-frames/>
 
 ## Baselines
 

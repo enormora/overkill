@@ -12,8 +12,9 @@ Why microtests only:
   microtest runs
 - integration tests broad-path through code; their coverage
   typically reads as "everything was hit," which tells you little
-- benchmarks must not be instrumented - instrumentation distorts
-  timing (an explicit non-goal: see [Non-Goals § No always-on coverage in the default run mode](../decisions/non-goals.md#no-always-on-coverage-in-the-default-run-mode))
+- benchmark profiles reject coverage instrumentation because it changes the
+  measured workload; explicitly declared browser/metric collectors retain
+  their own instrumentation identity rather than enabling coverage
 - browser tests have their own coverage story via the browser's
   own instrumentation (out of scope here)
 - restricting to microtests keeps the API surface small (see

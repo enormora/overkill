@@ -39,7 +39,7 @@ Introduce only the concepts most users need early:
 
 - tests as values
 - `assert` / `require`
-- `case`
+- injected test `scope`
 - macros
 - microtests versus integration-style tests
 
@@ -60,7 +60,7 @@ This is where the rarer mechanics belong:
 - `defineHarness(...)`
 - transcript recording
 - reusable multi-case macros
-- `startInFlight(...)`
+- in-flight task tracking
 - queue-control and cleanup helpers
 - benchmark workloads and policies
 - browser metrics backends
@@ -132,7 +132,7 @@ Overkill should feel smaller than its internal architecture.
 
 ## Concept Documentation Shape
 
-Internal concept documentation in `documentation/concept/` follows a
+Internal concept documentation in `documentation/desired-concept/` follows a
 canonical section order:
 
 1. `# Title` - matches the filename closely

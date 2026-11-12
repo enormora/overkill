@@ -133,6 +133,24 @@ must include:
 - a source location or stack when the runtime can provide it
 - attribution confidence: `direct`, `active-case`, or `unknown`
 
+These runner restrictions differ from resource-owned expectations about the
+application. An unexpected app console warning or disallowed app request
+produces an attributed failed resource check. A disallowed request must also
+be prevented before transmission; blocking alone does not satisfy the check.
+An exact bounded expectation registered before the action may pass for an
+intentional denial while the request remains blocked; missing/excess events
+still fail. It does not authorize contact or erase a recorded failure. See
+[App Guard Decisions](./higher-test-layers.md#app-guard-decisions).
+Inability to install, enforce, or complete the required observation is an
+infrastructure error. App-guard failures are not eligible for automatic integration
+retries. Existing runner console restrictions and ordinary assertion retry policy
+remain separate.
+
+When a resource session runs without a test engine, closing it with failed app
+guards throws a structured failure containing those findings and preserving
+other body/cleanup errors. Event callbacks record findings and request stopping;
+they do not throw out-of-band to deliver the result.
+
 Node permission denials use the `permission` runner-error subtype, not the
 generic `runtime-policy` subtype. The cause preserves Node's raw permission
 kind, the denied resource path or host when present, the normalized Overkill
@@ -263,7 +281,12 @@ Attempt preparation runs after the body settles and before scope cleanup or
 resource disposal. It also runs for passing bodies, because cleanup can fail.
 Prepared evidence is provisional until the attempt fails. Passing attempts
 discard it, while explicitly attached evidence retains its existing policy.
-Retry and hedge selection apply after failure promotion.
+This is live-handle preparation, not final observation: keep resource observers
+active through consumer cleanup and observed-resource disposal. Then drain
+supported close-time delivery and finalize checks/transcript evidence before
+retry eligibility and final outcome delivery. Do not promise a screenshot from
+an already-closed page. Bounded live capture and final event evidence are two
+stages of the same attempt, not competing artifact lifecycles.
 
 Precisely correlated interactions use the full work identity and attempt.
 Shared lifetime output remains run-scoped and is retained when a consumer or
@@ -287,8 +310,10 @@ commands or history maintenance.
 ## Witnesses And Replay Artifacts
 
 Failing property tests and deterministic-simulation tests produce
-witnesses: serialised, replayable artifacts that reproduce the failure
-without re-running shrinking or rebuilding simulator state. They exist for
+witnesses: serialised artifacts that replay retained inputs without generation
+or shrinking. Simulation replay restores a fresh owning resource from compatible
+payload/scenario state and runs current code; it does not guarantee that changed
+code reproduces the historical failure. They exist for
 the test families whose outcome depends on generated or simulator-owned
 state rather than only on source code:
 

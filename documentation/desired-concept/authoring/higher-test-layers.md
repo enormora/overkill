@@ -113,13 +113,10 @@ The repeated lesson is:
 Overkill should support this pattern directly through typed runtime/resource
 composition, without prescribing Playwright itself.
 
-That still needs a scope boundary:
-
-- the first-party browser story should start with running tests in real
-  browsers
-- page-object-heavy and end-to-end-style flows are important, but they
-  should be framed as richer adapter-driven layers rather than as the
-  default meaning of "browser testing"
+Both Browser-executed and Host-driven browser automation are supported
+integration shapes. Consumer domain handles may wrap provider-native objects;
+Overkill does not prescribe a page-object architecture or replace the
+controller's locator/action API.
 
 ### First-Class Attachments
 
@@ -584,8 +581,8 @@ The right split is:
 
 The intended product direction is therefore:
 
-- first-party support for browser-executed tests
-- adapter/integration support for richer browser-automation stacks
+- first-party Browser-executed and Host-driven browser automation workflows
+- shared browser resources and explicit provider-native controller adapters
 - no first-party attempt to replace Playwright wholesale
 
 ### 6. Visual Regression Is A Baseline Family, Not A Special Runner
@@ -638,6 +635,286 @@ Overkill becomes more useful for higher layers when it provides:
 That is the real path from microtests to integration, browser, and workflow
 tests without changing the whole mental model.
 
+## Browser Testing Product Boundary
+
+### Question And Answer
+
+Which browser testing modes should Overkill offer directly?
+
+The two modes are **Browser-executed** and **Host-driven browser automation**.
+The former runs the authored body inside a browser document; the latter runs
+it on an execution host using provider-native controllers such as Playwright.
+Both may use host-owned instrumentation and the same browser provisioning.
+Browser correctness tests belong to integration, never microtest/property.
+Browser performance belongs to the [benchmark family](./benchmarking.md#browser-and-frontend-performance-benchmarks).
+
+Body placement, measured target, collector capabilities, and execution strategy
+are separate requirements. Compatible placements may share a suite or file
+within one family; incompatible import graphs require explicit module boundaries.
+See [Browser Execution And Placement](../architecture/runtime-behavior.md#browser-execution-and-placement).
+
+Browser integration guidance targets complete journeys through the fully
+rendered application. Overkill recommends unit testing component logic without
+a real DOM, then using browser integration tests to check how the application
+works together. It does not provide framework-specific mounting APIs or a
+component-testing DSL. Users who choose isolated component rendering can supply
+that setup within ordinary browser tests, including JSX/TSX modules supported
+by their build integration.
+
+### Browser Test Harness
+
+Browser-executed tests/benchmarks require no application or prebuilt app.
+Overkill owns the harness server, bootstrap, module delivery, source maps,
+and browser communication/result channel through replaceable integrations
+with existing tooling. Tests import the browser-compatible code they need,
+including application modules. App builds/servers, when needed, are additional
+consumer-configured resources rather than prerequisites of browser execution.
+
+Harness startup/readiness, module-version identity, shutdown, and failures use
+the ordinary resource/run lifecycle for direct callers and the runner alike.
+Harness/control traffic retains a separate declared role from application
+traffic. The body realm owns authored assertions; cross-realm evidence retains
+explicit session/target/attempt identity.
+
+Browser-executed bodies are bound to their execution document. Replacing it
+before completion fails the attempt; there are no resumable phases. Use
+host-driven tests for navigation/reload journeys. Host-owned cleanup still runs,
+but cleanup inside the destroyed document cannot be promised.
+
+Optional first-party provider-specific assistance supplies supported native
+keyboard/pointer input through a bounded channel with explicit target/document/
+attempt identity, capabilities, readiness, timeout, and cancellation. It neither
+transfers host controller handles nor introduces a universal locator/action API.
+Bare execution hosts need not support it; requested unavailable assistance
+fails compatibility.
+
+### App Guard Decisions
+
+First-party app/browser-session resources enable standard app guards by default,
+including when used by benchmarks. Bare browser execution remains lightweight
+and does not require advanced guards or DevTools capabilities. Guarded resources
+can be composed into either browser-executed tests or host-driven automation.
+Allow all loopback destinations on any port by default;
+external destinations require explicit configuration. Ordinary log/info output
+remains allowed, while unexpected app warnings/errors and unhandled app errors
+fail resource checks.
+
+Intentional warnings/errors can use bounded expectations registered before an
+action, with explicit matchers, occurrence counts, and lifetime. Missing or
+excess events fail. Matching diagnostics outside the window remain guarded.
+Expectations neither grant network permissions nor erase recorded failures.
+
+An explicit network deny inherited from a runtime/profile takes precedence
+over a test-local allow. Extending the standard loopback default with an
+external grant is separate from overriding an explicit restriction.
+
+Prevent disallowed requests before transmission and fail owning tests unless
+an exact, predeclared bounded denial expectation consumes the intentional
+denial. Such an expectation may pass while the request stays blocked; missing
+or excess occurrences fail. It never widens permissions, retroactively erases
+failures, or treats a fulfilled request as proof of denial. If the
+requested protection cannot be provided, reject the configuration before app
+startup. Stop affected sessions while unrelated tests continue. App-guard
+failures are not eligible for automatic integration retries; explicit diagnostic
+reruns retain the original failed outcome.
+
+Forbidden application request attempts also fail when HTTP cache or a service
+worker supplies the response without outbound traffic. Require reliable attempt
+observation alongside transmission prevention. An egress proxy alone does not
+provide that coverage; reject configurations that cannot supply it.
+
+Fine-grained URL-path/method prevention is a capability of the selected backend.
+Destination-only backends can enforce destination policies but must reject finer
+policies before startup. TLS inspection requires explicit configuration and
+trusted test certificates; never silently change certificate validation or
+substitute observation for requested prevention.
+
+The standard network guard covers HTTP(S) requests and WebSocket connections.
+Other transports, including WebRTC and WebTransport, require explicit validated
+capabilities. Unsupported requested transport configurations fail compatibility
+before startup; the standard guard does not promise machine-wide egress control.
+
+Protected service-worker journeys are in scope. Preserve service-worker behavior
+and require compatible enforcement rather than silently disabling it. This is
+a compatibility requirement, not a claim that every controller configuration
+already supplies the required prevention.
+
+Protected warm-cache benchmarks are also in scope. Preserve declared HTTP cache
+behavior and require compatible request prevention. Reject incompatible
+configurations rather than silently disabling caching or weakening protection.
+Cache-disabled measurements remain distinct workloads.
+
+Integration-test attempts receive a fresh browser context/session by default.
+The browser process may be reused. Backend state is isolated through its own
+resources/scenarios; benchmark sample reset remains an explicit separate policy.
+
+Tests and benchmarks may create browser workers and manage their communication
+and lifetime in the authored workload. No dedicated browser-worker execution
+placement is required. Measure startup/message latency and worker-local
+computation as distinct intervals.
+
+First-party automation targets compatible desktop/mobile browsers. Native
+mobile/desktop application automation can be composed through consumer
+resources but has no first-party native UI contract. Embedded WebViews require
+an explicit compatibility assessment.
+
+Browser extensions are in first-party scope through provisioning and lifecycle
+resources, using ordinary tests and benchmarks. Support is explicit per browser
+and profile configuration, including extension pages/background workers and
+isolation requirements; general browser support does not imply extension support.
+Use a fresh profile/process where context isolation is unavailable. Extension
+background startup must be covered before activity or the configuration is
+incompatible; post-launch listeners alone do not establish startup protection.
+
+Standalone runnable browser-test exports are outside scope, explicitly rejected
+rather than deferred. Browser execution stays connected to an Overkill run.
+Offline result/report viewing is separate and remains supported.
+
+### Accessibility And Page Audits
+
+Provide focused first-party adapters and reusable assertions/macros for the
+following checks. Reuse established scanners, validators, parsers, and reader
+automation rather than implementing competing engines. These are ordinary
+integration assertions with resources where needed, not new test families.
+
+| Check group | Supported authoring and evidence |
+| --- | --- |
+| Automated accessibility | Explicit scanner checkpoints with selected rules, violations, incomplete findings, and covered targets |
+| Accessible semantics | Authored role/name/description/state, landmark/heading, and relationship expectations |
+| Keyboard/focus journeys | Native Tab/Shift+Tab, activation, modal focus entry/containment/restoration, escape behavior, skip-to-main links, route/form-error focus |
+| Contrast and targets | Supported text/non-text contrast and touch-target geometry checks in explicit rendered states; preserve scanner limitations |
+| Preferences and adaptation | Light/dark, forced colors, reduced motion, text enlargement, zoom/reflow, and touch conditions with authored behavior expectations |
+| Actual screen readers | Reader setup/navigation, bounded announcement transcripts, and assertions for validated OS/browser/reader combinations |
+| HTML conformance | Validate original response source and rendered-DOM checkpoints separately |
+| CSS conformance | Validate declared external/inline/generated stylesheet inputs with source and coverage provenance |
+| ARIA rules | Scanner-backed role/property/state/relationship checks, distinct from interaction correctness |
+| Microformats | Parse supported formats and assert extracted entities/properties, including URL/base handling |
+| Structured data | Extract/process JSON-LD, Microdata, and RDFa; check declared schema.org vocabulary/profiles and authored facts |
+| Discoverability/SEO | Assert status/redirects, title/description/language, canonical/hreflang, robots directives, crawlable links, and structured metadata |
+| Named audit integrations | Adapt selected external audits with explicit tool/rule versions, configuration, input, and findings |
+
+Heavier audits run at meaningful authored checkpoints with explicit readiness
+conditions, not as automatic initial/final scans. Shared macros may apply the
+same checks across journeys. Continuous app guards remain active. DOM checks
+may operate inside a browser-executed body or through a host-driven adapter;
+original-response checks, native input, readers, and external tools additionally
+require their specific resource/target capabilities. A helper must declare those
+requirements rather than infer support from the mode name.
+
+#### Interactive Accessibility And Environment Ownership
+
+Scanning alone cannot establish focus behavior, keyboard usability, or reader
+announcements. Use native input plus authored expectations for journeys such as
+opening/closing a modal and restoring focus. Do not guess a universal tab order
+or application-specific interaction model from the DOM.
+
+Runtime matrices describe supported preferences. Preserve how each condition
+was applied: native browser zoom, text enlargement, viewport size, device scale,
+and CSS transforms are different conditions. Unsupported native zoom cannot
+silently become a smaller viewport. Test actual font controls and light/dark
+transitions where those are part of the app's contract.
+
+Reader adapters reuse existing automation libraries and own required desktop
+focus, settings, permissions, language/voice, and cleanup as resources. Serialize
+access to the actual shared desktop/reader when required; separate browser
+contexts do not isolate an OS reader. Support is explicit per tested library/
+OS/browser/reader version combination. Accessibility-tree snapshots, textual
+speech logs, acoustic output, and CSS speech declarations are distinct evidence.
+Neither a tree nor CSS declarations prove what a screen reader announced.
+
+#### Document, Semantic, And Search Checks
+
+Original HTML means the actual response used by the browser, retaining status,
+headers, decoding, base URL, and document identity. Do not silently refetch a
+different response. A rendered serialization loses parser-repaired source
+defects and does not automatically include every frame or shadow root. Authors
+select source, rendered checkpoints, or both. The same distinction applies to
+source stylesheets versus dynamically generated/adopted/shadow styles; record
+inaccessible or unavailable inputs explicitly.
+
+Treat these as separate checks: JSON syntax; JSON-LD processing; schema.org
+vocabulary/profile usage; search-provider rich-result requirements; and agreement
+with visible application facts. For example, a valid structured offer may still
+contain the wrong price. Preserve semantic entity identity, base-URL resolution,
+and the processing algorithm rather than comparing raw JSON shape alone.
+Microformats use an established parser's implied/nested-property semantics,
+not just CSS class selection. ARIA validity does not prove correct interaction.
+
+Validator/parser/audit resources use declared networking permissions, including
+controlled JSON-LD remote-context loading. Never silently fetch external
+contexts, upload documents, or contact a production validator. Prefer local
+inputs/services and reusable adapters. Syntax/conformance checks do not prove
+layout, browser compatibility, accessibility, or search visibility.
+
+Search assertions retain original and rendered metadata separately. For example,
+removing an original-response `noindex` during client startup does not establish
+that a crawler will render/index the page. Provider-specific checks retain their
+rules/version; schema.org validity is separate from rich-result eligibility.
+Passing audits cannot guarantee indexing, ranking, or rich-result presentation.
+
+#### Shared Findings And Acceptance Cases
+
+Each check retains checkpoint/readiness identity, exact input/target scope,
+tool/rule/profile version, exclusions, locations, and bounded native reports.
+Distinguish violations, incomplete coverage, unavailable required capabilities,
+and infrastructure errors. Inaccessible frames, unsupported trees, unavailable
+stylesheets, and truncated reader logs cannot disappear into a claim of complete
+passing coverage. Authors specify whether complete coverage is required.
+CSS/header/source checks may also be reused without launching a browser when
+their declared input and family contract permit it.
+
+Acceptance cases include a valid-ARIA modal with broken focus restoration;
+an inaccessible frame in an otherwise clean scan; source HTML repaired by the
+parser; a client-updated price disagreeing with structured data; and original
+`noindex` removed only after startup. Each must preserve the actual evidence
+and fail the corresponding authored expectation rather than claim general
+compliance. See [Accessibility Beyond Scanning](../research/browser-testing-landscape.md#accessibility-beyond-scanning)
+for primary-source background.
+
+### Browser Test Collection
+
+Browser-executed tests use browser-free collection by default. Definitions and
+their static imports must load without browser APIs; browser-only modules load
+during execution. One designated collection browser is an explicit opt-in for
+top-level browser imports. Browser matrices expand as planning metadata before
+runtime filtering and sharding, without launching every browser for collection.
+
+For ordinary browser tests, a selected target missing a declared required
+functional capability fails compatibility. Intentional skips must be authored
+explicitly; the runner does not silently remove cases or automatically skip
+them for missing capabilities.
+
+### Native Integration And Protocol Boundaries
+
+Use provider-native action/locator APIs with prominent provider identity in
+types and documentation, such as Playwright's `Page`. Overkill owns lifecycle,
+guards, checks, measurements, results, and artifacts rather than a universal
+action/locator DSL. Cross-controller source compatibility is not a requirement.
+Avoid unnecessary breaking changes after adoption even without a semantic
+versioning promise.
+
+First-party scope excludes a Classic WebDriver command adapter. Necessary
+provider/session setup for BiDi remains possible. Assess Playwright's supported
+public BiDi paths before adding another client for demonstrated capability gaps.
+
+### Alternative And Rationale
+
+A first-party component-testing layer would encourage a testing boundary that
+the recommended unit/integration split deliberately avoids. Framework-specific
+mounting and rendering are consumer setup rather than another Overkill product
+mode. General browser execution remains available to those consumers.
+
+### Assumptions And Invalidation
+
+This boundary assumes that ordinary tests and explicit consumer fixtures can
+host custom rendering without framework-specific engine behavior. A demonstrated
+limitation in those extension points should be addressed there first. Adding a
+first-party component-testing product would require revisiting this guidance.
+
+The [browser testing landscape](../research/browser-testing-landscape.md)
+preserves prior art and unresolved adapter/platform details; it does not
+override the settled scope above.
+
 ## Mutation Runner Contract
 
 ### Question And Answer
@@ -653,7 +930,7 @@ result translation. It uses public programmatic APIs, never terminal parsing.
 No custom mutation engine or general mutation-provider framework is needed.
 
 Scope is Node microtest profiles with per-case mutant coverage and
-selection. Browser, integration, benchmark, and mixed-family runs are rejected
+selection. Integration (including browser), benchmark, and mixed-family runs are rejected
 before test collection. Installing the plugin does not activate mutation testing
 in ordinary runs. The adapter selects an existing microtest profile; no second
 profile or duplicated discovery policy is required. When exactly one microtest

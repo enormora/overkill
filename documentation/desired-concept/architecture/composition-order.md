@@ -51,7 +51,10 @@ layer resolves the run in this order:
    and identity. Result: a filtered `WorkId` set. See
    [Test Data And Selection § Selection](./test-data-and-selection.md#selection).
 7. **Work-unit construction.** The resolved `workDistribution` packs
-   filtered `WorkId`s into `WorkUnit`s by file, case, or named group.
+   filtered `WorkId`s into `WorkUnit`s by file, case, or named group, partitioned
+   by compatible body placement/runtime/workload requirements. One browser
+   benchmark file may produce host-driven and browser-executed units. Explicit
+   indivisible sharing constraints that conflict with placement fail planning.
 8. **Sharding.** `--shard <i>/<n>` partitions the work-unit set
    deterministically by `WorkUnitId` hash. See [Runtime Behavior § Sharding](./runtime-behavior.md#sharding).
 9. **Scheduling order.** The filtered, sharded work-unit set is assigned
@@ -60,7 +63,10 @@ layer resolves the run in this order:
    order. See [Runtime Behavior § Execution Order](./runtime-behavior.md#execution-order).
 10. **Resource lowering.** Runtime and resource requirements become
     placement constraints: serial keys, capacity weights, affinity keys,
-    fault domains, and required executor capabilities.
+    fault domains, and required executor capabilities. Body-target requirements
+    and collector ownership remain separate; host-owned instrumentation does
+    not move a browser body to the host. Requirements needed to partition work
+    units are already present in collected runtime metadata before step 7.
 11. **Placement planning.** The execution strategy chooses executor lanes,
     worker lifecycle, work-unit assignment, and any deterministic balancing.
     See [Runtime Behavior § Process Model And Scheduling](./runtime-behavior.md#process-model-and-scheduling) and [Package Architecture § Orchestration](./package-architecture.md#orchestration).
@@ -105,7 +111,10 @@ the body. Outermost first:
 5. **Debug recording** (when `--debug` or `--debug-scope` selects the case).
    Begins capturing the timeline, handle events, module loads, heap baseline. See
    [Test Debug Mode](../authoring/debug-mode.md).
-6. **Test body.** The actual code under test runs.
+6. **Resource/observer admission.** Existing resource scopes acquire or expose
+   the attempt's handles. Required observations install before dependent/consumer
+   activity; protected startup follows the resource's allocation/start boundary.
+7. **Test body.** The actual code under test runs.
 
 [Run Timings](./run-timings.md) wraps both resolve-time resolution and
 execution-time wrapping. It records orchestration overhead separately from the
@@ -113,8 +122,12 @@ test execution window and never affects verdicts.
 
 Unwinding happens in reverse, innermost first:
 
-1. Body returns, throws, or rejects. Scope cleanup completes before per-case
-   resources are disposed. A new attempt starts only after both succeed.
+1. Body returns, throws, or rejects. Prepare provisional live-handle evidence,
+   then complete scope cleanup and observed per-attempt resource disposal while
+   observers remain active. Drain supported close-time delivery, finalize the
+   attempt's check ledger, and dispose attempt-owned observers. Retain all body,
+   cleanup, capture, and transport errors before retry eligibility. Shared owners
+   retain their declared scope and finalize lifetime evidence at owner closure.
 2. Debug recording ends; `TestDebugArtifact` is written.
 3. Timeout watchdog cancels its timer.
 4. Process budget supervision records final samples or cancels
@@ -128,24 +141,26 @@ Unwinding happens in reverse, innermost first:
 Shared resource scopes span the logical case's retry chain. Their consumer
 counts decrement once at logical completion, not once per attempt. The
 engine owns retry iteration; the runner owns integration admission and
-artifact retention. Retries do not recollect modules, change executor
-placement, or reseed inputs. Low-level family-neutral engine plans can opt in
+artifact retention. Retries preserve the authoritative catalog, selected work,
+placement, and seed. Fresh execution realms may re-import/recollect solely to
+validate frozen work and recover implementations, never to rediscover cases.
+Low-level family-neutral engine plans can opt in
 explicitly; named non-integration families reject the policy.
 
 ## Why Two Phases (And What It Costs)
 
-Splitting Plan-Time Resolution (in the main thread) from
-Execution-Time Wrapping (in workers or subprocesses) is a deliberate
+Splitting plan-time resolution in the declared collection boundary from
+execution-time wrapping in the selected executor is a deliberate
 choice, not just a forced consequence of how worker boundaries work.
 The split buys several capabilities:
 
-- `overkill list` prints the resolved facts without executing
-  anything - possible only because collection has produced a
-  complete resolved run before any worker runs
+- `overkill list` evaluates definitions and prints resolved facts without
+  executing test bodies. Collection is browser-free by default; explicit
+  designated-browser collection starts its declared bootstrap resources.
 - `--filter`, `--title`, `--last-failed`, and explicit file/id
   selection apply before
-  any test runs; workers receive only the cases that survived
-  selection, instead of importing-then-discarding
+  any test runs; workers execute only frozen selected identities. Re-import
+  may evaluate other definitions but cannot grant discovery authority.
 - `--shard <i>/<n>` partitions deterministically across workers
   because the full plan is known upfront
 - seeded random order is part of `RunFacts`, not an execution-time
@@ -154,15 +169,15 @@ The split buys several capabilities:
 - `RunFacts` are recorded as a serializable artifact (per
   [Principles § Data Over Side Effects](../decisions/principles.md#data-over-side-effects)), enabling replay and
   IDE / MCP introspection without running
-- capability profiles, runtime selection, and worker assignment
-  resolve once in the main thread, not redundantly per worker
+- capability profiles, runtime selection, and worker assignment resolve once
+  under coordinator authority, not independently in each executor
 - "resolution freeze is total": dynamically generated tests must be
   discovered at collection (see § Why The Order Matters), which is
   only enforceable if the `TestPlan` is complete before execution starts
 
-The cost is that most parallel modes import each test file **twice**:
+Cross-boundary execution may require definition modules to be evaluated again:
 
-1. once in the main thread during collection, to build the `TestNode`
+1. once in the declared collection realm, to build the `TestNode`
    tree
 2. once per worker that's assigned the file, to actually execute the
    test bodies
@@ -189,8 +204,9 @@ In practice the cost stays small because:
   second cheap import per file is acceptable, a second expensive
   one is not
 
-In serial modes (single process, single worker) collection and
-execution share one import; no second load happens.
+When collection and execution share a compatible module instance, execution
+can reuse it. Serial scheduling alone does not imply the same realm or module
+instance, particularly for browser execution.
 
 `module.enableCompileCache()` does **not** eliminate the duplicate
 import itself. It only caches compiled code; it does not transmit
@@ -244,9 +260,9 @@ dependency:
   timeline (e.g. capability instrumentation).
 - **Outside debug, inside timeout** if it should be timed by the
   timeout but excluded from the debug timeline (rare).
-- **Outside timeout, inside retry** if it should be cancelled by
-  the timeout but survive across retry attempts (e.g. a
-  per-test resource lock).
+- **Outside timeout, inside retry** if its lifetime spans one attempt's timeout
+  setup/unwind, but is recreated for each attempt. Cleanup uses its own bounded
+  signal after cancellation; it does not survive the retry loop.
 - **Outside retry** if it spans the entire test regardless of
   attempts (e.g. test-level setup/teardown - though Overkill
   currently rejects hooks; resources fill this role; see
