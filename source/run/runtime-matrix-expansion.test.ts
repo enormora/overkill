@@ -2,7 +2,7 @@ import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
 import { createCaseId, createDefaultWorkId } from '../engine/identity.ts';
 import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
-import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
+import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
 
 const definitionLocation = { kind: 'unknown' as const };
 const caseId = createCaseId('matrix.test.ts', [], 'runs on every variant', null);

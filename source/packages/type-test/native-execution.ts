@@ -1,5 +1,6 @@
 import type { TestPlan, RunResult } from '../engine/engine.entry-point.ts';
-import { parseAdapterFacts, type CollectedAdapterRun } from '../run/run.entry-point.ts';
+import { parseAdapterFacts } from '../../config/adapter-facts.ts';
+import type { CollectedCheckerRun } from './checker-plan.ts';
 import { verifyFrozenProject, fingerprint, type FrozenProject } from './frozen-project.ts';
 import { translateNativePlan, type NativeTranslation } from './native-translation.ts';
 import { checkGeneratedInputs, type CheckerRequest } from './checker.entry-point.ts';
@@ -37,7 +38,7 @@ async function executeNative(input: NativeExecution): Promise<NativeExecutionRes
     }
 }
 
-export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CollectedAdapterRun> {
+export async function collectProject(plan: TestPlan, project: FrozenProject): Promise<CollectedCheckerRun> {
     const translation = translateNativePlan({
         compiler: project.compiler,
         program: project.program,

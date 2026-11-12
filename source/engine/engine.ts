@@ -1,9 +1,15 @@
 import type { Clock } from '@enormora/clock';
+import type { RunResult } from './run-result.ts';
+import { resolvedPlanLocations } from './test-plan-locations.ts';
+import { type TestPlanCollectionPolicy, applyPlanCollectionPolicy } from './plan-collection-policy.ts';
 import type { Execute, ExecutionDriver } from './execution.ts';
 import {
     createFamilyRuns,
     type CollectedFamilyRun,
+    type DefinedFamilyRequest,
     type PrepareFamilyRequest,
+    type FamilyExecutionRequest,
+    type FamilyExecuteOptions,
     type PreparedFamilyRun
 } from './family-run.ts';
 import type { FamilyValue } from './test-family.ts';
@@ -32,9 +38,57 @@ import {
     createTestPlanFactory,
     createTestPlanFromTestFilesFactory,
     type TestPlan,
-    type TestPlanFactory,
-    type TestPlanFromTestFilesFactory
+    type TestPlanFromTestFilesOptions
 } from './test-plan.ts';
+
+type FamilyEngineOperations = {
+    readonly prepare: (request: DefinedFamilyRequest) => Promise<PreparedFamilyRun>;
+    readonly execution: (run: CollectedFamilyRun, signal: AbortSignal) => FamilyExecutionRequest;
+};
+type FamilyPreparationRegistry = WeakMap<Engine['prepareFamily'], FamilyEngineOperations>;
+const familyPreparationsKey = Symbol.for('@overkill-dev/engine/FamilyPreparations');
+function isFamilyPreparationRegistry(value: unknown): value is FamilyPreparationRegistry {
+    return value instanceof WeakMap;
+}
+function familyPreparations(): FamilyPreparationRegistry {
+    const existing: unknown = Reflect.get(globalThis, familyPreparationsKey);
+    if (isFamilyPreparationRegistry(existing)) {
+        return existing;
+    }
+    const registry: FamilyPreparationRegistry = new WeakMap();
+    Reflect.set(globalThis, familyPreparationsKey, registry);
+    return registry;
+}
+
+export async function prepareDefinedFamily(engine: Engine, request: DefinedFamilyRequest): Promise<PreparedFamilyRun> {
+    const prepare = familyPreparations().get(engine.prepareFamily);
+    if (prepare === undefined) {
+        throw new TypeError('The selected engine does not support imported family preparation.');
+    }
+    return prepare.prepare(request);
+}
+
+export async function executePreparedFamilyWithDriver(
+    engine: Engine,
+    run: CollectedFamilyRun,
+    options: FamilyExecuteOptions,
+    driver: ExecutionDriver
+): Promise<RunResult> {
+    const operations = familyPreparations().get(engine.prepareFamily);
+    if (operations === undefined) {
+        throw new TypeError('Expected a family-capable engine.');
+    }
+    return await driver(operations.execution(run, options.signal), options);
+}
+
+export type TestPlanFactory = (
+    root: TestRoot,
+    ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
+) => TestPlan;
+export type TestPlanFromTestFilesFactory = (
+    options: TestPlanFromTestFilesOptions,
+    ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
+) => TestPlan;
 
 export type Engine = {
     readonly createPropertyTestCase: (options: PropertyTestCaseOptions) => TestCase;
@@ -82,6 +136,10 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
         return plans.has(plan);
     });
 
+    familyPreparations().set(familyRuns.prepareFamily, {
+        prepare: familyRuns.prepareFamily,
+        execution: familyRuns.execution
+    });
     return {
         createPropertyTestCase: nodeFactory.createPropertyTestCase,
         createBenchmarkTestCase: nodeFactory.createBenchmarkTestCase,
@@ -92,13 +150,18 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
         createTestCase: nodeFactory.createTestCase,
         createThrowingTestCase: nodeFactory.createThrowingTestCase,
         createWorkloadTestCase: nodeFactory.createWorkloadTestCase,
-        createTestPlan(root) {
-            const plan = planFromRoot(root);
+        createTestPlan(root: TestRoot, ...policies: readonly [] | readonly [TestPlanCollectionPolicy]) {
+            const [ policy ] = policies;
+            const plan = resolvedPlanLocations(applyPlanCollectionPolicy(planFromRoot(root), policy ?? null));
             plans.add(plan);
             return plan;
         },
-        createTestPlanFromTestFiles(options) {
-            const plan = planFromFiles(options);
+        createTestPlanFromTestFiles(
+            options: TestPlanFromTestFilesOptions,
+            ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
+        ) {
+            const [ policy ] = policies;
+            const plan = resolvedPlanLocations(applyPlanCollectionPolicy(planFromFiles(options), policy ?? null));
             plans.add(plan);
             return plan;
         },

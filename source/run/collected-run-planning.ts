@@ -1,5 +1,5 @@
+import { isFamilyPlan, recollectProfileFamily } from './family-profile-run.ts';
 import { parseRunSelection } from './run-selection-schema.ts';
-import { collectAdapterResolvedRun, isAdapterPlan } from './adapter-execution.ts';
 import {
     createEmptySelectionResult,
     createEmptyShardResolvedRunFromTestPlan,
@@ -56,11 +56,58 @@ function collectedInvocationRequest(resolved: ResolvedRun, invocation: Collected
     return freezeValue({ ...resolved.request, selection });
 }
 
+async function planSelectedInvocation(
+    context: CollectedRunContext,
+    request: RunRequest,
+    runInput: ResolvedRunInput,
+    plan: Extract<ResolvedRunPlan, { readonly kind: 'local'; }>
+): Promise<CollectedInvocationPlan> {
+    const { command, dependencies } = context;
+    const { testPlan } = plan;
+    const cases = selectedNonEmptyTestPlanCases({ ...testPlan, discoveredCases: testPlan.cases }, request.selection);
+    if (cases === null) {
+        return {
+            kind: 'empty-selection',
+            resolved: createEmptyShardResolvedRunFromTestPlan(
+                { ...command, request },
+                dependencies,
+                runInput,
+                { plan: testPlan, identities: [] }
+            ),
+            result: createEmptySelectionResult(testPlan, dependencies)
+        };
+    }
+    if (isFamilyPlan(plan)) {
+        return {
+            kind: 'planned',
+            resolved: await recollectProfileFamily(
+                plan.family.preparation,
+                { ...testPlan, cases },
+                function resolveInvocation(preparedPlan) {
+                    return createLocalResolvedRunFromTestPlan(
+                        { ...command, request },
+                        dependencies,
+                        runInput,
+                        preparedPlan
+                    );
+                }
+            )
+        };
+    }
+    return {
+        kind: 'planned',
+        resolved: createLocalResolvedRunFromTestPlan({ ...command, request }, dependencies, runInput, {
+            ...testPlan,
+            cases
+        })
+    };
+}
+
 export async function planCollectedInvocation(
     context: CollectedRunContext,
     invocation: CollectedRunInvocation
 ): Promise<CollectedInvocationPlan> {
-    const { command, dependencies, input, resolved } = context;
+    const { input, resolved } = context;
     const request = collectedInvocationRequest(resolved, invocation);
     if (resolved.plan.kind === 'empty-shard') {
         return {
@@ -75,26 +122,5 @@ export async function planCollectedInvocation(
             })
         };
     }
-    const { testPlan } = resolved.plan;
-    const cases = selectedNonEmptyTestPlanCases({ ...testPlan, discoveredCases: testPlan.cases }, request.selection);
-    const runInput = { ...input, request };
-    if (cases === null) {
-        return {
-            kind: 'empty-selection',
-            resolved: createEmptyShardResolvedRunFromTestPlan(
-                { ...command, request },
-                dependencies,
-                runInput,
-                { plan: testPlan, identities: [] }
-            ),
-            result: createEmptySelectionResult(testPlan, dependencies)
-        };
-    }
-    return {
-        kind: 'planned',
-        resolved: await collectAdapterResolvedRun(
-            isAdapterPlan(resolved.plan) ? resolved.plan.adapter.preparation : null,
-            createLocalResolvedRunFromTestPlan({ ...command, request }, dependencies, runInput, { ...testPlan, cases })
-        )
-    };
+    return await planSelectedInvocation(context, request, { ...input, request }, resolved.plan);
 }

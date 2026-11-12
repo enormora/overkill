@@ -7,7 +7,7 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import type { LoadedConfig } from './config.ts';
+import type { LoadedConfig } from './config-loader.ts';
 import type { ProfileFiles } from './types.ts';
 
 type ExpectedProfileFiles = {

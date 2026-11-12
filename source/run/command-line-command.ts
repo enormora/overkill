@@ -2,7 +2,7 @@ import type { Except } from 'type-fest';
 import type { RunResult, RunnerError } from '../engine/run-result.ts';
 import { ReporterSinkConflictError } from '../engine/reporter.ts';
 import { ConfigError } from '../config/config-error.ts';
-import type { ConfigLoadRequest } from '../config/config.ts';
+import type { ConfigLoadRequest } from '../config/config-loader.ts';
 import type { ProfileRunRequest, RunRequest } from './run-types.ts';
 import { RunCollectionError, RunResolutionError } from './run-errors.ts';
 

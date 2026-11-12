@@ -1,5 +1,10 @@
 import { runIfMain } from '#test-runner';
-import type { NormalizedConfig, ResolvedRun, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
+import type {
+    NormalizedConfig,
+    ResolvedRun,
+    RunCommand,
+    RunRequest
+} from '../packages/run/run.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
     createRoot,
@@ -19,6 +24,7 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 
+import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
 import type { RunFilter } from './run-request-types.ts';
 
 import {
@@ -38,7 +44,6 @@ import {
     assertCollectedRunPlanMatchesTestFamily,
     assertTestPlanMatchesTestFamily
 } from './run-selection.ts';
-import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;

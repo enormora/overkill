@@ -1,9 +1,9 @@
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
+import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { normalizeConfig } from './config.ts';
 import { propertyProfileSchema } from './schema.ts';
 import { copyConfig } from './snapshot.ts';
-import { defaultPropertyPolicy } from './property-policy.ts';
 import { validateNormalizedConfig } from './validation.ts';
 
 const files = { include: [ 'source/**/*.property.ts' ] } as const;

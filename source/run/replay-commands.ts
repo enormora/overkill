@@ -1,4 +1,4 @@
-import type { ConfigLoader } from '../config/config.ts';
+import type { ConfigLoader } from '../config/config-loader.ts';
 import { parseReplayDebugArguments } from './replay-debug-arguments.ts';
 import type { ReplayOperations } from './replay-types.ts';
 import { createDefaultDirectReporter } from './default-direct-reporter.ts';

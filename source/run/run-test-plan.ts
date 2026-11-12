@@ -1,7 +1,6 @@
 import type { Engine } from '../engine/engine.ts';
+import type { TestPlanCollectionPolicy } from '../engine/plan-collection-policy.ts';
 import { bindWireReplayPlan } from './replay-wire.ts';
-import { resolveTestPlanPropertyPolicy } from './property-collection.ts';
-import { assertTestPlanMatchesTestFamily } from './run-selection.ts';
 import {
     withDefinitionLocationCapture,
     type DefinitionLocationCapture
@@ -13,12 +12,16 @@ import type {
     RunCollectionSource,
     RunCollectionRoot,
     RunTestFamily,
-    RunFacts,
     ReplayWire
 } from './run-types.ts';
 import { RunCollectionError } from './run-errors.ts';
-import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 import type { RunTestModuleLoader } from './run-test-modules.ts';
+
+const runtimeCollectionPolicy: TestPlanCollectionPolicy = {
+    runtimeMatrices: true,
+    benchmarkCalibration: false,
+    property: null
+};
 
 type TestPlan = ReturnType<Engine['createTestPlan']>;
 
@@ -49,37 +52,45 @@ export type RunTestPlanFromFilesInput = {
 export function createRunTestPlanFromDirectEntrypoint(
     engine: Engine,
     file: DiscoveredRunFile,
-    source: DirectEntrypointRunCollectionSource
+    source: DirectEntrypointRunCollectionSource,
+    ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
 ): TestPlan {
+    const policy = policies[0] ?? runtimeCollectionPolicy;
     try {
-        return expandRuntimeMatrices(engine.createTestPlanFromTestFiles({
+        return engine.createTestPlanFromTestFiles({
             files: [ { file: file.file, testNode: source.testNode } ],
             root: source.root
-        }));
+        }, policy);
     } catch (error: unknown) {
-        throw new RunCollectionError('Failed to collect tests from runIfMain().', { cause: error }, 'loader');
+        throw RunCollectionError.fromPlan(error, 'Failed to collect tests from runIfMain().');
     }
 }
 
-async function createRunTestPlanFromDiscoveredFiles(input: RunTestPlanFromFilesInput): Promise<TestPlan> {
+async function createRunTestPlanFromDiscoveredFiles(
+    input: RunTestPlanFromFilesInput,
+    policy: TestPlanCollectionPolicy
+): Promise<TestPlan> {
     return await withDefinitionLocationCapture(
         input.definitionLocationCapture,
         async function createPlanWithDefinitionLocationCapture() {
             const testFiles = await input.loadRunTestModules(input.files, input.engine);
 
             try {
-                return expandRuntimeMatrices(input.engine.createTestPlanFromTestFiles({
+                return input.engine.createTestPlanFromTestFiles({
                     files: testFiles,
                     root: input.root
-                }));
+                }, policy);
             } catch (error: unknown) {
-                throw new RunCollectionError('Failed to collect tests from run inputs.', { cause: error }, 'loader');
+                throw RunCollectionError.fromPlan(error, 'Failed to collect tests from run inputs.');
             }
         }
     );
 }
 
-export async function createRunTestPlan(input: RunTestPlanInput): Promise<TestPlan> {
+export async function createRunTestPlan(
+    input: RunTestPlanInput,
+    ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
+): Promise<TestPlan> {
     const files = await input.discoverRunFiles({ cwd: input.cwd, paths: input.paths, profileFiles: null });
 
     const plan = await createRunTestPlanFromDiscoveredFiles({
@@ -90,38 +101,13 @@ export async function createRunTestPlan(input: RunTestPlanInput): Promise<TestPl
         loadRunTestModules: input.loadRunTestModules,
         root: input.root,
         testFamily: input.testFamily
-    });
+    }, policies[0] ?? runtimeCollectionPolicy);
     return bindWireReplayPlan(plan, input.replay);
 }
 
-export async function createRunTestPlanFromFiles(input: RunTestPlanFromFilesInput): Promise<TestPlan> {
-    return await createRunTestPlanFromDiscoveredFiles(input);
-}
-
-type CollectionPolicy = {
-    readonly testFamily: RunTestFamily;
-    readonly propertyPolicy: RunFacts['execution']['propertyPolicy'];
-    readonly timeoutMilliseconds: number;
-};
-
-type CollectionReplayPolicy = CollectionPolicy & { readonly replay: ReplayWire | null; };
-function hasReplayPolicy(policy: CollectionPolicy): policy is CollectionReplayPolicy {
-    return Object.hasOwn(policy, 'replay');
-}
-
-export function resolveTestPlanCollectionPolicy(
-    testPlan: TestPlan,
-    policy: CollectionPolicy | CollectionReplayPolicy
-): TestPlan {
-    if (hasReplayPolicy(policy) && policy.replay?.kind === 'record') {
-        return testPlan;
-    }
-    assertTestPlanMatchesTestFamily(testPlan, policy.testFamily);
-    if (policy.testFamily !== 'property') {
-        return testPlan;
-    }
-    if (policy.propertyPolicy === null) {
-        throw new RunCollectionError('Property collection requires profile policy.', { cause: null }, 'loader');
-    }
-    return resolveTestPlanPropertyPolicy(testPlan, policy.propertyPolicy, policy.timeoutMilliseconds);
+export async function createRunTestPlanFromFiles(
+    input: RunTestPlanFromFilesInput,
+    ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
+): Promise<TestPlan> {
+    return await createRunTestPlanFromDiscoveredFiles(input, policies[0] ?? runtimeCollectionPolicy);
 }

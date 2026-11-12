@@ -14,7 +14,7 @@ import {
     configFixtureCwd,
     createSingleConfigModuleLoader
 } from '../test-support/run-config-module-loader.ts';
-import type { LoadedConfig } from './config.ts';
+import type { LoadedConfig } from './config-loader.ts';
 
 function createReporter(name: string): FixedDefinedReporter {
     return defineFixedReporter({

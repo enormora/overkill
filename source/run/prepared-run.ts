@@ -10,7 +10,7 @@ type RunResult = Awaited<ReturnType<RunOrchestratorDependencies['execute']>>;
 
 function needsOrdinaryBaselines(input: ResolvedRunInput): boolean {
     const { profile, request } = input;
-    if (profile.testFamily === 'benchmark' || profile.testFamily === 'type-test') {
+    if (typeof profile.testFamily !== 'string' || profile.testFamily === 'benchmark') {
         return false;
     }
     return profile.baselines.snapshots || profile.baselines.adapters.length > 0 ||
@@ -23,7 +23,7 @@ async function prepareRun(
 ): Promise<PreparedRun | RunResult> {
     if ([ 'test', 'baseline' ].includes(invocation.namespace)) {
         const { profile } = options.input;
-        if (profile.testFamily === 'type-test') {
+        if (typeof profile.testFamily !== 'string') {
             return { input: options.input, session: null };
         }
         if (!needsOrdinaryBaselines(options.input)) {

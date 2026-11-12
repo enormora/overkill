@@ -1,8 +1,25 @@
 import { z } from 'zod/v4';
+import { propertyPolicySchema } from '../engine/property-policy.ts';
+import {
+    isDefinedFamilyProfile,
+    type NormalizedConfig,
+    type MicrotestProfileConfig,
+    type BenchmarkProfileConfig,
+    type ProfileConfig,
+    type PropertyProfileConfig,
+    type ProcessBudgets,
+    type ProcessUsagePolicy,
+    type TimeoutPolicy,
+    type DefinedFamilyProfile
+} from './types.ts';
+
+import {
+    validateProfileFamilies,
+    validateProfileFamily,
+    validateFamilyDefinition
+} from './family-profile.ts';
 import { microtestExecutionSchema, propertyProfileSchema } from './schema.ts';
-import { propertyPolicySchema } from './property-policy.ts';
 import { ConfigError } from './config-error.ts';
-import { validateNormalizedBenchmarkHostPolicy } from './benchmark-host.ts';
 import {
     performanceBaselinePolicySchema,
     ordinaryBaselinePolicySchema,
@@ -10,18 +27,7 @@ import {
 } from './baseline-policy.ts';
 import { validateHostProcess } from './host-process.ts';
 import { assertValidProfileName, normalizeRequiredProfileFiles } from './profile-normalization.ts';
-import { validateBenchmarkExecution } from './benchmark-execution.ts';
-import type {
-    AdapterProfileConfig,
-    NormalizedConfig,
-    MicrotestProfileConfig,
-    BenchmarkProfileConfig,
-    ProfileConfig,
-    PropertyProfileConfig,
-    ProcessBudgets,
-    ProcessUsagePolicy,
-    TimeoutPolicy
-} from './types.ts';
+import { validateBenchmarkHostExecution } from './benchmark-execution.ts';
 
 function validatePositiveSafeInteger(value: number | null, label: string): void {
     if (value !== null && (!Number.isSafeInteger(value) || value <= 0)) {
@@ -82,7 +88,9 @@ function validateAttachmentLimits(profile: ProfileConfig): void {
 }
 
 function validateIntegrationProfile(profile: ProfileConfig): void {
-    if (profile.testFamily !== 'benchmark' && profile.testFamily !== 'type-test') {
+    if (
+        typeof profile.testFamily === 'string' && profile.testFamily !== 'benchmark'
+    ) {
         ordinaryBaselinePolicySchema.parse(profile.baselines);
     }
     validateAttachmentLimits(profile);
@@ -104,9 +112,8 @@ function validateBenchmarkProfile(profileName: string, profile: BenchmarkProfile
         normalizeRequiredProfileFiles(profile.files);
         performanceBaselinePolicySchema.parse(profile.baselines);
         validateBenchmarkGarbageCollection(profile.garbageCollection);
-        validateNormalizedBenchmarkHostPolicy(profile.host);
+        validateBenchmarkHostExecution(profile);
         validateIntegrationProfile(profile);
-        validateBenchmarkExecution(profile.execution, profile.timeouts);
     } catch (error: unknown) {
         throw new ConfigError(`Invalid benchmark profile "${profileName}": ${String(error)}`, { cause: error });
     }
@@ -128,39 +135,17 @@ function validatePropertyProfile(profile: PropertyProfileConfig): void {
     }
 }
 
-const profileFamilies: ReadonlySet<string> = new Set([
-    'benchmark',
-    'integration',
-    'microtest',
-    'property',
-    'type-test'
-]);
-function validateProfileFamily(profileName: string, testFamily: unknown): void {
-    if (typeof testFamily !== 'string' || !profileFamilies.has(testFamily)) {
-        throw new ConfigError(
-            `Invalid profile "${profileName}": testFamily must be one of ${Array.from(profileFamilies).join(', ')}.`
-        );
-    }
-}
-
-function validateAdapterProfile(profile: AdapterProfileConfig): void {
-    profile.adapter.validate(profile.settings);
+function validateImportedProfile(profile: DefinedFamilyProfile): void {
+    validateFamilyDefinition(profile);
     normalizeRequiredProfileFiles(profile.files);
-    z
-        .strictObject({
-            processModel: z.literal('in-process'),
-            maxConcurrency: z.literal(1),
-            scheduling: z.literal('serial')
-        })
-        .parse(profile.execution);
     validateProcessUsagePolicy(profile.processUsage);
     validateTimeoutPolicy(profile.timeouts);
 }
 
 function validateProfile(profileName: string, profile: ProfileConfig): void {
     propertyProfileSchema.unwrap().shape.failureArtifacts.parse(profile.failureArtifacts);
-    if (profile.testFamily === 'type-test') {
-        validateAdapterProfile(profile);
+    if (isDefinedFamilyProfile(profile)) {
+        validateImportedProfile(profile);
     } else if (profile.testFamily === 'benchmark') {
         validateBenchmarkProfile(profileName, profile);
     } else if (profile.testFamily === 'property') {
@@ -181,4 +166,5 @@ export function validateNormalizedConfig(config: NormalizedConfig): void {
             throw new ConfigError('Invalid run record persistence policy.');
         }
     }
+    validateProfileFamilies(config.profiles);
 }

@@ -4,7 +4,7 @@ import type { RunnerError, RunProcessUsageTracker } from '../packages/engine/eng
 import { defaultRunEngine } from '../run/default-run-engine.ts';
 import { createRunIfMain, type RunIfMain } from '../run/run-if-main.ts';
 import { createDirectProfileResolver } from '../run/run-if-main-profile.ts';
-import { createConfigLoader, type ConfigLoader } from '../config/config.ts';
+import { createConfigLoader, type ConfigLoader } from '../config/config-loader.ts';
 import { directRunFacts, finalizeDirectRunResult } from '../run/run-if-main-facts.ts';
 import {
     createSeededTestPlan,
@@ -215,7 +215,7 @@ export function createDirectRunFixture(input: DirectRunFixtureInput): DirectRunF
     const runDirectEntrypoint: DirectEntrypointRunner = async function runFixtureDirectEntrypoint(command, source) {
         const seeded = fixtureTestPlan(command, source);
         const directProfile = await resolveDirectProfile(importMeta(file), cwd);
-        assertTestPlanMatchesTestFamily(seeded.testPlan, directProfile.profile.testFamily);
+        assertTestPlanMatchesTestFamily(seeded.testPlan, directProfile.profile);
         assertTestPlanCasesMatchProfilePolicy(seeded.testPlan, directProfile.profile);
         const facts = directRunFacts({
             config: command.config,

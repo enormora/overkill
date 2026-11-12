@@ -1,3 +1,4 @@
+import type { Except } from 'type-fest';
 import { z } from 'zod/v4';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import { snapshotValidatedJson } from '../attachments/json-snapshot.ts';
@@ -7,6 +8,8 @@ import type { PerTestResult, RunArtifact, RunnerError } from './run-result.ts';
 
 const familyBrand: unique symbol = Symbol('TestFamily');
 const familyDefinitionsKey = Symbol.for('@overkill-dev/engine/TestFamilyDefinitions');
+const familyBindingsKey = Symbol.for('@overkill-dev/engine/TestFamilyBindings');
+const issuedBindingsKey = Symbol.for('@overkill-dev/engine/IssuedFamilyBindings');
 
 function familyDefinitions(): WeakSet<DefinedTestFamily> {
     const existing: unknown = Reflect.get(globalThis, familyDefinitionsKey);
@@ -17,6 +20,52 @@ function familyDefinitions(): WeakSet<DefinedTestFamily> {
     Reflect.set(globalThis, familyDefinitionsKey, definitions);
     return definitions;
 }
+export type BoundFamilySettings = {
+    readonly testFamily: DefinedTestFamily;
+    readonly settings: FamilyValue;
+    readonly prepare: (input: Except<FamilyPreparationInput<FamilyValue>, 'settings'>) => Promise<FamilyPreparation>;
+};
+
+type FamilySettingsBinder = (input: unknown) => BoundFamilySettings;
+
+function isFamilyBindingRegistry(value: unknown): value is WeakMap<DefinedTestFamily, FamilySettingsBinder> {
+    return value instanceof WeakMap;
+}
+
+function familyBindings(): WeakMap<DefinedTestFamily, FamilySettingsBinder> {
+    const existing: unknown = Reflect.get(globalThis, familyBindingsKey);
+    if (isFamilyBindingRegistry(existing)) {
+        return existing;
+    }
+    const bindings = new WeakMap<DefinedTestFamily, FamilySettingsBinder>();
+    Reflect.set(globalThis, familyBindingsKey, bindings);
+    return bindings;
+}
+
+function issuedFamilyBindings(): WeakSet<BoundFamilySettings> {
+    const existing: unknown = Reflect.get(globalThis, issuedBindingsKey);
+    if (existing instanceof WeakSet) {
+        return existing;
+    }
+    const bindings = new WeakSet<BoundFamilySettings>();
+    Reflect.set(globalThis, issuedBindingsKey, bindings);
+    return bindings;
+}
+
+export function isBoundFamilySettings(binding: BoundFamilySettings): boolean {
+    return issuedFamilyBindings().has(binding);
+}
+
+export function bindFamilySettings(family: DefinedTestFamily, input: unknown): BoundFamilySettings {
+    const bind = familyBindings().get(family);
+    if (bind === undefined) {
+        throw new TypeError('Settings require a defined test family.');
+    }
+    const binding = bind(input);
+    issuedFamilyBindings().add(binding);
+    return binding;
+}
+
 type FamilyScalar = boolean | number | string | null;
 type FamilyArray = readonly FamilyValue[];
 type FamilyRecord = { readonly [key: string]: FamilyValue; };
@@ -216,6 +265,18 @@ export function defineTestFamily<Settings extends FamilyValue>(
         },
         load
     };
+    familyBindings().set(family, function bind(input) {
+        const settings = family.parseSettings(input);
+        return Object.freeze({
+            testFamily: family,
+            settings,
+            async prepare(preparationInput) {
+                const backend = await family.load();
+                preparationInput.signal.throwIfAborted();
+                return await backend.prepare({ ...preparationInput, settings });
+            }
+        });
+    });
     familyDefinitions().add(family);
     return Object.freeze(family);
 }

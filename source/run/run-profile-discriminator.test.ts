@@ -25,7 +25,7 @@ function createRunCommand(config: NormalizedConfig, profileName: string): RunCom
     };
 }
 
-const requiredFamilyMessage = 'testFamily must be one of benchmark, integration, microtest, property, type-test.';
+const requiredFamilyMessage = 'testFamily must be one of benchmark, integration, microtest, property.';
 
 export const testNode = createOverkillSuite({
     definitionLocations: [ { kind: 'unknown' as const } ],

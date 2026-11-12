@@ -72,3 +72,5 @@ function applicabilityBindings(negated: boolean): ApplicabilityBindings {
     });
 }
 export const applicableTo = Object.assign(applicabilityBindings(false), { not: applicabilityBindings(true) });
+
+export { family } from './profile.entry-point.ts';

@@ -1,4 +1,4 @@
-import type { LoadedConfig } from '../config/config.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
 import { selectProfile } from './test-profile.ts';
 
 export type CommandLineReporterFallback = {

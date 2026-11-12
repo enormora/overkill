@@ -8,7 +8,7 @@ import type {
 } from '../engine/identity.ts';
 import type { Engine as EngineDefinition } from '../engine/engine.ts';
 import type {
-    RuntimeExecute as ExecuteDefinition,
+    ExecutionDriver as ExecuteDefinition,
     ExecuteDependencies as ExecuteDependenciesDefinition
 } from '../engine/execution.ts';
 import type {

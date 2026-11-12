@@ -166,7 +166,6 @@ export const configuration = {
             description: 'Overkill run resolution and orchestration.',
             bundlePeerDependencies: [ '@overkill-dev/engine' ],
             roots: {
-                adapterRun: { javaScript: 'run/adapter-run.js' },
                 attachmentConnection: { javaScript: 'run/attachment-connection.js' },
                 attachmentRun: { javaScript: 'run/attachment-run.js' },
                 baselineCommands: moduleRoot('run/baseline-commands'),
@@ -224,7 +223,6 @@ export const configuration = {
                     './transcript-store': 'transcriptStore'
                 }),
                 privateRoots: [
-                    'adapterRun',
                     'attachmentConnection',
                     'attachmentRun',
                     'baselineCommands',
@@ -303,11 +301,11 @@ export const configuration = {
                 main: moduleRoot('packages/type-test/type-test.entry-point'),
                 profile: moduleRoot('packages/type-test/profile.entry-point'),
                 check: moduleRoot('packages/type-test/check.entry-point'),
-                adapter: { javaScript: 'packages/type-test/adapter.entry-point.js' }
+                backend: { javaScript: 'packages/type-test/family-backend.entry-point.js' }
             },
             packageInterface: {
                 modules: packageModules({ '.': 'main', './profile': 'profile', './check': 'check' }),
-                privateRoots: [ 'adapter' ]
+                privateRoots: [ 'backend' ]
             },
             bundlePeerDependencies: [ '@overkill-dev/engine', '@overkill-dev/run' ]
         },

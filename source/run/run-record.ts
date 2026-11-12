@@ -1,7 +1,7 @@
 import path from 'node:path';
+import { profileFamilyId } from '../config/types.ts';
 import type { RunResult } from '../engine/run-result.ts';
 import { recordedRunPlan } from './recorded-run-plan.ts';
-import { currentRunRecordVersion } from './run-record-format.ts';
 import { updateCompactHistory } from './history-storage.ts';
 import { createRunRecordStorage } from './run-record-storage.ts';
 import type { RunRecord, RunRecordCoverage } from './run-record-types.ts';
@@ -41,7 +41,7 @@ export function createRunRecordSession(
                 directory,
                 policy: input.config.history,
                 now: now.toISOString(),
-                testFamily: input.profile.testFamily
+                testFamily: profileFamilyId(input.profile)
             });
         }
     });
@@ -93,10 +93,10 @@ export function createRunRecordSession(
         async recordFacts(facts, replayPlan) {
             await storage.persist({
                 ...storage.current(),
-                version: currentRunRecordVersion,
+                version: value.version,
                 replayPlan,
-                replayWitness: value.version === currentRunRecordVersion ? value.replayWitness : null,
-                replayProfile: value.version === currentRunRecordVersion ? value.replayProfile : null,
+                replayWitness: value.replayWitness,
+                replayProfile: value.replayProfile,
                 facts,
                 identities: facts.cases.map(function workIdentity(test) {
                     return test.workId;

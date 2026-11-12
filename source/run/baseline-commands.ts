@@ -1,4 +1,4 @@
-import type { ConfigLoader } from '../config/config.ts';
+import type { ConfigLoader } from '../config/config-loader.ts';
 import { baselineIdentityKey } from '../baselines/baseline-planning.ts';
 import { ordinaryBaselineIdentity } from './baseline-record.ts';
 import { createCommandLineConfig, type CommandLineConfigDependencies } from './command-line-config.ts';

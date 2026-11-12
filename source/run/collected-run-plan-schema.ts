@@ -1,5 +1,5 @@
 import { z } from 'zod/v4';
-import { propertyPolicySchema, propertySettingsDeclarationSchema } from '../config/property-policy.ts';
+import { propertyPolicySchema, propertySettingsDeclarationSchema } from '../engine/property-policy.ts';
 import { createDefaultWorkId } from '../engine/identity.ts';
 import {
     annotationsSchema,

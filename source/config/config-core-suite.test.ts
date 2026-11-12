@@ -6,6 +6,7 @@ import { testNode as runConfigIntegrationProfileTestNode } from './config-integr
 import { testNode as runConfigTestNode } from './config.test.ts';
 import { testNode as runConfigTimeoutsTestNode } from './config-timeouts.test.ts';
 import { testNode as runConfigRetriesTestNode } from './config-retries.test.ts';
+import { testNode as familyProfileTestNode } from './family-profile.test.ts';
 import { testNode as adapterProfileTestNode } from './config-adapter-profile.test.ts';
 
 export const testNode = createOverkillSuite({
@@ -15,6 +16,7 @@ export const testNode = createOverkillSuite({
     controls: {},
     children: [
         adapterProfileTestNode,
+        familyProfileTestNode,
         benchmarkProfileTestNode,
         hostTestNode,
         runConfigRetriesTestNode,

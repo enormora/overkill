@@ -1,12 +1,14 @@
-import { validateReporterRunFacts, type DefinedReporter } from '../engine/reporter.ts';
-import { validateNormalizedConfig } from '../config/validation.ts';
-import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
 import {
+    profileFamilyId,
     isBuiltinTestProfile,
     type ProfileConfig,
     type ProcessBudgets,
     type NormalizedConfig
 } from '../config/types.ts';
+import { validateReporterRunFacts, type DefinedReporter } from '../engine/reporter.ts';
+import { validateNormalizedConfig } from '../config/validation.ts';
+import { invalidProfileNameMessage } from '../config/profile-patterns.ts';
+
 import { parseDebugRequest, runDebugRequestSchema } from './run-debug.ts';
 import { parseRunSelection } from './run-selection-schema.ts';
 import { assertSupportedProcessEngine as assertSupportedProcessEngineSelection } from './run-process-engine.ts';
@@ -183,7 +185,7 @@ function assertProfileReportersSupported(
     const reporters = profile.reporters ?? fallback ?? [];
     for (const reporter of reporters) {
         try {
-            validateReporterRunFacts(reporter, { execution: { testFamily: profile.testFamily } });
+            validateReporterRunFacts(reporter, { execution: { testFamily: profileFamilyId(profile) } });
         } catch (error: unknown) {
             invalidRequest(error instanceof Error ? error.message : String(error));
         }
@@ -212,12 +214,12 @@ function assertExecution(request: RunRequest, profile: ProfileConfig): void {
         invalidRequest('Worker count can only be requested for worker-pool profiles.');
     }
 }
-function assertAdapterRequest(request: RunRequest, profile: ProfileConfig): void {
-    if (profile.testFamily !== 'type-test') {
+function assertAnalysisRequest(request: RunRequest, profile: ProfileConfig): void {
+    if (typeof profile.testFamily === 'string' || profile.testFamily.features.execution !== 'analysis') {
         return;
     }
     if (request.debug.mode !== 'off') {
-        invalidRequest('Debug mode requires runtime test bodies; type-test profiles use compiler diagnostics.');
+        invalidRequest('Debug mode requires runtime test bodies.');
     }
     const unsupported = [
         request.capture !== 'buffered',
@@ -228,7 +230,7 @@ function assertAdapterRequest(request: RunRequest, profile: ProfileConfig): void
     ];
     if (unsupported.includes(true)) {
         invalidRequest(
-            'Adapter profiles do not support runtime capture, debugging, process budgets, or precise timings.'
+            'Analysis profiles do not support runtime capture, debugging, process budgets, or precise timings.'
         );
     }
 }
@@ -249,7 +251,7 @@ export function assertProfileRequestSupported(
     if (request.recordForMerge && namespace !== 'test') {
         invalidRequest('--record-for-merge is only supported by ordinary runs outside execution sessions.');
     }
-    assertAdapterRequest(request, profile);
+    assertAnalysisRequest(request, profile);
     assertBaselineRequest(request, profile, namespace);
     assertExecution(request, profile);
     if (request.coverage && profile.testFamily !== 'microtest') {

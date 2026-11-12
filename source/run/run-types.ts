@@ -38,6 +38,7 @@ import type {
     SourceLocation,
     SerializedValue as SerializedValueShape
 } from '../assertion-protocol/assertion-node-shape.ts';
+import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
     WorkUnitMode as WorkUnitModeDefinition,
     WorkUnitId as WorkUnitIdDefinition,
@@ -60,7 +61,6 @@ import type {
     RunSelection as SelectedCases,
     RunExecutionLifecycleReference
 } from './run-request-types.ts';
-import type { AttachmentCoordinator } from './attachment-coordinator-context.ts';
 import type {
     TestFamilyId,
     PropertyPolicy,
@@ -180,13 +180,8 @@ export type RunCommandInput = RunCommandFor<DebugRequestInput<RunRequest>>;
 type ReplayRunFacts = OrdinaryRunFacts & { readonly propertyReplay: PropertyCorpusSnapshot['checkedIn'][number]; };
 export type RunFacts = OrdinaryRunFacts | ReplayRunFacts;
 
-type AdapterProfile = Extract<NormalizedConfig['profiles'][string], { readonly testFamily: 'type-test'; }>;
-type AdapterBackend = Awaited<ReturnType<AdapterProfile['adapter']['load']>>;
-type AdapterPreparation = Awaited<ReturnType<AdapterBackend['prepare']>>;
-type AdapterCollection = Awaited<ReturnType<AdapterPreparation['collect']>>;
-
 type OrdinaryRunFacts = {
-    readonly adapter: { readonly id: string; readonly facts: AdapterCollection['facts']; } | null;
+    readonly adapter: { readonly id: string; readonly facts: JsonValue; } | null;
     readonly benchmarkHost: BenchmarkHostAssessment | null;
     readonly benchmarkPlacement: BenchmarkPlacementFacts | null;
     readonly benchmarkCalibration: BenchmarkCalibrationResult | null;
@@ -342,10 +337,6 @@ export type ResolvedRunPlan = {
 } | {
     readonly kind: 'local';
     readonly testPlan: TestPlan;
-    readonly adapter: { readonly preparation: AdapterPreparation; readonly collected: AdapterCollection; };
-} | {
-    readonly kind: 'local';
-    readonly testPlan: TestPlan;
 };
 
 export type ResolvedRun = {
@@ -444,8 +435,6 @@ export type CollectedRun = {
     readonly runWithReporterDelivery: (invocation: CollectedRunInvocation) => Promise<RunReporterDeliveryResult>;
 };
 
-export type RunRuntimeAttachments = AttachmentCoordinator | null;
-
 export type DiscoveredRunFile = {
     readonly file: string;
     readonly fileSet: string | null;
@@ -531,3 +520,5 @@ export type RunExecutionSessionOptions = {
 };
 
 export type ReplayWire = RecordedRunSource<CollectedRunPlan>;
+
+export type RunRuntimeAttachments = AttachmentCoordinator | null;

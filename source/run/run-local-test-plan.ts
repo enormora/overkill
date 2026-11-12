@@ -2,67 +2,15 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
-import type { prepareAdapterPlan } from './adapter-execution.ts';
-
-import type { ResolvedRunInput } from './run-input-resolution.ts';
-
-import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import { RunCollectionError } from './run-errors.ts';
-import { resolveRunEngine } from './run-engine-selection.ts';
 import {
-    resolveTestPlanCollectionPolicy,
-    createRunTestPlanFromDirectEntrypoint,
-    createRunTestPlanFromFiles,
-    type RunTestPlanCollectionSource
-} from './run-test-plan.ts';
+    createProfileTestPlan,
+    type LocalTestPlanInput as ProfilePlanInput,
+    type LocalTestPlan as ProfilePlan
+} from './profile-test-plan.ts';
 
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
-import type { RunCommand } from './run-types.ts';
-
-export type LocalTestPlanInput = Pick<ResolvedRunInput, 'files' | 'profile'> & {
-    readonly command: RunCommand;
-    readonly definitionLocationCapture: DefinitionLocationCapture;
-    readonly dependencies: RunOrchestratorDependencies;
-    readonly source: RunTestPlanCollectionSource;
-};
-type AdapterPreparation = Awaited<ReturnType<typeof prepareAdapterPlan>>;
-type TestPlan = AdapterPreparation['testPlan'];
-export type LocalTestPlan = { readonly testPlan: TestPlan; readonly preparation: AdapterPreparation | null; };
-
-async function readTestPlan(input: LocalTestPlanInput): Promise<TestPlan> {
-    const engine = await resolveRunEngine(input.command.engine, input.dependencies);
-
-    if (input.source.kind === 'direct-entrypoint') {
-        const [ file ] = input.files;
-
-        return createRunTestPlanFromDirectEntrypoint(engine, file, input.source);
-    }
-
-    return await createRunTestPlanFromFiles({
-        cwd: input.command.cwd,
-        definitionLocationCapture: input.definitionLocationCapture,
-        engine,
-        files: input.files,
-        loadRunTestModules: input.dependencies.loadRunTestModules,
-        root: { annotations: {}, controls: {}, title: input.command.cwd },
-        testFamily: input.profile.testFamily
-    });
-}
-
-async function createTestPlan(input: LocalTestPlanInput): Promise<LocalTestPlan> {
-    const testPlan = await readTestPlan(input);
-    const collected = resolveTestPlanCollectionPolicy(testPlan, {
-        testFamily: input.profile.testFamily,
-        propertyPolicy: input.profile.testFamily === 'property' ? input.profile.property : null,
-        timeoutMilliseconds: input.profile.timeouts.softMilliseconds
-    });
-    if (input.profile.testFamily === 'type-test') {
-        const { prepareAdapterPlan } = await import('./adapter-execution.ts');
-        const preparation = await prepareAdapterPlan(input.profile.adapter, input.profile.settings, collected);
-        return { testPlan: preparation.testPlan, preparation };
-    }
-    return { testPlan: collected, preparation: null };
-}
+export type LocalTestPlanInput = ProfilePlanInput;
+export type LocalTestPlan = ProfilePlan;
 
 function firstObservedCollectionError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
     const [ error ] = observer.takeErrors();
@@ -80,6 +28,7 @@ async function waitForObservedCollectionError(observer: ExecutionGlobalErrorObse
 }
 
 export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<LocalTestPlan> {
+    const controller = new AbortController();
     const globalErrorObserver = createExecutionGlobalErrorObserver('in-process');
     try {
         return await globalErrorObserver.runBoundary(async function runObservedCollection() {
@@ -90,6 +39,7 @@ export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<Lo
                 rejectCollection = reject;
             });
             const timeout = input.dependencies.wallClock.setTimeout(function failTimedOutCollection() {
+                controller.abort();
                 rejectCollection(
                     new RunCollectionError(
                         'Collection exceeded collection timeout.',
@@ -102,7 +52,7 @@ export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<Lo
             try {
                 return await globalErrorObserver.runPhase('collection', async function collectObservedTestPlan() {
                     return await Promise.race([
-                        createTestPlan(input),
+                        createProfileTestPlan(input, controller.signal),
                         collectionTimeout,
                         waitForObservedCollectionError(globalErrorObserver)
                     ]);
@@ -111,7 +61,16 @@ export async function createLocalTestPlan(input: LocalTestPlanInput): Promise<Lo
                 input.dependencies.wallClock.clearTimeout(timeout);
             }
         });
+    } catch (error: unknown) {
+        controller.abort(error);
+        throw error;
     } finally {
         globalErrorObserver.stop();
     }
+}
+
+export async function inspectLocalTestPlan(input: LocalTestPlanInput): Promise<LocalTestPlan['testPlan']> {
+    const plan = await createLocalTestPlan(input);
+    await using prepared = plan.preparation.prepared;
+    return prepared.testPlan;
 }

@@ -1,4 +1,4 @@
-import type { ConfigLoader, ConfigLoadRequest } from '../config/config.ts';
+import type { ConfigLoader, ConfigLoadRequest } from '../config/config-loader.ts';
 import {
     createCommandLineErrorResultFromUnknown,
     readExitCodeFromRunResult,

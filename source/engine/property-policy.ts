@@ -1,5 +1,9 @@
 import { z } from 'zod/v4';
-import { isPropertyBodyDefinition, type PropertyBodyDefinition, type PropertyPolicy } from '../engine/property-node.ts';
+import {
+    isPropertyBodyDefinition,
+    type PropertyBodyDefinition,
+    type PropertyPolicy
+} from './property-node.ts';
 
 const positiveInteger = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const nonnegativeInteger = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);

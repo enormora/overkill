@@ -1,5 +1,5 @@
 import { realpath } from 'node:fs/promises';
-import type { ConfigLoader } from '../config/config.ts';
+import type { ConfigLoader } from '../config/config-loader.ts';
 import {
     createCommandLineErrorResultFromUnknown,
     type HistoryCommands,

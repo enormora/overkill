@@ -1,5 +1,5 @@
 import type { RunResult } from '../engine/run-result.ts';
-import type { LoadedConfig } from '../config/config.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
 import { selectTestProfile } from './test-profile.ts';
 import {
     createCommandLineConfig,

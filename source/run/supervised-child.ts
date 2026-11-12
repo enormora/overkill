@@ -1,6 +1,9 @@
 import type { Clock } from '@enormora/clock';
 import { resolveDebugSelection } from './run-debug.ts';
-import { completeSupervisedExecutionSession, type ExecutionSessionPlanSelection } from './execution-session-child.ts';
+import {
+    completeSupervisedExecutionSession,
+    type ExecutionSessionPlanSelection
+} from './execution-session-child.ts';
 import type {
     RunResult,
     RunnerError,
@@ -52,6 +55,7 @@ type RuntimeCapabilityPolicyDependencies = CapabilityPolicyOptions['dependencies
 type SupervisedRuntimePolicy = RunRuntimePolicy;
 
 type CollectedTestPlan = {
+    readonly familySource: TestPlan;
     readonly runnerErrors: readonly RunnerError[];
     readonly testPlan: TestPlan;
 };
@@ -192,7 +196,7 @@ async function readCollectedTestPlan(
     const testPlan = await createPolicyCheckedTestPlan(command, host, runtimePolicy);
     const runnerErrors = runtimePolicy?.takeRunErrors() ?? [];
 
-    return { runnerErrors, testPlan };
+    return { runnerErrors, testPlan, familySource: testPlan };
 }
 
 async function createCollectedTestPlan(
@@ -244,42 +248,49 @@ async function executeAssignment(input: SupervisedAssignmentExecution): Promise<
     return await withRuntimePolicy(function createChildPolicy() {
         return createRuntimePolicy(input.command, input.host);
     }, async function observeChildAssignment(runtimePolicy) {
-        const execute = await createSupervisedChildExecute(input.wallClock, input.command);
+        const execute = await createSupervisedChildExecute(
+            input.wallClock,
+            input.command,
+            input.collectedPlan.familySource
+        );
         input.host.dropBodyReadPermission(input.command);
         const testPlan = input.command.kind === 'run-session'
             ? input.collectedPlan.testPlan
             : supervisedAssignedPlan(input.collectedPlan.testPlan, input.assignment);
         const resourceTiming = createSupervisedResourceLifecycleTiming(input.wallClock, input.host.send);
 
-        return await execute(resolvedTestPlanDefinitionLocations(testPlan), {
-            debug: resolveDebugSelection(input.command.debug, testPlan.cases),
-            seed: BigInt(input.command.seed),
-            execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
-            reporters: [ createSupervisedChildReporter(input.host) ],
-            failureArtifacts: input.command.failureArtifacts,
-            processUsageSamplingIntervalMilliseconds: input.command.processUsageSamplingIntervalMilliseconds,
-            retryPolicy: input.command.retryPolicy,
-            processBudgets: input.command.processBudgets,
-            processUsageTracker: createForwardingProcessUsageTracker(
-                input.command,
-                input.host,
-                input.dependencies,
-                input.wallClock
-            ),
-            runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
-            propertyRun: {
-                ...hasPropertyReplay(input.command) ? { replay: input.command.propertyReplay } : {},
-                corpus: assignedPropertyCorpus(input.assignment),
+        return await execute(
+            resolvedTestPlanDefinitionLocations(testPlan),
+            {
+                debug: resolveDebugSelection(input.command.debug, testPlan.cases),
                 seed: BigInt(input.command.seed),
-                projectRoot: input.command.cwd
-            },
-            runFacts: {},
-            startedAt: startedAtIso(input.startedAtMs),
-            timeoutPolicy: {
-                hardTimeoutMilliseconds: input.command.hardTimeoutMilliseconds,
-                timeoutMilliseconds: input.command.timeoutMilliseconds
+                execution: engineExecution(input.command.scheduling, input.command.maxConcurrency),
+                reporters: [ createSupervisedChildReporter(input.host) ],
+                failureArtifacts: input.command.failureArtifacts,
+                processUsageSamplingIntervalMilliseconds: input.command.processUsageSamplingIntervalMilliseconds,
+                retryPolicy: input.command.retryPolicy,
+                processBudgets: input.command.processBudgets,
+                processUsageTracker: createForwardingProcessUsageTracker(
+                    input.command,
+                    input.host,
+                    input.dependencies,
+                    input.wallClock
+                ),
+                runtimePolicy: createRunResourceRuntimePolicy(testPlan.cases, runtimePolicy, resourceTiming),
+                propertyRun: {
+                    ...hasPropertyReplay(input.command) ? { replay: input.command.propertyReplay } : {},
+                    corpus: assignedPropertyCorpus(input.assignment),
+                    seed: BigInt(input.command.seed),
+                    projectRoot: input.command.cwd
+                },
+                runFacts: {},
+                startedAt: startedAtIso(input.startedAtMs),
+                timeoutPolicy: {
+                    hardTimeoutMilliseconds: input.command.hardTimeoutMilliseconds,
+                    timeoutMilliseconds: input.command.timeoutMilliseconds
+                }
             }
-        });
+        );
     });
 }
 

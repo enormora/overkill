@@ -1,132 +1,221 @@
 import { runIfMain } from '#test-runner';
-import { orchestrator, normalizeConfig } from '../packages/run/run.entry-point.ts';
-import { defaultRunRequest } from '../test-support/run-command-factory.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
+import { defineTestFamily } from '../packages/engine/engine.entry-point.ts';
 import { createInMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
-import type { RunAdapterRegistration } from './adapter-profile.ts';
+import { bindFamilySettings } from '../engine/test-family.ts';
+import { normalizeConfig } from './config.ts';
 import { projectConfigSchema } from './schema.ts';
 import { copyConfig } from './snapshot.ts';
 import { validateNormalizedConfig } from './validation.ts';
-import type { AdapterProfileConfig, NormalizedConfig } from './types.ts';
+import { familySettings, isDefinedFamilyProfile, type NormalizedConfig, type DefinedFamilyProfile } from './types.ts';
 
-const adapter: RunAdapterRegistration = {
-    id: 'fixture',
-    validate(settings) {
-        if (settings !== 'accepted') {
-            throw new Error('Unsupported checker settings.');
+const family = defineTestFamily({
+    id: '@example/checker',
+    version: '1',
+    module: null,
+    features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
+    parseSettings(input) {
+        if (input !== 'accepted') {
+            throw new TypeError('Unsupported checker settings.');
         }
+        return input;
     },
     async load() {
         throw new Error('Configuration must not load the checker.');
     }
-};
+});
 const definition = {
-    testFamily: 'type-test',
+    testFamily: family,
     files: { include: [ 'source/**/*.types.ts' ] },
-    adapter,
     settings: 'accepted'
 } as const;
+const reporter = createInMemoryRealTimeReporter();
+const scenarios = [
+    { name: 'default reporters', profile: definition },
+    { name: 'explicit reporters', profile: { ...definition, reporters: [ reporter ] as const } }
+];
 
-function registeredProfile(config: NormalizedConfig): AdapterProfileConfig {
+function registeredProfile(config: NormalizedConfig): DefinedFamilyProfile {
     const profile = config.profiles.types;
-    if (profile?.testFamily !== 'type-test') {
-        throw new Error('Expected a registered adapter profile.');
+    if (profile === undefined || !isDefinedFamilyProfile(profile)) {
+        throw new Error('Missing family profile.');
     }
     return profile;
 }
+const unsupportedPolicies = Object.entries({ coverage: {}, retries: { maxAttempts: 2 }, attachments: {} });
 
-const reporter = createInMemoryRealTimeReporter();
-const profileScenarios = [
-    { name: 'default reporter selection', profile: definition },
-    { name: 'explicit reporters', profile: { ...definition, reporters: [ reporter ] as const } }
-];
-const unsupportedRuntimeSettings = Object.entries({
-    execution: { processModel: 'worker-pool' },
-    coverage: { outputs: [ 'lcov' ] },
-    processUsage: { measure: true },
-    retries: { maxAttempts: 2 },
-    timeouts: { softMilliseconds: 1 }
-});
-
-export const testNode = suite('adapter profile configuration', [
-    test('rejects ordinary baseline commands for checker profiles', async function (scope) {
+export const testNode = suite('imported analysis profile configuration', [
+    test('rejects missing, forged, and mismatched normalized settings bindings', function (scope) {
         const config = normalizeConfig({ profiles: { types: definition } });
-        const command = {
-            config,
-            cwd: process.cwd(),
-            engine: { kind: 'default' as const },
-            request: defaultRunRequest({ profile: 'types' })
-        };
-        const error = { message: 'Ordinary baselines require a microtest, property, or integration profile.' };
-        await scope.assert.rejects(async function () {
-            await orchestrator.baseline.list({ ...command, request: { profile: 'types', paths: [] } });
-        }, error);
-        await scope.assert.rejects(async function () {
-            await orchestrator.baseline.update(command, { timing: null });
-        }, error);
+        const profile = registeredProfile(config);
+        const missing = { ...profile };
+        Reflect.deleteProperty(missing, familySettings);
+        for (
+            const invalid of [
+                missing,
+                { ...profile, [familySettings]: { ...profile[familySettings] } },
+                { ...profile, settings: 'different' },
+                { ...profile, testFamily: defineTestFamily({ ...family, id: '@example/another-checker' }) }
+            ]
+        ) {
+            scope.assert.throws(function validateUnboundSettings() {
+                validateNormalizedConfig({ ...config, profiles: { ...config.profiles, types: invalid } });
+            }, { message: 'Imported profile settings must be normalized with their family.' });
+        }
         return scope.assert.collect();
     }),
-    ...profileScenarios.flatMap(function (scenario) {
+    test('rejects unsupported normalized placement and analysis process measurement', function (scope) {
+        const config = normalizeConfig({ profiles: { types: definition } });
+        const profile = registeredProfile(config);
+        scope.assert.throws(function validateHostPlacement() {
+            validateNormalizedConfig({
+                ...config,
+                profiles: {
+                    types: {
+                        ...profile,
+                        execution: { ...profile.execution, processModel: 'supervised-process' }
+                    }
+                }
+            });
+        }, { message: 'Imported families currently require in-process execution.' });
+        scope.assert.throws(function validateRuntimeMeasurement() {
+            validateNormalizedConfig({
+                ...config,
+                profiles: {
+                    types: {
+                        ...profile,
+                        processUsage: { ...profile.processUsage, measure: true }
+                    }
+                }
+            });
+        }, { message: 'Analysis profiles do not support runtime process usage policy.' });
+        return scope.assert.collect();
+    }),
+    test('validates normalized placement against the bound family capabilities', function (scope) {
+        const config = normalizeConfig({ profiles: { types: definition } });
+        const hosted = defineTestFamily({
+            ...family,
+            id: '@example/hosted-checker',
+            features: { ...family.features, processModels: [ 'worker-pool' ] }
+        });
+        const binding = bindFamilySettings(hosted, 'accepted');
+        scope.assert.throws(function validateUnsupportedPlacement() {
+            validateNormalizedConfig({
+                ...config,
+                profiles: {
+                    types: {
+                        ...registeredProfile(config),
+                        testFamily: hosted,
+                        settings: binding.settings,
+                        [familySettings]: binding
+                    }
+                }
+            });
+        }, { message: 'The selected family does not support the configured process model.' });
+        return scope.assert.collect();
+    }),
+    test('retains ordinary runtime placement defaults and rejects unsupported imported hosts', function (scope) {
+        for (const processModels of [ [ 'in-process' ], [ 'in-process', 'supervised-process' ] ] as const) {
+            const runtime = defineTestFamily({
+                ...family,
+                id: '@example/runtime-placement',
+                features: { execution: 'runtime', processModels, profileOptions: [] }
+            });
+            scope.assert.throws(function normalizeDefaultRuntimePlacement() {
+                normalizeConfig({ profiles: { types: { ...definition, testFamily: runtime } } });
+            }, {
+                message: processModels.length === 1
+                    ? 'The selected family does not support the configured process model.'
+                    : 'Imported families currently require in-process execution.'
+            });
+        }
+        return scope.assert.collect();
+    }),
+    ...scenarios.flatMap(function (scenario) {
         return [
-            test(`normalizes ${scenario.name} without loading the checker`, function (scope) {
+            test(`normalizes ${scenario.name} without loading`, function (scope) {
                 const config = normalizeConfig({ profiles: { types: scenario.profile } });
                 validateNormalizedConfig(config);
                 const profile = registeredProfile(config);
-                scope.assert.equal(profile.adapter, adapter);
-                scope.assert.equal(profile.settings, 'accepted');
+                scope.assert.equal(profile.testFamily, family);
+                scope.assert.equal(JSON.stringify(profile.settings), '"accepted"');
                 scope.assert.deepEqual(profile.execution, {
                     processModel: 'in-process',
                     maxConcurrency: 1,
                     scheduling: 'serial'
                 });
                 scope.assert.deepEqual(profile.files, { include: [ 'source/**/*.types.ts' ], exclude: [] });
+                scope.assert.deepEqual(profile.timeouts, {
+                    collectionMilliseconds: 60_000,
+                    softMilliseconds: 60_000,
+                    hardMilliseconds: 60_000
+                });
                 return scope.assert.collect();
             }),
-            test(`snapshots ${scenario.name} while retaining registration and isolating policies`, function (scope) {
+            test(`snapshots ${scenario.name} without replacing definitions`, function (scope) {
                 const config = normalizeConfig({ profiles: { types: scenario.profile } });
-                const snapshot = copyConfig(config);
-                const profile = registeredProfile(config);
-                const copied = registeredProfile(snapshot);
-                scope.assert.deepEqual(snapshot, config);
-                scope.assert.equal(copied.adapter, adapter);
-                scope.assert.notEqual(copied, profile);
-                scope.assert.notEqual(copied.files, profile.files);
-                scope.assert.notEqual(copied.execution, profile.execution);
+                const copied = copyConfig(config);
+                scope.assert.deepEqual(copied, config);
+                scope.assert.equal(copied.profiles.types?.testFamily, family);
+                scope.assert.notEqual(copied.profiles.types, config.profiles.types);
+                scope.assert.notEqual(copied.profiles.types?.files, config.profiles.types?.files);
                 return scope.assert.collect();
             })
         ];
     }),
-    test('rejects missing and malformed registrations with actionable diagnostics', function (scope) {
-        const registrations: readonly unknown[] = [
-            undefined,
-            null,
-            'fixture',
-            {},
-            { ...adapter, id: 0 },
-            { ...adapter, validate: null },
-            { ...adapter, load: null }
-        ];
-        for (const registration of registrations) {
-            scope.assert.throws(function () {
-                projectConfigSchema.parse({ profiles: { types: { ...definition, adapter: registration } } });
-            }, { message: /Attach a type-test adapter explicitly/u });
+    test('rejects unbranded definitions and bare optional family strings', function (scope) {
+        for (const testFamily of [ undefined, null, 'type-test', {}, { ...family }, { ...family, load: null } ]) {
+            scope.assert.throws(
+                function () {
+                    return projectConfigSchema.parse({ profiles: { types: { ...definition, testFamily } } });
+                },
+                { message: /testFamily/u }
+            );
         }
         return scope.assert.collect();
     }),
-    test('delegates settings validation to the registered adapter', function (scope) {
+    test('delegates settings validation before loading', function (scope) {
         scope.assert.throws(function () {
-            normalizeConfig({ profiles: { types: { ...definition, settings: 'rejected' } } });
-        }, { message: 'Unsupported checker settings.' });
+            return normalizeConfig({ profiles: { types: { ...definition, settings: 'rejected' } } });
+        }, {
+            message: 'Unsupported checker settings.'
+        });
         return scope.assert.collect();
     }),
-    test('rejects runtime execution settings instead of admitting them to static profiles', function (scope) {
-        for (const [ field, value ] of unsupportedRuntimeSettings) {
-            scope.assert.throws(function () {
-                projectConfigSchema.parse({ profiles: { types: { ...definition, [field]: value } } });
-            }, { message: new RegExp(field, 'u') });
+    test('rejects undeclared runtime policies', function (scope) {
+        for (const [ field, value ] of unsupportedPolicies) {
+            scope.assert.throws(
+                function () {
+                    return projectConfigSchema.parse({ profiles: { types: { ...definition, [field]: value } } });
+                },
+                { message: new RegExp(field, 'u') }
+            );
         }
+        return scope.assert.collect();
+    }),
+    test('retains explicit common timeout and evidence policy', function (scope) {
+        const config = normalizeConfig({
+            profiles: {
+                types: {
+                    ...definition,
+                    timeouts: { collectionMilliseconds: 500, softMilliseconds: 100, hardMilliseconds: 200 },
+                    runRecords: { persist: 'always' },
+                    timings: { collection: 'precise' }
+                }
+            }
+        });
+        const profile = config.profiles.types;
+        if (profile === undefined) {
+            throw new Error('Missing family profile.');
+        }
+        scope.assert.deepEqual(profile.timeouts, {
+            collectionMilliseconds: 500,
+            softMilliseconds: 100,
+            hardMilliseconds: 200
+        });
+        scope.assert.equal(config.profiles.types?.runRecords.persist, 'always');
+        scope.assert.equal(config.profiles.types?.timings.collection, 'precise');
         return scope.assert.collect();
     })
 ]);
-
 await runIfMain(import.meta, testNode);

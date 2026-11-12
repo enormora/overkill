@@ -359,6 +359,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.deepEqual(
                     structuredClone<unknown>(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null),
                     {
+                        family: { id: 'microtest', version: '1', settings: null, preparation: null, collection: null },
                         adapter: null,
                         cases: [
                             expectedCase

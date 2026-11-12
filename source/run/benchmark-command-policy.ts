@@ -1,5 +1,5 @@
-import type { ConfigLoader } from '../config/config.ts';
-import type { NormalizedConfig } from '../config/types.ts';
+import type { ConfigLoader } from '../config/config-loader.ts';
+import { profileFamilyId, type NormalizedConfig } from '../config/types.ts';
 import { invalidRequest } from './run-errors.ts';
 import type { RunOrchestrator } from './run-orchestrator-types.ts';
 import type { CommandLineConfigDependencies } from './command-line-config.ts';
@@ -44,7 +44,9 @@ export function selectBenchmarkCommandProfile(name: string | null, config: Norma
 
     if (testFamily !== 'benchmark') {
         return invalidRequest(
-            `Profile "${name}" has testFamily "${testFamily}". Benchmark commands require testFamily "benchmark".`
+            `Profile "${name}" has testFamily "${
+                profileFamilyId(profile)
+            }". Benchmark commands require testFamily "benchmark".`
         );
     }
 

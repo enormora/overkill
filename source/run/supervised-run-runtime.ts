@@ -4,8 +4,16 @@ import type {
     ProcessUsageSnapshot,
     RunResult
 } from './run-engine-primitives.ts';
-import { resultWithRetainedArtifacts, reportResultWithDelivery, reportTerminalCases } from './run-result-reporting.ts';
-import { createRunResultFromCollectedPlan, emptyRunPlanStatus, collectedWorkloadInputs } from './collected-run-plan.ts';
+import {
+    resultWithRetainedArtifacts,
+    reportResultWithDelivery,
+    reportTerminalCases
+} from './run-result-reporting.ts';
+import {
+    createRunResultFromCollectedPlan,
+    emptyRunPlanStatus,
+    collectedWorkloadInputs
+} from './collected-run-plan.ts';
 import type { RunRuntimeAttachments, CollectedRunPlan, ResolvedRun } from './run-types.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
@@ -22,6 +30,7 @@ import {
     type ProcessBudgetBreach
 } from './supervised-run-process-policy.ts';
 import {
+    collectedCasesByKey,
     deduplicatedChildRuntimePolicyErrors,
     deduplicatedRuntimePolicyErrors,
     type StoredRunValue,
@@ -103,33 +112,6 @@ async function recordReporterEventErrors(
     if (errors.length > 0) {
         state.recordRunnerErrors(errors);
     }
-}
-
-export function collectedCasesByKey(collectedPlan: CollectedRunPlan): ReadonlyMap<string, SupervisedCase> {
-    const entries: [string, SupervisedCase][] = [];
-
-    for (const file of collectedPlan.files) {
-        for (const testCase of file.cases) {
-            const id = {
-                file: file.file,
-                params: testCase.params,
-                suite: testCase.suitePath.map(function toTitle(suite) {
-                    return suite.title;
-                }),
-                title: testCase.title
-            };
-
-            const workId = testCase.workId ?? createDefaultWorkId(id);
-
-            entries.push([ workIdentityKey(workId), {
-                capture: testCase.controls.capture,
-                id,
-                workId
-            } ]);
-        }
-    }
-
-    return new Map(entries);
 }
 
 function applyTestStartEvent(

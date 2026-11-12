@@ -1,25 +1,22 @@
-import type {
-    ProjectProfileFiles,
-    ProjectAdapterProfileConfig,
-    RunAdapterRegistration
-} from '../run/config.entry-point.ts';
+import { defineTestFamily } from '../engine/engine.entry-point.ts';
+import type { ProjectProfileFiles, ProjectFamilyProfileConfig } from '../run/config.entry-point.ts';
 import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
 
 export type { CompilerPolicy, TypeTestOptions } from './profile-settings.ts';
 export type TypeTestProfileOptions = TypeTestOptions & { readonly files: ProjectProfileFiles; };
-
-export const typeTestAdapter: RunAdapterRegistration = Object.freeze({
+export const family = defineTestFamily({
     id: '@overkill-dev/type-test',
-    validate(settings: unknown): void {
-        typeTestSettingsSchema.parse(settings);
+    version: '1',
+    module: { moduleUrl: import.meta.url, exportName: 'family' },
+    features: { execution: 'analysis', processModels: [ 'in-process' ], profileOptions: [] },
+    parseSettings(input) {
+        return typeTestSettingsSchema.parse(input);
     },
     async load() {
-        return await import('./adapter.entry-point.ts');
+        return await import('./family-backend.entry-point.ts');
     }
 });
-
-export function typeTestProfile(options: TypeTestProfileOptions): ProjectAdapterProfileConfig {
+export function typeTestProfile(options: TypeTestProfileOptions): ProjectFamilyProfileConfig<typeof family> {
     const { files, ...settings } = options;
-    const parsed = typeTestSettingsSchema.parse(settings);
-    return { testFamily: 'type-test', files, adapter: typeTestAdapter, settings: parsed };
+    return { testFamily: family, files, settings: typeTestSettingsSchema.parse(settings) };
 }
