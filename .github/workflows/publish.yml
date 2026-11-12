@@ -22,6 +22,8 @@ concurrency:
 jobs:
     evaluate-gate:
         runs-on: ubuntu-latest
+        env:
+            NODE_OPTIONS: --max-old-space-size-percentage=75
         name: Evaluate GitHub release gate
         permissions:
             contents: read # required for actions/checkout to read the workflow source
