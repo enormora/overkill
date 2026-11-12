@@ -1,5 +1,6 @@
 import { runIfMain } from '#test-runner';
 import { createSuite as createOverkillSuite } from '../packages/engine/engine.entry-point.ts';
+import { testNode as hostFamilyTestNode } from './host-family-plan.test.ts';
 import { testNode as reporterFlushTestNode } from './supervised-reporter-flush.test.ts';
 import { testNode as definitionLocationsTestNode } from './supervised-definition-locations.test.ts';
 import { testNode as supervisedChildProcessTestNode } from './supervised-child-process.test.ts';
@@ -13,6 +14,7 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        hostFamilyTestNode,
         reporterFlushTestNode,
         definitionLocationsTestNode,
         childProcessStartersTestNode,
