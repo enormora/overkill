@@ -9,7 +9,6 @@ import type {
     TableOptions,
     TestCaseOptions,
     TestNode,
-    TestRoot,
     ThrowingTestCaseOptions,
     WorkloadTestCaseOptions
 } from '../../engine/test-node.ts';
@@ -110,15 +109,10 @@ export function createWorkloadTestCase(options: WorkloadTestCaseOptions): Return
     return defaultEngine.createWorkloadTestCase(options);
 }
 
-export function createTestPlan(root: TestRoot): ReturnType<Engine['createTestPlan']> {
-    return defaultEngine.createTestPlan(root);
-}
+export const createTestPlan: Engine['createTestPlan'] = defaultEngine.createTestPlan;
 
-export function createTestPlanFromTestFiles(
-    options: Parameters<Engine['createTestPlanFromTestFiles']>[0]
-): ReturnType<Engine['createTestPlanFromTestFiles']> {
-    return defaultEngine.createTestPlanFromTestFiles(options);
-}
+export const createTestPlanFromTestFiles: Engine['createTestPlanFromTestFiles'] =
+    defaultEngine.createTestPlanFromTestFiles;
 
 export const execute: Engine['execute'] = defaultEngine.execute;
 export const prepareFamily: Engine['prepareFamily'] = defaultEngine.prepareFamily;
@@ -135,7 +129,7 @@ export function ownsTestNode(value: unknown): value is TestNode {
     return defaultEngine.ownsTestNode(value);
 }
 
-export type { Engine } from '../../engine/engine.ts';
+export type { Engine, TestPlanFactory, TestPlanFromTestFilesFactory } from '../../engine/engine.ts';
 export type {
     BenchmarkGarbageCollectionCapability
 } from '../../engine/benchmark-garbage-collection.ts';
@@ -150,7 +144,6 @@ export type {
     CoverageThresholdFailure
 } from '../../engine/coverage-artifact.ts';
 export type {
-    TestPlanFromTestFilesFactory,
     TestPlanFromTestFilesOptions,
     TestPlan,
     TestPlanCase,
@@ -403,7 +396,6 @@ export type {
     WorkloadTestCaseVariant,
     TestCaseOptions,
     DefinitionLocations,
-    TestRoot,
     TestNode,
     ThrowingTestCaseExecution,
     ThrowingTestCaseOptions
@@ -534,3 +526,7 @@ export type {
     TimelineEntry,
     DebugStats
 } from '../../engine/test-debug.ts';
+
+export type { TestPlanCollectionPolicy } from '../../engine/plan-collection-policy.ts';
+
+export type { TestRoot } from '../../engine/test-node.ts';

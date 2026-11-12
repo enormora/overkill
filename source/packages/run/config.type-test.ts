@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'tstyche';
-import type { DefinedReporter } from '../engine/engine.entry-point.ts';
+import type { DefinedTestFamily, DefinedReporter } from '../engine/engine.entry-point.ts';
 import {
     ConfigError,
     type defineConfig,
@@ -20,7 +20,7 @@ import {
     type ProjectTimingProfilePolicy
 } from './config.entry-point.ts';
 
-type ExpectedTestFamily = 'integration' | 'microtest' | 'property' | 'type-test';
+type ExpectedTestFamily = DefinedTestFamily | 'integration' | 'microtest' | 'property';
 
 describe('@overkill-dev/run/config', function () {
     test('exposes property exploration settings without coverage or worker pools', function () {
@@ -75,7 +75,7 @@ describe('@overkill-dev/run/config', function () {
         }>();
     });
     test('exposes configuration loading and authoring types', function () {
-        expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
+        expect<typeof defineConfig>().type.toBeCallableWith({ profiles: { unit: { testFamily: 'microtest' } } });
         expect<typeof loadConfig>().type.toBe<
             (request: ConfigLoadRequest) => Promise<LoadedConfig>
         >();

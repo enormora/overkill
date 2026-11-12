@@ -1,6 +1,7 @@
 import { runIfMain } from '#test-runner';
 
 import {
+    type TestPlan,
     defaultFailureArtifactPolicy,
     createTestCase as createDirectTestCase,
     createSuite as createOverkillSuite,
@@ -10,13 +11,13 @@ import {
     type TestScope as OverkillScope
 } from '../packages/engine/engine.entry-point.ts';
 import { createReportingContext } from '../engine/reporting-context.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
 import {
     defineFixedOutputRenderer,
     defineFixedReporter,
     type FixedDefinedReporter
 } from '../test-support/reporter-definition.ts';
-import { normalizeConfig, type LoadedConfig } from '../config/config.ts';
+import { normalizeConfig } from '../config/config.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
 import type { MicrotestProfileConfig } from '../config/types.ts';
 import { defaultRunEngine } from './default-run-engine.ts';
 import {

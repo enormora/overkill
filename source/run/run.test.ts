@@ -410,6 +410,7 @@ export const testNode = createOverkillSuite({
                 scope.require.defined(runStartEvent);
                 scope.assert.equal(runStartEvent.kind, 'run-start');
                 scope.assert.deepEqual(plainData(runStartEvent.kind === 'run-start' ? runStartEvent.facts : null), {
+                    family: { id: 'microtest', version: '1', settings: null, preparation: null, collection: null },
                     adapter: null,
                     cases: [
                         expectedPassingFixtureLiveCaseFact()

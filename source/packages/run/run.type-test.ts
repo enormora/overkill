@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'tstyche';
+import type { ProjectDefinedFamilyProfile } from '../../config/schema.ts';
 import type {
     AttachmentLimits,
     FailureArtifactPolicy,
@@ -44,7 +45,7 @@ import {
     type ProcessModel,
     type ProfileConfig,
     type BenchmarkProfileConfig,
-    type AdapterProfileConfig,
+    type DefinedFamilyProfile,
     type ProfileFiles,
     type Config,
     type ProjectIntegrationProfileConfig,
@@ -52,7 +53,6 @@ import {
     type ProjectProfileFiles,
     type ProjectMicrotestProfileConfig,
     type ProjectPropertyProfileConfig,
-    type ProjectAdapterProfileConfig,
     type ProjectMicrotestExecution,
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
@@ -417,7 +417,7 @@ describe('@overkill-dev/run config', function () {
         expect<NormalizedConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<NormalizedConfig['profiles'][string]>().type.toBe<ProfileConfig>();
         expect<ProfileConfig>().type.toBe<
-            AdapterProfileConfig | BenchmarkProfileConfig | OrdinaryProfile
+            BenchmarkProfileConfig | DefinedFamilyProfile | OrdinaryProfile
         >();
         expect<NormalizedConfig['profiles']['backend-http']>().type.toBe<ProfileConfig>();
         expect<NormalizedConfig['reporters']>().type.toBe<readonly DefinedReporter[] | null>();
@@ -452,7 +452,7 @@ describe('@overkill-dev/run config', function () {
 
     test('exposes property profile config types', function () {
         expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
-            OrdinaryProjectProfile | ProjectAdapterProfileConfig | ProjectBenchmarkProfileConfig
+            OrdinaryProjectProfile | ProjectBenchmarkProfileConfig | ProjectDefinedFamilyProfile
         >();
         expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
             ProjectPropertyProfileConfig
@@ -460,7 +460,7 @@ describe('@overkill-dev/run config', function () {
     });
 
     test('exposes config loading helpers from the main package surface', function () {
-        expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
+        expect<typeof defineConfig>().type.toBeCallableWith({ profiles: { unit: { testFamily: 'microtest' } } });
         expect<typeof loadConfig>().type.toBe<
             (request: ConfigLoadRequest) => Promise<LoadedConfig>
         >();

@@ -1,21 +1,22 @@
-import type {
-    AdapterProfileConfig,
-    NormalizedConfig,
-    ProfilesConfig,
-    ProfileConfig,
-    ProfileFiles,
-    LoaderConfig,
-    ProcessBudgets,
-    ProcessUsagePolicy,
-    TimingProfilePolicy,
-    TimeoutPolicy,
-    MicrotestExecution,
-    WorkGroup,
-    WorkDistribution,
-    HostProcess,
-    BenchmarkExecution,
-    IntegrationExecution,
-    CoveragePolicy
+import {
+    type DefinedFamilyProfile,
+    isDefinedFamilyProfile,
+    type NormalizedConfig,
+    type ProfilesConfig,
+    type ProfileConfig,
+    type ProfileFiles,
+    type LoaderConfig,
+    type ProcessBudgets,
+    type ProcessUsagePolicy,
+    type TimingProfilePolicy,
+    type TimeoutPolicy,
+    type MicrotestExecution,
+    type WorkGroup,
+    type WorkDistribution,
+    type HostProcess,
+    type BenchmarkExecution,
+    type IntegrationExecution,
+    type CoveragePolicy
 } from './types.ts';
 
 type ProfileFileSets = {
@@ -197,7 +198,22 @@ function copyBenchmarkExecution(execution: BenchmarkExecution): BenchmarkExecuti
         : { ...execution };
 }
 
-function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfileConfig>): ProfileConfig {
+function copyDefinedFamilyProfile(profile: DefinedFamilyProfile): DefinedFamilyProfile {
+    return {
+        ...profile,
+        testFamily: profile.testFamily,
+        execution: copyMicrotestExecution(profile.execution),
+        files: copyProfileFiles(profile.files),
+        reporters: copyReporters(profile.reporters),
+        processUsage: copyProcessUsagePolicy(profile.processUsage),
+        runRecords: { ...profile.runRecords },
+        timeouts: { ...profile.timeouts },
+        timings: { ...profile.timings },
+        failureArtifacts: structuredClone(profile.failureArtifacts)
+    };
+}
+
+function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, DefinedFamilyProfile>): ProfileConfig {
     if (profile.testFamily === 'property') {
         return {
             baselines: { ...profile.baselines, adapters: Array.from(profile.baselines.adapters) },
@@ -280,20 +296,8 @@ function copyBuiltinProfileConfig(profile: Exclude<ProfileConfig, AdapterProfile
     };
 }
 
-function copyAdapterProfile(profile: AdapterProfileConfig): AdapterProfileConfig {
-    return {
-        ...profile,
-        files: copyProfileFiles(profile.files),
-        execution: { ...profile.execution },
-        failureArtifacts: structuredClone(profile.failureArtifacts),
-        timeouts: { ...profile.timeouts },
-        processUsage: copyProcessUsagePolicy(profile.processUsage),
-        reporters: profile.reporters === null ? null : Array.from(profile.reporters)
-    };
-}
-
 function copyProfileConfig(profile: ProfileConfig): ProfileConfig {
-    return profile.testFamily === 'type-test' ? copyAdapterProfile(profile) : copyBuiltinProfileConfig(profile);
+    return isDefinedFamilyProfile(profile) ? copyDefinedFamilyProfile(profile) : copyBuiltinProfileConfig(profile);
 }
 
 function copyProfilesConfig(profiles: ProfilesConfig): ProfilesConfig {

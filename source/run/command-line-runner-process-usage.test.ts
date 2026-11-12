@@ -18,7 +18,7 @@ import {
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
 import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
-import type { LoadedConfig } from '../config/config.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
 import type { RunCommand, RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';

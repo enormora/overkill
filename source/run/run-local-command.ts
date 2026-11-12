@@ -1,3 +1,4 @@
+import { isAnalysisFamilyPlan, observeResolvedFamily } from './family-profile-run.ts';
 import { finalizeRunResult } from './run-result-finalization.ts';
 import { executeWithRuntimeAttachments, preparePropertyAttachments } from './runtime-attachment-boundary.ts';
 import {
@@ -34,7 +35,7 @@ async function executeCollectedRun(
     runtimePolicy: RunRuntimePolicy | null,
     options: LocalRunOptions
 ): Promise<RunResult> {
-    if (run.facts.execution.testFamily === 'type-test') {
+    if (isAnalysisFamilyPlan(run.plan)) {
         return await executeResolvedRun(run, dependencies, runtimePolicy, options);
     }
     return await executeWithRuntimeAttachments(run, dependencies, async function executeAttachmentRun() {
@@ -62,7 +63,9 @@ async function runLocalWithPolicy(
             benchmarkHost: null
         });
     }
-    return await executeCollectedRun(resolvedRun, dependencies, runtimePolicy, options);
+    return await observeResolvedFamily(resolvedRun, async function executeFamilyRun() {
+        return await executeCollectedRun(resolvedRun, dependencies, runtimePolicy, options);
+    });
 }
 
 async function runOrdinaryLocalCommand(

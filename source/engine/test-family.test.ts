@@ -7,6 +7,7 @@ import {
     type FamilyValue,
     type TestFamilyDefinition
 } from '../packages/engine/engine.entry-point.ts';
+import { bindFamilySettings } from './test-family.ts';
 
 function settingsDefinition<Settings extends FamilyValue>(
     parseSettings: (input: unknown) => Settings
@@ -68,6 +69,34 @@ const invalidDefinitions = [
 ];
 
 export const testNode = suite('executable family definitions', [
+    test('binds normalized settings independently without loading backends', function (scope) {
+        let loads = 0;
+        const family = defineTestFamily({
+            ...settingsDefinition(function (input) {
+                if (typeof input !== 'string') {
+                    throw new TypeError('Expected a project path.');
+                }
+                return { project: input.trim() };
+            }),
+            async load() {
+                loads += 1;
+                throw new Error('Backend loaded');
+            }
+        });
+        const first = bindFamilySettings(family, ' first ');
+        const second = bindFamilySettings(family, ' second ');
+        scope.assert.deepEqual([ JSON.stringify(first.settings), JSON.stringify(second.settings) ], [
+            '{"project":"first"}',
+            '{"project":"second"}'
+        ]);
+        scope.assert.equal(Object.isFrozen(first.settings), true);
+        scope.assert.equal(loads, 0);
+        scope.assert.throws(function rejectInvalidSettings() {
+            bindFamilySettings(family, 42);
+        }, { message: 'Expected a project path.' });
+        scope.assert.equal(loads, 0);
+        return scope.assert.collect();
+    }),
     ...invalidDefinitions.map(function rejectedDefinition(entry) {
         return test(`rejects definitions with ${entry.name}`, function (scope) {
             const definition = settingsDefinition(function () {

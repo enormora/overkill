@@ -8,7 +8,7 @@ import {
 import { executeRunCommand, type RunExecutionInvocation } from './run-execution.ts';
 import { prepareRunCommand, withRunCommandModuleBoundary } from './frozen-run-command.ts';
 import { readRunCancellation } from './run-cancellation.ts';
-import { createLocalResolvedRun } from './run-local-resolution.ts';
+import { inspectLocalResolvedRun } from './run-local-resolution.ts';
 import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import type {
     CollectionSource,
@@ -79,13 +79,14 @@ async function createResolvedRun(
         return await isolatedRun;
     }
 
-    return await (timing?.measureAsync(
+    const resolved = await (timing?.measureAsync(
         'resolution.freeze',
         emptyTimingSpanMetadata(),
         async function createTimedLocalResolvedRun() {
-            return await createLocalResolvedRun(resolvedCommand, dependencies, input, source);
+            return await inspectLocalResolvedRun(resolvedCommand, dependencies, input, source);
         }
-    ) ?? createLocalResolvedRun(resolvedCommand, dependencies, input, source));
+    ) ?? inspectLocalResolvedRun(resolvedCommand, dependencies, input, source));
+    return resolved;
 }
 
 function invocationTiming(

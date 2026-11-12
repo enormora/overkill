@@ -3,8 +3,8 @@ import { join } from 'node:path';
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../test/test.entry-point.ts';
 import { createEngine, type TestPlan, type TestScope } from '../engine/engine.entry-point.ts';
-import type { AdapterPreparation } from '../run/run.entry-point.ts';
 import { frozenTypeProject } from '../../test-support/frozen-type-project.ts';
+import type { CheckerPreparation } from './checker-plan.ts';
 import { prepare } from './compiler-plan.ts';
 import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
 
@@ -12,7 +12,7 @@ const sourceFileCount = 300;
 type PreparedProject = {
     readonly directory: string;
     readonly original: TestPlan;
-    readonly preparation: AdapterPreparation;
+    readonly preparation: CheckerPreparation;
     readonly settings: TypeTestOptions;
 };
 

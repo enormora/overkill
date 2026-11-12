@@ -5,6 +5,7 @@ import {
     RunResolutionError,
     type ProjectProfilesConfig
 } from '../run/run.entry-point.ts';
+import { analysisFixture } from '../../test-support/family-analysis-fixture.ts';
 import { selectMicrotestProfile } from './microtest-profile.ts';
 
 const integration = { testFamily: 'integration', files: { include: [ 'browser.test.ts' ] } } as const;
@@ -31,6 +32,28 @@ const rejectedSelections: readonly RejectedSelection[] = [
 ];
 
 export const testNode = suite('mutation microtest profile selection', [
+    test('reports imported family identity without loading its backend', function (scope) {
+        const events: string[] = [];
+        const config = normalizeConfig({
+            profiles: {
+                types: {
+                    testFamily: analysisFixture(function record(event) {
+                        events.push(event);
+                    }, 'complete'),
+                    settings: null,
+                    files: { include: [ 'source/native.types.ts' ] }
+                }
+            }
+        });
+        scope.assert.throws(function selectAnalysisAsMutation() {
+            return selectMicrotestProfile(config, 'types');
+        }, {
+            type: RunResolutionError,
+            message: 'Profile "types" has testFamily "@example/analysis". Stryker requires a Node microtest profile.'
+        });
+        scope.assert.deepEqual(events, []);
+        return scope.assert.collect();
+    }),
     test('infers the built-in fallback and a sole eligible configured profile', function (scope) {
         const fallback = normalizeConfig({});
         const configured = normalizeConfig({

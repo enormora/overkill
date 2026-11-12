@@ -2,11 +2,10 @@ import {
     createExecutionGlobalErrorObserver,
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
-import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
+import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { RunCollectionError } from './run-errors.ts';
 import {
-    resolveTestPlanCollectionPolicy,
     createRunTestPlan,
     createRunTestPlanFromFiles,
     type RunTestPlanInput
@@ -23,7 +22,6 @@ export type SupervisedChildTestPlanDependencies = {
     readonly loadRunTestModules: RunTestPlanInput['loadRunTestModules'];
 };
 
-type SelectedSupervisedEngine = Awaited<ReturnType<SupervisedChildTestPlanDependencies['loadRunEngineModule']>>;
 const missingObservedChildError: RunnerError = {
     attributedToAttempt: null,
     attributedTo: null,
@@ -33,13 +31,6 @@ const missingObservedChildError: RunnerError = {
     message: 'Supervised child failed after a process-level runtime error.',
     subtype: 'crash'
 };
-
-async function selectedEngine(
-    command: SupervisedChildCommand,
-    dependencies: SupervisedChildTestPlanDependencies
-): Promise<SelectedSupervisedEngine> {
-    return command.engine.kind === 'module' ? await dependencies.loadRunEngineModule(command.engine) : defaultRunEngine;
-}
 
 function firstObservedChildError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
     const [ error ] = [ ...observer.takeErrors(), missingObservedChildError ];
@@ -101,7 +92,7 @@ export async function createSupervisedChildTestPlan(
     command: SupervisedChildCommand,
     dependencies: SupervisedChildTestPlanDependencies
 ): Promise<TestPlan> {
-    const engine = await selectedEngine(command, dependencies);
+    const engine = await resolveHostEngine(command.engine, dependencies.loadRunEngineModule);
     const input = {
         replay: command.replay,
         cwd: command.cwd,
@@ -113,15 +104,16 @@ export async function createSupervisedChildTestPlan(
         root: command.root,
         testFamily: command.testFamily
     };
-    const policy = frozenSupervisedPolicy(command);
-    const testPlan = policy === null
-        ? await createRunTestPlan(input)
-        : await createRunTestPlanFromFiles({ ...input, files: policy.files });
-
-    return calibrationCapturePlan(
-        resolveTestPlanCollectionPolicy(testPlan, command),
-        command.benchmarkNormalization
-    );
+    return await createHostTestPlan({
+        command,
+        engine,
+        async collect(collectionPolicy) {
+            const policy = frozenSupervisedPolicy(command);
+            return policy === null
+                ? await createRunTestPlan(input, collectionPolicy)
+                : await createRunTestPlanFromFiles({ ...input, files: policy.files }, collectionPolicy);
+        }
+    });
 }
 
 export async function validateSupervisedPolicy(

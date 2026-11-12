@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 import { suite, test } from '../packages/test/test.entry-point.ts';
-import { defaultPropertyPolicy } from '../config/property-policy.ts';
+import { defaultPropertyPolicy } from '../engine/property-policy.ts';
 import { defineCodec } from './property-codec.ts';
 import { capturePropertyInput, decodePropertyInput, migratePropertyInput } from './property-graph.ts';
 import { createPropertyWork, propertyExhaustion } from './property-work.ts';

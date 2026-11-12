@@ -9,8 +9,8 @@ import {
     type ExecuteExecution,
     type RunResult
 } from '../packages/engine/engine.entry-point.ts';
-import { defaultPropertyPolicy } from '../config/property-policy.ts';
-import { resolveTestPlanCollectionPolicy } from '../run/run-test-plan.ts';
+import { defaultPropertyPolicy } from '../engine/property-policy.ts';
+import { resolveTestPlanCollectionPolicy } from '../run/run-selection.ts';
 import { createTestEngine } from './create-test-engine.ts';
 
 type PropertyExecutionRequest = {

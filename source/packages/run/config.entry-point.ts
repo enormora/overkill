@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { createConfigLoader } from '../../config/config.ts';
+import { createConfigLoader } from '../../config/config-loader.ts';
 
 async function fileExists(filePath: string): Promise<boolean> {
     try {
@@ -21,18 +21,12 @@ export const loadConfig = createConfigLoader({
     importModule
 });
 
-export {
-    defineConfig,
-    normalizeConfig
-} from '../../config/config.ts';
+export { defineConfig } from '../../config/profile-config.ts';
+export { normalizeConfig } from '../../config/config.ts';
 export { ConfigError } from '../../config/config-error.ts';
 export type { IntegrationRetryPolicy, RetryArtifactPolicy } from '../../config/execution.ts';
 export type { ProjectIntegrationRetryPolicy } from '../../config/schema.ts';
 export type {
-    LoadedConfig,
-    ConfigLoader,
-    ConfigLoaderDependencies,
-    ConfigLoadRequest,
     ProjectCoverageOutput,
     ProjectCoveragePolicy,
     ProjectCoverageSources,
@@ -54,12 +48,17 @@ export type {
     ProjectTimeoutConfig,
     ProjectUnmeasuredProcessUsage
 } from '../../config/config.ts';
+export type {
+    LoadedConfig,
+    ConfigLoader,
+    ConfigLoaderDependencies,
+    ConfigLoadRequest
+} from '../../config/config-loader.ts';
 
 export type {
     NormalizedConfig,
     ProfileConfig,
     BenchmarkProfileConfig,
-    AdapterProfileConfig,
     PropertyProfileConfig,
     TestProfileConfig
 } from '../../config/types.ts';
@@ -68,16 +67,6 @@ export type { ProjectBenchmarkProfileConfig } from '../../config/schema.ts';
 export type { BenchmarkHostLimits, BenchmarkHostPolicy } from '../../config/benchmark-host.ts';
 
 export type { RunRecordPersistenceMode, RunRecordProfilePolicy } from '../../config/types.ts';
-
-export type { ProjectAdapterProfileConfig } from '../../config/schema.ts';
-export type {
-    RunAdapterRegistration,
-    AdapterPreparation,
-    AdapterRunFacts,
-    RunProfileAdapter,
-    CollectedAdapterRun,
-    PreparedAdapterRun
-} from '../../config/adapter-profile.ts';
 
 export { defineBaselineAdapter } from '../../run/baseline-adapter.ts';
 export type {
@@ -92,3 +81,10 @@ export type {
 export type { OrdinaryBaselinePolicy } from '../../baselines/baseline-policy.ts';
 
 export { parseAdapterFacts } from '../../config/adapter-facts.ts';
+
+export type {
+    FamilySettingsOf,
+    ProjectFamilyProfileConfig,
+    CommonFamilyProfileConfig
+} from '../../config/profile-config.ts';
+export type { DefinedFamilyProfile } from '../../config/types.ts';

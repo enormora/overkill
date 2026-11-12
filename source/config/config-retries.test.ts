@@ -1,8 +1,11 @@
 import { runIfMain } from '#test-runner';
 import { createSuite, createTestCase, type TestScope } from '../packages/engine/engine.entry-point.ts';
-import { createSingleConfigModuleLoader, configFixtureCwd } from '../test-support/run-config-module-loader.ts';
+import {
+    createSingleConfigModuleLoader,
+    configFixtureCwd
+} from '../test-support/run-config-module-loader.ts';
 import { integrationProfileSchema, microtestProfileSchema } from './schema.ts';
-import type { LoadedConfig } from './config.ts';
+import type { LoadedConfig } from './config-loader.ts';
 
 const metadata = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] } as const;
 const files = { include: [ 'source/**/*.integration.test.ts' ] };

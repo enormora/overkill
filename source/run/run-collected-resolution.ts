@@ -87,7 +87,7 @@ function hasValidReplaySelection(command: RunCommand, plan: CollectedRunPlan): b
 
 async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInput): Promise<ResolvedRun> {
     assertReplaySelection(input.command, hasValidReplaySelection(input.command, input.collectedPlan));
-    assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile.testFamily);
+    assertCollectedRunPlanMatchesTestFamily(input.collectedPlan, input.profile);
     assertCollectedRunPlanCasesMatchProfilePolicy(input.collectedPlan, input.profile);
 
     if (!input.allowEmptySelection) {

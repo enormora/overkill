@@ -10,23 +10,29 @@ import {
     invalidProfileFileSetNameMessage,
     invalidProfileNameMessage
 } from './profile-patterns.ts';
-import type {
-    ProjectAdapterProfileConfig,
-    ProjectIntegrationExecution,
-    ProjectProfileFiles,
-    ProjectTimeoutConfig,
-    ProjectTimingProfilePolicy
-} from './schema.ts';
-import { failureArtifactPolicySchema } from './evidence-policy.ts';
 import {
+    integrationProfileSchema,
+    type ProjectProcessBudgets,
+    type ProjectMeasuredProcessUsage,
+    type ProjectProcessUsageConfig,
+    type ProjectIntegrationExecution,
+    type ProjectProfileFiles,
+    type ProjectTimeoutConfig,
+    type ProjectDefinedFamilyProfile,
+    type ProjectTimingProfilePolicy
+} from './schema.ts';
+import {
+    defaultProcessUsagePolicy,
+    defaultProcessUsageSamplingIntervalMilliseconds,
     defaultCoveragePolicy,
     defaultTimingProfilePolicy,
-    defaultWorkDistribution,
-    defaultProcessUsagePolicy
+    defaultWorkDistribution
 } from './defaults.ts';
 import { ConfigError } from './config-error.ts';
 import type {
-    AdapterProfileConfig,
+    ProcessBudgets,
+    ProcessUsagePolicy,
+    ProfileConfig,
     CoveragePolicy,
     CoverageSourcePolicy,
     CoverageThresholds,
@@ -237,25 +243,8 @@ export function normalizedWorkDistribution(
     return normalizeWorkDistribution(execution, defaultWorkDistribution);
 }
 
-export function normalizeTimings(timings: ProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
+function normalizeTimings(timings: ProjectTimingProfilePolicy | undefined): TimingProfilePolicy {
     return { collection: timings?.collection ?? defaultTimingProfilePolicy.collection };
-}
-
-export function normalizeAdapterProfile(profile: ProjectAdapterProfileConfig): AdapterProfileConfig {
-    profile.adapter.validate(profile.settings);
-    return {
-        adapter: profile.adapter,
-        settings: profile.settings,
-        testFamily: 'type-test',
-        files: normalizeRequiredProfileFiles(profile.files),
-        reporters: profile.reporters ?? null,
-        execution: { processModel: 'in-process', maxConcurrency: 1, scheduling: 'serial' },
-        processUsage: defaultProcessUsagePolicy,
-        failureArtifacts: failureArtifactPolicySchema.parse(profile.failureArtifacts),
-        timings: defaultTimingProfilePolicy,
-        runRecords: { persist: 'on-demand' },
-        timeouts: { collectionMilliseconds: 60_000, softMilliseconds: 60_000, hardMilliseconds: 60_000 }
-    };
 }
 
 function timeoutValue(value: number | undefined, fallback: number): number {
@@ -270,7 +259,7 @@ function assertValidTimeouts(timeouts: TimeoutPolicy): void {
     }
 }
 
-export function normalizeTimeouts(
+function normalizeTimeouts(
     timeouts: ProjectTimeoutConfig | undefined,
     defaultPolicy: TimeoutPolicy
 ): TimeoutPolicy {
@@ -281,4 +270,92 @@ export function normalizeTimeouts(
     };
     assertValidTimeouts(policy);
     return policy;
+}
+
+function normalizeBudgetValue(value: number | null | undefined): number | null {
+    return value ?? null;
+}
+
+function normalizeProcessBudgets(processBudgets: ProjectProcessBudgets | undefined): ProcessBudgets {
+    return {
+        activeResourceCount: normalizeBudgetValue(processBudgets?.activeResourceCount),
+        javaScriptEngineHeapBytes: normalizeBudgetValue(processBudgets?.javaScriptEngineHeapBytes),
+        residentSetBytes: normalizeBudgetValue(processBudgets?.residentSetBytes),
+        residentSetGrowthBytesPerSecond: normalizeBudgetValue(processBudgets?.residentSetGrowthBytesPerSecond)
+    };
+}
+
+function disabledProcessBudgets(): ProcessBudgets {
+    return {
+        activeResourceCount: null,
+        javaScriptEngineHeapBytes: null,
+        residentSetBytes: null,
+        residentSetGrowthBytesPerSecond: null
+    };
+}
+
+function copyProcessBudgets(processBudgets: ProcessBudgets): ProcessBudgets {
+    return {
+        activeResourceCount: processBudgets.activeResourceCount,
+        javaScriptEngineHeapBytes: processBudgets.javaScriptEngineHeapBytes,
+        residentSetBytes: processBudgets.residentSetBytes,
+        residentSetGrowthBytesPerSecond: processBudgets.residentSetGrowthBytesPerSecond
+    };
+}
+
+function copyProcessUsagePolicy(policy: ProcessUsagePolicy): ProcessUsagePolicy {
+    return {
+        budgets: copyProcessBudgets(policy.budgets),
+        measure: policy.measure,
+        samplingIntervalMilliseconds: policy.samplingIntervalMilliseconds
+    };
+}
+
+function normalizeUnmeasuredProcessUsage(): ProcessUsagePolicy {
+    return {
+        budgets: disabledProcessBudgets(),
+        measure: false,
+        samplingIntervalMilliseconds: defaultProcessUsageSamplingIntervalMilliseconds
+    };
+}
+
+function normalizeMeasuredProcessUsage(profile: ProjectMeasuredProcessUsage): ProcessUsagePolicy {
+    return {
+        budgets: normalizeProcessBudgets(profile.budgets),
+        measure: true,
+        samplingIntervalMilliseconds: profile.samplingIntervalMilliseconds ??
+            defaultProcessUsageSamplingIntervalMilliseconds
+    };
+}
+
+function normalizeProcessUsage(
+    profile: ProjectProcessUsageConfig | undefined
+): ProcessUsagePolicy {
+    if (profile === undefined) {
+        return copyProcessUsagePolicy(defaultProcessUsagePolicy);
+    }
+
+    if (profile.measure !== true) {
+        return normalizeUnmeasuredProcessUsage();
+    }
+
+    return normalizeMeasuredProcessUsage(profile);
+}
+
+export function normalizeProfilePolicy(
+    profile: Pick<
+        ProjectDefinedFamilyProfile,
+        'failureArtifacts' | 'processUsage' | 'reporters' | 'runRecords' | 'timeouts' | 'timings'
+    >,
+    defaults: TimeoutPolicy
+): Pick<ProfileConfig, 'failureArtifacts' | 'processUsage' | 'reporters' | 'runRecords' | 'timeouts' | 'timings'> {
+    const timeouts = normalizeTimeouts(profile.timeouts, defaults);
+    return {
+        reporters: profile.reporters ?? null,
+        processUsage: normalizeProcessUsage(profile.processUsage),
+        runRecords: { persist: profile.runRecords?.persist ?? 'on-demand' },
+        failureArtifacts: integrationProfileSchema.unwrap().shape.failureArtifacts.parse(profile.failureArtifacts),
+        timings: normalizeTimings(profile.timings),
+        timeouts
+    };
 }

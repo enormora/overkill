@@ -1,5 +1,10 @@
 import { runIfMain } from '#test-runner';
-import type { NormalizedConfig, ResolvedRun, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
+import type {
+    NormalizedConfig,
+    ResolvedRun,
+    RunCommand,
+    RunRequest
+} from '../packages/run/run.entry-point.ts';
 import {
     attachTestBodyResourceAttachments,
     createRoot,
@@ -19,6 +24,7 @@ import {
     defaultRunRequest
 } from '../test-support/run-command-factory.ts';
 
+import { expandRuntimeMatrices } from '../engine/runtime-matrix-expansion.ts';
 import type { RunFilter } from './run-request-types.ts';
 
 import {
@@ -36,9 +42,9 @@ import {
     selectedCollectedRunPlan,
     selectedTestPlan,
     assertCollectedRunPlanMatchesTestFamily,
-    assertTestPlanMatchesTestFamily
+    assertTestPlanMatchesTestFamily,
+    resolveTestPlanCollectionPolicy
 } from './run-selection.ts';
-import { expandRuntimeMatrices } from './runtime-matrix-expansion.ts';
 
 type RunCommandParts = {
     readonly config: NormalizedConfig;
@@ -205,6 +211,26 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            annotations: {},
+            controls: {},
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'property collection rejects missing profile policy',
+            body(scope) {
+                const plan = testPlanForCase(createOverkillTestCase({
+                    annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ], title: 'case',
+                    body(caseScope) { return caseScope.assert.collect(); }
+                }));
+                scope.assert.throws(function missingPolicy() {
+                    resolveTestPlanCollectionPolicy(plan, {
+                        testFamily: 'property',
+                        propertyPolicy: null,
+                        timeoutMilliseconds: 1000
+                    });
+                }, { message: 'Property collection requires profile policy.' });
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'assertTestPlanMatchesTestFamily() rejects microtest cases with resource descriptors',

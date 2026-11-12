@@ -2,9 +2,9 @@ import type { BenchmarkGarbageCollectionPolicy } from '../engine/benchmark-resul
 import type { PropertyPolicy } from '../engine/property-node.ts';
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
 import type { BenchmarkBaselinePolicy, OrdinaryBaselinePolicy } from '../baselines/baseline-policy.ts';
+import type { DefinedTestFamily, BoundFamilySettings, FamilyValue } from '../engine/test-family.ts';
 import type { ProfileEvidencePolicy } from './evidence-policy.ts';
 import type { ReportingPolicy } from './reporting-schema.ts';
-import type { RunAdapterRegistration } from './adapter-profile.ts';
 import type { HistoryPolicy } from './history-policy.ts';
 import type { BenchmarkHostPolicy } from './benchmark-host.ts';
 import type {
@@ -224,26 +224,24 @@ export type PropertyProfileConfig = {
     readonly timeouts: TimeoutPolicy;
 };
 
-export type AdapterProfileConfig = {
-    readonly execution: {
-        readonly processModel: 'in-process';
-        readonly maxConcurrency: 1;
-        readonly scheduling: 'serial';
-    };
-    readonly files: ProfileFiles;
-    readonly reporters: ReportingPolicy['reporters'];
-    readonly processUsage: ProcessUsagePolicy;
-    readonly runRecords: RunRecordProfilePolicy;
+export const familySettings: unique symbol = Symbol.for('@overkill-dev/run/FamilySettings');
+
+export type DefinedFamilyProfile = {
+    readonly execution: MicrotestExecution;
     readonly failureArtifacts: ProfileEvidencePolicy['failureArtifacts'];
+    readonly files: ProfileFiles;
+    readonly processUsage: ProcessUsagePolicy;
+    readonly reporters: ReportingPolicy['reporters'];
+    readonly runRecords: RunRecordProfilePolicy;
+    readonly settings: FamilyValue;
+    readonly testFamily: DefinedTestFamily;
     readonly timings: TimingProfilePolicy;
     readonly timeouts: TimeoutPolicy;
-    readonly testFamily: 'type-test';
-    readonly adapter: RunAdapterRegistration;
-    readonly settings: unknown;
+    readonly [familySettings]: BoundFamilySettings;
 };
 
 export type BuiltinTestProfileConfig = IntegrationProfileConfig | MicrotestProfileConfig | PropertyProfileConfig;
-export type TestProfileConfig = AdapterProfileConfig | BuiltinTestProfileConfig;
+export type TestProfileConfig = BuiltinTestProfileConfig | DefinedFamilyProfile;
 export type ProfileConfig = BenchmarkProfileConfig | TestProfileConfig;
 
 export type ProfilesConfig = Readonly<Record<string, ProfileConfig>>;
@@ -280,5 +278,14 @@ export type RunRecordPersistenceFacts = {
 };
 
 export function isBuiltinTestProfile(profile: ProfileConfig): profile is BuiltinTestProfileConfig {
-    return [ 'microtest', 'property', 'integration' ].includes(profile.testFamily);
+    return typeof profile.testFamily === 'string' &&
+        [ 'microtest', 'property', 'integration' ].includes(profile.testFamily);
+}
+
+export function profileFamilyId(profile: ProfileConfig): string {
+    return typeof profile.testFamily === 'string' ? profile.testFamily : profile.testFamily.id;
+}
+
+export function isDefinedFamilyProfile(profile: ProfileConfig): profile is DefinedFamilyProfile {
+    return typeof profile.testFamily !== 'string';
 }

@@ -1,7 +1,7 @@
 import { propertyReplayContext } from './run-support.ts';
 import { currentExecutionSession, currentSnapshotRun } from './execution-session-context.ts';
 import { assertDirectEntrypointCollectionMatches } from './direct-entrypoint-collection.ts';
-import { createLocalTestPlan, type LocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
+import { inspectLocalTestPlan, type LocalTestPlan, type LocalTestPlanInput } from './run-local-test-plan.ts';
 import { resolveProcessUsagePolicy, resolveRunScheduling } from './run-profile-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
 import type { RunCommand, CollectedRunPlan, RunRequest } from './run-types.ts';
@@ -80,25 +80,26 @@ export async function createExpectedDirectEntrypointPlan(
     dependencies: RunOrchestratorDependencies,
     input: ResolvedRunInput,
     source: IsolatedRunCollectionSource
-): Promise<LocalTestPlan | null> {
+): Promise<LocalTestPlan['testPlan'] | null> {
     return source.kind === 'direct-entrypoint'
-        ? await createLocalTestPlan({
+        ? await inspectLocalTestPlan({
             command,
             definitionLocationCapture: 'enabled',
             dependencies,
             files: input.files,
             profile: input.profile,
+            projectRoot: input.projectRoot,
             source
         })
         : null;
 }
 
 export function assertExpectedDirectEntrypointCollection(
-    expected: LocalTestPlan | null,
+    expected: LocalTestPlan['testPlan'] | null,
     actual: CollectedRunPlan
 ): void {
     if (expected !== null) {
-        assertDirectEntrypointCollectionMatches(expected.testPlan, actual);
+        assertDirectEntrypointCollectionMatches(expected, actual);
     }
 }
 
@@ -139,9 +140,8 @@ function createSupervisedCommandBase(input: SupervisedCommandBaseInput): Supervi
         paths: resolvedPaths(input.files),
         processBudgets: processUsagePolicy.budgets,
         processUsageSamplingIntervalMilliseconds: processUsagePolicy.samplingIntervalMilliseconds,
-        ...runCollectionContext(input.source, input.command.cwd),
+        ...runCollectionContext(input.source, input.command.cwd, input.profile),
         scheduling: resolveRunScheduling(input.command.request, input.profile),
-        testFamily: input.profile.testFamily,
         debug: input.command.request.debug,
         failureArtifacts: input.profile.failureArtifacts,
         retryPolicy: input.profile.testFamily === 'integration' ? input.profile.retries : null,
@@ -235,9 +235,8 @@ export function createWorkerPoolCommand(
         paths: resolvedPaths(input.files),
         processBudgets: processUsagePolicy.budgets,
         processUsageSamplingIntervalMilliseconds: processUsagePolicy.samplingIntervalMilliseconds,
-        ...runCollectionContext(input.source, input.command.cwd),
+        ...runCollectionContext(input.source, input.command.cwd, input.profile),
         scheduling: input.profile.execution.scheduling,
-        testFamily: input.profile.testFamily,
         timeoutMilliseconds: input.profile.timeouts.softMilliseconds,
         workerLifecycle: input.profile.execution.processModel === 'worker-pool'
             ? input.profile.execution.workerLifecycle

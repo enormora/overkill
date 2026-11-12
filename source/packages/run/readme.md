@@ -924,16 +924,19 @@ The CLI equivalent is `overkill replay-witness <path>` with `--config`, `--profi
 `--no-capture` is rejected consistently with ordinary property runs. Simulation
 witnesses require an explicit profile and a resource restoration callback.
 
-## Profile adapters
+## Executable family profiles
 
-Adapter preparation returns `{ testPlan, collect }`. The collection closure
-retains backend inputs while the runner selects executable work. Resolution
-collects once, exposes immutable JSON through `RunFacts.adapter`, and retains
-the collection for lowering and execution. Reusable invocations collect their
-selected subset through the original preparation. Adapter result artifacts
-also carry lossless JSON facts; assertion diagnostic budgets do not apply.
+Optional profiles select an imported family definition through `testFamily` and
+put family-specific input in `settings`. `defineConfig` infers each profile's
+settings independently, including configs mixing several families and built-in
+aliases. Common discovery, reporter, execution, timeout, timing, and record
+policy stays at profile level. Unknown top-level fields are rejected.
 
-Adapters can resolve package identity with `packageVersion(moduleUrl)`.
+The runner uses the engine's preparation, exact collection, execution, and
+disposal contract. Each reusable invocation creates a fresh preparation.
+Inspection and empty selections release preparations without executing bodies.
+The former runner adapter hooks are removed; historical adapter facts remain
+readable. Imported families currently require in-process placement.
 
 ### Debug mode
 

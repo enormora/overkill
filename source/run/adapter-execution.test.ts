@@ -1,360 +1,139 @@
 import { runIfMain } from '#test-runner';
 import { suite, test } from '../packages/test/test.entry-point.ts';
-import {
-    createEngine,
-    createRunResult,
-    singleAttemptResult,
-    type Engine,
-    type TestCase,
-    type TestPlan,
-    type PerTestResult,
-    type RunnerError,
-    type RunResult
-} from '../packages/engine/engine.entry-point.ts';
-import type { RunAdapterRegistration, AdapterPreparation, CollectedAdapterRun } from '../config/adapter-profile.ts';
 import { normalizeConfig } from '../config/config.ts';
-import { createInMemoryRealTimeReporter, type InMemoryRealTimeReporter } from '../reporters/in-memory-reporter.ts';
 import { createDeterministicRunCoordinator } from '../test-support/create-deterministic-run-orchestrator.ts';
 import { defaultRunRequest } from '../test-support/run-command-factory.ts';
-import { executeAdapterPlan, prepareAdapterPlan } from './adapter-execution.ts';
+import { analysisFixture, type EvidenceMode } from '../test-support/family-analysis-fixture.ts';
+import type { TestPlan, Engine } from '../packages/engine/engine.entry-point.ts';
+import { createTestEngine } from '../test-support/create-test-engine.ts';
+import { testNode as familyPolicy } from './family-profile-policy.test.ts';
+import type { RunCommand } from './run-types.ts';
 
-function authoredCase(engine: Engine): TestCase {
-    return engine.createTestCase({
-        annotations: {},
-        controls: {},
-        title: 'case',
-        definitionLocations: [ { kind: 'unknown' } ],
-        body() {
-            throw new Error('Adapter execution must not invoke the runtime body.');
-        }
-    });
-}
-
-function executionPlan(): TestPlan {
-    const engine = createEngine();
-    return engine.createTestPlan(engine.createRoot({
-        annotations: {},
-        controls: {},
-        title: 'adapter',
-        children: [ authoredCase(engine) ]
-    }));
-}
-
-function reportedRun(plan: TestPlan, perTest: readonly PerTestResult[], errors: readonly RunnerError[]): RunResult {
-    return createRunResult(plan, perTest, errors, {
-        startedAtMicroseconds: 0,
-        completedAtMicroseconds: 0,
-        testExecutionWallTimeMicroseconds: 0,
-        processUsage: null,
-        planStatus: 'planned'
-    });
-}
-
-function passingCase(plan: TestPlan): PerTestResult {
-    const testCase = plan.cases[0];
-    return singleAttemptResult({
-        id: testCase.id,
-        workId: testCase.workId,
-        definitionLocations: [ { kind: 'unknown' } ],
-        outcome: { kind: 'pass' },
-        verdict: 'pass',
-        durationMicroseconds: 0
-    }, { index: 0 });
-}
-
-function conflictingEvidence(plan: TestPlan, conflict: 'duplicate' | 'unknown'): readonly PerTestResult[] {
-    const result = passingCase(plan);
-    if (conflict === 'duplicate') {
-        return [ result, result ];
-    }
-    const id = { ...result.id, title: 'unplanned' };
-    return [ { ...result, id, workId: { ...result.workId, case: id } } ];
-}
-
-function evidenceCollection(check: (plan: TestPlan) => RunResult, plan: TestPlan): CollectedAdapterRun {
+function fixtureCommand(record: (event: string) => void, mode: EvidenceMode): RunCommand {
     return {
-        facts: null,
-        async lower() {
-            return {
-                facts: null,
-                async execute() {
-                    return check(plan);
-                }
-            };
-        }
-    };
-}
-
-function evidenceAdapter(check: (plan: TestPlan) => RunResult): RunAdapterRegistration {
-    return {
-        id: 'evidence',
-        validate(settings) {
-            if (settings !== null) {
-                throw new Error('Expected null settings.');
-            }
-        },
-        async load() {
-            return {
-                async prepare(testPlan) {
-                    return {
-                        testPlan,
-                        async collect(plan) {
-                            return evidenceCollection(check, plan);
-                        }
-                    };
-                }
-            };
-        }
-    };
-}
-
-function failedPreparation(testPlan: TestPlan, record: (event: string) => void): AdapterPreparation {
-    record('prepare');
-    return {
-        testPlan,
-        async collect() {
-            record('collect');
-            return {
-                facts: 'collected',
-                async lower() {
-                    throw new Error('Lowering failed.');
-                }
-            };
-        }
-    };
-}
-
-function failingAdapter(record: (event: string) => void): RunAdapterRegistration {
-    return {
-        id: 'fixture',
-        validate() {
-            record('validate');
-        },
-        async load() {
-            record('load');
-            return {
-                async prepare(plan) {
-                    return failedPreparation(plan, record);
-                }
-            };
-        }
-    };
-}
-
-async function checkAdapterEvidence(adapter: RunAdapterRegistration, plan: TestPlan): Promise<RunResult> {
-    const preparation = await prepareAdapterPlan(adapter, null, plan);
-    return await executeAdapterPlan(adapter, preparation.collect(plan), plan);
-}
-
-function adapterRunFacts(reporter: InMemoryRealTimeReporter): unknown {
-    const start = reporter.getRecordedEntries().find(function (entry) {
-        return entry.event?.kind === 'run-start';
-    });
-    return start?.event?.kind === 'run-start' ? start.event.facts.adapter : null;
-}
-
-export const testNode = suite('generic adapter execution', [
-    test('reuses preparation across collected invocations', async function (scope) {
-        const events: string[] = [];
-        const adapter = failingAdapter(function (event) {
-            events.push(event);
-        });
-        const coordinator = createDeterministicRunCoordinator();
-        const config = normalizeConfig({
+        config: normalizeConfig({
             profiles: {
                 types: {
-                    testFamily: 'type-test',
-                    files: { include: [ 'source/native.types.ts' ] },
-                    adapter,
-                    settings: null
+                    testFamily: analysisFixture(record, mode),
+                    settings: null,
+                    files: { include: [ 'source/native.types.ts' ] }
                 }
             }
-        });
-        const initialized = await coordinator.orchestrator.initialize({
-            config,
-            cwd: '/project',
-            engine: { kind: 'default' },
-            request: defaultRunRequest({ profile: 'types', paths: [ 'source/native.types.ts' ] })
-        });
+        }),
+        cwd: '/project',
+        engine: { kind: 'default' as const },
+        request: defaultRunRequest({ profile: 'types', paths: [ 'source/native.types.ts' ], order: 'plan' })
+    };
+}
+
+function analysisPlan(engine: Engine): TestPlan {
+    const options = { annotations: {}, controls: {}, definitionLocations: [ { kind: 'unknown' } ] as const };
+    const node = engine.createTestCase({
+        ...options,
+        title: 'static',
+        body() {
+            throw new Error('Body invoked.');
+        }
+    });
+    return engine.createTestPlan(engine.createRoot({ ...options, title: 'root', children: [ node ] }));
+}
+
+export const testNode = suite('family profile execution', [
+    familyPolicy,
+    test('executes imported analysis through engine evidence and disposal', async function (scope) {
+        const events: string[] = [];
+        const coordinator = createDeterministicRunCoordinator();
+        const result = await coordinator.orchestrator.run(fixtureCommand(function record(event) {
+            events.push(event);
+        }, 'complete'));
+        scope.assert.equal(result.status, 'passed');
+        scope.assert.deepEqual(events, [ 'load', 'prepare', 'collect', 'execute', 'dispose' ]);
+        scope.assert.equal(result.summary.inconclusive, 0);
+        return scope.assert.collect();
+    }),
+    test('creates fresh single-use preparations for collected invocations', async function (scope) {
+        const events: string[] = [];
+        const coordinator = createDeterministicRunCoordinator();
+        const initialized = await coordinator.orchestrator.initialize(fixtureCommand(function record(event) {
+            events.push(event);
+        }, 'complete'));
         const collected = await initialized.collect();
         const first = await collected.run({ selection: { kind: 'all' } });
         const second = await collected.run({ selection: { kind: 'all' } });
-        scope.assert.deepEqual({
-            statuses: [ first.status, second.status ],
-            loads: events
-                .filter(function (event) {
-                    return event === 'load';
-                })
-                .length,
-            preparations: events
+        scope.assert.deepEqual([ first.status, second.status ], [ 'passed', 'passed' ]);
+        scope.assert.equal(
+            events
                 .filter(function (event) {
                     return event === 'prepare';
                 })
                 .length,
-            collections: events
+            3
+        );
+        scope.assert.equal(
+            events
                 .filter(function (event) {
-                    return event === 'collect';
+                    return event === 'dispose';
                 })
                 .length,
-            facts: collected.facts.adapter
-        }, {
-            statuses: [ 'failed', 'failed' ],
-            loads: 1,
-            preparations: 1,
-            collections: 3,
-            facts: { id: 'fixture', facts: 'collected' }
-        });
+            3
+        );
         return scope.assert.collect();
     }),
-    test('prepares through explicit registration and retains setup failures as runner errors', async function (scope) {
-        const events: string[] = [];
-        const adapter = failingAdapter(function record(event) {
-            events.push(event);
-        });
-        const prepared = await prepareAdapterPlan(adapter, null, executionPlan());
-        const result = await executeAdapterPlan(adapter, prepared.collect(prepared.testPlan), prepared.testPlan);
-        scope.assert.deepEqual(events, [ 'validate', 'load', 'prepare', 'collect' ]);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.equal(result.summary.passed, 0);
-        scope.assert.equal(result.runnerErrors.length, 1);
-        scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'Lowering failed.');
-        return scope.assert.collect();
-    }),
-    test('rejects missing evidence from an adapter claiming success', async function (scope) {
-        const plan = executionPlan();
-        const adapter = evidenceAdapter(function (input) {
-            return reportedRun(input, [], []);
-        });
-        const result = await checkAdapterEvidence(adapter, plan);
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'incomplete work evidence');
-        return scope.assert.collect();
-    }),
-    ...([ 'duplicate', 'unknown' ] as const).map(function (conflict) {
-        return test(`rejects ${conflict} executable identities in checker evidence`, async function (scope) {
-            const plan = executionPlan();
-            const adapter = evidenceAdapter(function (input) {
-                return reportedRun(input, conflictingEvidence(input, conflict), []);
-            });
-            const result = await checkAdapterEvidence(adapter, plan);
+    ...([ 'missing', 'duplicate' ] as const).map(function (mode) {
+        return test(`rejects ${mode} backend evidence`, async function (scope) {
+            const events: string[] = [];
+            const coordinator = createDeterministicRunCoordinator();
+            const result = await coordinator.orchestrator.run(fixtureCommand(function record(event) {
+                events.push(event);
+            }, mode));
             scope.assert.equal(result.status, 'failed');
-            scope.assert.equal(result.summary.passed, 0);
-            scope.assert.includes(result.runnerErrors[0]?.message ?? '', 'duplicate or unknown work identities');
+            scope.assert.true(result.runnerErrors.length > 0);
+            scope.assert.true(result.summary.inconclusive > 0);
+            scope.assert.equal(events.at(-1), 'dispose');
             return scope.assert.collect();
         });
     }),
-    test('preserves native checker errors when case evidence is unavailable', async function (scope) {
-        const failure: RunnerError = {
-            subtype: 'loader',
-            cause: null,
-            message: 'Compiler failed.',
-            diagnostics: [],
-            attributedTo: null,
-            attributedToWork: null,
-            attributedToAttempt: null
-        };
-        const adapter = evidenceAdapter(function (input) {
-            return reportedRun(input, [], [ failure ]);
-        });
-        const result = await checkAdapterEvidence(adapter, executionPlan());
-        scope.assert.equal(result.status, 'failed');
-        scope.assert.deepEqual(result.runnerErrors, [ failure ]);
-        scope.assert.equal(result.artifacts.length, 1);
-        return scope.assert.collect();
-    }),
-    test('rejects runtime-only requests before loading the checker', async function (scope) {
+    test('disposes inspection-only preparations', async function (scope) {
         const events: string[] = [];
-        const adapter = failingAdapter(function record(event) {
-            events.push(event);
-        });
-        const config = normalizeConfig({
-            profiles: {
-                types: {
-                    testFamily: 'type-test',
-                    files: { include: [ 'source/native.types.ts' ] },
-                    adapter,
-                    settings: null
-                }
-            }
-        });
         const coordinator = createDeterministicRunCoordinator();
-        const requests = [ { capture: 'live' }, { measureProcessUsage: true }, {
-            timingCollection: 'precise'
-        } ] as const;
-        for (const request of requests) {
-            await scope.assert.rejects(async function () {
-                return coordinator.orchestrator.resolve({
-                    config,
-                    cwd: '/project',
-                    engine: { kind: 'default' },
-                    request: defaultRunRequest({ profile: 'types', paths: [ 'source/native.types.ts' ], ...request })
-                });
-            }, {
-                message:
-                    'Adapter profiles do not support runtime capture, debugging, process budgets, or precise timings.'
-            });
-        }
-        await scope.assert.rejects(async function rejectDebugRequest() {
-            return coordinator.orchestrator.resolve({
-                config,
-                cwd: '/project',
-                engine: { kind: 'default' },
-                request: defaultRunRequest({ profile: 'types', debug: { mode: 'all', selectors: [] } })
-            });
-        }, { message: 'Debug mode requires runtime test bodies; type-test profiles use compiler diagnostics.' });
-        scope.assert.equal(events.includes('load'), false);
+        await coordinator.orchestrator.resolve(fixtureCommand(function record(event) {
+            events.push(event);
+        }, 'complete'));
+        scope.assert.deepEqual(events, [ 'load', 'prepare', 'collect', 'dispose' ]);
         return scope.assert.collect();
     }),
-    test('reports registered profiles through native runner events without invoking bodies', async function (scope) {
-        const engine = createEngine();
-        const reporter = createInMemoryRealTimeReporter();
-        const adapter = evidenceAdapter(function (plan) {
-            return reportedRun(plan, [ passingCase(plan) ], []);
+    test('keeps direct engine analysis below runner configuration and runtime bodies', async function (scope) {
+        const events: string[] = [];
+        const engine = createTestEngine();
+        const plan = analysisPlan(engine);
+        const { signal } = new AbortController();
+        await using prepared = await engine.prepareFamily({
+            testPlan: plan,
+            testFamily: analysisFixture(function (event) {
+                events.push(event);
+            }, 'complete'),
+            settings: null,
+            projectRoot: '/project',
+            signal
         });
-        const config = normalizeConfig({
-            profiles: {
-                types: {
-                    testFamily: 'type-test',
-                    files: { include: [ 'source/native.types.ts' ] },
-                    adapter,
-                    settings: null,
-                    reporters: [ reporter ]
-                }
-            }
+        const collected = await prepared.collect({
+            workIds: prepared.testPlan.cases.map(function (entry) {
+                return entry.workId;
+            }),
+            signal
         });
-        const coordinator = createDeterministicRunCoordinator();
-        const delivery = await coordinator.runDirectEntrypoint({
-            config,
-            cwd: '/project',
-            engine: { kind: 'instance', engine },
-            request: defaultRunRequest({ profile: 'types', paths: [ 'source/native.types.ts' ] })
-        }, {
-            kind: 'direct-entrypoint',
-            root: { annotations: {}, controls: {}, title: 'adapter' },
-            testNode: authoredCase(engine)
+        const result = await engine.execute(collected, {
+            signal,
+            debug: { mode: 'off' },
+            execution: { mode: 'serial-in-process' },
+            retryPolicy: null,
+            reporters: [],
+            runFacts: {},
+            startedAt: '2026-01-01T00:00:00.000Z'
         });
-        scope.assert.deepEqual({
-            status: delivery.result.status,
-            passed: delivery.result.summary.passed,
-            errors: delivery.result.runnerErrors,
-            artifacts: delivery.result.artifacts.map(function (artifact) {
-                return artifact.payload.kind;
-            })
-        }, { status: 'passed', passed: 1, errors: [], artifacts: [ 'adapter' ] });
-        scope.assert.deepEqual(adapterRunFacts(reporter), { id: 'evidence', facts: null });
-        scope.assert.deepEqual(
-            reporter
-                .getRecordedEntries()
-                .filter(function (entry) {
-                    return entry.type === 'event';
-                })
-                .map(function (entry) {
-                    return entry.event?.kind;
-                }),
-            [ 'run-start', 'test-start', 'test-end', 'run-end' ]
-        );
+        scope.assert.equal(result.status, 'passed');
+        scope.assert.deepEqual(events, [ 'load', 'prepare', 'collect', 'execute', 'dispose' ]);
         return scope.assert.collect();
     })
 ]);
-
 await runIfMain(import.meta, testNode);

@@ -1,11 +1,15 @@
 import { z } from 'zod/v4';
+import { isDefinedTestFamily, type DefinedTestFamily } from '../engine/test-family.ts';
+import {
+    defaultPropertyPolicy,
+    resolvePropertySettings,
+    propertySettingsSchema
+} from '../engine/property-policy.ts';
 import { attachmentLimitsSchema, failureArtifactPolicySchema } from './evidence-policy.ts';
 import { reporterSchema, outputRendererSchema } from './reporting-schema.ts';
-import { isRunAdapterRegistration, type RunAdapterRegistration } from './adapter-profile.ts';
 import { propertyCorpusPolicySchema } from './property-corpus.ts';
 import { historyPolicySchema } from './history-policy.ts';
 import { benchmarkHostPolicySchema } from './benchmark-host.ts';
-import { defaultPropertyPolicy, resolvePropertySettings, propertySettingsSchema } from './property-policy.ts';
 import { performanceBaselinePolicySchema, ordinaryBaselinePolicySchema } from './baseline-policy.ts';
 import {
     coveragePolicySchema,
@@ -327,25 +331,45 @@ export const propertyProfileSchema = z
 
 export type ProjectPropertyProfileConfig = z.input<typeof propertyProfileSchema>;
 
-const adapterProfileSchema = z
+export const familyProfileSchema = z
     .strictObject({
-        testFamily: z.literal('type-test'),
-        failureArtifacts: failureArtifactPolicySchema,
-        files: profileFilesSchema,
-        adapter: z.custom<RunAdapterRegistration>(isRunAdapterRegistration, 'Attach a type-test adapter explicitly.'),
+        testFamily: z.custom<DefinedTestFamily>(isDefinedTestFamily, 'Import a defined test family for testFamily.'),
         settings: z.unknown(),
-        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly())
+        files: profileFilesSchema,
+        execution: z.optional(microtestExecutionSchema),
+        reporters: z.optional(z.tuple([ reporterSchema ]).rest(reporterSchema).readonly()),
+        processUsage: z.optional(processUsageSchema),
+        failureArtifacts: failureArtifactPolicySchema,
+        timings: z.optional(timingProfilePolicySchema),
+        timeouts: z.optional(timeoutSchema),
+        runRecords: z.optional(z.strictObject({ persist: z.enum([ 'on-demand', 'always' ]) }))
     })
     .readonly();
-export type ProjectAdapterProfileConfig = z.input<typeof adapterProfileSchema>;
 
-const profileSchema = z.discriminatedUnion('testFamily', [
-    adapterProfileSchema,
+export type ProjectDefinedFamilyProfile = z.input<typeof familyProfileSchema>;
+
+const builtinProfileSchema = z.discriminatedUnion('testFamily', [
     benchmarkProfileSchema,
     integrationProfileSchema,
     microtestProfileSchema,
     propertyProfileSchema
 ]);
+
+function isFamilyProfileInput(input: unknown): boolean {
+    return typeof input === 'object' && input !== null && typeof Reflect.get(input, 'testFamily') === 'object';
+}
+
+const profileSchema = z.unknown().transform(function parseProfile(input, context) {
+    const schema = isFamilyProfileInput(input) ? familyProfileSchema : builtinProfileSchema;
+    const parsed = schema.safeParse(input);
+    if (!parsed.success) {
+        parsed.error.issues.forEach(function reportIssue(issue) {
+            context.addIssue({ ...issue });
+        });
+        return z.NEVER;
+    }
+    return parsed.data;
+});
 
 const profilesSchema = z.record(z.string(), profileSchema).readonly();
 

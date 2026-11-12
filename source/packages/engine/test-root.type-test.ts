@@ -8,6 +8,7 @@ import {
     type TestControlsInput,
     type TestNode,
     type TestPlan,
+    type TestPlanCollectionPolicy,
     type TestPlanFromTestFilesOptions,
     type TestRoot
 } from './engine.entry-point.ts';
@@ -44,7 +45,10 @@ describe('TestRoot', function () {
             };
         }>();
         expect<Engine['createTestPlanFromTestFiles']>().type.toBe<
-            (options: TestPlanFromTestFilesOptions) => TestPlan
+            (
+                options: TestPlanFromTestFilesOptions,
+                ...policies: readonly [] | readonly [TestPlanCollectionPolicy]
+            ) => TestPlan
         >();
         expect<Engine['ownsTestNode']>().type.toBe<(value: unknown) => value is TestNode>();
     });

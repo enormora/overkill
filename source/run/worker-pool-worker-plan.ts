@@ -3,10 +3,10 @@ import {
     type ExecutionGlobalErrorObserver
 } from '../engine/execution-global-error-observer.ts';
 import { createDefaultWorkId, workIdentityKey, type CaseId, type WorkId } from '../engine/identity.ts';
+import { createHostTestPlan, resolveHostEngine } from './host-test-plan.ts';
 import type { RunnerError, TestPlan } from './run-engine-primitives.ts';
 import { assertFrozenWorkloadInputs } from './workload-input-validation.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';
-import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
 import {
     loadRunEngineModule,
     loadRunTestModules,
@@ -27,7 +27,6 @@ export type CollectedWorkerPoolTestPlan = {
 };
 
 type AssignedWork = readonly WorkId[];
-type SelectedWorkerPoolEngine = Awaited<ReturnType<typeof loadRunEngineModule>>;
 const missingObservedWorkerError: RunnerError = {
     attributedToAttempt: null,
     attributedTo: null,
@@ -37,10 +36,6 @@ const missingObservedWorkerError: RunnerError = {
     message: 'Worker-pool worker failed after a process-level runtime error.',
     subtype: 'crash'
 };
-
-async function selectedEngine(command: WorkerPoolCommand): Promise<SelectedWorkerPoolEngine> {
-    return command.engine.kind === 'module' ? await loadRunEngineModule(command.engine) : defaultRunEngine;
-}
 
 function firstObservedWorkerError(observer: ExecutionGlobalErrorObserver): RunCollectionError {
     const [ error ] = [ ...observer.takeErrors(), missingObservedWorkerError ];
@@ -75,26 +70,30 @@ export async function runObservedWorkerCollection<Value>(collect: () => Promise<
 }
 
 async function createWorkerPoolTestPlan(command: WorkerPoolCommand): Promise<TestPlan> {
-    return await createRunTestPlan({
-        replay: command.replay,
-        cwd: command.cwd,
-        definitionLocationCapture: command.definitionLocationCapture,
-        discoverRunFiles: runDiscovery.discoverRunFiles,
-        engine: await selectedEngine(command),
-        loadRunTestModules,
-        paths: command.paths,
-        root: command.root,
-        testFamily: command.testFamily
+    const engine = await resolveHostEngine(command.engine, loadRunEngineModule);
+    return await createHostTestPlan({
+        command: { ...command, propertyPolicy: null },
+        engine,
+        async collect(policy) {
+            return await createRunTestPlan({
+                replay: command.replay,
+                cwd: command.cwd,
+                definitionLocationCapture: command.definitionLocationCapture,
+                discoverRunFiles: runDiscovery.discoverRunFiles,
+                engine,
+                loadRunTestModules,
+                paths: command.paths,
+                root: command.root,
+                testFamily: command.testFamily
+            }, policy);
+        }
     });
 }
 
 export async function collectTestPlan(command: WorkerPoolCommand): Promise<CollectedWorkerPoolTestPlan> {
     return {
         runnerErrors: [],
-        testPlan: calibrationCapturePlan(
-            await createWorkerPoolTestPlan(command),
-            command.benchmarkNormalization
-        )
+        testPlan: await createWorkerPoolTestPlan(command)
     };
 }
 

@@ -15,7 +15,7 @@ import {
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from '../../run/command-line-runner.ts';
-import type { LoadedConfig } from '../../config/config.ts';
+import type { LoadedConfig } from '../../config/config-loader.ts';
 import { orchestrator } from '../../run/run-orchestrator.entry-point.ts';
 import { defaultCoveragePolicy, normalizeHistoryPolicy } from '../../config/defaults.ts';
 import type { RunRequest } from '../../run/run-types.ts';

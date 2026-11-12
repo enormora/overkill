@@ -20,7 +20,7 @@ import {
     defaultMicrotestProfile,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
-import type { LoadedConfig } from '../config/config.ts';
+import type { LoadedConfig } from '../config/config-loader.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,

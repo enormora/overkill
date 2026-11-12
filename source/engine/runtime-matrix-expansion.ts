@@ -1,5 +1,5 @@
 import type { NonEmptyReadonlyArray } from '../assertion-protocol/assertion-node-shape.ts';
-import type { RuntimeId } from '../engine/identity.ts';
+import type { RuntimeId } from './identity.ts';
 import type {
     TestBodyResourceAttachments,
     TestBodyLeafRuntimeSummary,
@@ -7,8 +7,8 @@ import type {
     TestBodyRuntimeMatrixSummary,
     TestBodyRuntimeMatrixVariantSummary,
     TestBodyRuntimeSummary
-} from '../engine/test-body-resource-attachment.ts';
-import type { TestPlan, TestPlanCase } from '../engine/test-plan.ts';
+} from './test-body-resource-attachment.ts';
+import type { TestPlan, TestPlanCase } from './test-plan.ts';
 
 type RuntimeMatrixAttachment = Extract<TestBodyRuntimeSummary, { readonly kind: 'runtime-matrix'; }>;
 type RuntimeSelection = {

@@ -1,5 +1,5 @@
 import { realpath } from 'node:fs/promises';
-import type { ConfigLoader } from '../config/config.ts';
+import type { ConfigLoader } from '../config/config-loader.ts';
 import { parseReplayDebugArguments } from './replay-debug-arguments.ts';
 import { debugRequestArguments } from './run-debug.ts';
 import {

@@ -1,8 +1,8 @@
 import type { Clock } from '@enormora/clock';
-import { createPlainOutputRenderer } from '../engine/reporter-output.ts';
-import { createExecute, type RuntimeExecute, type ExecuteDependencies } from '../engine/execution.ts';
+import type { RuntimeExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter, type DefinedReporter } from '../engine/reporter.ts';
+import { createHostExecutionDriver, type HostExecutionInput } from './host-family-plan.ts';
 import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
 import { withReplayWire } from './replay-wire.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';
@@ -33,38 +33,20 @@ function ignoreLine(): void {
     return undefined;
 }
 
-function readActiveResourceTypes(): readonly string[] {
-    return process.getActiveResourcesInfo();
-}
-
 type SupervisedExecutionCommand = Pick<
     SupervisedRunCommand,
     'benchmarkGarbageCollection' | 'benchmarkNormalization' | 'replay' | 'snapshots' | 'testFamily'
 >;
 
-async function supervisedBenchmarkEnvironment(
-    command: SupervisedExecutionCommand
-): Promise<ExecuteDependencies['benchmarkEnvironment']> {
-    if (command.testFamily !== 'benchmark') {
-        return null;
-    }
-    const { createBenchmarkExecutionEnvironment } = await import('./benchmark-execution-environment.ts');
-    return createBenchmarkExecutionEnvironment(
-        command.benchmarkGarbageCollection,
-        'supervised-process',
-        command.benchmarkNormalization
-    );
-}
-
 export async function createSupervisedChildExecute(
     wallClock: Clock,
-    command: SupervisedExecutionCommand
+    command: SupervisedExecutionCommand,
+    sourcePlan: HostExecutionInput['sourcePlan']
 ): Promise<RuntimeExecute> {
-    const benchmarkEnvironment = await supervisedBenchmarkEnvironment(command);
-    const execute = createExecute({
-        benchmarkEnvironment,
-        asyncLeakDiagnostics: 'enabled',
-        readActiveResourceTypes,
+    const execute = await createHostExecutionDriver({
+        command,
+        processModel: 'supervised-process',
+        sourcePlan,
         reporterDispatcher: createReporterDispatcher({
             stderr: { writeLine: ignoreLine },
             stdout: { writeLine: ignoreLine },
@@ -74,14 +56,10 @@ export async function createSupervisedChildExecute(
     });
     return async function executeInReplayContext(plan, options) {
         return await withReplayWire(command.replay, async function executeAssignment() {
-            return await execute(
-                plan,
-                options === undefined ? options : {
-                    ...options,
-                    outputRenderer: createPlainOutputRenderer(),
-                    runtimePolicy: snapshotRuntimePolicy(options.runtimePolicy ?? null, command.snapshots)
-                }
-            );
+            return options === undefined ? await execute(plan) : await execute(plan, {
+                ...options,
+                runtimePolicy: snapshotRuntimePolicy(options.runtimePolicy ?? null, command.snapshots)
+            });
         });
     };
 }

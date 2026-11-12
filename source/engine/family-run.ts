@@ -8,8 +8,11 @@ import { workIdentityKey } from './identity.ts';
 import { hasAttachedResourceDescriptors } from './test-body-resource-attachment.ts';
 import {
     isDefinedTestFamily,
+    isBoundFamilySettings,
+    bindFamilySettings,
     snapshotFamilyValue,
     type DefinedTestFamily,
+    type BoundFamilySettings,
     type FamilyCollection,
     type FamilyCollectionInput,
     type FamilyPreparation,
@@ -255,9 +258,7 @@ function collectPreparedFamily(
 }
 
 type FamilyRuns = {
-    readonly prepareFamily: <Settings extends FamilyValue>(
-        request: PrepareFamilyRequest<Settings>
-    ) => Promise<PreparedFamilyRun>;
+    readonly prepareFamily: (request: DefinedFamilyRequest) => Promise<PreparedFamilyRun>;
     readonly execution: (run: CollectedFamilyRun, signal: AbortSignal) => FamilyExecutionRequest;
 };
 
@@ -294,21 +295,36 @@ async function acceptPreparation(
     }
 }
 
-async function prepareFamilyRun<Settings extends FamilyValue>(
-    request: PrepareFamilyRequest<Settings>,
+export type DefinedFamilyRequest = {
+    readonly testPlan: TestPlan;
+    readonly projectRoot: string;
+    readonly signal: AbortSignal;
+    readonly testFamily: DefinedTestFamily;
+} & ({ readonly binding: BoundFamilySettings; } | { readonly settings: unknown; });
+
+function hasBoundFamilySettings(
+    request: DefinedFamilyRequest
+): request is DefinedFamilyRequest & { readonly binding: BoundFamilySettings; } {
+    return Object.hasOwn(request, 'binding');
+}
+
+async function prepareFamilyRun(
+    request: DefinedFamilyRequest,
     executions: WeakMap<CollectedFamilyRun, FamilyExecution>
 ): Promise<PreparedFamilyRun> {
     const { testFamily } = request;
     const testPlan = snapshotPlan(request.testPlan);
     validatePreparationPlan(testPlan, testFamily);
-    const settings = testFamily.parseSettings(request.settings);
-    request.signal.throwIfAborted();
-    const backend = await testFamily.load();
+    const binding = hasBoundFamilySettings(request)
+        ? request.binding
+        : bindFamilySettings(testFamily, request.settings);
+    if (!isBoundFamilySettings(binding) || binding.testFamily !== testFamily) {
+        throw new TypeError('Preparation requires engine-issued family settings for the selected definition.');
+    }
     request.signal.throwIfAborted();
     const issued = new WeakSet([ testPlan ]);
-    const preparation = await backend.prepare({
+    const preparation = await binding.prepare({
         testPlan,
-        settings,
         projectRoot: request.projectRoot,
         signal: request.signal,
         expandVariants(variants) {
@@ -319,7 +335,7 @@ async function prepareFamilyRun<Settings extends FamilyValue>(
     });
     return await acceptPreparation(preparation, issued, function accept() {
         request.signal.throwIfAborted();
-        return collectPreparedFamily(preparation, testFamily, settings, executions);
+        return collectPreparedFamily(preparation, testFamily, binding.settings, executions);
     });
 }
 
@@ -359,4 +375,8 @@ export async function rejectFamilyExecution(error: unknown, family: FamilyExecut
         return await rejectWithFamilyCleanup(error, family.lifetime);
     }
     throw error;
+}
+
+export async function disposePreparedFamily(prepared: PreparedFamilyRun): Promise<void> {
+    await prepared[asyncDispose]();
 }

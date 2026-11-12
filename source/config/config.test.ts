@@ -15,10 +15,8 @@ import {
     createSingleConfigModuleLoader,
     resolvedConfigFixturePath
 } from '../test-support/run-config-module-loader.ts';
-import {
-    defineConfig,
-    type LoadedConfig
-} from './config.ts';
+import { defineConfig } from './profile-config.ts';
+import type { LoadedConfig } from './config-loader.ts';
 import { normalizeCoveragePolicy } from './profile-normalization.ts';
 import type { MicrotestProfileConfig, ProfileConfig } from './types.ts';
 

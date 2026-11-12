@@ -11,7 +11,7 @@ import {
 } from '../packages/engine/engine.entry-point.ts';
 import { suite, test } from '../packages/test/test.entry-point.ts';
 import { property, withProperties } from '../packages/test/property.entry-point.ts';
-import { defaultPropertyPolicy, resolvePropertyPolicy } from '../config/property-policy.ts';
+import { defaultPropertyPolicy, resolvePropertyPolicy } from '../engine/property-policy.ts';
 import { unexecutedGenerator } from '../test-support/property-generator.ts';
 import { stampTestNodeFamily } from '../engine/test-node.ts';
 import { collectedRunPlanFromTestPlan } from './collected-run-plan.ts';

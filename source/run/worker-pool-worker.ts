@@ -99,7 +99,7 @@ async function runAssignment(
     collectedPlan: CollectedWorkerPoolTestPlan,
     assignedUnit: WorkerPoolAssignedUnit
 ): Promise<WorkerPoolRunOutput['results'][number]> {
-    const execute = await createWorkerExecute(task.command, wallClock);
+    const execute = await createWorkerExecute(task.command, wallClock, collectedPlan.testPlan);
 
     task.port.postMessage({
         attempt: assignedUnit.attempt,

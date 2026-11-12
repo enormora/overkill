@@ -6,7 +6,7 @@ import { isSupportedSnapshotRecord } from './snapshot-identity.ts';
 
 export async function withSnapshotRun<Value>(input: ResolvedRunInput, run: () => Promise<Value>): Promise<Value> {
     const { profile } = input;
-    if (profile.testFamily === 'benchmark' || profile.testFamily === 'type-test' || !profile.baselines.snapshots) {
+    if (typeof profile.testFamily !== 'string' || profile.testFamily === 'benchmark' || !profile.baselines.snapshots) {
         return await run();
     }
     if (profile.testFamily !== 'integration') {

@@ -1,4 +1,9 @@
-import { assertReplaySelection, propertyReplayContext, freezeValue, resolveRunReporters } from './run-support.ts';
+import {
+    assertReplaySelection,
+    propertyReplayContext,
+    freezeValue,
+    resolveRunReporters
+} from './run-support.ts';
 import { resolveRunScheduling } from './run-profile-facts.ts';
 import { createRunFacts, resolveRunDiagnostics } from './run-facts.ts';
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
@@ -40,7 +45,7 @@ export function createLocalResolvedRunFromTestPlan(
         command,
         plannedTestPlan.cases.length === 1 && isExecutableProperty(plannedTestPlan.cases[0])
     );
-    assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile.testFamily);
+    assertTestPlanMatchesTestFamily(plannedTestPlan, input.profile);
     assertTestPlanCasesMatchProfilePolicy(plannedTestPlan, input.profile);
 
     const facts = freezeValue({

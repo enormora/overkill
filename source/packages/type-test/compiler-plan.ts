@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import type { FamilyPreparationInput } from '../../engine/test-family.ts';
 import {
     createRunResult,
     workIdentityKey,
@@ -10,14 +11,13 @@ import {
 import {
     parseAdapterFacts,
     packageVersion,
-    type PackageVersion,
-    type AdapterPreparation,
-    type CollectedAdapterRun,
-    type PreparedAdapterRun
+    type PackageVersion
 } from '../run/run.entry-point.ts';
 import { loadProject, verifyFrozenProject, type FrozenProject } from './frozen-project.ts';
 import { collectProject } from './native-execution.ts';
 import { typeTestSettingsSchema, type TypeTestOptions } from './profile-settings.ts';
+
+import type { CheckerPreparation, CollectedCheckerRun, PreparedCheckerRun } from './checker-plan.ts';
 
 const microsecondsPerMillisecond = 1000;
 type CompilerPlan = {
@@ -110,7 +110,7 @@ function orderedCompilerResults(plan: TestPlan, results: readonly RunResult[]): 
 async function executeCompilerMatrix(
     plan: TestPlan,
     projects: CompilerPlan['projects'],
-    groups: readonly PreparedAdapterRun[]
+    groups: readonly PreparedCheckerRun[]
 ): Promise<RunResult> {
     const started = performance.now() * microsecondsPerMillisecond;
     const results: RunResult[] = [];
@@ -143,8 +143,8 @@ async function executeCompilerMatrix(
     };
 }
 
-async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): Promise<readonly CollectedAdapterRun[]> {
-    const groups: CollectedAdapterRun[] = [];
+async function collectCompilerGroups(input: CompilerPlan, selected: TestPlan): Promise<readonly CollectedCheckerRun[]> {
+    const groups: CollectedCheckerRun[] = [];
     for (const [ version, project ] of input.projects) {
         await verifyFrozenProject(project, { modules: [], sites: [] });
         const cases = selected.cases.filter(function (entry) {
@@ -176,7 +176,7 @@ function assertFrozenSelection(input: CompilerPlan, selected: TestPlan): void {
     }
 }
 
-async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Promise<CollectedAdapterRun> {
+async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Promise<CollectedCheckerRun> {
     assertFrozenSelection(input, selected);
     const groups = await collectCompilerGroups(input, selected);
     const planning = {
@@ -191,7 +191,7 @@ async function collectCompilerPlan(input: CompilerPlan, selected: TestPlan): Pro
     return {
         facts: parseAdapterFacts(planning),
         async lower() {
-            const lowered: PreparedAdapterRun[] = [];
+            const lowered: PreparedCheckerRun[] = [];
             for (const group of groups) {
                 lowered.push(await group.lower());
             }
@@ -246,14 +246,36 @@ async function resolveCompilerProjects(options: TypeTestOptions): Promise<Readon
     return projects;
 }
 
-export async function prepare(plan: TestPlan, settings: unknown): Promise<AdapterPreparation> {
+type FamilyVariantExpander = FamilyPreparationInput<TypeTestOptions>['expandVariants'];
+function expandCompilerWork(
+    plan: TestPlan,
+    projects: CompilerPlan['projects'],
+    expand: FamilyVariantExpander | undefined
+): TestPlan {
+    const variants = Array.from(projects.values(), function variant(project) {
+        return { key: `typescript@${project.compiler.version}`, facts: { version: project.compiler.version } };
+    });
+    const [ firstVariant, ...remainingVariants ] = variants;
+    if (firstVariant === undefined) {
+        throw new TypeError('At least one compiler is required.');
+    }
+    return expand === undefined
+        ? expandedCompilerPlan(plan, projects)
+        : expand([ firstVariant, ...remainingVariants ]);
+}
+
+export async function prepare(
+    plan: TestPlan,
+    settings: unknown,
+    ...expansions: readonly [] | readonly [FamilyVariantExpander]
+): Promise<CheckerPreparation> {
     const options = typeTestSettingsSchema.parse(settings);
     const [ adapter, checker ] = await Promise.all([
         packageVersion(import.meta.url),
         packageVersion(import.meta.resolve('tstyche/api'))
     ]);
     const projects = await resolveCompilerProjects(options);
-    const testPlan = expandedCompilerPlan(plan, projects);
+    const testPlan = expandCompilerWork(plan, projects, expansions[0]);
     const input: CompilerPlan = {
         discoveredCases: testPlan.discoveredCases,
         cases: new Map(testPlan.cases.map(function (entry) {

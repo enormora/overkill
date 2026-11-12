@@ -20,7 +20,7 @@ export type RunRecordDependencies = {
 };
 
 export function recordedReplayProfile(profile: ResolvedRunInput['profile']): unknown {
-    if (profile.testFamily === 'type-test') {
+    if (typeof profile.testFamily !== 'string') {
         return null;
     }
     return Object.fromEntries(
@@ -51,7 +51,7 @@ export function initialRecord(
     cwd: string,
     input: Pick<ResolvedRunInput, 'config' | 'engine' | 'profile' | 'projectRoot' | 'request'>,
     dependencies: RunRecordDependencies
-): RunRecord {
+): Extract<RunRecord, { readonly version: typeof currentRunRecordVersion; }> {
     if (input.request.seed.value === null) {
         throw new Error('Run recording requires a resolved seed.');
     }

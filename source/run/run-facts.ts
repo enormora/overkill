@@ -1,4 +1,10 @@
-import type { NormalizedConfig, ProfileConfig, Scheduling } from '../config/types.ts';
+import {
+    profileFamilyId,
+    type NormalizedConfig,
+    type ProfileConfig,
+    type Scheduling
+} from '../config/types.ts';
+
 import { debuggedWork, runHasAttachmentScopes } from './run-diagnostics.ts';
 import {
     resolveProcessUsagePolicy,
@@ -91,7 +97,7 @@ function createRunExecutionFacts(
         profile: input.request.profile,
         processUsagePolicy: resolveProcessUsagePolicy(input.request, profile),
         scheduling: input.scheduling,
-        testFamily: profile.testFamily,
+        testFamily: profileFamilyId(profile),
         failureArtifacts: profile.failureArtifacts,
         timingCollection: resolveTimingCollection(input.request, profile),
         timeoutPolicy: profile.timeouts,

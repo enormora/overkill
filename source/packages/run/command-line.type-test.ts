@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'tstyche';
+import type { ProjectDefinedFamilyProfile } from '../../config/schema.ts';
 import type { TestProfileConfig } from '../../config/types.ts';
 import type {
     DefinedOutputRenderer,
@@ -28,7 +29,6 @@ import {
     type ProjectIntegrationProfileConfig,
     type ProjectMicrotestProfileConfig,
     type ProjectPropertyProfileConfig,
-    type ProjectAdapterProfileConfig,
     type ProjectProfileFiles,
     type ProjectProfileConfig,
     type ProjectBenchmarkProfileConfig,
@@ -121,7 +121,7 @@ describe('@overkill-dev/run/command-line', function () {
     });
 
     test('exposes typed config helpers', function () {
-        expect<typeof defineConfig>().type.toBe<(config: Config) => Config>();
+        expect<typeof defineConfig>().type.toBeCallableWith({ profiles: { unit: { testFamily: 'microtest' } } });
         expect<Config['outputRenderer']>().type.toBe<DefinedOutputRenderer | undefined>();
         expect<LoadedConfig['outputRenderer']>().type.toBe<DefinedOutputRenderer>();
         expect<Config['reporters']>().type.toBe<
@@ -136,7 +136,7 @@ describe('@overkill-dev/run/command-line', function () {
         expect<Config['profiles']>().type.toBe<ProjectProfilesConfig | undefined>();
         expect<ProjectProfilesConfig[string]>().type.toBe<ProjectProfileConfig>();
         expect<Exclude<ProjectProfileConfig, ProjectPropertyProfileConfig>>().type.toBe<
-            OrdinaryProjectProfile | ProjectAdapterProfileConfig | ProjectBenchmarkProfileConfig
+            OrdinaryProjectProfile | ProjectBenchmarkProfileConfig | ProjectDefinedFamilyProfile
         >();
         expect<Extract<ProjectProfileConfig, { readonly testFamily: 'property'; }>>().type.toBe<
             ProjectPropertyProfileConfig

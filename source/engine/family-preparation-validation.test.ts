@@ -128,6 +128,22 @@ export const testNode = suite('family preparation validation', [
     rejectPolicy('capture', /does not support capture/u),
     rejectPolicy('foreign', /requires test family/u),
     rejectPolicy('resources', /does not support resources/u),
+    test('rejects forged settings bindings before backend preparation', async function (scope) {
+        const engine = createTestEngine();
+        const testFamily = defineAnalysis(prepareRuntime);
+        const request = {
+            testPlan: plan(engine, 'ordinary'),
+            testFamily,
+            settings: null,
+            projectRoot,
+            signal,
+            binding: { testFamily, settings: null, prepare: prepareRuntime }
+        };
+        await scope.assert.rejects(async function forgedBinding() {
+            await Reflect.apply(engine.prepareFamily, engine, [ request ]);
+        }, { message: /engine-issued family settings/u });
+        return scope.assert.collect();
+    }),
     test('rejects a plan from a different engine', async function (scope) {
         const engine = createTestEngine();
         const testPlan = plan(createTestEngine(), 'ordinary');

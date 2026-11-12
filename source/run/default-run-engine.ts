@@ -1,7 +1,6 @@
 import { createClock } from '@enormora/clock';
+import { calibrationCapturePlan as captureCalibrationPlan } from '../engine/benchmark-calibration-plan.ts';
 import type { BenchmarkNormalizationContext } from '../engine/benchmark-result.ts';
-import { readTestBodyResourceAttachments } from '../engine/test-body-resource-attachment.ts';
-import { readBenchmarkCalibrationBody } from '../engine/benchmark-node.ts';
 import { createEngineWithOwner, type Engine, type EngineDependencies } from '../engine/engine.ts';
 import { createExecute } from '../engine/execution.ts';
 import { formatCaseId } from '../engine/identity.ts';
@@ -63,28 +62,10 @@ export const defaultRunEngine: Engine = {
 };
 
 export function calibrationCapturePlan(testPlan: TestPlan, context: BenchmarkNormalizationContext | null): TestPlan {
-    if (context?.mode !== 'capture') {
-        return testPlan;
+    const capture = context?.mode === 'capture';
+    try {
+        return captureCalibrationPlan(testPlan, capture);
+    } catch (error: unknown) {
+        throw RunCollectionError.fromPlan(error, 'Failed to collect benchmark calibration.');
     }
-    const captureCase = function captureCase(testCase: TestPlan['cases'][number]): TestPlan['cases'][number] {
-        const { execution } = testCase;
-        if (execution.kind !== 'body' || execution.bodyMode !== 'benchmark') {
-            return testCase;
-        }
-        const calibration = readBenchmarkCalibrationBody(execution.body);
-        if (calibration === null) {
-            throw new RunCollectionError(
-                'Benchmark does not expose calibration resource execution.',
-                { cause: null },
-                'measurement'
-            );
-        }
-        return {
-            ...testCase,
-            resourceAttachments: readTestBodyResourceAttachments(calibration.resourceBody),
-            execution: { ...execution, body: calibration.body, resourceBody: calibration.resourceBody }
-        };
-    };
-    const [ first, ...rest ] = testPlan.cases;
-    return { ...testPlan, cases: [ captureCase(first), ...rest.map(captureCase) ] };
 }
