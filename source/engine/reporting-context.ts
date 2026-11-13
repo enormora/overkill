@@ -115,7 +115,7 @@ function policyFromRunFacts(facts: unknown): FailureArtifactPolicy {
     return policy === undefined ? currentFailureArtifactPolicy() : resolvedFailureArtifactPolicySchema.parse(policy);
 }
 
-type RunReportingContext = {
+export type RunReportingContext = {
     readonly context: ReportingContext;
     readonly observeFacts: (facts: unknown) => void;
 };

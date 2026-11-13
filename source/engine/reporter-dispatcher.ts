@@ -24,8 +24,17 @@ import {
     runWithReporterOutputScope,
     type ReporterConsoleMethod
 } from './reporter-output-scope.ts';
-import { validateReporterSinks, type DefinedReporter, type Reporter, type ReporterEvent } from './reporter.ts';
-import { createRunReportingContext, type ReportingContext } from './reporting-context.ts';
+import type {
+    DefinedReporter,
+    Reporter,
+    ReporterEvent
+} from './reporter.ts';
+import {
+    createDeliveryReportingContext,
+    prepareReporterDelivery,
+    type PreparedDelivery,
+    type FinalDelivery
+} from './reporter-delivery-preparation.ts';
 import type { RunResult, RunnerError } from './run-result.ts';
 
 type RealTimeReporterInDispatch = Extract<Reporter, { readonly kind: 'real-time'; }>;
@@ -459,16 +468,6 @@ function createRuntimeReporterCollector(): RuntimeReporterCollector {
     };
 }
 
-function collectRuntimeReporters(
-    collector: RuntimeReporterCollector,
-    reporterDefinitions: readonly DefinedReporter[],
-    reportingContext: ReportingContext
-): void {
-    for (const reporterDefinition of reporterDefinitions) {
-        collector.addReporter(reporterDefinition(reportingContext));
-    }
-}
-
 async function throwWithReporterCleanupErrors(
     error: unknown,
     dependencies: ReporterDispatcherDependencies,
@@ -487,27 +486,33 @@ async function throwWithReporterCleanupErrors(
     throw error;
 }
 
+async function prepareDispatch(
+    dependencies: ReporterDispatcherDependencies,
+    collector: RuntimeReporterCollector,
+    prepare: () => PreparedDelivery
+): Promise<PreparedDelivery> {
+    try {
+        return prepare();
+    } catch (error: unknown) {
+        return await throwWithReporterCleanupErrors(error, dependencies, collector.reporters());
+    }
+}
 async function createReporterDelivery(
     dependencies: ReporterDispatcherDependencies,
     reporterDefinitions: readonly DefinedReporter[],
-    outputRendererDefinition: DefinedOutputRenderer
+    outputRendererDefinition: DefinedOutputRenderer,
+    final: FinalDelivery | null
 ): Promise<ReporterDelivery> {
-    const runReporting = createRunReportingContext();
-    const reportingContext = runReporting.context;
+    const runReporting = createDeliveryReportingContext(final);
     const reporterCollector = createRuntimeReporterCollector();
-
-    try {
-        collectRuntimeReporters(reporterCollector, reporterDefinitions, reportingContext);
-        validateReporterSinks(reporterCollector.reporters());
-    } catch (error: unknown) {
-        return await throwWithReporterCleanupErrors(error, dependencies, reporterCollector.reporters());
-    }
-
-    const context = createReporterDispatchContext(
-        dependencies,
-        reporterCollector.reporters(),
-        outputRendererDefinition(reportingContext)
-    );
+    const prepared = await prepareDispatch(dependencies, reporterCollector, function prepare() {
+        return prepareReporterDelivery(reporterCollector, {
+            definitions: reporterDefinitions,
+            renderer: outputRendererDefinition,
+            final
+        }, runReporting);
+    });
+    const context = createReporterDispatchContext(dependencies, prepared.reporters, prepared.outputRenderer);
     let reportersDisposed = false;
 
     return {
@@ -518,7 +523,7 @@ async function createReporterDelivery(
 
             reportersDisposed = true;
 
-            return await disposeReporters(dependencies, context.reporters);
+            return await disposeReporters(dependencies, reporterCollector.reporters());
         },
         async reportEvent(event) {
             if (event.kind === 'run-start') {
@@ -533,10 +538,20 @@ async function createReporterDelivery(
     };
 }
 
-export function createReporterDispatcher(dependencies: ReporterDispatcherDependencies): ReporterDispatcher {
+export function createReporterDispatcher(dependencies: ReporterDispatcherDependencies): ReporterDispatcher & {
+    readonly createFinalDelivery: (
+        reporters: readonly DefinedReporter[],
+        renderer: DefinedOutputRenderer,
+        facts: FinalDelivery['facts'],
+        fallback: DefinedReporter
+    ) => Promise<ReporterDelivery>;
+} {
     return {
         async createDelivery(reporters, outputRenderer) {
-            return await createReporterDelivery(dependencies, reporters, outputRenderer);
+            return await createReporterDelivery(dependencies, reporters, outputRenderer, null);
+        },
+        async createFinalDelivery(reporters, renderer, facts, fallback) {
+            return await createReporterDelivery(dependencies, reporters, renderer, { facts, fallback });
         },
         async trackRunnerErrorDelivery(work) {
             return await trackRunnerErrorDelivery(work);

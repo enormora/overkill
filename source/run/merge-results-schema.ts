@@ -34,3 +34,15 @@ export const mergeRecordSchema = z.object({
     })
 });
 export type MergeRecord = Readonly<z.output<typeof mergeRecordSchema>>;
+
+export const mergedRecordSchema = mergeRecordSchema.omit({ status: true, runtime: true, versions: true }).extend({
+    version: z.literal(currentRunRecordVersion),
+    kind: z.literal('merged'),
+    status: z.enum([ 'started', 'completed', 'interrupted' ]),
+    startedAt: z.iso.datetime({ offset: true }),
+    lineage: z
+        .tuple([ z.object({ id: z.string().min(1), path: z.string() }) ])
+        .rest(z.object({ id: z.string().min(1), path: z.string() })),
+    runtime: z.tuple([ mergeRecordSchema.shape.runtime ]).rest(mergeRecordSchema.shape.runtime),
+    versions: mergeRecordSchema.shape.versions.omit({ node: true })
+});

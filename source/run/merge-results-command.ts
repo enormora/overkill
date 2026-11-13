@@ -3,11 +3,10 @@ import {
     commandLineExitCodes,
     createCommandLineErrorResultFromUnknown,
     readExitCodeFromRunResult,
-    formatRunnerErrorDiagnostics,
     type CommandLineRunnerResult
 } from './command-line-command.ts';
 import { invalidRequest } from './run-errors.ts';
-import { mergeResults } from './merge-results.ts';
+import { executeMergeResults } from './merge-results.ts';
 import type { MergeResultsInput } from './merge-results-types.ts';
 
 export type MergeResultsRequest = ConfigLoadRequest & { readonly paths: readonly string[]; };
@@ -23,17 +22,18 @@ async function executeMergeCommand(
     function classify(path: string): MergeResultsInput {
         return { kind: 'path', path };
     }
-    const merged = await mergeResults({
+    const outcome = await executeMergeResults({
         config,
         cwd: request.cwd,
         inputs: [ classify(first), ...remaining.map(classify) ]
     });
+    const merged = outcome.record;
     const incomplete = merged.result.runnerErrors.some(function mergeError(error) {
         return error.subtype === 'merge';
     });
     return {
         exitCode: incomplete ? commandLineExitCodes.runnerError : readExitCodeFromRunResult(merged.result),
-        fallbackDiagnostics: formatRunnerErrorDiagnostics(merged.result.runnerErrors),
+        fallbackDiagnostics: outcome.diagnostics,
         runResult: merged.result,
         stdoutLines: []
     };

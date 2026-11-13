@@ -1,11 +1,12 @@
 import { ulid } from 'ulid';
 import { createClock } from '@enormora/clock';
+import type { MergedRecordOutcome } from './merged-record-session.ts';
 import { assessMergeSources } from './merge-results-assessment.ts';
 import { serializeRunDiagnostics } from './run-record-result.ts';
 import { mergedRunResult } from './merged-run-result.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
 
-export async function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord> {
+async function aggregateMergeResults(command: MergeResultsCommand): Promise<MergedRunRecord> {
     const started = new Date(createClock().currentUnixEpochMilliseconds);
     const startedAt = started.toISOString();
     const { readMergeSources } = await import('./merge-results-input.ts');
@@ -17,6 +18,8 @@ export async function mergeResults(command: MergeResultsCommand): Promise<Merged
     return {
         id: ulid(),
         kind: 'merged',
+        version: 2,
+        status: 'started',
         startedAt,
         facts: {
             ...record.facts,
@@ -48,4 +51,14 @@ export async function mergeResults(command: MergeResultsCommand): Promise<Merged
             status: errors.length > 0 ? 'failed' : result.status
         }
     };
+}
+
+export async function executeMergeResults(command: MergeResultsCommand): Promise<MergedRecordOutcome> {
+    const { executeMergedRecord } = await import('./merged-record-session.ts');
+    return await executeMergedRecord(command, await aggregateMergeResults(command));
+}
+
+export async function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord> {
+    const outcome = await executeMergeResults(command);
+    return outcome.record;
 }

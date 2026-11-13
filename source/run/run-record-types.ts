@@ -80,4 +80,22 @@ type StartedRunRecord = RunRecordFormat & RunRecordInputs & {
     readonly status: 'interrupted' | 'started';
 };
 
-export type RunRecord = CompletedRunRecord | StartedRunRecord;
+export type SingleRunRecord = CompletedRunRecord | StartedRunRecord;
+export type RunRecord = MergedRunRecord | SingleRunRecord;
+
+type MergedRecordLineage = { readonly id: string; readonly path: string; };
+type MergedRunFields = {
+    readonly id: string;
+    readonly kind: 'merged';
+    readonly version: typeof currentRunRecordVersion;
+    readonly facts: RunFacts;
+    readonly identities: readonly WorkId[];
+    readonly lineage: readonly [MergedRecordLineage, ...(readonly MergedRecordLineage[])];
+    readonly runtime: readonly [ResolvedRuntime | null, ...readonly (ResolvedRuntime | null)[]];
+    readonly versions: Pick<RunRecordVersions, 'engine' | 'packages'>;
+    readonly startedAt: string;
+    readonly result: RunRecordResult;
+};
+
+type MergedLifecycle = { readonly status: 'completed'; } | { readonly status: 'interrupted' | 'started'; };
+export type MergedRunRecord = MergedLifecycle & MergedRunFields;

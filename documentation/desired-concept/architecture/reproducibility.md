@@ -102,6 +102,8 @@ type SingleRunRecord = {
 type MergedRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'merged';
+    readonly version: 2;
+    readonly status: 'started' | 'completed' | 'interrupted';
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
     readonly lineage: NonEmptyReadonlyArray<{ readonly id: string; readonly path: string; }>;

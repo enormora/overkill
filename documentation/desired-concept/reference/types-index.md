@@ -1786,7 +1786,10 @@ declare function createNodeFileStore(): FileStore;
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
-    readonly version: 1;
+    readonly version: 2;
+    readonly replayPlan: CollectedRunPlan | null;
+    readonly replayProfile: unknown;
+    readonly replayWitness: WitnessFile | null;
     readonly cwd: string;
     readonly request: RunRecordRequest;
     readonly engine: RunExecutionFacts['engine'];
@@ -1808,11 +1811,13 @@ type SingleRunRecord = {
 type MergedRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'merged';
+    readonly version: 2;
+    readonly status: 'started' | 'completed' | 'interrupted';
     readonly facts: RunFacts;
     readonly identities: ReadonlyArray<WorkId>;
     readonly lineage: NonEmptyReadonlyArray<RunRecordLineage>;
     readonly runtime: NonEmptyReadonlyArray<ResolvedRuntime | null>;
-    readonly versions: { engine: string | null; packages: ReadonlyMap<string, string>; };
+    readonly versions: { engine: string | null; packages: Readonly<Record<string, string>>; };
     readonly startedAt: string; // ISO 8601
     readonly result: RunRecordResult;
 };

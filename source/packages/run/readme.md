@@ -973,8 +973,8 @@ The corresponding command is `overkill merge-results <paths...>`. Operands may
 be files or directories. Directories contribute immediate regular `*.json` files;
 subdirectories and other extensions are ignored. Repeated paths are read once.
 
-This milestone returns an in-memory aggregate and maps its status to the CLI
-exit code. Callers must supply a complete set of shards. Compatibility checks reject
+The API and CLI persist a non-replayable aggregate under the configured
+`runtimeStateDir/runs/<id>.json` and deliver final-result reporters. Callers must supply a complete set of shards. Compatibility checks reject
 different profiles or test families, seeds, shard totals, selected work identities,
 loader configuration, engine versions, or recorded `@overkill-dev/*` versions.
 Identity evidence covers the complete selection before sharding, including empty
@@ -990,9 +990,14 @@ The command exits with status 2 for merge errors, including when a shard exhaust
 resources. Without eligible input, merging fails with a collection error.
 
 Inputs with `kind: 'path'` automatically detect files and directories.
-Persisted merged records, compact history updates, and final-result reporter
-delivery remain separate milestones.
-The command currently has no success output.
+Directory discovery skips valid merged records; explicitly supplied merged files
+are rejected. Profile reporters override global reporters. Missing profiles use
+global reporters, and no selected final-result reporters triggers brief output.
+Real-time reporters receive no events or completion callbacks.
+
+Aggregate history is committed after reporting. Shards recorded for merging
+remain excluded. Reporter and persistence failures fail the aggregate. Merged
+records carry format version 2 and started/completed/interrupted lifecycle status.
 
 Discovery and definition counts remain global; execution counts sum across
 shards. Timing durations represent cumulative shard time, not elapsed CI time.

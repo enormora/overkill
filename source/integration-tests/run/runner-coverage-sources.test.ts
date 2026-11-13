@@ -8,7 +8,7 @@ import {
     type CoverageRunnerError,
     type TestScope
 } from '../../packages/engine/engine.entry-point.ts';
-import { orchestrator, type CoveragePolicy, type RunRecord } from '../../packages/run/run.entry-point.ts';
+import { orchestrator, type CoveragePolicy, type SingleRunRecord } from '../../packages/run/run.entry-point.ts';
 import {
     defaultMicrotestProfile,
     defaultRunConfig,
@@ -19,7 +19,7 @@ import { createLineReporter } from '../../packages/reporter-line/reporter-line.e
 const fixtureRoot = 'source/integration-tests/run/fixtures/';
 const scenarios = [ 'unloaded', 'threshold', 'types-only', 'missing-sources', 'broken-map' ] as const;
 type CoverageScenario = typeof scenarios[number];
-type RecordedCoverageResult = { readonly record: RunRecord; readonly result: RunResult; };
+type RecordedCoverageResult = { readonly record: SingleRunRecord; readonly result: RunResult; };
 
 function scenarioCoverage(scenario: CoverageScenario): Partial<CoveragePolicy> {
     if (scenario === 'broken-map') {
@@ -38,7 +38,7 @@ function scenarioCoverage(scenario: CoverageScenario): Partial<CoveragePolicy> {
     };
 }
 
-async function readCompletedRecord(directory: string): Promise<RunRecord> {
+async function readCompletedRecord(directory: string): Promise<SingleRunRecord> {
     const files = await readdir(path.join(directory, 'runs'));
     const file = files.find(function isRecord(candidate) {
         return candidate.endsWith('.json');
@@ -47,7 +47,7 @@ async function readCompletedRecord(directory: string): Promise<RunRecord> {
     if (file === undefined) {
         throw new Error('Coverage run did not persist a record.');
     }
-    return JSON.parse(await readFile(path.join(directory, 'runs', file), 'utf8')) as RunRecord;
+    return JSON.parse(await readFile(path.join(directory, 'runs', file), 'utf8')) as SingleRunRecord;
 }
 
 async function executeCoverageScenario(
