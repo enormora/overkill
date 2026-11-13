@@ -493,11 +493,12 @@ of what the test cares about.
 
 Recommended direction:
 
-- prefer exact-arity argument tuples first
+- preserve partial-deep prefix matching for raw rule arguments
+- require exact arity for rules containing explicit `matches(pattern)` wrappers
 - use partial-deep argument matching for `*With` assertions
 - use `*WithExactly` assertions for exact-deep argument matching
 - use `*WithPrefix` assertions when arity should be wider than the expected prefix
-- allow a small set of explicit typed matchers later if needed
+- accept explicit typed `ts-pattern` wrappers in rules and doubles argument assertions
 - do not make the whole API depend on broad matcher DSLs from day one
 
 That suggests:
@@ -506,9 +507,15 @@ That suggests:
 - `scope.assert(doubleUsage.calledWith, save, [ { id: "42" } ])`
 - `scope.assert(doubleUsage.calledWithExactly, save, [ { id: "42", name: "Ada" } ])`
 - `scope.assert(doubleUsage.calledWithPrefix, publish, [ "user.saved" ])`
-- perhaps later `rule.when(match.string, match.number).returns("y")`
+- `rule.when(matches(P.string), matches(P.number)).returns("y")`
 
-The first release concept should not depend on complex matcher machinery.
+Only wrapped argument positions use `ts-pattern`; raw inputs retain existing
+comparison semantics. `matches` and `ArgumentMatcher` belong to the doubles
+package and are re-exported by the default test facade. Pattern builders remain
+upstream imports. Typed rules validate pattern compatibility; assertion references
+retain their existing input types. Predicate failures follow ordinary invocation
+error recording and foreign assertion failure handling. Selections do not change
+callback arguments.
 
 ## Relationship To Assertions
 

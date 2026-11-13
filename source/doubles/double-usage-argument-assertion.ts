@@ -1,5 +1,6 @@
 import { defineCompositeAssertion } from '../assert/assertion-extension.ts';
-import { compareExactly, comparePartially } from '../compare/raw-comparison.ts';
+import { argumentsMatch, hasArgumentMatchers } from './argument-comparison.ts';
+import { patternArgumentAssertion } from './pattern-argument-assertion.ts';
 import {
     type AggregateArguments,
     type AggregateIndexedArguments,
@@ -70,30 +71,6 @@ type SpecificArgumentCheckInput = {
     readonly record: EventRecord | null;
 };
 
-function partialArgumentsMatch(actual: readonly unknown[], expected: readonly unknown[]): boolean {
-    return actual.length === expected.length &&
-        expected.every(function argumentMatches(expectedArgument, index) {
-            return comparePartially(actual[index], expectedArgument);
-        });
-}
-
-function prefixArgumentsMatch(actual: readonly unknown[], expected: readonly unknown[]): boolean {
-    return actual.length >= expected.length &&
-        expected.every(function argumentMatches(expectedArgument, index) {
-            return comparePartially(actual[index], expectedArgument);
-        });
-}
-
-function argumentsMatch(actual: readonly unknown[], expected: readonly unknown[], match: ArgumentMatch): boolean {
-    if (match === 'exact') {
-        return compareExactly(actual, expected);
-    }
-
-    return match === 'prefix'
-        ? prefixArgumentsMatch(actual, expected)
-        : partialArgumentsMatch(actual, expected);
-}
-
 function matchingRecords(
     records: readonly EventRecord[],
     expectedArguments: readonly unknown[],
@@ -146,6 +123,17 @@ function specificArgumentCheck(input: SpecificArgumentCheckInput): AssertionResu
         return input.check.annotated(input.label).notNull(input.record);
     }
 
+    if (hasArgumentMatchers(input.expectedArguments)) {
+        return patternArgumentAssertion({
+            check: input.check,
+            records: [ input.record ],
+            expected: input.expectedArguments,
+            comparison: input.match,
+            negative: false,
+            label: input.label
+        });
+    }
+
     if (input.match === 'exact') {
         return input.check.annotated(input.label).deepEqual(input.record.arguments, input.expectedArguments);
     }
@@ -175,6 +163,18 @@ function emptyPrefixFailure(
 
 function anyArgumentAssertion(input: ArgumentCheckInput, records: readonly EventRecord[]): AssertionResult {
     const label = `${modeNoun(input.mode)} arguments`;
+
+    if (hasArgumentMatchers(input.args)) {
+        return patternArgumentAssertion({
+            check: input.check,
+            records,
+            expected: input.args,
+            comparison: input.match,
+            negative: input.negative,
+            label
+        });
+    }
+
     const matched = matchingRecords(records, input.args, input.match).length > 0;
 
     if (input.negative) {

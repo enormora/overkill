@@ -1,3 +1,4 @@
+import { P } from 'ts-pattern';
 import { runIfMain } from '#test-runner';
 import {
     createSuite as createOverkillSuite,
@@ -12,8 +13,8 @@ import { serializeValue } from '../compare/serialized-value.ts';
 import { createTestEngine as createEngine } from '../test-support/create-test-engine.ts';
 import type { AssertionTestFailure, FailOutcome, RunResult } from '../engine/run-result.ts';
 import type { TestBody, TestScope } from '../engine/test-scope.ts';
+import { matches, testDouble } from '../packages/doubles/doubles.entry-point.ts';
 import { doubleUsage } from './double-usage.ts';
-import { testDouble } from './test-double.ts';
 
 type User = {
     readonly id: string;
@@ -116,6 +117,51 @@ export const testNode = createOverkillSuite({
     annotations: {},
     controls: {},
     children: [
+        createOverkillTestCase({
+            definitionLocations: [ { kind: 'unknown' } ],
+            title: 'pattern mismatches and predicate errors remain failures under negation',
+            annotations: {},
+            controls: {},
+            async body(scope: OverkillScope) {
+                const scenarios = [
+                    { value: 1, negative: false, throwing: false, failed: 1 },
+                    { value: 1, negative: true, throwing: false, failed: 0 },
+                    { value: 'id', negative: false, throwing: false, failed: 0 },
+                    { value: 'id', negative: true, throwing: false, failed: 1 },
+                    { value: 1, negative: false, throwing: true, failed: 1 },
+                    { value: 1, negative: true, throwing: true, failed: 1 }
+                ];
+
+                for (const scenario of scenarios) {
+                    const result = await executeSingleBody(function testBody(testScope: TestScope) {
+                        testScope.plan(1);
+                        const save = testDouble.returns('saved');
+                        save(scenario.value, { id: 1 });
+                        const pattern = matches(P.when(function inspectValue(value: unknown) {
+                            if (scenario.throwing) {
+                                throw new Error('pattern predicate failed');
+                            }
+                            return typeof value === 'string';
+                        }));
+                        testScope.assert(
+                            scenario.negative ? doubleUsage.notCalledWith : doubleUsage.calledOnceWith,
+                            save,
+                            [ pattern, { id: 1 } ]
+                        );
+                        return testScope.assert.collect();
+                    });
+
+                    scope.assert.equal(result.summary.failed, scenario.failed);
+                    scope.assert.equal(result.summary.passed, 1 - scenario.failed);
+                    if (scenario.throwing) {
+                        const composite = firstComposite(result);
+                        scope.require.notNull(composite);
+                        scope.assert.includes(composite.children[0].summary, 'pattern predicate failed');
+                    }
+                }
+                return scope.assert.collect();
+            }
+        }),
         createOverkillTestCase({
             definitionLocations: [ { kind: 'unknown' as const } ],
             title: 'doubleUsage call count and mode assertions pass through scope.assert()',

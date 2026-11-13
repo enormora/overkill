@@ -431,3 +431,37 @@ Exported types:
 - `DoubleThrownResult`: a thrown result.
 - `RuleFactory`: the `rule` namespace shape.
 - `DoubleUsageAssertions`: the `doubleUsage` namespace shape.
+
+### Typed argument patterns
+
+Add `ts-pattern` as a direct project dependency. Import its pattern builders
+and wrap each pattern argument with
+`matches(pattern)`:
+
+```ts
+import { matches, rule, testDouble } from '@overkill-dev/doubles';
+import { P } from 'ts-pattern';
+
+const load = testDouble<(id: string) => string>({
+    rules: [rule.when(matches(P.string)).returns('found')]
+});
+```
+
+A rule containing a wrapper requires exact argument arity. Raw rules retain
+partial-deep prefix matching. Only wrapped argument positions use pattern
+semantics; place nested patterns inside one wrapper, such as
+`matches({ id: P.string })`.
+
+All `doubleUsage` argument assertions accept wrappers. Their suffixes retain
+arity and raw comparison behavior: `*With` uses partial comparison and equal
+arity, `*WithExactly` uses exact comparison and equal arity, and `*WithPrefix`
+allows additional arguments. Wrapped positions always use pattern semantics.
+
+Typed rule configurations reject incompatible patterns. Assertion inputs retain
+their existing types; use `satisfies P.Pattern<User>` to validate reusable
+assertion patterns explicitly. Patterns do not narrow behavior callback arguments
+or pass selected values to callbacks.
+
+Predicate exceptions propagate from double invocations and appear as failed
+foreign checks in assertions, including negative assertions. Matching stops at
+the first matching invocation; diagnostics do not evaluate predicates again.
