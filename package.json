@@ -24,7 +24,7 @@
         "@inquirer/select": "5.2.8",
         "@jridgewell/trace-mapping": "0.3.31",
         "@overkill-dev/reporter-line": "0.0.70",
-        "@schema-hub/zod-error-formatter": "0.0.19",
+        "@schema-hub/zod-error-formatter": "0.0.20",
         "@stdlib/stats-base-dists-binomial-quantile": "0.2.3",
         "@stryker-mutator/api": "10.0.0",
         "ansi-escapes": "7.3.0",
