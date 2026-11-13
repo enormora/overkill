@@ -86,14 +86,16 @@ type StartedRunRecord = VersionedRecordInputs & {
 };
 
 export type SingleRunRecord = CompletedRunRecord | StartedRunRecord;
-export type RunRecord = MergedRunRecord | SingleRunRecord;
+export type RunRecord = LegacyMergedRunRecord | MergedRunRecord | SingleRunRecord;
+
+export type MergeRunFacts = Except<RunFacts, 'family'> & { readonly family: RunFacts['family'] | null; };
 
 type MergedRecordLineage = { readonly id: string; readonly path: string; };
 type MergedRunFields = {
     readonly id: string;
     readonly kind: 'merged';
     readonly version: typeof currentRunRecordVersion;
-    readonly facts: RunFacts;
+    readonly facts: MergeRunFacts;
     readonly identities: readonly WorkId[];
     readonly lineage: readonly [MergedRecordLineage, ...(readonly MergedRecordLineage[])];
     readonly runtime: readonly [ResolvedRuntime | null, ...readonly (ResolvedRuntime | null)[]];
@@ -104,3 +106,7 @@ type MergedRunFields = {
 
 type MergedLifecycle = { readonly status: 'completed'; } | { readonly status: 'interrupted' | 'started'; };
 export type MergedRunRecord = MergedLifecycle & MergedRunFields;
+type LegacyMergedRunRecord = Except<MergedRunRecord, 'facts' | 'version'> & {
+    readonly version: typeof previousRunRecordVersion;
+    readonly facts: Except<RunFacts, 'family'>;
+};

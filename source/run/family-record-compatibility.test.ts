@@ -28,6 +28,28 @@ function familyProfile(definition: TestFamily<null>): DefinedFamilyProfile {
 }
 
 export const testNode = suite('family record compatibility', [
+    ...([ 2, 3 ] as const).map(function mergedVersion(version) {
+        return test(`inspects merged version ${version} without resolving family modules`, function (scope) {
+            const record = completedHistoryRecord('historical-merged');
+            const parsed = historyRecordSchema.parse({
+                ...record,
+                kind: 'merged',
+                version,
+                facts: {
+                    execution: {
+                        ...record.execution,
+                        profile: record.request.profile,
+                        testFamily: '@missing/checker'
+                    }
+                }
+            });
+            scope.assert.equal(parsed.version, version);
+            scope.assert.equal(parsed.facts?.execution.testFamily, '@missing/checker');
+            scope.assert.equal(parsed.request.profile, record.request.profile);
+            scope.assert.equal(parsed.replayPlan, null);
+            return scope.assert.collect();
+        });
+    }),
     test('rejects replacement of a recorded family with a built-in profile', async function (scope: TestScope) {
         const current = normalizeConfig({ profiles: { custom: { testFamily: 'microtest' } } }).profiles.custom;
         scope.require.defined(current);

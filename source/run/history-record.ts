@@ -53,7 +53,7 @@ const singleHistoryRecordSchema = z.discriminatedUnion('status', [
 ]);
 const mergedHistoryRecordSchema = z
     .object({
-        version: z.literal(currentRunRecordVersion),
+        version: z.union([ z.literal(previousRunRecordVersion), z.literal(currentRunRecordVersion) ]),
         kind: z.literal('merged'),
         id: z.string().min(1),
         startedAt: z.iso.datetime({ offset: true }),

@@ -9,6 +9,7 @@ import type {
     SerializedValue,
     RunRecord,
     SingleRunRecord,
+    MergedRunRecord,
     RunRecordRequest,
     RunRecordResult,
     ResolvedRuntime
@@ -37,14 +38,19 @@ type LegacyRunFacts = Except<RunFacts, 'family'>;
 describe('@overkill-dev/run recording', function () {
     test('separates family facts from historical record contracts', function () {
         expect<RunFacts['family']>().type.toBe<FamilyRunFacts>();
-        expect<RunRecord['facts']>().type.toBe<LegacyRunFacts | RunFacts | null>();
-        expect<Extract<RunRecord, { readonly version: FamilyRecordVersion; }>['facts']>()
+        expect<RunRecord['facts']>().type.toBe<LegacyRunFacts | MergedRunRecord['facts'] | RunFacts | null>();
+        expect<Extract<SingleRunRecord, { readonly version: FamilyRecordVersion; }>['facts']>()
             .type
             .toBe<RunFacts | null>();
         expect<Extract<RunRecord, { readonly version: LegacyReplayRecordVersion; }>['facts']>()
             .type
             .toBe<LegacyRunFacts | null>();
         expect<Extract<RunRecord, { readonly version: 1; }>['facts']>().type.toBe<LegacyRunFacts | null>();
+        expect<MergedRunRecord['version']>().type.toBe<FamilyRecordVersion>();
+        expect<MergedRunRecord['facts']['family']>().type.toBe<FamilyRunFacts | null>();
+        expect<Extract<RunRecord, { readonly kind: 'merged'; readonly version: LegacyReplayRecordVersion; }>['facts']>()
+            .type
+            .toBe<LegacyRunFacts>();
     });
     test('exposes serializable run facts with case annotations and controls', function () {
         expect<keyof RunFacts>()

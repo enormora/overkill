@@ -36,7 +36,7 @@ export const mergeRecordSchema = z.object({
 export type MergeRecord = Readonly<z.output<typeof mergeRecordSchema>>;
 
 export const mergedRecordSchema = mergeRecordSchema.omit({ status: true, runtime: true, versions: true }).extend({
-    version: z.literal(currentRunRecordVersion),
+    version: z.union([ z.literal(previousRunRecordVersion), z.literal(currentRunRecordVersion) ]),
     kind: z.literal('merged'),
     status: z.enum([ 'started', 'completed', 'interrupted' ]),
     startedAt: z.iso.datetime({ offset: true }),
