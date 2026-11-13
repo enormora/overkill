@@ -68,7 +68,7 @@
         "@overkill-dev/run": "0.0.97",
         "@packtory/cli": "0.0.125",
         "@packtory/github-release-gate": "0.0.86",
-        "@rspack/core": "2.3.1",
+        "@rspack/core": "2.3.2",
         "@stryker-mutator/core": "10.0.0",
         "@stryker-mutator/instrumenter": "10.0.0",
         "@types/convert-source-map": "2.0.3",
