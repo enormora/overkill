@@ -66,6 +66,9 @@ test-property-integration: benchmark-html-browser
     node source/integration-tests/run/runner-property-measurements.test.ts
 
 test-runner-integration: test-mutation-integration
+    node source/integration-tests/run/runner-family-transport.test.ts
+    node source/integration-tests/run/runner-family-records.test.ts
+    node source/integration-tests/run/runner-family-selection.test.ts
     node source/integration-tests/run/runner-content-snapshots.test.ts
     node source/integration-tests/run/runner-ordinary-baselines.test.ts
     node source/integration-tests/run/runner-replay-coverage.test.ts

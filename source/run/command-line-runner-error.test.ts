@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 import {
     createSuite as createOverkillSuite,
     createTestCase as createOverkillTestCase,
@@ -16,10 +17,11 @@ import {
     defaultRunRequest,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
-import type { LoadedConfig } from '../config/config-loader.ts';
+import { snapshotRunCommand } from './frozen-run-command.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';
+
+type ConfiguredRunOrchestrator = CommandLineRunnerDependencies['orchestrator'];
 
 const memoryReporter = defineFixedReporter({
     dispose: null,
@@ -97,14 +99,22 @@ function createPassingPlan(): TestPlan {
 }
 
 async function resolvePassingRun(
-    command: RunCommand
+    suppliedCommand: ConfiguredRunCommand | RunCommand
 ): Promise<Awaited<ReturnType<ConfiguredRunOrchestrator['resolve']>>> {
+    const { command } = snapshotRunCommand(suppliedCommand);
     const profile = selectTestProfile(command.request.profile, command.config);
 
     return {
         config: command.config,
         cwd: command.cwd,
         facts: {
+            family: {
+                id: testRunExecutionFacts(command, profile).testFamily,
+                version: '1',
+                settings: null,
+                preparation: null,
+                collection: null
+            },
             adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
@@ -144,7 +154,8 @@ function createRunOnlyOrchestrator(run: ConfiguredRunOrchestrator['run']): Confi
         bench: unexpectedBenchmarkOrchestrator,
         resolve: resolvePassingRun,
         run,
-        async runWithReporterDelivery(command) {
+        async runWithReporterDelivery(suppliedCommand) {
+            const { command } = snapshotRunCommand(suppliedCommand);
             return {
                 deliveredRunnerErrors: [],
                 result: await run(command),

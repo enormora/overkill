@@ -1,21 +1,22 @@
-import type { Engine } from '../engine/engine.ts';
+import type { Engine, TestPlan, TestPlanCollectionPolicy } from '../packages/engine/engine.entry-point.ts';
 import { isBuiltinFamilyId } from '../engine/builtin-test-families.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
-import type { TestPlanCollectionPolicy } from '../engine/plan-collection-policy.ts';
+import { bindWireReplayPlan } from './replay-wire.ts';
+import type { ReplayWire } from './run-types.ts';
 import { defaultRunEngine, calibrationCapturePlan } from './default-run-engine.ts';
-import { registerHostFamilyPlan } from './host-family-plan.ts';
+import { transferHostFamilyPlan, registerImportedHostFamilyPlan, registerHostFamilyPlan } from './host-family-plan.ts';
 import { resolveTestPlanCollectionPolicy } from './run-selection.ts';
 import type { RunEngineModuleLoader } from './run-engine-selection.ts';
 import type { SupervisedChildCommand } from './supervised-protocol.ts';
 
 type HostPlanCommand = Pick<
     SupervisedChildCommand,
-    'benchmarkNormalization' | 'cwd' | 'propertyPolicy' | 'replay' | 'testFamily' | 'timeoutMilliseconds'
+    'benchmarkNormalization' | 'cwd' | 'family' | 'propertyPolicy' | 'replay' | 'testFamily' | 'timeoutMilliseconds'
 >;
 type HostPlanInput = {
+    readonly processModel: 'supervised-process' | 'worker-pool';
     readonly command: HostPlanCommand;
     readonly engine: Engine;
-    readonly collect: (policy: TestPlanCollectionPolicy) => Promise<TestPlan>;
+    readonly collect: (policy: TestPlanCollectionPolicy, replay: ReplayWire | null) => Promise<TestPlan>;
 };
 
 export async function resolveHostEngine(
@@ -35,8 +36,48 @@ function hostCollectionPolicy(command: HostPlanCommand): TestPlanCollectionPolic
     };
 }
 
+function allowsFreshReplayHost(
+    input: HostPlanInput,
+    processModel: string,
+    replay: ReplayWire | null
+): boolean {
+    return input.processModel === 'supervised-process' && processModel === 'in-process' && replay?.kind === 'record';
+}
+
+function validateFamilyHostCommand(input: HostPlanInput): void {
+    const { family, testFamily, replay } = input.command;
+    if (family?.id !== testFamily) {
+        throw new TypeError('Frozen family command identity is inconsistent.');
+    }
+    if (family.processModel === input.processModel) {
+        return;
+    }
+    if (
+        allowsFreshReplayHost(input, family.processModel, replay)
+    ) {
+        return;
+    }
+    throw new TypeError('Frozen family placement is inconsistent.');
+}
+
+async function createImportedHostTestPlan(input: HostPlanInput): Promise<TestPlan> {
+    validateFamilyHostCommand(input);
+    const definition = input.command.family;
+    if (definition === null) {
+        throw new TypeError('Imported family definition is unavailable.');
+    }
+    const { loadFrozenFamily } = await import('./node-family-resolution.ts');
+    const binding = await loadFrozenFamily(definition, input.command.cwd);
+    const plan = await input.collect(hostCollectionPolicy(input.command), null);
+    const prepared = await registerImportedHostFamilyPlan(plan, input.engine, binding, definition);
+    return transferHostFamilyPlan(prepared, bindWireReplayPlan(prepared, input.command.replay));
+}
+
 export async function createHostTestPlan(input: HostPlanInput): Promise<TestPlan> {
-    const plan = await input.collect(hostCollectionPolicy(input.command));
+    if (input.command.family !== null) {
+        return await createImportedHostTestPlan(input);
+    }
+    const plan = await input.collect(hostCollectionPolicy(input.command), input.command.replay);
     if (input.command.replay?.kind === 'record') {
         return calibrationCapturePlan(
             resolveTestPlanCollectionPolicy(plan, input.command),

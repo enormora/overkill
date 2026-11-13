@@ -1,8 +1,7 @@
 import { profileFamilyId, type NormalizedConfig } from '../config/types.ts';
-import type { DefinedReporter } from '../engine/reporter.ts';
-import type { RunResult } from '../engine/run-result.ts';
-import type { TestPlan } from '../engine/test-plan.ts';
+import type { DefinedReporter, RunResult, TestPlan } from '../packages/engine/engine.entry-point.ts';
 import type { LoadedConfig } from '../config/config-loader.ts';
+import { profileFamilyFacts } from './family-run-facts.ts';
 
 import { runCaseFactsFromTestPlan } from './run-case-facts.ts';
 import { resolveProcessUsagePolicy, resolveTimingCollection } from './run-profile-facts.ts';
@@ -78,6 +77,7 @@ export function directRunFacts(input: DirectRunFactsInput): RunFacts {
     const profile = selectTestProfile(input.profileName, input.config);
 
     return {
+        family: profileFamilyFacts(profile),
         adapter: null,
         benchmarkHost: null,
         benchmarkCalibration: null,

@@ -1,1 +1,2 @@
-export const currentRunRecordVersion = 2;
+export const currentRunRecordVersion = 3;
+export const previousRunRecordVersion = 2;

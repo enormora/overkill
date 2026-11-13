@@ -60,6 +60,7 @@ function collectedCase(title: string): CollectedRunPlan['files'][number]['cases'
 
 function collectedPlan(): CollectedRunPlan {
     return {
+        family: null,
         defined: 2,
         discoveredFiles: [],
         files: [

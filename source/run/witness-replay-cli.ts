@@ -1,6 +1,6 @@
 import type { ConfigLoader } from '../config/config-loader.ts';
 import { withReplay } from './replay-context.ts';
-import { preparePropertyReplay } from './property-replay-command.ts';
+import { preparePropertyReplay } from './witness-replay-preparation.ts';
 import { createCommandLineConfig, type CommandLineConfigDependencies } from './command-line-config.ts';
 import {
     createCommandLineErrorResultFromUnknown,

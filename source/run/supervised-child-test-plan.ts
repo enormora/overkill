@@ -96,7 +96,7 @@ export async function createSupervisedChildTestPlan(
     const input = {
         replay: command.replay,
         cwd: command.cwd,
-        definitionLocationCapture: command.definitionLocationCapture,
+        definitionLocationCapture: command.family?.definitionLocationCapture ?? command.definitionLocationCapture,
         discoverRunFiles: dependencies.discoverRunFiles,
         engine,
         loadRunTestModules: dependencies.loadRunTestModules,
@@ -105,12 +105,13 @@ export async function createSupervisedChildTestPlan(
         testFamily: command.testFamily
     };
     return await createHostTestPlan({
+        processModel: 'supervised-process',
         command,
         engine,
-        async collect(collectionPolicy) {
+        async collect(collectionPolicy, replay) {
             const policy = frozenSupervisedPolicy(command);
             return policy === null
-                ? await createRunTestPlan(input, collectionPolicy)
+                ? await createRunTestPlan({ ...input, replay }, collectionPolicy)
                 : await createRunTestPlanFromFiles({ ...input, files: policy.files }, collectionPolicy);
         }
     });

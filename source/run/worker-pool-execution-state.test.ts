@@ -69,6 +69,7 @@ function firstCaseIdentityKey(): string {
 
 export function createCollectedPlan(): CollectedRunPlan {
     return {
+        family: null,
         defined: 1,
         discoveredFiles: [],
         files: [
@@ -185,6 +186,7 @@ export function workerPoolResolvedRun(collectedPlan: CollectedRunPlan): WorkerPo
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,

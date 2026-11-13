@@ -6,8 +6,7 @@ import { propertyCorpusEntry } from '../test-support/property-corpus.ts';
 import { replayProject, type ReplayProject } from '../test-support/replay-project-fixture.ts';
 import { normalizeConfig, type ReplayWitnessCommand } from '../packages/run/run.entry-point.ts';
 import type { PreparedReplay } from './replay-types.ts';
-import { prepareWitnessReplay } from './replay-preparation.ts';
-import { preparePropertyReplay } from './property-replay-command.ts';
+import { prepareWitnessReplay, preparePropertyReplay } from './witness-replay-preparation.ts';
 
 async function witnessProject(scope: TestScope): Promise<ReplayProject> {
     const project = await replayProject(scope, {

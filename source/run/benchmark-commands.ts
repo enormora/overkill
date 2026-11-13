@@ -1,4 +1,5 @@
 import { readCalibrationReferenceReport } from '../bench/calibration-report.ts';
+import { snapshotRunCommand } from './frozen-run-command.ts';
 import {
     createCommandLineErrorResultFromUnknown,
     type CommandLineBenchmarkCommands,
@@ -32,10 +33,12 @@ async function executeCalibration(
             ...execution,
             orchestrator: {
                 ...execution.orchestrator,
-                runWithReporterDelivery: dependencies
-                    .orchestrator
-                    .bench
-                    .calibrate
+                async runWithReporterDelivery(command, options) {
+                    return await dependencies.orchestrator.bench.calibrate(
+                        snapshotRunCommand(command).command,
+                        options
+                    );
+                }
             }
         },
         loaded,
@@ -59,8 +62,15 @@ export function createBenchmarkCommands(dependencies: BenchmarkCommandDependenci
     const execution: CommandLineExecutionDependencies = {
         createDefaultReporter: dependencies.createDefaultReporter,
         orchestrator: {
-            resolve: dependencies.orchestrator.bench.list,
-            runWithReporterDelivery: dependencies.orchestrator.bench.runWithReporterDelivery
+            async resolve(command, options) {
+                return await dependencies.orchestrator.bench.list(snapshotRunCommand(command).command, options);
+            },
+            async runWithReporterDelivery(command, options) {
+                return await dependencies.orchestrator.bench.runWithReporterDelivery(
+                    snapshotRunCommand(command).command,
+                    options
+                );
+            }
         }
     };
 

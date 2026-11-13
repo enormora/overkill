@@ -72,7 +72,7 @@ async function cancelAt(phase: Phase): Promise<EngineRunResult> {
             fileSet: null,
             href: `virtual:${file}`,
             path: file
-        } ], { source: { kind: 'configured-files' }, normalization: null }),
+        } ], { projectRoot: process.cwd(), source: { kind: 'configured-files' }, normalization: null }),
         {
             ...fakeWorkerPoolRuntimeDependencies(),
             async startSupervisedChild() {

@@ -347,7 +347,10 @@ type FamilyRunFacts = {
     readonly collection: FamilyValue;
 };
 
+type FamilyPreparationFacts = Pick<FamilyRunFacts, 'id' | 'version' | 'settings' | 'preparation'>;
+
 type PreparedFamilyRun = AsyncDisposable & {
+    readonly facts: FamilyPreparationFacts;
     readonly testPlan: TestPlan;
     readonly collect: (input: FamilyCollectionInput) => Promise<CollectedFamilyRun>;
 };
@@ -359,6 +362,10 @@ type CollectedFamilyRun = {
 
 type FamilyExecuteOptions = ExecuteOptions & { readonly signal: AbortSignal; };
 ```
+
+Preparation facts are available through `PreparedFamilyRun.facts` before
+selection. Empty shards retain these facts with null collection facts without
+calling `collect([])`.
 
 `PreparedFamilyRun` and `CollectedFamilyRun` are engine-branded values. Their
 visible shapes above do not permit callers to construct them. Each engine adds

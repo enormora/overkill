@@ -23,6 +23,7 @@ import type { AttachmentEndpoint } from './attachment-protocol.ts';
 import type { DefinitionLocationCapture } from './definition-location-capture.ts';
 import type { PlacementAttemptId, PlacementWorkerId, TraceWorkUnitId } from './placement-trace.ts';
 import type {
+    FrozenFamilyDefinition,
     ReplayWire,
     FrozenWorkloadInput,
     RunFacts,
@@ -63,6 +64,7 @@ export type WorkerPoolCommand = {
     readonly processUsageSamplingIntervalMilliseconds: number;
     readonly root: RunCollectionRoot;
     readonly scheduling: Scheduling;
+    readonly family: FrozenFamilyDefinition | null;
     readonly testFamily: RunTestFamily;
     readonly timeoutMilliseconds: number;
     readonly workerLifecycle: 'fresh-worker-per-unit' | 'reuse';

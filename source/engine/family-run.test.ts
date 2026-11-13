@@ -248,6 +248,17 @@ export const testNode = suite('engine family runs', [
     lifetimeTests,
     preparationValidation,
     evidenceValidation,
+    test('exposes frozen preparation facts before selection', async function (scope) {
+        const engine = createTestEngine();
+        const observed: string[] = [];
+        await using prepared = await prepareAnalysis(engine, observed.push.bind(observed), false);
+        scope.assert.equal(JSON.stringify(prepared.facts.preparation), '{"prepared":true}');
+        scope.assert.equal(prepared.facts.settings, null);
+        scope.assert.equal(Object.isFrozen(prepared.facts), true);
+        scope.assert.equal(Object.isFrozen(prepared.facts.preparation), true);
+        scope.assert.deepEqual(Array.from(observed), [ 'parsed', 'loaded' ]);
+        return scope.assert.collect();
+    }),
     test('collects exact variant work and reports analysis in execution order', async function (scope) {
         const engine = createTestEngine();
         const observed: string[] = [];

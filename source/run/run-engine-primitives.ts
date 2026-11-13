@@ -6,7 +6,13 @@ import type {
     RuntimeId as RuntimeIdDefinition,
     WorkloadId as WorkloadIdDefinition
 } from '../engine/identity.ts';
-import type { Engine as EngineDefinition } from '../engine/engine.ts';
+import type {
+    Engine as EngineDefinition,
+    FamilyRunFacts as FamilyRunFactsDefinition,
+    NonEmptyReadonlyArray as NonEmptyReadonlyArrayDefinition,
+    SourceLocation as SourceLocationDefinition,
+    SerializedValue as SerializedValueDefinition
+} from '../packages/engine/engine.entry-point.ts';
 import type {
     ExecutionDriver as ExecuteDefinition,
     ExecuteDependencies as ExecuteDependenciesDefinition
@@ -71,3 +77,8 @@ export type PropertyPolicy = Extract<PropertyExecution['policy'], { readonly kin
 export type ExecuteDependencies = ExecuteDependenciesDefinition;
 
 export type TestFamilyId = TestFamilyIdDefinition;
+
+export type FamilyRunFacts = FamilyRunFactsDefinition;
+export type NonEmptyReadonlyArray<Value> = NonEmptyReadonlyArrayDefinition<Value>;
+export type SourceLocation = SourceLocationDefinition;
+export type SerializedValue = SerializedValueDefinition;

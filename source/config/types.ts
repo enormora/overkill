@@ -227,7 +227,7 @@ export type PropertyProfileConfig = {
 export const familySettings: unique symbol = Symbol.for('@overkill-dev/run/FamilySettings');
 
 export type DefinedFamilyProfile = {
-    readonly execution: MicrotestExecution;
+    readonly execution: IntegrationExecution | MicrotestExecution;
     readonly failureArtifacts: ProfileEvidencePolicy['failureArtifacts'];
     readonly files: ProfileFiles;
     readonly processUsage: ProcessUsagePolicy;

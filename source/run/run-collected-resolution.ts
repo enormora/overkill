@@ -1,3 +1,4 @@
+import { resolveSelectedFamilyFacts } from './selected-family-facts.ts';
 import {
     assertReplaySelection,
     propertyReplayContext,
@@ -15,7 +16,6 @@ import { collectedRunCaseFactsFromEntries } from './run-case-facts.ts';
 import { createCollectedExecutionPlan } from './run-collected-planning.ts';
 import { createRunFacts, resolveRunDiagnostics } from './run-facts.ts';
 import type { ResolvedRunInput } from './run-input-resolution.ts';
-import type { RunOrchestratorDependencies } from './run-orchestrator-dependencies.ts';
 import {
     assertCollectedRunPlanHasCases,
     selectedCollectedRunPlan,
@@ -23,6 +23,8 @@ import {
     assertCollectedRunPlanMatchesTestFamily
 } from './run-selection.ts';
 import type { CollectedRunPlan, ResolvedRun, RunCommand } from './run-types.ts';
+
+type RunOrchestratorDependencies = CollectedExecutionPlanInput['dependencies'];
 
 type RunnerError = ResolvedRun['collectionRunnerErrors'][number];
 
@@ -128,6 +130,7 @@ async function createResolvedRunFromCollectedPlan(input: CollectedResolvedRunInp
             scheduling,
             workerCount
         }),
+        ...input.collectedPlan.family === null ? {} : { family: input.collectedPlan.family.facts },
         ...recordedFacts === null ? {} : { reproducibility: recordedFacts.reproducibility }
     });
 
@@ -152,9 +155,10 @@ export async function createResolvedRunFromCollection(input: CollectionResolvedR
     }
     const collectedPlan = selectedCollectedRunPlan(input.collection.collectedPlan, input.request.selection);
 
-    return await createResolvedRunFromCollectedPlan({
+    const run = await createResolvedRunFromCollectedPlan({
         ...input,
         collectionRunnerErrors: freezeValue(Array.from(input.collection.runnerErrors)),
         collectedPlan: freezeValue(collectedPlan)
     });
+    return freezeValue(await resolveSelectedFamilyFacts(run, input));
 }

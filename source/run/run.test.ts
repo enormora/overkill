@@ -143,6 +143,7 @@ export const testNode = createOverkillSuite({
                 scope.assert.equal(Object.isFrozen(resolvedRun.facts.reproducibility.selectedIdentities), true);
                 const expectedCase = expectedPassingFixtureCaseFact();
                 scope.assert.deepEqual(structuredClone<unknown>(resolvedRun.facts), {
+                    family: { id: 'microtest', version: '1', settings: null, preparation: null, collection: null },
                     adapter: null,
                     cases: [
                         expectedCase

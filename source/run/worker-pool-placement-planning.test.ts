@@ -84,6 +84,7 @@ function collectedCase(
 
 export function createCollectedPlan(): CollectedRunPlan {
     return {
+        family: null,
         defined: 2,
         discoveredFiles: [],
         files: [
@@ -178,6 +179,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
         cwd: process.cwd(),
         engine: { kind: 'default' },
         facts: {
+            family: { id: 'integration', version: '1', settings: null, preparation: null, collection: null },
             adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
@@ -213,16 +215,7 @@ function createResolvedRun(plan: ResolvedRun['plan']): ResolvedRun {
                 placementPlan: null,
                 processModel: 'worker-pool',
                 profile: 'integration',
-                processUsagePolicy: {
-                    budgets: {
-                        activeResourceCount: null,
-                        javaScriptEngineHeapBytes: null,
-                        residentSetBytes: null,
-                        residentSetGrowthBytesPerSecond: null
-                    },
-                    measure: false,
-                    samplingIntervalMilliseconds: 100
-                },
+                processUsagePolicy: defaultIntegrationProfile({}).processUsage,
                 scheduling: 'serial',
                 testFamily: 'integration',
                 timingCollection: 'summary',

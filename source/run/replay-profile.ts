@@ -26,14 +26,14 @@ const hostProcess = z.union([
     z.strictObject({ kind: z.literal('direct') }),
     z.strictObject({ kind: z.literal('child'), nodeArguments: z.array(z.string()) })
 ]);
-const integrationExecution = z.union([
+export const recordedIntegrationExecutionSchema = z.union([
     integrationExecutionSchema.options[0].unwrap().required(),
     worker.extend({ maxWorkers: z.number().int().positive().nullable(), hostProcess, workDistribution })
 ]);
 const integration = common.extend({
     testFamily: z.literal('integration'),
     files: common.shape.files.unwrap(),
-    execution: integrationExecution,
+    execution: recordedIntegrationExecutionSchema,
     attachments: attachmentLimitsSchema,
     retries: z
         .strictObject({

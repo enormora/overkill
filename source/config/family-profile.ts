@@ -8,7 +8,11 @@ import { builtinTestFamily, type BuiltinFamilyId } from '../engine/builtin-test-
 import type { ProjectDefinedFamilyProfile } from './schema.ts';
 import { familySettings, type DefinedFamilyProfile } from './types.ts';
 import { normalizeMicrotestExecution, defaultTimeoutPolicy } from './defaults.ts';
-import { normalizeRequiredProfileFiles, normalizeProfilePolicy } from './profile-normalization.ts';
+import {
+    normalizeIntegrationExecution,
+    normalizeRequiredProfileFiles,
+    normalizeProfilePolicy
+} from './profile-normalization.ts';
 import { ConfigError } from './config-error.ts';
 
 function validateFamilySettings(profile: DefinedFamilyProfile): void {
@@ -24,9 +28,6 @@ function validateFamilySettings(profile: DefinedFamilyProfile): void {
 
 export function validateFamilyDefinition(profile: DefinedFamilyProfile): void {
     validateFamilySettings(profile);
-    if (profile.execution.processModel !== 'in-process') {
-        throw new ConfigError('Imported families currently require in-process execution.');
-    }
     if (!profile.testFamily.features.processModels.includes(profile.execution.processModel)) {
         throw new ConfigError('The selected family does not support the configured process model.');
     }
@@ -38,17 +39,13 @@ export function validateFamilyDefinition(profile: DefinedFamilyProfile): void {
 export function normalizeDefinedFamilyProfile(profile: ProjectDefinedFamilyProfile): DefinedFamilyProfile {
     const binding = bindFamilySettings(profile.testFamily, profile.settings);
     const analysis = profile.testFamily.features.execution === 'analysis';
-    const execution = normalizeMicrotestExecution(
-        profile.execution ?? (analysis
-            ? { processModel: 'in-process', scheduling: 'serial', maxConcurrency: 1 }
-            : undefined)
-    );
-    if (!profile.testFamily.features.processModels.includes(execution.processModel)) {
-        throw new ConfigError('The selected family does not support the configured process model.');
-    }
-    if (execution.processModel !== 'in-process') {
-        throw new ConfigError('Imported families currently require in-process execution.');
-    }
+    const execution = profile.execution?.processModel === 'worker-pool'
+        ? normalizeIntegrationExecution(profile.execution)
+        : normalizeMicrotestExecution(
+            profile.execution ?? (analysis
+                ? { processModel: 'in-process', scheduling: 'serial', maxConcurrency: 1 }
+                : undefined)
+        );
     const normalized = {
         ...normalizeProfilePolicy(
             profile,

@@ -1,4 +1,5 @@
 import { runIfMain } from '#test-runner';
+import type { LoadedConfig, ConfiguredRunCommand, RunCommand, RunRequest } from '../packages/run/run.entry-point.ts';
 
 import {
     defaultFailureArtifactPolicy,
@@ -18,15 +19,16 @@ import {
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
 import { runnerResultFactory } from '../test-support/runner-result-factory.ts';
-import type { LoadedConfig } from '../config/config-loader.ts';
+import { snapshotRunCommand } from './frozen-run-command.ts';
 import { createCommandLineRunner, type CommandLineRunnerDependencies } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunCommand, RunRequest, ConfiguredRunOrchestrator } from './run-types.ts';
 
 type RecordedRunCommands = {
     readonly first: () => RunCommand | undefined;
     readonly record: (command: RunCommand) => void;
 };
+
+type ConfiguredRunOrchestrator = CommandLineRunnerDependencies['orchestrator'];
 
 const plainOutputRenderer = defineFixedOutputRenderer({
     render(intent): string {
@@ -101,13 +103,21 @@ function createRecordedRunCommands(): RecordedRunCommands {
 function createRunnerDependencies(recordedCommands: RecordedRunCommands): CommandLineRunnerDependencies {
     const orchestrator: ConfiguredRunOrchestrator = {
         bench: unexpectedBenchmarkOrchestrator,
-        async resolve(command) {
+        async resolve(suppliedCommand) {
+            const { command } = snapshotRunCommand(suppliedCommand);
             const profile = selectTestProfile(command.request.profile, command.config);
 
             return {
                 config: command.config,
                 cwd: command.cwd,
                 facts: {
+                    family: {
+                        id: testRunExecutionFacts(command, profile).testFamily,
+                        version: '1',
+                        settings: null,
+                        preparation: null,
+                        collection: null
+                    },
                     adapter: null,
                     benchmarkHost: null,
                     benchmarkCalibration: null,
@@ -141,7 +151,8 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 request: command.request
             };
         },
-        async run(command) {
+        async run(suppliedCommand) {
+            const { command } = snapshotRunCommand(suppliedCommand);
             recordedCommands.record(command);
 
             return runnerResultFactory.build({
@@ -149,7 +160,8 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
                 summary: { defined: 1, discovered: 1, passed: 1, planned: 1 }
             });
         },
-        async runWithReporterDelivery(command) {
+        async runWithReporterDelivery(suppliedCommand) {
+            const { command } = snapshotRunCommand(suppliedCommand);
             recordedCommands.record(command);
 
             return {
@@ -197,7 +209,8 @@ function createRunnerDependencies(recordedCommands: RecordedRunCommands): Comman
     };
 }
 
-function assertProcessUsageCommand(scope: OverkillScope, command: RunCommand): void {
+function assertProcessUsageCommand(scope: OverkillScope, suppliedCommand: ConfiguredRunCommand | RunCommand): void {
+    const { command } = snapshotRunCommand(suppliedCommand);
     const profile = command.config.profiles.microtest;
 
     scope.require.defined(profile);

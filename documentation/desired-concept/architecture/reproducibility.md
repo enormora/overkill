@@ -73,11 +73,15 @@ it is an optimization, not the required cross-CI baseline.
 
 ## Run Record Shape
 
+Version 3 retains executable-family facts and replay settings. Versioned readers
+preserve versions 1 and 2 without inventing implementation versions or loading
+family modules. Earlier generated-input type checks retain their recorded meaning.
+
 ```ts
 type SingleRunRecord = {
     readonly id: string; // ULID
     readonly kind: 'single';
-    readonly version: 2;
+    readonly version: 3;
     readonly replayPlan: CollectedRunPlan | null;
     readonly replayProfile: unknown;
     readonly replayWitness: WitnessFile | null;

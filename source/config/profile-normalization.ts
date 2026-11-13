@@ -19,14 +19,22 @@ import {
     type ProjectProfileFiles,
     type ProjectTimeoutConfig,
     type ProjectDefinedFamilyProfile,
-    type ProjectTimingProfilePolicy
+    type ProjectTimingProfilePolicy,
+    workerPoolProjectExecution
 } from './schema.ts';
 import {
     defaultProcessUsagePolicy,
     defaultProcessUsageSamplingIntervalMilliseconds,
     defaultCoveragePolicy,
     defaultTimingProfilePolicy,
-    defaultWorkDistribution
+    defaultWorkDistribution,
+    defaultIntegrationProcessModel,
+    defaultIntegrationScheduling,
+    defaultWorkerLifecycle,
+    defaultWorkerPoolAssignmentPolicy,
+    defaultWorkerPoolDispatchPolicy,
+    defaultWorkerPoolHedgingPolicy,
+    normalizedMaxConcurrency
 } from './defaults.ts';
 import { ConfigError } from './config-error.ts';
 import type {
@@ -40,7 +48,10 @@ import type {
     ProfileFileSet,
     ProfileFiles,
     TimeoutPolicy,
-    TimingProfilePolicy
+    TimingProfilePolicy,
+    WorkerLifecycle,
+    WorkerPoolAssignmentPolicy,
+    WorkerPoolHedgingPolicy
 } from './types.ts';
 import {
     invalidWorkDistributionConfigMessage,
@@ -237,7 +248,7 @@ export function assertValidWorkDistribution(
     }
 }
 
-export function normalizedWorkDistribution(
+function normalizedWorkDistribution(
     execution: ProjectIntegrationExecution | undefined
 ): Extract<IntegrationExecution, { readonly processModel: 'worker-pool'; }>['workDistribution'] {
     return normalizeWorkDistribution(execution, defaultWorkDistribution);
@@ -357,5 +368,70 @@ export function normalizeProfilePolicy(
         failureArtifacts: integrationProfileSchema.unwrap().shape.failureArtifacts.parse(profile.failureArtifacts),
         timings: normalizeTimings(profile.timings),
         timeouts
+    };
+}
+
+function normalizeWorkerLifecycle(execution: ProjectIntegrationExecution | undefined): WorkerLifecycle {
+    if (execution?.processModel !== 'worker-pool') {
+        return defaultWorkerLifecycle;
+    }
+
+    return execution.workerLifecycle ?? defaultWorkerLifecycle;
+}
+
+function normalizeWorkerPoolAssignmentPolicy(
+    execution: ProjectIntegrationExecution | undefined
+): WorkerPoolAssignmentPolicy {
+    if (execution?.processModel !== 'worker-pool') {
+        return defaultWorkerPoolAssignmentPolicy;
+    }
+
+    return execution.assignmentPolicy ?? defaultWorkerPoolAssignmentPolicy;
+}
+
+function normalizeWorkerPoolHedgingPolicy(
+    execution: ProjectIntegrationExecution | undefined
+): WorkerPoolHedgingPolicy {
+    if (execution?.processModel !== 'worker-pool') {
+        return defaultWorkerPoolHedgingPolicy;
+    }
+
+    return execution.hedging ?? defaultWorkerPoolHedgingPolicy;
+}
+
+function normalizeWorkerPoolExecution(
+    execution: ProjectIntegrationExecution | undefined,
+    scheduling: IntegrationExecution['scheduling']
+): IntegrationExecution {
+    const workerPoolExecution = workerPoolProjectExecution(execution);
+
+    return {
+        assignmentPolicy: normalizeWorkerPoolAssignmentPolicy(execution),
+        dispatchPolicy: workerPoolExecution?.dispatchPolicy ?? defaultWorkerPoolDispatchPolicy,
+        hedging: normalizeWorkerPoolHedgingPolicy(execution),
+        hostProcess: { kind: 'direct' },
+        maxConcurrency: normalizedMaxConcurrency(workerPoolExecution),
+        maxWorkers: workerPoolExecution?.maxWorkers ?? null,
+        processModel: 'worker-pool',
+        scheduling,
+        workDistribution: normalizedWorkDistribution(execution),
+        workerLifecycle: normalizeWorkerLifecycle(execution)
+    };
+}
+
+export function normalizeIntegrationExecution(
+    execution: ProjectIntegrationExecution | undefined
+): IntegrationExecution {
+    const processModel = execution?.processModel ?? defaultIntegrationProcessModel;
+    const scheduling = execution?.scheduling ?? defaultIntegrationScheduling;
+
+    if (processModel === 'worker-pool') {
+        return normalizeWorkerPoolExecution(execution, scheduling);
+    }
+
+    return {
+        maxConcurrency: normalizedMaxConcurrency(execution),
+        processModel,
+        scheduling
     };
 }

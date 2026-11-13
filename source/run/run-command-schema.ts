@@ -6,6 +6,7 @@ import {
 import { propertyWitnessSchema } from '../engine/witness-file.ts';
 import { benchmarkNormalizationContextSchema } from '../bench/calibration-evidence.ts';
 import { propertyPolicySchema } from '../engine/property-policy.ts';
+import { frozenFamilyDefinitionSchema } from './family-transport-schema.ts';
 import { runDebugRequestSchema } from './run-debug.ts';
 import { snapshotRunSchema } from './snapshot-wire.ts';
 import { replayWireSchema } from './replay-wire.ts';
@@ -73,6 +74,7 @@ export const executionCommandFields = {
         title: z.string()
     }),
     scheduling: z.enum([ 'concurrent', 'serial' ]),
+    family: frozenFamilyDefinitionSchema.nullable().default(null),
     testFamily: z.string(),
     timeoutMilliseconds: z.number()
 };

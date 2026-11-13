@@ -42,7 +42,10 @@ import {
 } from './test-plan.ts';
 
 type FamilyEngineOperations = {
-    readonly prepare: (request: DefinedFamilyRequest) => Promise<PreparedFamilyRun>;
+    readonly prepare: (
+        request: DefinedFamilyRequest,
+        placement: 'in-process' | 'supervised-process' | 'worker-pool'
+    ) => Promise<PreparedFamilyRun>;
     readonly execution: (run: CollectedFamilyRun, signal: AbortSignal) => FamilyExecutionRequest;
 };
 type FamilyPreparationRegistry = WeakMap<Engine['prepareFamily'], FamilyEngineOperations>;
@@ -65,7 +68,7 @@ export async function prepareDefinedFamily(engine: Engine, request: DefinedFamil
     if (prepare === undefined) {
         throw new TypeError('The selected engine does not support imported family preparation.');
     }
-    return prepare.prepare(request);
+    return prepare.prepare(request, 'in-process');
 }
 
 export async function executePreparedFamilyWithDriver(
@@ -137,7 +140,7 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
     });
 
     familyPreparations().set(familyRuns.prepareFamily, {
-        prepare: familyRuns.prepareFamily,
+        prepare: familyRuns.preparePlacedFamily,
         execution: familyRuns.execution
     });
     return {
@@ -185,4 +188,16 @@ export function createEngineWithOwner(dependencies: EngineDependencies, owner: T
 
 export function createEngine(dependencies: EngineDependencies): Engine {
     return createEngineWithOwner(dependencies, createTestNodeOwner());
+}
+
+export async function preparePlacedFamily(
+    engine: Engine,
+    request: DefinedFamilyRequest,
+    placement: 'in-process' | 'supervised-process' | 'worker-pool'
+): Promise<PreparedFamilyRun> {
+    const operations = familyPreparations().get(engine.prepareFamily);
+    if (operations === undefined) {
+        throw new TypeError('The selected engine does not support imported family preparation.');
+    }
+    return await operations.prepare(request, placement);
 }

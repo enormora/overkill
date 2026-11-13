@@ -341,7 +341,9 @@ and `RunResult.artifacts`. Direct engine execution keeps this evidence in memory
 ## Direct family execution
 
 Use an engine-created plan, an explicit family definition, and an absolute
-project root. Select work by its prepared identity. The engine rejects empty,
+project root. Read immutable identity, settings, and preparation evidence from
+`prepared.facts` before selection. Select work by its prepared identity. The engine
+rejects empty,
 unknown, or duplicate selections. Authored skips remain in the result.
 
 ```ts

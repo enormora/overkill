@@ -1,3 +1,13 @@
+import type {
+    ConfiguredRunCommand,
+    RunnerResult,
+    ResolvedRun,
+    RunCommand,
+    RunCommandInput,
+    FrozenRunCommand,
+    RunReporterDeliveryResult,
+    RunOperations as CommandOperations
+} from './run-types.ts';
 import {
     readResolvedRunInput,
     type RunInvocation
@@ -20,15 +30,6 @@ import {
     type RunInvocationTimingOptions,
     type RunTimingMeasurement
 } from './run-timing-collection.ts';
-import type {
-    RunnerResult,
-    ResolvedRun,
-    RunCommand,
-    RunCommandInput,
-    FrozenRunCommand,
-    RunReporterDeliveryResult,
-    RunOperations as CommandOperations
-} from './run-types.ts';
 
 type RunCollectionSource = CollectionSource;
 type DirectEntrypointRunCollectionSource = DirectEntrypointCollectionSource;
@@ -113,7 +114,7 @@ async function runCommand(
     );
 }
 
-type RunOperations = CommandOperations<FrozenRunCommand | RunCommandInput>;
+type RunOperations = CommandOperations<ConfiguredRunCommand | FrozenRunCommand | RunCommandInput>;
 
 export function createRunOperations(
     dependencies: RunOrchestratorDependencies,

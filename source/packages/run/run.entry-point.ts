@@ -169,6 +169,7 @@ export type {
     RunCaseFacts,
     RunCommand,
     RunCommandInput,
+    ConfiguredRunCommand,
     RunInvocationOptions,
     RunDebugRequest,
     RunEngineFacts,

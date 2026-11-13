@@ -2,7 +2,7 @@ import type { Clock } from '@enormora/clock';
 import type { RuntimeExecute } from '../engine/execution.ts';
 import { createReporterDispatcher } from '../engine/reporter-dispatcher.ts';
 import { defineReporter, type DefinedReporter } from '../engine/reporter.ts';
-import { createHostExecutionDriver, type HostExecutionInput } from './host-family-plan.ts';
+import { createHostExecutionDriver, type HostExecutionInput } from './host-family-execution.ts';
 import { snapshotRuntimePolicy } from './snapshot-runtime.ts';
 import { withReplayWire } from './replay-wire.ts';
 import type { SupervisedChildMessage, SupervisedRunCommand } from './supervised-protocol.ts';

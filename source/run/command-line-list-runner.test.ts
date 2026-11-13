@@ -1,4 +1,11 @@
 import { runIfMain } from '#test-runner';
+import type {
+    LoadedConfig,
+    ConfiguredRunCommand,
+    ResolvedRun,
+    RunCommand,
+    RunSelection
+} from '../packages/run/run.entry-point.ts';
 import { defaultHistoryPolicy } from '../config/history-policy.ts';
 import {
     createSuite as createOverkillSuite,
@@ -20,15 +27,15 @@ import {
     defaultMicrotestProfile,
     testRunExecutionFacts
 } from '../test-support/run-command-factory.ts';
-import type { LoadedConfig } from '../config/config-loader.ts';
+import { snapshotRunCommand } from './frozen-run-command.ts';
 import {
     createCommandLineRunner,
     type CommandLineRunnerDependencies,
     type CommandLineRunnerResult
 } from './command-line-runner.ts';
 import { selectTestProfile } from './test-profile.ts';
-import type { RunSelection } from './run-request-types.ts';
-import type { ResolvedRun, RunCommand, ConfiguredRunOrchestrator } from './run-types.ts';
+
+type ConfiguredRunOrchestrator = CommandLineRunnerDependencies['orchestrator'];
 
 const plainOutputRenderer = defineOutputRenderer(function createPlainRuntimeOutputRenderer() {
     return {
@@ -130,9 +137,10 @@ function caseFactsFromPlan(testPlan: TestPlan): ResolvedRun['facts']['cases'] {
 }
 
 export function createResolvedRun(
-    command: RunCommand,
+    suppliedCommand: ConfiguredRunCommand | RunCommand,
     collectionRunnerErrors: ResolvedRun['collectionRunnerErrors']
 ): ResolvedRun {
+    const { command } = snapshotRunCommand(suppliedCommand);
     const profile = selectTestProfile(command.request.profile, command.config);
     const testPlan = createPassingPlan();
 
@@ -142,6 +150,13 @@ export function createResolvedRun(
         cwd: command.cwd,
         engine: command.engine,
         facts: {
+            family: {
+                id: testRunExecutionFacts(command, profile).testFamily,
+                version: '1',
+                settings: null,
+                preparation: null,
+                collection: null
+            },
             adapter: null,
             benchmarkHost: null,
             benchmarkCalibration: null,
@@ -174,7 +189,10 @@ export function createResolvedRun(
     };
 }
 
-async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise<ResolvedRun> {
+async function createResolvedRunWithOrphanLocation(
+    suppliedCommand: ConfiguredRunCommand | RunCommand
+): Promise<ResolvedRun> {
+    const { command } = snapshotRunCommand(suppliedCommand);
     const resolvedRun = createResolvedRun(command, []);
 
     if (resolvedRun.plan.kind !== 'local') {
@@ -185,6 +203,7 @@ async function createResolvedRunWithOrphanLocation(command: RunCommand): Promise
         ...resolvedRun,
         plan: {
             collectedPlan: {
+                family: null,
                 defined: 1,
                 discoveredFiles: [],
                 files: [],
@@ -221,7 +240,8 @@ export function createListOnlyOrchestrator(resolve: ConfiguredRunOrchestrator['r
     };
 }
 
-async function resolvePassingCommand(command: RunCommand): Promise<ResolvedRun> {
+async function resolvePassingCommand(suppliedCommand: ConfiguredRunCommand | RunCommand): Promise<ResolvedRun> {
+    const { command } = snapshotRunCommand(suppliedCommand);
     return createResolvedRun(command, []);
 }
 
@@ -297,7 +317,7 @@ export const testNode = createOverkillSuite({
                 const receivedCommands: RunCommand[] = [];
                 const dependencies = createDependencies(
                     createListOnlyOrchestrator(async function resolveCommand(command) {
-                        receivedCommands.push(command);
+                        receivedCommands.push(snapshotRunCommand(command).command);
 
                         return createResolvedRun(command, []);
                     }),
@@ -337,7 +357,7 @@ export const testNode = createOverkillSuite({
                 };
                 const dependencies = createListDependencies(
                     async function resolveCommand(command) {
-                        receivedCommands.push(command);
+                        receivedCommands.push(snapshotRunCommand(command).command);
 
                         return createResolvedRun(command, []);
                     },

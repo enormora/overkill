@@ -5,6 +5,7 @@ import { assessMergeSources } from './merge-results-assessment.ts';
 import { serializeRunDiagnostics } from './run-record-result.ts';
 import { mergedRunResult } from './merged-run-result.ts';
 import type { MergeResultsCommand, MergedRunRecord } from './merge-results-types.ts';
+import { currentRunRecordVersion } from './run-record-format.ts';
 
 async function aggregateMergeResults(command: MergeResultsCommand): Promise<MergedRunRecord> {
     const started = new Date(createClock().currentUnixEpochMilliseconds);
@@ -18,7 +19,7 @@ async function aggregateMergeResults(command: MergeResultsCommand): Promise<Merg
     return {
         id: ulid(),
         kind: 'merged',
-        version: 2,
+        version: currentRunRecordVersion,
         status: 'started',
         startedAt,
         facts: {

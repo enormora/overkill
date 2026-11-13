@@ -21,7 +21,19 @@ export type RunRecordDependencies = {
 
 export function recordedReplayProfile(profile: ResolvedRunInput['profile']): unknown {
     if (typeof profile.testFamily !== 'string') {
-        return null;
+        return {
+            kind: 'family',
+            family: {
+                id: profile.testFamily.id,
+                version: profile.testFamily.version,
+                module: profile.testFamily.module
+            },
+            policy: Object.fromEntries(
+                Object.entries(profile).filter(function recordedPolicy([ name ]) {
+                    return name !== 'reporters' && name !== 'testFamily';
+                })
+            )
+        };
     }
     return Object.fromEntries(
         Object

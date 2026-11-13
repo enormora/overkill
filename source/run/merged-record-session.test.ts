@@ -14,6 +14,14 @@ async function prepare(directory: string): Promise<MergeResultsCommand> {
     await writeFile(join(directory, 'second.json'), JSON.stringify(mergeRecordFixture('second', 2, 3)));
     return { config: defaultRunConfig({}), cwd: directory, inputs: [ { kind: 'directory', path: '.' } ] };
 }
+function assertRecordVersions(scope: TestScope, current: MergedRunRecord): void {
+    scope.assert.equal(current.version, 3);
+    const historical = structuredClone(current);
+    Reflect.deleteProperty(historical.facts, 'family');
+    const legacy = mergedRecordSchema.parse({ ...historical, version: 2 });
+    scope.assert.equal(legacy.version, 2);
+    scope.assert.equal(legacy.facts.family, null);
+}
 async function assertRetained(scope: TestScope, command: MergeResultsCommand, merged: MergedRunRecord): Promise<void> {
     const retained = mergedRecordSchema.parse(JSON.parse(
         await readFile(
@@ -22,6 +30,7 @@ async function assertRetained(scope: TestScope, command: MergeResultsCommand, me
         )
     ));
     scope.assert.deepEqual(retained, merged);
+    assertRecordVersions(scope, merged);
     scope.assert.equal(retained.status, 'completed');
     const history = compactHistorySchema.parse(JSON.parse(
         await readFile(

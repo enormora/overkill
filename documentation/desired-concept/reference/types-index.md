@@ -1255,6 +1255,12 @@ type FreezePolicyInput = {
     readonly source: RunPolicySource;
 };
 
+type ConfiguredRunCommand = {
+    readonly kind: 'configured';
+    readonly command: RunCommand;
+    readonly source: RunPolicySource;
+};
+
 type FrozenRunCommand = {
     readonly kind: 'frozen-policy';
     readonly policy: FrozenMicrotestPolicy;
@@ -1284,14 +1290,14 @@ type MergeResultsCommand = {
     readonly inputs: NonEmptyReadonlyArray<MergeResultsInput>;
 };
 
-declare function resolveRun(command: FrozenRunCommand | RunCommand): Promise<ResolvedRun>;
-declare function run(command: FrozenRunCommand | RunCommand): Promise<RunResult>;
+declare function resolveRun(command: ConfiguredRunCommand | FrozenRunCommand | RunCommand): Promise<ResolvedRun>;
+declare function run(command: ConfiguredRunCommand | FrozenRunCommand | RunCommand): Promise<RunResult>;
 type RunInvocationOptions = RunInvocationTimingOptions & {
     readonly signal: AbortSignal | null;
 };
 
 declare function run(
-    command: FrozenRunCommand | RunCommand,
+    command: ConfiguredRunCommand | FrozenRunCommand | RunCommand,
     options: RunInvocationOptions
 ): Promise<RunResult>;
 declare function mergeResults(command: MergeResultsCommand): Promise<MergedRunRecord>;
