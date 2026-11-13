@@ -2,11 +2,13 @@ import { suite, test } from '../packages/test/test.entry-point.ts';
 import { createTestEngine } from '../test-support/create-test-engine.ts';
 import {
     defineTestFamily,
+    defineReporter,
     singleAttemptResult,
     type AdapterArtifact,
     type Engine,
     type FamilyAnalysisContext,
     type FamilyCollection,
+    type FamilyEvent,
     type FamilyExecuteOptions,
     type PerTestResult,
     type RunnerError,
@@ -166,6 +168,188 @@ async function reportInvalidArtifactEvidence(context: FamilyAnalysisContext, wor
 }
 
 export const testNode = suite('family evidence validation', [
+    test('preserves completed evidence when the backend subsequently cancels', async function (scope) {
+        const abort = new AbortController();
+        const result = await analyze(async function ({ report }, workId) {
+            await report({ kind: 'case-start', workId });
+            await report({ kind: 'case-end', result: resultFor(workId, { kind: 'pass' }), artifacts: [] });
+            abort.abort('cancel after evidence');
+        }, { ...options, signal: abort.signal });
+        scope.assert.equal(result.status, 'failed');
+        scope.assert.equal(result.summary.passed, 1);
+        scope.assert.equal(result.summary.inconclusive, 0);
+        scope.assert.equal(result.runnerErrors[0]?.cause, 'cancel after evidence');
+        return scope.assert.collect();
+    }),
+    test('awaits reporter delivery before accepting later evidence', async function (scope) {
+        const gate = { entered: Promise.withResolvers<undefined>(), release: Promise.withResolvers<undefined>() };
+        const observed: string[] = [];
+        const reporter = defineReporter(function () {
+            return {
+                kind: 'real-time',
+                name: 'backpressure',
+                sinks: [ { kind: 'memory' } ],
+                dispose: null,
+                onFinish: null,
+                async onEvent(event) {
+                    if (event.kind === 'test-start') {
+                        observed.push('start');
+                        gate.entered.resolve(undefined);
+                        await gate.release.promise;
+                    } else if (event.kind === 'test-end') {
+                        observed.push('end');
+                    }
+                }
+            };
+        });
+        const execution = analyze(async function ({ report }, workId) {
+            await report({ kind: 'case-start', workId });
+            observed.push('start-delivered');
+            await report({ kind: 'case-end', result: resultFor(workId, { kind: 'pass' }), artifacts: [] });
+        }, { ...options, reporters: [ reporter ] });
+        await gate.entered.promise;
+        scope.assert.deepEqual(Array.from(observed), [ 'start' ]);
+        gate.release.resolve(undefined);
+        const result = await execution;
+        scope.assert.deepEqual({ events: observed, status: result.status }, {
+            events: [ 'start', 'start-delivered', 'end' ],
+            status: 'passed'
+        });
+        return scope.assert.collect();
+    }),
+    ...[
+        'progress-before-start',
+        'end-before-start',
+        'duplicate-start',
+        'duplicate-end',
+        'unknown',
+        'variant',
+        'attempt',
+        'contradiction'
+    ]
+        .map(function invalidSequence(scenario) {
+            return test(`rejects ${scenario} independently without losing valid evidence`, async function (scope) {
+                const result = await analyze(async function ({ report }, workId) {
+                    const start: FamilyEvent = { kind: 'case-start', workId };
+                    const end: FamilyEvent = {
+                        kind: 'case-end',
+                        result: resultFor(workId, { kind: 'pass' }),
+                        artifacts: []
+                    };
+                    const sequences: Readonly<Record<string, readonly FamilyEvent[]>> = {
+                        'progress-before-start': [ { kind: 'case-progress', workId, note: 'too early' }, start, end ],
+                        'end-before-start': [ end, start, end ],
+                        'duplicate-start': [ start, start, end ],
+                        'duplicate-end': [ start, end, end ],
+                        attempt: [ start, {
+                            ...end,
+                            result: {
+                                ...end.result,
+                                attempts: [ {
+                                    ...end
+                                        .result
+                                        .attempts[0],
+                                    attempt: { index: 1 }
+                                } ]
+                            }
+                        }, end ],
+                        contradiction: [ start, { ...end, result: { ...end.result, verdict: 'fail' } }, end ],
+                        unknown: [
+                            {
+                                kind: 'case-start',
+                                workId: { ...workId, case: { ...workId.case, title: 'unselected' } }
+                            },
+                            start,
+                            end
+                        ],
+                        variant: [
+                            {
+                                kind: 'case-start',
+                                workId: {
+                                    ...workId,
+                                    familyVariant: { family: '@example/analysis-evidence', key: 'unselected' }
+                                }
+                            },
+                            start,
+                            end
+                        ]
+                    };
+                    const events = sequences[scenario] ?? [];
+                    for (const event of events) {
+                        await report(event);
+                    }
+                }, options);
+                scope.assert.equal(result.status, 'failed');
+                scope.assert.equal(result.summary.passed, 1);
+                scope.assert.equal(result.summary.inconclusive, 0);
+                scope.assert.equal(result.runnerErrors.length, 1);
+                scope.assert.equal(result.runnerErrors[0]?.subtype, 'runtime-state');
+                return scope.assert.collect();
+            });
+        }),
+    ...[ 'run-end', 'finish', 'result', 'dispose' ].map(function reporterFailure(phase) {
+        return test(`retains analysis evidence after reporter ${phase} failure`, async function (scope) {
+            const failure = new Error(`reporter ${phase} sentinel`);
+            const observed: string[] = [];
+            const reporter = defineReporter(function () {
+                const shared = {
+                    name: 'failing analysis reporter',
+                    sinks: [ { kind: 'memory' } ] as const,
+                    dispose() {
+                        observed.push('dispose');
+                        if (phase === 'dispose') {
+                            throw failure;
+                        }
+                    }
+                };
+                if (phase === 'result') {
+                    return {
+                        ...shared,
+                        kind: 'final-result',
+                        onResult() {
+                            observed.push('result');
+                            throw failure;
+                        }
+                    };
+                }
+                return {
+                    ...shared,
+                    kind: 'real-time',
+                    onEvent(event) {
+                        if (event.kind === 'run-end') {
+                            observed.push('run-end');
+                            if (phase === 'run-end') {
+                                throw failure;
+                            }
+                        }
+                    },
+                    onFinish() {
+                        observed.push('finish');
+                        if (phase === 'finish') {
+                            throw failure;
+                        }
+                    }
+                };
+            });
+            const result = await analyze(async function ({ report }, workId) {
+                await report({ kind: 'case-start', workId });
+                await report({ kind: 'case-end', result: resultFor(workId, { kind: 'pass' }), artifacts: [] });
+            }, { ...options, reporters: [ reporter ] });
+            scope.assert.equal(result.status, 'failed');
+            scope.assert.equal(result.summary.passed, 1);
+            scope.assert.deepEqual(
+                result.runnerErrors.map(function deliveryError(error) {
+                    return { subtype: error.subtype, cause: error.cause };
+                }),
+                [ { subtype: 'reporter', cause: failure } ]
+            );
+            scope.assert.deepEqual(
+                observed,
+                phase === 'result' ? [ 'result', 'dispose' ] : [ 'run-end', 'finish', 'dispose' ]
+            );
+            return scope.assert.collect();
+        });
+    }),
     test('retains run artifacts and declared run errors without attributing them to the case', async function (scope) {
         const result = await analyze(reportRunEvidence, options);
         scope.assert.equal(result.status, 'failed');

@@ -97,6 +97,28 @@ async function repeatFamilyProfile(family: TestFamily<{ readonly count: number; 
 }
 
 export const testNode = suite('imported family profiles', [
+    ...[ {}, { count: 'three' }, { project: './tsconfig.json' } ].map(function invalidSettings(settings) {
+        return test(`rejects untyped settings ${JSON.stringify(settings)} without loading`, function (scope) {
+            const events: string[] = [];
+            const family = runtimeFamily(function (event) {
+                events.push(event);
+            });
+            scope.assert.throws(function () {
+                return normalizeConfig({
+                    profiles: {
+                        custom: {
+                            testFamily: family,
+                            settings,
+                            files: { include: [ 'source/**/*.test.ts' ] },
+                            execution: { processModel: 'in-process' }
+                        }
+                    }
+                });
+            }, { type: Error });
+            scope.assert.deepEqual(events, []);
+            return scope.assert.collect();
+        });
+    }),
     test('normalizes and snapshots definitions without loading a backend', function (scope) {
         const events: string[] = [];
         const family = runtimeFamily(function (event) {
