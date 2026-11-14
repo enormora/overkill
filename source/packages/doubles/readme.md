@@ -443,7 +443,7 @@ import { matches, rule, testDouble } from '@overkill-dev/doubles';
 import { P } from 'ts-pattern';
 
 const load = testDouble<(id: string) => string>({
-    rules: [rule.when(matches(P.string)).returns('found')]
+    rules: [ rule.when(matches(P.string)).returns('found') ]
 });
 ```
 
