@@ -1,36 +1,20 @@
-import type { CallableSignature } from './double-behavior.ts';
+import type { P } from 'ts-pattern';
+import type { ArgumentMatcherFor } from './argument-matcher.ts';
+import type { ArgumentShape } from './argument-shape.ts';
 
-type PrimitiveValue = bigint | boolean | number | string | symbol | null | undefined;
-type BuiltInPartialValue = Date | Error | Promise<unknown> | RegExp;
+type TuplePrefix<Tuple extends readonly unknown[]> = number extends Tuple['length'] ? never : FiniteTuplePrefix<Tuple>;
 
-type DeepPartialValue<Value> = Value extends PrimitiveValue ? Value : DeepPartialReference<Value>;
+type FiniteTuplePrefix<Tuple extends readonly unknown[]> = Tuple extends readonly [] ? never
+    : NonEmptyTuplePrefix<Tuple>;
 
-type DeepPartialReference<Value> = Value extends CallableSignature ? Value : DeepPartialBuiltIn<Value>;
-
-type DeepPartialBuiltIn<Value> = Value extends BuiltInPartialValue ? Value : DeepPartialMap<Value>;
-
-type DeepPartialMapValue<Key, EntryValue> = ReadonlyMap<DeepPartialValue<Key>, DeepPartialValue<EntryValue>>;
-
-type DeepPartialMap<Value> = Value extends ReadonlyMap<infer Key, infer EntryValue>
-    ? DeepPartialMapValue<Key, EntryValue>
-    : DeepPartialSet<Value>;
-
-type DeepPartialSet<Value> = Value extends ReadonlySet<infer EntryValue> ? ReadonlySet<DeepPartialValue<EntryValue>>
-    : DeepPartialArray<Value>;
-
-type DeepPartialArrayValue<EntryValue> = readonly DeepPartialValue<EntryValue>[];
-
-type DeepPartialArray<Value> = Value extends readonly (infer EntryValue)[] ? DeepPartialArrayValue<EntryValue>
-    : DeepPartialObject<Value>;
-
-type DeepPartialObject<Value> = Value extends Readonly<Record<PropertyKey, unknown>>
-    ? { readonly [Key in keyof Value]?: DeepPartialValue<Value[Key]>; }
-    : Value;
-
-type TuplePrefix<Arguments extends readonly unknown[]> = Arguments extends readonly [infer First, ...infer Rest]
-    ? readonly [DeepPartialValue<First>, ...TuplePrefix<Rest>] | readonly [DeepPartialValue<First>]
+type NonEmptyTuplePrefix<Tuple extends readonly unknown[]> = Tuple extends readonly [unknown?, ...infer Rest]
+    ? readonly [ArgumentValue<Tuple[0]>, ...TuplePrefix<Rest>] | readonly [ArgumentValue<Tuple[0]>]
     : never;
 
 export type NonEmptyArgumentPatterns<Arguments extends readonly unknown[]> = number extends Arguments['length']
-    ? readonly [DeepPartialValue<Arguments[number]>, ...DeepPartialValue<Arguments[number]>[]]
+    ? readonly [ArgumentValue<Arguments[number]>, ...ArgumentValue<Arguments[number]>[]]
     : TuplePrefix<Arguments>;
+
+type PatternArgument<Value> = ArgumentMatcherFor<ArgumentShape<Value, 'pattern'>, P.Pattern<Value>>;
+
+type ArgumentValue<Value> = ArgumentShape<Value> | PatternArgument<Value>;

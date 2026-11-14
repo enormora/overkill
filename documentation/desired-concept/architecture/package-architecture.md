@@ -134,7 +134,7 @@ It should expose authoring helpers plus lightweight doubles:
 - `defineParameterizedTestBody`
 - `runIfMain`
 - current lightweight doubles APIs and doubles assertion references:
-  `testDouble`, `rule`, protocol double factories, `doubleUsage`, and their
+  `testDouble`, `rule`, `matches`, protocol double factories, `doubleUsage`, and their
   public types
 
 It should not expose configuration loading, reporters, resources, benchmark

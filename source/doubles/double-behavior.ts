@@ -1,4 +1,4 @@
-import { comparePartially } from '../compare/raw-comparison.ts';
+import { argumentsMatch, hasArgumentMatchers } from './argument-comparison.ts';
 
 export type CallableSignature = (...arguments_: readonly never[]) => unknown;
 export type ConstructorSignature = new (...arguments_: readonly never[]) => unknown;
@@ -468,20 +468,17 @@ export function answerFromBehavior(
         };
 }
 
-function argumentsMatch(actualArguments: readonly unknown[], expectedArguments: readonly unknown[]): boolean {
-    return actualArguments.length >= expectedArguments.length &&
-        expectedArguments.every(function argumentMatches(expectedArgument, index) {
-            return comparePartially(actualArguments[index], expectedArgument);
-        });
-}
-
 export function ruleMatches(configuredRule: RuntimeRule, invocation: Invocation): boolean {
     if (configuredRule.criterion.invocationKind !== invocation.kind) {
         return false;
     }
 
     return configuredRule.criterion.kind === 'arguments'
-        ? argumentsMatch(invocation.arguments, configuredRule.criterion.expectedArguments)
+        ? argumentsMatch(
+            invocation.arguments,
+            configuredRule.criterion.expectedArguments,
+            hasArgumentMatchers(configuredRule.criterion.expectedArguments) ? 'partial' : 'prefix'
+        )
         : configuredRule.criterion.index === invocation.index;
 }
 

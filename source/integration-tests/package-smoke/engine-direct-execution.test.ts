@@ -1,6 +1,8 @@
+import { P } from 'ts-pattern';
 import { createFactory } from '@enormora/objectory';
 import { defineCompositeAssertion } from '@overkill-dev/assert';
 import * as doublesPackage from '@overkill-dev/doubles';
+import { matches } from '@overkill-dev/doubles';
 import {
     createEngine,
     parseWitnessFile,
@@ -398,6 +400,7 @@ export const testNode = createSuite({
             async body(scope: TestScope) {
                 scope.assert.deepEqual(Object.keys(doublesPackage), [
                     'doubleUsage',
+                    'matches',
                     'rule',
                     'testAsyncDisposable',
                     'testAsyncIterable',
@@ -406,6 +409,13 @@ export const testNode = createSuite({
                     'testDouble',
                     'testIterable',
                     'testIterator'
+                ]);
+                const patterned = doublesPackage.testDouble<(id: string) => string>({
+                    rules: [ doublesPackage.rule.when(matches(P.string)).returns('matched') ]
+                });
+                scope.assert.equal(patterned('id'), 'matched');
+                scope.assert(doublesPackage.doubleUsage.calledOnceWith, patterned, [
+                    matches(P.string)
                 ]);
                 const loadValue = doublesPackage.testDouble.returns('value');
 

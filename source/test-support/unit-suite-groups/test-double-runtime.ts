@@ -1,3 +1,4 @@
+import { testNode as argumentMatcherTestNode } from '../../doubles/argument-matcher.test.ts';
 import { createSuite } from '../../packages/engine/engine.entry-point.ts';
 import { testNode as doubleHistoryEmptyTestNode } from '../../doubles/double-history-empty.test.ts';
 import { testNode as testDoubleCallbackTestNode } from '../../doubles/test-double-callback.test.ts';
@@ -14,6 +15,7 @@ export const testNode = createSuite({
     annotations: {},
     controls: {},
     children: [
+        argumentMatcherTestNode,
         doubleHistoryEmptyTestNode,
         testDoubleCallbackTestNode,
         testDoubleConfigurationTestNode,
